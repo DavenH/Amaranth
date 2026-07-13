@@ -10,6 +10,24 @@ bool isPowerOfTwo(size_t value) {
     return value > 0 && (value & (value - 1)) == 0;
 }
 
+void copySpectralRows(
+        const AudioProcessBlock& source,
+        size_t sourceOffset,
+        size_t destOffset,
+        Buffer<float> dest) {
+    if (source.samples.size() <= sourceOffset || (size_t) dest.size() <= destOffset) {
+        return;
+    }
+
+    const size_t copyCount = std::min((size_t) dest.size() - destOffset, source.samples.size() - sourceOffset);
+    Buffer<float>(
+            const_cast<float*>(source.samples.data()) + sourceOffset,
+            (int) copyCount).copyTo({
+                    dest.get() + destOffset,
+                    (int) copyCount
+            });
+}
+
 }
 
 void FftBlockwiseDsp::prepare(size_t frameCount) {
@@ -18,12 +36,33 @@ void FftBlockwiseDsp::prepare(size_t frameCount) {
     }
 
     preparedFrameCount = frameCount;
-    hasCarry = false;
+    resetState();
 
     if (isPowerOfTwo(preparedFrameCount)) {
         transform.allocate((int) preparedFrameCount, Transform::ScaleType::DivFwdByN, true);
         allocateHalfCycleCarry();
     }
+}
+
+void FftBlockwiseDsp::resetState() {
+    hasCarry = false;
+
+    if (carryHalf) {
+        carryHalf.zero();
+    }
+
+    if (rawHalf) {
+        rawHalf.zero();
+    }
+}
+
+void FftBlockwiseDsp::setHalfCycleCarryEnabled(bool shouldEnable) {
+    if (halfCycleCarryEnabled == shouldEnable) {
+        return;
+    }
+
+    halfCycleCarryEnabled = shouldEnable;
+    resetState();
 }
 
 void FftBlockwiseDsp::forward(
@@ -32,20 +71,20 @@ void FftBlockwiseDsp::forward(
         AudioProcessBlock& phase) {
     prepare(input.samples.size());
 
-    magnitude.samples.resize(preparedFrameCount);
-    phase.samples.resize(preparedFrameCount);
-    writableBlockBuffer(magnitude, preparedFrameCount).zero();
-    writableBlockBuffer(phase, preparedFrameCount).zero();
+    const size_t fullBinCount = (size_t) transform.getFullRealBinCount();
+    magnitude.samples.resize(fullBinCount);
+    phase.samples.resize(fullBinCount);
+    writableBlockBuffer(magnitude, magnitude.samples.size()).zero();
+    writableBlockBuffer(phase, phase.samples.size()).zero();
 
     if (!isPowerOfTwo(preparedFrameCount)) {
         return;
     }
 
     transform.forward(blockBuffer(input, preparedFrameCount));
-
-    const int bins = binCount();
-    transform.getMagnitudes().withSize(bins).copyTo(writableBlockBuffer(magnitude, bins));
-    transform.getPhases().withSize(bins).copyTo(writableBlockBuffer(phase, bins));
+    transform.copyFullPolarSpectrumTo(
+            writableBlockBuffer(magnitude, magnitude.samples.size()),
+            writableBlockBuffer(phase, phase.samples.size()));
 }
 
 void FftBlockwiseDsp::inverse(
@@ -61,15 +100,22 @@ void FftBlockwiseDsp::inverse(
         return;
     }
 
-    const int bins = binCount();
-    transform.getMagnitudes().zero();
-    transform.getPhases().zero();
-    blockBuffer(magnitude, bins).copyTo(transform.getMagnitudes().withSize(bins));
+    const size_t fullBinCount = (size_t) transform.getFullRealBinCount();
+    scratchMagnitude.resize(fullBinCount);
+    scratchPhase.resize(fullBinCount);
+    Buffer<float> magnitudeBuffer(scratchMagnitude.data(), (int) scratchMagnitude.size());
+    Buffer<float> phaseBuffer(scratchPhase.data(), (int) scratchPhase.size());
+    magnitudeBuffer.zero();
+    phaseBuffer.zero();
+
+    const bool hasDcRow = magnitude.samples.size() >= fullBinCount;
+    copySpectralRows(magnitude, 0, hasDcRow ? 0 : 1, magnitudeBuffer);
 
     if (phase != nullptr) {
-        blockBuffer(*phase, bins).copyTo(transform.getPhases().withSize(bins));
+        copySpectralRows(*phase, 0, hasDcRow ? 0 : 1, phaseBuffer);
     }
 
+    transform.setFullPolarSpectrum(magnitudeBuffer, phaseBuffer);
     transform.inverse(writableBlockBuffer(output, preparedFrameCount));
     applyHalfCycleCarry(output);
 }
@@ -83,6 +129,10 @@ Buffer<float> FftBlockwiseDsp::writableBlockBuffer(AudioProcessBlock& block, siz
 }
 
 void FftBlockwiseDsp::applyHalfCycleCarry(AudioProcessBlock& output) {
+    if (!halfCycleCarryEnabled) {
+        return;
+    }
+
     const int half = binCount();
 
     if (half <= 0 || carryHalf.empty()) {

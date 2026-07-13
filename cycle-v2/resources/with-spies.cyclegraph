@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<cycleV2Graph>
+  <node id="voice" kind="voiceContext" title="Voice Context" subtitle="waveform start / 6 voices"
+        x="8.052358627319336" y="457.9146423339844" w="300.0" h="128.0">
+    <output id="context" label="Context" domain="domain" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <parameter id="domain" label="Start Domain" value="waveform"/>
+    <parameter id="voices" label="Voices" value="6"/>
+    <parameter id="octave" label="Octave" value="0"/>
+    <parameter id="pitch" label="Pitch" value="0"/>
+    <parameter id="portamento" label="Portamento" value="0"/>
+    <parameter id="oversampling" label="Oversampling" value="1x"/>
+  </node>
+  <node id="waveMesh" kind="trilinearMesh" title="Trilinear Mesh" subtitle="waveform operand"
+        x="380.6160888671875" y="457.9146423339844" w="287.0" h="282.0">
+    <input id="context" label="Context" domain="domain" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="scratch" label="Scratch" domain="envelope" channelLayout="mono"
+           purpose="scratchAttachment" side="left"/>
+    <output id="out" label="Out" domain="control" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="fft" kind="fft" title="Time &#8594; Freq" subtitle="cycle chunks"
+        x="803.9976806640625" y="457.9146423339844" w="278.0" h="178.0">
+    <input id="time" label="Time" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="mag" label="Mag" domain="spectralMagnitude" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <output id="phase" label="Phase" domain="spectralPhase" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <parameter id="cycleFrames" label="Cycle Frames" value="2048"/>
+    <parameter id="mode" label="Mode" value="cycle"/>
+  </node>
+  <node id="magMesh" kind="trilinearMesh" title="Trilinear Mesh" subtitle="layer operand"
+        x="1235.978393554688" y="-198.5108184814453" w="286.0" h="282.0">
+    <input id="context" label="Context" domain="domain" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="scratch" label="Scratch" domain="envelope" channelLayout="mono"
+           purpose="scratchAttachment" side="left"/>
+    <output id="out" label="Out" domain="control" channelLayout="linkedStereo"
+            purpose="signal" side="bottom"/>
+  </node>
+  <node id="addMag" kind="add" title="Add" subtitle="magnitude layer"
+        x="1286.965576171875" y="395.9999694824219" w="150.0" h="118.0">
+    <input id="signal" label="Signal" domain="spectralMagnitude" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="operand" label="Mesh" domain="control" channelLayout="mono"
+           purpose="signal" side="top"/>
+    <output id="out" label="Out" domain="spectralMagnitude" channelLayout="mono"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="phaseMesh" kind="trilinearMesh" title="Trilinear Mesh" subtitle="phase operand"
+        x="1218.965576171875" y="786.0" w="286.0" h="282.0">
+    <input id="context" label="Context" domain="domain" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="scratch" label="Scratch" domain="envelope" channelLayout="mono"
+           purpose="scratchAttachment" side="left"/>
+    <output id="out" label="Out" domain="control" channelLayout="linkedStereo"
+            purpose="signal" side="top"/>
+  </node>
+  <node id="guide" kind="guideCurve" title="Guide" subtitle="mesh attachment"
+        x="865.6096801757812" y="683.9533081054688" w="246.0" h="218.0">
+    <output id="guide" label="Guide" domain="envelope" channelLayout="mono"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="addPhase" kind="add" title="Add" subtitle="phase layer" x="1286.965576171875"
+        y="579.862060546875" w="150.0" h="118.0">
+    <input id="signal" label="Signal" domain="spectralPhase" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="operand" label="Mesh" domain="control" channelLayout="mono"
+           purpose="signal" side="bottom"/>
+    <output id="out" label="Out" domain="spectralPhase" channelLayout="mono"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="ifft" kind="ifft" title="Freq &#8594; Time" subtitle="cyclic overlap"
+        x="1644.60546875" y="457.9146423339844" w="278.0" h="178.0">
+    <input id="mag" label="Mag" domain="spectralMagnitude" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="phase" label="Phase" domain="spectralPhase" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+    <parameter id="cycleFrames" label="Cycle Frames" value="2048"/>
+    <parameter id="mode" label="Mode" value="cyclic"/>
+  </node>
+  <node id="waveshaper" kind="waveshaper" title="Waveshaper" subtitle="transfer curve"
+        x="2009.0322265625" y="457.9147033691406" w="241.0" h="292.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+    <parameter id="effect.vertices" label="Effect Vertices" value="0.062500,0.062500,1.000000;0.125000,0.125000,1.000000;0.322264,0.759764,0.027560;0.612793,0.640137,0.000000;0.871582,0.875000,1.000000;0.937500,0.937500,1.000000"/>
+  </node>
+  <node id="ir" kind="impulseResponse" title="IR" subtitle="convolution"
+        x="2354.66650390625" y="457.9146423339844" w="256.0" h="210.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="env" kind="envelope" title="Envelope" subtitle="volume curve"
+        x="2450.0" y="134.1378936767578" w="246.0" h="203.0">
+    <output id="env" label="Env" domain="envelope" channelLayout="mono" purpose="signal"
+            side="right"/>
+    <parameter id="logarithmic" label="Logarithmic" value="0"/>
+  </node>
+  <node id="scratchEnv" kind="envelope" title="Envelope" subtitle="scratch attachment"
+        x="132.6160888671875" y="71.95323944091797" w="248.0" h="203.0">
+    <output id="env" label="Env" domain="envelope" channelLayout="mono" purpose="signal"
+            side="right"/>
+    <parameter id="logarithmic" label="Logarithmic" value="0"/>
+  </node>
+  <node id="multiply" kind="multiply" title="Multiply" subtitle="global volume"
+        x="2696.0" y="457.9147033691406" w="150.0" h="118.0">
+    <input id="audio" label="Audio" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <input id="factor" label="Factor" domain="envelope" channelLayout="mono"
+           purpose="signal" side="top"/>
+    <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+  </node>
+  <node id="out" kind="output" title="Output" subtitle="sink" x="2992.99267578125"
+        y="457.9146423339844" w="190.0" h="160.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+  </node>
+  <node id="spy" kind="spy" title="Spy" subtitle="signal monitor" x="793.1103515625"
+        y="1000.681823730469" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy2" kind="spy" title="Spy" subtitle="signal monitor" x="1124.991333007812"
+        y="154.9553833007812" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy3" kind="spy" title="Spy" subtitle="signal monitor" x="1644.60546875"
+        y="1000.682006835938" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy4" kind="spy" title="Spy" subtitle="signal monitor" x="2382.046875"
+        y="1000.682067871094" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy5" kind="spy" title="Spy" subtitle="signal monitor" x="2009.0322265625"
+        y="1000.682067871094" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy6" kind="spy" title="Spy" subtitle="signal monitor" x="1666.388061523438"
+        y="119.2710266113281" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy7" kind="spy" title="Spy" subtitle="signal monitor" x="2696.0"
+        y="1000.681884765625" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <node id="spy8" kind="spy" title="Spy" subtitle="signal monitor" x="2970.68994140625"
+        y="1000.682006835938" w="196.0" h="194.0">
+    <input id="in" label="In" domain="control" channelLayout="mono" purpose="signal"
+           side="left"/>
+  </node>
+  <edge sourceNodeId="voice" sourcePortId="context" destNodeId="waveMesh"
+        destPortId="context" domain="domain" attachment="0"/>
+  <edge sourceNodeId="scratchEnv" sourcePortId="env" destNodeId="waveMesh"
+        destPortId="scratch" domain="envelope" attachment="1"/>
+  <edge sourceNodeId="scratchEnv" sourcePortId="env" destNodeId="magMesh"
+        destPortId="scratch" domain="envelope" attachment="1"/>
+  <edge sourceNodeId="guide" sourcePortId="guide" destNodeId="phaseMesh"
+        destPortId="scratch" domain="envelope" attachment="1"/>
+  <edge sourceNodeId="magMesh" sourcePortId="out" destNodeId="addMag"
+        destPortId="operand" domain="control" attachment="0"/>
+  <edge sourceNodeId="fft" sourcePortId="phase" destNodeId="addPhase"
+        destPortId="signal" domain="spectralPhase" attachment="0"/>
+  <edge sourceNodeId="phaseMesh" sourcePortId="out" destNodeId="addPhase"
+        destPortId="operand" domain="control" attachment="0"/>
+  <edge sourceNodeId="addMag" sourcePortId="out" destNodeId="ifft" destPortId="mag"
+        domain="spectralMagnitude" attachment="0"/>
+  <edge sourceNodeId="addPhase" sourcePortId="out" destNodeId="ifft"
+        destPortId="phase" domain="spectralPhase" attachment="0"/>
+  <edge sourceNodeId="ifft" sourcePortId="time" destNodeId="waveshaper"
+        destPortId="time" domain="time" attachment="0"/>
+  <edge sourceNodeId="waveshaper" sourcePortId="time" destNodeId="ir"
+        destPortId="time" domain="time" attachment="0"/>
+  <edge sourceNodeId="ir" sourcePortId="time" destNodeId="multiply" destPortId="audio"
+        domain="time" attachment="0"/>
+  <edge sourceNodeId="env" sourcePortId="env" destNodeId="multiply" destPortId="factor"
+        domain="envelope" attachment="0"/>
+  <edge sourceNodeId="multiply" sourcePortId="time" destNodeId="out"
+        destPortId="time" domain="time" attachment="0"/>
+  <edge sourceNodeId="waveMesh" sourcePortId="out" destNodeId="fft" destPortId="time"
+        domain="time" attachment="0"/>
+  <edge sourceNodeId="waveMesh" sourcePortId="out" destNodeId="spy" destPortId="in"
+        domain="control" attachment="0"/>
+  <edge sourceNodeId="waveshaper" sourcePortId="time" destNodeId="spy4"
+        destPortId="in" domain="time" attachment="0"/>
+  <edge sourceNodeId="addPhase" sourcePortId="out" destNodeId="spy3"
+        destPortId="in" domain="spectralPhase" attachment="0"/>
+  <edge sourceNodeId="fft" sourcePortId="mag" destNodeId="spy2" destPortId="in"
+        domain="spectralMagnitude" attachment="0"/>
+  <edge sourceNodeId="ifft" sourcePortId="time" destNodeId="spy5" destPortId="in"
+        domain="time" attachment="0"/>
+  <edge sourceNodeId="fft" sourcePortId="mag" destNodeId="addMag" destPortId="signal"
+        domain="spectralMagnitude" attachment="0"/>
+  <edge sourceNodeId="addMag" sourcePortId="out" destNodeId="spy6" destPortId="in"
+        domain="spectralMagnitude" attachment="0"/>
+  <edge sourceNodeId="ir" sourcePortId="time" destNodeId="spy7" destPortId="in"
+        domain="time" attachment="0"/>
+  <edge sourceNodeId="multiply" sourcePortId="time" destNodeId="spy8"
+        destPortId="in" domain="time" attachment="0"/>
+</cycleV2Graph>

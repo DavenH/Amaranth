@@ -8,6 +8,7 @@
 #include "../Nodes/FFT/FftSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
@@ -20,6 +21,15 @@ namespace CycleV2 {
 namespace {
 
 constexpr size_t kDefaultTraversalColumns = 8;
+
+size_t traversalRowsForDomain(PortDomain domain, size_t frameCount) {
+    if ((domain == PortDomain::SpectralMagnitudeSignal || domain == PortDomain::SpectralPhaseSignal)
+            && frameCount > 1) {
+        return frameCount / 2 + 1;
+    }
+
+    return frameCount;
+}
 
 void publishGridColumns(
         SignalPayload& payload,
@@ -39,7 +49,7 @@ void publishGridColumns(
                     payload.domain,
                     columns.size(),
                     rows,
-                    TraversalGridAxis::Morph,
+                    TraversalGridAxis::Time,
                     defaultTraversalRowAxisForDomain(payload.domain)),
             arena);
 
@@ -238,19 +248,21 @@ private:
         const auto morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
                 parameterString(context.parameters, "primaryAxis", "yellow"));
+        syncMeshEdits(context.parameters);
 
         trimeshDsp.setMesh(defaultMesh.get());
         trimeshDsp.setMorphPosition(morph);
         trimeshDsp.setPrimaryViewAxis(primaryAxis);
         trimeshDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
         trimeshDsp.renderCycle(context.frameCount, outputPort.domain, outputPort.channelLayout, output);
+
         publishGridColumns(
                 output,
                 renderMeshColumns(
                         morph,
                         primaryAxis,
                         std::max(kDefaultTraversalColumns, context.frameCount / 2),
-                        context.frameCount,
+                        traversalRowsForDomain(outputPort.domain, context.frameCount),
                         outputPort.domain,
                         outputPort.channelLayout),
                 context.workArena);
@@ -370,6 +382,19 @@ private:
                 channelLayout);
     }
 
+    void syncMeshEdits(const std::vector<NodeParameter>& parameters) const {
+        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+
+        if (nextState == meshEditState) {
+            return;
+        }
+
+        defaultMesh->destroy();
+        defaultMesh = TrimeshMeshFactory::createDefaultMesh();
+        nextState.applyTo(*defaultMesh);
+        meshEditState = nextState;
+    }
+
     static void publishWrappedRampTraversalGrid(
             SignalPayload& payload,
             size_t columns,
@@ -451,7 +476,8 @@ private:
     mutable TrimeshBlockwiseDsp trimeshDsp;
     mutable UnarySignalProcessor unaryDsp;
     mutable WaveshaperSignalProcessor waveshaperDsp;
-    std::unique_ptr<Mesh> defaultMesh;
+    mutable std::unique_ptr<Mesh> defaultMesh;
+    mutable TrimeshMeshEditState meshEditState;
 };
 
 void NodeAudioProcessor::prepare(size_t) {}

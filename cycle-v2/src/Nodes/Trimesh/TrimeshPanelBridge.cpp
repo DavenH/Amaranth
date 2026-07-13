@@ -114,6 +114,14 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
     dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = panelRevisionFor(model);
+
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback();
+    }
+}
+
+void TrimeshPanelBridge::setMeshEditedCallback(std::function<void()> callback) {
+    meshEditedCallback = std::move(callback);
 }
 
 void TrimeshPanelBridge::syncPrimaryAxisContext() {

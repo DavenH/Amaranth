@@ -4,6 +4,27 @@
 
 namespace CycleV2 {
 
+namespace {
+
+String parameterString(
+        const std::vector<NodeParameter>& parameters,
+        const String& id,
+        const String& fallback) {
+    for (const auto& parameter : parameters) {
+        if (parameter.id == id) {
+            return parameter.value;
+        }
+    }
+
+    return fallback;
+}
+
+bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
+    return parameterString(parameters, "mode", "cyclic") == "acyclicCarry";
+}
+
+}
+
 void FftSignalProcessor::processForward(AudioProcessContext& context) {
     SignalPayload* input = inputAt(context, 0);
 
@@ -30,8 +51,10 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context) {
 
     auto output = makeOutputPayload(context, 0);
     SignalPayload* phase = inputAt(context, 1);
+    const bool useHalfCycleCarry = inverseUsesHalfCycleCarry(context.parameters);
+    blockwiseDsp.setHalfCycleCarryEnabled(useHalfCycleCarry);
     blockwiseDsp.inverse(magnitude->block, phase != nullptr ? &phase->block : nullptr, output.block);
-    publishInverseTraversalGrid(*magnitude, phase, output, context.workArena);
+    publishInverseTraversalGrid(*magnitude, phase, output, useHalfCycleCarry, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
 
@@ -46,33 +69,36 @@ void FftSignalProcessor::publishForwardTraversalGrids(
 
     const auto& inputGrid = input.traversalGrid;
     copyGridColumnToBlock(input.traversalGrid, 0, scratchTimeColumn);
-    blockwiseDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
+    traversalDsp.resetState();
+    traversalDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
 
-    if (scratchMagnitudeColumn.samples.empty() || scratchPhaseColumn.samples.empty()) {
+    const size_t binRows = scratchMagnitudeColumn.samples.size();
+    if (binRows == 0 || scratchPhaseColumn.samples.size() < binRows) {
         return;
     }
 
     configureTraversalGrid(
             magnitude.traversalGrid,
             inputGrid.columns,
-            scratchMagnitudeColumn.samples.size(),
-            frequencyMetadataFor(inputGrid, magnitude, scratchMagnitudeColumn.samples.size()),
+            binRows,
+            frequencyMetadataFor(inputGrid, magnitude, binRows),
             arena);
     configureTraversalGrid(
             phase.traversalGrid,
             inputGrid.columns,
-            scratchPhaseColumn.samples.size(),
-            frequencyMetadataFor(inputGrid, phase, scratchPhaseColumn.samples.size()),
+            binRows,
+            frequencyMetadataFor(inputGrid, phase, binRows),
             arena);
     copyBlockToGridColumn(scratchMagnitudeColumn, magnitude.traversalGrid, 0);
     copyBlockToGridColumn(scratchPhaseColumn, phase.traversalGrid, 0);
 
     for (size_t column = 1; column < inputGrid.columns; ++column) {
         copyGridColumnToBlock(inputGrid, column, scratchTimeColumn);
-        blockwiseDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
+        traversalDsp.forward(scratchTimeColumn, scratchMagnitudeColumn, scratchPhaseColumn);
         copyBlockToGridColumn(scratchMagnitudeColumn, magnitude.traversalGrid, column);
         copyBlockToGridColumn(scratchPhaseColumn, phase.traversalGrid, column);
     }
+
 }
 
 TraversalGridMetadata FftSignalProcessor::frequencyMetadataFor(
@@ -94,10 +120,7 @@ void FftSignalProcessor::copyGridColumnToBlock(
         size_t column,
         AudioProcessBlock& block) const {
     block.samples.resize(grid.rows);
-    std::copy(
-            grid.values.begin() + (ptrdiff_t) (column * grid.rows),
-            grid.values.begin() + (ptrdiff_t) ((column + 1) * grid.rows),
-            block.samples.begin());
+    copyTraversalGridColumn({ block.samples.data(), (int) block.samples.size() }, grid, column);
 }
 
 void FftSignalProcessor::copyBlockToGridColumn(
@@ -115,6 +138,7 @@ void FftSignalProcessor::publishInverseTraversalGrid(
         const SignalPayload& magnitude,
         const SignalPayload* phase,
         SignalPayload& output,
+        bool useHalfCycleCarry,
         const AudioProcessWorkArena* arena) {
     if (!magnitude.traversalGrid.isValid()) {
         return;
@@ -134,6 +158,8 @@ void FftSignalProcessor::publishInverseTraversalGrid(
             metadata,
             arena);
 
+    traversalDsp.setHalfCycleCarryEnabled(useHalfCycleCarry);
+    traversalDsp.resetState();
     for (size_t column = 0; column < magnitude.traversalGrid.columns; ++column) {
         copyGridColumnToBlock(magnitude.traversalGrid, column, scratchMagnitudeColumn);
         scratchOutputColumn.samples.resize(output.block.samples.size());
@@ -147,7 +173,7 @@ void FftSignalProcessor::publishInverseTraversalGrid(
             phaseColumnPtr = &scratchPhaseColumn;
         }
 
-        blockwiseDsp.inverse(scratchMagnitudeColumn, phaseColumnPtr, scratchOutputColumn);
+        traversalDsp.inverse(scratchMagnitudeColumn, phaseColumnPtr, scratchOutputColumn);
         copyBlockToGridColumn(scratchOutputColumn, output.traversalGrid, column);
     }
 }

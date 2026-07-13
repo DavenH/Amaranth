@@ -16,6 +16,27 @@ const NodePreviewResult* findSummary(
     return nullptr;
 }
 
+const SignalPayload* findAudioOutput(
+        const GraphAudioResult& audioResult,
+        const String& nodeId,
+        const String& portId) {
+    for (const auto& node : audioResult.nodes) {
+        if (node.nodeId != nodeId) {
+            continue;
+        }
+
+        for (const auto& output : node.outputs) {
+            if (output.first == portId) {
+                return &output.second;
+            }
+        }
+
+        return &node.output;
+    }
+
+    return nullptr;
+}
+
 NodePreviewResult inputSummaryForStep(
         const GraphExecutionStep& step,
         const std::vector<NodePreviewResult>& summaries) {
@@ -30,9 +51,47 @@ NodePreviewResult inputSummaryForStep(
     return {};
 }
 
+const SignalPayload* inputPayloadForStep(
+        const GraphExecutionStep& step,
+        const GraphAudioResult& audioResult) {
+    for (const auto& input : step.inputs) {
+        const SignalPayload* payload = findAudioOutput(audioResult, input.sourceNodeId, input.sourcePortId);
+
+        if (payload != nullptr) {
+            return payload;
+        }
+    }
+
+    return nullptr;
 }
 
-GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
+void addAudioTraversalGridToContext(
+        PreviewProcessContext& context,
+        const GraphExecutionStep& step,
+        const GraphAudioResult* audioResult) {
+    if (audioResult == nullptr || step.previewRole != PreviewModuleRole::SignalSpy) {
+        return;
+    }
+
+    const SignalPayload* input = inputPayloadForStep(step, *audioResult);
+
+    if (input == nullptr || !input->traversalGrid.isValid()) {
+        context.inputGrid.clear();
+        context.inputGridColumns = 0;
+        context.inputGridRows = 0;
+        return;
+    }
+
+    context.inputGrid = input->traversalGrid.values;
+    context.inputGridColumns = input->traversalGrid.columns;
+    context.inputGridRows = input->traversalGrid.rows;
+    context.domain = input->traversalGrid.metadata.valueDomain;
+}
+
+GraphPreviewResult renderPreview(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResult* audioResult,
+        size_t pointCount) {
     GraphPreviewResult result;
     std::vector<NodePreviewResult> summaries;
     NodePreviewProcessorFactory factory;
@@ -78,10 +137,13 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
         }
 
         context.inputSummary = inputPreview.primary;
-        context.inputGrid = std::move(inputPreview.primary);
-        context.inputGridColumns = inputPreview.gridColumns;
-        context.inputGridRows = inputPreview.gridRows;
-        context.domain = inputPreview.domain;
+        if (step.previewRole != PreviewModuleRole::SignalSpy) {
+            context.inputGrid = std::move(inputPreview.primary);
+            context.inputGridColumns = inputPreview.gridColumns;
+            context.inputGridRows = inputPreview.gridRows;
+            context.domain = inputPreview.domain;
+        }
+        addAudioTraversalGridToContext(context, step, audioResult);
         processor->render(context);
 
         NodePreviewResult preview {
@@ -99,6 +161,19 @@ GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, 
     }
 
     return result;
+}
+
+}
+
+GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
+    return renderPreview(plan, nullptr, pointCount);
+}
+
+GraphPreviewResult GraphPreviewExecutor::render(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResult& audioResult,
+        size_t pointCount) const {
+    return renderPreview(plan, &audioResult, pointCount);
 }
 
 }

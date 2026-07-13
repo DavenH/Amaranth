@@ -44,6 +44,7 @@ public:
             int vertexIndex,
             const String& parameterField,
             Point<float> guidePosition) const;
+    GraphEditResult attachSpyToEdge(NodeGraph& graph, size_t edgeIndex, const String& spyNodeId) const;
     GraphEditResult spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;

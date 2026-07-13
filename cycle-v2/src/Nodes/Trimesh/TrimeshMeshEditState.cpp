@@ -13,9 +13,14 @@ bool TrimeshVertexEdit::operator==(const TrimeshVertexEdit& other) const {
 }
 
 TrimeshMeshEditState TrimeshMeshEditState::fromNode(const Node& node) {
+    return fromParameters(node.parameters);
+}
+
+TrimeshMeshEditState TrimeshMeshEditState::fromParameters(
+        const std::vector<NodeParameter>& parameters) {
     TrimeshMeshEditState state;
 
-    for (const auto& parameter : node.parameters) {
+    for (const auto& parameter : parameters) {
         TrimeshVertexEdit edit;
 
         if (parseVertexEditParameter(parameter, edit)) {
@@ -26,8 +31,57 @@ TrimeshMeshEditState TrimeshMeshEditState::fromNode(const Node& node) {
     return state;
 }
 
+TrimeshMeshEditState TrimeshMeshEditState::fromMesh(Mesh& mesh) {
+    TrimeshMeshEditState state;
+    const auto& verts = mesh.getVerts();
+    constexpr int fields[] {
+            Vertex::Time,
+            Vertex::Red,
+            Vertex::Blue,
+            Vertex::Phase,
+            Vertex::Amp,
+            Vertex::Curve
+    };
+    constexpr size_t fieldCount = sizeof(fields) / sizeof(fields[0]);
+
+    state.vertexEdits.reserve(verts.size() * fieldCount);
+
+    for (int vertexIndex = 0; vertexIndex < (int) verts.size(); ++vertexIndex) {
+        const Vertex* vertex = verts[(size_t) vertexIndex];
+
+        if (vertex == nullptr) {
+            continue;
+        }
+
+        for (const int valueIndex : fields) {
+            const String field = fieldForVertexValueIndex(valueIndex);
+
+            state.vertexEdits.push_back({
+                    vertexIndex,
+                    valueIndex,
+                    vertex->values[valueIndex],
+                    canonicalVertexParameterId(vertexIndex, field)
+            });
+        }
+    }
+
+    return state;
+}
+
 String TrimeshMeshEditState::canonicalVertexParameterId(int vertexIndex, const String& field) {
     return "mesh.vertex." + String(vertexIndex) + "." + field;
+}
+
+String TrimeshMeshEditState::fieldForVertexValueIndex(int valueIndex) {
+    switch (valueIndex) {
+        case Vertex::Amp:      return "amp";
+        case Vertex::Phase:    return "phase";
+        case Vertex::Time:     return "time";
+        case Vertex::Red:      return "red";
+        case Vertex::Blue:     return "blue";
+        case Vertex::Curve:    return "curve";
+        default:               return {};
+    }
 }
 
 bool TrimeshMeshEditState::applyTo(Mesh& mesh) const {

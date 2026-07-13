@@ -2,9 +2,12 @@
 
 #include "../Runtime/GraphAudioExecutor.h"
 
+#include <Util/Arithmetic.h>
+
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <cstdint>
 #include <iterator>
 #include <limits>
 #include <utility>
@@ -354,6 +357,61 @@ var edgeToVar(const Edge& edge) {
     object->setProperty("destPortId", edge.destPortId);
     object->setProperty("domain", labelForDomain(edge.domain));
     object->setProperty("attachment", edge.attachment);
+    return object;
+}
+
+String labelForPreviewRole(PreviewModuleRole role) {
+    switch (role) {
+        case PreviewModuleRole::Waveform:           return "Waveform";
+        case PreviewModuleRole::Image:              return "Image";
+        case PreviewModuleRole::MeshSurface:        return "Mesh Surface";
+        case PreviewModuleRole::SpectrumMagnitude:  return "Spectrum Magnitude";
+        case PreviewModuleRole::SpectrumPhase:      return "Spectrum Phase";
+        case PreviewModuleRole::Envelope:           return "Envelope";
+        case PreviewModuleRole::ImpulseResponse:    return "Impulse Response";
+        case PreviewModuleRole::Waveshaper:         return "Waveshaper";
+        case PreviewModuleRole::OutputMeters:       return "Output Meters";
+        case PreviewModuleRole::VoiceContext:       return "Voice Context";
+        case PreviewModuleRole::SignalSpy:          return "Signal Spy";
+        case PreviewModuleRole::Generic:            return "Generic";
+        case PreviewModuleRole::None:
+        default:
+            return "None";
+    }
+}
+
+var previewStatsToVar(const NodePreviewResult& preview) {
+    auto* object = new DynamicObject();
+    const auto& values = preview.primary;
+
+    float minimum = 0.f;
+    float maximum = 0.f;
+    double total = 0.0;
+    double absoluteTotal = 0.0;
+
+    if (!values.empty()) {
+        minimum = values.front();
+        maximum = values.front();
+    }
+
+    for (float value : values) {
+        minimum = jmin(minimum, value);
+        maximum = jmax(maximum, value);
+        total += (double) value;
+        absoluteTotal += (double) (value >= 0.f ? value : -value);
+    }
+
+    const double count = (double) jmax(1, (int) values.size());
+    object->setProperty("nodeId", preview.nodeId);
+    object->setProperty("role", labelForPreviewRole(preview.role));
+    object->setProperty("domain", labelForDomain(preview.domain));
+    object->setProperty("gridColumns", (int) preview.gridColumns);
+    object->setProperty("gridRows", (int) preview.gridRows);
+    object->setProperty("sampleCount", (int) values.size());
+    object->setProperty("minimum", minimum);
+    object->setProperty("maximum", maximum);
+    object->setProperty("mean", total / count);
+    object->setProperty("absoluteSum", absoluteTotal);
     return object;
 }
 
@@ -855,6 +913,13 @@ Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, c
         return Rectangle<float>(width, height).withCentre(available.getCentre());
     }
 
+    if (node != nullptr && node->kind == NodeKind::Spy) {
+        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
+        const float width = jmin(available.getWidth(), 520.f);
+        const float height = jmin(available.getHeight(), 360.f);
+        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    }
+
     if (node != nullptr
             && (node->kind == NodeKind::Envelope
                 || node->kind == NodeKind::GuideCurve
@@ -1347,12 +1412,159 @@ void drawPreviewMeters(
     drawMeter(rightMeter, right);
 }
 
+uint64_t previewContentHash(const NodePreviewResult& preview) {
+    uint64_t hash = 1469598103934665603ull;
+    const auto mix = [&hash](uint64_t value) {
+        hash ^= value;
+        hash *= 1099511628211ull;
+    };
+
+    mix((uint64_t) preview.primary.size());
+    for (const float value : preview.primary) {
+        uint32_t bits {};
+        std::memcpy(&bits, &value, sizeof(bits));
+        mix(bits);
+    }
+
+    return hash;
+}
+
+void remapSpectralRows(std::vector<float>& surface, size_t columns, size_t rows) {
+    if (columns == 0 || rows < 2 || surface.size() < columns * rows) {
+        return;
+    }
+
+    std::vector<float> source = surface;
+    std::vector<float> rowMap(rows);
+    Buffer<float> mappedRows(rowMap.data(), (int) rowMap.size());
+    mappedRows.ramp(0.f, 1.f / (float) (rowMap.size() - 1));
+    Arithmetic::applyLogMapping(mappedRows, 500.f);
+
+    for (size_t column = 0; column < columns; ++column) {
+        const size_t columnOffset = column * rows;
+
+        for (size_t row = 0; row < rows; ++row) {
+            const float sourcePosition = jlimit(0.f, (float) (rows - 1), rowMap[row] * (float) (rows - 1));
+            const size_t rowA = (size_t) sourcePosition;
+            const size_t rowB = std::min(rowA + 1, rows - 1);
+            const float amount = sourcePosition - (float) rowA;
+            const float valueA = source[columnOffset + rowA];
+            const float valueB = source[columnOffset + rowB];
+            surface[columnOffset + row] = valueA + amount * (valueB - valueA);
+        }
+    }
+}
+
+void unwrapPhaseRowsAcrossColumns(std::vector<float>& surface, size_t columns, size_t rows) {
+    if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
+        return;
+    }
+
+    const float wrap = MathConstants<float>::twoPi;
+
+    for (size_t row = 0; row < rows; ++row) {
+        float offset = 0.f;
+        float previous = surface[row];
+
+        for (size_t column = 1; column < columns; ++column) {
+            const size_t index = column * rows + row;
+            const float current = surface[index];
+            const float delta = current + offset - previous;
+
+            if (delta > MathConstants<float>::pi) {
+                offset -= wrap;
+            } else if (delta < -MathConstants<float>::pi) {
+                offset += wrap;
+            }
+
+            surface[index] = current + offset;
+            previous = surface[index];
+        }
+    }
+}
+
+void mapMagnitudeForPreview(std::vector<float>& surface) {
+    if (surface.empty()) {
+        return;
+    }
+
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    constexpr float kMagnitudeDisplayGain = 16.f;
+    constexpr float kInverseLogDisplayGain = 1.f / 2.833213344f; // 1 / ln(1 + 16)
+
+    buffer.abs()
+            .mul(kMagnitudeDisplayGain)
+            .add(1.f)
+            .ln()
+            .mul(kInverseLogDisplayGain)
+            .clip(0.f, 1.f);
+}
+
+void mapUnwrappedPhaseForPreview(std::vector<float>& surface) {
+    if (surface.empty()) {
+        return;
+    }
+
+    float minimum = std::numeric_limits<float>::max();
+    float maximum = std::numeric_limits<float>::lowest();
+
+    for (float value : surface) {
+        minimum = jmin(minimum, value);
+        maximum = jmax(maximum, value);
+    }
+
+    const float realMaximum = jmax(std::abs(minimum), std::abs(maximum));
+    if (realMaximum <= 0.f) {
+        Buffer<float>(surface.data(), (int) surface.size()).set(0.5f);
+        return;
+    }
+
+    const float scaleExponent = std::ceil(std::log2(realMaximum) + 0.5f);
+    const float phaseScale = std::pow(2.f, -scaleExponent);
+
+    Buffer<float>(surface.data(), (int) surface.size()).mul(phaseScale).add(0.5f).clip(0.f, 1.f);
+}
+
+std::vector<float> rawMappedPreviewSurface(const NodePreviewResult& preview) {
+    std::vector<float> surface = preview.primary;
+
+    if (surface.empty()) {
+        return surface;
+    }
+
+    if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
+        mapMagnitudeForPreview(surface);
+
+        return surface;
+    }
+
+    if (preview.domain == PortDomain::SpectralPhaseSignal) {
+        unwrapPhaseRowsAcrossColumns(surface, preview.gridColumns, preview.gridRows);
+        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
+        mapUnwrappedPhaseForPreview(surface);
+
+        return surface;
+    }
+
+    if (preview.domain == PortDomain::TimeSignal) {
+        Buffer<float> buffer(surface.data(), (int) surface.size());
+        buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+
+        return surface;
+    }
+
+    Buffer<float>(surface.data(), (int) surface.size()).clip(0.f, 1.f);
+
+    return surface;
+}
+
 bool drawPreviewHeatmapSurface(
         Graphics& g,
         Rectangle<float> area,
         const NodePreviewResult& preview) {
     TrimeshRenderData renderData;
-    renderData.surface = preview.primary;
+    renderData.surface = rawMappedPreviewSurface(preview);
     renderData.domain = preview.domain;
     renderData.columns = (int) preview.gridColumns;
     renderData.rows = (int) preview.gridRows;
@@ -1368,8 +1580,10 @@ bool drawPreviewHeatmapSurface(
         return false;
     }
 
-    g.setImageResamplingQuality(Graphics::lowResamplingQuality);
+    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
     const Rectangle<float> content = area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
+    g.setColour(Colour(0xff07090d));
+    g.fillRect(content);
     g.drawImage(image, content);
     return true;
 }
@@ -2079,6 +2293,11 @@ void NodeCanvas::openGLContextClosing() {
 }
 
 void NodeCanvas::timerCallback() {
+    if (compiledStateRefreshPending
+            && (int32) (Time::getMillisecondCounter() - compiledStateRefreshDueMs) >= 0) {
+        flushScheduledCompiledStateRefresh();
+    }
+
     updateExpandedEditorHost(findNode(expandedNodeId));
 
     const auto mouse = getMouseXYRelative().toFloat();
@@ -2653,6 +2872,13 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
         return;
     }
 
+    if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
+        if (preview->role == PreviewModuleRole::SignalSpy) {
+            drawCachedPreviewHeatmapSurface(g, node.id, area, *preview);
+            return;
+        }
+    }
+
     CachedPreviewSprite& cached = cachedPreviewSpriteFor(node.id);
 
     if (!cached.image.isValid()
@@ -2672,6 +2898,49 @@ void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> are
 
     g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
     g.drawImage(cached.image, area);
+}
+
+bool NodeCanvas::drawCachedPreviewHeatmapSurface(
+        Graphics& g,
+        const String& cacheKey,
+        Rectangle<float> area,
+        const NodePreviewResult& preview) {
+    const int width = roundToInt(area.getWidth());
+    const int height = roundToInt(area.getHeight());
+
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+
+    CachedPreviewSprite& cached = cachedPreviewSpriteFor(cacheKey);
+    const String signature = String((int) preview.role)
+            + ":" + String((int) preview.domain)
+            + ":" + String((int) preview.gridColumns)
+            + "x" + String((int) preview.gridRows)
+            + ":" + String((int) preview.primary.size())
+            + ":" + String::toHexString((int64) previewContentHash(preview));
+
+    if (!cached.image.isValid()
+            || cached.width != width
+            || cached.height != height
+            || cached.domain != preview.domain
+            || cached.signature != signature) {
+        cached.image = Image(Image::ARGB, width, height, true);
+        cached.width = width;
+        cached.height = height;
+        cached.domain = preview.domain;
+        cached.signature = signature;
+
+        Graphics spriteGraphics(cached.image);
+        if (!drawPreviewHeatmapSurface(spriteGraphics, { 0.f, 0.f, (float) width, (float) height }, preview)) {
+            cached.image = {};
+            return false;
+        }
+    }
+
+    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    g.drawImage(cached.image, area);
+    return true;
 }
 
 Rectangle<float> previewContentArea(Rectangle<float> area) {
@@ -2936,6 +3205,12 @@ TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
     }
 
     trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
+    auto safeThis = Component::SafePointer<NodeCanvas>(this);
+    trimeshWidgets.back().second->setMeshEditedCallback([safeThis, nodeId] {
+        if (safeThis != nullptr) {
+            safeThis->persistTrimeshMeshEdits(nodeId);
+        }
+    });
     return *trimeshWidgets.back().second;
 }
 
@@ -3074,7 +3349,7 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     g.setFont(FontOptions(isCompactEditor ? 13.2f : 14.f, Font::bold));
     g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
 
-    if (!isCompactEditor) {
+    if (!isCompactEditor && node.kind != NodeKind::Spy) {
         g.setColour(kMutedText);
         g.setFont(FontOptions(10.f));
         g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredRight);
@@ -3112,6 +3387,20 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
 
     if (isTransformEditor) {
         drawTransformEditor(g, transformEditorColumnBounds(outerPanel), node);
+        return;
+    }
+
+    if (node.kind == NodeKind::Spy) {
+        const Rectangle<float> preview = content.reduced(2.f);
+
+        if (const NodePreviewResult* result = findPreviewResult(node.id)) {
+            if (drawPreviewHeatmapSurface(g, preview, *result)) {
+                return;
+            }
+        }
+
+        g.setColour(Colours::black.withAlpha(0.40f));
+        g.fillRect(preview);
         return;
     }
 
@@ -3230,7 +3519,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 }
 
                 safeThis->pushUndoSnapshot(beforeEdit);
-                safeThis->refreshCompiledState();
+                safeThis->scheduleCompiledStateRefresh();
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->repaint();
             };
@@ -3256,6 +3545,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     }
 
     TrimeshWidget& widget = trimeshWidgetFor(node->id);
+    auto safeThis = Component::SafePointer<NodeCanvas>(this);
 
     if (trimeshExpandedEditor != nullptr && trimeshExpandedEditorNodeId != node->id) {
         trimeshExpandedEditor->setVisible(false);
@@ -3266,7 +3556,6 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
     if (trimeshExpandedEditor == nullptr) {
         trimeshExpandedEditor = std::make_unique<TrimeshExpandedEditorComponent>(widget);
         trimeshExpandedEditorNodeId = node->id;
-        auto safeThis = Component::SafePointer<NodeCanvas>(this);
         TrimeshExpandedEditorComponent::Callbacks callbacks;
         callbacks.close = [safeThis] {
             if (safeThis != nullptr) {
@@ -3335,6 +3624,12 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         trimeshExpandedEditor->setCallbacks(std::move(callbacks));
         addAndMakeVisible(trimeshExpandedEditor.get());
     }
+
+    widget.setMeshEditedCallback([safeThis, nodeId = node->id] {
+        if (safeThis != nullptr) {
+            safeThis->persistTrimeshMeshEdits(nodeId);
+        }
+    });
 
     const Rectangle<int> editorBounds = expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt();
 
@@ -3951,6 +4246,7 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
 
 int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const {
     const auto& edges = graph.getEdges();
+    const Node* node = findNode(nodeId);
 
     for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -3984,7 +4280,11 @@ int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String
 
         if (hitPath.contains(screenPosition)) {
             NodeGraph candidate = graph;
-            if (!GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId).succeeded()) {
+            const auto result = node != nullptr && node->kind == NodeKind::Spy
+                    ? GraphEditor().attachSpyToEdge(candidate, (size_t) edgeIndex, nodeId)
+                    : GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId);
+
+            if (!result.succeeded()) {
                 continue;
             }
 
@@ -4287,6 +4587,7 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float
 }
 
 void NodeCanvas::refreshCompiledState() {
+    compiledStateRefreshPending = false;
     previewSpriteCache.clear();
     compileResult = GraphCompiler().compile(graph);
     runtimeTrace = {};
@@ -4294,8 +4595,31 @@ void NodeCanvas::refreshCompiledState() {
 
     if (compileResult.succeeded()) {
         runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
-        previewResult = GraphPreviewExecutor().render(compileResult.plan, 40);
+        constexpr size_t previewFrameCount = 128;
+        const GraphAudioResult audioResult = GraphAudioExecutor().process(graph, compileResult.plan, previewFrameCount);
+        previewResult = GraphPreviewExecutor().render(compileResult.plan, audioResult, 40);
     }
+}
+
+void NodeCanvas::scheduleCompiledStateRefresh() {
+    constexpr uint32 refreshDelayMs = 55;
+
+    if (compiledStateRefreshPending) {
+        return;
+    }
+
+    compiledStateRefreshPending = true;
+    compiledStateRefreshDueMs = Time::getMillisecondCounter() + refreshDelayMs;
+}
+
+void NodeCanvas::flushScheduledCompiledStateRefresh() {
+    if (!compiledStateRefreshPending) {
+        return;
+    }
+
+    refreshCompiledState();
+    openGLContext.triggerRepaint();
+    repaint();
 }
 
 var NodeCanvas::exportAutomationState() const {
@@ -4376,11 +4700,17 @@ var NodeCanvas::exportAutomationState() const {
         nodeOrder.add(nodeId);
     }
 
+    Array<var> previewStats;
+    for (const auto& preview : previewResult.nodes) {
+        previewStats.add(previewStatsToVar(preview));
+    }
+
     root->setProperty("nodes", nodes);
     root->setProperty("edges", edges);
     root->setProperty("validationIssues", validationIssues);
     root->setProperty("compileIssues", compileIssues);
     root->setProperty("nodeOrder", nodeOrder);
+    root->setProperty("previewStats", previewStats);
     return root;
 }
 
@@ -5098,15 +5428,19 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
         nodeDragUndoPushed = true;
     }
 
-    auto result = GraphEditor().spliceNodeIntoEdge(graph, (size_t) edgeIndex, selectedNodeId);
+    auto result = node->kind == NodeKind::Spy
+            ? GraphEditor().attachSpyToEdge(graph, (size_t) edgeIndex, selectedNodeId)
+            : GraphEditor().spliceNodeIntoEdge(graph, (size_t) edgeIndex, selectedNodeId);
 
     if (result.succeeded()) {
         selectedNodeId = result.nodeId;
         selectedEdgeIndex = -1;
         expandedNodeId = {};
-        shoveNodesForwardAfterSplice(result.nodeId, originalEdge.destNodeId);
+        if (node->kind != NodeKind::Spy) {
+            shoveNodesForwardAfterSplice(result.nodeId, originalEdge.destNodeId);
+        }
         refreshCompiledState();
-        editStatusMessage = "Inserted node into cable";
+        editStatusMessage = node->kind == NodeKind::Spy ? "Attached spy to cable" : "Inserted node into cable";
         return true;
     }
 
@@ -5539,13 +5873,14 @@ bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
             activeTrimeshMorphParameterId,
             label,
             String(value, 3));
-    refreshCompiledState();
+    scheduleCompiledStateRefresh();
     editStatusMessage = "Morph " + label + " = " + String(value, 2);
     repaint();
     return true;
 }
 
 void NodeCanvas::endTrimeshMorphEdit() {
+    flushScheduledCompiledStateRefresh();
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
     activeTrimeshMorphNodeId = {};
@@ -5606,7 +5941,11 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
         trimeshVertexParameterUndoPushed = true;
     }
 
-    const String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
+    String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
+    if (label.isEmpty()) {
+        label = activeTrimeshVertexParameterId;
+    }
+
     if (activeTrimeshVertexIndex < 0) {
         return false;
     }
@@ -5620,17 +5959,45 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
             persistentParameterId,
             label,
             String(value, 3));
-    refreshCompiledState();
+    scheduleCompiledStateRefresh();
     editStatusMessage = "Vertex #" + String(activeTrimeshVertexIndex) + " " + label + " = " + String(value, 2);
     return true;
 }
 
 void NodeCanvas::endTrimeshVertexParameterEdit() {
+    flushScheduledCompiledStateRefresh();
     draggingTrimeshVertexParameter = false;
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexNodeId = {};
     activeTrimeshVertexParameterId = {};
     activeTrimeshVertexIndex = -1;
+}
+
+void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
+    Node* node = findMutableNode(nodeId);
+
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return;
+    }
+
+    TrimeshMeshEditState editState = trimeshWidgetFor(nodeId).currentMeshEditState();
+    for (const TrimeshVertexEdit& edit : editState.getVertexEdits()) {
+        const String field = TrimeshMeshEditState::fieldForVertexValueIndex(edit.valueIndex);
+
+        if (field.isEmpty()) {
+            continue;
+        }
+
+        GraphEditor().setNodeParameter(
+                graph,
+                nodeId,
+                TrimeshMeshEditState::canonicalVertexParameterId(edit.vertexIndex, field),
+                field,
+                String(edit.value, 6));
+    }
+
+    scheduleCompiledStateRefresh();
+    repaint();
 }
 
 bool NodeCanvas::showTrimeshGuideAttachmentMenu(

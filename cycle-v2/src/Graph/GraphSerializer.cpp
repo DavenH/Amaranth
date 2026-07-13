@@ -136,6 +136,10 @@ void normalizeNodePresentation(Node& node) {
         ensureParameter("logarithmic", "Logarithmic", "0");
     }
 
+    if (node.kind == NodeKind::Spy) {
+        node.outputs.clear();
+    }
+
     if (node.kind == NodeKind::VoiceContext
             || node.kind == NodeKind::Fft
             || node.kind == NodeKind::Ifft

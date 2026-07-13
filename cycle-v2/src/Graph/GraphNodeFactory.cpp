@@ -144,8 +144,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.subtitle = "transfer curve";
             node.parameters = {
                     { "enabled", "Enabled", "1" },
-                    { "pre", "Pre", "1" },
-                    { "post", "Post", "1" },
+                    { "pre", "Pre", "0.5" },
+                    { "post", "Post", "0.5" },
                     { "aaFactor", "AA Factor", "1" }
             };
             node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
@@ -183,7 +183,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Spy";
             node.subtitle = "signal monitor";
             node.inputs = { input("in", "In", PortDomain::ControlSignal) };
-            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
             break;
 
         case NodeKind::StereoSplit:

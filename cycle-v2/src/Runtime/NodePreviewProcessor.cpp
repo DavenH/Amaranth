@@ -2,6 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 
 #include <Array/Buffer.h>
@@ -200,7 +201,7 @@ private:
             return;
         }
 
-        Mesh& mesh = meshForPreview();
+        Mesh& mesh = meshForPreview(context.parameters);
         const MorphPosition morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
                 parameterString(context.parameters, "primaryAxis", "yellow"));
@@ -336,9 +337,18 @@ private:
         context.gridRows = context.inputGridRows;
     }
 
-    Mesh& meshForPreview() const {
+    Mesh& meshForPreview(const std::vector<NodeParameter>& parameters) const {
         if (defaultMesh == nullptr) {
             defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+        }
+
+        const TrimeshMeshEditState nextMeshEditState = TrimeshMeshEditState::fromParameters(parameters);
+
+        if (nextMeshEditState != meshEditState) {
+            defaultMesh->destroy();
+            defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+            nextMeshEditState.applyTo(*defaultMesh);
+            meshEditState = nextMeshEditState;
         }
 
         return *defaultMesh;
@@ -346,6 +356,7 @@ private:
 
     PreviewModuleRole previewRole {};
     mutable std::unique_ptr<Mesh> defaultMesh;
+    mutable TrimeshMeshEditState meshEditState;
 };
 
 }
