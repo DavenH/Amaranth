@@ -222,6 +222,24 @@ TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][gra
     REQUIRE(findBuffer(result.plan, "wave", "out").domain == PortDomain::TimeSignal);
 }
 
+TEST_CASE("Compiler resolves spy nodes as signal monitors", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 260.f, 0.f }));
+    graph.addEdge({ "wave", "out", "spy", "in", PortDomain::TimeSignal, false });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findStep(result.plan, "spy").audioRole == AudioModuleRole::Spy);
+    REQUIRE(findStep(result.plan, "spy").previewRole == PreviewModuleRole::SignalSpy);
+    REQUIRE(findStep(result.plan, "spy").previewable);
+    REQUIRE(findStep(result.plan, "spy").outputs.empty());
+    REQUIRE(findSignalEdge(result.plan, "wave", "spy").domain == PortDomain::TimeSignal);
+}
+
 TEST_CASE("Compiler resolves mesh output domains from consuming operation context", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

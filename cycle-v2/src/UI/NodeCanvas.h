@@ -140,6 +140,8 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool expandedEditorDragCaptured {};
     bool canvasOpenGlAttached {};
+    bool compiledStateRefreshPending {};
+    uint32 compiledStateRefreshDueMs {};
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -159,6 +161,11 @@ private:
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
     void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
+    bool drawCachedPreviewHeatmapSurface(
+            Graphics& g,
+            const String& cacheKey,
+            Rectangle<float> area,
+            const NodePreviewResult& preview);
     CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
     TrimeshWidget& trimeshWidgetFor(const String& nodeId);
     Effect2DWidget& effect2DWidgetFor(const Node& node);
@@ -216,6 +223,8 @@ private:
     Point<float> viewportCentreWorld() const;
     Point<float> paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const;
     void refreshCompiledState();
+    void scheduleCompiledStateRefresh();
+    void flushScheduledCompiledStateRefresh();
     File snapshotFile() const;
     bool saveSnapshot();
     bool loadSnapshot();
@@ -242,6 +251,7 @@ private:
     bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
     bool updateTrimeshVertexParameterEditValue(float value);
     void endTrimeshVertexParameterEdit();
+    void persistTrimeshMeshEdits(const String& nodeId);
     bool showTrimeshGuideAttachmentMenu(const String& parameterField, Rectangle<int> targetScreenArea);
     std::array<String, 6> trimeshGuideAttachmentLabelsForNode(const Node& meshNode);
     bool selectTrimeshVertexIndex(int vertexIndex);

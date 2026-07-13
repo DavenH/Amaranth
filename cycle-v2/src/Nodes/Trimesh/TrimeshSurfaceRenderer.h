@@ -12,7 +12,8 @@ public:
     static juce::Colour colourForProfile(float value, const TrimeshRenderProfile& profile);
     static juce::Image createHeatmapImage(
             const TrimeshRenderData& renderData,
-            const TrimeshRenderProfile& profile);
+            const TrimeshRenderProfile& profile,
+            bool opaque = false);
     static void drawHeatmap(
             juce::Graphics& g,
             juce::Rectangle<float> area,

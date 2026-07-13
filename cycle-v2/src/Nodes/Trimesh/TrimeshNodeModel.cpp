@@ -316,6 +316,14 @@ void TrimeshNodeModel::markMeshEdited() {
     bumpMeshContentRevision();
 }
 
+TrimeshMeshEditState TrimeshNodeModel::currentMeshEditState() {
+    if (ownedMesh == nullptr) {
+        return {};
+    }
+
+    return TrimeshMeshEditState::fromMesh(*ownedMesh);
+}
+
 Mesh& TrimeshNodeModel::mesh() {
     if (ownedMesh == nullptr) {
         ownedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");

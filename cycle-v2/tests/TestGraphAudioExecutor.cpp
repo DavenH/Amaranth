@@ -59,12 +59,58 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     REQUIRE(envelope.back() > envelope.front());
     REQUIRE(samples(result.output)[3] == Catch::Approx(wave[3] * envelope[3]));
     REQUIRE(result.output.traversalGrid.isValid());
+    REQUIRE(result.output.traversalGrid.columns == 8);
     REQUIRE(result.output.traversalGrid.rows == 5);
     REQUIRE(wave == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
     REQUIRE(findNodeAudio(result, "wave").output.traversalGrid.isValid());
     REQUIRE(samples(findNodeAudio(result, "mul").output) == samples(result.output));
     REQUIRE(findNodeAudio(result, "mul").output.traversalGrid.values
             != findNodeAudio(result, "wave").output.traversalGrid.values);
+}
+
+TEST_CASE("Graph audio executor applies envelope vectors along time rows", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 0.f, 180.f }));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "mul", { 260.f, 0.f }));
+
+    graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "env", "env", "mul", "right", PortDomain::EnvelopeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto result = GraphAudioExecutor().process(
+            graph,
+            compileResult.plan,
+            64,
+            {},
+            voice);
+    const auto& wave = findNodeAudio(result, "wave").output;
+    const auto& env = findNodeAudio(result, "env").output;
+    const auto& multiplied = findNodeAudio(result, "mul").output;
+
+    REQUIRE(wave.traversalGrid.isValid());
+    REQUIRE(env.traversalGrid.isValid());
+    REQUIRE(multiplied.traversalGrid.isValid());
+    REQUIRE(wave.traversalGrid.columns == multiplied.traversalGrid.columns);
+    REQUIRE(wave.traversalGrid.rows == multiplied.traversalGrid.rows);
+    REQUIRE(env.traversalGrid.rows == wave.traversalGrid.rows);
+
+    float maxError = 0.f;
+    for (size_t column = 0; column < multiplied.traversalGrid.columns; ++column) {
+        for (size_t row = 0; row < multiplied.traversalGrid.rows; ++row) {
+            const size_t index = column * multiplied.traversalGrid.rows + row;
+            const float expected = wave.traversalGrid.values[index] * env.traversalGrid.values[row];
+            maxError = std::max(maxError, std::abs(multiplied.traversalGrid.values[index] - expected));
+        }
+    }
+
+    REQUIRE(maxError < 1.0e-5f);
 }
 
 TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[cycle-v2][runtime]") {
@@ -231,10 +277,10 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(fft.outputs[1].first == "phase");
     REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(fft.outputs[1].second.traversalGrid.isValid());
-    REQUIRE(samples(result.output)[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[1] == Catch::Approx(-1.f / 6.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[2] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[3] == Catch::Approx(0.5f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[0] == Catch::Approx(0.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[1] == Catch::Approx(1.f / 3.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[2] == Catch::Approx(2.f / 3.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output)[3] == Catch::Approx(1.f).margin(1.0e-5f));
 }
 
 TEST_CASE("Graph audio executor renders the demo graph through resolved mesh operands", "[cycle-v2][runtime]") {

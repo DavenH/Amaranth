@@ -129,3 +129,21 @@ TEST_CASE("Bundled default graph loads", "[cycle-v2][graph]") {
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
+
+TEST_CASE("Bundled spy graph loads", "[cycle-v2][graph]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File spyGraph = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("with-spies.cyclegraph");
+
+    REQUIRE(spyGraph.existsAsFile());
+
+    const NodeGraph graph = GraphSerializer().fromXmlString(spyGraph.loadFileAsString());
+
+    REQUIRE_FALSE(graph.getNodes().empty());
+    REQUIRE(GraphValidator().isValid(graph));
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}

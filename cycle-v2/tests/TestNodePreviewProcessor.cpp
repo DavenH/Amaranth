@@ -15,6 +15,34 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
 }
 
+TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime]") {
+    NodePreviewProcessorFactory factory;
+    auto processor = factory.create(PreviewModuleRole::SignalSpy);
+    REQUIRE(processor != nullptr);
+
+    PreviewProcessContext emptyContext;
+    emptyContext.pointCount = 4;
+    processor->render(emptyContext);
+
+    REQUIRE(emptyContext.primary.empty());
+    REQUIRE(emptyContext.secondary.empty());
+    REQUIRE(emptyContext.gridColumns == 0);
+    REQUIRE(emptyContext.gridRows == 0);
+
+    PreviewProcessContext gridContext;
+    gridContext.inputGrid = { 0.f, 0.25f, 0.5f, 0.75f };
+    gridContext.inputGridColumns = 2;
+    gridContext.inputGridRows = 2;
+    gridContext.domain = PortDomain::SpectralMagnitudeSignal;
+    processor->render(gridContext);
+
+    REQUIRE(gridContext.primary == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f });
+    REQUIRE(gridContext.secondary.empty());
+    REQUIRE(gridContext.gridColumns == 2);
+    REQUIRE(gridContext.gridRows == 2);
+    REQUIRE(gridContext.domain == PortDomain::SpectralMagnitudeSignal);
+}
+
 TEST_CASE("Waveform preview processor produces normalized summary points", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
     auto processor = factory.create(PreviewModuleRole::Waveform);
@@ -48,6 +76,9 @@ TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-
     factory.create(PreviewModuleRole::MeshSurface)->render(mesh);
     REQUIRE(mesh.primary.size() == 32);
     REQUIRE(mesh.secondary.size() == 4);
+    REQUIRE(mesh.gridColumns == 8);
+    REQUIRE(mesh.gridRows == 4);
+    REQUIRE(mesh.domain == PortDomain::TimeSignal);
     REQUIRE(mesh.primary[0] >= 0.f);
     REQUIRE(mesh.primary[0] <= 1.f);
 

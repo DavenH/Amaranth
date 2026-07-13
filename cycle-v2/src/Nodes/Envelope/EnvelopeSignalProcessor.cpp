@@ -41,6 +41,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
     }
 
+    outputBuffer.mul(parameterFloat(context.parameters, "level", 1.f));
     publishVectorAsTraversalGrid(output, defaultTraversalColumns, context.workArena);
     publishSingleOutput(context, std::move(output));
 }

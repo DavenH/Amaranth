@@ -85,8 +85,19 @@ Colour TrimeshSurfaceStyle::colourForValue(float value) const {
     const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal;
 
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        const Colour negative = Colour(0xffff7a3d);
+        const Colour centre = Colour(0xff120d18);
+        const Colour positive = Colour(0xffb887ff);
+        const Colour colour = v < 0.5f
+                ? negative.interpolatedWith(centre, v * 2.f)
+                : centre.interpolatedWith(positive, (v - 0.5f) * 2.f);
+        const float distanceFromCentre = v < 0.5f ? 0.5f - v : v - 0.5f;
+        return colour.withAlpha(v <= 0.f ? 0.f : jlimit(0.18f, 0.90f, 0.28f + distanceFromCentre * 1.24f));
+    }
+
     if (spectral) {
-        const float alpha = jlimit(0.f, 0.92f, (v - 0.02f) / 0.98f * 0.92f);
+        const float alpha = v <= 0.f ? 0.f : jlimit(0.12f, 0.92f, v * 0.92f);
         return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
     }
 

@@ -20,6 +20,24 @@ size_t maxInputCount(const GraphExecutionPlan& plan) {
     return maxInputs;
 }
 
+size_t maxAttachmentCount(const GraphExecutionPlan& plan) {
+    size_t maxAttachments = 0;
+
+    for (const auto& step : plan.steps) {
+        size_t attachmentCount = 0;
+
+        for (const auto& attachment : plan.attachments) {
+            if (attachment.destNodeId == step.nodeId) {
+                ++attachmentCount;
+            }
+        }
+
+        maxAttachments = std::max(maxAttachments, attachmentCount);
+    }
+
+    return maxAttachments;
+}
+
 size_t maxOutputCount(const GraphExecutionPlan& plan) {
     size_t maxOutputs = 1;
 
@@ -64,6 +82,7 @@ GraphAudioResult GraphAudioExecutor::process(
             maxOutputCount(plan),
             frameCount * std::max(frameCount, (size_t) 8));
 
+    const size_t attachmentCapacity = maxAttachmentCount(plan);
     NodeAudioProcessorFactory processorFactory;
     GraphAudioResult result;
 
@@ -85,6 +104,7 @@ GraphAudioResult GraphAudioExecutor::process(
         context.workArena = &workArena;
         context.parameters = step.parameters;
         context.inputs.reserve(workArena.inputCapacity);
+        context.attachments.reserve(attachmentCapacity);
         context.outputPorts.reserve(step.outputs.size());
         context.outputs.reserve(workArena.outputCapacity);
 
@@ -115,6 +135,30 @@ GraphAudioResult GraphAudioExecutor::process(
                 context.inputs[inputIndex].domain = input.domain;
                 context.inputs[inputIndex].channelLayout = input.channelLayout;
             }
+        }
+
+        for (const auto& attachment : plan.attachments) {
+            if (attachment.destNodeId != step.nodeId) {
+                continue;
+            }
+
+            const SignalPayload* sourceOutput = findOutputForNode(
+                    outputs,
+                    attachment.sourceNodeId,
+                    attachment.sourcePortId);
+            if (sourceOutput == nullptr) {
+                continue;
+            }
+
+            auto payload = *sourceOutput;
+            payload.domain = attachment.domain;
+            context.attachments.push_back({
+                    attachment.sourceNodeId,
+                    attachment.sourcePortId,
+                    attachment.destPortId,
+                    attachment.domain,
+                    std::move(payload)
+            });
         }
 
         processor->prepare(frameCount);

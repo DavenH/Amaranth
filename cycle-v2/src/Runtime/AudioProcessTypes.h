@@ -75,6 +75,14 @@ struct AudioOutputPort {
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
 
+struct AudioProcessAttachment {
+    String sourceNodeId;
+    String sourcePortId;
+    String destPortId;
+    PortDomain domain {};
+    SignalPayload payload;
+};
+
 struct AudioProcessTiming {
     double sampleRate { 44100.0 };
     double bpm { 120.0 };
@@ -135,6 +143,7 @@ struct AudioProcessContext {
     AudioProcessWorkArena* workArena {};
     std::vector<NodeParameter> parameters;
     std::vector<SignalPayload> inputs;
+    std::vector<AudioProcessAttachment> attachments;
     std::vector<AudioOutputPort> outputPorts;
     std::vector<SignalPayload> outputs;
 };

@@ -141,13 +141,17 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
     envelopeContext.frameCount = 4;
     envelopeContext.timing.sampleRate = 8.0;
     envelopeContext.parameters = {
-            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
+            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() },
+            { "level", "Level", "0.25" }
     };
     envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
 
     REQUIRE(output(envelopeContext).block.samples.front() < 0.001f);
     REQUIRE(output(envelopeContext).block.samples.back() > output(envelopeContext).block.samples.front());
+    REQUIRE(*std::max_element(
+            output(envelopeContext).block.samples.begin(),
+            output(envelopeContext).block.samples.end()) <= 0.25f);
 }
 
 TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v2][runtime][envelope]") {
@@ -341,7 +345,7 @@ TEST_CASE("Utility audio processors apply scalar operands across vectors and tra
             == std::vector<float> { 11.f, 12.f, 13.f, 14.f, 15.f, 16.f });
 }
 
-TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicitly", "[cycle-v2][runtime]") {
+TEST_CASE("Utility audio processors broadcast single-column matrix operands", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
@@ -353,7 +357,8 @@ TEST_CASE("Utility audio processors reject mismatched matrix dimensions explicit
     factory.create(AudioModuleRole::Add)->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 11.f, 22.f, 33.f });
-    REQUIRE_FALSE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.values
+            == std::vector<float> { 11.f, 22.f, 33.f, 14.f, 25.f, 36.f });
 }
 
 TEST_CASE("Utility audio processors preserve output traversal metadata across elementwise grids", "[cycle-v2][runtime]") {
@@ -873,6 +878,21 @@ TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v
     REQUIRE(output(withGridSecond).block.samples == output(blockOnlySecond).block.samples);
 }
 
+TEST_CASE("Spy audio processor passes through first input", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Spy);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { payload({ 0.1f, 0.4f, 0.9f }) };
+    processor->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 0.1f, 0.4f, 0.9f });
+    REQUIRE(output(context).domain == PortDomain::TimeSignal);
+    REQUIRE(output(context).channelLayout == ChannelLayout::LinkedStereo);
+}
+
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
     auto processor = factory.create(AudioModuleRole::Fft);
@@ -889,13 +909,18 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
 
     REQUIRE(context.outputs.size() == 2);
     REQUIRE(context.outputs[0].domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(context.outputs[0].block.samples.size() == 4);
-    REQUIRE(context.outputs[0].block.samples[0] > 0.f);
+    REQUIRE(context.outputs[0].block.samples.size() == 3);
+    REQUIRE(std::any_of(
+            context.outputs[0].block.samples.begin(),
+            context.outputs[0].block.samples.end(),
+            [](float value) {
+                return value > 0.f;
+            }));
     REQUIRE(context.outputs[0].traversalGrid.isValid());
     REQUIRE(context.outputs[0].traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(context.outputs[0].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
-    REQUIRE(context.outputs[1].block.samples.size() == 4);
+    REQUIRE(context.outputs[1].block.samples.size() == 3);
     REQUIRE(context.outputs[1].traversalGrid.isValid());
     REQUIRE(context.outputs[1].traversalGrid.metadata.valueDomain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
@@ -933,15 +958,16 @@ TEST_CASE("Mesh source processor generates a deterministic operand when unconnec
     NodeAudioProcessorFactory factory;
 
     AudioProcessContext context;
-    context.frameCount = 3;
+    context.frameCount = 4;
     context.outputPorts = {
             { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
     };
     factory.create(AudioModuleRole::MeshSource)->process(context);
 
     REQUIRE(output(context).domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(output(context).block.samples.size() == 3);
+    REQUIRE(output(context).block.samples.size() == 4);
     REQUIRE(output(context).traversalGrid.isValid());
+    REQUIRE(output(context).traversalGrid.columns == 8);
     REQUIRE(output(context).traversalGrid.rows == 3);
     REQUIRE(*std::min_element(output(context).block.samples.begin(), output(context).block.samples.end())
             < *std::max_element(output(context).block.samples.begin(), output(context).block.samples.end()));

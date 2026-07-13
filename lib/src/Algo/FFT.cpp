@@ -2,6 +2,8 @@
 
 #include "../Util/NumberUtils.h"
 
+#include <algorithm>
+
 Transform::Transform() :
     order(0),
   #ifdef USE_ACCELERATE
@@ -36,13 +38,14 @@ void Transform::clear() {
 }
 
 void Transform::allocate(int bufferSize, ScaleType scaleType, bool convertsToCart) {
-    convertToCart = convertsToCart;
     jassert(!(bufferSize & (bufferSize - 1)));
 
     int newOrder = NumberUtils::log2i(bufferSize);
-    if (order == newOrder && scaleType == this->scaleType) {
+    if (order == newOrder && scaleType == this->scaleType && convertsToCart == convertToCart) {
         return;
     }
+
+    convertToCart = convertsToCart;
     this->scaleType = scaleType;
 
     clear();
@@ -133,7 +136,13 @@ void Transform::forward(Buffer<float> src) {
         fftBuffer[0] = 0;
     }
     if (convertToCart) {
-        ippsCartToPolar_32fc(reinterpret_cast<Complex32*>(fftBuffer.get()+2), magnitudes, phases, size/2);
+        int hsize = size / 2;
+        int complexBins = hsize - 1;
+        ippsCartToPolar_32fc(reinterpret_cast<Complex32*>(fftBuffer.get()+2), magnitudes, phases, complexBins);
+
+        float nyquist = fftBuffer[1];
+        magnitudes[hsize - 1] = nyquist < 0.f ? -nyquist : nyquist;
+        phases[hsize - 1] = nyquist < 0.f ? MathConstants<float>::pi : 0.f;
     }
   #endif
 }
@@ -204,11 +213,154 @@ void Transform::inverse(Buffer<float> dest) {
 
   #else
     if (convertToCart) {
-        ippsPolarToCart_32fc(magnitudes, phases, (Complex32*)fftBuffer.get() + 1, size/2);
+        int hsize = size / 2;
+        int complexBins = hsize - 1;
+        ippsPolarToCart_32fc(magnitudes, phases, (Complex32*)fftBuffer.get() + 1, complexBins);
+
+        float nyquistPhase = phases[hsize - 1];
+        float nyquistSign = (nyquistPhase < -MathConstants<float>::halfPi || nyquistPhase > MathConstants<float>::halfPi) ? -1.f : 1.f;
+        fftBuffer[1] = magnitudes[hsize - 1] * nyquistSign;
     }
     if (removeOffset) {
         fftBuffer[0] = 0;
     }
     ippsFFTInv_CCSToR_32f(fftBuffer, dest, spec, workBuff);
   #endif
+}
+
+int Transform::getFullRealBinCount() const {
+    return order == 0 ? 0 : RealFftFullPolarSpectrum::binCountForBufferSize(1 << order);
+}
+
+void Transform::copyFullPolarSpectrumTo(Buffer<float> magnitudeDest, Buffer<float> phaseDest) {
+    if (order == 0 || magnitudeDest.empty()) {
+        return;
+    }
+
+    RealFftFullPolarSpectrum::copyFromPacked(
+            getRealSpectrum().getEndpoints(),
+            magnitudes,
+            phases,
+            magnitudeDest,
+            phaseDest);
+}
+
+void Transform::setFullPolarSpectrum(Buffer<float> magnitudeSource, Buffer<float> phaseSource) {
+    if (order == 0) {
+        return;
+    }
+
+    fftBuffer.zero();
+    magnitudes.zero();
+    phases.zero();
+
+    const RealFftPackedEndpoints endpoints = RealFftFullPolarSpectrum::copyToPacked(
+            magnitudeSource,
+            phaseSource,
+            magnitudes,
+            phases);
+    setPackedEndpoints(endpoints.dc, endpoints.nyquist);
+}
+
+void Transform::setPackedEndpoints(float dc, float nyquist) {
+    if (fftBuffer.empty() || order == 0) {
+        return;
+    }
+
+  #ifdef USE_ACCELERATE
+    const int hsize = 1 << (order - 1);
+    fftBuffer[0] = dc;
+    fftBuffer[hsize] = nyquist;
+  #else
+    fftBuffer[0] = dc;
+    fftBuffer[1] = nyquist;
+  #endif
+}
+
+void RealFftFullPolarSpectrum::copyFromPacked(
+        RealFftPackedEndpoints endpoints,
+        Buffer<float> ordinaryMagnitudes,
+        Buffer<float> ordinaryPhases,
+        Buffer<float> magnitudeDest,
+        Buffer<float> phaseDest) {
+    if (magnitudeDest.empty()) {
+        return;
+    }
+
+    const int fullBins = ordinaryMagnitudes.size() + 1;
+    const int copyBins = std::min(fullBins, magnitudeDest.size());
+
+    magnitudeDest[0] = magnitudeForSignedEndpoint(endpoints.dc);
+    if (!phaseDest.empty()) {
+        phaseDest[0] = phaseForSignedEndpoint(endpoints.dc);
+    }
+
+    if (copyBins <= 1) {
+        return;
+    }
+
+    const int bodyBins = std::min(copyBins - 1, ordinaryMagnitudes.size());
+    ordinaryMagnitudes.withSize(bodyBins).copyTo({
+            magnitudeDest.get() + 1,
+            bodyBins
+    });
+
+    if (!phaseDest.empty()) {
+        const int phaseBins = std::min({ copyBins - 1, ordinaryPhases.size(), phaseDest.size() - 1 });
+        ordinaryPhases.withSize(phaseBins).copyTo({
+                phaseDest.get() + 1,
+                phaseBins
+        });
+    }
+}
+
+RealFftPackedEndpoints RealFftFullPolarSpectrum::copyToPacked(
+        Buffer<float> magnitudeSource,
+        Buffer<float> phaseSource,
+        Buffer<float> ordinaryMagnitudes,
+        Buffer<float> ordinaryPhases) {
+    RealFftPackedEndpoints endpoints;
+
+    if (magnitudeSource.empty()) {
+        return endpoints;
+    }
+
+    const float dcPhase = !phaseSource.empty() ? phaseSource[0] : 0.f;
+    endpoints.dc = signedEndpoint(magnitudeSource[0], dcPhase);
+
+    const int nyquistIndex = ordinaryMagnitudes.size();
+    if (magnitudeSource.size() > nyquistIndex) {
+        const float nyquistPhase = phaseSource.size() > nyquistIndex ? phaseSource[nyquistIndex] : 0.f;
+        endpoints.nyquist = signedEndpoint(magnitudeSource[nyquistIndex], nyquistPhase);
+    }
+
+    if (magnitudeSource.size() <= 1) {
+        return endpoints;
+    }
+
+    const int bodyBins = std::min(magnitudeSource.size() - 1, ordinaryMagnitudes.size());
+    Buffer<float>(
+            magnitudeSource.get() + 1,
+            bodyBins).copyTo(ordinaryMagnitudes.withSize(bodyBins));
+
+    if (!phaseSource.empty()) {
+        const int phaseBins = std::min({ phaseSource.size() - 1, ordinaryPhases.size(), bodyBins });
+        Buffer<float>(
+                phaseSource.get() + 1,
+                phaseBins).copyTo(ordinaryPhases.withSize(phaseBins));
+    }
+
+    return endpoints;
+}
+
+float RealFftFullPolarSpectrum::magnitudeForSignedEndpoint(float value) {
+    return value < 0.f ? -value : value;
+}
+
+float RealFftFullPolarSpectrum::phaseForSignedEndpoint(float value) {
+    return value < 0.f ? MathConstants<float>::pi : 0.f;
+}
+
+float RealFftFullPolarSpectrum::signedEndpoint(float magnitude, float phase) {
+    return magnitude * (phase < -MathConstants<float>::halfPi || phase > MathConstants<float>::halfPi ? -1.f : 1.f);
 }

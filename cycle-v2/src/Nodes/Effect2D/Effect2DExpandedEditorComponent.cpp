@@ -1184,8 +1184,8 @@ void Effect2DExpandedEditorComponent::syncControlValuesFromNode() {
     controls.enabled.setToggleState(boolParameterValue(node, "enabled", true), dontSendNotification);
 
     if (node.kind == NodeKind::Waveshaper) {
-        controls.firstSlider.setValue(floatParameterValue(node, "pre", 1.f), dontSendNotification);
-        controls.secondSlider.setValue(floatParameterValue(node, "post", 1.f), dontSendNotification);
+        controls.firstSlider.setValue(floatParameterValue(node, "pre", 0.5f), dontSendNotification);
+        controls.secondSlider.setValue(floatParameterValue(node, "post", 0.5f), dontSendNotification);
         controls.thirdSlider.setValue(0.5, dontSendNotification);
         controls.menu.setSelectedId(intParameterValue(node, "aaFactor", 1), dontSendNotification);
     } else if (node.kind == NodeKind::ImpulseResponse) {

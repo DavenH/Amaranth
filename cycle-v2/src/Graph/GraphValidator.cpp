@@ -45,6 +45,12 @@ bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, co
         && resolver.domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
 }
 
+bool isSpySignalDomain(PortDomain domain) {
+    return domain == PortDomain::TimeSignal
+        || domain == PortDomain::SpectralMagnitudeSignal
+        || domain == PortDomain::SpectralPhaseSignal;
+}
+
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -102,17 +108,21 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
         }
 
         if (edge.attachment) {
+            if (trimeshGuideTarget) {
+                if (sourceNode->kind != NodeKind::GuideCurve) {
+                    addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
+                             "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId, &edge);
+                }
+
+                continue;
+            }
+
             if (source->domain != PortDomain::EnvelopeSignal) {
                 addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
                          "Attachments currently require an envelope source: " + edge.sourceNodeId, &edge);
             }
 
-            if (trimeshGuideTarget && sourceNode->kind != NodeKind::GuideCurve) {
-                addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
-                         "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId, &edge);
-            }
-
-            if (!trimeshGuideTarget && dest->purpose != PortPurpose::ScratchAttachment) {
+            if (dest->purpose != PortPurpose::ScratchAttachment) {
                 addIssue(issues, GraphValidationCode::InvalidAttachmentDestination,
                          "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id, &edge);
             }
@@ -133,6 +143,11 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
 
         Port resolvedSource = *source;
         resolvedSource.domain = domainResolver.resolvedDomainForEdge(graph, edge);
+
+        if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
+            addIssue(issues, GraphValidationCode::DomainMismatch,
+                     "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId, &edge);
+        }
 
         if (source->domain == PortDomain::ControlSignal
                 && dest->domain != PortDomain::ControlSignal
@@ -234,6 +249,21 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
     }
 
     if (edge.attachment) {
+        if (trimeshGuideTarget) {
+            if (sourceNode->kind != NodeKind::GuideCurve) {
+                return {
+                        GraphValidationCode::InvalidAttachmentSource,
+                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId,
+                        edge.sourceNodeId,
+                        edge.sourcePortId,
+                        edge.destNodeId,
+                        edge.destPortId
+                };
+            }
+
+            return {};
+        }
+
         if (source->domain != PortDomain::EnvelopeSignal) {
             return {
                     GraphValidationCode::InvalidAttachmentSource,
@@ -245,7 +275,7 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
             };
         }
 
-        if (!trimeshGuideTarget && dest->purpose != PortPurpose::ScratchAttachment) {
+        if (dest->purpose != PortPurpose::ScratchAttachment) {
             return {
                     GraphValidationCode::InvalidAttachmentDestination,
                     "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id,
@@ -283,6 +313,17 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
 
     Port resolvedSource = *source;
     resolvedSource.domain = resolvedDomainForEdge(graph, edge);
+
+    if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
+        return {
+                GraphValidationCode::DomainMismatch,
+                "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId,
+                edge.sourceNodeId,
+                edge.sourcePortId,
+                edge.destNodeId,
+                edge.destPortId
+        };
+    }
 
     if (source->domain == PortDomain::ControlSignal
             && dest->domain != PortDomain::ControlSignal

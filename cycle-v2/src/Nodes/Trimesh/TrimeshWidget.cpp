@@ -244,6 +244,14 @@ void TrimeshWidget::setExpandedPanelCallbacks(
             std::move(hoverCallback));
 }
 
+void TrimeshWidget::setMeshEditedCallback(std::function<void()> callback) {
+    bridge.setMeshEditedCallback(std::move(callback));
+}
+
+TrimeshMeshEditState TrimeshWidget::currentMeshEditState() {
+    return bridge.getModel().currentMeshEditState();
+}
+
 bool TrimeshWidget::findMorphControlAt(
         Rectangle<float> content,
         Point<float> position,

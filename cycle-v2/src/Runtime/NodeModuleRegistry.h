@@ -20,6 +20,7 @@ enum class AudioModuleRole {
     Waveshaper,
     Reverb,
     Delay,
+    Spy,
     StereoSplit,
     StereoJoin,
     Output,
@@ -37,6 +38,7 @@ enum class PreviewModuleRole {
     Envelope,
     ImpulseResponse,
     Waveshaper,
+    SignalSpy,
     OutputMeters,
     Generic
 };

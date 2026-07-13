@@ -4,12 +4,17 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/NumberUtils.h>
 
 namespace CycleV2 {
 
 namespace {
 
 constexpr float kWaveshaperPadding = 0.125f;
+
+float cycle1GainForParameter(float value) {
+    return (float) NumberUtils::fromDecibels(45.f * (2.f * value - 1.f));
+}
 
 void ensureCurveTable() {
     if (Curve::table == nullptr) {
@@ -54,8 +59,8 @@ void WaveshaperSignalProcessor::prepareProcess(
         const std::vector<NodeParameter>& parameters,
         const AudioProcessTiming&) {
     syncTransferTable(parameters);
-    preGain = parameterFloat(parameters, "pre", 1.f);
-    postGain = parameterFloat(parameters, "post", 1.f);
+    preGain = cycle1GainForParameter(parameterFloat(parameters, "pre", 0.5f));
+    postGain = cycle1GainForParameter(parameterFloat(parameters, "post", 0.5f));
     const int requestedFactor = (int) parameterFloat(parameters, "aaFactor", 1.f);
     oversampleFactor = requestedFactor >= 8 ? 8
             : requestedFactor >= 4 ? 4

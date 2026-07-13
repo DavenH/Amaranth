@@ -124,9 +124,7 @@ inline bool traversalGridMetadataCompatible(
     }
 
     if (left.valueDomain == PortDomain::ControlSignal
-            || right.valueDomain == PortDomain::ControlSignal
-            || left.valueDomain == PortDomain::EnvelopeSignal
-            || right.valueDomain == PortDomain::EnvelopeSignal) {
+            || right.valueDomain == PortDomain::ControlSignal) {
         return true;
     }
 
@@ -205,6 +203,10 @@ inline SignalPayload* inputAt(AudioProcessContext& context, size_t index) {
     }
 
     const size_t sampleCount = context.inputs[index].block.samples.size();
+    if (context.inputs[index].traversalGrid.isValid()) {
+        return &context.inputs[index];
+    }
+
     if (sampleCount != 1 && sampleCount < context.frameCount) {
         return nullptr;
     }

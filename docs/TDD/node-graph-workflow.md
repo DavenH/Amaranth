@@ -381,12 +381,11 @@ owning expanded preview popups. A spy node compiles as a non-mutating
 pass-through/tap: its output domain and channel layout match its input exactly,
 and its available views are constrained by the signal type flowing through it.
 
-The first implementation should model spies as ordinary graph nodes. Adding a
-spy to a selected edge should be command sugar that replaces `A -> B` with
-`A -> Spy -> B`, preserving edge grammar, undo, selection, serialization,
-minimap participation, and compilation semantics. A true edge-owned attachment
-can be considered later as a presentation layer, but should not complicate the
-initial edge model.
+Spy nodes should attach as passive edge probes rather than replacing `A -> B`
+with `A -> Spy -> B` in the user-facing graph. The subject cable remains the
+real signal path and the spy is presented as a T/up-tack tap that reads the
+resolved traversal payload at that point. See `docs/TDD/spy-node.md` for the
+current spy-specific graph, preview, insertion, and persistence contract.
 
 Domain and operation naming should stay separate. Generic operations are named
 by what they do (`Add`, `Multiply`, `Clamp`, `Mesh`, `Image`, `Wave`) rather

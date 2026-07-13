@@ -28,6 +28,7 @@ private:
     const Port* findPort(const Node& node, const String& id, bool input) const;
     PortDomain domainFromContextInput(const NodeGraph& graph, const Node& node) const;
     PortDomain firstResolvedInputDomain(const NodeGraph& graph, const String& nodeId, int depth) const;
+    PortDomain firstResolvedSignalInputDomain(const NodeGraph& graph, const String& nodeId, int depth) const;
     PortDomain firstResolvedInputDomain(const std::vector<Edge>& resolvedEdges, const String& nodeId) const;
     PortDomain resolvedControlOutputDomain(
             const NodeGraph& graph,

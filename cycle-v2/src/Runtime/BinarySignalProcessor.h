@@ -13,6 +13,13 @@ enum class BinarySignalOperation {
     Multiply
 };
 
+enum class BinaryGridOperandMode {
+    Block,
+    MatchingGrid,
+    BroadcastFirstColumn,
+    Incompatible
+};
+
 class BinarySignalProcessor {
 public:
     void process(
@@ -40,6 +47,7 @@ private:
         prepareOperand(output.block.samples, left, frameCount, 0, false);
         prepareOperand(rightOperand, right, frameCount, 0, false);
         applyOperation(output.block.samples, rightOperand, operation);
+        clampOutputDomain({ output.block.samples.data(), (int) output.block.samples.size() }, output.domain);
     }
 
     void processTraversalGrid(
@@ -54,7 +62,10 @@ private:
             return;
         }
 
-        if (bothInputsHaveMismatchedGrids(left, right)) {
+        const BinaryGridOperandMode leftMode = gridOperandModeFor(left, *grid);
+        const BinaryGridOperandMode rightMode = gridOperandModeFor(right, *grid);
+        if (leftMode == BinaryGridOperandMode::Incompatible
+                || rightMode == BinaryGridOperandMode::Incompatible) {
             output.traversalGrid = {};
             return;
         }
@@ -69,9 +80,10 @@ private:
         rightOperand.resize(grid->rows);
         for (size_t column = 0; column < grid->columns; ++column) {
             auto outputColumn = columnBuffer(output.traversalGrid, column);
-            prepareOperand(outputColumn, left, grid->rows, column);
-            prepareOperand(rightOperand, right, grid->rows, column);
+            prepareGridColumnOperand(outputColumn, left, *grid, column, leftMode);
+            prepareGridColumnOperand(rightOperand, right, *grid, column, rightMode);
             applyOperation(outputColumn, rightOperand, operation);
+            clampOutputDomain(outputColumn, output.domain);
         }
     }
 
@@ -112,6 +124,45 @@ private:
         copyBlockExpandingScalars(dest, payload->block, frameCount);
     }
 
+    static void prepareGridColumnOperand(
+            std::vector<float>& dest,
+            const SignalPayload* payload,
+            const SignalTraversalGrid& target,
+            size_t column,
+            BinaryGridOperandMode mode) {
+        dest.resize(target.rows);
+        prepareGridColumnOperand({ dest.data(), (int) dest.size() }, payload, target, column, mode);
+    }
+
+    static void prepareGridColumnOperand(
+            Buffer<float> dest,
+            const SignalPayload* payload,
+            const SignalTraversalGrid& target,
+            size_t column,
+            BinaryGridOperandMode mode) {
+        if (payload == nullptr) {
+            dest.zero();
+            return;
+        }
+
+        if (mode == BinaryGridOperandMode::MatchingGrid) {
+            copyTraversalGridColumn(dest, payload->traversalGrid, column);
+            return;
+        }
+
+        if (mode == BinaryGridOperandMode::BroadcastFirstColumn) {
+            copyTraversalGridColumn(dest, payload->traversalGrid, 0);
+            return;
+        }
+
+        if (payload->block.samples.size() == target.columns && column < payload->block.samples.size()) {
+            dest.set(payload->block.samples[column]);
+            return;
+        }
+
+        copyBlockExpandingScalars(dest, payload->block, target.rows);
+    }
+
     static void applyOperation(
             std::vector<float>& output,
             std::vector<float>& right,
@@ -130,6 +181,12 @@ private:
         }
 
         output.mul(rightBuffer);
+    }
+
+    static void clampOutputDomain(Buffer<float> output, PortDomain domain) {
+        if (domain == PortDomain::SpectralMagnitudeSignal) {
+            output.threshLT(0.f);
+        }
     }
 
     static Buffer<float> columnBuffer(SignalTraversalGrid& grid, size_t column) {
@@ -160,19 +217,27 @@ private:
             PortDomain outputDomain,
             const SignalPayload* left,
             const SignalPayload* right) {
-        if (left != nullptr && left->domain == outputDomain && left->traversalGrid.isValid()) {
+        if (left != nullptr
+                && left->traversalGrid.isValid()
+                && left->traversalGrid.metadata.valueDomain == outputDomain) {
             return left;
         }
 
-        if (right != nullptr && right->domain == outputDomain && right->traversalGrid.isValid()) {
+        if (right != nullptr
+                && right->traversalGrid.isValid()
+                && right->traversalGrid.metadata.valueDomain == outputDomain) {
             return right;
         }
 
-        if (left != nullptr && isConcreteSignalDomain(left->domain) && left->traversalGrid.isValid()) {
+        if (left != nullptr
+                && left->traversalGrid.isValid()
+                && isConcreteSignalDomain(left->traversalGrid.metadata.valueDomain)) {
             return left;
         }
 
-        if (right != nullptr && isConcreteSignalDomain(right->domain) && right->traversalGrid.isValid()) {
+        if (right != nullptr
+                && right->traversalGrid.isValid()
+                && isConcreteSignalDomain(right->traversalGrid.metadata.valueDomain)) {
             return right;
         }
 
@@ -186,20 +251,47 @@ private:
         return metadata;
     }
 
-    static bool bothInputsHaveMismatchedGrids(
-            const SignalPayload* left,
-            const SignalPayload* right) {
-        if (left == nullptr || right == nullptr
-                || !left->traversalGrid.isValid()
-                || !right->traversalGrid.isValid()) {
-            return false;
+    static BinaryGridOperandMode gridOperandModeFor(
+            const SignalPayload* payload,
+            const SignalTraversalGrid& target) {
+        if (payload == nullptr || !payload->traversalGrid.isValid()) {
+            return BinaryGridOperandMode::Block;
         }
 
-        return left->traversalGrid.columns != right->traversalGrid.columns
-                || left->traversalGrid.rows != right->traversalGrid.rows
-                || !traversalGridMetadataCompatible(
-                        left->traversalGrid.metadata,
-                        right->traversalGrid.metadata);
+        if (traversalGridShapeAndMetadataCompatible(payload->traversalGrid, target)) {
+            return BinaryGridOperandMode::MatchingGrid;
+        }
+
+        if (isRepeatedTimeVector(payload->traversalGrid, target)
+                || isSingleColumnVector(payload->traversalGrid, target)) {
+            return BinaryGridOperandMode::BroadcastFirstColumn;
+        }
+
+        return BinaryGridOperandMode::Incompatible;
+    }
+
+    static bool traversalGridShapeAndMetadataCompatible(
+            const SignalTraversalGrid& candidate,
+            const SignalTraversalGrid& target) {
+        return candidate.columns == target.columns
+                && candidate.rows == target.rows
+                && traversalGridMetadataCompatible(candidate.metadata, target.metadata);
+    }
+
+    static bool isRepeatedTimeVector(const SignalTraversalGrid& candidate, const SignalTraversalGrid& target) {
+        return candidate.isValid()
+                && candidate.rows == target.rows
+                && candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                && candidate.metadata.columnAxis == TraversalGridAxis::Repeated
+                && candidate.metadata.rowAxis == TraversalGridAxis::Time
+                && target.metadata.rowAxis == TraversalGridAxis::Time;
+    }
+
+    static bool isSingleColumnVector(const SignalTraversalGrid& candidate, const SignalTraversalGrid& target) {
+        return candidate.isValid()
+                && candidate.columns == 1
+                && candidate.rows == target.rows
+                && traversalGridMetadataCompatible(candidate.metadata, target.metadata);
     }
 
     static PortDomain concreteDomainFor(const SignalPayload* left, const SignalPayload* right, PortDomain fallback) {
