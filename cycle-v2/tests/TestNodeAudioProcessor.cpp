@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 using namespace CycleV2;
 
@@ -572,6 +573,115 @@ TEST_CASE("IR processor transforms block and traversal grid through convolution"
     REQUIRE(output(context).traversalGrid.rows == 4);
     REQUIRE(output(context).block.samples != std::vector<float> { 1.f, 0.f, 0.f, 0.f });
     REQUIRE(output(context).traversalGrid.values != context.inputs.front().traversalGrid.values);
+}
+
+TEST_CASE("IR processor uses Cycle 1 post-gain and prefilter policies", "[cycle-v2][runtime][ir]") {
+    NodeAudioProcessorFactory factory;
+    auto unityProcessor = factory.create(AudioModuleRole::ImpulseResponse);
+    auto quietProcessor = factory.create(AudioModuleRole::ImpulseResponse);
+    auto filteredProcessor = factory.create(AudioModuleRole::ImpulseResponse);
+    std::vector<float> input(128, 0.f);
+    input[0] = 1.f;
+
+    AudioProcessContext unity;
+    unity.frameCount = input.size();
+    unity.inputs = { payload(input) };
+    unity.parameters = {
+            { "size", "Size", "0" },
+            { "post", "Post", "0.5" },
+            { "highPass", "HighPass", "0" },
+            {
+                    "Effect Vertices",
+                    "Effect Vertices",
+                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
+            }
+    };
+    unityProcessor->process(unity);
+
+    AudioProcessContext quiet = unity;
+    quiet.parameters[1].value = "0";
+    quietProcessor->process(quiet);
+
+    AudioProcessContext filtered = unity;
+    filtered.parameters[2].value = "1";
+    filteredProcessor->process(filtered);
+
+    const auto& unitySamples = output(unity).block.samples;
+    const auto& quietSamples = output(quiet).block.samples;
+    const auto& filteredSamples = output(filtered).block.samples;
+    const float unityMagnitude = std::accumulate(
+            unitySamples.begin(), unitySamples.end(), 0.f,
+            [](float sum, float value) { return sum + std::abs(value); });
+    const float quietMagnitude = std::accumulate(
+            quietSamples.begin(), quietSamples.end(), 0.f,
+            [](float sum, float value) { return sum + std::abs(value); });
+    REQUIRE(quietMagnitude / unityMagnitude == Catch::Approx(std::exp(-5.f)).epsilon(0.02f));
+    REQUIRE(filteredSamples != unitySamples);
+}
+
+TEST_CASE("Disabled IR processor passes its input through", "[cycle-v2][runtime][ir]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.inputs = { payload({ 1.f, -0.5f, 0.25f, 0.f }) };
+    context.parameters = {
+            { "enabled", "Enabled", "0" },
+            { "size", "Size", "1" },
+            { "post", "Post", "1" },
+            { "highPass", "HighPass", "1" }
+    };
+
+    factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { 1.f, -0.5f, 0.25f, 0.f });
+}
+
+TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cycle-v2][runtime][ir]") {
+    NodeAudioProcessorFactory factory;
+    auto wholeProcessor = factory.create(AudioModuleRole::ImpulseResponse);
+    auto splitProcessor = factory.create(AudioModuleRole::ImpulseResponse);
+    const std::vector<NodeParameter> parameters {
+            { "size", "Size", "0" },
+            { "post", "Post", "0.5" },
+            { "highPass", "HighPass", "0" },
+            {
+                    "Effect Vertices",
+                    "Effect Vertices",
+                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
+            }
+    };
+    std::vector<float> wholeInput(128, 0.f);
+    wholeInput[0] = 1.f;
+
+    AudioProcessContext whole;
+    whole.frameCount = wholeInput.size();
+    whole.inputs = { payload(wholeInput) };
+    whole.parameters = parameters;
+    wholeProcessor->process(whole);
+
+    AudioProcessContext firstHalf;
+    firstHalf.frameCount = 64;
+    firstHalf.inputs = { payload(std::vector<float>(wholeInput.begin(), wholeInput.begin() + 64)) };
+    firstHalf.parameters = parameters;
+    splitProcessor->process(firstHalf);
+
+    AudioProcessContext secondHalf;
+    secondHalf.frameCount = 64;
+    secondHalf.inputs = { payload(std::vector<float>(64, 0.f)) };
+    secondHalf.parameters = parameters;
+    splitProcessor->process(secondHalf);
+
+    const auto& wholeSamples = output(whole).block.samples;
+    const auto& firstHalfSamples = output(firstHalf).block.samples;
+    const auto& secondHalfSamples = output(secondHalf).block.samples;
+    for (size_t i = 0; i < 64; ++i) {
+        REQUIRE(firstHalfSamples[i] == Catch::Approx(wholeSamples[i]).margin(1.0e-5f));
+        REQUIRE(secondHalfSamples[i] == Catch::Approx(wholeSamples[i + 64]).margin(1.0e-5f));
+    }
+    REQUIRE(std::any_of(
+            secondHalfSamples.begin(),
+            secondHalfSamples.end(),
+            [](float value) { return std::abs(value) > 1.0e-6f; }));
 }
 
 TEST_CASE("Delay processor transforms block and traversal grid with matching delay state", "[cycle-v2][runtime]") {

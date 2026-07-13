@@ -297,6 +297,11 @@ Current status:
   rasterizer perfectly at 2x, then filter and downsample with `Oversampler(8)`.
 - A shared-core golden vector locks the complete curve-to-kernel path, including
   oversampler transients and the frequency-domain prefilter.
+- Cycle 2 adapter tests cover post-gain and prefilter policy, disabled
+  passthrough, split-block equivalence, and complete minimum-kernel tail output.
+- The macOS Accelerate oversampler uses bounded, preallocated FIR history and
+  scratch buffers; the former out-of-bounds filtering made IR kernels
+  nondeterministic and was exposed by the split-block fixture.
 
 Target:
 
@@ -308,8 +313,8 @@ Target:
 Tests:
 
 - curve-to-impulse golden vectors (shared core covered; adapter fixtures remain)
-- high-pass, post-gain, channel, and disabled/bypass behavior
-- split-block equivalence and complete tail flushing
+- high-pass, post-gain, and disabled/bypass behavior (Cycle 2 covered; channel remains)
+- split-block equivalence and complete tail flushing (Cycle 2 covered)
 - block/traversal equivalence only where the traversal time contract permits it
 
 ### Waveshaper
