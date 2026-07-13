@@ -480,7 +480,9 @@ private:
     mutable TrimeshMeshEditState meshEditState;
 };
 
-void NodeAudioProcessor::prepare(size_t) {}
+void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
+
+void NodeAudioProcessor::adoptConfiguration(const PublishedNodeConfiguration&) {}
 
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     if (role == AudioModuleRole::None) {

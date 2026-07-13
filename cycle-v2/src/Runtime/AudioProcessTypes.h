@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+struct PublishedNodeConfiguration;
+
 struct SignalBlock {
     std::vector<float> samples;
 };
@@ -141,6 +143,7 @@ struct AudioProcessContext {
     AudioProcessTiming timing;
     AudioVoiceContext voice;
     AudioProcessWorkArena* workArena {};
+    const PublishedNodeConfiguration* configuration {};
     std::vector<NodeParameter> parameters;
     std::vector<SignalPayload> inputs;
     std::vector<AudioProcessAttachment> attachments;

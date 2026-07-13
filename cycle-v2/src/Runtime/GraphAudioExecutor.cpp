@@ -161,7 +161,10 @@ GraphAudioResult GraphAudioExecutor::process(
             });
         }
 
-        processor->prepare(frameCount);
+        processor->prepareExecution({ frameCount, timing.sampleRate, ChannelLayout::Mono });
+        if (context.configuration != nullptr) {
+            processor->adoptConfiguration(*context.configuration);
+        }
         processor->process(context);
 
         std::vector<std::pair<String, SignalPayload>> nodeOutputs;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AudioProcessTypes.h"
+#include "NodeDspConfiguration.h"
 #include "NodeModuleRegistry.h"
 
 #include <memory>
@@ -12,7 +13,8 @@ public:
     virtual ~NodeAudioProcessor() = default;
 
     virtual AudioModuleRole role() const = 0;
-    virtual void prepare(size_t frameCount);
+    virtual void prepareExecution(const AudioExecutionSpec& spec);
+    virtual void adoptConfiguration(const PublishedNodeConfiguration& configuration);
     virtual void process(AudioProcessContext& context) = 0;
 };
 
