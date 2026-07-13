@@ -199,6 +199,27 @@ TEST_CASE("Graph audio executor preserves per-node processor state between block
     REQUIRE(samples(second.output) != samples(fresh.output));
 }
 
+TEST_CASE("Graph audio execution preparation retains unchanged configuration revisions", "[cycle-v2][runtime][configuration]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 0.f, 0.f }));
+    GraphCompiler compiler;
+    const auto first = compiler.compile(graph);
+    REQUIRE(first.succeeded());
+
+    GraphAudioExecutor executor;
+    const AudioExecutionSpec spec { 64, 48000.0, ChannelLayout::LinkedStereo };
+    executor.prepareExecution(first.plan, spec);
+    executor.prepareExecution(first.plan, spec);
+    REQUIRE(executor.preparationCount("shape") == 1);
+
+    graph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    const auto changed = compiler.compile(graph);
+    REQUIRE(changed.succeeded());
+    executor.prepareExecution(changed.plan, spec);
+    REQUIRE(executor.preparationCount("shape") == 2);
+}
+
 TEST_CASE("Graph audio executor keeps envelope state independent per voice", "[cycle-v2][runtime][envelope]") {
     GraphNodeFactory factory;
     NodeGraph graph;

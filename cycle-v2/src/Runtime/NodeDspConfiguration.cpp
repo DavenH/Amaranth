@@ -11,7 +11,7 @@ String NodeDspConfigurationFactory::keyFor(
         const std::vector<NodeParameter>& parameters,
         const AudioExecutionSpec& spec) const {
     String key((int) role);
-    key << ":" << String(spec.sampleRate, 6);
+    (void) spec;
 
     for (const auto& parameter : parameters) {
         key << ":" << parameter.id << "=" << parameter.value;

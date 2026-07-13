@@ -113,7 +113,7 @@ void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfigurat
     adoptedRevision = published.revision;
 }
 
-void WaveshaperSignalProcessor::prepareProcess(
+void WaveshaperSignalProcessor::prepareLegacy(
         const std::vector<NodeParameter>& parameters,
         const AudioProcessTiming&) {
     if (configuration != nullptr) {

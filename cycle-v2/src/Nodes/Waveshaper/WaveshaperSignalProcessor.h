@@ -32,9 +32,9 @@ public:
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);
 
-    void prepareProcess(
+    void prepareLegacy(
             const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing) override;
+            const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;
     void endTraversalGrid() override;

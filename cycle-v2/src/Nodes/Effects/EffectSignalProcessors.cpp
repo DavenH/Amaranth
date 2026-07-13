@@ -150,7 +150,7 @@ void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& pub
     adoptedRevision = published.revision;
 }
 
-void IrSignalProcessor::prepareProcess(
+void IrSignalProcessor::prepareLegacy(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming&) {
     if (configuration != nullptr) {
@@ -298,7 +298,7 @@ void IrSignalProcessor::addVertex(float x, float y, float curve) {
     mesh.addVertex(vertex);
 }
 
-void DelaySignalProcessor::prepareProcess(
+void DelaySignalProcessor::configure(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming& timing) {
     bpm = std::max(1.0, timing.bpm);
@@ -340,7 +340,7 @@ void DelaySignalProcessor::processBuffer(Buffer<float> buffer, const SignalProce
     activeDelay->process(buffer);
 }
 
-void ReverbSignalProcessor::prepareProcess(
+void ReverbSignalProcessor::prepareLegacy(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming&) {
     if (configuration != nullptr) {

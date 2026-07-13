@@ -303,12 +303,11 @@ Current status:
 - The macOS Accelerate oversampler uses bounded, preallocated FIR history and
   scratch buffers; the former out-of-bounds filtering made IR kernels
   nondeterministic and was exposed by the split-block fixture.
-- Kernel parsing, rasterization, FFT construction, and convolver initialization
-  still run below `UnarySignalProcessor::process`. Cycle 2 needs a graph-wide
-  immutable configuration publication phase before IR, Reverb, Waveshaper, and
-  Envelope can meet the realtime contract; moving IR alone would create a
-  second lifecycle rather than solve the shared boundary. See
-  `cycle-v2-dsp-configuration-publication.md`.
+- Cycle 2 now publishes graph-wide immutable, revisioned configurations for IR,
+  Reverb, Waveshaper, and Envelope. Retained per-node/per-voice processors adopt
+  them through explicit execution preparation while keeping realtime and
+  traversal state separate. The implemented boundary and module transition
+  policies are recorded in `cycle-v2-dsp-configuration-publication.md`.
 
 Target:
 

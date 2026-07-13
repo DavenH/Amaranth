@@ -73,6 +73,11 @@ GraphAudioResult GraphAudioExecutor::process(
         size_t frameCount,
         AudioProcessTiming timing,
         AudioVoiceContext voice) const {
+    prepareExecution(
+            plan,
+            { frameCount, timing.sampleRate, ChannelLayout::Mono },
+            voice.voiceIndex);
+
     std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
 
@@ -162,10 +167,6 @@ GraphAudioResult GraphAudioExecutor::process(
             });
         }
 
-        if (context.configuration != nullptr) {
-            processor->adoptConfiguration(*context.configuration);
-        }
-        processor->prepareExecution({ frameCount, timing.sampleRate, ChannelLayout::Mono });
         processor->process(context);
 
         std::vector<std::pair<String, SignalPayload>> nodeOutputs;
@@ -202,6 +203,46 @@ GraphAudioResult GraphAudioExecutor::process(
     return result;
 }
 
+void GraphAudioExecutor::prepareExecution(
+        const GraphExecutionPlan& plan,
+        const AudioExecutionSpec& spec,
+        int voiceIndex) const {
+    NodeAudioProcessorFactory factory;
+
+    for (const auto& step : plan.steps) {
+        NodeAudioProcessor* processor = processorFor(step.nodeId, voiceIndex, step.audioRole, factory);
+        if (processor == nullptr) {
+            continue;
+        }
+
+        auto found = std::find_if(processors.begin(), processors.end(), [&](const auto& entry) {
+            return entry.nodeId == step.nodeId && entry.voiceIndex == voiceIndex;
+        });
+        jassert(found != processors.end());
+
+        const uint64_t revision = step.configuration.revision;
+        if (found->preparedRevision == revision
+                && found->preparedFrameCount == spec.maximumFrameCount
+                && found->preparedSampleRate == spec.sampleRate) {
+            continue;
+        }
+
+        processor->adoptConfiguration(step.configuration);
+        processor->prepareExecution(spec);
+        found->preparedRevision = revision;
+        found->preparedFrameCount = spec.maximumFrameCount;
+        found->preparedSampleRate = spec.sampleRate;
+        ++found->preparationCount;
+    }
+}
+
+size_t GraphAudioExecutor::preparationCount(const String& nodeId, int voiceIndex) const {
+    const auto found = std::find_if(processors.begin(), processors.end(), [&](const auto& entry) {
+        return entry.nodeId == nodeId && entry.voiceIndex == voiceIndex;
+    });
+    return found == processors.end() ? 0 : found->preparationCount;
+}
+
 NodeAudioProcessor* GraphAudioExecutor::processorFor(
         const String& nodeId,
         int voiceIndex,
@@ -215,6 +256,9 @@ NodeAudioProcessor* GraphAudioExecutor::processorFor(
         if (found->role != role) {
             found->role = role;
             found->processor = factory.create(role);
+            found->preparedRevision = 0;
+            found->preparedFrameCount = 0;
+            found->preparedSampleRate = 0.0;
         }
 
         return found->processor.get();
@@ -222,7 +266,7 @@ NodeAudioProcessor* GraphAudioExecutor::processorFor(
 
     auto processor = factory.create(role);
     NodeAudioProcessor* result = processor.get();
-    processors.push_back({ nodeId, voiceIndex, role, std::move(processor) });
+    processors.push_back({ nodeId, voiceIndex, role, std::move(processor), 0, 0, 0.0, 0 });
     return result;
 }
 

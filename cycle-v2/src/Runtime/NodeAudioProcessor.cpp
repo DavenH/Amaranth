@@ -133,6 +133,9 @@ public:
     }
 
     void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
+        hasPublishedConfiguration = configuration.isValid()
+                && configuration.value->role() == processorRole;
+
         if (processorRole == AudioModuleRole::Waveshaper) {
             waveshaperDsp.adoptConfiguration(configuration);
         } else if (processorRole == AudioModuleRole::ImpulseResponse) {
@@ -193,18 +196,28 @@ public:
                 break;
 
             case AudioModuleRole::ImpulseResponse:
+                if (!hasPublishedConfiguration) {
+                    irDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(irDsp, context);
                 break;
 
             case AudioModuleRole::Waveshaper:
+                if (!hasPublishedConfiguration) {
+                    waveshaperDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(waveshaperDsp, context);
                 break;
 
             case AudioModuleRole::Reverb:
+                if (!hasPublishedConfiguration) {
+                    reverbDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(reverbDsp, context);
                 break;
 
             case AudioModuleRole::Delay:
+                delayDsp.configure(context.parameters, context.timing);
                 processUnaryEffect(delayDsp, context);
                 break;
 
@@ -380,8 +393,6 @@ private:
                 operation,
                 output,
                 *input,
-                context.parameters,
-                context.timing,
                 context.frameCount,
                 context.workArena);
         publishSingleOutput(context, std::move(output));
@@ -502,6 +513,7 @@ private:
     mutable WaveshaperSignalProcessor waveshaperDsp;
     mutable std::unique_ptr<Mesh> defaultMesh;
     mutable TrimeshMeshEditState meshEditState;
+    bool hasPublishedConfiguration {};
 };
 
 void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
