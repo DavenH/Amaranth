@@ -344,12 +344,13 @@ Current status:
 - `EnvRasterizer` is a plain AmaranthLib object with no `SingletonRepo`
   ownership dependency. Cycle 1 preserves its named global services through
   Cycle-owned composition adapters in `EnvRasterizerServices.h`.
+- Cycle 2 persists editable envelope meshes as immutable JSON snapshots using
+  the mature `EnvelopeMesh` serialization contract, including morph vertices
+  and loop/sustain markers.
 - Runtime envelope processing remains simplified.
-- Cycle 2's node schema currently exposes only `logarithmic`; it has no
-  envelope snapshot, loop/sustain markers, note-on/note-off lifecycle input, or
-  render timing contract. Add those model/adapter surfaces before integrating
-  `EnvRasterizer`. Do not fabricate a default ADSR or bless the constant-level
-  processor as parity.
+- Cycle 2's runtime has no note-on/note-off lifecycle input or persistent
+  per-voice processor ownership. Add those runtime surfaces before integrating
+  `EnvRasterizer`. Do not bless the constant-level processor as parity.
 
 Target:
 
@@ -463,6 +464,7 @@ Complete one module end-to-end before starting the next:
 - [ ] Characterize, extract, migrate, and test Waveshaper.
 - [ ] Characterize, extract, migrate, and test Envelope.
 - [x] Remove `EnvRasterizer`'s application/singleton ownership dependency.
+- [x] Add Cycle 2 envelope mesh snapshot persistence.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
 - [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.

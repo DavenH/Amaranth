@@ -89,7 +89,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Envelope";
             node.subtitle = "control curve";
             node.parameters = {
-                    { "logarithmic", "Logarithmic", "0" }
+                    { "logarithmic", "Logarithmic", "0" },
+                    { "envelope.snapshot", "Envelope Snapshot", {} }
             };
             node.outputs = { output("env", "Env", PortDomain::EnvelopeSignal) };
             break;

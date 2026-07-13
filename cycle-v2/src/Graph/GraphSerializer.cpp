@@ -130,6 +130,7 @@ void normalizeNodePresentation(Node& node) {
 
     if (node.kind == NodeKind::Envelope) {
         ensureParameter("logarithmic", "Logarithmic", "0");
+        ensureParameter("envelope.snapshot", "Envelope Snapshot", {});
     }
 
     if (node.kind == NodeKind::VoiceContext

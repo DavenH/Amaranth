@@ -1,5 +1,7 @@
 #include "Effect2DPanelBridge.h"
 
+#include "../Envelope/EnvelopeMeshState.h"
+
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
@@ -1521,13 +1523,22 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
         return;
     }
 
-    const String nextMeshState = parameterValueForNode(node, Effect2DMeshState::parameterId(), {});
+    const String nextMeshState = parameterValueForNode(
+            node,
+            kind == NodeKind::Envelope
+                    ? EnvelopeMeshState::parameterId()
+                    : Effect2DMeshState::parameterId(),
+            {});
     const bool nodeChanged = lastSyncedNodeId != node.id;
     const bool meshChanged = lastSyncedMeshState != nextMeshState;
 
-    if (kind != NodeKind::Envelope && (nodeChanged || meshChanged)) {
+    if (nodeChanged || meshChanged) {
         if (nextMeshState.isNotEmpty()) {
-            applyMeshState(Effect2DMeshState::parse(nextMeshState));
+            if (kind == NodeKind::Envelope) {
+                EnvelopeMeshState::apply(nextMeshState, mesh);
+            } else {
+                applyMeshState(Effect2DMeshState::parse(nextMeshState));
+            }
         } else if (nodeChanged && mesh.getNumVerts() == 0) {
             initialiseMesh();
         }
@@ -1866,7 +1877,7 @@ std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVert
 
 String Effect2DPanelBridge::serializedMeshState() {
     if (kind == NodeKind::Envelope) {
-        return {};
+        return EnvelopeMeshState::serialize(mesh);
     }
 
     std::vector<Effect2DVertexState> vertices;
@@ -1910,6 +1921,7 @@ void Effect2DPanelBridge::toggleSelectedEnvelopeMarker(bool loopMarker) {
     }
 
     panel->toggleSelectedEnvelopeMarker(loopMarker);
+    notifyMeshEdited();
 }
 
 void Effect2DPanelBridge::initialisePanelHost() {
@@ -2062,7 +2074,7 @@ void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
 }
 
 void Effect2DPanelBridge::notifyMeshEdited() {
-    if (kind == NodeKind::Envelope || meshEditedCallback == nullptr) {
+    if (meshEditedCallback == nullptr) {
         return;
     }
 
