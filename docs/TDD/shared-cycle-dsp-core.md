@@ -349,10 +349,13 @@ Current status:
   and loop/sustain markers.
 - Cycle 2 graph executors retain processors by node identity across blocks, so
   per-voice envelope and streaming-effect state has a stable owner.
-- Runtime envelope processing remains simplified.
-- Cycle 2's runtime still has no note-on/note-off lifecycle input. Add that
-  surface before integrating `EnvRasterizer`. Do not bless the constant-level
-  processor as parity.
+- Cycle 2 envelope processing uses `EnvRasterizer` with sample-offset note-on,
+  note-off, reset, and retrigger events. Processor ownership is isolated by
+  node and voice identity, and active-note snapshot edits preserve validated
+  playback position.
+- Snapshot parsing and rasterization still occur from the process parameter
+  path. Move configuration construction and publication off the audio thread
+  before treating the adapter as realtime-ready.
 
 Target:
 
@@ -468,6 +471,7 @@ Complete one module end-to-end before starting the next:
 - [x] Remove `EnvRasterizer`'s application/singleton ownership dependency.
 - [x] Add Cycle 2 envelope mesh snapshot persistence.
 - [x] Retain Cycle 2 node processors across graph audio blocks.
+- [x] Integrate Cycle 2 envelope snapshots and lifecycle with `EnvRasterizer`.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
 - [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.

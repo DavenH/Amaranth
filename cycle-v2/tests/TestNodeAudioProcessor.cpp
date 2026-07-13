@@ -3,6 +3,10 @@
 
 #include "../src/Runtime/AudioProcessContextUtils.h"
 #include "../src/Runtime/NodeAudioProcessor.h"
+#include "../src/Nodes/Envelope/EnvelopeMeshState.h"
+
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Mesh/VertCube.h>
 
 #include <algorithm>
 #include <cmath>
@@ -133,11 +137,133 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
     REQUIRE(output(sourceContext).block.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
 
     AudioProcessContext envelopeContext;
-    envelopeContext.frameCount = 2;
-    envelopeContext.parameters = { { "level", "Level", "0.25" } };
+    envelopeContext.frameCount = 4;
+    envelopeContext.timing.sampleRate = 8.0;
+    envelopeContext.parameters = {
+            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
+    };
+    envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
 
-    REQUIRE(output(envelopeContext).block.samples == std::vector<float> { 0.25f, 0.25f });
+    REQUIRE(output(envelopeContext).block.samples.front() < 0.001f);
+    REQUIRE(output(envelopeContext).block.samples.back() > output(envelopeContext).block.samples.front());
+}
+
+TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v2][runtime][envelope]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Envelope);
+    const std::vector<NodeParameter> parameters {
+            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
+    };
+
+    AudioProcessContext noteOn;
+    noteOn.frameCount = 8;
+    noteOn.timing.sampleRate = 16.0;
+    noteOn.parameters = parameters;
+    noteOn.voice.events.push_back({ NoteLifecycleType::NoteOn, 3, 0 });
+    processor->process(noteOn);
+
+    REQUIRE(output(noteOn).block.samples[0] == Catch::Approx(0.f));
+    REQUIRE(output(noteOn).block.samples[2] == Catch::Approx(0.f));
+    REQUIRE(output(noteOn).block.samples[4] > 0.f);
+
+    AudioProcessContext noteOff;
+    noteOff.frameCount = 8;
+    noteOff.timing.sampleRate = 16.0;
+    noteOff.parameters = parameters;
+    noteOff.voice.events.push_back({ NoteLifecycleType::NoteOff, 0, 0 });
+    processor->process(noteOff);
+
+    REQUIRE(output(noteOff).block.samples.front() > 0.f);
+
+    AudioProcessContext reset;
+    reset.frameCount = 4;
+    reset.timing.sampleRate = 16.0;
+    reset.parameters = parameters;
+    reset.voice.events.push_back({ NoteLifecycleType::Reset, 0, 0 });
+    processor->process(reset);
+
+    REQUIRE(output(reset).block.samples == std::vector<float> { 0.f, 0.f, 0.f, 0.f });
+
+    AudioProcessContext retrigger;
+    retrigger.frameCount = 4;
+    retrigger.timing.sampleRate = 16.0;
+    retrigger.parameters = parameters;
+    retrigger.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    processor->process(retrigger);
+
+    REQUIRE(output(retrigger).block.samples.front() < 0.001f);
+    REQUIRE(output(retrigger).block.samples.back() > 0.f);
+}
+
+TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2][runtime][envelope]") {
+    NodeAudioProcessorFactory factory;
+    const String snapshot = EnvelopeMeshState::defaultSnapshot();
+    auto render = [&](float red, bool logarithmic) {
+        AudioProcessContext context;
+        context.frameCount = 16;
+        context.timing.sampleRate = 16.0;
+        context.parameters = {
+                { EnvelopeMeshState::parameterId(), "Envelope Snapshot", snapshot },
+                { "red", "Red", String(red) },
+                { "blue", "Blue", "0" },
+                { "logarithmic", "Logarithmic", logarithmic ? "1" : "0" }
+        };
+        context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        auto processor = factory.create(AudioModuleRole::Envelope);
+        processor->process(context);
+        return output(context).block.samples;
+    };
+
+    const auto linear = render(0.f, false);
+    const auto morphed = render(1.f, false);
+    const auto logarithmic = render(0.f, true);
+
+    REQUIRE(morphed != linear);
+    REQUIRE(logarithmic != linear);
+}
+
+TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {
+    const String initialSnapshot = EnvelopeMeshState::defaultSnapshot();
+    EnvelopeMesh editedMesh("EditedEnvelope");
+    REQUIRE(EnvelopeMeshState::apply(initialSnapshot, editedMesh));
+
+    VertCube* editedCube = editedMesh.getCubes()[2];
+    for (int i = 0; i < (int) VertCube::numVerts; ++i) {
+        editedCube->getVertex(i)->values[Vertex::Amp] = 0.25f;
+    }
+
+    const String editedSnapshot = EnvelopeMeshState::serialize(editedMesh);
+    editedMesh.destroy();
+
+    NodeAudioProcessorFactory factory;
+    auto activeProcessor = factory.create(AudioModuleRole::Envelope);
+    AudioProcessContext start;
+    start.frameCount = 8;
+    start.timing.sampleRate = 16.0;
+    start.parameters = {
+            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", initialSnapshot }
+    };
+    start.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    activeProcessor->process(start);
+
+    AudioProcessContext edited;
+    edited.frameCount = 4;
+    edited.timing.sampleRate = 16.0;
+    edited.parameters = {
+            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", editedSnapshot }
+    };
+    activeProcessor->process(edited);
+
+    auto freshProcessor = factory.create(AudioModuleRole::Envelope);
+    AudioProcessContext fresh;
+    fresh.frameCount = 4;
+    fresh.timing.sampleRate = 16.0;
+    fresh.parameters = edited.parameters;
+    fresh.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    freshProcessor->process(fresh);
+
+    REQUIRE(output(edited).block.samples.front() > output(fresh).block.samples.front());
 }
 
 TEST_CASE("Utility audio processors add and multiply inputs", "[cycle-v2][runtime]") {

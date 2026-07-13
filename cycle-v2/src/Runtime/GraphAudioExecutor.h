@@ -26,10 +26,17 @@ public:
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing) const;
+    GraphAudioResult process(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            AudioVoiceContext voice) const;
 
 private:
     struct CachedProcessor {
         String nodeId;
+        int voiceIndex {};
         AudioModuleRole role { AudioModuleRole::None };
         std::unique_ptr<NodeAudioProcessor> processor;
     };
@@ -47,6 +54,7 @@ private:
     bool isOutputNode(const NodeGraph& graph, const String& nodeId) const;
     NodeAudioProcessor* processorFor(
             const String& nodeId,
+            int voiceIndex,
             AudioModuleRole role,
             const NodeAudioProcessorFactory& factory) const;
     void removeStaleProcessors(const GraphExecutionPlan& plan) const;

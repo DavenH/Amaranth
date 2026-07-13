@@ -1964,15 +1964,7 @@ void Effect2DPanelBridge::initialiseMesh() {
         addVertex(1.f - kWaveshaperPadding, 1.f - kWaveshaperPadding, 1.f);
         addVertex(1.f - kWaveshaperPadding * 0.5f, 1.f - kWaveshaperPadding * 0.5f, 1.f);
     } else if (kind == NodeKind::Envelope) {
-        addVertex(0.f, 0.f, 1.f);
-        addVertex(0.05f, 1.f, 0.5f);
-        addVertex(0.7f, 0.8f, 0.3f);
-        setEnvelopeDefaultMorphVariant(2, 0.42f, 0.94f);
-        addVertex(0.999f, 0.8f, 1.f);
-        mesh.setSustainToLast();
-        addVertex(1.075f, 0.6f, -1.f);
-        addVertex(1.15f, 0.f, -1.f);
-        addVertex(1.25f, 0.f, -1.f);
+        EnvelopeMeshState::apply(EnvelopeMeshState::defaultSnapshot(), mesh);
     }
 
     panel->refreshRasterizer();
@@ -2007,34 +1999,6 @@ bool Effect2DPanelBridge::applyMeshState(const std::vector<Effect2DVertexState>&
     }
 
     return true;
-}
-
-void Effect2DPanelBridge::setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp) {
-    if (kind != NodeKind::Envelope || !isPositiveAndBelow(cubeIndex, mesh.getCubes().size())) {
-        return;
-    }
-
-    VertCube* cube = mesh.getCubes()[(size_t) cubeIndex];
-
-    if (cube == nullptr) {
-        return;
-    }
-
-    for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-        Vertex* vertex = cube->getVertex(i);
-
-        if (vertex == nullptr) {
-            continue;
-        }
-
-        if (vertex->values[Vertex::Red] > 0.5f) {
-            vertex->values[Vertex::Amp] = redHighAmp;
-        }
-
-        if (vertex->values[Vertex::Blue] > 0.5f) {
-            vertex->values[Vertex::Amp] = blueHighAmp;
-        }
-    }
 }
 
 void Effect2DPanelBridge::addVertex(float x, float y, float curve) {

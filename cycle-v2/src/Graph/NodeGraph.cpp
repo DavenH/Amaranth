@@ -1,5 +1,7 @@
 #include "NodeGraph.h"
 
+#include "GraphNodeFactory.h"
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -223,23 +225,16 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "mode", "Mode", "cyclic" }
     };
 
-    graph.addNode(node(
-            "env",
-            NodeKind::Envelope,
-            "Envelope",
-            "volume curve",
-            { 1660.f, 610.f, 235.f, 155.f },
-            {},
-            { output("env", "Env", PortDomain::EnvelopeSignal) }));
+    GraphNodeFactory nodeFactory;
+    Node volumeEnvelope = nodeFactory.createNode(NodeKind::Envelope, "env", { 1660.f, 610.f });
+    volumeEnvelope.subtitle = "volume curve";
+    volumeEnvelope.bounds.setSize(235.f, 155.f);
+    graph.addNode(std::move(volumeEnvelope));
 
-    graph.addNode(node(
-            "scratchEnv",
-            NodeKind::Envelope,
-            "Envelope",
-            "scratch attachment",
-            { 320.f, 204.f, 235.f, 155.f },
-            {},
-            { output("env", "Env", PortDomain::EnvelopeSignal) }));
+    Node scratchEnvelope = nodeFactory.createNode(NodeKind::Envelope, "scratchEnv", { 320.f, 204.f });
+    scratchEnvelope.subtitle = "scratch attachment";
+    scratchEnvelope.bounds.setSize(235.f, 155.f);
+    graph.addNode(std::move(scratchEnvelope));
 
     graph.addNode(node(
             "multiply",

@@ -36,7 +36,9 @@ GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount) const {
-    return process(graph, plan, frameCount, {});
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, voice.voiceIndex });
+    return process(graph, plan, frameCount, {}, std::move(voice));
 }
 
 GraphAudioResult GraphAudioExecutor::process(
@@ -44,6 +46,15 @@ GraphAudioResult GraphAudioExecutor::process(
         const GraphExecutionPlan& plan,
         size_t frameCount,
         AudioProcessTiming timing) const {
+    return process(graph, plan, frameCount, timing, {});
+}
+
+GraphAudioResult GraphAudioExecutor::process(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        AudioProcessTiming timing,
+        AudioVoiceContext voice) const {
     std::vector<PortOutput> outputs;
     outputs.reserve(plan.steps.size());
 
@@ -57,7 +68,11 @@ GraphAudioResult GraphAudioExecutor::process(
     GraphAudioResult result;
 
     for (const auto& step : plan.steps) {
-        NodeAudioProcessor* processor = processorFor(step.nodeId, step.audioRole, processorFactory);
+        NodeAudioProcessor* processor = processorFor(
+                step.nodeId,
+                voice.voiceIndex,
+                step.audioRole,
+                processorFactory);
 
         if (processor == nullptr) {
             continue;
@@ -66,6 +81,7 @@ GraphAudioResult GraphAudioExecutor::process(
         AudioProcessContext context;
         context.frameCount = frameCount;
         context.timing = timing;
+        context.voice = voice;
         context.workArena = &workArena;
         context.parameters = step.parameters;
         context.inputs.reserve(workArena.inputCapacity);
@@ -140,10 +156,11 @@ GraphAudioResult GraphAudioExecutor::process(
 
 NodeAudioProcessor* GraphAudioExecutor::processorFor(
         const String& nodeId,
+        int voiceIndex,
         AudioModuleRole role,
         const NodeAudioProcessorFactory& factory) const {
     const auto found = std::find_if(processors.begin(), processors.end(), [&](const auto& entry) {
-        return entry.nodeId == nodeId;
+        return entry.nodeId == nodeId && entry.voiceIndex == voiceIndex;
     });
 
     if (found != processors.end()) {
@@ -157,7 +174,7 @@ NodeAudioProcessor* GraphAudioExecutor::processorFor(
 
     auto processor = factory.create(role);
     NodeAudioProcessor* result = processor.get();
-    processors.push_back({ nodeId, role, std::move(processor) });
+    processors.push_back({ nodeId, voiceIndex, role, std::move(processor) });
     return result;
 }
 

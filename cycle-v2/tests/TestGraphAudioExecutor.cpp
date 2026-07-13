@@ -47,16 +47,24 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 5);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 8.0;
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 5, timing, voice);
+    const auto& wave = samples(findNodeAudio(result, "wave").output);
+    const auto& envelope = samples(findNodeAudio(result, "env").output);
 
-    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(envelope.front() < 0.001f);
+    REQUIRE(envelope.back() > envelope.front());
+    REQUIRE(samples(result.output)[3] == Catch::Approx(wave[3] * envelope[3]));
     REQUIRE(result.output.traversalGrid.isValid());
     REQUIRE(result.output.traversalGrid.rows == 5);
-    REQUIRE(samples(findNodeAudio(result, "wave").output) == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(wave == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
     REQUIRE(findNodeAudio(result, "wave").output.traversalGrid.isValid());
     REQUIRE(samples(findNodeAudio(result, "mul").output) == samples(result.output));
     REQUIRE(findNodeAudio(result, "mul").output.traversalGrid.values
-            == findNodeAudio(result, "wave").output.traversalGrid.values);
+            != findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
 TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[cycle-v2][runtime]") {
@@ -145,6 +153,40 @@ TEST_CASE("Graph audio executor preserves per-node processor state between block
     REQUIRE(samples(second.output) != samples(fresh.output));
 }
 
+TEST_CASE("Graph audio executor keeps envelope state independent per voice", "[cycle-v2][runtime][envelope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 0.f, 0.f }));
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    AudioProcessTiming timing;
+    timing.sampleRate = 16.0;
+    AudioVoiceContext firstVoice;
+    firstVoice.voiceIndex = 0;
+    firstVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioVoiceContext secondVoice;
+    secondVoice.voiceIndex = 1;
+    secondVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 1 });
+
+    const auto firstStart = executor.process(graph, compileResult.plan, 4, timing, firstVoice);
+    const auto firstContinued = executor.process(
+            graph,
+            compileResult.plan,
+            4,
+            timing,
+            AudioVoiceContext { 0, {} });
+    const auto secondStart = executor.process(graph, compileResult.plan, 4, timing, secondVoice);
+
+    const auto& firstStartEnvelope = samples(findNodeAudio(firstStart, "env").output);
+    const auto& firstContinuedEnvelope = samples(findNodeAudio(firstContinued, "env").output);
+    const auto& secondStartEnvelope = samples(findNodeAudio(secondStart, "env").output);
+    REQUIRE(secondStartEnvelope == firstStartEnvelope);
+    REQUIRE(firstContinuedEnvelope != secondStartEnvelope);
+}
+
 TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -175,7 +217,11 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 8.0;
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4, timing, voice);
     const auto& fft = findNodeAudio(result, "fft");
 
     REQUIRE(fft.outputs.size() == 2);
@@ -196,7 +242,11 @@ TEST_CASE("Graph audio executor renders the demo graph through resolved mesh ope
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 8.0;
+    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4, timing, voice);
 
     REQUIRE(findNodeAudio(result, "waveMesh").output.domain == PortDomain::TimeSignal);
     REQUIRE(findNodeAudio(result, "magMesh").output.domain == PortDomain::SpectralMagnitudeSignal);
@@ -205,5 +255,6 @@ TEST_CASE("Graph audio executor renders the demo graph through resolved mesh ope
     REQUIRE(result.output.domain == PortDomain::TimeSignal);
     REQUIRE(samples(result.output).size() == 4);
     REQUIRE(result.output.traversalGrid.isValid());
-    REQUIRE(samples(result.output) != std::vector<float> { 0.f, 0.f, 0.f, 0.f });
+    const auto& envelope = samples(findNodeAudio(result, "env").output);
+    REQUIRE(envelope.back() > envelope.front());
 }
