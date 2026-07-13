@@ -342,6 +342,11 @@ Current status:
 
 - Envelope UI/rasterizer semantics have been partially bridged.
 - Runtime envelope processing remains simplified.
+- Cycle 2's node schema currently exposes only `logarithmic`; it has no
+  envelope snapshot, loop/sustain markers, note-on/note-off lifecycle input, or
+  render timing contract. Add those model/adapter surfaces before integrating
+  `EnvRasterizer`. Do not fabricate a default ADSR or bless the constant-level
+  processor as parity.
 
 Target:
 
@@ -350,6 +355,8 @@ Target:
 - represent editable data as immutable snapshots separate from per-voice state
 - define behavior when a snapshot changes during an active note
 - keep control generation distinct from streaming-effect interfaces
+- define a Cycle 2 envelope snapshot and lifecycle adapter that maps explicitly
+  to `EnvelopeMesh`, `MeshLibrary::EnvProps`, and `EnvRasterizer` state
 
 Tests:
 
@@ -363,7 +370,10 @@ Tests:
 
 Current status:
 
-- Cycle 2 has node-specific FFT/IFFT processors using shared FFT primitives.
+- Cycle 2 uses the shared `Transform` primitive. Its blockwise class owns the
+  single graph-runtime framing and half-cycle carry policy, while gridwise
+  processing delegates each column to that same class; no duplicate FFT
+  algorithm or second framing implementation was found.
 
 Target:
 
@@ -386,6 +396,10 @@ Current status:
 
 - Guide panel and preview behavior are UI-bridged.
 - Runtime signal semantics are not yet treated as shared core behavior.
+- Cycle 2 exposes noise/DC/phase parameters but has no curve snapshot or
+  `GuideCurveProvider` adapter, and its audio role currently publishes no
+  output. Add that model boundary before signal processing; do not synthesize a
+  placeholder curve locally.
 
 Target:
 
@@ -445,8 +459,9 @@ Complete one module end-to-end before starting the next:
 - [ ] Characterize, extract, migrate, and test IR Modeller.
 - [ ] Characterize, extract, migrate, and test Waveshaper.
 - [ ] Characterize, extract, migrate, and test Envelope.
-- [ ] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
-- [ ] Audit Guide Curve signal behavior and extract only if duplicated.
+- [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
+- [x] Audit Guide Curve signal behavior and extract only if duplicated.
+- [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.
 - [ ] Remove or clearly label every remaining approximate adapter.
 
 ## Definition Of Done
