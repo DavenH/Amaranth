@@ -295,8 +295,8 @@ Current status:
   frequency domain before convolution.
 - Both audio adapters use the shared Cycle 1 raster helper: sample the bipolar
   rasterizer perfectly at 2x, then filter and downsample with `Oversampler(8)`.
-  A cross-adapter kernel golden vector is still required to lock the complete
-  curve-to-kernel path down.
+- A shared-core golden vector locks the complete curve-to-kernel path, including
+  oversampler transients and the frequency-domain prefilter.
 
 Target:
 
@@ -307,7 +307,7 @@ Target:
 
 Tests:
 
-- curve-to-impulse golden vectors
+- curve-to-impulse golden vectors (shared core covered; adapter fixtures remain)
 - high-pass, post-gain, channel, and disabled/bypass behavior
 - split-block equivalence and complete tail flushing
 - block/traversal equivalence only where the traversal time contract permits it
