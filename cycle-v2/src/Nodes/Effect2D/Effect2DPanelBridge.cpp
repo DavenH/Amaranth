@@ -1,5 +1,7 @@
 #include "Effect2DPanelBridge.h"
 
+#include "../Envelope/EnvelopeMeshState.h"
+
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
@@ -79,7 +81,7 @@ public:
         ,   Interactor2D    (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
         ,   SingletonAccessor(repo, name)
         ,   fxRasterizer    (repo, name + "FXRasterizer")
-        ,   envRasterizer   (repo, nullptr, name + "EnvRasterizer")
+        ,   envRasterizer   (nullptr, name + "EnvRasterizer")
         ,   environment     (panelEnvironment)
         ,   mesh            (meshToEdit) {
         vertPadding = 0;
@@ -1521,13 +1523,22 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
         return;
     }
 
-    const String nextMeshState = parameterValueForNode(node, Effect2DMeshState::parameterId(), {});
+    const String nextMeshState = parameterValueForNode(
+            node,
+            kind == NodeKind::Envelope
+                    ? EnvelopeMeshState::parameterId()
+                    : Effect2DMeshState::parameterId(),
+            {});
     const bool nodeChanged = lastSyncedNodeId != node.id;
     const bool meshChanged = lastSyncedMeshState != nextMeshState;
 
-    if (kind != NodeKind::Envelope && (nodeChanged || meshChanged)) {
+    if (nodeChanged || meshChanged) {
         if (nextMeshState.isNotEmpty()) {
-            applyMeshState(Effect2DMeshState::parse(nextMeshState));
+            if (kind == NodeKind::Envelope) {
+                EnvelopeMeshState::apply(nextMeshState, mesh);
+            } else {
+                applyMeshState(Effect2DMeshState::parse(nextMeshState));
+            }
         } else if (nodeChanged && mesh.getNumVerts() == 0) {
             initialiseMesh();
         }
@@ -1866,7 +1877,7 @@ std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVert
 
 String Effect2DPanelBridge::serializedMeshState() {
     if (kind == NodeKind::Envelope) {
-        return {};
+        return EnvelopeMeshState::serialize(mesh);
     }
 
     std::vector<Effect2DVertexState> vertices;
@@ -1910,6 +1921,7 @@ void Effect2DPanelBridge::toggleSelectedEnvelopeMarker(bool loopMarker) {
     }
 
     panel->toggleSelectedEnvelopeMarker(loopMarker);
+    notifyMeshEdited();
 }
 
 void Effect2DPanelBridge::initialisePanelHost() {
@@ -1952,15 +1964,7 @@ void Effect2DPanelBridge::initialiseMesh() {
         addVertex(1.f - kWaveshaperPadding, 1.f - kWaveshaperPadding, 1.f);
         addVertex(1.f - kWaveshaperPadding * 0.5f, 1.f - kWaveshaperPadding * 0.5f, 1.f);
     } else if (kind == NodeKind::Envelope) {
-        addVertex(0.f, 0.f, 1.f);
-        addVertex(0.05f, 1.f, 0.5f);
-        addVertex(0.7f, 0.8f, 0.3f);
-        setEnvelopeDefaultMorphVariant(2, 0.42f, 0.94f);
-        addVertex(0.999f, 0.8f, 1.f);
-        mesh.setSustainToLast();
-        addVertex(1.075f, 0.6f, -1.f);
-        addVertex(1.15f, 0.f, -1.f);
-        addVertex(1.25f, 0.f, -1.f);
+        EnvelopeMeshState::apply(EnvelopeMeshState::defaultSnapshot(), mesh);
     }
 
     panel->refreshRasterizer();
@@ -1995,34 +1999,6 @@ bool Effect2DPanelBridge::applyMeshState(const std::vector<Effect2DVertexState>&
     }
 
     return true;
-}
-
-void Effect2DPanelBridge::setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp) {
-    if (kind != NodeKind::Envelope || !isPositiveAndBelow(cubeIndex, mesh.getCubes().size())) {
-        return;
-    }
-
-    VertCube* cube = mesh.getCubes()[(size_t) cubeIndex];
-
-    if (cube == nullptr) {
-        return;
-    }
-
-    for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-        Vertex* vertex = cube->getVertex(i);
-
-        if (vertex == nullptr) {
-            continue;
-        }
-
-        if (vertex->values[Vertex::Red] > 0.5f) {
-            vertex->values[Vertex::Amp] = redHighAmp;
-        }
-
-        if (vertex->values[Vertex::Blue] > 0.5f) {
-            vertex->values[Vertex::Amp] = blueHighAmp;
-        }
-    }
 }
 
 void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
@@ -2062,7 +2038,7 @@ void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
 }
 
 void Effect2DPanelBridge::notifyMeshEdited() {
-    if (kind == NodeKind::Envelope || meshEditedCallback == nullptr) {
+    if (meshEditedCallback == nullptr) {
         return;
     }
 

@@ -51,7 +51,7 @@ SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
     auto& guideCurveProvider = getObj(GuideCurvePanel);
 
     for (auto group: envGroups) {
-        group->envGroup.emplace_back(EnvRasterizer(repo, &guideCurveProvider, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
+        group->envGroup.emplace_back(EnvRasterizer(&guideCurveProvider, "EnvRasterizer" + String(group->layerGroup) + "_0"), 0);
 
         EnvRenderContext& last = group->envGroup.back();
         last.rast.setWantOneSamplePerCycle(true);
@@ -448,7 +448,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
                 if (!dynamic_cast<MeshLibrary::EnvProps*>(layer.props)->global) {
                     String name = "EnvRasterizer" + String(groupIndex) + "_" + String(layerIndex);
-                    group.envGroup.emplace_back(EnvRasterizer(repo, &guideCurveProvider, name), layerIndex);
+                    group.envGroup.emplace_back(EnvRasterizer(&guideCurveProvider, name), layerIndex);
 
                     EnvRasterizer& rast = group.envGroup.back().rast;
                     envRasterizers.push_back(&rast);

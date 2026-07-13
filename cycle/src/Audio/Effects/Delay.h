@@ -1,23 +1,13 @@
 #pragma once
-#include <Obj/Ref.h>
+
 #include <App/SingletonAccessor.h>
-#include <Array/Buffer.h>
-#include <Array/ScopedAlloc.h>
+#include <Audio/CycleDsp/CycleDelay.h>
+#include <Obj/Ref.h>
+
 #include "AudioEffect.h"
 
 class GuilessEffect;
 class DelayUI;
-
-class SpinParams
-{
-public:
-	float pan;
-	float startingLevel;
-	int inputDelaySamples;
-	int spinDelaySamples;
-
-	Buffer<float> buffer;
-};
 
 class CycDelay : public Effect
 {
@@ -45,13 +35,10 @@ protected:
 	bool doParamChange(int param, double value, bool doFurtherUpdate) override;
 
 private:
-	static constexpr int delaySize = 65536;
-
 	bool pendingWetBufferUpdate;
 
 	int spinIters;
 	int pendingSpinIters;
-	long readPosition[2]{};
 
 	double delayTime;
 	double feedback;
@@ -60,7 +47,5 @@ private:
 	double wetLevel;
 
 	Ref<GuilessEffect> ui;
-	vector<SpinParams> spinParams[2];
-	ScopedAlloc<float> inputBuffer[2];
-	ScopedAlloc<float> wetBuffer[2];
+	CycleDsp::CycleDelay delays[2];
 };

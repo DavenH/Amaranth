@@ -66,7 +66,6 @@ private:
     void clearMesh();
     bool applyMeshState(const std::vector<Effect2DVertexState>& vertices);
     void notifyMeshEdited();
-    void setEnvelopeDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp);
     PanelHostCallbacks createPanelHostCallbacks();
     void applyPanelSettings();
     void captureRenderedPanelImage(

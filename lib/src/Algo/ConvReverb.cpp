@@ -1,15 +1,11 @@
 #include "ConvReverb.h"
 #include "FFT.h"
 #include "../Array/VecOps.h"
-#include "../App/MemoryPool.h"
-#include "../App/SingletonRepo.h"
-#include "../App/Transforms.h"
 #include "../Util/Arithmetic.h"
 #include "../Definitions.h"
 
-ConvReverb::ConvReverb(SingletonRepo* repo) :
-        SingletonAccessor(repo, "ConvReverb")
-    ,   outBuffer(2)
+ConvReverb::ConvReverb() :
+        outBuffer(2)
     ,   wetLevel(0.5f)
     ,   dryLevel(1.f) {
 }
@@ -312,39 +308,6 @@ void BlockConvolver::process(const Buffer<float>& input, Buffer<float> output) {
 
         samplesProcessed += samplesToProcess;
     }
-}
-
-Buffer<float> ConvReverb::convolve(const Buffer<float>& inputFrq, Buffer<float> kernelFrq) {
-    int paddedSize  = NumberUtils::nextPower2(kernelFrq.size() + inputFrq.size() - 1);
-    int complexSize = paddedSize + 2;
-    int cume        = 0;
-
-    Transform& fft = getObj(Transforms).chooseFFT(paddedSize);
-    Buffer<float> workBuffer = getObj(MemoryPool).getAudioPool();
-    Buffer<float> kernelFrqPad = workBuffer.section(cume, complexSize);
-    cume += complexSize;
-    Buffer<float> inputFrqPad = workBuffer.section(cume, complexSize);
-    cume += complexSize;
-
-    kernelFrq.copyTo(kernelFrqPad + 2);
-    kernelFrqPad.offset(2 + kernelFrq.size()).zero();
-
-    inputFrq.copyTo(inputFrqPad + 2);
-    inputFrqPad.offset(2 + inputFrq.size()).zero();
-
-    // TODO does the cross-platform fft implementation pack the DC offset the same way?
-    VecOps::mul(
-        Buffer((Complex32*)kernelFrqPad.get() + 1, paddedSize / 2),
-        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2),
-        Buffer((Complex32*)inputFrqPad.get() + 1, paddedSize / 2)
-    );
-
-    // ippsMul_32fc_I((Complex32*)kernelFrqPad.get() + 1,
-    //                (Complex32*)inputFrqPad.get()  + 1, paddedSize / 2);
-
-    fft.inverse(inputFrqPad);
-
-    return inputFrqPad;
 }
 
 void ConvReverb::basicConvolve(

@@ -1,5 +1,7 @@
 #include "GraphSerializer.h"
 
+#include "../Nodes/Envelope/EnvelopeMeshState.h"
+
 #include <memory>
 
 namespace CycleV2 {
@@ -134,6 +136,16 @@ void normalizeNodePresentation(Node& node) {
 
     if (node.kind == NodeKind::Envelope) {
         ensureParameter("logarithmic", "Logarithmic", "0");
+        ensureParameter(
+                EnvelopeMeshState::parameterId(),
+                "Envelope Snapshot",
+                EnvelopeMeshState::defaultSnapshot());
+
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == EnvelopeMeshState::parameterId() && parameter.value.isEmpty()) {
+                parameter.value = EnvelopeMeshState::defaultSnapshot();
+            }
+        }
     }
 
     if (node.kind == NodeKind::Spy) {

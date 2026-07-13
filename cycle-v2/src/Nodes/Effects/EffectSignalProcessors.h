@@ -2,6 +2,10 @@
 
 #include "../../Runtime/UnarySignalProcessor.h"
 
+#include <Algo/ConvReverb.h>
+#include <Algo/Oversampler.h>
+#include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 
@@ -16,10 +20,14 @@ public:
     void prepareProcess(
             const std::vector<NodeParameter>& parameters,
             const AudioProcessTiming& timing) override;
+    void beginBlock(size_t frameCount) override;
+    void beginTraversalGrid(size_t columns, size_t rows) override;
+    void endTraversalGrid() override;
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
     void syncImpulse(const std::vector<NodeParameter>& parameters);
+    void prepareConvolver(BlockConvolver& convolver, size_t blockSize, size_t& preparedSize);
     void rebuildMesh(const String& serializedVertices);
     void addVertex(float x, float y, float curve);
 
@@ -27,10 +35,24 @@ private:
     FXRasterizer rasterizer { nullptr, "CycleV2IrDspRasterizer" };
     String lastVertexState;
     std::vector<float> impulse;
+    std::vector<float> rawImpulse;
+    std::vector<float> oversampledImpulse;
+    std::vector<float> prefilterLevels;
     std::vector<float> convolutionOutput;
+    Transform impulseTransform;
+    Oversampler impulseOversampler { 8 };
+    BlockConvolver blockConvolver;
+    BlockConvolver traversalConvolver;
+    BlockConvolver* activeConvolver { &blockConvolver };
     float postGain { 1.f };
     float highPass { 0.f };
+    float impulseHighPass { -1.f };
     size_t impulseLength { 1 };
+    size_t impulseRevision {};
+    size_t blockImpulseRevision {};
+    size_t traversalImpulseRevision {};
+    size_t preparedBlockSize {};
+    size_t preparedTraversalSize {};
 };
 
 class DelaySignalProcessor :
@@ -44,38 +66,11 @@ public:
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
-    struct SpinParams {
-        float pan {};
-        float startingLevel {};
-        size_t inputDelaySamples {};
-        size_t spinDelaySamples {};
-        std::vector<float> buffer;
-    };
-
-    struct DelayState {
-        std::vector<float> inputBuffer;
-        std::vector<SpinParams> spinParams;
-        size_t readPosition {};
-    };
-
-    void configureDelayLines();
-    void configureDelayState(DelayState& state);
-    void resetDelayState(DelayState& state);
-    double cycle1DelayTimeSeconds(float value) const;
-    int cycle1SpinIters(float value) const;
-
-    DelayState blockState;
-    DelayState gridState;
-    DelayState* activeState { &blockState };
-    String delaySignature;
-    double delayTimeSeconds { 0.5 };
-    float feedback { 0.5f };
-    float spinAmount { 1.f };
-    float wetLevel { 0.9f };
-    float sampleRate { 44100.f };
+    CycleDsp::CycleDelay blockDelay;
+    CycleDsp::CycleDelay traversalDelay;
+    CycleDsp::CycleDelay* activeDelay { &blockDelay };
     double bpm { 120.0 };
     int beatsPerMeasure { 4 };
-    int spinIters { 1 };
 };
 
 class ReverbSignalProcessor :
@@ -91,20 +86,25 @@ public:
 
 private:
     void syncKernel();
-    void resetCarry();
-    void createVolumeRamp(int index, int numBuffers, Buffer<float> ramp) const;
+    void prepareConvolver(ConvReverb& convolver, size_t blockSize, size_t& preparedSize);
 
     std::vector<float> kernel;
     std::vector<float> convolutionOutput;
-    std::vector<float> blockCarry;
-    std::vector<float> gridCarry;
-    std::vector<float>* activeCarry { &blockCarry };
+    std::vector<float> dryBuffer;
+    ConvReverb blockConvolver;
+    ConvReverb traversalConvolver;
+    ConvReverb* activeConvolver { &blockConvolver };
     float roomSize { 0.2f };
     float rolloffFactor { 0.14f };
     float width { 1.f };
     float highPass { 0.05f };
     float wetLevel { 0.1f };
     size_t kernelLength {};
+    size_t kernelRevision {};
+    size_t blockKernelRevision {};
+    size_t traversalKernelRevision {};
+    size_t preparedBlockSize {};
+    size_t preparedTraversalSize {};
     String kernelSignature;
 };
 

@@ -91,6 +91,10 @@ void Curve::destruct() {
 
 
 void Curve::calcTable() {
+    if (table != nullptr) {
+        return;
+    }
+
     table = new float** [resolutions];
     for (int r = 0; r < resolutions; ++r) {
         table[r] = new float* [numCurvelets];

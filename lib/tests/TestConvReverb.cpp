@@ -1,11 +1,10 @@
 #include <App/MemoryPool.h>
-#include <App/Transforms.h>
 #include <catch2/catch_test_macros.hpp>
 #include "JuceHeader.h"
 using namespace juce;
 #include "../src/Algo/ConvReverb.h"
-#include "../src/App/SingletonRepo.h"
 #include "../src/Array/ScopedAlloc.h"
+#include "../src/Audio/CycleDsp/ReverbKernel.h"
 
 class TestConvReverb {
 public:
@@ -48,11 +47,7 @@ public:
 };
 
 TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Initialization with valid parameters") {
         const int headSize = 64;
@@ -77,11 +72,7 @@ TEST_CASE("ConvReverb Basic Operation", "[ConvReverb]") {
 }
 
 TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Single-stage convolution accuracy") {
         const int inputSize = 44100;
@@ -209,11 +200,7 @@ TEST_CASE("ConvReverb Convolution Accuracy", "[ConvReverb]") {
 }
 
 TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
-    SingletonRepo repo;
-    repo.add(new MemoryPool(&repo));
-    repo.add(new Transforms(&repo));
-
-    ConvReverb reverb(&repo);
+    ConvReverb reverb;
 
     SECTION("Empty input handling") {
         const int bufferSize = 512;
@@ -247,4 +234,28 @@ TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
         // Test with head size larger than tail size
         REQUIRE_NOTHROW(reverb.init(8192, 512, kernel));
     }
+}
+
+TEST_CASE("Cycle reverb kernel generation is deterministic and stereo", "[ConvReverb]") {
+    constexpr int kernelSize = 4096;
+    ScopedAlloc<float> memory(kernelSize * 4);
+    Buffer<float> firstLeft = memory.place(kernelSize);
+    Buffer<float> firstRight = memory.place(kernelSize);
+    Buffer<float> secondLeft = memory.place(kernelSize);
+    Buffer<float> secondRight = memory.place(kernelSize);
+
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = 0.35f;
+    configuration.damping = 0.14f;
+    configuration.highPass = 0.05f;
+    CycleDsp::buildReverbKernel(configuration, firstLeft, firstRight);
+    CycleDsp::buildReverbKernel(configuration, secondLeft, secondRight);
+
+    for (int i = 0; i < kernelSize; ++i) {
+        REQUIRE(firstLeft[i] == secondLeft[i]);
+        REQUIRE(firstRight[i] == secondRight[i]);
+    }
+    REQUIRE_FALSE(firstLeft == firstRight);
+    REQUIRE_FALSE(firstLeft.isProbablyEmpty());
+    REQUIRE_FALSE(firstRight.isProbablyEmpty());
 }

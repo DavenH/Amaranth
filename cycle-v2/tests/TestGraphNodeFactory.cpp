@@ -14,6 +14,7 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.bounds.getY() == 20.f);
     REQUIRE(node.outputs.size() == 1);
     REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(parameterValueForNode(node, "envelope.snapshot").isNotEmpty());
 }
 
 TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]") {

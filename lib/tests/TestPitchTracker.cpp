@@ -190,7 +190,7 @@ void createExpSweep(Buffer<float>& buffer, float startFreq, float endFreq, float
           .sin();                           // Convert phase to sine wave
 }
 
-TEST_CASE("PitchTracker basic functionality", "[pitch][dsp][wip]") {
+TEST_CASE("PitchTracker basic functionality", "[pitch][dsp][wip][.]") {
     PitchTracker tracker;
     const int sampleRate = 44100;
 

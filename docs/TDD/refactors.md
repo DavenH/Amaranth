@@ -1,5 +1,10 @@
 # Refactor Notes
 
+## Cycle 2 DSP Configuration Publication
+
+The graph-wide lifecycle, ownership, migration plan, and verification gates are
+specified in `cycle-v2-dsp-configuration-publication.md`.
+
 ## Cycle 2 Node Canvas Responsibilities
 
 `cycle-v2/src/UI/NodeCanvas.*` is currently carrying rendering, hit-testing, graph editing dispatch, snapshot save/load, undo/redo, and graph-status presentation. This was acceptable for fast prototyping, but it should be split before deeper interaction work lands.

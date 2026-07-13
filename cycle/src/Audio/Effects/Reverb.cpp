@@ -1,5 +1,6 @@
 #include <Algo/ConvReverb.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/ReverbKernel.h>
 #include <Util/Arithmetic.h>
 
 #include "Reverb.h"
@@ -9,8 +10,6 @@
 
 ReverbEffect::ReverbEffect(SingletonRepo* repo) :
         Effect			(repo, "ReverbEffect")
-    ,	leftConv		(repo)
-    ,	rightConv		(repo)
     ,	phaseNoise		(0.1f)
     ,	magnNoise		(0.1f)
     ,	outBuffer		(2)
@@ -190,150 +189,14 @@ void ReverbEffect::createKernel(int size) {
 
 void ReverbEffect::updateKernelSections()
 {
-    int buffSize = 256;
-
-    Transform fft;
-    fft.allocate(buffSize, Transform::DivFwdByN, true);
-
-    ScopedAlloc<float> mem(buffSize * 10);
-
-    Buffer<float> cumeRoll 	= mem.place(buffSize);
-    Buffer<float> magn 		= mem.place(buffSize);
-    Buffer<float> phs 		= mem.place(buffSize);
-    Buffer<float> noise		= mem.place(buffSize);
-    Buffer<float> rolloff	= mem.place(buffSize);
-    Buffer<float> volRamp	= mem.place(buffSize);
-    Buffer<float> filtered	= mem.place(buffSize);
-    Buffer<float> filteredA	= mem.place(buffSize);
-    Buffer<float> fwdRamp	= mem.place(buffSize);
-    Buffer<float> invRamp	= mem.place(buffSize);
-
-    {
-        int highStart 		= jmax(2, int(highpass * 0.05f * buffSize));
-        float highLevelA 	= 1 - rolloffFactor * highpass * 1.5f;
-        float highLevelRamp = (1 - highLevelA) / float(highStart);
-
-        rolloff.zero();
-        rolloff.ramp(1.f, -rolloffFactor / float(buffSize));
-        fwdRamp.section(0, highStart).ramp(highLevelA, highLevelRamp);
-        rolloff.section(0, highStart).mul(fwdRamp);
-        rolloff.mul(M_PI_2).sin();
-    }
-
-    fwdRamp.ramp();
-    fwdRamp.copyTo(invRamp);
-    invRamp.subCRev(1.f);
-
-    unsigned seed = buffSize ^ 0xc0d3db4d;
-
-    const int numBuffers  = kernel.left.size() / buffSize;
-
-    for(int c = 0; c < 2; ++c) {
-        cumeRoll.set(1.f);
-
-        for(int i = 0; i < numBuffers; ++i) {
-            Buffer<float> section = kernel[c].section(i * buffSize, buffSize);
-
-            createVolumeRamp(i, numBuffers, buffSize, volRamp);
-
-            noise	.rand(seed);
-            fft		.forward(noise);
-            fft		.getMagnitudes().mul(cumeRoll);
-            cumeRoll.mul(rolloff);
-
-            fft		.inverse(filteredA);
-            fft		.getMagnitudes().mul(rolloff);
-            fft		.inverse(filtered);
-
-            VecOps::mul(filteredA, invRamp, section);
-            section	.addProduct(fwdRamp, filtered);
-            section	.mul(volRamp);
-
-            seed ^= 616137 * seed;
-        }
-    }
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = roomSize;
+    configuration.damping = rolloffFactor;
+    configuration.highPass = highpass;
+    CycleDsp::buildReverbKernel(configuration, kernel.left, kernel.right);
 
     leftConv .init(leftConv.headBlockSize, 	leftConv.tailBlockSize,  kernel.left);
     rightConv.init(rightConv.headBlockSize, rightConv.tailBlockSize, kernel.right);
-}
-
-// TODO why is half of this commented out?
-void ReverbEffect::createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp) const {
-    const int rampUpBuffs = jlimit(3, 20, int(roomSize * 0.03f * numBuffers));
-    float rampStart, rampEnd, rampDelta;
-
-//	if(i < rampUpBuffs)
-//	{
-//		float start = i / float(rampUpBuffs - 1);
-//		float end 	= (i + 1) / float(rampUpBuffs - 1);
-//
-//		rampStart 	= start;
-//		rampEnd   	= end;
-//		rampDelta 	= (rampEnd - rampStart) / float(buffSize);
-//	}
-//	else
-//	{
-        float scale = M_PI_2 * (float(NumberUtils::log2i(numBuffers) + 8) * 0.1f - 0.6);
-
-        rampStart 	= 0.25f / scale * sinf(scale * expf(i * -4.5f / float(numBuffers))) * sqrtf(float(numBuffers - i) / numBuffers);
-        rampEnd 	= 0.25f / scale * sinf(scale * expf((i + 1) * -4.5f / float(numBuffers))) * sqrtf(float(numBuffers - (i + 1)) / numBuffers);
-
-//		rampStart 	= (rampUpBuffs + 3) / float(i + rampUpBuffs + 4) * invRamp;
-//		rampEnd   	= (rampUpBuffs + 3) / float(i + rampUpBuffs + 5) * invRamp;
-        rampDelta 	= (rampEnd - rampStart) / float(buffSize);
-//	}
-
-    if(i < rampUpBuffs) {
-        /*
-
-
-        if(silence < buffSize)
-        {
-            for(int j = 0; j <= 5 * (i + 2); ++j)
-            {
-                ramp[delay1 & mod] = noiseArray[delay2 & mod];
-                ramp[delay2 & mod] = noiseArray[delay1 & mod];
-
-                delay1 += 71;
-                delay2 *= 13;
-            }
-
-
-            int offset = delay1 & mod;
-            for(int j = 0; j <= i; ++j)
-            {
-                if(offset < buffSize)
-                    ramp.addProduct(ramp.section(offset, buffSize - offset), -0.5f);
-
-                if(offset > 0)
-                    ramp.section(buffSize - offset, offset).addProduct(ramp, -0.5f);
-
-                offset = (offset + delay1) & mod;
-            }
-
-        }
-
-        ramp.zero();
-        */
-
-        float start = 0.25f * float(i) / float(rampUpBuffs - 1);
-        float end 	= 0.25f * float(i + 1) / float(rampUpBuffs - 1);
-
-        rampStart 	= start;
-        rampEnd   	= end;
-        rampDelta 	= (end - start) / float(buffSize);
-    }
-    else
-    {
-    }
-
-    ramp.ramp(rampStart, rampDelta);
-
-    int silence = roomSize * 450 - i * buffSize;
-
-    if(silence > 0) {
-        ramp.zero(jmin(buffSize, silence));
-    }
 }
 
 void ReverbEffect::setBlockSize(int size) {

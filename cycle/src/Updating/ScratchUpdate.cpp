@@ -24,7 +24,7 @@ void ScratchUpdate::performUpdate(UpdateType updateType) {
             break;
 
         case Update: {
-            getObj(EnvScratchRast).performUpdate(updateType);
+            getObj(EnvScratchRast).get().performUpdate(updateType);
             getObj(VisualDsp).rasterizeEnv(LayerGroups::GroupScratch,
                                            getObj(Waveform3D).getWindowWidthPixels());
 

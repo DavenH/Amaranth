@@ -1,6 +1,7 @@
 #include "Effect2DExpandedEditorComponent.h"
 
 #include "Effect2DMeshState.h"
+#include "../Envelope/EnvelopeMeshState.h"
 #include "../Trimesh/TrimeshSidePanelRenderer.h"
 
 #include <utility>
@@ -1732,14 +1733,15 @@ void Effect2DExpandedEditorComponent::pushControlValues() {
 
 void Effect2DExpandedEditorComponent::persistEffectMeshState() {
     if (callbacks.setNodeParameter == nullptr
-            || node.kind == NodeKind::Envelope
             || syncingControls) {
         return;
     }
 
     callbacks.setNodeParameter(
-            Effect2DMeshState::parameterId(),
-            "Effect Vertices",
+            node.kind == NodeKind::Envelope
+                    ? EnvelopeMeshState::parameterId()
+                    : Effect2DMeshState::parameterId(),
+            node.kind == NodeKind::Envelope ? "Envelope Snapshot" : "Effect Vertices",
             widget.serializedMeshState());
 
     if (callbacks.repaintOpenGL != nullptr) {

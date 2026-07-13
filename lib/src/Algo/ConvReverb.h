@@ -1,9 +1,9 @@
 #pragma once
-#include <vector>
 #include "FFT.h"
-#include "../App/SingletonAccessor.h"
 #include "../Array/StereoBuffer.h"
 #include "../Util/MicroTimer.h"
+
+#include <vector>
 
 using std::vector;
 
@@ -41,22 +41,19 @@ private:
     friend class ConvReverb;
 };
 
-class ConvReverb :
-        public SingletonAccessor {
+class ConvReverb {
 public:
     int tailInputPos, precalcPos;
     int headBlockSize, tailBlockSize;
 
-    explicit ConvReverb(SingletonRepo* repo);
+    ConvReverb();
 
     void init(int headSize, int tailSize, const Buffer<float>& kernel);
     void process(const Buffer<float>& input, Buffer<float> output);
     static void basicConvolve(Buffer<float> input, Buffer<float> response, Buffer<float> output);
-    void reset() override;
+    void reset();
     void test();
     void test(int inputSize, int irSize, int headSize, int tailSize, int bufferSize, bool refCheck, bool useTwoStage);
-    Buffer<float> convolve(const Buffer<float>& inputFrq, Buffer<float> kernelFrq);
-
 private:
     int headClocks, tailClocksA, tailClocks;
 

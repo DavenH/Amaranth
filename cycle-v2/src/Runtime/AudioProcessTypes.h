@@ -89,6 +89,23 @@ struct AudioProcessTiming {
     int beatsPerMeasure { 4 };
 };
 
+enum class NoteLifecycleType {
+    NoteOn,
+    NoteOff,
+    Reset
+};
+
+struct NoteLifecycleEvent {
+    NoteLifecycleType type { NoteLifecycleType::NoteOn };
+    size_t sampleOffset {};
+    int voiceIndex {};
+};
+
+struct AudioVoiceContext {
+    int voiceIndex {};
+    std::vector<NoteLifecycleEvent> events;
+};
+
 struct AudioProcessWorkArena {
     size_t frameCapacity {};
     size_t gridValueCapacity {};
@@ -122,6 +139,7 @@ struct AudioProcessWorkArena {
 struct AudioProcessContext {
     size_t frameCount {};
     AudioProcessTiming timing;
+    AudioVoiceContext voice;
     AudioProcessWorkArena* workArena {};
     std::vector<NodeParameter> parameters;
     std::vector<SignalPayload> inputs;

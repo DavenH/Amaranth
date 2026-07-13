@@ -13,6 +13,7 @@
 #include <Curve/Mesh/Vertex.h>
 #include <Inter/EnvelopeInter2D.h>
 
+#include "EnvRasterizerServices.h"
 #include "../Util/CycleEnums.h"
 
 namespace {
@@ -172,9 +173,9 @@ namespace {
 
     EnvRasterizer* getEnvelopeRasterizer(SingletonRepo* repo, int layerType) {
         switch (layerType) {
-            case LayerGroups::GroupVolume:  return &repo->get<EnvRasterizer>("EnvVolumeRast");
-            case LayerGroups::GroupPitch:   return &repo->get<EnvRasterizer>("EnvPitchRast");
-            case LayerGroups::GroupScratch: return &repo->get<EnvRasterizer>("EnvScratchRast");
+            case LayerGroups::GroupVolume:  return &repo->get<EnvVolumeRast>("EnvVolumeRast").get();
+            case LayerGroups::GroupPitch:   return &repo->get<EnvPitchRast>("EnvPitchRast").get();
+            case LayerGroups::GroupScratch: return &repo->get<EnvScratchRast>("EnvScratchRast").get();
             default:                        return nullptr;
         }
     }

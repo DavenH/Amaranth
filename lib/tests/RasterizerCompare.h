@@ -59,11 +59,12 @@ namespace RasterizerCompare {
     inline void requireBufferNear(
             const std::vector<float>& actual,
             const std::vector<float>& expected,
-            float tolerance = 1e-5f) {
+            float tolerance = 1e-5f,
+            const char* label = "buffer") {
         REQUIRE(actual.size() == expected.size());
 
         for (int i = 0; i < (int) actual.size(); ++i) {
-            INFO("index=" << i << " actual=" << actual[i] << " expected=" << expected[i]);
+            INFO(label << " index=" << i << " actual=" << actual[i] << " expected=" << expected[i]);
             requireNear(actual[i], expected[i], tolerance);
         }
     }
@@ -121,10 +122,10 @@ namespace RasterizerCompare {
         REQUIRE(actual.zeroIndex == expected.zeroIndex);
         REQUIRE(actual.oneIndex == expected.oneIndex);
 
-        requireBufferNear(actual.waveX, expected.waveX, tolerance);
-        requireBufferNear(actual.waveY, expected.waveY, tolerance);
-        requireBufferNear(actual.diffX, expected.diffX, tolerance);
-        requireBufferNear(actual.slope, expected.slope, tolerance);
+        requireBufferNear(actual.waveX, expected.waveX, tolerance, "waveX");
+        requireBufferNear(actual.waveY, expected.waveY, tolerance, "waveY");
+        requireBufferNear(actual.diffX, expected.diffX, tolerance, "diffX");
+        requireBufferNear(actual.slope, expected.slope, tolerance, "slope");
 
         REQUIRE(actual.intercepts.size() == expected.intercepts.size());
         for (int i = 0; i < (int) actual.intercepts.size(); ++i) {

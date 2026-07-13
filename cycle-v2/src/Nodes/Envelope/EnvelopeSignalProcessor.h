@@ -1,14 +1,10 @@
 #pragma once
 
 #include "../../Runtime/AudioProcessContextUtils.h"
-#include "../Trimesh/TrimeshPanelEnvironment.h"
+#include "EnvelopeMeshState.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
-
-#include <memory>
-
-class VertCube;
 
 namespace CycleV2 {
 
@@ -17,19 +13,23 @@ public:
     EnvelopeSignalProcessor();
     ~EnvelopeSignalProcessor();
 
-    void process(AudioProcessContext& context) const;
+    void process(AudioProcessContext& context);
 
 private:
-    void initialiseDefaultMesh();
-    void addVertex(float x, float y, float curve);
-    void setDefaultMorphVariant(int cubeIndex, float redHighAmp, float blueHighAmp);
-    void renderEnvelope(AudioProcessContext& context, SignalPayload& output) const;
+    bool syncModel(const std::vector<NodeParameter>& parameters);
+    void applyLifecycleEvent(const NoteLifecycleEvent& event);
+    void renderSegment(Buffer<float> output, size_t start, size_t count, const AudioProcessTiming& timing);
 
     static constexpr size_t defaultTraversalColumns = 8;
 
-    TrimeshPanelEnvironment environment;
-    std::unique_ptr<EnvelopeMesh> defaultMesh;
-    mutable EnvRasterizer rasterizer;
+    EnvelopeMesh mesh;
+    EnvRasterizer rasterizer;
+    MeshLibrary::EnvProps props;
+    String snapshotState;
+    float redMorph { -1.f };
+    float blueMorph { -1.f };
+    bool active {};
+    bool modelReady {};
 };
 
 }

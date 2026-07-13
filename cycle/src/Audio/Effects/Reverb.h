@@ -25,7 +25,6 @@ public:
     bool isEnabled() const override;
     void setPendingAction(int action, int value);
     void createKernel(int size);
-    void createVolumeRamp(int i, int numBuffers, int buffSize, Buffer<float> ramp) const;
     void updateKernelSections();
     void audioThreadUpdate() override;
     void resetOutputBuffer();

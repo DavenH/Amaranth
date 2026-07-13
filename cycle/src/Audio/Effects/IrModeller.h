@@ -12,6 +12,7 @@
 #include <Audio/PitchedSample.h>
 #include <Audio/AudioHub.h>
 #include <Audio/SmoothedParameter.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 #include <Design/Updating/Updateable.h>
 #include <Obj/Ref.h>
@@ -79,10 +80,10 @@ public:
     Buffer<float> 	getMagnitudes() 				{ return graphic.fft.getMagnitudes();			}
     Buffer<float> 	getGraphicImpulse() 			{ return graphic.impulse;						}
 
-    static int 		calcLength(double value)		{ return (int) pow(2, int(7 + value * 7)); }
-    static double 	calcKnobValue(int length) 		{ return (log(length) / log(2.0) - 7.) / 7.; }
-    static double 	calcPostamp(double value)		{ return exp(10 * value - 5); 					}
-    static double 	calcPrefilt(double value)		{ return value * value * value; 				}
+    static int calcLength(double value) { return CycleDsp::irImpulseLength(value); }
+    static double calcKnobValue(int length) { return CycleDsp::irImpulseLengthValue(length); }
+    static double calcPostamp(double value) { return CycleDsp::irPostGain(value); }
+    static double calcPrefilt(double value) { return CycleDsp::irPrefilterAmount(value); }
 
     bool doParamChange(int param, double value, bool doFurtherUpdate) override;
 

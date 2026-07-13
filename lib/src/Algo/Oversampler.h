@@ -7,6 +7,7 @@ class SingletonRepo;
 
 class Oversampler {
 public:
+    explicit Oversampler(int kernelSize = 32);
     explicit Oversampler(SingletonRepo* repo, int kernelSize = 32);
     virtual ~Oversampler();
 
@@ -48,17 +49,31 @@ public:
     Buffer<float> getMemoryBuffer(int size);
     Buffer<float> getTail();
 
-    void setMemoryBuf(const Buffer<float>& buffer) { memoryBuf = buffer; }
+    void setMemoryBuffer(const Buffer<float>& buffer) { memoryBuf = buffer; }
+    void setMemoryBuf(const Buffer<float>& buffer) { setMemoryBuffer(buffer); }
     int getOversampleFactor() const { return oversampleFactor; }
 
 private:
     void updateTaps();
+
+#ifdef USE_ACCELERATE
+    void filterAccelerate(
+            Buffer<float> samples,
+            Buffer<float> delay,
+            Buffer<float> inputScratch,
+            Buffer<float> outputScratch);
+#endif
 
     int phase, oversampleFactor;
 
     ScopedAlloc<Int8u> stateUpBuf, stateDownBuf;
     ScopedAlloc<Int8u> workBuffUp, workBuffDown;
     ScopedAlloc<Float32> firTaps, firUpDly, firDownDly;
+
+#ifdef USE_ACCELERATE
+    ScopedAlloc<Float32> accelInputUp, accelInputDown;
+    ScopedAlloc<Float32> accelOutputUp, accelOutputDown;
+#endif
 
     Buffer<float> memoryBuf, audioBuf;
     Buffer<float>* oversampBuf;

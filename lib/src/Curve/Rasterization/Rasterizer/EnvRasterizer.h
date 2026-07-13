@@ -18,7 +18,6 @@
 using std::vector;
 
 class GuideCurveProvider;
-class SingletonRepo;
 
 /**
  * Policies:
@@ -29,8 +28,7 @@ class SingletonRepo;
  *
  */
 class EnvRasterizer :
-        public Rasterization::BaseRasterizer
-    ,   public SingletonAccessor {
+        public Rasterization::BaseRasterizer {
 public:
     using GuideCurveContext = Rasterization::GuideCurveContext;
 
@@ -60,7 +58,9 @@ public:
 
     /* ----------------------------------------------------------------------------- */
 
-    explicit EnvRasterizer(SingletonRepo* repo, GuideCurveProvider* guideCurveProvider, const String& name = String());
+    explicit EnvRasterizer(
+            GuideCurveProvider* guideCurveProvider = nullptr,
+            const String& name = String());
     EnvRasterizer& operator =(const EnvRasterizer& copy);
     EnvRasterizer(const EnvRasterizer& copy);
     ~EnvRasterizer() override;
@@ -91,6 +91,7 @@ public:
     bool simulateStop(double& lastPosition);
 
     Mesh* getCurrentMesh();
+    const String& getName() const { return name; }
 
     void calcIntercepts();
     void cleanUp();
@@ -98,7 +99,7 @@ public:
     void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
     void updateWaveform() override;
     void updateWaveform(Mesh* mesh, float oscPhase = 0.f);
-    void reset() override { cleanUp(); }
+    void reset() { cleanUp(); }
 
     bool canRasterizeWaveform();
 
@@ -192,6 +193,7 @@ private:
 
     int paddingSize;
     bool unsampleable, needsResorting;
+    String name;
 
     JUCE_LEAK_DETECTOR(EnvRasterizer)
 };

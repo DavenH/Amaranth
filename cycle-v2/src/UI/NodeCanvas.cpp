@@ -5222,7 +5222,7 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
         return root;
     }
 
-    const GraphAudioResult result = GraphAudioExecutor().process(graph, compileResult.plan, frameCount);
+    const GraphAudioResult result = audioExecutor.process(graph, compileResult.plan, frameCount);
     root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
 
     Array<var> samples;

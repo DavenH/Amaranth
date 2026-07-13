@@ -253,6 +253,10 @@ namespace Rasterization {
             dif.threshLT(1e-6f);
             slp.div(dif);
             are.mul(dif).mul(0.5f);
+
+            diffX.offset(resSubOne).zero();
+            slope.offset(resSubOne).zero();
+            area.offset(resSubOne).zero();
         }
     };
 }

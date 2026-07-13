@@ -1,5 +1,7 @@
 #include "GraphNodeFactory.h"
 
+#include "../Nodes/Envelope/EnvelopeMeshState.h"
+
 namespace CycleV2 {
 
 Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> position) const {
@@ -89,7 +91,8 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
             node.title = "Envelope";
             node.subtitle = "control curve";
             node.parameters = {
-                    { "logarithmic", "Logarithmic", "0" }
+                    { "logarithmic", "Logarithmic", "0" },
+                    { "envelope.snapshot", "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
             };
             node.outputs = { output("env", "Env", PortDomain::EnvelopeSignal) };
             break;
