@@ -54,6 +54,7 @@ IrSignalProcessor::IrSignalProcessor() {
     rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
     rasterizer.setScalingMode(FXRasterizer::Bipolar);
     rasterizer.setMesh(&mesh);
+    impulseOversampler.setOversampleFactor(2);
 }
 
 IrSignalProcessor::~IrSignalProcessor() {
@@ -116,6 +117,7 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
     const bool lengthChanged = impulse.size() != impulseLength;
     impulse.resize(impulseLength);
     rawImpulse.resize(impulseLength);
+    oversampledImpulse.resize(impulseLength * (size_t) impulseOversampler.getOversampleFactor());
     prefilterLevels.resize(impulseLength / 2);
     if (lengthChanged) {
         impulseTransform.allocate((int) impulseLength, Transform::DivFwdByN, true);
@@ -125,8 +127,16 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
 
     Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
     if (rasterizer.canRasterizeWaveform()) {
-        const float delta = (1.f - kIrPadding) / (float) std::max<size_t>(1, impulse.size() - 1);
-        (void) rasterizer.sampler().sampleWithInterval(rawImpulseBuffer, delta, kIrPadding);
+        const double delta = (1. - kIrPadding) / (double) std::max<size_t>(1, impulse.size() - 1);
+        Buffer<float> oversampledBuffer(
+                oversampledImpulse.data(),
+                (int) oversampledImpulse.size());
+        impulseOversampler.setMemoryBuffer(oversampledBuffer);
+        (void) rasterizer.sampler().samplePerfectly(
+                delta / impulseOversampler.getOversampleFactor(),
+                oversampledBuffer,
+                kIrPadding);
+        impulseOversampler.sampleDown(oversampledBuffer, rawImpulseBuffer);
     } else {
         rawImpulseBuffer.zero();
         rawImpulseBuffer.front() = 1.f;

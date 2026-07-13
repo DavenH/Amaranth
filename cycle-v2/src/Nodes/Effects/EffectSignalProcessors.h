@@ -3,6 +3,7 @@
 #include "../../Runtime/UnarySignalProcessor.h"
 
 #include <Algo/ConvReverb.h>
+#include <Algo/Oversampler.h>
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>
@@ -35,9 +36,11 @@ private:
     String lastVertexState;
     std::vector<float> impulse;
     std::vector<float> rawImpulse;
+    std::vector<float> oversampledImpulse;
     std::vector<float> prefilterLevels;
     std::vector<float> convolutionOutput;
     Transform impulseTransform;
+    Oversampler impulseOversampler { 8 };
     BlockConvolver blockConvolver;
     BlockConvolver traversalConvolver;
     BlockConvolver* activeConvolver { &blockConvolver };

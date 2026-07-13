@@ -293,9 +293,10 @@ Current status:
 - Cycle 1 and Cycle 2 share the authoritative impulse-length, post-gain, and
   cubic prefilter mappings. Both apply the prefilter to the impulse in the
   frequency domain before convolution.
-- Curve sampling remains adapter-local. Cycle 1 samples the audio impulse at
-  2x and downsamples it, while Cycle 2 currently samples directly at the target
-  length, so curve-to-impulse parity is not yet complete.
+- Curve sampling remains adapter-local, but both audio paths use the Cycle 1
+  sequence: sample the bipolar rasterizer perfectly at 2x, then filter and
+  downsample with `Oversampler(8)`. A cross-adapter kernel golden vector is
+  still required to lock that parity down.
 
 Target:
 
