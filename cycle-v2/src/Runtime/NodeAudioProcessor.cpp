@@ -127,6 +127,8 @@ public:
             irDsp.prepareExecution(spec);
         } else if (processorRole == AudioModuleRole::Reverb) {
             reverbDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::Envelope) {
+            envelopeDsp.prepareExecution(spec);
         }
     }
 
@@ -137,6 +139,8 @@ public:
             irDsp.adoptConfiguration(configuration);
         } else if (processorRole == AudioModuleRole::Reverb) {
             reverbDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::Envelope) {
+            envelopeDsp.adoptConfiguration(configuration);
         }
     }
 

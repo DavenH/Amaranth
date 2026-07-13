@@ -2,6 +2,7 @@
 
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "../Nodes/Effects/EffectSignalProcessors.h"
+#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 namespace CycleV2 {
 
@@ -32,6 +33,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
 
         case AudioModuleRole::Reverb:
             return ReverbSignalProcessor::buildConfiguration(parameters);
+
+        case AudioModuleRole::Envelope:
+            return EnvelopeSignalProcessor::buildConfiguration(parameters);
 
         default:
             return {};

@@ -15,12 +15,79 @@ EnvelopeSignalProcessor::~EnvelopeSignalProcessor() {
     mesh.destroy();
 }
 
+std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfiguration(
+        const std::vector<NodeParameter>& parameters) {
+    if (Curve::table == nullptr) {
+        Curve::calcTable();
+    }
+
+    auto result = std::make_shared<EnvelopeConfiguration>();
+    result->mesh = std::shared_ptr<EnvelopeMesh>(
+            new EnvelopeMesh("CycleV2EnvelopeConfiguration"),
+            [](EnvelopeMesh* meshToDelete) {
+                meshToDelete->destroy();
+                delete meshToDelete;
+            });
+
+    String snapshot;
+    for (const auto& parameter : parameters) {
+        if (parameter.id == EnvelopeMeshState::parameterId()) {
+            snapshot = parameter.value;
+            break;
+        }
+    }
+
+    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
+        return {};
+    }
+
+    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, "CycleV2EnvelopeConfigurationRasterizer");
+    result->rasterizer->setMesh(result->mesh.get());
+    result->rasterizer->setMorphPosition({
+            0.f,
+            parameterFloat(parameters, "red", 0.f),
+            parameterFloat(parameters, "blue", 0.f)
+    });
+    result->rasterizer->updateWaveform(result->mesh.get(), 0.f);
+    result->rasterizer->validateState();
+    if (!result->rasterizer->canRasterizeWaveform()) {
+        return {};
+    }
+
+    result->level = parameterFloat(parameters, "level", 1.f);
+    result->logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
+    return result;
+}
+
+void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec&) {
+    if (configuration == nullptr || pendingRevision == adoptedRevision) {
+        return;
+    }
+
+    rasterizer.adoptPreparedData(*configuration->rasterizer);
+    props.logarithmic = configuration->logarithmic;
+    level = configuration->level;
+    modelReady = true;
+    adoptedRevision = pendingRevision;
+}
+
+void EnvelopeSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
+    if (published.revision == adoptedRevision || published.value == nullptr
+            || published.value->role() != AudioModuleRole::Envelope) {
+        return;
+    }
+
+    configuration = std::static_pointer_cast<const EnvelopeConfiguration>(published.value);
+    pendingRevision = published.revision;
+}
+
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     auto output = makeOutputPayload(context, 0);
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    if (syncModel(context.parameters)) {
+    const bool ready = configuration != nullptr ? modelReady : syncModel(context.parameters);
+    if (ready) {
         size_t rendered = 0;
 
         for (const auto& event : context.voice.events) {
@@ -41,7 +108,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
     }
 
-    outputBuffer.mul(parameterFloat(context.parameters, "level", 1.f));
+    outputBuffer.mul(configuration != nullptr ? level : parameterFloat(context.parameters, "level", 1.f));
     publishVectorAsTraversalGrid(output, defaultTraversalColumns, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
