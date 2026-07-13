@@ -115,6 +115,36 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
     REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f });
 }
 
+TEST_CASE("Graph audio executor preserves per-node processor state between blocks", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Delay, "delay", { 260.f, 0.f }));
+    graph.getNodesForEditing().back().parameters = {
+            { "enabled", "Enabled", "1" },
+            { "time", "Time", "0" },
+            { "feedback", "Feedback", "1" },
+            { "wet", "Wet", "1" }
+    };
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addEdge({ "wave", "out", "delay", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "delay", "time", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    AudioProcessTiming timing;
+    timing.sampleRate = 128.0;
+    const auto first = executor.process(graph, compileResult.plan, 8, timing);
+    const auto second = executor.process(graph, compileResult.plan, 8, timing);
+    const auto fresh = GraphAudioExecutor().process(graph, compileResult.plan, 8, timing);
+
+    REQUIRE(samples(first.output) == samples(fresh.output));
+    REQUIRE(samples(second.output) != samples(fresh.output));
+}
+
 TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

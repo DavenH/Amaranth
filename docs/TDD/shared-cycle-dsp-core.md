@@ -347,10 +347,12 @@ Current status:
 - Cycle 2 persists editable envelope meshes as immutable JSON snapshots using
   the mature `EnvelopeMesh` serialization contract, including morph vertices
   and loop/sustain markers.
+- Cycle 2 graph executors retain processors by node identity across blocks, so
+  per-voice envelope and streaming-effect state has a stable owner.
 - Runtime envelope processing remains simplified.
-- Cycle 2's runtime has no note-on/note-off lifecycle input or persistent
-  per-voice processor ownership. Add those runtime surfaces before integrating
-  `EnvRasterizer`. Do not bless the constant-level processor as parity.
+- Cycle 2's runtime still has no note-on/note-off lifecycle input. Add that
+  surface before integrating `EnvRasterizer`. Do not bless the constant-level
+  processor as parity.
 
 Target:
 
@@ -465,6 +467,7 @@ Complete one module end-to-end before starting the next:
 - [ ] Characterize, extract, migrate, and test Envelope.
 - [x] Remove `EnvRasterizer`'s application/singleton ownership dependency.
 - [x] Add Cycle 2 envelope mesh snapshot persistence.
+- [x] Retain Cycle 2 node processors across graph audio blocks.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
 - [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.

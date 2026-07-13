@@ -3,6 +3,8 @@
 #include "NodeAudioProcessor.h"
 #include "GraphRuntime.h"
 
+#include <memory>
+
 namespace CycleV2 {
 
 struct NodeAudioResult {
@@ -26,6 +28,12 @@ public:
             AudioProcessTiming timing) const;
 
 private:
+    struct CachedProcessor {
+        String nodeId;
+        AudioModuleRole role { AudioModuleRole::None };
+        std::unique_ptr<NodeAudioProcessor> processor;
+    };
+
     struct PortOutput {
         String nodeId;
         String portId;
@@ -37,8 +45,14 @@ private:
             const String& nodeId,
             const String& portId) const;
     bool isOutputNode(const NodeGraph& graph, const String& nodeId) const;
+    NodeAudioProcessor* processorFor(
+            const String& nodeId,
+            AudioModuleRole role,
+            const NodeAudioProcessorFactory& factory) const;
+    void removeStaleProcessors(const GraphExecutionPlan& plan) const;
 
     mutable AudioProcessWorkArena workArena;
+    mutable std::vector<CachedProcessor> processors;
 };
 
 }

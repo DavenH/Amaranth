@@ -17,6 +17,7 @@
 #include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPreviewExecutor.h"
+#include "../Runtime/GraphAudioExecutor.h"
 #include "../Runtime/GraphRuntime.h"
 #include "NodeCanvasGlRenderer.h"
 
@@ -96,6 +97,7 @@ private:
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
+    mutable GraphAudioExecutor audioExecutor;
     std::vector<String> undoStack;
     std::vector<String> redoStack;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
