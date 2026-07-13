@@ -7,6 +7,7 @@ class SingletonRepo;
 
 class Oversampler {
 public:
+    explicit Oversampler(int kernelSize = 32);
     explicit Oversampler(SingletonRepo* repo, int kernelSize = 32);
     virtual ~Oversampler();
 
@@ -48,7 +49,8 @@ public:
     Buffer<float> getMemoryBuffer(int size);
     Buffer<float> getTail();
 
-    void setMemoryBuf(const Buffer<float>& buffer) { memoryBuf = buffer; }
+    void setMemoryBuffer(const Buffer<float>& buffer) { memoryBuf = buffer; }
+    void setMemoryBuf(const Buffer<float>& buffer) { setMemoryBuffer(buffer); }
     int getOversampleFactor() const { return oversampleFactor; }
 
 private:

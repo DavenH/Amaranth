@@ -315,6 +315,9 @@ Current status:
 - Cycle 2 shares rasterizer/table semantics for traversal and preview.
 - Realtime oversampling and latency behavior are not shared with Cycle 1
   `Waveshaper::processBuffer`.
+- `Oversampler` can be constructed without application ownership and accepts
+  explicit bounded scratch memory. The legacy Cycle 1 constructor remains as
+  an adapter that obtains its existing pool from `SingletonRepo`.
 
 Target:
 

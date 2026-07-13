@@ -8,9 +8,8 @@
 #include <Accelerate/Accelerate.h>
 #endif
 
-Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
-        memoryBuf        (getObj(MemoryPool).getAudioPool())
-    ,   oversampleFactor (1)
+Oversampler::Oversampler(int kernelSize) :
+        oversampleFactor (1)
   #ifdef USE_IPP
     ,   filterDownState  (nullptr)
     ,   filterUpState    (nullptr)
@@ -18,6 +17,11 @@ Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
     ,   oversampBuf      (nullptr)
     ,   phase            (0) {
     setKernelSize(2 * kernelSize);
+}
+
+Oversampler::Oversampler(SingletonRepo* repo, int kernelSize) :
+        Oversampler(kernelSize) {
+    memoryBuf = getObj(MemoryPool).getAudioPool();
 }
 
 Oversampler::~Oversampler() {
