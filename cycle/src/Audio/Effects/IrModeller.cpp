@@ -193,13 +193,7 @@ void IrModeller::rasterizeImpulse(
         double phase = getRealConstant(IrModellerPadding);
 
         if (isAudioThread) {
-            delta /= (double) oversampler.getOversampleFactor();
-            int samplingSize = impulse.size() * oversampler.getOversampleFactor();
-
-            Buffer<Float32> buff = oversampler.getMemoryBuffer(samplingSize);
-            (void) waveform.sampler().samplePerfectly(delta, buff, phase);
-
-            oversampler.sampleDown(buff, impulse);
+            CycleDsp::rasterizeIrImpulse(waveform.sampler(), impulse, oversampler, phase);
         } else {
             (void) waveform.sampler().sampleWithInterval(impulse, delta, phase);
         }

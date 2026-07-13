@@ -127,16 +127,15 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
 
     Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
     if (rasterizer.canRasterizeWaveform()) {
-        const double delta = (1. - kIrPadding) / (double) std::max<size_t>(1, impulse.size() - 1);
         Buffer<float> oversampledBuffer(
                 oversampledImpulse.data(),
                 (int) oversampledImpulse.size());
         impulseOversampler.setMemoryBuffer(oversampledBuffer);
-        (void) rasterizer.sampler().samplePerfectly(
-                delta / impulseOversampler.getOversampleFactor(),
-                oversampledBuffer,
+        CycleDsp::rasterizeIrImpulse(
+                rasterizer.sampler(),
+                rawImpulseBuffer,
+                impulseOversampler,
                 kIrPadding);
-        impulseOversampler.sampleDown(oversampledBuffer, rawImpulseBuffer);
     } else {
         rawImpulseBuffer.zero();
         rawImpulseBuffer.front() = 1.f;
