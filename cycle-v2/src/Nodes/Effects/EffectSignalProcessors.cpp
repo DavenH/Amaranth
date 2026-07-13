@@ -38,11 +38,6 @@ String parameterValue(
     return fallback;
 }
 
-size_t impulseLengthFor(float value, size_t minimumLength = 32) {
-    const int exponent = jlimit(5, 12, 5 + (int) (value * 7.f));
-    return std::max(minimumLength, (size_t) 1 << exponent);
-}
-
 std::vector<Effect2DVertexState> defaultIrVertices() {
     return {
             { 0.f, 0.5f, 1.f },
@@ -68,9 +63,9 @@ IrSignalProcessor::~IrSignalProcessor() {
 void IrSignalProcessor::prepareProcess(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming&) {
-    postGain = parameterFloat(parametersToUse, "post", 0.5f) * 2.f;
+    postGain = CycleDsp::irPostGain(parameterFloat(parametersToUse, "post", 0.5f));
     highPass = parameterFloat(parametersToUse, "highPass", 0.5f);
-    impulseLength = impulseLengthFor(parameterFloat(parametersToUse, "size", 0.5f));
+    impulseLength = (size_t) CycleDsp::irImpulseLength(parameterFloat(parametersToUse, "size", 0.5f));
     syncImpulse(parametersToUse);
 }
 
@@ -103,21 +98,14 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 
     VecOps::copy(convolutionOutput.data(), buffer.get(), buffer.size());
 
-    if (highPass > 0.f && buffer.size() > 1) {
-        float previous = buffer.front();
-        for (int i = 1; i < buffer.size(); ++i) {
-            const float current = buffer[i];
-            buffer[i] = current - previous * highPass;
-            previous = current;
-        }
-    }
-
     buffer.mul(postGain);
 }
 
 void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
     const String serializedVertices = parameterValue(parametersToUse, Effect2DMeshState::parameterId());
-    if (serializedVertices == lastVertexState && impulse.size() == impulseLength) {
+    if (serializedVertices == lastVertexState
+            && impulse.size() == impulseLength
+            && impulseHighPass == highPass) {
         return;
     }
 
@@ -125,18 +113,33 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
     lastVertexState = serializedVertices;
     ensureCurveTable();
 
+    const bool lengthChanged = impulse.size() != impulseLength;
     impulse.resize(impulseLength);
+    rawImpulse.resize(impulseLength);
+    prefilterLevels.resize(impulseLength / 2);
+    if (lengthChanged) {
+        impulseTransform.allocate((int) impulseLength, Transform::DivFwdByN, true);
+    }
     rasterizer.updateGeometry();
     rasterizer.updateWaveform();
 
-    Buffer<float> impulseBuffer(impulse.data(), (int) impulse.size());
+    Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
     if (rasterizer.canRasterizeWaveform()) {
         const float delta = (1.f - kIrPadding) / (float) std::max<size_t>(1, impulse.size() - 1);
-        (void) rasterizer.sampler().sampleWithInterval(impulseBuffer, delta, kIrPadding);
+        (void) rasterizer.sampler().sampleWithInterval(rawImpulseBuffer, delta, kIrPadding);
     } else {
-        impulseBuffer.zero();
-        impulseBuffer.front() = 1.f;
+        rawImpulseBuffer.zero();
+        rawImpulseBuffer.front() = 1.f;
     }
+
+    Buffer<float> levelBuffer(prefilterLevels.data(), (int) prefilterLevels.size());
+    CycleDsp::buildIrPrefilterLevels(levelBuffer, highPass);
+    CycleDsp::applyIrFrequencyPrefilter(
+            rawImpulseBuffer,
+            { impulse.data(), (int) impulse.size() },
+            levelBuffer,
+            impulseTransform);
+    impulseHighPass = highPass;
     ++impulseRevision;
 }
 

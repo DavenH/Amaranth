@@ -290,9 +290,12 @@ Current status:
 
 - Cycle 2 uses `FXRasterizer` plus the shared streaming `BlockConvolver`, with
   separate block and traversal state.
-- Adapter-local impulse rasterization and high-pass handling remain; Cycle 1
-  applies prefiltering to the impulse in the frequency domain, so do not treat
-  Cycle 2's output-domain high-pass approximation as parity.
+- Cycle 1 and Cycle 2 share the authoritative impulse-length, post-gain, and
+  cubic prefilter mappings. Both apply the prefilter to the impulse in the
+  frequency domain before convolution.
+- Curve sampling remains adapter-local. Cycle 1 samples the audio impulse at
+  2x and downsamples it, while Cycle 2 currently samples directly at the target
+  length, so curve-to-impulse parity is not yet complete.
 
 Target:
 

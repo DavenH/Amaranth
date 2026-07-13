@@ -4,6 +4,7 @@
 
 #include <Algo/ConvReverb.h>
 #include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 
@@ -33,12 +34,16 @@ private:
     FXRasterizer rasterizer { nullptr, "CycleV2IrDspRasterizer" };
     String lastVertexState;
     std::vector<float> impulse;
+    std::vector<float> rawImpulse;
+    std::vector<float> prefilterLevels;
     std::vector<float> convolutionOutput;
+    Transform impulseTransform;
     BlockConvolver blockConvolver;
     BlockConvolver traversalConvolver;
     BlockConvolver* activeConvolver { &blockConvolver };
     float postGain { 1.f };
     float highPass { 0.f };
+    float impulseHighPass { -1.f };
     size_t impulseLength { 1 };
     size_t impulseRevision {};
     size_t blockImpulseRevision {};

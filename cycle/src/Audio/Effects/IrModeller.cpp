@@ -156,18 +156,17 @@ void IrModeller::rasterizeGraphicImpulse() {
 }
 
 void IrModeller::filterImpulse(ConvState& chan) {
-    int size = chan.impulse.size();
-    int halfSize = size / 2;
     bool isGraphic = (&chan == &graphic);
 
     Buffer<float> levelBuff = isGraphic ? graphic.levels : audio.levels;
-    Buffer<float> mags = chan.fft.getMagnitudes();
-
-    chan.fft.forward(chan.rawImpulse);
-    mags.mul(levelBuff);
-    chan.fft.inverse(chan.impulse);
+    CycleDsp::applyIrFrequencyPrefilter(
+            chan.rawImpulse,
+            chan.impulse,
+            levelBuff,
+            chan.fft);
 
     if (isGraphic) {
+        Buffer<float> mags = chan.fft.getMagnitudes();
         Arithmetic::applyLogMapping(mags, 1000);
         mags.threshLT(0.f).mul(0.99f / mags.max());
     }
@@ -530,7 +529,5 @@ void IrModeller::audioFileModelled() {
 }
 
 void IrModeller::calcPrefiltLevels(Buffer<float> buff) {
-    double c = calcPrefilt(prefilt);
-
-    buff.set(1.f).zero(c * buff.size());
+    CycleDsp::buildIrPrefilterLevels(buff, prefilt.getTargetValue());
 }
