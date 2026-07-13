@@ -76,6 +76,94 @@ configuration, state, and lifecycle conventions across these families:
 Each family may expose a specialized interface, but shared algorithmic behavior
 must remain below both application adapters.
 
+## Sharing Is The Default
+
+Cycle 1 and Cycle 2 are two applications of the same synthesizer, not two DSP
+products. Any behavior that changes generated samples, control signals,
+spectra, timing, latency, tails, or rasterized curves is presumed shared until
+a documented product decision proves otherwise. The burden is on divergence,
+not reuse.
+
+This includes more than conventional effects:
+
+- curve evaluation, interpolation, mesh slicing, intercept construction,
+  padding, guide-curve application, waveform baking, and rasterizer sampling
+- oscillator and wavetable generation, morph traversal, phase handling,
+  oversampling, unison generation, and voice-level filtering
+- envelopes, loop/sustain/release policy, guide curves, scratch/control
+  generation, deterministic noise, and modulation transfer
+- Delay, Reverb, IR, Waveshaper, Equalizer, Phaser, Chorus, Unison, filters, and
+  future effects
+- FFT/IFFT framing, overlap, windows, resampling, convolution, and spectral
+  transforms
+- analysis algorithms such as pitch tracking and spectrogram generation when
+  both products expose the same analysis feature
+
+Existing code location does not determine ownership. A mature implementation
+under `cycle/src/` is the behavioral authority to characterize, but its
+signal-affecting core should move into `AmaranthLib` once UI, singleton, and
+document dependencies are adapted away. Conversely, code already under
+`lib/src/` is not automatically a good shared boundary if it still reaches
+application services or combines configuration, execution state, and UI
+presentation.
+
+### What Remains Application-Specific
+
+- Cycle 1 parameter objects, `SingletonRepo` aliases, updater wiring, document
+  ownership, and audio-source/voice scheduling
+- Cycle 2 graph nodes, ports, plan compilation, configuration publication,
+  traversal-grid routing, and node/voice identity
+- host/plugin buffer adaptation and application-specific channel routing
+- editor components, selection, undo, repaint/invalidation, and visualization
+  composition
+- serialization envelopes belonging to a document or graph format; the
+  immutable domain snapshot they decode into may still be shared
+- deliberately qualitative previews, provided their difference from audio DSP
+  is named and tested
+
+Adapters may map parameters, timing, channels, lifecycle events, and immutable
+model snapshots into shared types. They must not evaluate curves, synthesize
+kernels, implement filters, perform interpolation, or reproduce state-machine
+semantics locally.
+
+### Expected End State
+
+`AmaranthLib` owns the domain configurations, algorithms, prepared data, and
+mutable execution-state types. Cycle 1 and Cycle 2 each own small adapters that:
+
+1. translate application state into immutable shared configuration,
+2. publish or install that configuration at the application's safe boundary,
+3. provide per-stream mutable state and bounded scratch,
+4. translate buffers and lifecycle events, and
+5. report shared latency, tail, and failure information back to the app.
+
+Cycle 2 classes named `*Dsp` or `*SignalProcessor` should therefore trend toward
+orchestration-only adapters. If such a class contains domain math, curve
+evaluation, kernel construction, interpolation, or a mature state machine, that
+logic is a candidate for the shared layer.
+
+### Migration Waves
+
+1. **Rasterization substrate:** finish making mesh slicing, waveform baking,
+   envelope/FX/point-list sampling, guide policies, and prepared rasterizer data
+   immutable and application-neutral.
+2. **Voice generation:** extract `VoiceMeshRasterizer`, `GraphicRasterizer`,
+   `E3Rasterizer`, time-column behavior, morph/phase policy, oscillator transfer,
+   unison, and voice filters behind shared configuration/state contracts.
+3. **Remaining effects:** complete Delay, Reverb, IR, and Waveshaper, then move
+   Equalizer, Phaser, Chorus, Unison, and shared filter behavior through the
+   same characterize-extract-migrate sequence.
+4. **Control generators:** complete Envelope and Guide Curve snapshots,
+   lifecycle, deterministic noise, attachments, and scratch/control semantics.
+5. **Framed/spectral DSP:** share FFT framing and overlap policy where product
+   behavior matches, then spectral editing and resampling contracts.
+6. **Analysis:** expose pitch, spectrogram, and related analysis through shared
+   request/result types when Cycle 2 consumes them.
+
+Each wave migrates Cycle 1 first or in lockstep because Cycle 1 remains the
+authority for DSP discrepancies. Cycle 2 must not land an approximation while
+waiting for extraction.
+
 ## Streaming Contract
 
 Streaming processors must separate preparation, immutable configuration,
@@ -266,6 +354,10 @@ Current status:
 - Cycle 1 streaming state is implemented by the UI-free `ConvReverb` in
   `AmaranthLib`. Reuse its two-stage streaming algorithm behind the shared
   Reverb core; do not duplicate it in a new class.
+- Cycle 2 builds deterministic kernels during graph compilation, publishes
+  immutable revisions, and prepares independent realtime/traversal convolution
+  state before processing. Kernel changes currently reset tails rather than
+  crossfade them.
 
 Target:
 
@@ -335,6 +427,9 @@ Current status:
 - `Oversampler` can be constructed without application ownership and accepts
   explicit bounded scratch memory. The legacy Cycle 1 constructor remains as
   an adapter that obtains its existing pool from `SingletonRepo`.
+- Cycle 2 builds and publishes immutable transfer tables, gain mappings, and
+  oversampling specifications during graph compilation. Retained processors
+  reserve oversampling scratch during execution preparation.
 
 Target:
 
@@ -368,9 +463,10 @@ Current status:
   note-off, reset, and retrigger events. Processor ownership is isolated by
   node and voice identity, and active-note snapshot edits preserve validated
   playback position.
-- Snapshot parsing and rasterization still occur from the process parameter
-  path. Move configuration construction and publication off the audio thread
-  before treating the adapter as realtime-ready.
+- Cycle 2 parses, validates, and rasterizes envelope snapshots during graph
+  compilation. Prepared rasterizer data is published immutably and deep-copied
+  into private per-voice playback state while preserving validated active-note
+  position.
 
 Target:
 
@@ -466,9 +562,11 @@ Complete one module end-to-end before starting the next:
 4. Migrate Cycle 1, then Cycle 2, to the shared Delay core.
 5. Add core, streaming-invariant, adapter, traversal, and realtime-safety tests.
 6. Remove obsolete Delay approximation code and update this checklist.
-7. Repeat the same gated sequence for Reverb, IR Modeller, Waveshaper, and
-   Envelope.
-8. Audit FFT/IFFT and Guide Curve, extracting only duplicated shared policy.
+7. Repeat the same gated sequence for every signal-affecting module, beginning
+   with Reverb, IR Modeller, Waveshaper, Envelope, and the rasterization/voice
+   substrate.
+8. Continue through Equalizer, Phaser, Chorus, Unison, voice filters,
+   oscillator generation, FFT/IFFT, Guide Curve, and shared analysis features.
 
 ## Progress Checklist
 
@@ -487,6 +585,11 @@ Complete one module end-to-end before starting the next:
 - [x] Add Cycle 2 envelope mesh snapshot persistence.
 - [x] Retain Cycle 2 node processors across graph audio blocks.
 - [x] Integrate Cycle 2 envelope snapshots and lifecycle with `EnvRasterizer`.
+- [x] Publish immutable Cycle 2 configurations for Reverb, IR, Waveshaper, and Envelope.
+- [ ] Inventory Cycle 1 rasterizer/voice-generation dependencies and define shared snapshots.
+- [ ] Move application-neutral `VoiceMeshRasterizer`, `GraphicRasterizer`, `E3Rasterizer`, and time-column policy into `AmaranthLib`.
+- [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
+- [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
 - [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.
