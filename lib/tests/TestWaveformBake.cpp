@@ -127,6 +127,8 @@ TEST_CASE("Waveform bake path keeps MeshRasterizer wave snapshots deterministic"
     second.calcCrossPoints();
     second.makeCopy();
 
+    REQUIRE(first.getDiffX().back() == 0.f);
+    REQUIRE(first.getSlopes().back() == 0.f);
     RasterizerCompare::requireSnapshotNear(
             RasterizerCompare::capture(second),
             RasterizerCompare::capture(first));
