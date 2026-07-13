@@ -1,5 +1,20 @@
 # Refactor Notes
 
+## Cycle 2 DSP Configuration Publication
+
+`UnarySignalProcessor::process` currently calls `prepareProcess` with live node
+parameters immediately before processing, while `NodeAudioProcessor::prepare`
+receives only a frame count. IR, Reverb, Waveshaper, and Envelope therefore
+parse snapshots, rasterize curves, allocate buffers, and construct kernels or
+tables from the execution path.
+
+Add a graph preparation/publication phase that builds immutable per-node DSP
+configuration from parameters and timing off the audio thread. Retained
+per-node/per-voice processors should consume published configurations at block
+boundaries while keeping convolution tails, delay lines, and envelope playback
+as separately owned mutable state. Apply this boundary to all affected node
+families together rather than adding an IR-specific lifecycle.
+
 ## Cycle 2 Node Canvas Responsibilities
 
 `cycle-v2/src/UI/NodeCanvas.*` is currently carrying rendering, hit-testing, graph editing dispatch, snapshot save/load, undo/redo, and graph-status presentation. This was acceptable for fast prototyping, but it should be split before deeper interaction work lands.

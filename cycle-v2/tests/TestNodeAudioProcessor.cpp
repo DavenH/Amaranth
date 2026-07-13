@@ -573,6 +573,10 @@ TEST_CASE("IR processor transforms block and traversal grid through convolution"
     REQUIRE(output(context).traversalGrid.rows == 4);
     REQUIRE(output(context).block.samples != std::vector<float> { 1.f, 0.f, 0.f, 0.f });
     REQUIRE(output(context).traversalGrid.values != context.inputs.front().traversalGrid.values);
+    for (size_t row = 0; row < context.frameCount; ++row) {
+        REQUIRE(output(context).traversalGrid.values[row]
+                == Catch::Approx(output(context).block.samples[row]).margin(1.0e-5f));
+    }
 }
 
 TEST_CASE("IR processor uses Cycle 1 post-gain and prefilter policies", "[cycle-v2][runtime][ir]") {
@@ -634,6 +638,44 @@ TEST_CASE("Disabled IR processor passes its input through", "[cycle-v2][runtime]
     factory.create(AudioModuleRole::ImpulseResponse)->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 1.f, -0.5f, 0.25f, 0.f });
+}
+
+TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime][ir]") {
+    NodeAudioProcessorFactory factory;
+    const std::vector<NodeParameter> parameters {
+            { "size", "Size", "0" },
+            { "post", "Post", "0.5" },
+            { "highPass", "HighPass", "0" },
+            {
+                    "Effect Vertices",
+                    "Effect Vertices",
+                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
+            }
+    };
+    std::vector<float> reference;
+
+    for (ChannelLayout layout : {
+            ChannelLayout::Mono,
+            ChannelLayout::LinkedStereo,
+            ChannelLayout::Left,
+            ChannelLayout::Right,
+            ChannelLayout::StereoPair }) {
+        AudioProcessContext context;
+        context.frameCount = 64;
+        context.inputs = { payload(std::vector<float>(64, 0.f)) };
+        context.inputs.front().block.samples.front() = 1.f;
+        context.inputs.front().channelLayout = layout;
+        context.parameters = parameters;
+
+        factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+
+        REQUIRE(output(context).channelLayout == layout);
+        if (reference.empty()) {
+            reference = output(context).block.samples;
+        } else {
+            REQUIRE(output(context).block.samples == reference);
+        }
+    }
 }
 
 TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cycle-v2][runtime][ir]") {

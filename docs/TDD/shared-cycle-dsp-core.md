@@ -298,10 +298,16 @@ Current status:
 - A shared-core golden vector locks the complete curve-to-kernel path, including
   oversampler transients and the frequency-domain prefilter.
 - Cycle 2 adapter tests cover post-gain and prefilter policy, disabled
-  passthrough, split-block equivalence, and complete minimum-kernel tail output.
+  passthrough, channel metadata, split-block equivalence, first-column traversal
+  equivalence, and complete minimum-kernel tail output.
 - The macOS Accelerate oversampler uses bounded, preallocated FIR history and
   scratch buffers; the former out-of-bounds filtering made IR kernels
   nondeterministic and was exposed by the split-block fixture.
+- Kernel parsing, rasterization, FFT construction, and convolver initialization
+  still run below `UnarySignalProcessor::process`. Cycle 2 needs a graph-wide
+  immutable configuration publication phase before IR, Reverb, Waveshaper, and
+  Envelope can meet the realtime contract; moving IR alone would create a
+  second lifecycle rather than solve the shared boundary.
 
 Target:
 
@@ -313,7 +319,7 @@ Target:
 Tests:
 
 - curve-to-impulse golden vectors (shared core covered; adapter fixtures remain)
-- high-pass, post-gain, and disabled/bypass behavior (Cycle 2 covered; channel remains)
+- high-pass, post-gain, channel metadata, and disabled/bypass behavior (Cycle 2 covered)
 - split-block equivalence and complete tail flushing (Cycle 2 covered)
 - block/traversal equivalence only where the traversal time contract permits it
 
