@@ -132,6 +132,29 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
 }
 
+TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2][graph][configuration]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 0.f, 0.f }));
+    GraphCompiler compiler;
+
+    const auto first = compiler.compile(graph);
+    const auto unchanged = compiler.compile(graph);
+    graph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    const auto changed = compiler.compile(graph);
+
+    REQUIRE(first.succeeded());
+    REQUIRE(first.plan.steps.front().configuration.isValid());
+    REQUIRE(unchanged.plan.steps.front().configuration.revision
+            == first.plan.steps.front().configuration.revision);
+    REQUIRE(unchanged.plan.steps.front().configuration.value
+            == first.plan.steps.front().configuration.value);
+    REQUIRE(changed.plan.steps.front().configuration.revision
+            == first.plan.steps.front().configuration.revision + 1);
+    REQUIRE(changed.plan.steps.front().configuration.value
+            != first.plan.steps.front().configuration.value);
+}
+
 TEST_CASE("Compiler declares IFFT carry-buffer latency", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

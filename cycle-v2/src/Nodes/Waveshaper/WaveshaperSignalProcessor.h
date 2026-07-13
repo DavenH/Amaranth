@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Runtime/UnarySignalProcessor.h"
+#include "../../Runtime/NodeDspConfiguration.h"
 
 #include <Algo/Oversampler.h>
 #include <Audio/WaveshaperTransfer.h>
@@ -10,11 +11,26 @@
 
 namespace CycleV2 {
 
+struct WaveshaperConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole role() const override { return AudioModuleRole::Waveshaper; }
+
+    std::shared_ptr<const WaveshaperTransfer> transfer;
+    float preGain { 1.f };
+    float postGain { 1.f };
+    int oversampleFactor { 1 };
+};
+
 class WaveshaperSignalProcessor :
         public IUnarySignalOperation {
 public:
     WaveshaperSignalProcessor();
     ~WaveshaperSignalProcessor();
+
+    static std::shared_ptr<const WaveshaperConfiguration> buildConfiguration(
+            const std::vector<NodeParameter>& parameters);
+
+    void prepareExecution(const AudioExecutionSpec& spec);
+    void adoptConfiguration(const PublishedNodeConfiguration& published);
 
     void prepareProcess(
             const std::vector<NodeParameter>& parameters,
@@ -39,6 +55,8 @@ private:
     float postGain { 1.f };
     int oversampleFactor { 1 };
     bool useOversampling {};
+    uint64_t adoptedRevision {};
+    std::shared_ptr<const WaveshaperConfiguration> configuration;
 };
 
 }

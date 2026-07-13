@@ -235,6 +235,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 latencyCyclesForNode(node),
                 transformModeForNode(node),
                 node.parameters,
+                {},
                 std::move(inputs),
                 buildStepOutputs(graph, resolvedEdges, domainResolver, node)
         });
@@ -315,6 +316,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 result.plan.signalEdges,
                 domainResolver,
                 moduleRegistry);
+        publishConfigurations(result.plan.steps);
     }
 
     if (!result.succeeded()) {
@@ -322,6 +324,26 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     return result;
+}
+
+void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps) const {
+    const AudioExecutionSpec spec;
+
+    for (auto& step : steps) {
+        const String key = configurationFactory.keyFor(step.audioRole, step.parameters, spec);
+        auto found = std::find_if(configurations.begin(), configurations.end(), [&](const auto& entry) {
+            return entry.nodeId == step.nodeId;
+        });
+
+        if (found == configurations.end()) {
+            configurations.push_back({ step.nodeId, {} });
+            found = configurations.end() - 1;
+        }
+
+        step.configuration = found->publisher.publish(key, [&]() {
+            return configurationFactory.create(step.audioRole, step.parameters, spec);
+        });
+    }
 }
 
 }

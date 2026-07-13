@@ -55,4 +55,16 @@ private:
     PublishedNodeConfiguration published;
 };
 
+class NodeDspConfigurationFactory {
+public:
+    String keyFor(
+            AudioModuleRole role,
+            const std::vector<NodeParameter>& parameters,
+            const AudioExecutionSpec& spec) const;
+    std::shared_ptr<const INodeDspConfiguration> create(
+            AudioModuleRole role,
+            const std::vector<NodeParameter>& parameters,
+            const AudioExecutionSpec& spec) const;
+};
+
 }

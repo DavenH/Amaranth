@@ -120,6 +120,18 @@ public:
 
     AudioModuleRole role() const override { return processorRole; }
 
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        if (processorRole == AudioModuleRole::Waveshaper) {
+            waveshaperDsp.prepareExecution(spec);
+        }
+    }
+
+    void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
+        if (processorRole == AudioModuleRole::Waveshaper) {
+            waveshaperDsp.adoptConfiguration(configuration);
+        }
+    }
+
     void process(AudioProcessContext& context) override {
         switch (processorRole) {
             case AudioModuleRole::WaveSource:

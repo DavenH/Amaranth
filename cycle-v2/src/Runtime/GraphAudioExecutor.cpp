@@ -102,6 +102,7 @@ GraphAudioResult GraphAudioExecutor::process(
         context.timing = timing;
         context.voice = voice;
         context.workArena = &workArena;
+        context.configuration = &step.configuration;
         context.parameters = step.parameters;
         context.inputs.reserve(workArena.inputCapacity);
         context.attachments.reserve(attachmentCapacity);
