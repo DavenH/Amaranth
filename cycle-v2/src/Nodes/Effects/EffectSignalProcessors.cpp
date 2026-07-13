@@ -5,6 +5,7 @@
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
+#include <Audio/CycleDsp/ReverbKernel.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Util/NumberUtils.h>
@@ -263,102 +264,18 @@ void ReverbSignalProcessor::syncKernel() {
     blockCarry.clear();
     gridCarry.clear();
 
-    constexpr int bufferSize = 256;
-    if (kernelLength < bufferSize) {
-        return;
-    }
-
-    Transform fft;
-    fft.allocate(bufferSize, Transform::DivFwdByN, true);
-
-    ScopedAlloc<float> memory(bufferSize * 10);
-    Buffer<float> cumulativeRolloff = memory.place(bufferSize);
-    Buffer<float> magnitude = memory.place(bufferSize);
-    Buffer<float> phase = memory.place(bufferSize);
-    Buffer<float> noise = memory.place(bufferSize);
-    Buffer<float> rolloff = memory.place(bufferSize);
-    Buffer<float> volumeRamp = memory.place(bufferSize);
-    Buffer<float> filtered = memory.place(bufferSize);
-    Buffer<float> filteredA = memory.place(bufferSize);
-    Buffer<float> forwardRamp = memory.place(bufferSize);
-    Buffer<float> inverseRamp = memory.place(bufferSize);
-    (void) magnitude;
-    (void) phase;
-
-    const int highStart = std::max(2, (int) (highPass * 0.05f * bufferSize));
-    const float highLevelA = 1.f - rolloffFactor * highPass * 1.5f;
-    const float highLevelRamp = (1.f - highLevelA) / (float) highStart;
-
-    rolloff.zero();
-    rolloff.ramp(1.f, -rolloffFactor / (float) bufferSize);
-    forwardRamp.section(0, highStart).ramp(highLevelA, highLevelRamp);
-    rolloff.section(0, highStart).mul(forwardRamp);
-    rolloff.mul(MathConstants<float>::halfPi).sin();
-
-    forwardRamp.ramp();
-    forwardRamp.copyTo(inverseRamp);
-    inverseRamp.subCRev(1.f);
-
-    unsigned seed = bufferSize ^ 0xc0d3db4d;
-    const int numBuffers = (int) kernelLength / bufferSize;
-    cumulativeRolloff.set(1.f);
-
-    for (int i = 0; i < numBuffers; ++i) {
-        Buffer<float> section(kernel.data() + i * bufferSize, bufferSize);
-
-        createVolumeRamp(i, numBuffers, volumeRamp);
-
-        noise.rand(seed);
-        fft.forward(noise);
-        fft.getMagnitudes().mul(cumulativeRolloff);
-        cumulativeRolloff.mul(rolloff);
-
-        fft.inverse(filteredA);
-        fft.getMagnitudes().mul(rolloff);
-        fft.inverse(filtered);
-
-        VecOps::mul(filteredA, inverseRamp, section);
-        section.addProduct(forwardRamp, filtered);
-        section.mul(volumeRamp);
-
-        seed ^= 616137 * seed;
-    }
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = roomSize;
+    configuration.damping = rolloffFactor;
+    configuration.highPass = highPass;
+    CycleDsp::buildReverbKernel(
+            configuration,
+            { kernel.data(), (int) kernel.size() });
 }
 
 void ReverbSignalProcessor::resetCarry() {
     if (activeCarry != nullptr) {
         activeCarry->clear();
-    }
-}
-
-void ReverbSignalProcessor::createVolumeRamp(
-        int index,
-        int numBuffers,
-        Buffer<float> ramp) const {
-    const int bufferSize = ramp.size();
-    const int rampUpBuffers = jlimit(3, 20, (int) (roomSize * 0.03f * numBuffers));
-    float rampStart {};
-    float rampEnd {};
-
-    if (index < rampUpBuffers) {
-        rampStart = 0.25f * (float) index / (float) (rampUpBuffers - 1);
-        rampEnd = 0.25f * (float) (index + 1) / (float) (rampUpBuffers - 1);
-    } else {
-        const float scale = MathConstants<float>::halfPi
-                * ((float) (NumberUtils::log2i((unsigned) numBuffers) + 8) * 0.1f - 0.6f);
-        rampStart = 0.25f / scale
-                * std::sin(scale * std::exp(index * -4.5f / (float) numBuffers))
-                * std::sqrt((float) (numBuffers - index) / (float) numBuffers);
-        rampEnd = 0.25f / scale
-                * std::sin(scale * std::exp((index + 1) * -4.5f / (float) numBuffers))
-                * std::sqrt((float) (numBuffers - (index + 1)) / (float) numBuffers);
-    }
-
-    ramp.ramp(rampStart, (rampEnd - rampStart) / (float) bufferSize);
-
-    const int silence = (int) (roomSize * 450.f) - index * bufferSize;
-    if (silence > 0) {
-        ramp.zero(std::min(bufferSize, silence));
     }
 }
 

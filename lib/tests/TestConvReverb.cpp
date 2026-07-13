@@ -4,6 +4,7 @@
 using namespace juce;
 #include "../src/Algo/ConvReverb.h"
 #include "../src/Array/ScopedAlloc.h"
+#include "../src/Audio/CycleDsp/ReverbKernel.h"
 
 class TestConvReverb {
 public:
@@ -233,4 +234,28 @@ TEST_CASE("ConvReverb Edge Cases", "[ConvReverb]") {
         // Test with head size larger than tail size
         REQUIRE_NOTHROW(reverb.init(8192, 512, kernel));
     }
+}
+
+TEST_CASE("Cycle reverb kernel generation is deterministic and stereo", "[ConvReverb]") {
+    constexpr int kernelSize = 4096;
+    ScopedAlloc<float> memory(kernelSize * 4);
+    Buffer<float> firstLeft = memory.place(kernelSize);
+    Buffer<float> firstRight = memory.place(kernelSize);
+    Buffer<float> secondLeft = memory.place(kernelSize);
+    Buffer<float> secondRight = memory.place(kernelSize);
+
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = 0.35f;
+    configuration.damping = 0.14f;
+    configuration.highPass = 0.05f;
+    CycleDsp::buildReverbKernel(configuration, firstLeft, firstRight);
+    CycleDsp::buildReverbKernel(configuration, secondLeft, secondRight);
+
+    for (int i = 0; i < kernelSize; ++i) {
+        REQUIRE(firstLeft[i] == secondLeft[i]);
+        REQUIRE(firstRight[i] == secondRight[i]);
+    }
+    REQUIRE_FALSE(firstLeft == firstRight);
+    REQUIRE_FALSE(firstLeft.isProbablyEmpty());
+    REQUIRE_FALSE(firstRight.isProbablyEmpty());
 }

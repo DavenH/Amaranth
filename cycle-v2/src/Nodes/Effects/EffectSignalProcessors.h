@@ -66,7 +66,6 @@ public:
 private:
     void syncKernel();
     void resetCarry();
-    void createVolumeRamp(int index, int numBuffers, Buffer<float> ramp) const;
 
     std::vector<float> kernel;
     std::vector<float> convolutionOutput;

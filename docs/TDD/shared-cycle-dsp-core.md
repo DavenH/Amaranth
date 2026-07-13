@@ -258,9 +258,10 @@ Tests:
 
 Current status:
 
-- Cycle 2 has a Cycle 1-derived kernel-generation implementation.
-- It uses shared convolution primitives but not a shared extracted
-  `ReverbEffect` core.
+- Cycle 1 and Cycle 2 use shared deterministic stereo-capable kernel generation
+  from `CycleDsp::buildReverbKernel`.
+- Cycle 2 uses shared convolution primitives but not yet the shared streaming
+  `ConvReverb` state.
 - Cycle 1 streaming state is implemented by the UI-free `ConvReverb` in
   `AmaranthLib`. Reuse its two-stage streaming algorithm behind the shared
   Reverb core; do not duplicate it in a new class.
