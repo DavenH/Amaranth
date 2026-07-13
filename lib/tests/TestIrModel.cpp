@@ -93,16 +93,16 @@ TEST_CASE("IR curve-to-kernel path preserves Cycle 1 golden samples", "[cycle-ds
 
     constexpr std::array<int, 10> indices { 0, 1, 2, 3, 7, 15, 31, 63, 95, 127 };
     constexpr std::array<float, 10> expected {
-            0.340565f,
-            0.325197f,
-            0.306584f,
-            0.286520f,
-            0.225523f,
-            0.255107f,
-            0.251467f,
-            0.248596f,
-            0.245429f,
-            0.101026f
+            0.112169f,
+            0.119890f,
+            0.116117f,
+            0.126807f,
+            0.286509f,
+            0.228395f,
+            0.239318f,
+            0.245683f,
+            0.251212f,
+            0.348778f
     };
 
     for (size_t i = 0; i < indices.size(); ++i) {

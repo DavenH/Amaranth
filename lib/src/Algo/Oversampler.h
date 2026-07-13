@@ -56,11 +56,24 @@ public:
 private:
     void updateTaps();
 
+#ifdef USE_ACCELERATE
+    void filterAccelerate(
+            Buffer<float> samples,
+            Buffer<float> delay,
+            Buffer<float> inputScratch,
+            Buffer<float> outputScratch);
+#endif
+
     int phase, oversampleFactor;
 
     ScopedAlloc<Int8u> stateUpBuf, stateDownBuf;
     ScopedAlloc<Int8u> workBuffUp, workBuffDown;
     ScopedAlloc<Float32> firTaps, firUpDly, firDownDly;
+
+#ifdef USE_ACCELERATE
+    ScopedAlloc<Float32> accelInputUp, accelInputDown;
+    ScopedAlloc<Float32> accelOutputUp, accelOutputDown;
+#endif
 
     Buffer<float> memoryBuf, audioBuf;
     Buffer<float>* oversampBuf;
