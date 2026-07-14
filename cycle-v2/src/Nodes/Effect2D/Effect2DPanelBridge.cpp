@@ -175,6 +175,11 @@ public:
     }
 
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
+        const ScopedLock lock(vertexLock);
+        if (envelopeRedLinked == redLinked && envelopeBlueLinked == blueLinked) {
+            return;
+        }
+
         envelopeRedLinked = redLinked;
         envelopeBlueLinked = blueLinked;
 
@@ -1596,12 +1601,8 @@ void Effect2DPanelBridge::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale)
 }
 
 void Effect2DPanelBridge::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
-    envelopeRedLinked = redLinked;
-    envelopeBlueLinked = blueLinked;
-
-    if (panel != nullptr) {
-        panel->setEnvelopeAxisLinks(redLinked, blueLinked);
-    }
+    envelopeRedLinked.store(redLinked);
+    envelopeBlueLinked.store(blueLinked);
 }
 
 void Effect2DPanelBridge::renderPanel(
@@ -1805,7 +1806,7 @@ void Effect2DPanelBridge::applyPanelSettings() {
                 thirdControlValue,
                 menuControlId);
         panel->setEnvelopeLogarithmic(envelopeLogarithmicValue);
-        panel->setEnvelopeAxisLinks(envelopeRedLinked, envelopeBlueLinked);
+        panel->setEnvelopeAxisLinks(envelopeRedLinked.load(), envelopeBlueLinked.load());
     }
 }
 

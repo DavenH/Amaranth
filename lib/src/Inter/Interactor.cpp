@@ -495,6 +495,11 @@ void Interactor::copyVertexPositions() {
 
 void Interactor::addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst) {
     for(auto vert : src) {
+        if (vert == nullptr) {
+            jassertfalse;
+            continue;
+        }
+
         Vertex2 origin(vert->values[dims.x], vert->values[dims.y]);
 
         dst.emplace_back(vert, origin);

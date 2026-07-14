@@ -12,6 +12,7 @@
 #include <Inter/Interactor2D.h>
 #include <UI/Panels/Panel2D.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -100,8 +101,8 @@ private:
     float thirdControlValue { 0.5f };
     int menuControlId {};
     bool envelopeLogarithmicValue {};
-    bool envelopeRedLinked { true };
-    bool envelopeBlueLinked { true };
+    std::atomic<bool> envelopeRedLinked { true };
+    std::atomic<bool> envelopeBlueLinked { true };
 };
 
 }
