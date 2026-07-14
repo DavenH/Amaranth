@@ -222,6 +222,7 @@ void GraphAudioExecutor::prepareExecution(
 
         const uint64_t revision = step.configuration.revision;
         if (found->preparedRevision == revision
+                && found->preparedKey == step.configuration.key
                 && found->preparedFrameCount == spec.maximumFrameCount
                 && found->preparedSampleRate == spec.sampleRate) {
             continue;
@@ -230,6 +231,7 @@ void GraphAudioExecutor::prepareExecution(
         processor->adoptConfiguration(step.configuration);
         processor->prepareExecution(spec);
         found->preparedRevision = revision;
+        found->preparedKey = step.configuration.key;
         found->preparedFrameCount = spec.maximumFrameCount;
         found->preparedSampleRate = spec.sampleRate;
         ++found->preparationCount;
@@ -257,6 +259,7 @@ NodeAudioProcessor* GraphAudioExecutor::processorFor(
             found->role = role;
             found->processor = factory.create(role);
             found->preparedRevision = 0;
+            found->preparedKey = {};
             found->preparedFrameCount = 0;
             found->preparedSampleRate = 0.0;
         }
@@ -266,7 +269,7 @@ NodeAudioProcessor* GraphAudioExecutor::processorFor(
 
     auto processor = factory.create(role);
     NodeAudioProcessor* result = processor.get();
-    processors.push_back({ nodeId, voiceIndex, role, std::move(processor), 0, 0, 0.0, 0 });
+    processors.push_back({ nodeId, voiceIndex, role, std::move(processor), 0, {}, 0, 0.0, 0 });
     return result;
 }
 

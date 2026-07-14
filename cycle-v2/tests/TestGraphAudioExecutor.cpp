@@ -220,6 +220,30 @@ TEST_CASE("Graph audio execution preparation retains unchanged configuration rev
     REQUIRE(executor.preparationCount("shape") == 2);
 }
 
+TEST_CASE("Graph audio execution preparation distinguishes keys from restarted revision sources", "[cycle-v2][runtime][configuration]") {
+    GraphNodeFactory factory;
+    NodeGraph firstGraph;
+    firstGraph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 0.f, 0.f }));
+    const auto first = GraphCompiler().compile(firstGraph);
+    REQUIRE(first.succeeded());
+
+    NodeGraph changedGraph = firstGraph;
+    changedGraph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    const auto changed = GraphCompiler().compile(changedGraph);
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.plan.steps.front().configuration.revision
+            == first.plan.steps.front().configuration.revision);
+    REQUIRE(changed.plan.steps.front().configuration.key
+            != first.plan.steps.front().configuration.key);
+
+    GraphAudioExecutor executor;
+    const AudioExecutionSpec spec { 64, 48000.0, ChannelLayout::LinkedStereo };
+    executor.prepareExecution(first.plan, spec);
+    executor.prepareExecution(changed.plan, spec);
+
+    REQUIRE(executor.preparationCount("shape") == 2);
+}
+
 TEST_CASE("Graph audio executor keeps envelope state independent per voice", "[cycle-v2][runtime][envelope]") {
     GraphNodeFactory factory;
     NodeGraph graph;

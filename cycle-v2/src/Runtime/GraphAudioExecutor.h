@@ -46,6 +46,7 @@ private:
         AudioModuleRole role { AudioModuleRole::None };
         std::unique_ptr<NodeAudioProcessor> processor;
         uint64_t preparedRevision {};
+        String preparedKey;
         size_t preparedFrameCount {};
         double preparedSampleRate {};
         size_t preparationCount {};

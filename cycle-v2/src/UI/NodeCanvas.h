@@ -94,10 +94,12 @@ private:
     OpenGLContext openGLContext;
     NodeCanvasGlRenderer glRenderer;
     NodeGraph graph;
+    GraphCompiler graphCompiler;
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
     mutable GraphAudioExecutor audioExecutor;
+    mutable GraphAudioExecutor previewAudioExecutor;
     std::vector<String> undoStack;
     std::vector<String> redoStack;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;

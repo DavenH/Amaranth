@@ -303,6 +303,11 @@ Direct processor tests retain a legacy parameter-preparation path because they
 intentionally construct processors without a graph plan. Compiled graph
 execution never uses that path for Waveshaper, IR, Reverb, or Envelope.
 
+`NodeCanvas` owns one persistent compiler so revisions remain monotonic across
+graph edits. It also owns separate retained executors for compiled previews and
+automation audio capture, preventing preview traversal from advancing capture
+state; both execution paths prepare their plan explicitly.
+
 ## Verification Implemented
 
 - stable keys retain configuration identity and revision
