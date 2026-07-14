@@ -6,6 +6,7 @@
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/Policies/Voice/VoicePolicies.h>
 #include <Curve/Rasterization/RenderResult.h>
+#include <Curve/Rasterization/VoiceCycleState.h>
 #include <Curve/Rasterization/Sampling/WaveformSampler.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Curve/Mesh/VertCube.h>
@@ -13,7 +14,6 @@
 #include <Obj/Ref.h>
 
 class SingletonAccessor;
-class CycleState;
 
 class VoiceMeshRasterizer :
         public SingletonAccessor
@@ -22,7 +22,7 @@ private:
 	JUCE_LEAK_DETECTOR(VoiceMeshRasterizer)
 
 public:
-	CycleState* state;
+	Rasterization::VoiceCycleState* state;
 
 	explicit VoiceMeshRasterizer(SingletonRepo* repo);
 
@@ -32,7 +32,7 @@ public:
 	 */
 	void updateChainedWaveform(float phase);
 	void orphanOldVerts();
-	void setState(CycleState* state) { this->state = state; }
+	void setState(Rasterization::VoiceCycleState* state) { this->state = state; }
 
     void cleanUp();
     void reset() override { cleanUp(); }
@@ -61,7 +61,7 @@ private:
     Rasterization::RenderResult chainResult;
     VertCube::ReductionData chainReduction;
     Rasterization::TrilinearMeshSlicer voiceSlicer;
-    Cycle::Rasterization::VoicePointPositionPolicy voicePointPositionPolicy;
+    Rasterization::VoicePointPositionPolicy voicePointPositionPolicy;
 
     int chainPaddingSize { 2 };
     bool chainUnsampleable { true };

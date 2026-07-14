@@ -42,7 +42,7 @@ void VoiceMeshRasterizer::updateChainedWaveform(float oscPhase) {
 
     chainedOutputActive = true;
 
-    Cycle::Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
+    Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
     chainingPolicy.beginCall(*state, chainResult.intercepts);
 
     auto output = renderVoiceSlice(oscPhase);
@@ -64,7 +64,7 @@ void VoiceMeshRasterizer::updateChainedWaveform(float oscPhase) {
     }
 
     if (state->callCount > 0) {
-        chainPaddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+        chainPaddingSize = Rasterization::VoiceChainedPaddingPolicy().build(
                 chainResult.intercepts,
                 state->backIcpts,
                 *state,
@@ -104,7 +104,7 @@ void VoiceMeshRasterizer::bakeChainedWaveform() {
         return;
     }
 
-    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(chainResult.curves);
+    Rasterization::VoiceCurveResolutionPolicy().apply(chainResult.curves);
     Rasterization::CurveWaveformPreparationPolicy().apply(chainResult.curves);
 
     Rasterization::WaveformBakePolicy::Context context;
@@ -169,7 +169,7 @@ void VoiceMeshRasterizer::appendVoiceCubeIntercept(
     Vertex* b = &chainReduction.v1;
     Vertex* vertex = &chainReduction.v;
 
-    Cycle::Rasterization::VoicePointPositionPolicy::Context pointContext;
+    Rasterization::VoicePointPositionPolicy::Context pointContext;
     pointContext.voiceTime = voiceTime;
     pointContext.oscPhase = oscPhase;
 

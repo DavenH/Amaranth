@@ -7,12 +7,11 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Curve/Rasterization/RenderResult.h>
+#include <Curve/Rasterization/VoiceCycleState.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 
-#include "../../../CycleState.h"
-
-namespace Cycle::Rasterization {
+namespace Rasterization {
     class VoicePointPositionPolicy {
     public:
         struct Context {
@@ -84,7 +83,7 @@ namespace Cycle::Rasterization {
                 needsResorting(needsResorting) {
         }
 
-        void beginCall(CycleState& state, std::vector<Intercept>& currentIntercepts) const {
+        void beginCall(VoiceCycleState& state, std::vector<Intercept>& currentIntercepts) const {
             if (state.callCount > 0) {
                 std::swap(state.backIcpts, currentIntercepts);
                 state.backIcpts.clear();
@@ -98,7 +97,7 @@ namespace Cycle::Rasterization {
         template<typename RestrictIntercepts>
         bool publishNextIntercepts(
                 const ::Rasterization::RenderResult& output,
-                CycleState& state,
+                VoiceCycleState& state,
                 RestrictIntercepts&& restrictIntercepts) const {
             state.backIcpts = output.intercepts;
 
@@ -109,7 +108,7 @@ namespace Cycle::Rasterization {
         }
 
         bool canBuildChainedCurves(
-                const CycleState& state,
+                const VoiceCycleState& state,
                 const std::vector<Intercept>& currentIntercepts) const {
             return state.backIcpts.size() >= 2 && currentIntercepts.size() >= 2;
         }
@@ -132,7 +131,7 @@ namespace Cycle::Rasterization {
         int build(
                 const std::vector<Intercept>& intercepts,
                 const std::vector<Intercept>& nextIntercepts,
-                CycleState& state,
+                VoiceCycleState& state,
                 std::vector<Curve>& curves,
                 float interceptPadding) const {
             int end = (int) intercepts.size() - 1;
@@ -187,7 +186,7 @@ namespace Cycle::Rasterization {
         }
 
     private:
-        static void updateFrontState(const std::vector<Intercept>& intercepts, CycleState& state) {
+        static void updateFrontState(const std::vector<Intercept>& intercepts, VoiceCycleState& state) {
             int end = (int) intercepts.size() - 1;
 
             assignFront(state.frontE, intercepts, 5);
