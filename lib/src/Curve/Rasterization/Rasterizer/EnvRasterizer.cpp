@@ -108,6 +108,43 @@ EnvRasterizer::~EnvRasterizer() {
     waveformMemory.clear();
 }
 
+void EnvRasterizer::adoptPreparedData(const EnvRasterizer& source) {
+    envMesh = source.envMesh;
+    request = source.request;
+    paddingSize = source.paddingSize;
+    rasterizerData.paddingSize = source.rasterizerData.paddingSize;
+    rasterizerData.wrapsVertices = source.rasterizerData.wrapsVertices;
+    unsampleable = source.unsampleable;
+    needsResorting = source.needsResorting;
+    loopIndex = source.loopIndex;
+    sustainIndex = source.sustainIndex;
+
+    result.intercepts = source.result.intercepts;
+    result.frontPadding = source.result.frontPadding;
+    result.backPadding = source.result.backPadding;
+    result.curves = source.result.curves;
+    result.guideCurveRegions = source.result.guideCurveRegions;
+    result.colorPoints = source.result.colorPoints;
+    result.paddingSize = source.result.paddingSize;
+    result.sampleable = source.result.sampleable;
+    result.needsResorting = source.result.needsResorting;
+
+    const int waveformSize = source.result.waveform.waveX.size();
+    result.waveform.place(result.waveformMemory, waveformSize);
+    result.waveform.copyFrom(source.result.waveform);
+
+    const int releaseSize = source.waveXCopy.size();
+    waveformMemory.ensureSize(3 * releaseSize);
+    waveXCopy = waveformMemory.place(releaseSize);
+    waveYCopy = waveformMemory.place(releaseSize);
+    slopeCopy = waveformMemory.place(releaseSize);
+    source.waveXCopy.copyTo(waveXCopy);
+    source.waveYCopy.copyTo(waveYCopy);
+    source.slopeCopy.copyTo(slopeCopy);
+    validateState();
+    publishSnapshot();
+}
+
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
     envMesh = envelopeMesh;
 

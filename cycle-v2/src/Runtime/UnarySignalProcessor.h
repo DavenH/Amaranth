@@ -14,9 +14,6 @@ class IUnarySignalOperation {
 public:
     virtual ~IUnarySignalOperation() = default;
 
-    virtual void prepareProcess(
-            const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing) = 0;
     virtual void beginBlock(size_t frameCount) {}
     virtual void beginTraversalGrid(size_t columns, size_t rows) {}
     virtual void beginTraversalColumn(size_t column, size_t rows) {}
@@ -30,12 +27,8 @@ public:
             IUnarySignalOperation& operation,
             SignalPayload& output,
             const SignalPayload& input,
-            const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing,
             size_t frameCount,
             const AudioProcessWorkArena* arena = nullptr) {
-        operation.prepareProcess(parameters, timing);
-
         output.domain = input.domain;
         output.channelLayout = input.channelLayout;
 

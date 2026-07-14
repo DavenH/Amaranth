@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Runtime/UnarySignalProcessor.h"
+#include "../../Runtime/NodeDspConfiguration.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/Oversampler.h>
@@ -11,15 +12,36 @@
 
 namespace CycleV2 {
 
+struct IrConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole role() const override { return AudioModuleRole::ImpulseResponse; }
+
+    std::vector<float> impulse;
+    float postGain { 1.f };
+};
+
+struct ReverbConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole role() const override { return AudioModuleRole::Reverb; }
+
+    std::vector<float> kernel;
+    float width { 1.f };
+    float wetLevel { 0.1f };
+};
+
 class IrSignalProcessor :
         public IUnarySignalOperation {
 public:
     IrSignalProcessor();
     ~IrSignalProcessor();
 
-    void prepareProcess(
+    static std::shared_ptr<const IrConfiguration> buildConfiguration(
+            const std::vector<NodeParameter>& parameters);
+
+    void prepareExecution(const AudioExecutionSpec& spec);
+    void adoptConfiguration(const PublishedNodeConfiguration& published);
+
+    void prepareLegacy(
             const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing) override;
+            const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;
     void endTraversalGrid() override;
@@ -53,14 +75,16 @@ private:
     size_t traversalImpulseRevision {};
     size_t preparedBlockSize {};
     size_t preparedTraversalSize {};
+    uint64_t adoptedRevision {};
+    std::shared_ptr<const IrConfiguration> configuration;
 };
 
 class DelaySignalProcessor :
         public IUnarySignalOperation {
 public:
-    void prepareProcess(
+    void configure(
             const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing) override;
+            const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
@@ -76,9 +100,15 @@ private:
 class ReverbSignalProcessor :
         public IUnarySignalOperation {
 public:
-    void prepareProcess(
+    static std::shared_ptr<const ReverbConfiguration> buildConfiguration(
+            const std::vector<NodeParameter>& parameters);
+
+    void prepareExecution(const AudioExecutionSpec& spec);
+    void adoptConfiguration(const PublishedNodeConfiguration& published);
+
+    void prepareLegacy(
             const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing) override;
+            const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;
     void endTraversalGrid() override;
@@ -106,6 +136,8 @@ private:
     size_t preparedBlockSize {};
     size_t preparedTraversalSize {};
     String kernelSignature;
+    uint64_t adoptedRevision {};
+    std::shared_ptr<const ReverbConfiguration> configuration;
 };
 
 }

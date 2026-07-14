@@ -20,6 +20,12 @@ struct GraphAudioResult {
 
 class GraphAudioExecutor {
 public:
+    void prepareExecution(
+            const GraphExecutionPlan& plan,
+            const AudioExecutionSpec& spec,
+            int voiceIndex = 0) const;
+    size_t preparationCount(const String& nodeId, int voiceIndex = 0) const;
+
     GraphAudioResult process(const NodeGraph& graph, const GraphExecutionPlan& plan, size_t frameCount) const;
     GraphAudioResult process(
             const NodeGraph& graph,
@@ -39,6 +45,11 @@ private:
         int voiceIndex {};
         AudioModuleRole role { AudioModuleRole::None };
         std::unique_ptr<NodeAudioProcessor> processor;
+        uint64_t preparedRevision {};
+        String preparedKey;
+        size_t preparedFrameCount {};
+        double preparedSampleRate {};
+        size_t preparationCount {};
     };
 
     struct PortOutput {

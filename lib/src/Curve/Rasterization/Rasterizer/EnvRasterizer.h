@@ -66,6 +66,7 @@ public:
     ~EnvRasterizer() override;
 
     void ensureParamSize(int numUnisonVoices);
+    void adoptPreparedData(const EnvRasterizer& source);
     void evaluateLoopSustainIndices();
     void getIndices(int& loopIdx, int& sustIdx) const;
     void resetGraphicParams();

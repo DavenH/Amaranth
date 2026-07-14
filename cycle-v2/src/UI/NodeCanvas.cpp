@@ -4589,14 +4589,19 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float
 void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     previewSpriteCache.clear();
-    compileResult = GraphCompiler().compile(graph);
+    compileResult = graphCompiler.compile(graph);
     runtimeTrace = {};
     previewResult = {};
 
     if (compileResult.succeeded()) {
         runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
         constexpr size_t previewFrameCount = 128;
-        const GraphAudioResult audioResult = GraphAudioExecutor().process(graph, compileResult.plan, previewFrameCount);
+        const AudioExecutionSpec previewSpec { previewFrameCount, 44100.0, ChannelLayout::LinkedStereo };
+        previewAudioExecutor.prepareExecution(compileResult.plan, previewSpec);
+        const GraphAudioResult audioResult = previewAudioExecutor.process(
+                graph,
+                compileResult.plan,
+                previewFrameCount);
         previewResult = GraphPreviewExecutor().render(compileResult.plan, audioResult, 40);
     }
 }
@@ -5222,6 +5227,8 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
         return root;
     }
 
+    const AudioExecutionSpec captureSpec { frameCount, 44100.0, ChannelLayout::LinkedStereo };
+    audioExecutor.prepareExecution(compileResult.plan, captureSpec);
     const GraphAudioResult result = audioExecutor.process(graph, compileResult.plan, frameCount);
     root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
 

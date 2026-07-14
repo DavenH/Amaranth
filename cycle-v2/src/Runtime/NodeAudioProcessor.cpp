@@ -120,6 +120,33 @@ public:
 
     AudioModuleRole role() const override { return processorRole; }
 
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        if (processorRole == AudioModuleRole::Waveshaper) {
+            waveshaperDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
+            irDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::Reverb) {
+            reverbDsp.prepareExecution(spec);
+        } else if (processorRole == AudioModuleRole::Envelope) {
+            envelopeDsp.prepareExecution(spec);
+        }
+    }
+
+    void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
+        hasPublishedConfiguration = configuration.isValid()
+                && configuration.value->role() == processorRole;
+
+        if (processorRole == AudioModuleRole::Waveshaper) {
+            waveshaperDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
+            irDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::Reverb) {
+            reverbDsp.adoptConfiguration(configuration);
+        } else if (processorRole == AudioModuleRole::Envelope) {
+            envelopeDsp.adoptConfiguration(configuration);
+        }
+    }
+
     void process(AudioProcessContext& context) override {
         switch (processorRole) {
             case AudioModuleRole::WaveSource:
@@ -169,18 +196,28 @@ public:
                 break;
 
             case AudioModuleRole::ImpulseResponse:
+                if (!hasPublishedConfiguration) {
+                    irDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(irDsp, context);
                 break;
 
             case AudioModuleRole::Waveshaper:
+                if (!hasPublishedConfiguration) {
+                    waveshaperDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(waveshaperDsp, context);
                 break;
 
             case AudioModuleRole::Reverb:
+                if (!hasPublishedConfiguration) {
+                    reverbDsp.prepareLegacy(context.parameters, context.timing);
+                }
                 processUnaryEffect(reverbDsp, context);
                 break;
 
             case AudioModuleRole::Delay:
+                delayDsp.configure(context.parameters, context.timing);
                 processUnaryEffect(delayDsp, context);
                 break;
 
@@ -356,8 +393,6 @@ private:
                 operation,
                 output,
                 *input,
-                context.parameters,
-                context.timing,
                 context.frameCount,
                 context.workArena);
         publishSingleOutput(context, std::move(output));
@@ -478,9 +513,12 @@ private:
     mutable WaveshaperSignalProcessor waveshaperDsp;
     mutable std::unique_ptr<Mesh> defaultMesh;
     mutable TrimeshMeshEditState meshEditState;
+    bool hasPublishedConfiguration {};
 };
 
-void NodeAudioProcessor::prepare(size_t) {}
+void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
+
+void NodeAudioProcessor::adoptConfiguration(const PublishedNodeConfiguration&) {}
 
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     if (role == AudioModuleRole::None) {

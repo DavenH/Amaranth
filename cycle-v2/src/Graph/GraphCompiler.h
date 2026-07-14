@@ -2,6 +2,7 @@
 
 #include "GraphDomainResolver.h"
 #include "GraphValidator.h"
+#include "../Runtime/NodeDspConfiguration.h"
 #include "../Runtime/NodeModuleRegistry.h"
 
 #include <vector>
@@ -52,6 +53,7 @@ struct GraphExecutionStep {
     int latencyCycles {};
     String transformMode;
     std::vector<NodeParameter> parameters;
+    PublishedNodeConfiguration configuration;
     std::vector<GraphStepInput> inputs;
     std::vector<GraphStepOutput> outputs;
 };
@@ -77,9 +79,18 @@ public:
     GraphCompileResult compile(const NodeGraph& graph) const;
 
 private:
+    struct ConfigurationEntry {
+        String nodeId;
+        NodeConfigurationPublisher publisher;
+    };
+
+    void publishConfigurations(std::vector<GraphExecutionStep>& steps) const;
+
     GraphDomainResolver domainResolver;
     GraphValidator validator;
     NodeModuleRegistry moduleRegistry;
+    NodeDspConfigurationFactory configurationFactory;
+    mutable std::vector<ConfigurationEntry> configurations;
 };
 
 }
