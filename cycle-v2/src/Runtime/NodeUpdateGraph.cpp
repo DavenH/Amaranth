@@ -9,30 +9,25 @@ NodeUpdateResult NodeUpdateGraph::invalidateTrimeshChange(
     NodeUpdateResult result;
     result.trimesh = trimeshInvalidation.invalidate(change);
 
-    if (change.kind == TrimeshChangeKind::SelectedControl) {
-        return result;
-    }
-
-    result.graph = graphInvalidation.invalidateFrom(plan, nodeId, graphChangeKindFor(change));
+    result.graph = graphInvalidation.invalidateFrom(
+            plan,
+            nodeId,
+            parameterImpactsFor(result.trimesh));
     return result;
 }
 
-GraphChangeKind NodeUpdateGraph::graphChangeKindFor(const TrimeshChange& change) const {
-    switch (change.kind) {
-        case TrimeshChangeKind::None:
-        case TrimeshChangeKind::Morph:
-        case TrimeshChangeKind::PrimaryAxis:
-        case TrimeshChangeKind::SelectedControl:
-        case TrimeshChangeKind::RenderProfile:
-        case TrimeshChangeKind::Layout:
-            return GraphChangeKind::NodeParameters;
+ParameterImpact NodeUpdateGraph::parameterImpactsFor(
+        const TrimeshInvalidationResult& invalidation) const {
+    ParameterImpact impacts = ParameterImpact::None;
 
-        case TrimeshChangeKind::MeshEdit:
-        case TrimeshChangeKind::VertexEdit:
-            return GraphChangeKind::NodeContent;
+    if (invalidation.dirtyCompactPreview) {
+        impacts = impacts | ParameterImpact::Preview;
+    }
+    if (invalidation.dirtyDspPrep) {
+        impacts = impacts | ParameterImpact::DspConfiguration;
     }
 
-    return GraphChangeKind::NodeParameters;
+    return impacts;
 }
 
 }

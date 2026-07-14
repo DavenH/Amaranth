@@ -22,7 +22,7 @@ public:
             const TrimeshChange& change) const;
 
 private:
-    GraphChangeKind graphChangeKindFor(const TrimeshChange& change) const;
+    ParameterImpact parameterImpactsFor(const TrimeshInvalidationResult& invalidation) const;
     GraphInvalidation graphInvalidation;
     TrimeshInvalidation trimeshInvalidation;
 };

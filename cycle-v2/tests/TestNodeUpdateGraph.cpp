@@ -85,6 +85,7 @@ TEST_CASE("Node update graph flags Trimesh render profile changes as preview-onl
 
     REQUIRE_FALSE(result.requiresRecompile());
     REQUIRE(result.dirtiesPreview());
+    REQUIRE_FALSE(result.dirtiesAudio());
     REQUIRE_FALSE(result.trimesh.updateRasterizer);
     REQUIRE_FALSE(result.trimesh.refresh2DPanel);
     REQUIRE_FALSE(result.trimesh.refresh3DGeometry);
