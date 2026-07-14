@@ -60,16 +60,16 @@ emits one consolidated `GraphChangeSet`.
   identical; this is an idempotent retry and creates no undo entry.
 - An equal revision with different content is a conflict.
 - A lower or unexpected base revision is stale.
-- Loading and migration establish a revision without simulating user edits.
+- Loading establishes a revision without simulating user edits.
 
 Use explicit result codes for stale revision, conflicting revision, invalid
 typed snapshot, wrong node kind, and invalid control value.
 
-## Typed And Legacy Decoding
+## Typed State Decoding
 
-- If typed state is absent, migrate a supported legacy payload.
+- New nodes and checked-in presets always provide canonical typed state.
 - If typed state is present but invalid, reject it and report a diagnostic.
-- Do not silently substitute legacy state for malformed typed state.
+- Do not silently substitute transitional Cycle V2 representations.
 - Canonical serialization is deterministic so idempotence comparisons are
   meaningful.
 
@@ -90,8 +90,8 @@ typed snapshot, wrong node kind, and invalid control value.
 ### Slice 3: Scheduling And Migration
 
 - Schedule one compile/preview/repaint action per successful publication.
-- Tighten typed-versus-legacy decoding.
-- Preserve supported saved graph migration.
+- Remove transitional representation decoding.
+- Keep canonical typed defaults in the node registry.
 
 ## Verification
 
@@ -103,7 +103,7 @@ typed snapshot, wrong node kind, and invalid control value.
 - Same-revision/different-state is rejected.
 - Stale base revisions are rejected without mutation.
 - Invalid typed state is diagnosed rather than hidden by legacy fallback.
-- Legacy-only saved graphs migrate to equivalent typed state.
+- Repository-owned presets contain canonical typed state.
 
 ## Completion Criteria
 
@@ -111,4 +111,3 @@ typed snapshot, wrong node kind, and invalid control value.
 - Curve controls, snapshot, and revision change atomically.
 - Revision equality cannot identify different content.
 - Typed corruption is observable and cannot silently activate legacy data.
-

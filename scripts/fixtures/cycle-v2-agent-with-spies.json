@@ -1,0 +1,18 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-with-spies.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    }
+  ],
+  "quit": true
+}

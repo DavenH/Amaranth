@@ -1558,14 +1558,13 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
         return;
     }
 
-    String nextMeshState = parameterValueForNode(
-            node,
-            kind == NodeKind::Envelope
-                    ? EnvelopeMeshState::parameterId()
-                    : Effect2DMeshState::parameterId(),
-            {});
     const String typedSnapshot = parameterValueForNode(
             node, CurveNodeModelCodec::snapshotParameterId(), {});
+    if (typedSnapshot.isEmpty()) {
+        return;
+    }
+
+    String nextMeshState;
     bool modelApplied = false;
 
     if (typedSnapshot.isNotEmpty()) {
@@ -1596,13 +1595,10 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
     const bool meshChanged = lastSyncedMeshState != nextMeshState;
 
     if (nodeChanged || meshChanged) {
-        if (!modelApplied && nextMeshState.isNotEmpty()) {
-            if (kind == NodeKind::Envelope) {
-                envelopeModel->migrateLegacy(nextMeshState);
-            } else {
-                flatModel->migrateLegacy(nextMeshState);
-            }
-        } else if (nodeChanged && mesh->getNumVerts() == 0) {
+        if (!modelApplied) {
+            return;
+        }
+        if (nodeChanged && mesh->getNumVerts() == 0) {
             initialiseMesh();
         }
 

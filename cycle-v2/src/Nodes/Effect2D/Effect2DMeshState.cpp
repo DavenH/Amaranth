@@ -4,9 +4,7 @@
 
 namespace CycleV2 {
 
-String Effect2DMeshState::parameterId() {
-    return "effect.vertices";
-}
+using namespace juce;
 
 std::vector<Effect2DVertexState> Effect2DMeshState::parse(const String& serialized) {
     std::vector<Effect2DVertexState> vertices;
@@ -45,17 +43,6 @@ String Effect2DMeshState::serialize(const std::vector<Effect2DVertexState>& vert
     }
 
     return tokens.joinIntoString(";");
-}
-
-std::vector<Effect2DVertexState> Effect2DMeshState::fromParameters(
-        const std::vector<NodeParameter>& parameters) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == parameterId()) {
-            return parse(parameter.value);
-        }
-    }
-
-    return {};
 }
 
 }

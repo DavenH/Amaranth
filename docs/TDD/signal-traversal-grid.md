@@ -258,7 +258,7 @@ Waveshaper:
 - disabled/bypassed waveshaper passes both blockwise and gridwise data through
 - current cycle-v2 runtime applies persisted `enabled`, `pre`, and `post`
   parameters to block and traversal data
-- editable `effect.vertices` persistence feeds a node-specific waveshaper DSP
+- editable typed curve-model persistence feeds a node-specific waveshaper DSP
   adapter that reuses the shared FXRasterizer transfer-table semantics for
   block and traversal-grid values
 - traversal-grid and UI preview processing deliberately use the transfer table
@@ -303,7 +303,7 @@ Implemented:
 - Guide, IR, and waveshaper expanded editor controls persist their scalar
   control values into graph-owned node parameters.
 - Guide, IR, and waveshaper 2D panel vertices persist into graph-owned
-  `effect.vertices` node parameters.
+  typed curve-model node parameters.
 - Waveshaper runtime processing delegates to a node-specific DSP adapter that
   builds its transfer table through `FXRasterizer` and applies the same
   transfer to block samples and traversal-grid values.

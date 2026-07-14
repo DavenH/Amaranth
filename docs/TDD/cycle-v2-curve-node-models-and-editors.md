@@ -171,9 +171,9 @@ Each node model defines a typed snapshot codec and version. The graph serializer
 stores the opaque node-model payload with its model version but delegates
 parsing and migration to the owning node definition/model codec.
 
-Legacy `effect2d.mesh` and `envelope.snapshot` strings receive explicit
-migrations. Empty or malformed state fails validation or uses a documented
-node default during migration; processing must not discover malformed state.
+Cycle V2 nodes are created with canonical typed snapshots. Transitional
+`effect.vertices` and `envelope.snapshot` scaffolding is not a compatibility
+contract and is rejected rather than migrated.
 
 ## Migration Plan
 
@@ -277,14 +277,16 @@ node default during migration; processing must not discover malformed state.
   compound graph edits; curve gestures publish once when the existing
   interactor commits the gesture.
 - `curve.modelSnapshot` and `curve.modelRevision` are schema-owned parameters.
-  Legacy `effect.vertices` and `envelope.snapshot` values migrate explicitly,
-  while preview/editor synchronization and immutable Waveshaper, IR, and
-  Envelope DSP configuration prefer the typed snapshot.
+  Preview/editor synchronization and immutable Waveshaper, IR, and Envelope
+  DSP configuration consume only the typed snapshot.
+- Canonical typed defaults are owned by the curve-model codec and installed by
+  node definitions. Transitional Cycle V2 parameters and fallback decoders
+  were removed; malformed typed state fails configuration construction.
 
 Verification on macOS:
 
-- `CycleV2_tests`: 2,355 assertions in 231 test cases.
-- Focused curve model/editor suite: 63 assertions in 11 test cases.
+- `CycleV2_tests`: 2,392 assertions in 233 test cases.
+- Focused curve model/editor suite: 89 assertions in 13 test cases.
 - Focused curve-model/editor tests cover atomic validation, stable selection,
   typed and legacy round trips, Envelope topology and markers, semantic undo,
   named controls, typed DSP parity, and independent Envelope DSP state.

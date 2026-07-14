@@ -94,17 +94,6 @@ bool FlatCurveModel::loadSnapshot(const String& serialized) {
     return true;
 }
 
-bool FlatCurveModel::migrateLegacy(const String& legacyVertices) {
-    const auto parsed = Effect2DMeshState::parse(legacyVertices);
-    std::vector<FlatCurveVertex> migrated;
-    migrated.reserve(parsed.size());
-    uint64_t identity = 1;
-    for (const auto& vertex : parsed) {
-        migrated.push_back({ identity++, vertex.x, vertex.y, vertex.curve });
-    }
-    return replaceVertices(std::move(migrated));
-}
-
 bool FlatCurveModel::adoptEditedVertices(
         const std::vector<Effect2DVertexState>& editedVertices) {
     std::vector<FlatCurveVertex> nextVertices;
@@ -218,15 +207,9 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
     return true;
 }
 
-bool EnvelopeNodeModel::migrateLegacy(const String& legacySnapshot) {
-    return applyEnvelopePayload(legacySnapshot);
-}
-
 bool EnvelopeNodeModel::syncFromNode(const Node& node) {
     const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    const bool loaded = typed.isNotEmpty()
-            ? loadSnapshot(typed)
-            : migrateLegacy(parameterValueForNode(node, EnvelopeMeshState::parameterId(), {}));
+    const bool loaded = loadSnapshot(typed);
     logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
     red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
     blue = jlimit(0.f, 1.f, parameterValueForNode(node, "blue", "0.5").getFloatValue());
@@ -278,11 +261,7 @@ void WaveshaperNodeModel::syncFromNode(const Node& node) {
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     oversampling = jmax(1, parameterValueForNode(node, "aaFactor", "1").getIntValue());
     const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (typed.isNotEmpty()) {
-        curve.loadSnapshot(typed);
-    } else {
-        curve.migrateLegacy(parameterValueForNode(node, Effect2DMeshState::parameterId(), {}));
-    }
+    curve.loadSnapshot(typed);
 }
 
 void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
@@ -291,11 +270,7 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     highPass = jlimit(0.f, 1.f, parameterValueForNode(node, "highPass", "0.5").getFloatValue());
     const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (typed.isNotEmpty()) {
-        curve.loadSnapshot(typed);
-    } else {
-        curve.migrateLegacy(parameterValueForNode(node, Effect2DMeshState::parameterId(), {}));
-    }
+    curve.loadSnapshot(typed);
 }
 
 void GuideCurveNodeModel::syncFromNode(const Node& node) {
@@ -304,11 +279,7 @@ void GuideCurveNodeModel::syncFromNode(const Node& node) {
     dcOffset = jlimit(0.f, 1.f, parameterValueForNode(node, "dcOffset", "0.5").getFloatValue());
     phase = jlimit(0.f, 1.f, parameterValueForNode(node, "phase", "0.5").getFloatValue());
     const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (typed.isNotEmpty()) {
-        curve.loadSnapshot(typed);
-    } else {
-        curve.migrateLegacy(parameterValueForNode(node, Effect2DMeshState::parameterId(), {}));
-    }
+    curve.loadSnapshot(typed);
 }
 
 String CurveNodeModelCodec::snapshotParameterId() {
@@ -317,6 +288,55 @@ String CurveNodeModelCodec::snapshotParameterId() {
 
 String CurveNodeModelCodec::revisionParameterId() {
     return "curve.modelRevision";
+}
+
+String CurveNodeModelCodec::defaultSnapshot(NodeKind kind) {
+    if (kind == NodeKind::Envelope) {
+        EnvelopeNodeModel model;
+        model.setPublicationRevision(1);
+        return model.snapshot();
+    }
+
+    std::vector<FlatCurveVertex> vertices;
+    if (kind == NodeKind::GuideCurve) {
+        vertices = {
+                { 1, 0.05f, 0.5f, 1.f },
+                { 2, 0.34f, 0.64f, 0.4f },
+                { 3, 0.62f, 0.36f, 0.4f },
+                { 4, 0.95f, 0.5f, 1.f }
+        };
+    } else if (kind == NodeKind::ImpulseResponse) {
+        constexpr float padding = 0.0625f;
+        vertices = {
+                { 1, padding * 0.5f, 0.5f, 0.f },
+                { 2, padding - 0.001f, 0.5f, 0.f },
+                { 3, padding + 0.001f, 0.5f, 0.f },
+                { 4, padding + 0.003f, 0.5f, 0.f },
+                { 5, padding + 0.005f, 1.f, 0.f },
+                { 6, padding + 0.010f, 0.1313f, 0.f },
+                { 7, padding + 0.1f, 0.6f, 0.f },
+                { 8, padding + 0.15f, 0.5f, 0.f },
+                { 9, padding + 0.2f, 0.5f, 0.f },
+                { 10, 1.f, 0.5f, 0.f }
+        };
+    } else if (kind == NodeKind::Waveshaper) {
+        constexpr float padding = 0.125f;
+        vertices = {
+                { 1, padding * 0.5f, padding * 0.5f, 1.f },
+                { 2, padding, padding, 1.f },
+                { 3, 1.f - padding, 1.f - padding, 1.f },
+                { 4, 1.f - padding * 0.5f, 1.f - padding * 0.5f, 1.f }
+        };
+    } else {
+        return {};
+    }
+
+    FlatCurveModel model;
+    if (!model.replaceVertices(std::move(vertices))) {
+        return {};
+    }
+    model.setPublicationRevision(1);
+    return model.snapshot();
 }
 
 String CurveNodeModelCodec::snapshotFromParameters(const std::vector<NodeParameter>& parameters) {
@@ -328,32 +348,33 @@ uint64_t CurveNodeModelCodec::revisionFromParameters(const std::vector<NodeParam
 }
 
 std::vector<Effect2DVertexState> CurveNodeModelCodec::flatVerticesFromParameters(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        NodeKind kind) {
     const String typedSnapshot = snapshotFromParameters(parameters);
-    if (typedSnapshot.isNotEmpty()) {
-        FlatCurveModel model;
-        if (model.loadSnapshot(typedSnapshot)) {
-            std::vector<Effect2DVertexState> result;
-            result.reserve(model.getVertices().size());
-            for (const auto& vertex : model.getVertices()) {
-                result.push_back({ vertex.x, vertex.y, vertex.curve });
-            }
-            return result;
+    FlatCurveModel model;
+    const String snapshot = typedSnapshot.isNotEmpty() ? typedSnapshot : defaultSnapshot(kind);
+    if (model.loadSnapshot(snapshot)) {
+        std::vector<Effect2DVertexState> result;
+        result.reserve(model.getVertices().size());
+        for (const auto& vertex : model.getVertices()) {
+            result.push_back({ vertex.x, vertex.y, vertex.curve });
         }
+        return result;
     }
-    return Effect2DMeshState::fromParameters(parameters);
+    return {};
 }
 
 String CurveNodeModelCodec::envelopePayloadFromParameters(
         const std::vector<NodeParameter>& parameters) {
     const String typedSnapshot = snapshotFromParameters(parameters);
-    if (typedSnapshot.isNotEmpty()) {
-        EnvelopeNodeModel model;
-        if (model.loadSnapshot(typedSnapshot)) {
-            return EnvelopeMeshState::serialize(model.getMesh());
-        }
+    EnvelopeNodeModel model;
+    const String snapshot = typedSnapshot.isNotEmpty()
+            ? typedSnapshot
+            : defaultSnapshot(NodeKind::Envelope);
+    if (model.loadSnapshot(snapshot)) {
+        return EnvelopeMeshState::serialize(model.getMesh());
     }
-    return parameterValue(parameters, EnvelopeMeshState::parameterId());
+    return {};
 }
 
 }

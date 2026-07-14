@@ -29,7 +29,6 @@ public:
     bool replaceVertices(std::vector<FlatCurveVertex> nextVertices);
     bool selectVertex(uint64_t vertexId);
     bool loadSnapshot(const String& snapshot);
-    bool migrateLegacy(const String& legacyVertices);
     bool adoptEditedVertices(const std::vector<Effect2DVertexState>& editedVertices);
     String snapshot() const;
 
@@ -58,7 +57,6 @@ public:
     ~EnvelopeNodeModel();
 
     bool loadSnapshot(const String& snapshot);
-    bool migrateLegacy(const String& legacySnapshot);
     bool syncFromNode(const Node& node);
     String snapshot() const;
     bool selectCube(int cubeIndex);
@@ -117,10 +115,12 @@ class CurveNodeModelCodec {
 public:
     static String snapshotParameterId();
     static String revisionParameterId();
+    static String defaultSnapshot(NodeKind kind);
     static String snapshotFromParameters(const std::vector<NodeParameter>& parameters);
     static uint64_t revisionFromParameters(const std::vector<NodeParameter>& parameters);
     static std::vector<Effect2DVertexState> flatVerticesFromParameters(
-            const std::vector<NodeParameter>& parameters);
+            const std::vector<NodeParameter>& parameters,
+            NodeKind kind);
     static String envelopePayloadFromParameters(const std::vector<NodeParameter>& parameters);
 };
 

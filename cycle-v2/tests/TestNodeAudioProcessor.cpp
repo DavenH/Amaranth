@@ -3,6 +3,7 @@
 
 #include "../src/Runtime/AudioProcessContextUtils.h"
 #include "../src/Runtime/NodeAudioProcessor.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
@@ -15,6 +16,24 @@
 using namespace CycleV2;
 
 namespace {
+
+std::vector<NodeParameter> curveParameters(std::vector<FlatCurveVertex> vertices) {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices(std::move(vertices)));
+    return {
+            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
+            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) }
+    };
+}
+
+std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {
+    EnvelopeNodeModel model;
+    REQUIRE(EnvelopeMeshState::apply(payload, model.getMesh()));
+    return {
+            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
+            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) }
+    };
+}
 
 SignalPayload payload(std::initializer_list<float> samples) {
     SignalPayload result;
@@ -140,10 +159,8 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
     AudioProcessContext envelopeContext;
     envelopeContext.frameCount = 4;
     envelopeContext.timing.sampleRate = 8.0;
-    envelopeContext.parameters = {
-            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() },
-            { "level", "Level", "0.25" }
-    };
+    envelopeContext.parameters = envelopeParameters();
+    envelopeContext.parameters.push_back({ "level", "Level", "0.25" });
     envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
 
@@ -157,9 +174,7 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
 TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v2][runtime][envelope]") {
     NodeAudioProcessorFactory factory;
     auto processor = factory.create(AudioModuleRole::Envelope);
-    const std::vector<NodeParameter> parameters {
-            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
-    };
+    const std::vector<NodeParameter> parameters = envelopeParameters();
 
     AudioProcessContext noteOn;
     noteOn.frameCount = 8;
@@ -208,12 +223,12 @@ TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2
         AudioProcessContext context;
         context.frameCount = 16;
         context.timing.sampleRate = 16.0;
-        context.parameters = {
-                { EnvelopeMeshState::parameterId(), "Envelope Snapshot", snapshot },
+        context.parameters = envelopeParameters(snapshot);
+        context.parameters.insert(context.parameters.end(), {
                 { "red", "Red", String(red) },
                 { "blue", "Blue", "0" },
                 { "logarithmic", "Logarithmic", logarithmic ? "1" : "0" }
-        };
+        });
         context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
         auto processor = factory.create(AudioModuleRole::Envelope);
         processor->process(context);
@@ -246,18 +261,14 @@ TEST_CASE("Envelope processor preserves active position across snapshot edits", 
     AudioProcessContext start;
     start.frameCount = 8;
     start.timing.sampleRate = 16.0;
-    start.parameters = {
-            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", initialSnapshot }
-    };
+    start.parameters = envelopeParameters(initialSnapshot);
     start.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     activeProcessor->process(start);
 
     AudioProcessContext edited;
     edited.frameCount = 4;
     edited.timing.sampleRate = 16.0;
-    edited.parameters = {
-            { EnvelopeMeshState::parameterId(), "Envelope Snapshot", editedSnapshot }
-    };
+    edited.parameters = envelopeParameters(editedSnapshot);
     activeProcessor->process(edited);
 
     auto freshProcessor = factory.create(AudioModuleRole::Envelope);
@@ -498,9 +509,10 @@ TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-
     shapedContext.inputs = {
             gridPayload({ -0.5f, 0.f, 0.5f }, 1, 3)
     };
-    shapedContext.parameters = {
-            { "effect.vertices", "Effect Vertices", "0.062500,0.875000,1.000000;0.937500,0.875000,1.000000" }
-    };
+    shapedContext.parameters = curveParameters({
+            { 1, 0.0625f, 0.875f, 1.f },
+            { 2, 0.9375f, 0.875f, 1.f }
+    });
     factory.create(AudioModuleRole::Waveshaper)->process(shapedContext);
 
     REQUIRE(output(shapedContext).traversalGrid.isValid());
@@ -517,16 +529,15 @@ TEST_CASE("Waveshaper oversamples audio while keeping traversal columns independ
         signal[i] = i % 2 == 0 ? -0.9f : 0.9f;
     }
     context.inputs = { gridPayload(signal, 1, signal.size()) };
-    context.parameters = {
+    context.parameters = curveParameters({
+            { 1, 0.0625f, 0.95f, 1.f },
+            { 2, 0.9375f, 0.05f, 1.f }
+    });
+    context.parameters.insert(context.parameters.end(), {
             { "pre", "Pre", "2" },
             { "post", "Post", "1" },
-            { "aaFactor", "AA Factor", "4" },
-            {
-                    "effect.vertices",
-                    "Effect Vertices",
-                    "0.062500,0.950000,1.000000;0.937500,0.050000,1.000000"
-            }
-    };
+            { "aaFactor", "AA Factor", "4" }
+    });
 
     factory.create(AudioModuleRole::Waveshaper)->process(context);
 
@@ -595,24 +606,28 @@ TEST_CASE("IR processor uses Cycle 1 post-gain and prefilter policies", "[cycle-
     AudioProcessContext unity;
     unity.frameCount = input.size();
     unity.inputs = { payload(input) };
-    unity.parameters = {
+    unity.parameters = curveParameters({
+            { 1, 0.03125f, 0.75f, 1.f },
+            { 2, 0.0625f, 0.75f, 1.f },
+            { 3, 1.f, 0.75f, 1.f }
+    });
+    unity.parameters.insert(unity.parameters.end(), {
             { "size", "Size", "0" },
             { "post", "Post", "0.5" },
-            { "highPass", "HighPass", "0" },
-            {
-                    "Effect Vertices",
-                    "Effect Vertices",
-                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
-            }
-    };
+            { "highPass", "HighPass", "0" }
+    });
     unityProcessor->process(unity);
 
     AudioProcessContext quiet = unity;
-    quiet.parameters[1].value = "0";
+    std::find_if(quiet.parameters.begin(), quiet.parameters.end(), [](const auto& parameter) {
+        return parameter.id == "post";
+    })->value = "0";
     quietProcessor->process(quiet);
 
     AudioProcessContext filtered = unity;
-    filtered.parameters[2].value = "1";
+    std::find_if(filtered.parameters.begin(), filtered.parameters.end(), [](const auto& parameter) {
+        return parameter.id == "highPass";
+    })->value = "1";
     filteredProcessor->process(filtered);
 
     const auto& unitySamples = output(unity).block.samples;
@@ -647,16 +662,18 @@ TEST_CASE("Disabled IR processor passes its input through", "[cycle-v2][runtime]
 
 TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime][ir]") {
     NodeAudioProcessorFactory factory;
-    const std::vector<NodeParameter> parameters {
+    std::vector<NodeParameter> parameters = curveParameters({
+            { 1, 0.f, 0.5f, 1.f },
+            { 2, 0.0625f, 0.95f, 0.35f },
+            { 3, 0.125f, 0.3f, 0.45f },
+            { 4, 0.1875f, 0.55f, 0.7f },
+            { 5, 1.f, 0.5f, 1.f }
+    });
+    parameters.insert(parameters.end(), {
             { "size", "Size", "0" },
             { "post", "Post", "0.5" },
-            { "highPass", "HighPass", "0" },
-            {
-                    "Effect Vertices",
-                    "Effect Vertices",
-                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
-            }
-    };
+            { "highPass", "HighPass", "0" }
+    });
     std::vector<float> reference;
 
     for (ChannelLayout layout : {
@@ -687,16 +704,18 @@ TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cyc
     NodeAudioProcessorFactory factory;
     auto wholeProcessor = factory.create(AudioModuleRole::ImpulseResponse);
     auto splitProcessor = factory.create(AudioModuleRole::ImpulseResponse);
-    const std::vector<NodeParameter> parameters {
+    std::vector<NodeParameter> parameters = curveParameters({
+            { 1, 0.f, 0.5f, 1.f },
+            { 2, 0.0625f, 0.95f, 0.35f },
+            { 3, 0.125f, 0.3f, 0.45f },
+            { 4, 0.1875f, 0.55f, 0.7f },
+            { 5, 1.f, 0.5f, 1.f }
+    });
+    parameters.insert(parameters.end(), {
             { "size", "Size", "0" },
             { "post", "Post", "0.5" },
-            { "highPass", "HighPass", "0" },
-            {
-                    "Effect Vertices",
-                    "Effect Vertices",
-                    "0.031250,0.750000,1.000000;0.062500,0.750000,1.000000;1.000000,0.750000,1.000000"
-            }
-    };
+            { "highPass", "HighPass", "0" }
+    });
     std::vector<float> wholeInput(128, 0.f);
     wholeInput[0] = 1.f;
 

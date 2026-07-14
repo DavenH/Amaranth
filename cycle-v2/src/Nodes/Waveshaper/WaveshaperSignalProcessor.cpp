@@ -24,15 +24,6 @@ void ensureCurveTable() {
     }
 }
 
-std::vector<Effect2DVertexState> defaultVertices() {
-    return {
-            { kWaveshaperPadding * 0.5f, kWaveshaperPadding * 0.5f, 1.f },
-            { kWaveshaperPadding, kWaveshaperPadding, 1.f },
-            { 1.f - kWaveshaperPadding, 1.f - kWaveshaperPadding, 1.f },
-            { 1.f - kWaveshaperPadding * 0.5f, 1.f - kWaveshaperPadding * 0.5f, 1.f }
-    };
-}
-
 }
 
 WaveshaperSignalProcessor::WaveshaperSignalProcessor() {
@@ -54,9 +45,10 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     preparedRasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters);
+    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::Waveshaper);
     if (vertices.empty()) {
-        vertices = defaultVertices();
+        preparedMesh.destroy();
+        return {};
     }
 
     for (const auto& state : vertices) {
@@ -159,7 +151,7 @@ void WaveshaperSignalProcessor::processBuffer(Buffer<float> buffer, const Signal
 
 void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParameter>& parameters) {
     const String serializedVertices = Effect2DMeshState::serialize(
-            CurveNodeModelCodec::flatVerticesFromParameters(parameters));
+            CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::Waveshaper));
 
     if (serializedVertices == lastVertexState && mesh.getNumVerts() > 0) {
         return;
@@ -176,12 +168,7 @@ void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParamete
 void WaveshaperSignalProcessor::rebuildMesh(const String& serializedVertices) {
     mesh.destroy();
 
-    auto vertices = Effect2DMeshState::parse(serializedVertices);
-    if (vertices.empty()) {
-        vertices = defaultVertices();
-    }
-
-    for (const auto& vertex : vertices) {
+    for (const auto& vertex : Effect2DMeshState::parse(serializedVertices)) {
         addVertex(vertex.x, vertex.y, vertex.curve);
     }
 }
