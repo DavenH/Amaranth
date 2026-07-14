@@ -321,17 +321,21 @@ Current status:
 - Cycle 2 Trimesh currently uses the generic shared trilinear rasterizer and
   does not duplicate voice chaining. It should adopt the shared voice policy
   only when oscillator/voice-cycle execution is introduced.
-- `VoiceMeshRasterizer` still owns the façade that combines shared slicing,
-  guide application, voice policies, waveform baking, snapshot publication,
-  and Cycle 1 singleton access.
+- `Rasterization::VoiceRasterizer` now owns the shared façade that combines
+  slicing, guide application, voice policies, waveform baking, and snapshot
+  publication. Its mesh, morph, guide provider, rasterization request, chaining
+  state, and minimum-line-length inputs are explicit and application-neutral.
+- Cycle 1 retains `VoiceMeshRasterizer` as a thin compatibility adapter. It
+  publishes the authoritative `MinLineLength` application constant and keeps
+  the legacy `SingletonAccessor` construction and reset contract.
 
 Next target:
 
-- extract an application-neutral voice rasterizer façade configured with
-  explicit mesh, morph, guide-provider, request, and `VoiceCycleState` inputs
-- leave Cycle 1's singleton lookup and voice scheduling in a thin adapter
-- make prepared waveform output and state ownership usable by a future Cycle 2
-  oscillator node without introducing a second rasterization path
+- define immutable prepared-output/request snapshots where a future Cycle 2
+  oscillator needs to publish rasterization configuration across threads
+- integrate the shared façade into that oscillator without introducing a
+  second rasterization path; Cycle 2's current Trimesh node should remain on
+  the generic shared rasterizer until it gains voice-cycle execution
 - separately extract graphic morph/axis policy after replacing Cycle 1 layer,
   settings, scratch-channel, and panel dependencies with narrow value inputs
 
@@ -624,8 +628,12 @@ Complete one module end-to-end before starting the next:
 - [x] Integrate Cycle 2 envelope snapshots and lifecycle with `EnvRasterizer`.
 - [x] Publish immutable Cycle 2 configurations for Reverb, IR, Waveshaper, and Envelope.
 - [x] Inventory Cycle 1 voice-rasterizer dependencies and extract shared chaining state/policies.
-- [ ] Define shared voice-rasterizer request and prepared-output snapshots.
-- [ ] Move application-neutral `VoiceMeshRasterizer`, `GraphicRasterizer`, `E3Rasterizer`, and time-column policy into `AmaranthLib`.
+- [x] Extract the shared application-neutral voice-rasterizer façade and keep
+  Cycle 1 singleton configuration in a thin adapter.
+- [ ] Define shared voice-rasterizer request and prepared-output snapshots when
+  Cycle 2 oscillator publication requires them.
+- [ ] Move application-neutral `GraphicRasterizer`, `E3Rasterizer`, and
+  time-column policy into `AmaranthLib`.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
