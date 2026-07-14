@@ -6,9 +6,10 @@
 #include <memory>
 
 #include "../Graph/GraphEditor.h"
+#include "../Graph/GraphCommandDispatcher.h"
+#include "../Graph/GraphDocument.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
-#include "../Graph/GraphSerializer.h"
 #include "../Nodes/Effect2D/Effect2DExpandedEditorComponent.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
@@ -16,10 +17,11 @@
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "../Runtime/GraphPreviewExecutor.h"
-#include "../Runtime/GraphAudioExecutor.h"
-#include "../Runtime/GraphRuntime.h"
+#include "../Runtime/GraphPresentationModel.h"
 #include "NodeCanvasGlRenderer.h"
+#include "NodeAutomationFacade.h"
+#include "NodeCanvasScene.h"
+#include "NodeCanvasViewport.h"
 
 namespace CycleV2 {
 
@@ -92,16 +94,18 @@ private:
     };
 
     OpenGLContext openGLContext;
-    NodeCanvasGlRenderer glRenderer;
-    NodeGraph graph;
-    GraphCompiler graphCompiler;
-    GraphCompileResult compileResult;
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-    mutable GraphAudioExecutor audioExecutor;
-    mutable GraphAudioExecutor previewAudioExecutor;
-    std::vector<String> undoStack;
-    std::vector<String> redoStack;
+    NodeCanvasRenderer renderer;
+    mutable NodeCanvasViewport viewport;
+    mutable NodeCanvasScene sceneBuilder;
+    NodeCanvasHitTester hitTester;
+    GraphDocument document;
+    GraphCommandDispatcher commands;
+    NodeAutomationFacade automation;
+    const NodeGraph& graph;
+    GraphPresentationModel presentation;
+    const GraphCompileResult& compileResult;
+    const RuntimeProcessTrace& runtimeTrace;
+    const GraphPreviewResult& previewResult;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
@@ -110,8 +114,6 @@ private:
     String trimeshExpandedEditorNodeId;
     String effect2DExpandedEditorNodeId;
 
-    float zoom { 0.58f };
-    Point<float> pan { 34.f, 38.f };
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
@@ -207,7 +209,6 @@ private:
     int findEdgeAt(Point<float> screenPosition) const;
     int findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const;
     const Node* findNode(const String& id) const;
-    Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
@@ -232,8 +233,6 @@ private:
     bool loadSnapshot();
     bool undo();
     bool redo();
-    void pushUndoSnapshot();
-    void pushUndoSnapshot(String xml);
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
     void shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId);

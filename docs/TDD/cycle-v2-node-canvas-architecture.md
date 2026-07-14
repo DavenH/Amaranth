@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-14).
 
 Depends on `cycle-v2-node-definition-and-graph-model.md`. Node-specific curve
 editor extraction is specified in `cycle-v2-curve-node-models-and-editors.md`.
@@ -260,3 +260,41 @@ objects and later push arbitrary strings back to the canvas.
 - Viewport, scene, hit-testing, document, and command behavior have non-UI unit
   coverage.
 
+## Implementation Notes
+
+- `GraphDocument` is the sole owner of the graph, persistence identity, dirty
+  state, revision, and bounded undo/redo history. Failed loads are atomic.
+- `GraphCommandDispatcher` owns semantic mutations and nested compound-edit
+  coalescing. Canvas gestures and `NodeAutomationFacade` both use it.
+- `NodeCanvasViewport` is the sole pan/zoom owner. `NodeCanvasScene` caches
+  immutable geometry by graph, viewport, and presentation revisions, and
+  `NodeCanvasHitTester` plus automation inspect that same snapshot.
+- Dynamic attachment geometry and rich-editor capabilities enter through
+  `NodeViewModuleRegistry`; the generic scene no longer knows Trimesh guide
+  target syntax or curve-editor sizing rules.
+- `GraphPresentationModel` owns compilation, preview rendering, runtime traces,
+  capture execution, impact scheduling, and stale-revision rejection. Its
+  persistent compiler preserves node configuration revision history so effect
+  gain, curve, and envelope edits are adopted by persistent processors.
+- Rich-editor bounds use the same responsive geometry as their hosted editors;
+  canvas primitives intersecting an expanded editor are omitted so they cannot
+  bleed into an OpenGL surface.
+- The default graph gives Guide, Waveshaper, and IR enough height for their
+  compact previews instead of relying on dimensions from other presets.
+- The extracted `NodeCanvasRenderer` role currently uses the existing OpenGL
+  backend. Context creation and destruction remain explicitly hosted by the
+  JUCE component as allowed by this TDD.
+- The existing Effect2D editor internals remain subject to
+  `cycle-v2-curve-node-models-and-editors.md`; their model/editor extraction is
+  not duplicated here.
+
+Verification on macOS:
+
+- `CycleV2_tests '[cycle-v2][canvas]'`: 81 assertions in 14 test cases.
+- Full configured test set: 380 passed; six Oscillo tests were not run because
+  the `Oscillo_tests` executable was not built in the configured tree.
+- Cycle V2 agent fixtures passed for graph editing, graph round-trip, shared
+  pointer-target replay, and Effect2D expanded-editor interaction/screenshot.
+- Runner-side macOS captures verified the corrected default preview sizes and
+  that canvas nodes/cables are clipped outside the expanded Trimesh OpenGL
+  panel.

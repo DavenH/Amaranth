@@ -1,4 +1,5 @@
 #include "NodeCanvas.h"
+#include "NodeViewModule.h"
 
 #include "../Runtime/GraphAudioExecutor.h"
 
@@ -790,11 +791,11 @@ Colour portDisplayColour(const Node& node, const Port& port) {
 }
 
 bool isOperationNode(NodeKind kind) {
-    return kind == NodeKind::Add || kind == NodeKind::Multiply;
+    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().operationLayoutControl;
 }
 
 bool hasOutputSideButton(NodeKind kind) {
-    return kind == NodeKind::TrilinearMesh;
+    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().outputSideControl;
 }
 
 bool isEffect2DNode(NodeKind kind) {
@@ -805,23 +806,7 @@ bool isEffect2DNode(NodeKind kind) {
 }
 
 bool isPreviewableNode(NodeKind kind) {
-    switch (kind) {
-        case NodeKind::WaveSource:
-        case NodeKind::ImageSource:
-        case NodeKind::TrilinearMesh:
-        case NodeKind::VoiceContext:
-        case NodeKind::Fft:
-        case NodeKind::Ifft:
-        case NodeKind::Envelope:
-        case NodeKind::GuideCurve:
-        case NodeKind::ImpulseResponse:
-        case NodeKind::Waveshaper:
-        case NodeKind::Spy:
-            return true;
-
-        default:
-            return false;
-    }
+    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().previewable;
 }
 
 enum class OperationPortLayout {
@@ -899,53 +884,10 @@ Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
 }
 
 Rectangle<float> expandedEditorBoundsForNode(Rectangle<float> componentBounds, const Node* node) {
-    if (node != nullptr && node->kind == NodeKind::VoiceContext) {
-        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
-        const float width = jmin(available.getWidth(), 334.f);
-        const float height = jmin(available.getHeight(), 208.f);
-        return Rectangle<float>(width, height).withCentre(available.getCentre());
-    }
-
-    if (node != nullptr && (node->kind == NodeKind::Fft || node->kind == NodeKind::Ifft)) {
-        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
-        const float width = jmin(available.getWidth(), 360.f);
-        const float height = jmin(available.getHeight(), 144.f);
-        return Rectangle<float>(width, height).withCentre(available.getCentre());
-    }
-
-    if (node != nullptr && node->kind == NodeKind::Spy) {
-        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
-        const float width = jmin(available.getWidth(), 520.f);
-        const float height = jmin(available.getHeight(), 360.f);
-        return Rectangle<float>(width, height).withCentre(available.getCentre());
-    }
-
-    if (node != nullptr
-            && (node->kind == NodeKind::Envelope
-                || node->kind == NodeKind::GuideCurve
-                || node->kind == NodeKind::ImpulseResponse
-                || node->kind == NodeKind::Waveshaper)) {
-        const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
-        float width = 680.f;
-        float height = 420.f;
-
-        if (node->kind == NodeKind::Envelope) {
-            width = 840.f;
-            height = 620.f;
-        } else if (node->kind == NodeKind::ImpulseResponse) {
-            width = 1050.f;
-            height = 470.f;
-        } else if (node->kind == NodeKind::GuideCurve) {
-            width = 700.f;
-            height = 380.f;
-        } else if (node->kind == NodeKind::Waveshaper) {
-            width = 540.f;
-            height = 360.f;
-        }
-
-        width = jmin(available.getWidth(), width);
-        height = jmin(available.getHeight(), height);
-        return Rectangle<float>(width, height).withCentre(available.getCentre());
+    if (node != nullptr) {
+        return NodeViewModuleRegistry::instance().moduleFor(node->kind).expandedEditorBounds(
+                componentBounds,
+                kExpandedEditorMinMargin);
     }
 
     return expandedEditorBounds(componentBounds);
@@ -986,24 +928,12 @@ String nextVoiceDomain(const Node& node) {
 
 bool expandedEditorBlocksCanvas(const Node* node) {
     return node != nullptr
-            && node->kind != NodeKind::VoiceContext
-            && node->kind != NodeKind::Fft
-            && node->kind != NodeKind::Ifft;
+            && NodeViewModuleRegistry::instance().moduleFor(node->kind)
+                    .capabilities().expandedEditorBlocksCanvas;
 }
 
 bool hasHostedExpandedEditor(const Node& node) {
-    return node.kind == NodeKind::TrilinearMesh
-        || node.kind == NodeKind::Envelope
-        || node.kind == NodeKind::GuideCurve
-        || node.kind == NodeKind::ImpulseResponse
-        || node.kind == NodeKind::Waveshaper;
-}
-
-bool fullyContains(Rectangle<float> outer, Rectangle<float> inner) {
-    return outer.contains(inner.getTopLeft())
-        && outer.contains(inner.getTopRight())
-        && outer.contains(inner.getBottomLeft())
-        && outer.contains(inner.getBottomRight());
+    return NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities().hostedEditor;
 }
 
 void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
@@ -1827,28 +1757,27 @@ void drawOutputSideIcon(Graphics& g, Rectangle<float> button, PortSide side, Col
     g.fillEllipse(Rectangle<float>(dot, dot).withCentre(out));
 }
 
-NodeGraph createStartupGraph() {
+GraphDocument createStartupDocument() {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("resources")
             .getChildFile("default.cyclegraph");
-
-    if (defaultGraph.existsAsFile()) {
-        NodeGraph graph = GraphSerializer().fromXmlString(defaultGraph.loadFileAsString());
-
-        if (!graph.getNodes().empty()) {
-            return graph;
-        }
-    }
+    return GraphDocument::openOrDefault(defaultGraph, NodeGraph::createDemoGraph());
+  #else
+    return GraphDocument(NodeGraph::createDemoGraph());
   #endif
-
-    return NodeGraph::createDemoGraph();
 }
 
 }
 
 NodeCanvas::NodeCanvas() :
-        graph(createStartupGraph()) {
+        document(createStartupDocument())
+    ,   commands(document)
+    ,   automation(document, commands)
+    ,   graph(document.graph())
+    ,   compileResult(presentation.compileResult())
+    ,   runtimeTrace(presentation.runtimeTrace())
+    ,   previewResult(presentation.previewResult()) {
     refreshCompiledState();
 
     setOpaque(true);
@@ -1870,14 +1799,23 @@ void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = findNode(expandedNodeId);
 
     drawGrid(g);
-    drawSnapGuides(g);
-    drawEdges(g);
-    drawConnectionPreview(g);
-    drawNodes(g);
-    drawMiniMap(g);
-    drawEdgeLegend(g);
-    drawNodePalette(g);
-    drawHoverConsole(g);
+    {
+        Graphics::ScopedSaveState canvasClip(g);
+
+        if (expandedEditorBlocksCanvas(expandedNode)) {
+            g.excludeClipRegion(expandedEditorBoundsForNode(
+                    getLocalBounds().toFloat(), expandedNode).toNearestInt());
+        }
+
+        drawSnapGuides(g);
+        drawEdges(g);
+        drawConnectionPreview(g);
+        drawNodes(g);
+        drawMiniMap(g);
+        drawEdgeLegend(g);
+        drawNodePalette(g);
+        drawHoverConsole(g);
+    }
 
     if (expandedNode != nullptr) {
         if (!hasHostedExpandedEditor(*expandedNode)) {
@@ -1887,6 +1825,7 @@ void NodeCanvas::paint(Graphics& g) {
 }
 
 void NodeCanvas::resized() {
+    viewport.setBounds(getLocalBounds().toFloat());
     updateExpandedEditorHost(findNode(expandedNodeId));
     repaint();
 }
@@ -1902,7 +1841,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
     updatePaletteHover(event.position);
     editStatusMessage = {};
-    dragStartPan = pan;
+    dragStartPan = viewport.getPan();
     lastMousePosition = event.position;
     draggingNode = false;
     connectingCable = false;
@@ -1962,11 +1901,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     NodeKind paletteKind;
     if (findPaletteKindAt(event.position, paletteKind)) {
-        const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().addNode(graph, paletteKind, paletteCreationWorldPosition(paletteKind, event.position));
+        auto result = commands.addNode(
+                paletteKind,
+                paletteCreationWorldPosition(paletteKind, event.position));
 
         if (result.succeeded()) {
-            pushUndoSnapshot(beforeEdit);
             selectedNodeId = result.nodeId;
             expandedNodeId = {};
             selectedEdgeIndex = -1;
@@ -2056,11 +1995,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     if (selectedEdgeIndex >= 0) {
         if (event.mods.isCtrlDown()) {
-            const String beforeEdit = GraphSerializer().toXmlString(graph);
-            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+            auto result = commands.removeEdgeAt((size_t) selectedEdgeIndex);
 
             if (result.succeeded()) {
-                pushUndoSnapshot(beforeEdit);
                 selectedEdgeIndex = -1;
                 refreshCompiledState();
                 editStatusMessage = "Edge cut";
@@ -2094,18 +2031,20 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 ? getPortLocation(hitPort).centre
                 : event.position;
     } else if (draggingNode) {
-        Node* node = findMutableNode(selectedNodeId);
+        const Node* node = findNode(selectedNodeId);
 
         if (node != nullptr) {
             if (!nodeDragUndoPushed) {
-                pushUndoSnapshot();
+                commands.beginCompoundEdit();
                 nodeDragUndoPushed = true;
             }
 
             const auto dragOffset = event.getOffsetFromDragStart().toFloat();
             nodeDragMoved = dragOffset.getDistanceFromOrigin() > 3.f;
-            const auto offset = dragOffset / zoom;
-            node->bounds = snappedNodeBounds(*node, dragStartNodeBounds.translated(offset.x, offset.y));
+            const auto offset = dragOffset / viewport.getZoom();
+            commands.resizeNode(
+                    node->id,
+                    snappedNodeBounds(*node, dragStartNodeBounds.translated(offset.x, offset.y)));
             spliceTargetEdgeIndex = nodeDragMoved
                     ? findSpliceTargetEdgeAt(event.position, selectedNodeId)
                     : -1;
@@ -2113,7 +2052,9 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     } else {
         activeSnapHasX = false;
         activeSnapHasY = false;
-        pan = dragStartPan + event.getOffsetFromDragStart().toFloat();
+        viewport.setTransform(
+                dragStartPan + event.getOffsetFromDragStart().toFloat(),
+                viewport.getZoom());
     }
 
     repaint();
@@ -2124,6 +2065,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
     if (!connectingCable) {
         if (draggingNode && nodeDragMoved && spliceSelectedNodeIntoEdgeAt(event.position)) {
+            commands.commitCompoundEdit();
             draggingNode = false;
             nodeDragUndoPushed = false;
             nodeDragMoved = false;
@@ -2138,6 +2080,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         }
 
         draggingNode = false;
+        commands.commitCompoundEdit();
         nodeDragUndoPushed = false;
         nodeDragMoved = false;
         spliceTargetEdgeIndex = -1;
@@ -2163,11 +2106,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     expandedEditorDragCaptured = false;
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
-        const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().connect(graph, connectingPort, destPort);
+        auto result = commands.connect(connectingPort, destPort);
 
         if (result.succeeded()) {
-            pushUndoSnapshot(beforeEdit);
             refreshCompiledState();
             editStatusMessage = "Connected";
         } else if (result.code == GraphEditCode::ValidationRejected) {
@@ -2188,16 +2129,12 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     }
 
     constexpr float panScale = 720.f;
-    pan += Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale);
+    viewport.panBy(Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale));
     repaint();
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
-    const auto mouse = event.position;
-    const auto beforeZoom = toWorld(mouse);
-    zoom = jlimit(0.28f, 1.4f, zoom * scaleFactor);
-    const auto afterZoom = toWorld(mouse);
-    pan += (afterZoom - beforeZoom) * zoom;
+    viewport.zoomAround(event.position, scaleFactor);
     repaint();
 }
 
@@ -2220,14 +2157,12 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
         if (selectedEdgeIndex >= 0) {
-            const String beforeEdit = GraphSerializer().toXmlString(graph);
-            auto result = GraphEditor().removeEdgeAt(graph, (size_t) selectedEdgeIndex);
+            auto result = commands.removeEdgeAt((size_t) selectedEdgeIndex);
 
             if (!result.succeeded()) {
                 return false;
             }
 
-            pushUndoSnapshot(beforeEdit);
             selectedEdgeIndex = -1;
             refreshCompiledState();
             editStatusMessage = "Edge deleted";
@@ -2239,14 +2174,12 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
             return false;
         }
 
-        const String beforeEdit = GraphSerializer().toXmlString(graph);
-        auto result = GraphEditor().removeNode(graph, selectedNodeId);
+        auto result = commands.removeNode(selectedNodeId);
 
         if (!result.succeeded()) {
             return false;
         }
 
-        pushUndoSnapshot(beforeEdit);
         expandedNodeId = {};
         selectedNodeId = {};
         refreshCompiledState();
@@ -2259,12 +2192,13 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
-    glRenderer.initialize();
+    renderer.initialize();
 }
 
 void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
-        glRenderer.renderBackground(getWidth(), getHeight(), (float) openGLContext.getRenderingScale(), zoom, pan);
+        renderer.renderBackground(getWidth(), getHeight(), (float) openGLContext.getRenderingScale(),
+                viewport.getZoom(), viewport.getPan());
 
         if (kUseGlCanvasEdges) {
             drawGlEdges();
@@ -2289,7 +2223,7 @@ void NodeCanvas::openGLContextClosing() {
         entry.second->releaseSharedGlResources();
     }
 
-    glRenderer.shutdown();
+    renderer.shutdown();
 }
 
 void NodeCanvas::timerCallback() {
@@ -2315,6 +2249,8 @@ void NodeCanvas::timerCallback() {
 }
 
 void NodeCanvas::drawGrid(Graphics& g) {
+    const float zoom = viewport.getZoom();
+    const Point<float> pan = viewport.getPan();
     if (kUseGlCanvasUnderlay) {
         return;
     }
@@ -2359,11 +2295,9 @@ void NodeCanvas::drawGrid(Graphics& g) {
 }
 
 void NodeCanvas::drawGlEdges() {
+    const float zoom = viewport.getZoom();
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const Node* expandedNode = findNode(expandedNodeId);
-    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
-    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -2386,10 +2320,6 @@ void NodeCanvas::drawGlEdges() {
             continue;
         }
 
-        if (hasExpandedEditor && fullyContains(expandedPanel, cableBounds)) {
-            continue;
-        }
-
         Colour colour = colourForDomain(displayDomainForEdge(edge));
         const bool invalid = edgeHasValidationIssue(edge);
 
@@ -2397,7 +2327,7 @@ void NodeCanvas::drawGlEdges() {
             colour = Colour(0xffff5a5f);
         }
 
-        glRenderer.renderCable(
+        renderer.renderCable(
                 cable,
                 sourceEndpoint.centre,
                 destEndpoint.centre,
@@ -2411,6 +2341,7 @@ void NodeCanvas::drawGlEdges() {
 }
 
 void NodeCanvas::drawGlNodeShells() {
+    const float zoom = viewport.getZoom();
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
     const Node* expandedNode = findNode(expandedNodeId);
     const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
@@ -2423,11 +2354,11 @@ void NodeCanvas::drawGlNodeShells() {
             continue;
         }
 
-        if (hasExpandedEditor && fullyContains(expandedPanel, bounds)) {
+        if (hasExpandedEditor && expandedPanel.intersects(bounds)) {
             continue;
         }
 
-        glRenderer.renderNodeShell(
+        renderer.renderNodeShell(
                 bounds,
                 42.f * zoom,
                 8.f * portScaleForZoom(zoom),
@@ -2471,6 +2402,7 @@ void NodeCanvas::drawGlTrimeshExpandedPanel() {
 }
 
 void NodeCanvas::drawGlEffect2DPreviews() {
+    const float zoom = viewport.getZoom();
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
     const Node* expandedNode = findNode(expandedNodeId);
     const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
@@ -2488,7 +2420,7 @@ void NodeCanvas::drawGlEffect2DPreviews() {
             continue;
         }
 
-        if (hasExpandedEditor && fullyContains(expandedPanel, nodeBounds)) {
+        if (hasExpandedEditor && expandedPanel.intersects(nodeBounds)) {
             continue;
         }
 
@@ -2498,6 +2430,7 @@ void NodeCanvas::drawGlEffect2DPreviews() {
 }
 
 void NodeCanvas::drawEdges(Graphics& g) {
+    const float zoom = viewport.getZoom();
     if (kUseGlCanvasEdges) {
         return;
     }
@@ -2526,7 +2459,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
             continue;
         }
 
-        if (hasExpandedEditor && fullyContains(expandedPanel, cableBounds)) {
+        if (hasExpandedEditor && expandedPanel.intersects(cableBounds)) {
             continue;
         }
 
@@ -2640,6 +2573,7 @@ void NodeCanvas::drawEdges(Graphics& g) {
 }
 
 void NodeCanvas::drawConnectionPreview(Graphics& g) {
+    const float zoom = viewport.getZoom();
     if (!connectingCable) {
         return;
     }
@@ -2663,13 +2597,6 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
     const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
 
-    const Node* expandedNode = findNode(expandedNodeId);
-    const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
-    if (expandedEditorBlocksCanvas(expandedNode)
-            && fullyContains(expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode), cableBounds)) {
-        return;
-    }
-
     const Colour colour = colourForDomain(port->domain);
     const float cableScale = cableScaleForZoom(zoom);
 
@@ -2690,18 +2617,11 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
 
 void NodeCanvas::drawNodes(Graphics& g) {
     const auto visibleArea = getLocalBounds().toFloat().expanded(120.f);
-    const Node* expandedNode = findNode(expandedNodeId);
-    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
-    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (const auto& node : graph.getNodes()) {
         const Rectangle<float> nodeBounds = toScreen(node.bounds);
 
         if (!nodeBounds.intersects(visibleArea)) {
-            continue;
-        }
-
-        if (hasExpandedEditor && fullyContains(expandedPanel, nodeBounds)) {
             continue;
         }
 
@@ -2731,6 +2651,7 @@ void NodeCanvas::drawSnapGuides(Graphics& g) {
 }
 
 void NodeCanvas::drawNode(Graphics& g, const Node& node) {
+    const float zoom = viewport.getZoom();
     Rectangle<float> bounds = toScreen(node.bounds);
     const float uiScale = portScaleForZoom(zoom);
     const float corner = 8.f * uiScale;
@@ -2845,6 +2766,7 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 }
 
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
+    const float zoom = viewport.getZoom();
     const int width = roundToInt(area.getWidth());
     const int height = roundToInt(area.getHeight());
     const PortDomain previewDomain = displayDomainForNodeOutput(node, "out");
@@ -3057,6 +2979,7 @@ void NodeCanvas::drawPreviewUncached(
         const Node& node,
         Rectangle<float> area,
         PortDomain previewDomain) {
+    const float zoom = viewport.getZoom();
     if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
         return;
     }
@@ -3288,6 +3211,7 @@ void NodeCanvas::drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colou
 }
 
 void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
+    const float zoom = viewport.getZoom();
     Path envelope;
     envelope.startNewSubPath(area.getX(), area.getBottom());
     envelope.lineTo(area.getX() + area.getWidth() * 0.16f, area.getY() + area.getHeight() * 0.12f);
@@ -3501,14 +3425,12 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                     return;
                 }
 
-                Node* node = safeThis->findMutableNode(safeThis->expandedNodeId);
+                const Node* node = safeThis->findNode(safeThis->expandedNodeId);
                 if (node == nullptr || parameterValueForNode(*node, parameterId) == value) {
                     return;
                 }
 
-                const String beforeEdit = GraphSerializer().toXmlString(safeThis->graph);
-                auto result = GraphEditor().setNodeParameter(
-                        safeThis->graph,
+                auto result = safeThis->commands.setNodeParameter(
                         node->id,
                         parameterId,
                         label,
@@ -3518,7 +3440,6 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                     return;
                 }
 
-                safeThis->pushUndoSnapshot(beforeEdit);
                 safeThis->scheduleCompiledStateRefresh();
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->repaint();
@@ -3699,6 +3620,8 @@ void NodeCanvas::detachExpandedEditorHosts() {
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {
+    const float zoom = viewport.getZoom();
+    const Point<float> pan = viewport.getPan();
     Rectangle<float> map((float) getWidth() - 180.f, 18.f, 154.f, 92.f);
     g.setColour(Colour(0xaa0b0e13));
     g.fillRoundedRectangle(map, 7.f);
@@ -3913,16 +3836,15 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
 }
 
 Point<float> NodeCanvas::toScreen(Point<float> p) const {
-    return { pan.x + p.x * zoom, pan.y + p.y * zoom };
+    return viewport.toScreen(p);
 }
 
 Point<float> NodeCanvas::toWorld(Point<float> p) const {
-    return { (p.x - pan.x) / zoom, (p.y - pan.y) / zoom };
+    return viewport.toWorld(p);
 }
 
 Rectangle<float> NodeCanvas::toScreen(Rectangle<float> r) const {
-    return { pan.x + r.getX() * zoom, pan.y + r.getY() * zoom,
-             r.getWidth() * zoom, r.getHeight() * zoom };
+    return viewport.toScreen(r);
 }
 
 Rectangle<float> NodeCanvas::snappedNodeBounds(const Node& node, Rectangle<float> proposed) {
@@ -3964,31 +3886,8 @@ Rectangle<float> NodeCanvas::snappedNodeBounds(const Node& node, Rectangle<float
 }
 
 NodeCanvas::PortLocation NodeCanvas::getPortLocation(const Node& node, const Port& port) const {
-    const float size = 8.8f * portScaleForZoom(zoom);
-    Point<float> worldCentre;
-
-    switch (port.side) {
-        case PortSide::Top:
-        case PortSide::Bottom: {
-            const int index = portIndexOnSide(node, port);
-            const int count = jmax(1, portCountOnSide(node, port.side));
-            const float x = node.bounds.getX() + node.bounds.getWidth() * ((float) index + 1.f) / ((float) count + 1.f);
-            const float y = port.side == PortSide::Top ? node.bounds.getY() : node.bounds.getBottom();
-            worldCentre = { x, y };
-            break;
-        }
-
-        case PortSide::Right:
-            worldCentre = { node.bounds.getRight(), sidePortY(node, port) };
-            break;
-
-        case PortSide::Left:
-        default:
-            worldCentre = { node.bounds.getX(), sidePortY(node, port) };
-            break;
-    }
-
-    Point<float> centre = toScreen(worldCentre);
+    const float size = 8.8f * portScaleForZoom(viewport.getZoom());
+    Point<float> centre = toScreen(NodeCanvasScene::portWorldCentre(node, port));
     Rectangle<float> bounds(centre.x - size * 0.5f, centre.y - size * 0.5f, size, size);
     return { bounds, centre };
 }
@@ -4071,20 +3970,11 @@ NodeCanvas::CableEndpoint NodeCanvas::dynamicTrimeshGuideEndpoint(
 }
 
 bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
-    for (const auto& node : graph.getNodes()) {
-        for (const auto& port : node.inputs) {
-            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
-                result = { node.id, port.id, true };
-                return true;
-            }
-        }
-
-        for (const auto& port : node.outputs) {
-            if (getPortLocation(node, port).bounds.expanded(10.f).contains(screenPosition)) {
-                result = { node.id, port.id, false };
-                return true;
-            }
-        }
+    const auto hit = hitTester.hitTest(sceneBuilder.build(
+            graph, viewport, presentation.revision(), document.revision()), screenPosition);
+    if (hit.has_value() && hit->isPort()) {
+        result = hit->portAddress();
+        return true;
     }
 
     return false;
@@ -4159,6 +4049,7 @@ bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) 
 }
 
 bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const float zoom = viewport.getZoom();
     const auto& nodes = graph.getNodes();
 
     for (int i = (int) nodes.size() - 1; i >= 0; --i) {
@@ -4178,6 +4069,7 @@ bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String
 }
 
 bool NodeCanvas::findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const float zoom = viewport.getZoom();
     const auto& nodes = graph.getNodes();
 
     for (int i = (int) nodes.size() - 1; i >= 0; --i) {
@@ -4197,6 +4089,7 @@ bool NodeCanvas::findMeshOutputSideButtonAt(Point<float> screenPosition, String&
 }
 
 bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const {
+    const float zoom = viewport.getZoom();
     const auto& nodes = graph.getNodes();
 
     for (int i = (int) nodes.size() - 1; i >= 0; --i) {
@@ -4216,32 +4109,11 @@ bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& no
 }
 
 int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
-    const auto& edges = graph.getEdges();
-
-    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
-        const auto& edge = edges[(size_t) edgeIndex];
-        CableEndpoint sourceEndpoint;
-        CableEndpoint destEndpoint;
-
-        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
-            continue;
-        }
-
-        Path hitPath;
-        PathStrokeType(16.f, PathStrokeType::curved, PathStrokeType::rounded)
-                .createStrokedPath(hitPath, createCablePath(
-                        sourceEndpoint.centre,
-                        destEndpoint.centre,
-                        sourceEndpoint.side,
-                        destEndpoint.side,
-                        edge.attachment));
-
-        if (hitPath.contains(screenPosition)) {
-            return edgeIndex;
-        }
-    }
-
-    return -1;
+    const auto hit = hitTester.hitTest(sceneBuilder.build(
+            graph, viewport, presentation.revision(), document.revision()), screenPosition);
+    return hit.has_value() && hit->kind == NodeSceneTargetKind::Edge
+            ? hit->edgeIndex
+            : -1;
 }
 
 int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const {
@@ -4303,10 +4175,6 @@ const Node* NodeCanvas::findNode(const String& id) const {
     }
 
     return nullptr;
-}
-
-Node* NodeCanvas::findMutableNode(const String& id) {
-    return graph.findNodeForEditing(id);
 }
 
 const Node* NodeCanvas::findNodeAt(Point<float> worldPosition) const {
@@ -4561,7 +4429,8 @@ String NodeCanvas::textForNode(const Node& node) const {
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {
-    return toWorld(getLocalBounds().toFloat().getCentre());
+    viewport.setBounds(getLocalBounds().toFloat());
+    return viewport.centreWorld();
 }
 
 Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const {
@@ -4583,21 +4452,7 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float
 void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     previewSpriteCache.clear();
-    compileResult = graphCompiler.compile(graph);
-    runtimeTrace = {};
-    previewResult = {};
-
-    if (compileResult.succeeded()) {
-        runtimeTrace = GraphRuntime().process(graph, compileResult.plan);
-        constexpr size_t previewFrameCount = 128;
-        const AudioExecutionSpec previewSpec { previewFrameCount, 44100.0, ChannelLayout::LinkedStereo };
-        previewAudioExecutor.prepareExecution(compileResult.plan, previewSpec);
-        const GraphAudioResult audioResult = previewAudioExecutor.process(
-                graph,
-                compileResult.plan,
-                previewFrameCount);
-        previewResult = GraphPreviewExecutor().render(compileResult.plan, audioResult, 40);
-    }
+    presentation.refresh(graph, document.revision(), document.lastChange());
 }
 
 void NodeCanvas::scheduleCompiledStateRefresh() {
@@ -4626,9 +4481,9 @@ var NodeCanvas::exportAutomationState() const {
     root->setProperty("schema", "cycle-v2-automation-state.v1");
     root->setProperty("width", getWidth());
     root->setProperty("height", getHeight());
-    root->setProperty("zoom", zoom);
-    root->setProperty("panX", pan.x);
-    root->setProperty("panY", pan.y);
+    root->setProperty("zoom", viewport.getZoom());
+    root->setProperty("panX", viewport.getPan().x);
+    root->setProperty("panY", viewport.getPan().y);
     root->setProperty("selectedNodeId", selectedNodeId);
     root->setProperty("expandedNodeId", expandedNodeId);
     root->setProperty("selectedEdgeIndex", selectedEdgeIndex);
@@ -4714,7 +4569,7 @@ var NodeCanvas::exportAutomationState() const {
 }
 
 String NodeCanvas::exportGraphXml() const {
-    return GraphSerializer().toXmlString(graph);
+    return document.toXml();
 }
 
 bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
@@ -4740,14 +4595,12 @@ bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> positio
         return false;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().addNode(graph, kind, position);
+    auto result = automation.addNode(kind, position);
 
     if (!result.succeeded()) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = result.nodeId;
     selectedEdgeIndex = -1;
@@ -4759,15 +4612,15 @@ bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> positio
 }
 
 bool NodeCanvas::moveNodeForAutomation(const String& nodeId, Point<float> position) {
-    Node* node = findMutableNode(nodeId);
+    const Node* node = findNode(nodeId);
 
     if (node == nullptr) {
         return false;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    node->bounds.setPosition(position);
-    pushUndoSnapshot(beforeEdit);
+    if (!automation.moveNode(nodeId, position).succeeded()) {
+        return false;
+    }
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
     editStatusMessage = "Node moved: " + nodeId;
@@ -4780,9 +4633,7 @@ bool NodeCanvas::connectPortsForAutomation(
         const String& sourcePortId,
         const String& destNodeId,
         const String& destPortId) {
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().connect(
-            graph,
+    auto result = automation.connect(
             { sourceNodeId, sourcePortId, false },
             { destNodeId, destPortId, true });
 
@@ -4790,7 +4641,6 @@ bool NodeCanvas::connectPortsForAutomation(
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = destNodeId;
     selectedEdgeIndex = -1;
@@ -4801,14 +4651,12 @@ bool NodeCanvas::connectPortsForAutomation(
 }
 
 bool NodeCanvas::deleteNodeForAutomation(const String& nodeId) {
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().removeNode(graph, nodeId);
+    auto result = automation.deleteNode(nodeId);
 
     if (!result.succeeded()) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = {};
     selectedEdgeIndex = -1;
@@ -4823,14 +4671,12 @@ bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
         return false;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().removeEdgeAt(graph, (size_t) edgeIndex);
+    auto result = automation.deleteEdge(edgeIndex);
 
     if (!result.succeeded()) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedEdgeIndex = -1;
     editStatusMessage = "Edge deleted: " + String(edgeIndex);
@@ -4847,9 +4693,7 @@ bool NodeCanvas::setNodeParameterForAutomation(
         return false;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(
-            graph,
+    auto result = automation.setParameter(
             nodeId,
             parameterId,
             label.isEmpty() ? parameterId : label,
@@ -4859,7 +4703,6 @@ bool NodeCanvas::setNodeParameterForAutomation(
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
@@ -4936,20 +4779,7 @@ bool NodeCanvas::getNodeParameterForAutomation(
         const String& nodeId,
         const String& parameterId,
         String& value) const {
-    const Node* node = findNode(nodeId);
-
-    if (node == nullptr) {
-        return false;
-    }
-
-    for (const auto& parameter : node->parameters) {
-        if (parameter.id == parameterId) {
-            value = parameter.value;
-            return true;
-        }
-    }
-
-    return false;
+    return automation.getParameter(nodeId, parameterId, value);
 }
 
 var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
@@ -5025,60 +4855,31 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
             "canvas",
             getLocalBounds().toFloat()));
 
-    for (const auto& node : graph.getNodes()) {
-        const Rectangle<float> nodeBounds = toScreen(node.bounds);
+    viewport.setBounds(getLocalBounds().toFloat());
+    const auto& scene = sceneBuilder.build(
+            graph, viewport, presentation.revision(), document.revision());
+    for (const auto& sceneTarget : scene.targets) {
+        if (sceneTarget.kind != NodeSceneTargetKind::Node && !sceneTarget.isPort()) {
+            continue;
+        }
         targets.add(pointerTargetToVar(
-                "node:" + node.id,
-                "node",
-                nodeBounds,
-                node.id));
-
-        auto addPortTargets = [&](const std::vector<Port>& ports) {
-            for (const auto& port : ports) {
-                const PortLocation location = getPortLocation(node, port);
-                targets.add(pointerTargetToVar(
-                        String(port.input ? "input:" : "output:") + node.id + "." + port.id,
-                        port.input ? "inputPort" : "outputPort",
-                        location.bounds.expanded(5.f),
-                        node.id,
-                        port.id,
-                        port.input));
-            }
-        };
-
-        addPortTargets(node.inputs);
-        addPortTargets(node.outputs);
+                sceneTarget.semanticId,
+                sceneTarget.kind == NodeSceneTargetKind::Node
+                        ? "node"
+                        : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
+                sceneTarget.bounds,
+                sceneTarget.nodeId,
+                sceneTarget.portId,
+                sceneTarget.kind == NodeSceneTargetKind::InputPort));
     }
 
-    const auto& edges = graph.getEdges();
-    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
-        const auto& edge = edges[(size_t) edgeIndex];
-        const Node* sourceNode = findNode(edge.sourceNodeId);
-        const Node* destNode = findNode(edge.destNodeId);
-
-        if (sourceNode == nullptr || destNode == nullptr) {
-            continue;
-        }
-
-        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-        if (sourcePort == nullptr || destPort == nullptr) {
-            continue;
-        }
-
-        const Path cable = createCablePath(
-                getPortLocation(*sourceNode, *sourcePort).centre,
-                getPortLocation(*destNode, *destPort).centre,
-                sourcePort->side,
-                destPort->side,
-                edge.attachment);
-
+    for (const auto& sceneEdge : scene.edges) {
+        const auto& edge = graph.getEdges()[(size_t) sceneEdge.edgeIndex];
         auto* target = new DynamicObject();
-        target->setProperty("id", "edge:" + String(edgeIndex));
+        target->setProperty("id", "edge:" + String(sceneEdge.edgeIndex));
         target->setProperty("kind", edge.attachment ? "attachmentEdge" : "edge");
-        target->setProperty("edgeIndex", edgeIndex);
-        target->setProperty("bounds", rectangleToVar(visibleCableBounds(cable, zoom)));
+        target->setProperty("edgeIndex", sceneEdge.edgeIndex);
+        target->setProperty("bounds", rectangleToVar(sceneEdge.hitPath.getBounds()));
         target->setProperty("sourceNodeId", edge.sourceNodeId);
         target->setProperty("sourcePortId", edge.sourcePortId);
         target->setProperty("destNodeId", edge.destNodeId);
@@ -5221,9 +5022,7 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
         return root;
     }
 
-    const AudioExecutionSpec captureSpec { frameCount, 44100.0, ChannelLayout::LinkedStereo };
-    audioExecutor.prepareExecution(compileResult.plan, captureSpec);
-    const GraphAudioResult result = audioExecutor.process(graph, compileResult.plan, frameCount);
+    const GraphAudioResult result = presentation.captureAudio(graph, frameCount);
     root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
 
     Array<var> samples;
@@ -5253,15 +5052,7 @@ File NodeCanvas::snapshotFile() const {
 }
 
 bool NodeCanvas::saveGraphToFile(const File& file) {
-    if (file == File()) {
-        editStatusMessage = "Save failed";
-        repaint();
-        return false;
-    }
-
-    file.getParentDirectory().createDirectory();
-
-    if (!file.replaceWithText(GraphSerializer().toXmlString(graph))) {
+    if (!document.save(file)) {
         editStatusMessage = "Save failed";
         repaint();
         return false;
@@ -5273,27 +5064,15 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
-    if (!file.existsAsFile()) {
+    if (!document.load(file)) {
         editStatusMessage = "Open failed";
         repaint();
         return false;
     }
-
-    NodeGraph loaded = GraphSerializer().fromXmlString(file.loadFileAsString());
-
-    if (loaded.getNodes().empty()) {
-        editStatusMessage = "Open failed";
-        repaint();
-        return false;
-    }
-
-    pushUndoSnapshot();
-    graph = std::move(loaded);
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
     spliceTargetEdgeIndex = -1;
-    redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Opened " + file.getFileName();
     repaint();
@@ -5302,9 +5081,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
 
 bool NodeCanvas::saveSnapshot() {
     const File file = snapshotFile();
-    file.getParentDirectory().createDirectory();
-
-    if (!file.replaceWithText(GraphSerializer().toXmlString(graph))) {
+    if (!document.save(file)) {
         editStatusMessage = "Save failed";
         repaint();
         return true;
@@ -5324,21 +5101,15 @@ bool NodeCanvas::loadSnapshot() {
         return true;
     }
 
-    NodeGraph loaded = GraphSerializer().fromXmlString(file.loadFileAsString());
-
-    if (loaded.getNodes().empty()) {
+    if (!document.load(file)) {
         editStatusMessage = "Load failed";
         repaint();
         return true;
     }
-
-    pushUndoSnapshot();
-    graph = std::move(loaded);
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
     spliceTargetEdgeIndex = -1;
-    redoStack.clear();
     refreshCompiledState();
     editStatusMessage = "Loaded snapshot";
     repaint();
@@ -5346,59 +5117,29 @@ bool NodeCanvas::loadSnapshot() {
 }
 
 bool NodeCanvas::undo() {
-    if (undoStack.empty()) {
+    if (!document.undo()) {
         editStatusMessage = "Nothing to undo";
         repaint();
         return true;
     }
-
-    redoStack.push_back(GraphSerializer().toXmlString(graph));
-    const String xml = undoStack.back();
-    undoStack.pop_back();
-    return restoreGraphXml(xml, "Undo");
+    return restoreGraphXml({}, "Undo");
 }
 
 bool NodeCanvas::redo() {
-    if (redoStack.empty()) {
+    if (!document.redo()) {
         editStatusMessage = "Nothing to redo";
         repaint();
         return true;
     }
-
-    undoStack.push_back(GraphSerializer().toXmlString(graph));
-    const String xml = redoStack.back();
-    redoStack.pop_back();
-    return restoreGraphXml(xml, "Redo");
-}
-
-void NodeCanvas::pushUndoSnapshot() {
-    pushUndoSnapshot(GraphSerializer().toXmlString(graph));
-}
-
-void NodeCanvas::pushUndoSnapshot(String xml) {
-    if (xml.isEmpty()) {
-        return;
-    }
-
-    undoStack.push_back(std::move(xml));
-    redoStack.clear();
-
-    constexpr size_t maxUndoDepth = 64;
-    if (undoStack.size() > maxUndoDepth) {
-        undoStack.erase(undoStack.begin());
-    }
+    return restoreGraphXml({}, "Redo");
 }
 
 bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage) {
-    NodeGraph restored = GraphSerializer().fromXmlString(xml);
-
-    if (restored.getNodes().empty()) {
+    if (xml.isNotEmpty() && !document.loadXml(xml, false)) {
         editStatusMessage = "Restore failed";
         repaint();
         return true;
     }
-
-    graph = std::move(restored);
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
@@ -5410,7 +5151,7 @@ bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage)
 }
 
 bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
-    Node* node = findMutableNode(selectedNodeId);
+    const Node* node = findNode(selectedNodeId);
 
     if (node == nullptr) {
         return false;
@@ -5424,14 +5165,9 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
 
     const Edge originalEdge = graph.getEdges()[(size_t) edgeIndex];
 
-    if (!nodeDragUndoPushed) {
-        pushUndoSnapshot();
-        nodeDragUndoPushed = true;
-    }
-
     auto result = node->kind == NodeKind::Spy
-            ? GraphEditor().attachSpyToEdge(graph, (size_t) edgeIndex, selectedNodeId)
-            : GraphEditor().spliceNodeIntoEdge(graph, (size_t) edgeIndex, selectedNodeId);
+            ? commands.attachSpyToEdge((size_t) edgeIndex, selectedNodeId)
+            : commands.spliceNodeIntoEdge((size_t) edgeIndex, selectedNodeId);
 
     if (result.succeeded()) {
         selectedNodeId = result.nodeId;
@@ -5484,7 +5220,7 @@ void NodeCanvas::shoveNodesForwardAfterSplice(const String& insertedNodeId, cons
         }
     }
 
-    graph.translateNodes(downstreamNodeIds, { xOffset, 0.f });
+    commands.translateNodes(downstreamNodeIds, { xOffset, 0.f });
 }
 
 bool NodeCanvas::clearSelection() {
@@ -5500,38 +5236,41 @@ bool NodeCanvas::clearSelection() {
 }
 
 bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
-    Node* node = findMutableNode(nodeId);
+    const Node* node = findNode(nodeId);
 
     if (node == nullptr || !isOperationNode(node->kind) || node->inputs.size() < 2 || node->outputs.empty()) {
         return false;
     }
 
-    pushUndoSnapshot();
+    const OperationPortLayout layout = operationPortLayoutFor(*node);
+    if (!commands.editNodePresentation(nodeId, [layout](Node& edited) {
+        switch (layout) {
+            case OperationPortLayout::Side:
+                edited.inputs[0].side = PortSide::Left;
+                edited.inputs[1].side = PortSide::Top;
+                edited.outputs[0].side = PortSide::Right;
+                break;
 
-    switch (operationPortLayoutFor(*node)) {
-        case OperationPortLayout::Side:
-            node->inputs[0].side = PortSide::Left;
-            node->inputs[1].side = PortSide::Top;
-            node->outputs[0].side = PortSide::Right;
-            break;
+            case OperationPortLayout::Uptack:
+                edited.inputs[0].side = PortSide::Top;
+                edited.inputs[1].side = PortSide::Bottom;
+                edited.outputs[0].side = PortSide::Right;
+                break;
 
-        case OperationPortLayout::Uptack:
-            node->inputs[0].side = PortSide::Top;
-            node->inputs[1].side = PortSide::Bottom;
-            node->outputs[0].side = PortSide::Right;
-            break;
+            case OperationPortLayout::Vertical:
+                edited.inputs[0].side = PortSide::Left;
+                edited.inputs[1].side = PortSide::Bottom;
+                edited.outputs[0].side = PortSide::Right;
+                break;
 
-        case OperationPortLayout::Vertical:
-            node->inputs[0].side = PortSide::Left;
-            node->inputs[1].side = PortSide::Bottom;
-            node->outputs[0].side = PortSide::Right;
-            break;
-
-        case OperationPortLayout::Tee:
-            node->inputs[0].side = PortSide::Left;
-            node->inputs[1].side = PortSide::Left;
-            node->outputs[0].side = PortSide::Right;
-            break;
+            case OperationPortLayout::Tee:
+                edited.inputs[0].side = PortSide::Left;
+                edited.inputs[1].side = PortSide::Left;
+                edited.outputs[0].side = PortSide::Right;
+                break;
+        }
+    }).succeeded()) {
+        return false;
     }
 
     selectedNodeId = nodeId;
@@ -5541,14 +5280,18 @@ bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
 }
 
 bool NodeCanvas::cycleMeshOutputSide(const String& nodeId) {
-    Node* node = findMutableNode(nodeId);
+    const Node* node = findNode(nodeId);
 
     if (node == nullptr || !hasOutputSideButton(node->kind) || node->outputs.empty()) {
         return false;
     }
 
-    pushUndoSnapshot();
-    node->outputs[0].side = nextMeshOutputSide(*node);
+    const PortSide nextSide = nextMeshOutputSide(*node);
+    if (!commands.editNodePresentation(nodeId, [nextSide](Node& edited) {
+        edited.outputs[0].side = nextSide;
+    }).succeeded()) {
+        return false;
+    }
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
     refreshCompiledState();
@@ -5563,18 +5306,18 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
     }
 
     const String domain = nextVoiceDomain(*node);
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(graph, nodeId, "domain", "Start Domain", domain);
+    commands.beginCompoundEdit();
+    auto result = commands.setNodeParameter(nodeId, "domain", "Start Domain", domain);
 
     if (!result.succeeded()) {
+        commands.cancelCompoundEdit();
         return false;
     }
 
-    if (Node* edited = findMutableNode(nodeId)) {
-        edited->subtitle = domain == "spectral" ? "spectral start" : "waveform start";
-    }
-
-    pushUndoSnapshot(beforeEdit);
+    commands.editNodePresentation(nodeId, [&](Node& edited) {
+        edited.subtitle = domain == "spectral" ? "spectral start" : "waveform start";
+    });
+    commands.commitCompoundEdit();
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
     draggingNode = false;
@@ -5590,7 +5333,7 @@ bool NodeCanvas::setVoiceContextParameter(
         const String& label,
         const String& value,
         const String& statusMessage) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::VoiceContext) {
         return false;
@@ -5600,20 +5343,20 @@ bool NodeCanvas::setVoiceContextParameter(
         return true;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(graph, node->id, parameterId, label, value);
+    commands.beginCompoundEdit();
+    auto result = commands.setNodeParameter(node->id, parameterId, label, value);
 
     if (!result.succeeded()) {
+        commands.cancelCompoundEdit();
         return false;
     }
 
     if (parameterId == "domain") {
-        if (Node* edited = findMutableNode(node->id)) {
-            edited->subtitle = value == "spectral" ? "spectral start" : "waveform start";
-        }
+        commands.editNodePresentation(node->id, [&](Node& edited) {
+            edited.subtitle = value == "spectral" ? "spectral start" : "waveform start";
+        });
     }
-
-    pushUndoSnapshot(beforeEdit);
+    commands.commitCompoundEdit();
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
     draggingNode = false;
@@ -5709,7 +5452,7 @@ bool NodeCanvas::setTransformParameter(
         const String& label,
         const String& value,
         const String& statusMessage) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || (node->kind != NodeKind::Fft && node->kind != NodeKind::Ifft)) {
         return false;
@@ -5719,20 +5462,21 @@ bool NodeCanvas::setTransformParameter(
         return true;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(graph, node->id, parameterId, label, value);
+    commands.beginCompoundEdit();
+    auto result = commands.setNodeParameter(node->id, parameterId, label, value);
 
     if (!result.succeeded()) {
+        commands.cancelCompoundEdit();
         return false;
     }
 
     if (parameterId == "mode") {
-        if (Node* edited = findMutableNode(node->id)) {
-            edited->subtitle = transformSubtitleForMode(*edited, value);
-        }
+        const String nodeId = node->id;
+        commands.editNodePresentation(nodeId, [&](Node& edited) {
+            edited.subtitle = transformSubtitleForMode(edited, value);
+        });
     }
-
-    pushUndoSnapshot(beforeEdit);
+    commands.commitCompoundEdit();
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
     draggingNode = false;
@@ -5772,7 +5516,7 @@ bool NodeCanvas::handleTransformEditorClick(Point<float> screenPosition) {
 }
 
 bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
@@ -5782,9 +5526,7 @@ bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
         return true;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(
-            graph,
+    auto result = commands.setNodeParameter(
             node->id,
             "primaryAxis",
             "Primary Axis",
@@ -5794,7 +5536,6 @@ bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
@@ -5804,7 +5545,7 @@ bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
 }
 
 bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
@@ -5813,9 +5554,7 @@ bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
     const String parameterId = "link." + axisValue;
     const String defaultValue = axisValue == "yellow" ? "1" : "0";
     const bool linked = parameterValueForNode(*node, parameterId, defaultValue).getIntValue() != 0;
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(
-            graph,
+    auto result = commands.setNodeParameter(
             node->id,
             parameterId,
             "Link " + axisValue,
@@ -5825,7 +5564,6 @@ bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
@@ -5835,7 +5573,7 @@ bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
 }
 
 bool NodeCanvas::beginTrimeshMorphEdit(const String& parameterId, float value) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
@@ -5847,25 +5585,20 @@ bool NodeCanvas::beginTrimeshMorphEdit(const String& parameterId, float value) {
     activeTrimeshMorphParameterId = parameterId;
     draggingTrimeshMorph = true;
     trimeshMorphUndoPushed = false;
+    commands.beginCompoundEdit();
     return updateTrimeshMorphEditValue(value);
 }
 
 bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
-    Node* node = findMutableNode(activeTrimeshMorphNodeId);
+    const Node* node = findNode(activeTrimeshMorphNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh || activeTrimeshMorphParameterId.isEmpty()) {
         return false;
     }
 
-    if (!trimeshMorphUndoPushed) {
-        pushUndoSnapshot();
-        trimeshMorphUndoPushed = true;
-    }
-
     const String label = activeTrimeshMorphParameterId.substring(0, 1).toUpperCase()
             + activeTrimeshMorphParameterId.substring(1);
-    GraphEditor().setNodeParameter(
-            graph,
+    commands.setNodeParameter(
             node->id,
             activeTrimeshMorphParameterId,
             label,
@@ -5877,6 +5610,7 @@ bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
 }
 
 void NodeCanvas::endTrimeshMorphEdit() {
+    commands.commitCompoundEdit();
     flushScheduledCompiledStateRefresh();
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
@@ -5885,25 +5619,20 @@ void NodeCanvas::endTrimeshMorphEdit() {
 }
 
 bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, float value) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
 
     int vertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
+    commands.beginCompoundEdit();
 
     if (vertexIndex < 0) {
         vertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
 
         if (vertexIndex >= 0) {
-            if (!trimeshVertexParameterUndoPushed) {
-                pushUndoSnapshot();
-                trimeshVertexParameterUndoPushed = true;
-            }
-
-            GraphEditor().setNodeParameter(
-                    graph,
+            commands.setNodeParameter(
                     node->id,
                     "selectedVertexIndex",
                     "Selected Vertex",
@@ -5912,6 +5641,7 @@ bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, floa
     }
 
     if (vertexIndex < 0) {
+        commands.cancelCompoundEdit();
         return false;
     }
 
@@ -5925,17 +5655,12 @@ bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, floa
 }
 
 bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
-    Node* node = findMutableNode(activeTrimeshVertexNodeId);
+    const Node* node = findNode(activeTrimeshVertexNodeId);
 
     if (node == nullptr
             || node->kind != NodeKind::TrilinearMesh
             || activeTrimeshVertexParameterId.isEmpty()) {
         return false;
-    }
-
-    if (!trimeshVertexParameterUndoPushed) {
-        pushUndoSnapshot();
-        trimeshVertexParameterUndoPushed = true;
     }
 
     String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
@@ -5950,8 +5675,7 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
     const String persistentParameterId = TrimeshMeshEditState::canonicalVertexParameterId(
             activeTrimeshVertexIndex,
             label);
-    GraphEditor().setNodeParameter(
-            graph,
+    commands.setNodeParameter(
             node->id,
             persistentParameterId,
             label,
@@ -5962,6 +5686,7 @@ bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
 }
 
 void NodeCanvas::endTrimeshVertexParameterEdit() {
+    commands.commitCompoundEdit();
     flushScheduledCompiledStateRefresh();
     draggingTrimeshVertexParameter = false;
     trimeshVertexParameterUndoPushed = false;
@@ -5971,12 +5696,13 @@ void NodeCanvas::endTrimeshVertexParameterEdit() {
 }
 
 void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
-    Node* node = findMutableNode(nodeId);
+    const Node* node = findNode(nodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return;
     }
 
+    commands.beginCompoundEdit();
     TrimeshMeshEditState editState = trimeshWidgetFor(nodeId).currentMeshEditState();
     for (const TrimeshVertexEdit& edit : editState.getVertexEdits()) {
         const String field = TrimeshMeshEditState::fieldForVertexValueIndex(edit.valueIndex);
@@ -5985,13 +5711,13 @@ void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
             continue;
         }
 
-        GraphEditor().setNodeParameter(
-                graph,
+        commands.setNodeParameter(
                 nodeId,
                 TrimeshMeshEditState::canonicalVertexParameterId(edit.vertexIndex, field),
                 field,
                 String(edit.value, 6));
     }
+    commands.commitCompoundEdit();
 
     scheduleCompiledStateRefresh();
     repaint();
@@ -6005,7 +5731,7 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(
     }
 
     TrimeshWidget& widget = trimeshWidgetFor(trimeshExpandedEditorNodeId);
-    Node* meshNode = findMutableNode(trimeshExpandedEditorNodeId);
+    const Node* meshNode = findNode(trimeshExpandedEditorNodeId);
 
     if (meshNode == nullptr || meshNode->kind != NodeKind::TrilinearMesh) {
         return false;
@@ -6037,12 +5763,10 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(
                     return;
                 }
 
-                const String beforeEdit = GraphSerializer().toXmlString(safeThis->graph);
                 GraphEditResult result { GraphEditCode::ValidationRejected, {}, {} };
 
                 if (selectedMenuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
-                    result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
-                            safeThis->graph,
+                    result = safeThis->commands.createAndAttachGuideCurve(
                             meshNodeId,
                             vertexIndex,
                             parameterField,
@@ -6053,8 +5777,7 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(
                             continue;
                         }
 
-                        result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
-                                safeThis->graph,
+                        result = safeThis->commands.attachGuideCurve(
                                 item.guideNodeId,
                                 meshNodeId,
                                 vertexIndex,
@@ -6069,7 +5792,6 @@ bool NodeCanvas::showTrimeshGuideAttachmentMenu(
                     return;
                 }
 
-                safeThis->pushUndoSnapshot(beforeEdit);
                 safeThis->selectedNodeId = result.nodeId.isEmpty() ? meshNodeId : result.nodeId;
                 safeThis->selectedEdgeIndex = -1;
                 safeThis->refreshCompiledState();
@@ -6113,7 +5835,7 @@ std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node
 }
 
 bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
-    Node* node = findMutableNode(expandedNodeId);
+    const Node* node = findNode(expandedNodeId);
 
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
@@ -6123,9 +5845,7 @@ bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
         return true;
     }
 
-    const String beforeEdit = GraphSerializer().toXmlString(graph);
-    auto result = GraphEditor().setNodeParameter(
-            graph,
+    auto result = commands.setNodeParameter(
             node->id,
             "selectedVertexIndex",
             "Selected Vertex",
@@ -6135,7 +5855,6 @@ bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
         return false;
     }
 
-    pushUndoSnapshot(beforeEdit);
     refreshCompiledState();
     selectedNodeId = node->id;
     selectedEdgeIndex = -1;
@@ -6182,6 +5901,7 @@ Path NodeCanvas::createCablePath(
         PortSide sourceSide,
         PortSide destSide,
         bool) const {
+    const float zoom = viewport.getZoom();
     Path path;
     path.startNewSubPath(source);
 

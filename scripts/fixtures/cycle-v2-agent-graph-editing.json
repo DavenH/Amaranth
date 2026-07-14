@@ -50,7 +50,7 @@
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 12
+      "equals": 15
     }
   ],
   "quit": true

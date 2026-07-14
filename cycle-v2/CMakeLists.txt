@@ -24,6 +24,8 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDocument.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
@@ -34,12 +36,20 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeDspConfiguration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
+)
+
+set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeAutomationFacade.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
 )
 
 set(NODE_SOURCES
@@ -130,7 +140,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${TEST_SOURCES})
+        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${CANVAS_ARCHITECTURE_SOURCES} ${TEST_SOURCES})
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1
