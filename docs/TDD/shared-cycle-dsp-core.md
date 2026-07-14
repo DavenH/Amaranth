@@ -328,6 +328,10 @@ Current status:
 - Cycle 1 retains `VoiceMeshRasterizer` as a thin compatibility adapter. It
   publishes the authoritative `MinLineLength` application constant and keeps
   the legacy `SingletonAccessor` construction and reset contract.
+- `Rasterization::GraphicRasterizer` owns graphic render-state preservation,
+  scaling conversion, batch rendering, bounds, and snapshot publication.
+  Cycle 1's global `GraphicRasterizer` is now an adapter for morph settings,
+  scratch position, updater detail state, singleton lookup, and its interactor.
 
 Next target:
 
@@ -336,8 +340,8 @@ Next target:
 - integrate the shared façade into that oscillator without introducing a
   second rasterization path; Cycle 2's current Trimesh node should remain on
   the generic shared rasterizer until it gains voice-cycle execution
-- separately extract graphic morph/axis policy after replacing Cycle 1 layer,
-  settings, scratch-channel, and panel dependencies with narrow value inputs
+- extract the remaining graphic morph/axis policy after replacing Cycle 1
+  layer-group constants with narrow semantic value inputs
 
 Tests:
 
@@ -630,10 +634,12 @@ Complete one module end-to-end before starting the next:
 - [x] Inventory Cycle 1 voice-rasterizer dependencies and extract shared chaining state/policies.
 - [x] Extract the shared application-neutral voice-rasterizer façade and keep
   Cycle 1 singleton configuration in a thin adapter.
+- [x] Extract graphic render/state behavior and keep Cycle settings, morph,
+  scratch-channel, updater, and interactor access in an adapter.
 - [ ] Define shared voice-rasterizer request and prepared-output snapshots when
   Cycle 2 oscillator publication requires them.
-- [ ] Move application-neutral `GraphicRasterizer`, `E3Rasterizer`, and
-  time-column policy into `AmaranthLib`.
+- [ ] Extract application-neutral E3 grid rendering and time-column policy into
+  `AmaranthLib`.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.

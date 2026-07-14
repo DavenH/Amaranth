@@ -88,6 +88,10 @@ publishes its application constant and preserves legacy construction. Cycle
 `Rasterization::TrilinearMeshRasterizer` and does not yet require voice
 chaining.
 
+Graphic render-state, scaling, batch, and publication behavior likewise lives
+in `Rasterization::GraphicRasterizer`. The Cycle adapter retains application
+settings, scratch position, updater detail state, and interactor access.
+
 Suggested direction:
 
 - Use the shared voice façade when Cycle 2 introduces oscillator/voice-cycle
