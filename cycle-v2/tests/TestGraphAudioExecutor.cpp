@@ -130,7 +130,7 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
             != findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
-TEST_CASE("Graph audio executor applies envelope vectors along time rows", "[cycle-v2][runtime]") {
+TEST_CASE("Graph audio executor applies envelope phase across traversal columns", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
@@ -167,7 +167,10 @@ TEST_CASE("Graph audio executor applies envelope vectors along time rows", "[cyc
     for (size_t column = 0; column < multiplied.traversalGrid.columns; ++column) {
         for (size_t row = 0; row < multiplied.traversalGrid.rows; ++row) {
             const size_t index = column * multiplied.traversalGrid.rows + row;
-            const float expected = wave.traversalGrid.values[index] * env.traversalGrid.values[row];
+            const size_t envelopeColumn = column * env.traversalGrid.columns
+                    / multiplied.traversalGrid.columns;
+            const float expected = wave.traversalGrid.values[index]
+                    * env.traversalGrid.values[envelopeColumn * env.traversalGrid.rows];
             maxError = std::max(maxError, std::abs(multiplied.traversalGrid.values[index] - expected));
         }
     }

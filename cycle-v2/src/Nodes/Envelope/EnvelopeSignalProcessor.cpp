@@ -55,7 +55,10 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
     return result;
 }
 
-void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec&) {
+void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
+    const size_t maximumColumns = std::max(defaultTraversalColumns, spec.maximumFrameCount);
+    traversalMemory.ensureSize((int) (2 * maximumColumns));
+
     if (configuration == nullptr || pendingRevision == adoptedRevision) {
         return;
     }
@@ -106,8 +109,46 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     }
 
     outputBuffer.mul(configuration != nullptr ? level : parameterFloat(processParameters(context), "level", 1.f));
-    publishVectorAsTraversalGrid(output, defaultTraversalColumns, context.workArena);
+    if (context.captureTraversalGrid) {
+        publishTraversalGrid(output, context.workArena);
+    }
     publishSingleOutput(context, std::move(output));
+}
+
+void EnvelopeSignalProcessor::publishTraversalGrid(
+        SignalPayload& output,
+        const AudioProcessWorkArena* arena) {
+    if (output.block.samples.empty()) {
+        output.traversalGrid = {};
+        return;
+    }
+
+    const size_t columns = std::max(defaultTraversalColumns, output.block.samples.size());
+    traversalMemory.ensureSize((int) (2 * columns));
+    Buffer<float> positions = traversalMemory.place((int) columns);
+    Buffer<float> values = traversalMemory.place((int) columns);
+    positions.ramp(0.f, 1.f / (float) columns);
+    rasterizer.sampler().sampleAtIntervals(positions, values);
+    values.mul(level);
+
+    configureTraversalGrid(
+            output.traversalGrid,
+            columns,
+            output.block.samples.size(),
+            makeTraversalGridMetadata(
+                    output.domain,
+                    columns,
+                    output.block.samples.size(),
+                    TraversalGridAxis::Time,
+                    TraversalGridAxis::Repeated),
+            arena);
+
+    const int rows = (int) output.traversalGrid.rows;
+    for (size_t column = 0; column < columns; ++column) {
+        Buffer<float>(
+                output.traversalGrid.values.data() + column * output.traversalGrid.rows,
+                rows).set(values[(int) column]);
+    }
 }
 
 bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
@@ -139,6 +180,7 @@ bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parame
     }
 
     props.logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
+    level = parameterFloat(parameters, "level", 1.f);
     return modelReady && rasterizer.canRasterizeWaveform();
 }
 

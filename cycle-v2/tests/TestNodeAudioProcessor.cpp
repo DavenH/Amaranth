@@ -243,6 +243,50 @@ TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2
     REQUIRE(logarithmic != linear);
 }
 
+TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][runtime][envelope][grid]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext envelopeContext;
+    envelopeContext.frameCount = 4;
+    envelopeContext.timing.sampleRate = 16.0;
+    envelopeContext.parameters = envelopeParameters();
+    envelopeContext.outputPorts = {
+            { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono }
+    };
+    envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
+
+    const SignalPayload& envelope = output(envelopeContext);
+    REQUIRE(envelope.traversalGrid.columns == 8);
+    REQUIRE(envelope.traversalGrid.rows == 4);
+    REQUIRE(envelope.traversalGrid.metadata.columnAxis == TraversalGridAxis::Time);
+    REQUIRE(envelope.traversalGrid.metadata.rowAxis == TraversalGridAxis::Repeated);
+
+    for (size_t column = 0; column < envelope.traversalGrid.columns; ++column) {
+        const float columnValue = envelope.traversalGrid.values[column * envelope.traversalGrid.rows];
+        for (size_t row = 1; row < envelope.traversalGrid.rows; ++row) {
+            REQUIRE(envelope.traversalGrid.values[column * envelope.traversalGrid.rows + row]
+                    == Catch::Approx(columnValue));
+        }
+    }
+
+    REQUIRE(envelope.traversalGrid.values[0]
+            != Catch::Approx(envelope.traversalGrid.values[4 * envelope.traversalGrid.rows]));
+
+    SignalPayload input = gridPayload(std::vector<float>(16, 1.f), 4, 4);
+    input.traversalGrid.metadata.columnAxis = TraversalGridAxis::Phase;
+    AudioProcessContext multiplyContext;
+    multiplyContext.frameCount = 4;
+    multiplyContext.inputs = { std::move(input), envelope };
+    factory.create(AudioModuleRole::Multiply)->process(multiplyContext);
+
+    const SignalTraversalGrid& multiplied = output(multiplyContext).traversalGrid;
+    REQUIRE(multiplied.isValid());
+    REQUIRE(multiplied.values[0] == Catch::Approx(envelope.traversalGrid.values[0]));
+    REQUIRE(multiplied.columns == 4);
+    REQUIRE(multiplied.values[2 * multiplied.rows]
+            == Catch::Approx(envelope.traversalGrid.values[4 * envelope.traversalGrid.rows]));
+}
+
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {
     const String initialSnapshot = EnvelopeMeshState::defaultSnapshot();
     EnvelopeMesh editedMesh("EditedEnvelope");
