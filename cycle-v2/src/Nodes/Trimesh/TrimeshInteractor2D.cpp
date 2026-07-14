@@ -48,6 +48,14 @@ void TrimeshInteractor2D::setExtraElements(float) {
     }
 }
 
+bool TrimeshInteractor2D::doCreateVertex() {
+    const bool created = Interactor2D::doCreateVertex();
+    if (created && meshEditedCallback != nullptr) {
+        meshEditedCallback(false);
+    }
+    return created;
+}
+
 void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
     Interactor2D::mouseDrag(event);
 
@@ -88,6 +96,17 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     flag(SimpleRepaint) = false;
 
     if (meshChanged && meshEditedCallback != nullptr) {
+        meshEditedCallback(false);
+    }
+}
+
+void TrimeshInteractor2D::deleteSelected() {
+    if (getSelected().empty()) {
+        return;
+    }
+    eraseSelected();
+    performUpdate(Update);
+    if (meshEditedCallback != nullptr) {
         meshEditedCallback(false);
     }
 }

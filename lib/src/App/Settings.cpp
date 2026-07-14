@@ -44,6 +44,7 @@ void Settings::initialiseSettings() {
     using namespace AppSettings;
 
     addSetting(CurrentMorphAxis,        Vertex::Time);
+    addSetting(CollisionDetection,      true);
     addSetting(DrawScales,              true);
     addSetting(FirstLaunch,             true);
     addSetting(IgnoringEditMessages,    false);

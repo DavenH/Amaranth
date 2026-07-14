@@ -2,7 +2,13 @@
 
 ## Status
 
-Implemented (2026-07-14).
+In Progress (2026-07-14).
+
+Typed models and editor behavior exist, but the central architecture is not
+complete: `Effect2DPanelBridge` still reimplements and combines mature flat
+effect and Envelope interaction/rendering behavior. This TDD cannot return to
+`Implemented` until the shared Cycle 1/Cycle 2 panel core is extracted and the
+compatibility god object is deleted or reduced to literal host translation.
 
 Depends on:
 

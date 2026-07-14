@@ -49,6 +49,7 @@ public:
     void setRenderProfile(TrimeshRenderProfile profile);
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
+    int selectedVertexIndexForPanel();
 
 private:
     void refreshAfterMeshEdit(bool sourceIs3D);

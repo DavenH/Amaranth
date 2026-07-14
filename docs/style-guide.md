@@ -215,6 +215,9 @@ Mirror this order in constructor initializer lists.
 ## Code Reuse and Complexity
 
 - Where possible, encapsulate complexity at the "edges" (specialization classes or instances), rather than exposing this complexity in the interface
+- Keep adapters literal and narrow. They may translate representation, ownership, events, or lifecycle, but must delegate behavior to the authoritative implementation. Interaction algorithms, rendering policy, topology rules, and domain state machines do not belong in adapters.
+- Do not use a shared-looking class as a switchboard for unrelated domains. Repeated type/kind branches, nullable members for mutually exclusive clients, or domain-specific types in generic infrastructure indicate that the abstraction boundary is wrong.
+- Preserve asymptotic intent. A single-object edit should not scan, sort, serialize, or rebuild the whole collection unless that work is inherent to a separately defined commit/publication boundary. State expected complexity when introducing lookup structures or reconciliation passes.
 - Try to keep methods and functions under 30 lines
 - Look for repeatable contracts before adding another node-specific or feature-specific class. If several implementations need the same lifecycle and data movement shape, model that shape explicitly and leave only the domain operation in the specialization.
   - Example: signal processors that all expose a method like:

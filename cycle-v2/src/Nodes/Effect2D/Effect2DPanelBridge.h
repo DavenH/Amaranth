@@ -68,7 +68,8 @@ private:
     void initialisePanelHost();
     void initialiseMesh();
     void addVertex(float x, float y, float curve = 0.f);
-    void notifyMeshEdited();
+    bool notifyMeshEdited();
+    void synchronizeModelSelection();
     PanelHostCallbacks createPanelHostCallbacks();
     void applyPanelSettings();
     void captureRenderedPanelImage(
@@ -91,6 +92,7 @@ private:
     std::function<void(const MouseCursor&)> panelHostCursorCallback;
     std::function<void()> meshEditedCallback;
     juce::String lastSyncedNodeId;
+    juce::String lastSyncedModelSnapshot;
     juce::String lastSyncedMeshState;
     CurvePanelSnapshotCache previewSnapshot;
     CurvePanelSnapshotCache expandedSnapshot;

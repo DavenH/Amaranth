@@ -1,0 +1,149 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.0714,
+      "targetY": 0.9286
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.0714,
+      "targetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveshaper.panel2D",
+      "downTargetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.24,
+      "targetY": 0.76,
+      "downTargetX": 0.0714,
+      "downTargetY": 0.9286
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveshaper.panel2D",
+      "downTargetId": "expanded:waveshaper.panel2D",
+      "targetX": 0.24,
+      "targetY": 0.76,
+      "downTargetX": 0.0714,
+      "downTargetY": 0.9286,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveshaper"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.currentVertex.x",
+      "op": "greaterThan",
+      "value": 0.2
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "curve.modelRevision",
+      "equals": "2"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.panel2D",
+      "targetX": 0.035,
+      "targetY": 0.02,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "env"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.value",
+      "equals": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:env.panel2D",
+      "targetX": 0.8,
+      "targetY": 0.2
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "env"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.value",
+      "equals": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:env.panel2D",
+      "targetX": 0.035,
+      "targetY": 0.02
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:env.panel2D",
+      "targetX": 0.035,
+      "targetY": 0.02
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:env.panel2D",
+      "downTargetId": "expanded:env.panel2D",
+      "targetX": 0.15,
+      "targetY": 0.2,
+      "downTargetX": 0.035,
+      "downTargetY": 0.02
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:env.panel2D",
+      "downTargetId": "expanded:env.panel2D",
+      "targetX": 0.15,
+      "targetY": 0.2,
+      "downTargetX": 0.035,
+      "downTargetY": 0.02,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "env",
+      "parameterId": "curve.modelRevision",
+      "equals": "2"
+    }
+  ],
+  "quit": true
+}

@@ -295,7 +295,6 @@ void Initializer::setDefaultSettings() {
     getSetting(MagnitudeDrawMode) 		= true;
     getSetting(InterpWaveCycles) 		= true;
     getSetting(WrapWaveCycles) 			= true;
-    getSetting(CollisionDetection) 		= true;
     getSetting(ViewVertsOnlyOnHover) 	= false;
     getSetting(DrawWave) 				= false;
     getSetting(Waterfall) 				= false;

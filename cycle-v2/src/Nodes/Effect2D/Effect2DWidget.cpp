@@ -53,6 +53,12 @@ void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
     bridge.setEnvelopeAxisLinks(redLinked, blueLinked);
 }
 
+void Effect2DWidget::syncFromNode(const Node& node) {
+    if (node.kind == kind) {
+        bridge.syncFromNode(node);
+    }
+}
+
 void Effect2DWidget::renderExpandedPanelOpenGL(
         const Node& node,
         Rectangle<float> bounds,
@@ -62,7 +68,6 @@ void Effect2DWidget::renderExpandedPanelOpenGL(
         return;
     }
 
-    bridge.syncFromNode(node);
     bridge.renderPanel(bounds, clipBounds, scaleFactor);
 }
 
@@ -74,7 +79,6 @@ void Effect2DWidget::renderPreviewSnapshotOpenGL(
         return;
     }
 
-    bridge.syncFromNode(node);
     bridge.renderPreviewSnapshot(bounds, scaleFactor);
 }
 

@@ -18,6 +18,7 @@ public:
         setPaintingIsUnclipped(false);
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
+        setWantsKeyboardFocus(true);
     }
 
     void setHoverPeer(PanelHostComponent* peer) {
@@ -59,6 +60,7 @@ public:
 
     void mouseDown(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
+        grabKeyboardFocus();
         enterIfNeeded(localEvent);
 
         if (Interactor* interactor = panel.getInteractor().get()) {
@@ -100,6 +102,21 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseWheelMove(localEvent, wheel);
         }
+    }
+
+    bool keyPressed(const KeyPress& key) override {
+        if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
+            return false;
+        }
+        if (auto* interactor = dynamic_cast<TrimeshInteractor2D*>(panel.getInteractor().get())) {
+            interactor->deleteSelected();
+            return true;
+        }
+        if (auto* interactor = dynamic_cast<TrimeshInteractor3D*>(panel.getInteractor().get())) {
+            interactor->deleteSelected();
+            return true;
+        }
+        return false;
     }
 
     void resized() override {

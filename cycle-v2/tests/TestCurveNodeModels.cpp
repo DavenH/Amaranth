@@ -10,6 +10,9 @@
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
 #include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
+#include <Curve/Mesh/VertCube.h>
+#include <Obj/MorphPosition.h>
+
 using namespace CycleV2;
 
 TEST_CASE("Flat curve models validate atomically and preserve stable selection",
@@ -57,15 +60,123 @@ TEST_CASE("Flat curve publication retains identities around inserted vertices",
     REQUIRE(model.replaceVertices({ { 1, 0.f, 0.25f, 0.5f }, { 2, 1.f, 0.75f, 0.5f } }));
     const uint64_t firstId = model.getVertices()[0].id;
     const uint64_t lastId = model.getVertices()[1].id;
-    REQUIRE(model.adoptEditedVertices({
-            { 0.f, 0.25f, 0.5f },
-            { 0.5f, 0.5f, 0.5f },
-            { 1.f, 0.75f, 0.5f }
-    }));
+    auto* inserted = new Vertex(0.5f, 0.5f);
+    inserted->values[Vertex::Curve] = 0.5f;
+    model.getMesh().addVertex(inserted);
+    REQUIRE(model.synchronizeFromMesh(inserted));
     REQUIRE(model.getVertices()[0].id == firstId);
-    REQUIRE(model.getVertices()[2].id == lastId);
-    REQUIRE(model.getVertices()[1].id != firstId);
-    REQUIRE(model.getVertices()[1].id != lastId);
+    REQUIRE(model.getVertices()[1].id == lastId);
+    REQUIRE(model.getVertices()[2].id != firstId);
+    REQUIRE(model.getVertices()[2].id != lastId);
+    REQUIRE(model.selectedVertexId() == model.getVertices()[2].id);
+}
+
+TEST_CASE("Flat mesh adapter preserves identity through movement curve edits and deletion",
+        "[cycle-v2][curve-model][identity]") {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 10, 0.f, 0.2f, 0.1f },
+            { 20, 0.5f, 0.5f, 0.2f },
+            { 30, 1.f, 0.8f, 0.3f }
+    }));
+    Vertex* selected = model.getMesh().getVerts()[1];
+    selected->values[Vertex::Phase] = 0.6f;
+    selected->values[Vertex::Amp] = 0.7f;
+    selected->values[Vertex::Curve] = 0.9f;
+    REQUIRE(model.synchronizeFromMesh(selected));
+    REQUIRE(model.selectedVertexId() == 20);
+    REQUIRE(model.getVertices()[1].id == 20);
+    REQUIRE(model.getVertices()[1].x == 0.6f);
+    REQUIRE(model.getVertices()[1].curve == 0.9f);
+
+    Vertex* removed = model.getMesh().getVerts().front();
+    REQUIRE(model.getMesh().removeVert(removed));
+    REQUIRE(model.synchronizeFromMesh(selected));
+    delete removed;
+    REQUIRE(model.selectedVertexId() == 20);
+    REQUIRE(model.getVertices().front().id == 20);
+
+    auto* replacement = new Vertex(0.1f, 0.3f);
+    model.getMesh().addVertex(replacement);
+    REQUIRE(model.synchronizeFromMesh(selected));
+    REQUIRE(model.getMesh().removeVert(selected));
+    REQUIRE(model.synchronizeFromMesh(nullptr));
+    delete selected;
+    REQUIRE_FALSE(model.selectedVertexId().has_value());
+}
+
+TEST_CASE("Flat semantic edits are atomic and advance revisions once",
+        "[cycle-v2][curve-model][identity]") {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({ { 1, 0.f, 0.2f, 0.5f }, { 2, 1.f, 0.8f, 0.5f } }));
+    REQUIRE(model.selectVertex(1));
+    Vertex* firstVertex = model.getMesh().getVerts()[0];
+    Vertex* secondVertex = model.getMesh().getVerts()[1];
+    uint64_t revision = model.revision();
+    REQUIRE(model.moveVertex(1, { 0.25f, 0.3f }).succeeded());
+    REQUIRE(model.getMesh().getVerts()[0] == firstVertex);
+    REQUIRE(model.getMesh().getVerts()[1] == secondVertex);
+    REQUIRE(firstVertex->values[Vertex::Phase] == 0.25f);
+    REQUIRE(firstVertex->values[Vertex::Amp] == 0.3f);
+    REQUIRE(model.revision() == ++revision);
+    REQUIRE(model.selectedVertexId() == 1);
+    REQUIRE(model.setCurve(1, 0.8f).succeeded());
+    REQUIRE(model.getMesh().getVerts()[0] == firstVertex);
+    REQUIRE(model.getMesh().getVerts()[1] == secondVertex);
+    REQUIRE(firstVertex->values[Vertex::Curve] == 0.8f);
+    REQUIRE(model.revision() == ++revision);
+    const auto inserted = model.insertVertex({ 0.5f, 0.5f }, 0.4f);
+    REQUIRE(inserted.succeeded());
+    REQUIRE(model.getMesh().getVerts()[0] == firstVertex);
+    REQUIRE(model.getMesh().getVerts()[1] == secondVertex);
+    REQUIRE(model.revision() == ++revision);
+    REQUIRE(model.removeVertex(inserted.vertexId).succeeded());
+    REQUIRE(model.getMesh().getVerts()[0] == firstVertex);
+    REQUIRE(model.getMesh().getVerts()[1] == secondVertex);
+    REQUIRE(model.revision() == ++revision);
+
+    const String before = model.snapshot();
+    REQUIRE_FALSE(model.moveVertex(1, { -1.f, 0.5f }).succeeded());
+    REQUIRE_FALSE(model.removeVertex(999).succeeded());
+    REQUIRE(model.snapshot() == before);
+}
+
+TEST_CASE("Flat point edits preserve document order and never recycle identities",
+        "[cycle-v2][curve-model][identity]") {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 10, 0.1f, 0.2f, 0.5f },
+            { 20, 0.5f, 0.4f, 0.5f },
+            { 30, 0.9f, 0.6f, 0.5f }
+    }));
+    Vertex* moved = model.getMesh().getVerts()[0];
+    REQUIRE(model.selectVertex(10));
+
+    REQUIRE(model.moveVertex(10, { 0.8f, 0.3f }).succeeded());
+    REQUIRE(model.getVertices()[0].id == 10);
+    REQUIRE(model.getVertices()[1].id == 20);
+    REQUIRE(model.getVertices()[2].id == 30);
+    REQUIRE(model.getMesh().getVerts()[0] == moved);
+    REQUIRE(model.selectedVertexId() == 10);
+
+    REQUIRE(model.removeVertex(30).succeeded());
+    const auto inserted = model.insertVertex({ 0.95f, 0.7f }, 0.5f);
+    REQUIRE(inserted.succeeded());
+    REQUIRE(inserted.vertexId > 30);
+}
+
+TEST_CASE("Invalid live flat edits restore the committed mesh atomically",
+        "[cycle-v2][curve-model][identity]") {
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({ { 1, 0.f, 0.2f, 0.5f }, { 2, 1.f, 0.8f, 0.5f } }));
+    const String before = model.snapshot();
+    Vertex* removed = model.getMesh().getVerts().back();
+    REQUIRE(model.getMesh().removeVert(removed));
+    REQUIRE_FALSE(model.synchronizeFromMesh(nullptr));
+    delete removed;
+
+    REQUIRE(model.snapshot() == before);
+    REQUIRE(model.getMesh().getNumVerts() == 2);
 }
 
 TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
@@ -76,7 +187,8 @@ TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
     model.blue = 0.75f;
     model.redLinked = false;
     model.blueLinked = true;
-    REQUIRE(model.selectCube(2));
+    const EnvelopeCubeId selectedId = model.getCubeIds()[2];
+    REQUIRE(model.selectCube(selectedId));
     const int cubeCount = model.getMesh().getNumCubes();
     const size_t sustainCount = model.getMesh().sustainCubes.size();
 
@@ -89,7 +201,45 @@ TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
     REQUIRE(restored.blue == 0.75f);
     REQUIRE_FALSE(restored.redLinked);
     REQUIRE(restored.blueLinked);
-    REQUIRE(restored.selectedCubeIndex() == 2);
+    REQUIRE(restored.selectedCubeId() == selectedId);
+}
+
+TEST_CASE("Envelope mesh adapter preserves cube identities across insertion deletion and reorder",
+        "[cycle-v2][curve-model][envelope][identity]") {
+    EnvelopeNodeModel model;
+    auto& cubes = model.getMesh().getCubes();
+    VertCube* selectedCube = cubes[2];
+    const EnvelopeCubeId selectedId = model.getCubeIds()[2];
+
+    std::swap(cubes[1], cubes[2]);
+    REQUIRE(model.synchronizeFromMesh(selectedCube));
+    REQUIRE(model.selectedCubeId() == selectedId);
+    REQUIRE(model.getCubeIds()[1] == selectedId);
+
+    MorphPosition position;
+    position.timeDepth = 0.001f;
+    position.redDepth = 1.f;
+    position.blueDepth = 1.f;
+    auto* inserted = new VertCube(&model.getMesh());
+    inserted->initVerts(position);
+    model.getMesh().addCube(inserted);
+    REQUIRE(model.synchronizeFromMesh(selectedCube));
+    const EnvelopeCubeId insertedId = model.getCubeIds().back();
+    REQUIRE(insertedId != selectedId);
+
+    VertCube* removed = cubes.front();
+    const EnvelopeCubeId removedId = model.getCubeIds().front();
+    REQUIRE(model.getMesh().removeCube(removed));
+    REQUIRE(model.synchronizeFromMesh(selectedCube));
+    delete removed;
+    REQUIRE(model.selectedCubeId() == selectedId);
+    REQUIRE(std::find(model.getCubeIds().begin(), model.getCubeIds().end(), removedId)
+            == model.getCubeIds().end());
+
+    EnvelopeNodeModel restored;
+    REQUIRE(restored.loadSnapshot(model.snapshot()));
+    REQUIRE(restored.getCubeIds() == model.getCubeIds());
+    REQUIRE(restored.selectedCubeId() == selectedId);
 }
 
 TEST_CASE("Envelope typed loading rejects malformed state without mutation",
@@ -97,6 +247,13 @@ TEST_CASE("Envelope typed loading rejects malformed state without mutation",
     EnvelopeNodeModel model;
     const String before = model.snapshot();
     REQUIRE_FALSE(model.loadSnapshot("not-json"));
+    REQUIRE(model.snapshot() == before);
+
+    var malformed = JSON::parse(before);
+    auto* ids = malformed.getDynamicObject()->getProperty("cubeIds").getArray();
+    REQUIRE(ids != nullptr);
+    ids->set(1, ids->getReference(0));
+    REQUIRE_FALSE(model.loadSnapshot(JSON::toString(malformed, false)));
     REQUIRE(model.snapshot() == before);
 }
 

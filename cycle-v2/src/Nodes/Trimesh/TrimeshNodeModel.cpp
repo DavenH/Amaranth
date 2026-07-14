@@ -404,6 +404,19 @@ Vertex* TrimeshNodeModel::selectedVertex() {
     return vertexAtIndex(resolvedSelectedVertexIndex());
 }
 
+void TrimeshNodeModel::selectVertex(Vertex* vertex) {
+    const auto& vertices = mesh().getVerts();
+    for (int i = 0; i < (int) vertices.size(); ++i) {
+        if (vertices[(size_t) i] == vertex) {
+            if (selectedVertexIndex != i) {
+                selectedVertexIndex = i;
+                bumpSelectedControlRevision();
+            }
+            return;
+        }
+    }
+}
+
 Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     Mesh& activeMesh = mesh();
     auto& verts = activeMesh.getVerts();

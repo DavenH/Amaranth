@@ -39,6 +39,10 @@
 ## Architectural Boundaries & Existing Implementations
 - Before implementing nontrivial DSP, rasterization, mesh interaction, graph traversal, serialization, or UI behavior, search for an existing implementation in the repository.
 - Treat existing mature implementations as authoritative when porting or extending equivalent behavior. Prefer adapter/facade code around existing behavior over reimplementation.
+- Before adding a compatibility layer or adapter, write down the authoritative implementation, the exact behavior reused unchanged, the translation performed at the boundary, and the intended deletion or stable end state. An adapter may translate types, events, ownership, and lifecycle; it must not copy interaction, rendering, topology, DSP, or domain state-machine behavior.
+- If reuse would require copying mature behavior, stop. Extract a shared core used by both callers or document the blocked extraction in a TDD and request architectural direction. Do not ship the copied behavior as a transitional implementation.
+- Treat a compatibility/bridge class that grows beyond narrow boundary translation, accumulates domain-specific branches, or mixes unrelated node families as an architectural failure. Do not continue adding to it. A large new adapter, repeated `NodeKind` switching, or shared code containing one client's domain types requires explicit architectural justification before implementation.
+- Before accepting a nontrivial implementation, inspect the production diff size, largest changed files, new type/kind branches, and overlap with mature sources. Unexpected code volume is evidence to re-check the design, not merely a review inconvenience.
 - Do not duplicate complex domain logic locally just to satisfy a narrow test, preview, or temporary workflow. If reuse is blocked, document the blocker and stop at the appropriate abstraction boundary.
 - Keep abstraction levels separated. High-level orchestration code should coordinate routing, lifecycle, and ownership; it should not contain domain algorithms.
 - Domain-specific behavior belongs behind domain-specific interfaces or modules, with blockwise/realtime, gridwise/analysis, UI/model, and adapter layers separated where appropriate.
@@ -46,6 +50,7 @@
 - Tests must preserve product intent and architectural intent. Do not write or update tests to bless simplified behavior when the requirement is parity with an existing mature implementation.
 - Prefer fewer, higher-signal tests that guard the intended contract over narrow tests that lock in scaffolding, fake data, or implementation accidents.
 - When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
+- Do not mark a TDD implemented while its principal architecture, deletion targets, negative boundaries, or completion criteria remain unfinished. Use a partial/in-progress status and state the remaining work explicitly.
 
 ## Reuse Before Reimplementation
 - If you are about to write interpolation, rasterization, curve evaluation, oversampling, convolution, envelope/loop semantics, mesh traversal, or DSP transfer logic, stop and locate the existing implementation first. Reuse it or create a narrow adapter. Do not reimplement it in place.
@@ -59,6 +64,8 @@ If confusing code patterns, reuse possibilities, or better abstractions are dete
 - Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
 - Naming: begin test files with `Test*.cpp` or place under a `tests/` subfolder.
 - Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.
+- Tests must assert observable semantic behavior or an architectural boundary. Avoid tests that merely execute scaffolding, restate implementation details, check trivial getters, or bless fake/approximate behavior. For interaction work, cover the complete event sequence and resulting visible/model state, not only isolated helper methods.
+- Every UI interaction regression should receive a focused automation fixture or assertion that fails for the reported behavior: hover/current highlighting, drag movement, selection stability, editor publication, and downstream effects as applicable.
 - UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt` to capture the Cycle UI and filtered launch logs before/after visual changes or when investigating UI bugs. Read `/tmp/cycle-logs.txt` first; only read `/tmp/cycle-logs.txt.raw` when detailed rasterizer/mesh logs are needed.
 - UI automation: prefer a focused fixture with `scripts/run_cycle_agent.sh` over the full smoke suite while debugging. Add small, stable fixtures under `scripts/fixtures/` for regressions that agents should be able to reproduce. See `docs/cycle-agent-runbook.md`.
 - When assertions, crashes, or suspicious runtime failures appear incidentally and are not the direct cause of the current feature/fix work, record a concise note in `docs/TDD/ui-bugs.md` or `docs/TDD/audio-bugs.md` as appropriate. Use `audio-bugs.md` for realtime audio pipeline issues; otherwise prefer `ui-bugs.md`. Include the assertion text, context, repro artifact/log path when available, and whether it is still open or was addressed.

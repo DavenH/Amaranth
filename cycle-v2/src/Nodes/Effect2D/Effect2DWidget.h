@@ -24,6 +24,7 @@ public:
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
+    void syncFromNode(const Node& node);
     void renderExpandedPanelOpenGL(
             const Node& node,
             Rectangle<float> bounds,

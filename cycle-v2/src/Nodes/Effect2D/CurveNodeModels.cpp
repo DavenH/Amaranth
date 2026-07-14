@@ -32,25 +32,163 @@ bool FlatCurveModel::replaceVertices(std::vector<FlatCurveVertex> nextVertices) 
         return false;
     }
 
-    std::sort(nextVertices.begin(), nextVertices.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.x < rhs.x;
-    });
     const auto selected = selection;
     vertices = std::move(nextVertices);
     if (selected.has_value()) {
-        selectVertex(*selected);
+        if (!selectVertex(selected)) {
+            selection = std::nullopt;
+        }
     }
     rebuildMesh();
     ++modelRevision;
     return true;
 }
 
-bool FlatCurveModel::selectVertex(uint64_t vertexId) {
-    const auto found = std::find_if(vertices.begin(), vertices.end(), [&](const auto& vertex) {
-        return vertex.id == vertexId;
-    });
-    selection = found != vertices.end() ? std::optional<uint64_t>(vertexId) : std::nullopt;
-    return selection.has_value();
+CurveEditResult FlatCurveModel::moveVertex(CurveVertexId vertexId, CurvePoint position) {
+    const auto index = indicesByIdentity.find(vertexId);
+    const auto meshVertex = verticesByIdentity.find(vertexId);
+    if (index == indicesByIdentity.end() || meshVertex == verticesByIdentity.end()) {
+        return { CurveEditCode::MissingIdentity, vertexId };
+    }
+    FlatCurveVertex& vertex = vertices[index->second];
+    if (vertex.x == position.x && vertex.y == position.y) {
+        return { CurveEditCode::NoChange, vertexId };
+    }
+    FlatCurveVertex edited = vertex;
+    edited.x = position.x;
+    edited.y = position.y;
+    if (!validateVertex(edited)) {
+        return { CurveEditCode::InvalidEdit, vertexId };
+    }
+
+    meshVertex->second->values[Vertex::Phase] = position.x;
+    meshVertex->second->values[Vertex::Amp] = position.y;
+    vertex = edited;
+    ++modelRevision;
+    return { CurveEditCode::Applied, vertexId };
+}
+
+CurveEditResult FlatCurveModel::setCurve(CurveVertexId vertexId, float curve) {
+    const auto index = indicesByIdentity.find(vertexId);
+    const auto meshVertex = verticesByIdentity.find(vertexId);
+    if (index == indicesByIdentity.end() || meshVertex == verticesByIdentity.end()) {
+        return { CurveEditCode::MissingIdentity, vertexId };
+    }
+    FlatCurveVertex& vertex = vertices[index->second];
+    if (vertex.curve == curve) {
+        return { CurveEditCode::NoChange, vertexId };
+    }
+    FlatCurveVertex edited = vertex;
+    edited.curve = curve;
+    if (!validateVertex(edited)) {
+        return { CurveEditCode::InvalidEdit, vertexId };
+    }
+
+    meshVertex->second->values[Vertex::Curve] = curve;
+    if (curve >= 1.f) {
+        meshVertex->second->setMaxSharpness();
+    }
+    vertex = edited;
+    ++modelRevision;
+    return { CurveEditCode::Applied, vertexId };
+}
+
+CurveEditResult FlatCurveModel::insertVertex(CurvePoint position, float curve) {
+    auto nextVertices = vertices;
+    const CurveVertexId identity = nextIdentity();
+    nextVertices.push_back({ identity, position.x, position.y, curve });
+    if (!validate(nextVertices)) {
+        return { CurveEditCode::InvalidEdit, identity };
+    }
+
+    auto* vertex = new Vertex(position.x, position.y);
+    vertex->values[Vertex::Curve] = curve;
+    if (curve >= 1.f) {
+        vertex->setMaxSharpness();
+    }
+    mesh.addVertex(vertex);
+    identitiesByVertex.emplace(vertex, identity);
+    verticesByIdentity.emplace(identity, vertex);
+    vertices = std::move(nextVertices);
+    indicesByIdentity.emplace(identity, vertices.size() - 1);
+    ++nextVertexIdentity;
+    ++modelRevision;
+    return { CurveEditCode::Applied, identity };
+}
+
+CurveEditResult FlatCurveModel::removeVertex(CurveVertexId vertexId) {
+    const auto index = indicesByIdentity.find(vertexId);
+    const auto meshVertex = verticesByIdentity.find(vertexId);
+    if (index == indicesByIdentity.end() || meshVertex == verticesByIdentity.end()) {
+        return { CurveEditCode::MissingIdentity, vertexId };
+    }
+    auto nextVertices = vertices;
+    nextVertices.erase(nextVertices.begin()
+            + static_cast<std::vector<FlatCurveVertex>::difference_type>(index->second));
+    if (!validate(nextVertices)) {
+        return { CurveEditCode::InvalidEdit, vertexId };
+    }
+
+    Vertex* removedVertex = meshVertex->second;
+    if (!mesh.removeVert(removedVertex)) {
+        return { CurveEditCode::MissingIdentity, vertexId };
+    }
+    identitiesByVertex.erase(removedVertex);
+    verticesByIdentity.erase(vertexId);
+    delete removedVertex;
+    vertices = std::move(nextVertices);
+    rebuildLookups();
+    if (selection == vertexId) {
+        selection = std::nullopt;
+    }
+    ++modelRevision;
+    return { CurveEditCode::Applied, vertexId };
+}
+
+bool FlatCurveModel::selectVertex(std::optional<CurveVertexId> vertexId) {
+    if (!vertexId.has_value()) {
+        selection = std::nullopt;
+        return true;
+    }
+    if (indicesByIdentity.find(*vertexId) == indicesByIdentity.end()) {
+        return false;
+    }
+    selection = vertexId;
+    return true;
+}
+
+bool FlatCurveModel::synchronizeFromMesh(Vertex* selectedVertex) {
+    std::vector<FlatCurveVertex> nextVertices;
+    nextVertices.reserve((size_t) mesh.getNumVerts());
+    CurveVertexId identity = nextIdentity();
+    std::unordered_map<Vertex*, CurveVertexId> nextIdentities;
+    for (auto* vertex : mesh.getVerts()) {
+        const auto existing = identitiesByVertex.find(vertex);
+        const CurveVertexId vertexId = existing != identitiesByVertex.end() ? existing->second : identity++;
+        nextIdentities.emplace(vertex, vertexId);
+        nextVertices.push_back({
+                vertexId,
+                vertex->values[Vertex::Phase],
+                vertex->values[Vertex::Amp],
+                vertex->values[Vertex::Curve]
+        });
+    }
+    if (!validate(nextVertices)) {
+        rebuildMesh();
+        return false;
+    }
+    const bool changed = nextVertices != vertices;
+    vertices = std::move(nextVertices);
+    identitiesByVertex = std::move(nextIdentities);
+    rebuildLookups();
+    const auto selected = identitiesByVertex.find(selectedVertex);
+    selection = selected != identitiesByVertex.end()
+            ? std::optional<CurveVertexId>(selected->second)
+            : std::nullopt;
+    if (changed) {
+        ++modelRevision;
+    }
+    return true;
 }
 
 bool FlatCurveModel::loadSnapshot(const String& serialized) {
@@ -88,40 +226,10 @@ bool FlatCurveModel::loadSnapshot(const String& serialized) {
     const int64 selected = object->getProperty("selection");
     selection = std::nullopt;
     if (selected >= 0) {
-        selectVertex((uint64_t) selected);
+        selectVertex((CurveVertexId) selected);
     }
     modelRevision = jmax<uint64_t>(1, (uint64_t) (int64) object->getProperty("revision"));
     return true;
-}
-
-bool FlatCurveModel::adoptEditedVertices(
-        const std::vector<Effect2DVertexState>& editedVertices) {
-    std::vector<FlatCurveVertex> nextVertices;
-    nextVertices.reserve(editedVertices.size());
-    uint64_t nextIdentity = 1;
-    for (const auto& vertex : vertices) {
-        nextIdentity = jmax(nextIdentity, vertex.id + 1);
-    }
-
-    std::vector<bool> matched(vertices.size(), false);
-    const auto equal = [](float lhs, float rhs) {
-        return std::abs(lhs - rhs) <= 0.000001f;
-    };
-    for (const auto& edited : editedVertices) {
-        uint64_t identity {};
-        for (size_t i = 0; i < vertices.size(); ++i) {
-            if (!matched[i]
-                    && equal(vertices[i].x, edited.x)
-                    && equal(vertices[i].y, edited.y)
-                    && equal(vertices[i].curve, edited.curve)) {
-                identity = vertices[i].id;
-                matched[i] = true;
-                break;
-            }
-        }
-        nextVertices.push_back({ identity != 0 ? identity : nextIdentity++, edited.x, edited.y, edited.curve });
-    }
-    return replaceVertices(std::move(nextVertices));
 }
 
 String FlatCurveModel::snapshot() const {
@@ -148,22 +256,29 @@ bool FlatCurveModel::validate(const std::vector<FlatCurveVertex>& verticesToVali
         return false;
     }
 
-    std::vector<uint64_t> identities;
+    std::unordered_set<CurveVertexId> identities;
     identities.reserve(verticesToValidate.size());
     for (const auto& vertex : verticesToValidate) {
-        if (vertex.id == 0 || !std::isfinite(vertex.x) || !std::isfinite(vertex.y)
-                || !std::isfinite(vertex.curve) || vertex.x < 0.f || vertex.x > 1.f
-                || vertex.y < 0.f || vertex.y > 1.f || vertex.curve < 0.f || vertex.curve > 1.f) {
+        if (!validateVertex(vertex)) {
             return false;
         }
-        identities.push_back(vertex.id);
+        if (!identities.emplace(vertex.id).second) {
+            return false;
+        }
     }
-    std::sort(identities.begin(), identities.end());
-    return std::adjacent_find(identities.begin(), identities.end()) == identities.end();
+    return true;
+}
+
+bool FlatCurveModel::validateVertex(const FlatCurveVertex& vertex) {
+    return vertex.id != 0 && std::isfinite(vertex.x) && std::isfinite(vertex.y)
+            && std::isfinite(vertex.curve) && vertex.x >= 0.f && vertex.x <= 1.f
+            && vertex.y >= 0.f && vertex.y <= 1.f && vertex.curve >= 0.f && vertex.curve <= 1.f;
 }
 
 void FlatCurveModel::rebuildMesh() {
     mesh.destroy();
+    identitiesByVertex.clear();
+    verticesByIdentity.clear();
     for (const auto& state : vertices) {
         auto* vertex = new Vertex(state.x, state.y);
         vertex->values[Vertex::Curve] = state.curve;
@@ -171,7 +286,26 @@ void FlatCurveModel::rebuildMesh() {
             vertex->setMaxSharpness();
         }
         mesh.addVertex(vertex);
+        identitiesByVertex.emplace(vertex, state.id);
+        verticesByIdentity.emplace(state.id, vertex);
     }
+    rebuildLookups();
+}
+
+void FlatCurveModel::rebuildLookups() {
+    indicesByIdentity.clear();
+    verticesByIdentity.clear();
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        indicesByIdentity.emplace(vertices[i].id, i);
+        nextVertexIdentity = jmax(nextVertexIdentity, vertices[i].id + 1);
+    }
+    for (const auto& entry : identitiesByVertex) {
+        verticesByIdentity.emplace(entry.second, entry.first);
+    }
+}
+
+CurveVertexId FlatCurveModel::nextIdentity() const {
+    return nextVertexIdentity;
 }
 
 EnvelopeNodeModel::EnvelopeNodeModel() :
@@ -191,17 +325,50 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
         return false;
     }
 
-    if (!applyEnvelopePayload(object->getProperty("payload").toString())) {
+    EnvelopeMesh validated("CycleV2EnvelopeSnapshotValidation");
+    const String payload = object->getProperty("payload").toString();
+    if (!EnvelopeMeshState::apply(payload, validated)) {
+        validated.destroy();
         return false;
     }
+
+    const auto* encodedIds = object->getProperty("cubeIds").getArray();
+    if (encodedIds == nullptr || encodedIds->size() != validated.getNumCubes()) {
+        validated.destroy();
+        return false;
+    }
+    std::vector<EnvelopeCubeId> nextIds;
+    nextIds.reserve((size_t) encodedIds->size());
+    for (const auto& encodedId : *encodedIds) {
+        nextIds.push_back((EnvelopeCubeId) (int64) encodedId);
+    }
+    std::unordered_set<EnvelopeCubeId> uniqueIds;
+    uniqueIds.reserve(nextIds.size());
+    const bool idsValid = !nextIds.empty() && std::all_of(nextIds.begin(), nextIds.end(), [&](EnvelopeCubeId id) {
+        return id != 0 && uniqueIds.emplace(id).second;
+    });
+    if (!idsValid) {
+        validated.destroy();
+        return false;
+    }
+    validated.destroy();
+
+    mesh.destroy();
+    if (!EnvelopeMeshState::apply(payload, mesh)) {
+        return false;
+    }
+    cubeIds = std::move(nextIds);
+    rebuildIdentityMap();
+    committedPayload = payload;
     logarithmic = (bool) object->getProperty("logarithmic");
     red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
     blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
     redLinked = (bool) object->getProperty("redLinked");
     blueLinked = (bool) object->getProperty("blueLinked");
-    selection = (int) object->getProperty("selection");
-    if (selection >= mesh.getNumCubes()) {
-        selection = -1;
+    const int64 selected = object->getProperty("selection");
+    selection = std::nullopt;
+    if (selected >= 0) {
+        selectCube((EnvelopeCubeId) selected);
     }
     modelRevision = jmax<uint64_t>(1, (uint64_t) (int64) object->getProperty("revision"));
     return true;
@@ -227,15 +394,70 @@ String EnvelopeNodeModel::snapshot() const {
     root->setProperty("blue", blue);
     root->setProperty("redLinked", redLinked);
     root->setProperty("blueLinked", blueLinked);
-    root->setProperty("selection", selection);
+    root->setProperty("selection", selection.has_value() ? (int64) *selection : -1);
+    Array<var> encodedIds;
+    for (const auto cubeId : cubeIds) {
+        encodedIds.add((int64) cubeId);
+    }
+    root->setProperty("cubeIds", var(encodedIds));
     return JSON::toString(var(root.release()), false);
 }
 
-bool EnvelopeNodeModel::selectCube(int cubeIndex) {
-    if (cubeIndex < 0 || cubeIndex >= mesh.getNumCubes()) {
+bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
+    if (!cubeId.has_value()) {
+        selection = std::nullopt;
+        return true;
+    }
+    if (cubesByIdentity.find(*cubeId) == cubesByIdentity.end()) {
         return false;
     }
-    selection = cubeIndex;
+    selection = cubeId;
+    return true;
+}
+
+bool EnvelopeNodeModel::synchronizeFromMesh(VertCube* selectedCube) {
+    std::vector<EnvelopeCubeId> nextIds;
+    nextIds.reserve((size_t) mesh.getNumCubes());
+    auto nextIdentityByCube = identitiesByCube;
+    EnvelopeCubeId identity = nextIdentity();
+    for (auto* cube : mesh.getCubes()) {
+        const auto existing = identitiesByCube.find(cube);
+        const EnvelopeCubeId cubeId = existing != identitiesByCube.end() ? existing->second : identity++;
+        nextIds.push_back(cubeId);
+        nextIdentityByCube[cube] = cubeId;
+    }
+    std::unordered_set<VertCube*> liveCubes(mesh.getCubes().begin(), mesh.getCubes().end());
+    for (auto it = nextIdentityByCube.begin(); it != nextIdentityByCube.end();) {
+        if (liveCubes.find(it->first) == liveCubes.end()) {
+            it = nextIdentityByCube.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    const String payload = EnvelopeMeshState::serialize(mesh);
+    EnvelopeMesh validated("CycleV2EnvelopeEditValidation");
+    if (!EnvelopeMeshState::apply(payload, validated)) {
+        validated.destroy();
+        mesh.destroy();
+        EnvelopeMeshState::apply(committedPayload, mesh);
+        rebuildIdentityMap();
+        return false;
+    }
+    validated.destroy();
+    const bool changed = nextIds != cubeIds || payload != committedPayload;
+    cubeIds = std::move(nextIds);
+    identitiesByCube = std::move(nextIdentityByCube);
+    nextCubeIdentity = jmax(nextCubeIdentity, identity);
+    rebuildIdentityMap();
+    const auto selected = identitiesByCube.find(selectedCube);
+    selection = selected != identitiesByCube.end()
+            ? std::optional<EnvelopeCubeId>(selected->second)
+            : std::nullopt;
+    committedPayload = payload;
+    if (changed) {
+        ++modelRevision;
+    }
     return true;
 }
 
@@ -251,8 +473,30 @@ bool EnvelopeNodeModel::applyEnvelopePayload(const String& payload) {
     if (!EnvelopeMeshState::apply(payload, mesh)) {
         return false;
     }
+    cubeIds.clear();
+    EnvelopeCubeId identity = 1;
+    for (size_t i = 0; i < mesh.getCubes().size(); ++i) {
+        cubeIds.push_back(identity++);
+    }
+    rebuildIdentityMap();
+    committedPayload = payload;
+    selection = std::nullopt;
     ++modelRevision;
     return true;
+}
+
+EnvelopeCubeId EnvelopeNodeModel::nextIdentity() const {
+    return nextCubeIdentity;
+}
+
+void EnvelopeNodeModel::rebuildIdentityMap() {
+    identitiesByCube.clear();
+    cubesByIdentity.clear();
+    for (size_t i = 0; i < cubeIds.size(); ++i) {
+        identitiesByCube.emplace(mesh.getCubes()[i], cubeIds[i]);
+        cubesByIdentity.emplace(cubeIds[i], mesh.getCubes()[i]);
+        nextCubeIdentity = jmax(nextCubeIdentity, cubeIds[i] + 1);
+    }
 }
 
 void WaveshaperNodeModel::syncFromNode(const Node& node) {

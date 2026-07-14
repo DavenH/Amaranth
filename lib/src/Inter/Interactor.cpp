@@ -28,8 +28,6 @@
 #include "../Definitions.h"
 
 namespace {
-    constexpr int cycleCollisionDetectionSetting = AppSettings::numSettings + 13;
-
     int mouseEventCounter = 0;
 
     const char* actionName(PanelState::ActionState action) {
@@ -81,10 +79,6 @@ namespace {
         return parts.isEmpty() ? "none" : parts.joinIntoString("+");
     }
 
-    bool shouldValidateCollisions(SingletonRepo* repo) {
-        // TODO: Decouple shared interactor code from Cycle-specific global settings.
-        return repo->get<Settings>("Settings").getGlobalSetting(cycleCollisionDetectionSetting) == 1;
-    }
 }
 
 Interactor::Interactor(SingletonRepo* repo, const String& name, const Dimensions& d) :
@@ -1147,7 +1141,7 @@ void Interactor::doDragCorner(const MouseEvent& e) {
         }
     }
 
-    if (shouldValidateCollisions(repo) && !collisionDetector.validate()) {
+    if (shouldValidateCollisions() && !collisionDetector.validate()) {
         for (auto &frame: state.selectedFrame) {
             frame.vert->values[dims.x] = frame.lastValid.x;
             frame.vert->values[dims.y] = frame.lastValid.y;
@@ -1194,7 +1188,8 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
             action = PanelState::BoxSelecting;
         } else if (getStateValue(HighlitCorner) >= 0) {
             action = PanelState::DraggingCorner;
-        } else if (e.mods.isCommandDown() || mouseFlag(WithinReshapeThresh)) {
+        } else if (e.mods.isCommandDown()
+                || (mouseFlag(WithinReshapeThresh) && !isCurrentVertexHit(e.getPosition()))) {
             action = PanelState::ReshapingCurve;
         } else {
             jassert(! finalSelection.contains(e.getPosition()));
@@ -1224,6 +1219,18 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
     } else if (e.mods.isMiddleButtonDown()) {
         action = PanelState::MiddleZooming;
     }
+}
+
+bool Interactor::isCurrentVertexHit(Point<int> mousePosition) const {
+    if (panel == nullptr || state.currentVertex == nullptr) {
+        return false;
+    }
+
+    Vertex2 vertexPosition(
+            state.currentVertex->values[dims.x],
+            state.currentVertex->values[dims.y]);
+    const Vertex2 pixelPosition(panel->sx(vertexPosition.x), panel->sy(vertexPosition.y));
+    return pixelPosition.dist2(Vertex2(mousePosition.x, mousePosition.y)) <= 64.f;
 }
 
 
@@ -1626,7 +1633,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
         return;
     }
 
-    if (shouldValidateCollisions(repo)) {
+    if (shouldValidateCollisions()) {
         collisionDetector.setCurrentSelection(mesh, movingAll);
         passed = collisionDetector.validate();
     }
@@ -1669,7 +1676,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
             }
 
             // see if there are still no collisions
-            passed = !shouldValidateCollisions(repo) || collisionDetector.validate();
+            passed = !shouldValidateCollisions() || collisionDetector.validate();
 
             Vertex2 diffToLast = last - candidate;
 
@@ -1694,7 +1701,7 @@ void Interactor::moveSelectedVerts(const Vertex2& diff) {
                 }
             }
 
-            jassert(!shouldValidateCollisions(repo) || collisionDetector.validate());
+            jassert(!shouldValidateCollisions() || collisionDetector.validate());
         }
 
         // if y movements are free from possibility of collision
@@ -1908,6 +1915,10 @@ bool Interactor::doesMeshChangeWarrantGlobalUpdate() {
     return true;
 }
 
+bool Interactor::shouldValidateCollisions() const {
+    return getObj(Settings).getGlobalSettingValue(AppSettings::CollisionDetection) == 1;
+}
+
 vector<Vertex*>& Interactor::getSelected() {
     return getObj(MeshLibrary).getSelectedByType(layerType);
 }
@@ -1926,7 +1937,7 @@ bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
 
     bool passed = true;
 
-    if (shouldValidateCollisions(repo)) {
+    if (shouldValidateCollisions()) {
         collisionDetector.setCurrentSelection(mesh, addedCube);
         passed = collisionDetector.validate();
     }

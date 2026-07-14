@@ -15,12 +15,14 @@ public:
     void setMesh(Mesh* meshToEdit) { mesh = meshToEdit; }
     Mesh* getMesh() override { return mesh; }
     bool doesMeshChangeWarrantGlobalUpdate() override { return false; }
+    bool doCreateVertex() override;
     void reduceDetail() override {}
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
     void setExtraElements(float x) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
+    void deleteSelected();
 
     void setMeshEditedCallback(std::function<void(bool)> callback);
 

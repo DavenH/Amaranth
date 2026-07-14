@@ -51,6 +51,23 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. `.ips` crash report beside the log: only when the wrapper reports one.
 
+## Native macOS Edit Smoke
+
+In-app `pointer` commands call component methods directly and do not verify
+AppKit/JUCE event delivery. For CycleV2 node-editor acceptance, build the app
+and run the external native smoke:
+
+```sh
+cmake --build --preset standalone-debug --target CycleV2 --parallel 10
+scripts/test_cycle_v2_native_edit_smoke.py
+```
+
+The smoke launches one persistent app instance, resolves target screen bounds,
+and drives `cliclick` through macOS. It covers Waveshaper add, move, reshape,
+delete, and re-add, followed by Trimesh add, collision rejection, move,
+vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
+for at most 80 ms; do not replace these gestures with in-app pointer commands.
+
 The wrapper writes:
 
 - `<report>.json`,

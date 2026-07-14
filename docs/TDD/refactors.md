@@ -124,6 +124,28 @@ Suggested direction:
 - Let shared UI host code depend on a narrow panel interface rather than a
   concrete mesh type.
 
+Splitting `Effect2DPanelBridge` into two Cycle 2 implementations is not the
+target architecture. First extract the mature flat-effect and Envelope panel /
+interactor behavior into shared cores consumed by Cycle 1 and Cycle 2. Cycle 2
+adapters should contain host, event, ownership, and model translation only.
+
+## Cycle 2 Semantic Test Audit
+
+Cycle 2 currently has many unit assertions but did not detect loss of vertex
+hover, drag classification, edit publication, or stable Envelope parameter
+selection. Audit the suite by observable contract rather than assertion count.
+
+- Identify tests that only cover constructors, getters, scaffolding, fake
+  payloads, or implementation details and remove or consolidate them.
+- Build a smaller semantic matrix for graph mutation, DSP parity, pointer
+  interaction sequences, model publication, persistence, and visible output.
+- Require focused automation for hover, mouse-down classification, drag,
+  mouse-up publication, and downstream recomputation.
+- Prefer parity tests that run Cycle 1 and Cycle 2 through the same extracted
+  core over separate tests that bless two implementations.
+- Report which product risks remain untested; do not use aggregate assertion
+  counts as evidence of behavioral coverage.
+
 ## Cycle 2 Trimesh Rasterizer Compatibility Boundary
 
 The voice rasterizer façade, chaining state, and policies now live in
@@ -183,3 +205,11 @@ in `meshIntercepts` and publishes that into the rasterizer snapshot, while the
 base rasterizer also has `rasterizerData.intercepts`. Refactor this to a single
 authoritative intercept store so UI overlays, interactors, and waveform baking
 cannot accidentally read different intercept sources.
+# Trimesh topology snapshot
+
+Trimesh vertex field parameters preserve value edits but do not explicitly
+encode cube/vertex topology. Add/delete works in the live editor, but durable
+save/reload parity needs a typed topology snapshot rather than inferring a mesh
+from sparse `mesh.vertex.<index>.<field>` overrides. Reuse the mature `Mesh`
+serialization boundary behind a narrow Trimesh model adapter; do not invent a
+second topology format in the canvas or editor.

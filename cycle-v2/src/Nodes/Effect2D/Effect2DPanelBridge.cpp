@@ -168,6 +168,28 @@ public:
         resetFinalSelection();
     }
 
+    Vertex* selectedFlatVertexForModel() {
+        if (state.currentVertex != nullptr) {
+            return state.currentVertex;
+        }
+        const auto& selected = getSelected();
+        return selected.empty() ? nullptr : selected.front();
+    }
+
+    VertCube* selectedEnvelopeCubeForModel() {
+        if (kind != NodeKind::Envelope) {
+            return nullptr;
+        }
+        const auto& selected = getSelected();
+        if (selected.empty()) {
+            return nullptr;
+        }
+        if (state.currentCube != nullptr && selected.front()->isOwnedBy(state.currentCube)) {
+            return state.currentCube;
+        }
+        return closestEnvelopeCubeFor(selected.front());
+    }
+
     bool isEffectEnabled() const { return enabled; }
     bool isMeshEnabled() override { return isEffectEnabled(); }
     Mesh* getMesh() override { return &mesh; }
@@ -214,6 +236,17 @@ public:
         doCreateVertex();
     }
 
+    bool locateClosestElement() override {
+        if (kind == NodeKind::Envelope) {
+            return Interactor2D::locateClosestElement();
+        }
+
+        state.currentIcpt = -1;
+        state.currentFreeVert = -1;
+        state.currentCube = nullptr;
+        return Interactor::locateClosestElement();
+    }
+
     void setExtraElements(float x) override {
         if (kind != NodeKind::Envelope) {
             Interactor2D::setExtraElements(x);
@@ -229,7 +262,6 @@ public:
                     envelopeMorphPosition());
             jassert(state.currentVertex == nullptr
                     || state.currentVertex->owners.contains(state.currentCube));
-            updateSelectionFrames();
         }
     }
 
@@ -337,7 +369,7 @@ public:
         resetFinalSelection();
 
         Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
-        const float diffY = (state.currentMouse.y - state.lastMouse.y) / std::sqrt(panel->getZoomPanel()->rect.h);
+        const float diffY = (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
         const float diff = diffY / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
         const int pole = curves[getStateValue(CurrentCurve)].tp.ypole;
 
@@ -460,6 +492,14 @@ public:
 
         root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
+        Array<var> vertexParameters;
+        for (const auto& parameter : selectedVertexParameters()) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("id", parameter.id);
+            encoded->setProperty("value", parameter.value);
+            vertexParameters.add(encoded);
+        }
+        root->setProperty("selectedVertexParameters", vertexParameters);
 
         if (kind == NodeKind::Envelope) {
             auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
@@ -498,9 +538,8 @@ public:
     }
 
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const {
-        const Vertex* vertex = state.currentVertex != nullptr
-                ? state.currentVertex
-                : firstEditableVertex();
+        const auto& selected = const_cast<EffectPanel*>(this)->getSelected();
+        const Vertex* vertex = !selected.empty() ? selected.front() : firstEditableVertex();
 
         if (vertex == nullptr) {
             return {};
@@ -524,9 +563,8 @@ public:
     }
 
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
-        Vertex* vertex = state.currentVertex != nullptr
-                ? state.currentVertex
-                : firstEditableVertex();
+        const auto& selected = getSelected();
+        Vertex* vertex = !selected.empty() ? selected.front() : firstEditableVertex();
 
         if (vertex == nullptr) {
             return false;
@@ -1360,6 +1398,7 @@ public:
         setPaintingIsUnclipped(false);
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
+        setWantsKeyboardFocus(true);
     }
 
     void paint(Graphics& g) override {
@@ -1385,12 +1424,13 @@ public:
     }
 
     void mouseDown(const MouseEvent& event) override {
-        if (!event.mods.isLeftButtonDown()) {
-            activeLeftButton = false;
+        if (!event.mods.isLeftButtonDown() && !event.mods.isRightButtonDown()) {
+            activePointer = false;
             return;
         }
 
-        activeLeftButton = true;
+        activePointer = true;
+        grabKeyboardFocus();
         const MouseEvent localEvent = currentMouseEvent(event);
         enterIfNeeded(localEvent);
 
@@ -1415,7 +1455,7 @@ public:
     }
 
     void mouseDrag(const MouseEvent& event) override {
-        if (!activeLeftButton || !event.mods.isLeftButtonDown()) {
+        if (!activePointer || !event.mods.isLeftButtonDown()) {
             return;
         }
 
@@ -1428,19 +1468,19 @@ public:
     }
 
     void mouseUp(const MouseEvent& event) override {
-        if (!activeLeftButton) {
+        if (!activePointer) {
             return;
         }
 
-        activeLeftButton = false;
+        activePointer = false;
         const MouseEvent localEvent = currentMouseEvent(event);
 
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseUp(localEvent);
         }
 
-        if (event.mouseWasDraggedSinceMouseDown()) {
-            owner.notifyMeshEdited();
+        if (!owner.notifyMeshEdited()) {
+            owner.synchronizeModelSelection();
         }
     }
 
@@ -1454,6 +1494,19 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseWheelMove(localEvent, wheel);
         }
+    }
+
+    bool keyPressed(const KeyPress& key) override {
+        if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
+            return false;
+        }
+        if (Interactor* interactor = panel.getInteractor().get()) {
+            interactor->eraseSelected();
+            interactor->performUpdate(Update);
+            owner.notifyMeshEdited();
+            return true;
+        }
+        return false;
     }
 
     void resized() override {
@@ -1520,7 +1573,7 @@ private:
     Effect2DPanelBridge& owner;
     Panel& panel;
     bool mouseInside {};
-    bool activeLeftButton {};
+    bool activePointer {};
 };
 
 Effect2DPanelBridge::Effect2DPanelBridge(NodeKind nodeKind) :
@@ -1561,6 +1614,9 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
     const String typedSnapshot = parameterValueForNode(
             node, CurveNodeModelCodec::snapshotParameterId(), {});
     if (typedSnapshot.isEmpty()) {
+        return;
+    }
+    if (lastSyncedNodeId == node.id && lastSyncedModelSnapshot == typedSnapshot) {
         return;
     }
 
@@ -1608,6 +1664,7 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
     }
 
     lastSyncedNodeId = node.id;
+    lastSyncedModelSnapshot = typedSnapshot;
     panel->refreshRasterizer();
 }
 
@@ -1935,22 +1992,32 @@ String Effect2DPanelBridge::serializedMeshState() {
 
 String Effect2DPanelBridge::serializedModelSnapshot() {
     if (kind == NodeKind::Envelope) {
+        const bool synchronized = envelopeModel->synchronizeFromMesh(panel != nullptr
+                ? panel->selectedEnvelopeCubeForModel()
+                : nullptr);
+        if (!synchronized && panel != nullptr) {
+            panel->clearInteractionState();
+            panel->refreshRasterizer();
+        }
         envelopeModel->logarithmic = envelopeLogarithmicValue;
         envelopeModel->red = firstControlValue;
         envelopeModel->blue = secondControlValue;
         envelopeModel->redLinked = envelopeRedLinked.load();
         envelopeModel->blueLinked = envelopeBlueLinked.load();
         envelopeModel->setPublicationRevision(curveModelRevision);
-        return envelopeModel->snapshot();
+        lastSyncedModelSnapshot = envelopeModel->snapshot();
+        return lastSyncedModelSnapshot;
     }
 
-    const auto editedVertices = Effect2DMeshState::parse(serializedMeshState());
-    if (panel != nullptr) {
+    const bool synchronized = flatModel->synchronizeFromMesh(
+            panel != nullptr ? panel->selectedFlatVertexForModel() : nullptr);
+    if (!synchronized && panel != nullptr) {
         panel->clearInteractionState();
+        panel->refreshRasterizer();
     }
-    flatModel->adoptEditedVertices(editedVertices);
     flatModel->setPublicationRevision(curveModelRevision);
-    return flatModel->snapshot();
+    lastSyncedModelSnapshot = flatModel->snapshot();
+    return lastSyncedModelSnapshot;
 }
 
 std::vector<TrimeshVertexParameter> Effect2DPanelBridge::selectedVertexParameters() const {
@@ -1986,7 +2053,7 @@ void Effect2DPanelBridge::initialisePanelHost() {
 
     panelHost = std::make_unique<PanelHostComponent>(*this, *panel);
     panel->initWithHost(panelHost.get());
-    panelHost->removeMouseListener(panel.get());
+    panelHost->removeMouseListener(panel->getInteractor().get());
     panel->stopTimer();
     panelHostInitialised = true;
     initialiseMesh();
@@ -2065,19 +2132,31 @@ void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
     mesh->addVertex(vertex);
 }
 
-void Effect2DPanelBridge::notifyMeshEdited() {
+bool Effect2DPanelBridge::notifyMeshEdited() {
     if (meshEditedCallback == nullptr) {
-        return;
+        return false;
     }
 
     const String nextState = serializedMeshState();
     if (nextState == lastSyncedMeshState) {
-        return;
+        return false;
     }
 
     lastSyncedMeshState = nextState;
     ++curveModelRevision;
     meshEditedCallback();
+    return true;
+}
+
+void Effect2DPanelBridge::synchronizeModelSelection() {
+    if (panel == nullptr) {
+        return;
+    }
+    if (kind == NodeKind::Envelope) {
+        envelopeModel->synchronizeFromMesh(panel->selectedEnvelopeCubeForModel());
+    } else {
+        flatModel->synchronizeFromMesh(panel->selectedFlatVertexForModel());
+    }
 }
 
 PanelHostCallbacks Effect2DPanelBridge::createPanelHostCallbacks() {

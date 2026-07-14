@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-14).
 
 Depends on `cycle-v2-curve-node-models-and-editors.md`.
 
@@ -110,3 +110,55 @@ adapter callback at that boundary rather than duplicating its algorithms.
 - Normal editor gestures call semantic model operations.
 - Model and mesh cannot disagree after a committed edit.
 
+## Implementation Notes
+
+- `CurveVertexId` and `EnvelopeCubeId` are stable document identities.
+  Flat snapshots retain their vertex IDs; Envelope snapshot version 2 stores a
+  validated ID for every cube and selection by cube ID.
+- `FlatCurveModel` provides atomic move, curve, insert, remove, and selection
+  operations. Rejected edits leave vertices, selection, mesh, and revision
+  unchanged, while accepted content edits advance the revision once.
+- Semantic edits retain the mature mesh objects: move and reshape mutate the
+  identified `Vertex` directly, insertion adds one `Vertex`, and deletion
+  removes one `Vertex`. Whole-mesh reconstruction is limited to document
+  replacement, snapshot loading, and rollback after an invalid external edit.
+- Flat model and mesh storage retain document order; spatial consumers sort a
+  temporary view only where x-order is required. Direct ID-to-entry and
+  ID-to-`Vertex` maps make single-point move, reshape, and selection expected
+  O(1), while IDs come from monotonic counters rather than container scans.
+- The active `currentVertex` takes precedence when committing selection after
+  a drag, so a retained multi-selection cannot substitute a different vertex
+  identity. Envelope topology reconciliation uses pointer hash sets and maps
+  and is expected O(n), rather than repeatedly scanning cubes in O(n²).
+- The live panel adapter maps identities to the mature interactor's stable
+  `Vertex*` and `VertCube*` objects. Gesture commits classify retained, new,
+  removed, and reordered objects by pointer identity, never coordinates or
+  container index.
+- Selection-only synchronization updates stable selection without advancing
+  the content revision. Moving and reshaping retain identity; insertion gets a
+  new monotonic identity; deletion clears only a deleted selection.
+- Flat and Envelope panel gestures synchronize the model before publishing the
+  typed snapshot. Whole-mesh floating-point identity recovery was removed.
+
+Verification on macOS:
+
+- Focused curve-model suite: 156 assertions in 17 test cases.
+- Full `CycleV2_tests`: 2,463 assertions in 238 test cases.
+- `cycle-v2-agent-effect2d-interaction.json` exercises direct synthetic event
+  forwarding only. It is adapter-level coverage and is not evidence that JUCE
+  or macOS delivers working product interactions.
+- OS-driven verification uses a persistent CycleV2 session plus `cliclick`.
+  It confirmed automatic Waveshaper hover resolution, retained vertex identity
+  through a drag from `(0.125, 0.125)` to approximately `(0.272, 0.272)`, and
+  publication to the node snapshot. It also confirmed Envelope vertex dragging,
+  publication, and stable selected-vertex parameters after moving the pointer
+  elsewhere.
+- The OS-driven run exposed and fixed two host-boundary defects that the
+  synthetic fixture bypassed: duplicate event delivery through both JUCE
+  listener registration and manual forwarding, and render-thread snapshot
+  loading that rebuilt the editor mesh between pointer events.
+- `scripts/test_cycle_v2_native_edit_smoke.py` is the native acceptance smoke.
+  It uses AppKit/JUCE delivery for add, move, curve reshape toward the vertex,
+  delete, and re-add, then exercises the corresponding Trimesh editing path,
+  collision rejection, vertex controls, and morph controls in the same app
+  session. Per-edit settling is capped at 80 ms.

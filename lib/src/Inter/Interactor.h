@@ -108,6 +108,7 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
+    bool isCurrentVertexHit(Point<int> mousePosition) const;
     void updateCurrentMouseFromLocalPosition(Point<int> localPos);
     void updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);
@@ -156,6 +157,7 @@ public:
     virtual void updateDspSync();
     virtual bool doesMeshChangeWarrantGlobalUpdate();
     virtual bool shouldDoDimensionCheck();
+    bool shouldValidateCollisions() const;
     virtual bool doCreateVertex();
     virtual float getDragMovementScale(VertCube* cube);
     virtual MouseUsage getMouseUsage();

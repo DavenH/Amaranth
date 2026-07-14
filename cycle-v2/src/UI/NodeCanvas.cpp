@@ -2232,6 +2232,12 @@ void NodeCanvas::timerCallback() {
         flushScheduledCompiledStateRefresh();
     }
 
+    for (const auto& node : graph.getNodes()) {
+        if (isEffect2DNode(node.kind)) {
+            effect2DWidgetFor(node).syncFromNode(node);
+        }
+    }
+
     updateExpandedEditorHost(findNode(expandedNodeId));
 
     const auto mouse = getMouseXYRelative().toFloat();
@@ -4589,6 +4595,9 @@ var NodeCanvas::exportAutomationState() const {
     root->setProperty("compileIssues", compileIssues);
     root->setProperty("nodeOrder", nodeOrder);
     root->setProperty("previewStats", previewStats);
+    if (expandedNodeId.isNotEmpty()) {
+        root->setProperty("expandedNodeControls", inspectNodeControlsForAutomation(expandedNodeId));
+    }
     return root;
 }
 
@@ -4826,6 +4835,7 @@ var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
     root->setProperty("parameters", parameters);
 
     if (node->kind == NodeKind::TrilinearMesh) {
+        TrimeshWidget& widget = const_cast<NodeCanvas*>(this)->trimeshWidgetFor(nodeId);
         Array<var> morphSliders;
 
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
@@ -4856,6 +4866,34 @@ var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
         root->setProperty("morphSliders", morphSliders);
         root->setProperty("primaryAxisButtons", primaryAxisButtons);
         root->setProperty("linkToggles", linkToggles);
+
+        auto* meshState = new DynamicObject();
+        const TrimeshMeshEditState edits = widget.currentMeshEditState();
+        int vertexCount = 0;
+        for (const auto& edit : edits.getVertexEdits()) {
+            vertexCount = jmax(vertexCount, edit.vertexIndex + 1);
+        }
+        const int selectedVertexIndex = widget.selectedVertexIndexForPanel();
+        meshState->setProperty("vertexCount", vertexCount);
+        meshState->setProperty("selectedVertexIndex", selectedVertexIndex);
+        Array<var> selectedParameters;
+        for (const auto& parameter : widget.vertexParametersForIndex(selectedVertexIndex)) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("id", parameter.id);
+            encoded->setProperty("value", parameter.value);
+            selectedParameters.add(encoded);
+        }
+        meshState->setProperty("selectedVertexParameters", selectedParameters);
+        Array<var> vertexMarkers;
+        for (const auto& marker : widget.vertexMarkers()) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("index", marker.index);
+            encoded->setProperty("phase", marker.phase);
+            encoded->setProperty("amp", marker.amp);
+            vertexMarkers.add(encoded);
+        }
+        meshState->setProperty("vertexMarkers", vertexMarkers);
+        root->setProperty("trimesh", meshState);
     }
 
     if ((node->kind == NodeKind::Envelope
@@ -4971,8 +5009,25 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
         }
     }
 
+    for (auto& targetValue : targets) {
+        auto* target = targetValue.getDynamicObject();
+        auto* bounds = target != nullptr
+                ? target->getProperty("bounds").getDynamicObject()
+                : nullptr;
+        if (bounds == nullptr) {
+            continue;
+        }
+        const Rectangle<float> localBounds(
+                (float) bounds->getProperty("x"),
+                (float) bounds->getProperty("y"),
+                (float) bounds->getProperty("width"),
+                (float) bounds->getProperty("height"));
+        const Point<float> screenOrigin = localPointToGlobal(localBounds.getPosition());
+        target->setProperty("screenBounds", rectangleToVar(localBounds.withPosition(screenOrigin)));
+    }
+
     root->setProperty("schema", "cycle-v2-pointer-targets.v1");
-    root->setProperty("coordinateSpace", "canvasLocal");
+    root->setProperty("coordinateSpace", "canvasLocalAndScreen");
     root->setProperty("targetCount", targets.size());
     root->setProperty("targets", targets);
     return root;
@@ -5727,7 +5782,8 @@ void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
     }
 
     commands.beginCompoundEdit();
-    TrimeshMeshEditState editState = trimeshWidgetFor(nodeId).currentMeshEditState();
+    TrimeshWidget& widget = trimeshWidgetFor(nodeId);
+    TrimeshMeshEditState editState = widget.currentMeshEditState();
     for (const TrimeshVertexEdit& edit : editState.getVertexEdits()) {
         const String field = TrimeshMeshEditState::fieldForVertexValueIndex(edit.valueIndex);
 
@@ -5741,6 +5797,11 @@ void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
                 field,
                 String(edit.value, 6));
     }
+    commands.setNodeParameter(
+            nodeId,
+            "selectedVertexIndex",
+            "Selected Vertex",
+            String(widget.selectedVertexIndexForPanel()));
     commands.commitCompoundEdit();
 
     scheduleCompiledStateRefresh();

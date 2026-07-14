@@ -468,8 +468,7 @@ void Interactor3D::moveVertsAndTest(const Array<Vertex*>& arr, float diff) {
         it->values[dims.x] += diff;
     }
 
-    // TODO: Decouple shared interactor code from Cycle-specific global settings.
-    if (getObj(Settings).getGlobalSetting(AppSettings::numSettings + 13) == 1) {
+    if (shouldValidateCollisions()) {
         collisionDetector.setCurrentSelection(getMesh(), arr);
         if(! collisionDetector.validate()) {
             for (auto it : arr) {
