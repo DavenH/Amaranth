@@ -340,6 +340,10 @@ Current status:
   morph-axis grid traversal, mesh rasterization, and perfect column sampling.
   Cycle 1 retains window/detail sizing, array allocation and locking, current
   mesh/axis lookup, and updater scheduling.
+- Cycle 1's `GraphicMorphPositionPolicy` remains adapter policy by design: it
+  translates Cycle layer-group identity, morph-axis settings, panel state, and
+  scratch-channel presence into the explicit morph input consumed by the
+  shared graphic rasterizer. It contains no rasterization algorithm.
 
 Next target:
 

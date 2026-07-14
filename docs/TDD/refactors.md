@@ -97,6 +97,9 @@ scratch-property lookup.
 E3 envelope grid traversal and sampling now live in
 `Rasterization::EnvelopeGridRasterizer`; Cycle retains UI sizing, storage,
 locking, mesh selection, and update dispatch.
+The remaining Cycle `GraphicMorphPositionPolicy` is intentionally an adapter:
+its inputs and decisions are Cycle layer groups, settings, panel morph state,
+and scratch-channel state rather than reusable rasterization behavior.
 
 Suggested direction:
 
