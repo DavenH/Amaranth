@@ -80,16 +80,32 @@ Suggested direction:
 
 ## Cycle 2 Trimesh Rasterizer Compatibility Boundary
 
-`VoiceMeshRasterizer` is still defined under `cycle/` and depends on Cycle 1.x
-application state such as `SingletonAccessor`, `CycleState`, and legacy voice
-chaining ownership. Cycle 2 currently links `AmaranthLib`, so its first trimesh
-node backend should reuse `Rasterization::TrilinearMeshRasterizer` from `lib/`
-as the stable shared core.
+The voice rasterizer façade, chaining state, and policies now live in
+`AmaranthLib` as `Rasterization::VoiceRasterizer`, `VoiceCycleState`, and the
+shared voice policy set. Cycle 1's `VoiceMeshRasterizer` is a thin adapter that
+publishes its application constant and preserves legacy construction. Cycle
+2's current Trimesh backend correctly reuses
+`Rasterization::TrilinearMeshRasterizer` and does not yet require voice
+chaining.
+
+Graphic render-state, scaling, batch, and publication behavior likewise lives
+in `Rasterization::GraphicRasterizer`. The Cycle adapter retains application
+settings, scratch position, updater detail state, and interactor access.
+Time-column traversal and layer summation now consume explicit shared layer
+values; Cycle retains only `MeshLibrary` translation, view-stage selection, and
+scratch-property lookup.
+E3 envelope grid traversal and sampling now live in
+`Rasterization::EnvelopeGridRasterizer`; Cycle retains UI sizing, storage,
+locking, mesh selection, and update dispatch.
+The remaining Cycle `GraphicMorphPositionPolicy` is intentionally an adapter:
+its inputs and decisions are Cycle layer groups, settings, panel morph state,
+and scratch-channel state rather than reusable rasterization behavior.
 
 Suggested direction:
 
-- Move the reusable voice-chain behavior behind a library-level façade that
-  does not depend on Cycle 1.x app singletons.
+- Use the shared voice façade when Cycle 2 introduces oscillator/voice-cycle
+  execution; keep immutable configuration publication separate from mutable
+  per-voice `VoiceCycleState`.
 - Keep Cycle 2 node DSP modules under `cycle-v2/src/Nodes/Trimesh/`.
 - Preserve separate blockwise audio and gridwise UI/update surfaces, matching
   the FFT folder pattern.

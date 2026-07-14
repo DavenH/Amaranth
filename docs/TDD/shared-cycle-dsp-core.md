@@ -306,6 +306,63 @@ behavior and document the intentional golden-vector change.
 
 ## Priority Modules
 
+### Rasterization And Voice Generation
+
+Current status:
+
+- Mesh slicing, curve preparation, waveform baking, sampling, and the generic
+  `TrilinearMeshRasterizer` already live in `AmaranthLib`.
+- Voice point positioning, phase wrapping, chained intercept-window rotation,
+  chained padding, and voice curve-resolution policy now live under
+  `lib/src/Curve/Rasterization/Policies/Voice/`.
+- `Rasterization::VoiceCycleState` owns the algorithm's cross-cycle intercept
+  and advancement state. Cycle 1's `CycleState` is now a compatibility alias;
+  voice scheduling remains in Cycle 1.
+- Cycle 2 Trimesh currently uses the generic shared trilinear rasterizer and
+  does not duplicate voice chaining. It should adopt the shared voice policy
+  only when oscillator/voice-cycle execution is introduced.
+- `Rasterization::VoiceRasterizer` now owns the shared façade that combines
+  slicing, guide application, voice policies, waveform baking, and snapshot
+  publication. Its mesh, morph, guide provider, rasterization request, chaining
+  state, and minimum-line-length inputs are explicit and application-neutral.
+- Cycle 1 retains `VoiceMeshRasterizer` as a thin compatibility adapter. It
+  publishes the authoritative `MinLineLength` application constant and keeps
+  the legacy `SingletonAccessor` construction and reset contract.
+- `Rasterization::GraphicRasterizer` owns graphic render-state preservation,
+  scaling conversion, batch rendering, bounds, and snapshot publication.
+  Cycle 1's global `GraphicRasterizer` is now an adapter for morph settings,
+  scratch position, updater detail state, singleton lookup, and its interactor.
+- `Rasterization::TimeColumnRasterizer` owns time-column traversal, deterministic
+  layer/column noise seeds, scratch-time application, waveform sampling, layer
+  panning, and summation. Cycle 1 translates `MeshLibrary` records and its view
+  stage into explicit shared layer values and a scratch-time resolver.
+- `Rasterization::EnvelopeGridRasterizer` owns the E3 half-bipolar request,
+  morph-axis grid traversal, mesh rasterization, and perfect column sampling.
+  Cycle 1 retains window/detail sizing, array allocation and locking, current
+  mesh/axis lookup, and updater scheduling.
+- Cycle 1's `GraphicMorphPositionPolicy` remains adapter policy by design: it
+  translates Cycle layer-group identity, morph-axis settings, panel state, and
+  scratch-channel presence into the explicit morph input consumed by the
+  shared graphic rasterizer. It contains no rasterization algorithm.
+
+Next target:
+
+- define immutable prepared-output/request snapshots where a future Cycle 2
+  oscillator needs to publish rasterization configuration across threads
+- integrate the shared façade into that oscillator without introducing a
+  second rasterization path; Cycle 2's current Trimesh node should remain on
+  the generic shared rasterizer until it gains voice-cycle execution
+- extract the remaining graphic morph/axis policy after replacing Cycle 1
+  layer-group constants with narrow semantic value inputs
+
+Tests:
+
+- shared policy characterization for phase wrapping and state rotation
+- Cycle 1 golden coverage for chained padding, curve resolution, intercepts,
+  and sampled waveform continuity
+- future cross-adapter golden vectors using the same mesh snapshot and request
+- split-cycle equivalence and absence of UI/singleton dependencies in shared code
+
 ### Delay
 
 Delay is the first extraction because its state and timing behavior are easier
@@ -586,8 +643,17 @@ Complete one module end-to-end before starting the next:
 - [x] Retain Cycle 2 node processors across graph audio blocks.
 - [x] Integrate Cycle 2 envelope snapshots and lifecycle with `EnvRasterizer`.
 - [x] Publish immutable Cycle 2 configurations for Reverb, IR, Waveshaper, and Envelope.
-- [ ] Inventory Cycle 1 rasterizer/voice-generation dependencies and define shared snapshots.
-- [ ] Move application-neutral `VoiceMeshRasterizer`, `GraphicRasterizer`, `E3Rasterizer`, and time-column policy into `AmaranthLib`.
+- [x] Inventory Cycle 1 voice-rasterizer dependencies and extract shared chaining state/policies.
+- [x] Extract the shared application-neutral voice-rasterizer façade and keep
+  Cycle 1 singleton configuration in a thin adapter.
+- [x] Extract graphic render/state behavior and keep Cycle settings, morph,
+  scratch-channel, updater, and interactor access in an adapter.
+- [x] Extract time-column rendering behind explicit layer values, work buffers,
+  view inputs, and scratch-time resolution.
+- [ ] Define shared voice-rasterizer request and prepared-output snapshots when
+  Cycle 2 oscillator publication requires them.
+- [x] Extract application-neutral E3 grid rendering behind explicit mesh,
+  resolution, morph axis, and output-column inputs.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.

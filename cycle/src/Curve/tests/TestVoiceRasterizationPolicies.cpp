@@ -4,7 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../CycleState.h"
-#include "../Rasterization/Policies/Voice/VoicePolicies.h"
+#include <Curve/Rasterization/Policies/Voice/VoicePolicies.h>
 
 namespace {
     using Catch::Approx;
@@ -151,11 +151,11 @@ TEST_CASE("VoicePointPositionPolicy wraps chained voice phase", "[cycle][rasteri
     b.values[Vertex::Phase] = 0.80f;
     b.values[Vertex::Amp] = 0.75f;
 
-    Cycle::Rasterization::VoicePointPositionPolicy::Context context;
+    Rasterization::VoicePointPositionPolicy::Context context;
     context.voiceTime = 0.5f;
     context.oscPhase = 0.85f;
 
-    auto result = Cycle::Rasterization::VoicePointPositionPolicy().resolve(
+    auto result = Rasterization::VoicePointPositionPolicy().resolve(
             context,
             true,
             &a,
@@ -189,7 +189,7 @@ TEST_CASE("VoiceChainedPaddingPolicy matches legacy chaining curve padding", "[c
             legacyCurves,
             interceptPadding);
 
-    int paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+    int paddingSize = Rasterization::VoiceChainedPaddingPolicy().build(
             policyIntercepts,
             policyNextIntercepts,
             policyState,
@@ -210,7 +210,7 @@ TEST_CASE("VoiceCurveResolutionPolicy matches legacy voice resolution endpoint h
     std::vector<Curve> policyCurves = makeVoiceCurves();
 
     applyLegacyVoiceCurveResolution(legacyCurves);
-    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(policyCurves);
+    Rasterization::VoiceCurveResolutionPolicy().apply(policyCurves);
 
     REQUIRE(policyCurves.size() == legacyCurves.size());
 

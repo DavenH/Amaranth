@@ -2,7 +2,8 @@
 
 Cycle-specific policies are separated from the shared Amaranth library policies:
 
-- `Graphic/`: graphic mesh axis and morph-position behavior.
-- `Voice/`: voice slicing, chaining, curve resolution, and waveform update behavior.
+- `Graphic/`: translation of Cycle layer groups, morph-axis settings, panel
+  state, and scratch-channel state into explicit shared rasterizer inputs.
 
-Cross-product policies belong in `lib/src/Curve/Rasterization/Policies/`.
+Cross-product policies, including voice slicing and chaining, belong in
+`lib/src/Curve/Rasterization/Policies/`.

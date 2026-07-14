@@ -3,7 +3,7 @@
 
 #include "../CycleState.h"
 #include "../Rasterization/Rasterizer/VoiceMeshRasterizer.h"
-#include "../Rasterization/Policies/Voice/VoicePolicies.h"
+#include <Curve/Rasterization/Policies/Voice/VoicePolicies.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -69,11 +69,11 @@ TEST_CASE("VoicePointPositionPolicy resolves wrapped voice point positions", "[c
     b.values[Vertex::Phase] = 0.80f;
     b.values[Vertex::Amp] = 0.75f;
 
-    Cycle::Rasterization::VoicePointPositionPolicy::Context context;
+    Rasterization::VoicePointPositionPolicy::Context context;
     context.voiceTime = 0.5f;
     context.oscPhase = 0.85f;
 
-    auto result = Cycle::Rasterization::VoicePointPositionPolicy().resolve(
+    auto result = Rasterization::VoicePointPositionPolicy().resolve(
             context,
             true,
             &a,
@@ -107,7 +107,7 @@ TEST_CASE("VoiceChainedPaddingPolicy builds chained padding", "[cycle][rasteriza
 
     std::vector<Curve> curves;
 
-    int paddingSize = Cycle::Rasterization::VoiceChainedPaddingPolicy().build(
+    int paddingSize = Rasterization::VoiceChainedPaddingPolicy().build(
             intercepts,
             nextIntercepts,
             state,
@@ -135,7 +135,7 @@ TEST_CASE("VoiceCurveResolutionPolicy applies voice endpoint resolution", "[cycl
         Curve(intercepts[2], intercepts[3], intercepts[4]),
     };
 
-    Cycle::Rasterization::VoiceCurveResolutionPolicy().apply(curves);
+    Rasterization::VoiceCurveResolutionPolicy().apply(curves);
 
     REQUIRE(curves.front().resIndex == curves[1].resIndex);
     REQUIRE(curves.back().resIndex == curves[curves.size() - 2].resIndex);
@@ -154,7 +154,7 @@ TEST_CASE("VoiceChainingPolicy rotates and publishes chained intercept windows",
     };
 
     bool needsResorting = true;
-    Cycle::Rasterization::VoiceChainingPolicy policy(&needsResorting);
+    Rasterization::VoiceChainingPolicy policy(&needsResorting);
 
     policy.beginCall(state, currentIntercepts);
 
