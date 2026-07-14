@@ -7,10 +7,71 @@
 #include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <algorithm>
+#include <atomic>
+#include <cstdlib>
+#include <new>
+
+namespace {
+
+thread_local bool countRealtimeAllocations = false;
+std::atomic<size_t> realtimeAllocationCount {};
+
+}
+
+void* operator new(std::size_t size) {
+    if (countRealtimeAllocations) {
+        ++realtimeAllocationCount;
+    }
+    if (void* memory = std::malloc(size)) {
+        return memory;
+    }
+    throw std::bad_alloc();
+}
+
+void* operator new[](std::size_t size) {
+    return ::operator new(size);
+}
+
+void operator delete(void* memory) noexcept { std::free(memory); }
+void operator delete[](void* memory) noexcept { std::free(memory); }
+void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
+void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
 
 using namespace CycleV2;
 
 namespace {
+
+class ScopedRealtimeAllocationCount {
+public:
+    ScopedRealtimeAllocationCount() {
+        realtimeAllocationCount = 0;
+        countRealtimeAllocations = true;
+    }
+
+    ~ScopedRealtimeAllocationCount() {
+        countRealtimeAllocations = false;
+    }
+
+    size_t count() const { return realtimeAllocationCount.load(); }
+};
+
+class FanOutObserver final : public GraphProcessObserver {
+public:
+    void nodeProcessed(const String& nodeId, const AudioProcessContext& context) override {
+        if (nodeId == "wave" && !context.outputs.empty()) {
+            sourceSamples = context.outputs.front().block.samples.data();
+        }
+        if (nodeId == "add" && !context.inputViews.empty()
+                && context.inputViews.front() != nullptr) {
+            consumerSamples = context.inputViews.front()->block.samples.data();
+        }
+        ++observedNodes;
+    }
+
+    const float* sourceSamples {};
+    const float* consumerSamples {};
+    size_t observedNodes {};
+};
 
 const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const String& nodeId) {
     const auto found = std::find_if(
@@ -279,6 +340,55 @@ TEST_CASE("Graph audio executor keeps envelope state independent per voice", "[c
     REQUIRE(firstContinuedEnvelope != secondStartEnvelope);
 }
 
+TEST_CASE("Prepared graph audio dispatch remains available for every voice", "[cycle-v2][runtime][realtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    executor.prepareExecution(compiled.plan, spec, 0);
+    executor.prepareExecution(compiled.plan, spec, 1);
+
+    AudioVoiceContext firstVoice;
+    firstVoice.voiceIndex = 0;
+    AudioVoiceContext secondVoice;
+    secondVoice.voiceIndex = 1;
+
+    REQUIRE(executor.processRealtime(graph, compiled.plan, 16, {}, firstVoice).isValid());
+    REQUIRE(executor.processRealtime(graph, compiled.plan, 16, {}, secondVoice).isValid());
+    REQUIRE(executor.processRealtime(graph, compiled.plan, 16, {}, firstVoice).isValid());
+    REQUIRE(executor.preparationCount("wave", 0) == 1);
+    REQUIRE(executor.preparationCount("wave", 1) == 1);
+}
+
+TEST_CASE("Graph plan replacement removes stale processor state", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph firstGraph;
+    firstGraph.addNode(factory.createNode(NodeKind::WaveSource, "oldWave", {}));
+    const auto first = GraphCompiler().compile(firstGraph);
+    REQUIRE(first.succeeded());
+
+    GraphAudioExecutor executor;
+    REQUIRE_FALSE(executor.process(firstGraph, first.plan, 8).nodes.empty());
+    REQUIRE(executor.preparationCount("oldWave") == 1);
+
+    NodeGraph replacementGraph;
+    replacementGraph.addNode(factory.createNode(NodeKind::ImageSource, "newImage", {}));
+    const auto replacement = GraphCompiler().compile(replacementGraph);
+    REQUIRE(replacement.succeeded());
+    REQUIRE_FALSE(executor.process(replacementGraph, replacement.plan, 8).nodes.empty());
+
+    REQUIRE(executor.preparationCount("oldWave") == 0);
+    REQUIRE(executor.preparationCount("newImage") == 1);
+}
+
 TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -349,4 +459,75 @@ TEST_CASE("Graph audio executor renders the demo graph through resolved mesh ope
     REQUIRE(result.output.traversalGrid.isValid());
     const auto& envelope = samples(findNodeAudio(result, "env").output);
     REQUIRE(envelope.back() > envelope.front());
+}
+
+TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 4;
+    executor.prepareExecution(compileResult.plan, spec);
+    const auto first = executor.processRealtime(graph, compileResult.plan, 4, {}, voice);
+    const auto second = executor.processRealtime(graph, compileResult.plan, 4, {}, voice);
+
+    REQUIRE(first.isValid());
+    REQUIRE(second.isValid());
+    REQUIRE(second.payload->block.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+}
+
+TEST_CASE("Prepared graph audio processing performs no heap allocations", "[cycle-v2][runtime][realtime]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    executor.prepareExecution(compileResult.plan, spec);
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    REQUIRE(executor.processRealtime(graph, compileResult.plan, 64, {}, voice).isValid());
+
+    ScopedRealtimeAllocationCount allocations;
+    const auto output = executor.processRealtime(graph, compileResult.plan, 64, {}, voice);
+    const auto shorterOutput = executor.processRealtime(graph, compileResult.plan, 32, {}, voice);
+
+    REQUIRE(output.isValid());
+    REQUIRE(shorterOutput.isValid());
+    REQUIRE(allocations.count() == 0);
+}
+
+TEST_CASE("Realtime observation is optional and fan-out shares compiled slot storage", "[cycle-v2][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "add", "right", PortDomain::TimeSignal, false });
+    graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    executor.prepareExecution(compiled.plan, spec);
+    FanOutObserver observer;
+    AudioVoiceContext voice;
+
+    REQUIRE(executor.processRealtime(graph, compiled.plan, 16, {}, voice, &observer).isValid());
+    REQUIRE(observer.observedNodes == 3);
+    REQUIRE(observer.sourceSamples != nullptr);
+    REQUIRE(observer.consumerSamples == observer.sourceSamples);
 }

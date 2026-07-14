@@ -81,7 +81,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
     REQUIRE(result.plan.signalEdges.size() == 11);
-    REQUIRE(result.plan.buffers.size() == 10);
+    REQUIRE(result.plan.buffers.size() == 11);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
 
     const auto& plan = result.plan;
@@ -334,4 +334,23 @@ TEST_CASE("Compiler rejects processing cycles", "[cycle-v2][graph]") {
     REQUIRE(result.compileIssues.size() == 1);
     REQUIRE(result.compileIssues.front().code == GraphCompileCode::CycleDetected);
     REQUIRE(result.plan.nodeOrder.empty());
+}
+
+TEST_CASE("Compiler assigns output slots and source lifetimes before processing", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
+
+    const auto result = GraphCompiler().compile(graph);
+    REQUIRE(result.succeeded());
+
+    const auto& wave = findStep(result.plan, "wave");
+    const auto& add = findStep(result.plan, "add");
+    REQUIRE(wave.outputs.front().bufferIndex >= 0);
+    REQUIRE(add.inputs.front().sourceBufferIndex == wave.outputs.front().bufferIndex);
+    const auto& buffer = result.plan.buffers[(size_t) wave.outputs.front().bufferIndex];
+    REQUIRE(buffer.firstProducerStep >= 0);
+    REQUIRE(buffer.lastConsumerStep > buffer.firstProducerStep);
 }

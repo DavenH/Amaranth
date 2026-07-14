@@ -45,6 +45,13 @@ enum class PreviewModuleRole {
     Generic
 };
 
+enum class PreviewContract {
+    None,
+    AuthoritativeModel,
+    RuntimeTap,
+    Qualitative
+};
+
 enum class ParameterType {
     Boolean,
     Integer,
@@ -98,6 +105,7 @@ struct NodeDefinition {
     bool allowsDynamicParameters {};
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
+    PreviewContract previewContract { PreviewContract::None };
     bool executable {};
     bool previewable {};
     String cycle1Reference;

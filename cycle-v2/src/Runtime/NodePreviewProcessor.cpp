@@ -74,74 +74,13 @@ void normalizeBipolarBlock(SignalPayload& payload) {
             .clip(0.f, 1.f);
 }
 
-class FixedPreviewProcessor final : public NodePreviewProcessor {
+class PreviewProcessorBase : public NodePreviewProcessor {
 public:
-    explicit FixedPreviewProcessor(PreviewModuleRole roleToUse) : previewRole(roleToUse) {}
-
-    ~FixedPreviewProcessor() override {
-        if (defaultMesh != nullptr) {
-            defaultMesh->destroy();
-        }
-    }
+    explicit PreviewProcessorBase(PreviewModuleRole roleToUse) : previewRole(roleToUse) {}
 
     PreviewModuleRole role() const override { return previewRole; }
 
-    void render(PreviewProcessContext& context) override {
-        switch (previewRole) {
-            case PreviewModuleRole::Waveform:
-                renderWaveform(context);
-                break;
-
-            case PreviewModuleRole::Image:
-                renderImage(context);
-                break;
-
-            case PreviewModuleRole::MeshSurface:
-                renderMeshSurface(context);
-                break;
-
-            case PreviewModuleRole::SpectrumMagnitude:
-                renderDescending(context, 1.f, 0.1f);
-                break;
-
-            case PreviewModuleRole::SpectrumPhase:
-                renderAlternating(context);
-                break;
-
-            case PreviewModuleRole::Envelope:
-                renderEnvelope(context);
-                break;
-
-            case PreviewModuleRole::ImpulseResponse:
-                renderImpulse(context);
-                break;
-
-            case PreviewModuleRole::Waveshaper:
-                renderTransfer(context);
-                break;
-
-            case PreviewModuleRole::OutputMeters:
-                renderMeters(context);
-                break;
-
-            case PreviewModuleRole::SignalSpy:
-                renderSignalSpy(context);
-                break;
-
-            case PreviewModuleRole::VoiceContext:
-            case PreviewModuleRole::Generic:
-                renderDescending(context, 0.8f, 0.2f);
-                break;
-
-            case PreviewModuleRole::None:
-            default:
-                context.primary.clear();
-                context.secondary.clear();
-                break;
-        }
-    }
-
-private:
+protected:
     void renderWaveform(PreviewProcessContext& context) const {
         ensurePreview(context);
 
@@ -165,61 +104,6 @@ private:
         for (size_t i = 0; i < context.pointCount; ++i) {
             context.primary[i] = (float) (i % 4) / 3.f;
             context.secondary[i] = (float) ((i + 2) % 4) / 3.f;
-        }
-    }
-
-    void renderMeshSurface(PreviewProcessContext& context) const {
-        if (context.pointCount == 0) {
-            context.primary.clear();
-            context.secondary.clear();
-            return;
-        }
-
-        Mesh& mesh = meshForPreview(context.parameters);
-        const MorphPosition morph = meshMorphFromParameters(context.parameters);
-        const int primaryAxis = primaryAxisFromParameter(
-                typedParameterString(context.parameters, "primaryAxis", "yellow"));
-        const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
-        const bool cyclic = outputDomain == PortDomain::TimeSignal;
-        const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
-        context.domain = outputDomain;
-
-        TrimeshBlockwiseDsp blockwiseDsp;
-        SignalPayload slice;
-        blockwiseDsp.setMesh(&mesh);
-        blockwiseDsp.setMorphPosition(morph);
-        blockwiseDsp.setPrimaryViewAxis(primaryAxis);
-        blockwiseDsp.setCyclic(cyclic);
-        blockwiseDsp.renderCycle(
-                context.pointCount,
-                outputDomain,
-                ChannelLayout::LinkedStereo,
-                slice);
-        normalizeBipolarBlock(slice);
-        context.secondary = std::move(slice.block.samples);
-
-        TrimeshGridwiseDsp gridwiseDsp;
-        gridwiseDsp.setCyclic(cyclic);
-        const auto columns = gridwiseDsp.renderColumns(
-                mesh,
-                morph,
-                primaryAxis,
-                columnCount,
-                context.pointCount,
-                outputDomain,
-                ChannelLayout::LinkedStereo);
-
-        context.primary.clear();
-        context.primary.reserve(columnCount * context.pointCount);
-        context.gridColumns = columnCount;
-        context.gridRows = context.pointCount;
-
-        for (auto column : columns) {
-            normalizeBipolarBlock(column.signal);
-            context.primary.insert(
-                    context.primary.end(),
-                    column.signal.block.samples.begin(),
-                    column.signal.block.samples.end());
         }
     }
 
@@ -311,36 +195,190 @@ private:
         context.gridRows = context.inputGridRows;
     }
 
-    Mesh& meshForPreview(const std::vector<NodeParameter>& parameters) const {
-        if (defaultMesh == nullptr) {
-            defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+private:
+    PreviewModuleRole previewRole {};
+};
+
+class WaveformPreviewProcessor final : public PreviewProcessorBase {
+public:
+    WaveformPreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::Waveform) {}
+    void render(PreviewProcessContext& context) override { renderWaveform(context); }
+};
+
+class ImagePreviewProcessor final : public PreviewProcessorBase {
+public:
+    ImagePreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::Image) {}
+    void render(PreviewProcessContext& context) override { renderImage(context); }
+};
+
+class DescendingPreviewProcessor final : public PreviewProcessorBase {
+public:
+    DescendingPreviewProcessor(PreviewModuleRole role, float top, float bottom) :
+            PreviewProcessorBase(role), top(top), bottom(bottom) {}
+    void render(PreviewProcessContext& context) override { renderDescending(context, top, bottom); }
+
+private:
+    float top {};
+    float bottom {};
+};
+
+class PhasePreviewProcessor final : public PreviewProcessorBase {
+public:
+    PhasePreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::SpectrumPhase) {}
+    void render(PreviewProcessContext& context) override { renderAlternating(context); }
+};
+
+class EnvelopePreviewProcessor final : public PreviewProcessorBase {
+public:
+    EnvelopePreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::Envelope) {}
+    void render(PreviewProcessContext& context) override { renderEnvelope(context); }
+};
+
+class ImpulsePreviewProcessor final : public PreviewProcessorBase {
+public:
+    ImpulsePreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::ImpulseResponse) {}
+    void render(PreviewProcessContext& context) override { renderImpulse(context); }
+};
+
+class TransferPreviewProcessor final : public PreviewProcessorBase {
+public:
+    TransferPreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::Waveshaper) {}
+    void render(PreviewProcessContext& context) override { renderTransfer(context); }
+};
+
+class MeterPreviewProcessor final : public PreviewProcessorBase {
+public:
+    MeterPreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::OutputMeters) {}
+    void render(PreviewProcessContext& context) override { renderMeters(context); }
+};
+
+class SignalSpyPreviewProcessor final : public PreviewProcessorBase {
+public:
+    SignalSpyPreviewProcessor() : PreviewProcessorBase(PreviewModuleRole::SignalSpy) {}
+    void render(PreviewProcessContext& context) override { renderSignalSpy(context); }
+};
+
+class TrimeshPreviewProcessor final : public NodePreviewProcessor {
+public:
+    ~TrimeshPreviewProcessor() override {
+        if (mesh != nullptr) {
+            mesh->destroy();
         }
-
-        const TrimeshMeshEditState nextMeshEditState = TrimeshMeshEditState::fromParameters(parameters);
-
-        if (nextMeshEditState != meshEditState) {
-            defaultMesh->destroy();
-            defaultMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
-            nextMeshEditState.applyTo(*defaultMesh);
-            meshEditState = nextMeshEditState;
-        }
-
-        return *defaultMesh;
     }
 
-    PreviewModuleRole previewRole {};
-    mutable std::unique_ptr<Mesh> defaultMesh;
-    mutable TrimeshMeshEditState meshEditState;
+    PreviewModuleRole role() const override { return PreviewModuleRole::MeshSurface; }
+
+    void render(PreviewProcessContext& context) override {
+        if (context.pointCount == 0) {
+            context.primary.clear();
+            context.secondary.clear();
+            return;
+        }
+
+        const auto configuration = context.configuration != nullptr
+                ? std::dynamic_pointer_cast<const TrimeshConfiguration>(context.configuration->value)
+                : nullptr;
+        if (configuration == nullptr) {
+            syncMesh(context.parameters);
+        }
+        Mesh* preparedMesh = configuration != nullptr ? configuration->mesh.get() : mesh.get();
+        const MorphPosition morph = configuration != nullptr
+                ? configuration->morph
+                : meshMorphFromParameters(context.parameters);
+        const int primaryAxis = configuration != nullptr
+                ? configuration->primaryViewAxis
+                : primaryAxisFromParameter(typedParameterString(
+                        context.parameters, "primaryAxis", "yellow"));
+        const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
+        const bool cyclic = outputDomain == PortDomain::TimeSignal;
+        const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
+        context.domain = outputDomain;
+
+        TrimeshBlockwiseDsp blockwiseDsp;
+        SignalPayload slice;
+        blockwiseDsp.setMesh(preparedMesh);
+        blockwiseDsp.setMorphPosition(morph);
+        blockwiseDsp.setPrimaryViewAxis(primaryAxis);
+        blockwiseDsp.setCyclic(cyclic);
+        blockwiseDsp.renderCycle(
+                context.pointCount,
+                outputDomain,
+                ChannelLayout::LinkedStereo,
+                slice);
+        normalizeBipolarBlock(slice);
+        context.secondary = std::move(slice.block.samples);
+
+        TrimeshGridwiseDsp gridwiseDsp;
+        gridwiseDsp.setCyclic(cyclic);
+        const auto columns = gridwiseDsp.renderColumns(
+                *preparedMesh,
+                morph,
+                primaryAxis,
+                columnCount,
+                context.pointCount,
+                outputDomain,
+                ChannelLayout::LinkedStereo);
+        context.primary.clear();
+        context.primary.reserve(columnCount * context.pointCount);
+        context.gridColumns = columnCount;
+        context.gridRows = context.pointCount;
+        for (auto column : columns) {
+            normalizeBipolarBlock(column.signal);
+            context.primary.insert(
+                    context.primary.end(),
+                    column.signal.block.samples.begin(),
+                    column.signal.block.samples.end());
+        }
+    }
+
+private:
+    void syncMesh(const std::vector<NodeParameter>& parameters) {
+        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+        if (mesh != nullptr && nextState == meshEditState) {
+            return;
+        }
+        if (mesh != nullptr) {
+            mesh->destroy();
+        }
+        mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
+        nextState.applyTo(*mesh);
+        meshEditState = nextState;
+    }
+
+    std::unique_ptr<Mesh> mesh;
+    TrimeshMeshEditState meshEditState;
 };
 
 }
 
 std::unique_ptr<NodePreviewProcessor> NodePreviewProcessorFactory::create(PreviewModuleRole role) const {
-    if (role == PreviewModuleRole::None) {
-        return {};
+    using Factory = std::unique_ptr<NodePreviewProcessor> (*)();
+    struct Registration {
+        PreviewModuleRole role;
+        Factory factory;
+    };
+    static const Registration registrations[] {
+            { PreviewModuleRole::Waveform, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<WaveformPreviewProcessor>(); } },
+            { PreviewModuleRole::Image, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<ImagePreviewProcessor>(); } },
+            { PreviewModuleRole::MeshSurface, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<TrimeshPreviewProcessor>(); } },
+            { PreviewModuleRole::SpectrumMagnitude, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<DescendingPreviewProcessor>(PreviewModuleRole::SpectrumMagnitude, 1.f, 0.1f); } },
+            { PreviewModuleRole::SpectrumPhase, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<PhasePreviewProcessor>(); } },
+            { PreviewModuleRole::Envelope, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<EnvelopePreviewProcessor>(); } },
+            { PreviewModuleRole::ImpulseResponse, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<ImpulsePreviewProcessor>(); } },
+            { PreviewModuleRole::Waveshaper, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<TransferPreviewProcessor>(); } },
+            { PreviewModuleRole::OutputMeters, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<MeterPreviewProcessor>(); } },
+            { PreviewModuleRole::SignalSpy, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<SignalSpyPreviewProcessor>(); } },
+            { PreviewModuleRole::VoiceContext, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<DescendingPreviewProcessor>(PreviewModuleRole::VoiceContext, 0.8f, 0.2f); } },
+            { PreviewModuleRole::Generic, []() -> std::unique_ptr<NodePreviewProcessor> { return std::make_unique<DescendingPreviewProcessor>(PreviewModuleRole::Generic, 0.8f, 0.2f); } }
+    };
+
+    for (const auto& registration : registrations) {
+        if (registration.role == role) {
+            return registration.factory();
+        }
     }
 
-    return std::make_unique<FixedPreviewProcessor>(role);
+    return {};
 }
 
 }

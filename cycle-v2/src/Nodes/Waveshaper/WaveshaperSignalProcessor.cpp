@@ -46,6 +46,7 @@ WaveshaperSignalProcessor::~WaveshaperSignalProcessor() {
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<WaveshaperConfiguration>();
+    result->enabled = typedParameterBool(parameters, "enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
     Mesh preparedMesh("CycleV2WaveshaperConfiguration");
     FXRasterizer preparedRasterizer(nullptr, "CycleV2WaveshaperConfigurationRasterizer");

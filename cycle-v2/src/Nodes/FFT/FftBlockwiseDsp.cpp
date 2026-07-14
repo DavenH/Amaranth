@@ -41,6 +41,9 @@ void FftBlockwiseDsp::prepare(size_t frameCount) {
     if (isPowerOfTwo(preparedFrameCount)) {
         transform.allocate((int) preparedFrameCount, Transform::ScaleType::DivFwdByN, true);
         allocateHalfCycleCarry();
+        const size_t fullBinCount = (size_t) transform.getFullRealBinCount();
+        scratchMagnitude.resize(fullBinCount);
+        scratchPhase.resize(fullBinCount);
     }
 }
 

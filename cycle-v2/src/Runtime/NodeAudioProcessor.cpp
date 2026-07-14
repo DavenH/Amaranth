@@ -83,169 +83,328 @@ MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& paramete
     };
 }
 
+void processPassthrough(AudioProcessContext& context) {
+    SignalPayload* input = inputAt(context, 0);
+    if (input == nullptr) {
+        clearOutput(context);
+        return;
+    }
+
+    auto output = makeOutputPayload(context, 0);
+    if (context.outputPorts.empty()) {
+        output.domain = input->domain;
+        output.channelLayout = input->channelLayout;
+    }
+    copyPayloadBlockExpandingScalars(output, *input, context.frameCount);
+    copyTraversalGrid(output, input->traversalGrid);
+    publishSingleOutput(context, std::move(output));
 }
 
-class FixedRoleProcessor final : public NodeAudioProcessor {
-public:
-    explicit FixedRoleProcessor(AudioModuleRole roleToUse) :
-            processorRole(roleToUse)
-        ,   defaultMesh(TrimeshMeshFactory::createDefaultMesh()) {}
+void processUnaryEffect(
+        IUnarySignalOperation& operation,
+        UnarySignalProcessor& processor,
+        AudioProcessContext& context,
+        bool enabled) {
+    SignalPayload* input = inputAt(context, 0);
+    if (input == nullptr) {
+        clearOutput(context);
+        return;
+    }
+    if (!enabled) {
+        processPassthrough(context);
+        return;
+    }
 
-    ~FixedRoleProcessor() override {
+    auto output = makeOutputPayload(context, 0);
+    if (context.outputPorts.empty()) {
+        output.domain = input->domain;
+        output.channelLayout = input->channelLayout;
+    }
+    processor.process(operation, output, *input, context.frameCount, context.workArena);
+    publishSingleOutput(context, std::move(output));
+}
+
+void publishSourceTraversalGrid(
+        SignalPayload& payload,
+        size_t columns,
+        float level,
+        bool image,
+        const AudioProcessWorkArena* arena) {
+    if (payload.block.samples.empty()) {
+        payload.traversalGrid = {};
+        return;
+    }
+
+    const size_t rows = payload.block.samples.size();
+    configureTraversalGrid(
+            payload.traversalGrid,
+            columns,
+            rows,
+            makeTraversalGridMetadata(
+                    payload.domain,
+                    columns,
+                    rows,
+                    image ? TraversalGridAxis::ImageX : TraversalGridAxis::Phase,
+                    image ? TraversalGridAxis::ImageY : TraversalGridAxis::Time),
+            arena);
+    const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
+    const float columnDenominator = columns > (image ? 1u : 0u) ? (float) (columns - (image ? 1u : 0u)) : 1.f;
+
+    for (size_t column = 0; column < columns; ++column) {
+        const float columnPosition = (float) column / columnDenominator;
+        for (size_t row = 0; row < rows; ++row) {
+            const float rowPosition = (float) row / rowDenominator;
+            if (image) {
+                payload.traversalGrid.values[column * rows + row]
+                        = level * (0.65f * columnPosition + 0.35f * rowPosition);
+            } else {
+                float value = rowPosition + columnPosition;
+                if (value >= 1.f) {
+                    value -= 1.f;
+                }
+                payload.traversalGrid.values[column * rows + row] = value * level;
+            }
+        }
+    }
+}
+
+}
+
+class SourceAudioProcessor final : public NodeAudioProcessor {
+public:
+    explicit SourceAudioProcessor(bool image) : image(image) {}
+    AudioModuleRole role() const override {
+        return image ? AudioModuleRole::ImageSource : AudioModuleRole::WaveSource;
+    }
+    void adoptConfiguration(const PublishedNodeConfiguration& published) override {
+        configuration = std::dynamic_pointer_cast<const SourceNodeConfiguration>(published.value);
+    }
+    void process(AudioProcessContext& context) override {
+        auto output = makeOutputPayload(context, 0);
+        if (context.frameCount == 0) {
+            publishSingleOutput(context, std::move(output));
+            return;
+        }
+
+        const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
+        const float level = configuration != nullptr
+                ? configuration->level
+                : parameterFloat(processParameters(context), "level", 1.f);
+        payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
+        if (context.captureTraversalGrid) {
+            publishSourceTraversalGrid(
+                    output,
+                    image ? std::max(kDefaultTraversalColumns, context.frameCount) : kDefaultTraversalColumns,
+                    level,
+                    image,
+                    context.workArena);
+        }
+        publishSingleOutput(context, std::move(output));
+    }
+
+private:
+    bool image {};
+    std::shared_ptr<const SourceNodeConfiguration> configuration;
+};
+
+class BinaryAudioProcessor final : public NodeAudioProcessor {
+public:
+    BinaryAudioProcessor(AudioModuleRole role, BinarySignalOperation operation) :
+            processorRole(role), operation(operation) {}
+    AudioModuleRole role() const override { return processorRole; }
+    void process(AudioProcessContext& context) override {
+        auto output = makeOutputPayload(context, 0);
+        SignalPayload* left = inputAt(context, 0);
+        SignalPayload* right = inputAt(context, 1);
+        if (operation == BinarySignalOperation::Multiply && (left == nullptr || right == nullptr)) {
+            clearOutput(context);
+            return;
+        }
+        processor.process(output, left, right, operation, context.frameCount, context.workArena);
+        publishSingleOutput(context, std::move(output));
+    }
+
+private:
+    AudioModuleRole processorRole {};
+    BinarySignalOperation operation { BinarySignalOperation::Add };
+    BinarySignalProcessor processor;
+};
+
+class PassthroughAudioProcessor final : public NodeAudioProcessor {
+public:
+    explicit PassthroughAudioProcessor(AudioModuleRole role) : processorRole(role) {}
+    AudioModuleRole role() const override { return processorRole; }
+    void process(AudioProcessContext& context) override { processPassthrough(context); }
+
+private:
+    AudioModuleRole processorRole {};
+};
+
+class SilentAudioProcessor final : public NodeAudioProcessor {
+public:
+    explicit SilentAudioProcessor(AudioModuleRole role) : processorRole(role) {}
+    AudioModuleRole role() const override { return processorRole; }
+    void process(AudioProcessContext& context) override { clearOutput(context); }
+
+private:
+    AudioModuleRole processorRole {};
+};
+
+class StereoSplitAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::StereoSplit; }
+    void process(AudioProcessContext& context) override {
+        SignalPayload* input = inputAt(context, 0);
+        if (input == nullptr) {
+            clearOutput(context);
+            return;
+        }
+        auto left = makeOutputPayload(context, 0);
+        auto right = makeOutputPayload(context, 1);
+        copyPayloadBlockExpandingScalars(left, *input, context.frameCount);
+        copyPayloadBlockExpandingScalars(right, *input, context.frameCount);
+        copyTraversalGrid(left, input->traversalGrid);
+        copyTraversalGrid(right, input->traversalGrid);
+        publishOutputs(context, std::move(left), std::move(right));
+    }
+};
+
+class EnvelopeAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::Envelope; }
+    void prepareExecution(const AudioExecutionSpec& spec) override { processor.prepareExecution(spec); }
+    void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
+        processor.adoptConfiguration(configuration);
+    }
+    void process(AudioProcessContext& context) override { processor.process(context); }
+
+private:
+    EnvelopeSignalProcessor processor;
+};
+
+class FftAudioProcessor final : public NodeAudioProcessor {
+public:
+    explicit FftAudioProcessor(bool inverse) : inverse(inverse) {}
+    AudioModuleRole role() const override { return inverse ? AudioModuleRole::Ifft : AudioModuleRole::Fft; }
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        processor.prepareExecution(spec.maximumFrameCount);
+    }
+    void adoptConfiguration(const PublishedNodeConfiguration& published) override {
+        configuration = std::dynamic_pointer_cast<const FftNodeConfiguration>(published.value);
+    }
+    void process(AudioProcessContext& context) override {
+        if (inverse) {
+            if (configuration != nullptr) {
+                processor.processInverse(context, configuration->halfCycleCarry);
+            } else {
+                processor.processInverse(context);
+            }
+        } else {
+            processor.processForward(context);
+        }
+    }
+
+private:
+    bool inverse {};
+    FftSignalProcessor processor;
+    std::shared_ptr<const FftNodeConfiguration> configuration;
+};
+
+template<typename Operation, AudioModuleRole Role>
+class ConfiguredEffectAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return Role; }
+    void prepareExecution(const AudioExecutionSpec& spec) override { operation.prepareExecution(spec); }
+    void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
+        hasConfiguration = configuration.isValid() && configuration.value->role() == Role;
+        configurationEnabled = configuration.value == nullptr || configuration.value->isEnabled();
+        operation.adoptConfiguration(configuration);
+    }
+    void process(AudioProcessContext& context) override {
+        if (!hasConfiguration) {
+            operation.prepareLegacy(processParameters(context), context.timing);
+        }
+        const bool enabled = hasConfiguration
+                ? configurationEnabled
+                : typedParameterBool(processParameters(context), "enabled", true);
+        processUnaryEffect(operation, processor, context, enabled);
+    }
+
+private:
+    Operation operation;
+    UnarySignalProcessor processor;
+    bool hasConfiguration {};
+    bool configurationEnabled { true };
+};
+
+class DelayAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::Delay; }
+    void adoptConfiguration(const PublishedNodeConfiguration& published) override {
+        configuration = std::dynamic_pointer_cast<const DelayConfiguration>(published.value);
+    }
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        if (configuration == nullptr) {
+            return;
+        }
+        AudioProcessTiming timing;
+        timing.sampleRate = spec.sampleRate;
+        timing.bpm = spec.bpm;
+        timing.beatsPerMeasure = spec.beatsPerMeasure;
+        operation.configure(*configuration, timing);
+    }
+    void process(AudioProcessContext& context) override {
+        if (configuration == nullptr) {
+            operation.configure(processParameters(context), context.timing);
+        }
+        processUnaryEffect(
+                operation,
+                processor,
+                context,
+                configuration != nullptr
+                        ? configuration->enabled
+                        : typedParameterBool(processParameters(context), "enabled", true));
+    }
+
+private:
+    DelaySignalProcessor operation;
+    UnarySignalProcessor processor;
+    std::shared_ptr<const DelayConfiguration> configuration;
+};
+
+class TrimeshAudioProcessor final : public NodeAudioProcessor {
+public:
+    TrimeshAudioProcessor() : defaultMesh(TrimeshMeshFactory::createDefaultMesh()) {}
+
+    ~TrimeshAudioProcessor() override {
         if (defaultMesh != nullptr) {
             defaultMesh->destroy();
         }
     }
 
-    AudioModuleRole role() const override { return processorRole; }
+    AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
 
-    void prepareExecution(const AudioExecutionSpec& spec) override {
-        if (processorRole == AudioModuleRole::Waveshaper) {
-            waveshaperDsp.prepareExecution(spec);
-        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
-            irDsp.prepareExecution(spec);
-        } else if (processorRole == AudioModuleRole::Reverb) {
-            reverbDsp.prepareExecution(spec);
-        } else if (processorRole == AudioModuleRole::Envelope) {
-            envelopeDsp.prepareExecution(spec);
-        }
+    void adoptConfiguration(const PublishedNodeConfiguration& published) override {
+        configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(published.value);
     }
 
-    void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
-        hasPublishedConfiguration = configuration.isValid()
-                && configuration.value->role() == processorRole;
-
-        if (processorRole == AudioModuleRole::Waveshaper) {
-            waveshaperDsp.adoptConfiguration(configuration);
-        } else if (processorRole == AudioModuleRole::ImpulseResponse) {
-            irDsp.adoptConfiguration(configuration);
-        } else if (processorRole == AudioModuleRole::Reverb) {
-            reverbDsp.adoptConfiguration(configuration);
-        } else if (processorRole == AudioModuleRole::Envelope) {
-            envelopeDsp.adoptConfiguration(configuration);
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        if (configuration == nullptr) {
+            return;
         }
+        preparedDomain = spec.domain;
+        trimeshDsp.prepare(
+                configuration->mesh.get(),
+                configuration->morph,
+                configuration->primaryViewAxis,
+                preparedDomain == PortDomain::TimeSignal);
     }
 
     void process(AudioProcessContext& context) override {
-        switch (processorRole) {
-            case AudioModuleRole::WaveSource:
-                processWaveSource(context);
-                break;
-
-            case AudioModuleRole::ImageSource:
-                processImageSource(context);
-                break;
-
-            case AudioModuleRole::MeshSource:
-                processMeshSource(context);
-                break;
-
-            case AudioModuleRole::Envelope:
-                envelopeDsp.process(context);
-                break;
-
-            case AudioModuleRole::Fft:
-                fftDsp.processForward(context);
-                break;
-
-            case AudioModuleRole::Ifft:
-                fftDsp.processInverse(context);
-                break;
-
-            case AudioModuleRole::StereoSplit:
-                processStereoSplit(context);
-                break;
-
-            case AudioModuleRole::StereoJoin:
-                processStereoJoin(context);
-                break;
-
-            case AudioModuleRole::Add:
-                processAdd(context);
-                break;
-
-            case AudioModuleRole::Multiply:
-                processMultiply(context);
-                break;
-
-            case AudioModuleRole::Output:
-            case AudioModuleRole::Spy:
-            case AudioModuleRole::GenericProcessor:
-                processPassthrough(context);
-                break;
-
-            case AudioModuleRole::ImpulseResponse:
-                if (!hasPublishedConfiguration) {
-                    irDsp.prepareLegacy(context.parameters, context.timing);
-                }
-                processUnaryEffect(irDsp, context);
-                break;
-
-            case AudioModuleRole::Waveshaper:
-                if (!hasPublishedConfiguration) {
-                    waveshaperDsp.prepareLegacy(context.parameters, context.timing);
-                }
-                processUnaryEffect(waveshaperDsp, context);
-                break;
-
-            case AudioModuleRole::Reverb:
-                if (!hasPublishedConfiguration) {
-                    reverbDsp.prepareLegacy(context.parameters, context.timing);
-                }
-                processUnaryEffect(reverbDsp, context);
-                break;
-
-            case AudioModuleRole::Delay:
-                delayDsp.configure(context.parameters, context.timing);
-                processUnaryEffect(delayDsp, context);
-                break;
-
-            case AudioModuleRole::VoiceContext:
-            case AudioModuleRole::GuideCurve:
-            case AudioModuleRole::None:
-            default:
-                clearOutput(context);
-                break;
-        }
+        processMeshSource(context);
     }
 
 private:
-    void processWaveSource(AudioProcessContext& context) const {
-        auto output = makeOutputPayload(context, 0);
-
-        if (context.frameCount == 0) {
-            publishSingleOutput(context, std::move(output));
-            return;
-        }
-
-        const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
-        const float level = parameterFloat(context.parameters, "level", 1.f);
-
-        payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
-        publishWrappedRampTraversalGrid(output, kDefaultTraversalColumns, level, context.workArena);
-        publishSingleOutput(context, std::move(output));
-    }
-
-    void processImageSource(AudioProcessContext& context) const {
-        auto output = makeOutputPayload(context, 0);
-
-        if (context.frameCount == 0) {
-            publishSingleOutput(context, std::move(output));
-            return;
-        }
-
-        const float denominator = context.frameCount > 1 ? (float) (context.frameCount - 1) : 1.f;
-        const float level = parameterFloat(context.parameters, "level", 1.f);
-
-        payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
-        publishImageTraversalGrid(
-                output,
-                std::max(kDefaultTraversalColumns, context.frameCount),
-                level,
-                context.workArena);
-        publishSingleOutput(context, std::move(output));
-    }
-
     void processMeshSource(AudioProcessContext& context) const {
         AudioOutputPort outputPort;
         if (!context.outputPorts.empty()) {
@@ -254,27 +413,48 @@ private:
             outputPort = { "out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo };
         }
 
-        auto output = makeOutputPayload(outputPort, context.frameCount);
+        auto output = makeOutputPayload(context, 0);
+        output.domain = outputPort.domain;
+        output.channelLayout = outputPort.channelLayout;
 
         if (context.frameCount == 0) {
             publishSingleOutput(context, std::move(output));
             return;
         }
 
-        const auto morph = meshMorphFromParameters(context.parameters);
-        const int primaryAxis = primaryAxisFromParameter(
-                typedParameterString(context.parameters, "primaryAxis", "yellow"));
-        syncMeshEdits(context.parameters);
+        const auto morph = configuration != nullptr
+                ? configuration->morph
+                : meshMorphFromParameters(processParameters(context));
+        const int primaryAxis = configuration != nullptr
+                ? configuration->primaryViewAxis
+                : primaryAxisFromParameter(typedParameterString(
+                        processParameters(context), "primaryAxis", "yellow"));
+        if (configuration != nullptr) {
+            trimeshDsp.renderPrepared(
+                    context.frameCount,
+                    outputPort.domain,
+                    outputPort.channelLayout,
+                    output);
+        } else {
+            syncMeshEdits(processParameters(context));
+            trimeshDsp.prepare(
+                    defaultMesh.get(),
+                    morph,
+                    primaryAxis,
+                    outputPort.domain == PortDomain::TimeSignal);
+            trimeshDsp.renderPrepared(
+                    context.frameCount,
+                    outputPort.domain,
+                    outputPort.channelLayout,
+                    output);
+        }
 
-        trimeshDsp.setMesh(defaultMesh.get());
-        trimeshDsp.setMorphPosition(morph);
-        trimeshDsp.setPrimaryViewAxis(primaryAxis);
-        trimeshDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
-        trimeshDsp.renderCycle(context.frameCount, outputPort.domain, outputPort.channelLayout, output);
-
-        publishGridColumns(
+        if (context.captureTraversalGrid) {
+            Mesh& gridMesh = configuration != nullptr ? *configuration->mesh : *defaultMesh;
+            publishGridColumns(
                 output,
                 renderMeshColumns(
+                        gridMesh,
                         morph,
                         primaryAxis,
                         std::max(kDefaultTraversalColumns, context.frameCount / 2),
@@ -282,102 +462,12 @@ private:
                         outputPort.domain,
                         outputPort.channelLayout),
                 context.workArena);
-        publishSingleOutput(context, std::move(output));
-    }
-
-    void processStereoSplit(AudioProcessContext& context) const {
-        SignalPayload* input = inputAt(context, 0);
-
-        if (input == nullptr) {
-            clearOutput(context);
-            return;
         }
-
-        auto left = makeOutputPayload(context, 0);
-        auto right = makeOutputPayload(context, 1);
-        copyPayloadBlockExpandingScalars(left, *input, context.frameCount);
-        copyPayloadBlockExpandingScalars(right, *input, context.frameCount);
-        copyTraversalGrid(left, input->traversalGrid);
-        copyTraversalGrid(right, input->traversalGrid);
-
-        publishOutputs(context, std::move(left), std::move(right));
-    }
-
-    void processStereoJoin(AudioProcessContext& context) const {
-        processAdd(context);
-    }
-
-    void processAdd(AudioProcessContext& context) const {
-        auto output = makeOutputPayload(context, 0);
-        SignalPayload* left = inputAt(context, 0);
-        SignalPayload* right = inputAt(context, 1);
-
-        binaryDsp.process(output, left, right, BinarySignalOperation::Add, context.frameCount, context.workArena);
-        publishSingleOutput(context, std::move(output));
-    }
-
-    void processMultiply(AudioProcessContext& context) const {
-        auto output = makeOutputPayload(context, 0);
-        SignalPayload* left = inputAt(context, 0);
-        SignalPayload* right = inputAt(context, 1);
-
-        if (left == nullptr || right == nullptr) {
-            clearOutput(context);
-            return;
-        }
-
-        binaryDsp.process(output, left, right, BinarySignalOperation::Multiply, context.frameCount, context.workArena);
-        publishSingleOutput(context, std::move(output));
-    }
-
-    void processPassthrough(AudioProcessContext& context) const {
-        SignalPayload* input = inputAt(context, 0);
-
-        if (input == nullptr) {
-            clearOutput(context);
-            return;
-        }
-
-        auto output = makeOutputPayload(context, 0);
-        if (context.outputPorts.empty()) {
-            output.domain = input->domain;
-            output.channelLayout = input->channelLayout;
-        }
-
-        copyPayloadBlockExpandingScalars(output, *input, context.frameCount);
-        copyTraversalGrid(output, input->traversalGrid);
-        publishSingleOutput(context, std::move(output));
-    }
-
-    void processUnaryEffect(IUnarySignalOperation& operation, AudioProcessContext& context) const {
-        SignalPayload* input = inputAt(context, 0);
-
-        if (input == nullptr) {
-            clearOutput(context);
-            return;
-        }
-
-        if (!typedParameterBool(context.parameters, "enabled", true)) {
-            processPassthrough(context);
-            return;
-        }
-
-        auto output = makeOutputPayload(context, 0);
-        if (context.outputPorts.empty()) {
-            output.domain = input->domain;
-            output.channelLayout = input->channelLayout;
-        }
-
-        unaryDsp.process(
-                operation,
-                output,
-                *input,
-                context.frameCount,
-                context.workArena);
         publishSingleOutput(context, std::move(output));
     }
 
     std::vector<TrimeshGridColumn> renderMeshColumns(
+            Mesh& mesh,
             const MorphPosition& morph,
             int primaryAxis,
             size_t columnCount,
@@ -387,7 +477,7 @@ private:
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(domain == PortDomain::TimeSignal);
         return gridwiseDsp.renderColumns(
-                *defaultMesh,
+                mesh,
                 morph,
                 primaryAxis,
                 columnCount,
@@ -409,90 +499,11 @@ private:
         meshEditState = nextState;
     }
 
-    static void publishWrappedRampTraversalGrid(
-            SignalPayload& payload,
-            size_t columns,
-            float level,
-            const AudioProcessWorkArena* arena) {
-        if (payload.block.samples.empty()) {
-            payload.traversalGrid = {};
-            return;
-        }
-
-        const size_t rows = payload.block.samples.size();
-        configureTraversalGrid(
-                payload.traversalGrid,
-                columns,
-                rows,
-                makeTraversalGridMetadata(
-                        payload.domain,
-                        columns,
-                        rows,
-                        TraversalGridAxis::Phase,
-                        TraversalGridAxis::Time),
-                arena);
-        const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
-        const float columnDenominator = columns > 0 ? (float) columns : 1.f;
-
-        for (size_t column = 0; column < columns; ++column) {
-            const float phaseOffset = (float) column / columnDenominator;
-            for (size_t row = 0; row < rows; ++row) {
-                float value = (float) row / rowDenominator + phaseOffset;
-                if (value >= 1.f) {
-                    value -= 1.f;
-                }
-                payload.traversalGrid.values[column * rows + row] = value * level;
-            }
-        }
-    }
-
-    static void publishImageTraversalGrid(
-            SignalPayload& payload,
-            size_t columns,
-            float level,
-            const AudioProcessWorkArena* arena) {
-        if (payload.block.samples.empty()) {
-            payload.traversalGrid = {};
-            return;
-        }
-
-        const size_t rows = payload.block.samples.size();
-        configureTraversalGrid(
-                payload.traversalGrid,
-                columns,
-                rows,
-                makeTraversalGridMetadata(
-                        payload.domain,
-                        columns,
-                        rows,
-                        TraversalGridAxis::ImageX,
-                        TraversalGridAxis::ImageY),
-                arena);
-        const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
-        const float columnDenominator = columns > 1 ? (float) (columns - 1) : 1.f;
-
-        for (size_t column = 0; column < columns; ++column) {
-            const float x = (float) column / columnDenominator;
-            for (size_t row = 0; row < rows; ++row) {
-                const float y = (float) row / rowDenominator;
-                payload.traversalGrid.values[column * rows + row] = level * (0.65f * x + 0.35f * y);
-            }
-        }
-    }
-
-    AudioModuleRole processorRole {};
-    mutable BinarySignalProcessor binaryDsp;
-    mutable DelaySignalProcessor delayDsp;
-    EnvelopeSignalProcessor envelopeDsp;
-    mutable FftSignalProcessor fftDsp;
-    mutable IrSignalProcessor irDsp;
-    mutable ReverbSignalProcessor reverbDsp;
     mutable TrimeshBlockwiseDsp trimeshDsp;
-    mutable UnarySignalProcessor unaryDsp;
-    mutable WaveshaperSignalProcessor waveshaperDsp;
     mutable std::unique_ptr<Mesh> defaultMesh;
     mutable TrimeshMeshEditState meshEditState;
-    bool hasPublishedConfiguration {};
+    PortDomain preparedDomain { PortDomain::ControlSignal };
+    std::shared_ptr<const TrimeshConfiguration> configuration;
 };
 
 void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
@@ -500,11 +511,40 @@ void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
 void NodeAudioProcessor::adoptConfiguration(const PublishedNodeConfiguration&) {}
 
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
-    if (role == AudioModuleRole::None) {
-        return {};
+    using Factory = std::unique_ptr<NodeAudioProcessor> (*)();
+    struct Registration {
+        AudioModuleRole role;
+        Factory factory;
+    };
+    static const Registration registrations[] {
+            { AudioModuleRole::WaveSource, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<SourceAudioProcessor>(false); } },
+            { AudioModuleRole::ImageSource, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<SourceAudioProcessor>(true); } },
+            { AudioModuleRole::MeshSource, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<TrimeshAudioProcessor>(); } },
+            { AudioModuleRole::Add, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<BinaryAudioProcessor>(AudioModuleRole::Add, BinarySignalOperation::Add); } },
+            { AudioModuleRole::Multiply, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<BinaryAudioProcessor>(AudioModuleRole::Multiply, BinarySignalOperation::Multiply); } },
+            { AudioModuleRole::StereoJoin, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<BinaryAudioProcessor>(AudioModuleRole::StereoJoin, BinarySignalOperation::Add); } },
+            { AudioModuleRole::StereoSplit, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<StereoSplitAudioProcessor>(); } },
+            { AudioModuleRole::Output, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Output); } },
+            { AudioModuleRole::Spy, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Spy); } },
+            { AudioModuleRole::GenericProcessor, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::GenericProcessor); } },
+            { AudioModuleRole::VoiceContext, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<SilentAudioProcessor>(AudioModuleRole::VoiceContext); } },
+            { AudioModuleRole::GuideCurve, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<SilentAudioProcessor>(AudioModuleRole::GuideCurve); } },
+            { AudioModuleRole::Envelope, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<EnvelopeAudioProcessor>(); } },
+            { AudioModuleRole::Fft, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<FftAudioProcessor>(false); } },
+            { AudioModuleRole::Ifft, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<FftAudioProcessor>(true); } },
+            { AudioModuleRole::ImpulseResponse, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<ConfiguredEffectAudioProcessor<IrSignalProcessor, AudioModuleRole::ImpulseResponse>>(); } },
+            { AudioModuleRole::Waveshaper, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<ConfiguredEffectAudioProcessor<WaveshaperSignalProcessor, AudioModuleRole::Waveshaper>>(); } },
+            { AudioModuleRole::Reverb, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<ConfiguredEffectAudioProcessor<ReverbSignalProcessor, AudioModuleRole::Reverb>>(); } },
+            { AudioModuleRole::Delay, []() -> std::unique_ptr<NodeAudioProcessor> { return std::make_unique<DelayAudioProcessor>(); } }
+    };
+
+    for (const auto& registration : registrations) {
+        if (registration.role == role) {
+            return registration.factory();
+        }
     }
 
-    return std::make_unique<FixedRoleProcessor>(role);
+    return {};
 }
 
 }

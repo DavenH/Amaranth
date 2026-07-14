@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NodeModuleRegistry.h"
+#include "NodeDspConfiguration.h"
 #include "../Graph/NodeGraph.h"
 
 #include <memory>
@@ -27,6 +28,7 @@ struct PreviewProcessContext {
     size_t gridColumns {};
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };
+    const PublishedNodeConfiguration* configuration {};
 };
 
 class NodePreviewProcessor {

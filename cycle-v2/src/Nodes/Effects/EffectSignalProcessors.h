@@ -14,17 +14,33 @@ namespace CycleV2 {
 
 struct IrConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return AudioModuleRole::ImpulseResponse; }
+    bool isEnabled() const override { return enabled; }
 
+    bool enabled { true };
     std::vector<float> impulse;
     float postGain { 1.f };
 };
 
 struct ReverbConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return AudioModuleRole::Reverb; }
+    bool isEnabled() const override { return enabled; }
 
+    bool enabled { true };
     std::vector<float> kernel;
     float width { 1.f };
     float wetLevel { 0.1f };
+};
+
+struct DelayConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole role() const override { return AudioModuleRole::Delay; }
+    bool isEnabled() const override { return enabled; }
+
+    bool enabled { true };
+    float time { 0.5f };
+    float feedback { 0.5f };
+    float spin { 1.f };
+    float wet { 0.9f };
+    float spinIterations {};
 };
 
 class IrSignalProcessor :
@@ -85,6 +101,7 @@ public:
     void configure(
             const std::vector<NodeParameter>& parameters,
             const AudioProcessTiming& timing);
+    void configure(const DelayConfiguration& configuration, const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;

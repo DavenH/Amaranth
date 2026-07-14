@@ -13,6 +13,9 @@ struct AudioExecutionSpec {
     size_t maximumFrameCount {};
     double sampleRate { 44100.0 };
     ChannelLayout channelLayout { ChannelLayout::Mono };
+    PortDomain domain { PortDomain::ControlSignal };
+    double bpm { 120.0 };
+    int beatsPerMeasure { 4 };
 };
 
 class INodeDspConfiguration {
@@ -20,6 +23,21 @@ public:
     virtual ~INodeDspConfiguration() = default;
 
     virtual AudioModuleRole role() const = 0;
+    virtual bool isEnabled() const { return true; }
+};
+
+struct SourceNodeConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole processorRole { AudioModuleRole::None };
+    float level { 1.f };
+
+    AudioModuleRole role() const override { return processorRole; }
+};
+
+struct FftNodeConfiguration final : public INodeDspConfiguration {
+    AudioModuleRole processorRole { AudioModuleRole::None };
+    bool halfCycleCarry {};
+
+    AudioModuleRole role() const override { return processorRole; }
 };
 
 struct PublishedNodeConfiguration {

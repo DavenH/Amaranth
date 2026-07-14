@@ -10,6 +10,14 @@
 
 namespace CycleV2 {
 
+inline const std::vector<NodeParameter>& processParameters(const AudioProcessContext& context) {
+    return context.parameterView != nullptr ? *context.parameterView : context.parameters;
+}
+
+inline const AudioVoiceContext& processVoice(const AudioProcessContext& context) {
+    return context.voiceView != nullptr ? *context.voiceView : context.voice;
+}
+
 inline Buffer<float> blockBuffer(AudioProcessBlock& block, size_t frameCount) {
     return { block.samples.data(), (int) frameCount };
 }
@@ -143,8 +151,17 @@ inline SignalPayload makeOutputPayload(const AudioOutputPort& port, size_t frame
 
 inline SignalPayload makeOutputPayload(AudioProcessContext& context, size_t index) {
     SignalPayload payload;
+    if (index < context.outputViews.size() && context.outputViews[index] != nullptr) {
+        payload = std::move(*context.outputViews[index]);
+        payload.traversalGrid.values.clear();
+        payload.traversalGrid.metadata = {};
+        payload.traversalGrid.columns = 0;
+        payload.traversalGrid.rows = 0;
+    }
     if (index < context.outputPorts.size()) {
-        payload = makeOutputPayload(context.outputPorts[index], context.frameCount);
+        payload.domain = context.outputPorts[index].domain;
+        payload.channelLayout = context.outputPorts[index].channelLayout;
+        payload.block.samples.resize(context.frameCount);
     } else {
         payload.block.samples.resize(context.frameCount);
     }
@@ -199,20 +216,23 @@ inline void clearOutput(AudioProcessContext& context) {
 }
 
 inline SignalPayload* inputAt(AudioProcessContext& context, size_t index) {
-    if (index >= context.inputs.size()) {
+    SignalPayload* input = index < context.inputViews.size()
+            ? context.inputViews[index]
+            : (index < context.inputs.size() ? &context.inputs[index] : nullptr);
+    if (input == nullptr) {
         return nullptr;
     }
 
-    const size_t sampleCount = context.inputs[index].block.samples.size();
-    if (context.inputs[index].traversalGrid.isValid()) {
-        return &context.inputs[index];
+    const size_t sampleCount = input->block.samples.size();
+    if (input->traversalGrid.isValid()) {
+        return input;
     }
 
     if (sampleCount != 1 && sampleCount < context.frameCount) {
         return nullptr;
     }
 
-    return &context.inputs[index];
+    return input;
 }
 
 inline float parameterFloat(

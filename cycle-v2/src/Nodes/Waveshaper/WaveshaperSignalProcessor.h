@@ -13,7 +13,9 @@ namespace CycleV2 {
 
 struct WaveshaperConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return AudioModuleRole::Waveshaper; }
+    bool isEnabled() const override { return enabled; }
 
+    bool enabled { true };
     std::shared_ptr<const WaveshaperTransfer> transfer;
     float preGain { 1.f };
     float postGain { 1.f };

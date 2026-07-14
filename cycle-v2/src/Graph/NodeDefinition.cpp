@@ -325,6 +325,13 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             }
             nodeDefinition.audioRole = audioRole;
             nodeDefinition.previewRole = previewRole;
+            nodeDefinition.previewContract = previewRole == PreviewModuleRole::None
+                    ? PreviewContract::None
+                    : (previewRole == PreviewModuleRole::MeshSurface
+                            ? PreviewContract::AuthoritativeModel
+                            : (previewRole == PreviewModuleRole::SignalSpy
+                                    ? PreviewContract::RuntimeTap
+                                    : PreviewContract::Qualitative));
             nodeDefinition.executable = audioRole != AudioModuleRole::None;
             nodeDefinition.previewable = previewRole != PreviewModuleRole::None;
             nodeDefinition.cycle1Reference = std::move(cycle1Reference);

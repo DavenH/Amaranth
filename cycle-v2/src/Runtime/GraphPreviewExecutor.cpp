@@ -125,6 +125,7 @@ GraphPreviewResult renderPreview(
 
         PreviewProcessContext context;
         context.pointCount = pointCount;
+        context.configuration = &step.configuration;
         context.parameters = step.parameters;
         context.outputPorts.reserve(step.outputs.size());
 

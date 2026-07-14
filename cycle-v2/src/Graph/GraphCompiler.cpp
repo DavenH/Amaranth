@@ -88,7 +88,8 @@ std::vector<GraphStepOutput> buildStepOutputs(
         outputs.push_back({
                 port.id,
                 outputPortDomain(resolvedEdges, node, port),
-                outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port)
+                outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port),
+                -1
         });
     }
 
@@ -211,6 +212,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     edge.sourcePortId,
                     edge.destPortId,
                     inputPortIndex(node, edge.destPortId),
+                    -1,
                     edge.domain,
                     domainResolver.resolvedChannelLayoutForEdge(graph, edge)
             });
@@ -226,8 +228,10 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
         steps.push_back({
                 node.id,
                 node.kind,
+                node.kind == NodeKind::Output,
                 descriptor.audioRole,
                 descriptor.previewRole,
+                descriptor.previewContract,
                 descriptor.previewable,
                 descriptor.cycle1AdapterBacked,
                 descriptor.cycle1Reference,
@@ -244,17 +248,73 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
     return steps;
 }
 
-bool hasBufferForSource(
+int bufferIndexFor(
         const std::vector<GraphBufferPlan>& buffers,
-        const String& sourceNodeId,
-        const String& sourcePortId) {
-    for (const auto& buffer : buffers) {
-        if (buffer.sourceNodeId == sourceNodeId && buffer.sourcePortId == sourcePortId) {
-            return true;
+        const String& nodeId,
+        const String& portId) {
+    for (int i = 0; i < (int) buffers.size(); ++i) {
+        if (buffers[(size_t) i].sourceNodeId == nodeId
+                && buffers[(size_t) i].sourcePortId == portId) {
+            return i;
         }
     }
 
-    return false;
+    return -1;
+}
+
+void compileRouting(GraphExecutionPlan& plan) {
+    for (int stepIndex = 0; stepIndex < (int) plan.steps.size(); ++stepIndex) {
+        auto& step = plan.steps[(size_t) stepIndex];
+        plan.maximumOutputCount = std::max(plan.maximumOutputCount, step.outputs.size());
+
+        for (auto& input : step.inputs) {
+            if (input.destPortIndex >= 0) {
+                plan.maximumInputCount = std::max(
+                        plan.maximumInputCount,
+                        (size_t) input.destPortIndex + 1);
+            }
+            input.sourceBufferIndex = bufferIndexFor(
+                    plan.buffers,
+                    input.sourceNodeId,
+                    input.sourcePortId);
+            if (input.sourceBufferIndex >= 0) {
+                plan.buffers[(size_t) input.sourceBufferIndex].lastConsumerStep = stepIndex;
+            }
+        }
+
+        for (auto& output : step.outputs) {
+            output.bufferIndex = bufferIndexFor(plan.buffers, step.nodeId, output.portId);
+            if (output.bufferIndex >= 0) {
+                auto& buffer = plan.buffers[(size_t) output.bufferIndex];
+                buffer.firstProducerStep = stepIndex;
+                buffer.lastConsumerStep = std::max(buffer.lastConsumerStep, stepIndex);
+            }
+        }
+
+        for (const auto& attachment : plan.attachments) {
+            if (attachment.destNodeId != step.nodeId) {
+                continue;
+            }
+
+            const int sourceBufferIndex = bufferIndexFor(
+                    plan.buffers,
+                    attachment.sourceNodeId,
+                    attachment.sourcePortId);
+            step.attachments.push_back({
+                    attachment.sourceNodeId,
+                    attachment.sourcePortId,
+                    attachment.destPortId,
+                    attachment.domain,
+                    sourceBufferIndex
+            });
+            if (sourceBufferIndex >= 0) {
+                plan.buffers[(size_t) sourceBufferIndex].lastConsumerStep = stepIndex;
+            }
+        }
+        plan.maximumAttachmentCount = std::max(
+                plan.maximumAttachmentCount,
+                step.attachments.size());
+    }
 }
 
 std::vector<GraphBufferPlan> buildBufferPlan(
@@ -263,22 +323,21 @@ std::vector<GraphBufferPlan> buildBufferPlan(
         const GraphDomainResolver& domainResolver) {
     std::vector<GraphBufferPlan> buffers;
 
-    for (const auto& edge : resolvedEdges) {
-        if (edge.domain == PortDomain::DomainContext) {
-            continue;
-        }
+    for (const auto& node : graph.getNodes()) {
+        for (const auto& port : node.outputs) {
+            const PortDomain domain = outputPortDomain(resolvedEdges, node, port);
+            if (domain == PortDomain::DomainContext) {
+                continue;
+            }
 
-        if (hasBufferForSource(buffers, edge.sourceNodeId, edge.sourcePortId)) {
-            continue;
+            buffers.push_back({
+                    node.id + "." + port.id,
+                    node.id,
+                    port.id,
+                    domain,
+                    outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port)
+            });
         }
-
-        buffers.push_back({
-                edge.sourceNodeId + "." + edge.sourcePortId,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.domain,
-                domainResolver.resolvedChannelLayoutForEdge(graph, edge)
-        });
     }
 
     return buffers;
@@ -316,6 +375,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 result.plan.signalEdges,
                 domainResolver,
                 moduleRegistry);
+        compileRouting(result.plan);
         publishConfigurations(result.plan.steps);
     }
 

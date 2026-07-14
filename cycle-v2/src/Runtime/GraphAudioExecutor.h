@@ -18,6 +18,18 @@ struct GraphAudioResult {
     std::vector<NodeAudioResult> nodes;
 };
 
+class GraphProcessObserver {
+public:
+    virtual ~GraphProcessObserver() = default;
+    virtual void nodeProcessed(const String& nodeId, const AudioProcessContext& context) = 0;
+};
+
+struct GraphAudioOutputView {
+    const SignalPayload* payload {};
+
+    bool isValid() const { return payload != nullptr; }
+};
+
 class GraphAudioExecutor {
 public:
     void prepareExecution(
@@ -38,6 +50,13 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             AudioVoiceContext voice) const;
+    GraphAudioOutputView processRealtime(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            const AudioVoiceContext& voice,
+            GraphProcessObserver* observer = nullptr) const;
 
 private:
     struct CachedProcessor {
@@ -49,29 +68,40 @@ private:
         String preparedKey;
         size_t preparedFrameCount {};
         double preparedSampleRate {};
+        PortDomain preparedDomain { PortDomain::ControlSignal };
+        ChannelLayout preparedChannelLayout { ChannelLayout::Mono };
+        double preparedBpm {};
+        int preparedBeatsPerMeasure {};
         size_t preparationCount {};
     };
 
-    struct PortOutput {
-        String nodeId;
-        String portId;
-        SignalPayload payload;
+    struct PreparedVoice {
+        int voiceIndex {};
+        const GraphExecutionPlan* plan {};
+        std::vector<NodeAudioProcessor*> processors;
     };
 
-    const SignalPayload* findOutputForNode(
-            const std::vector<PortOutput>& outputs,
-            const String& nodeId,
-            const String& portId) const;
-    bool isOutputNode(const NodeGraph& graph, const String& nodeId) const;
     NodeAudioProcessor* processorFor(
             const String& nodeId,
             int voiceIndex,
             AudioModuleRole role,
             const NodeAudioProcessorFactory& factory) const;
-    void removeStaleProcessors(const GraphExecutionPlan& plan) const;
+    void removeUnreferencedProcessors() const;
+    GraphAudioResult processInternal(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            const AudioVoiceContext& voice,
+            bool captureDiagnostics,
+            GraphProcessObserver* observer) const;
 
     mutable AudioProcessWorkArena workArena;
+    mutable AudioProcessContext processContext;
+    mutable std::vector<SignalPayload> bufferSlots;
+    mutable const SignalPayload* realtimeOutput {};
     mutable std::vector<CachedProcessor> processors;
+    mutable std::vector<PreparedVoice> preparedVoices;
 };
 
 }

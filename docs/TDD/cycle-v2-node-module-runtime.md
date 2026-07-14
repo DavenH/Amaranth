@@ -2,7 +2,15 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-14).
+
+The migration is complete for the current Cycle 2 node set. Audio and preview
+roles use registered concrete factories, configurations are published before
+processing, routing and stable output slots are compiled, and the production
+executor uses retained per-voice processors with preallocated payload storage.
+Owning payloads remain as a compatibility surface for diagnostic execution and
+direct processor tests; the realtime executor exposes non-owning views into
+their prepared storage and does not populate the legacy parameter path.
 
 Depends on `cycle-v2-node-definition-and-graph-model.md` for authoritative node
 definitions and typed configuration inputs. Complements:
@@ -283,3 +291,25 @@ searches of node IDs on the audio thread.
   copies or live parameter parsing.
 - Diagnostic capture is optional and separate from the production executor.
 
+## Completion Evidence
+
+- `FixedRoleProcessor` and `FixedPreviewProcessor` were replaced by cohesive
+  concrete processors and explicit factory registration tables.
+- Preview definitions declare `AuthoritativeModel`, `RuntimeTap`,
+  `Qualitative`, or `None`; Trimesh audio and authoritative preview share the
+  same immutable prepared mesh configuration.
+- `GraphCompiler` resolves input, output, and attachment indices, assigns every
+  produced port a stable buffer slot, records first-producer/last-consumer
+  lifetimes, and publishes typed DSP configurations.
+- `GraphAudioExecutor::prepareExecution` prepares storage and retained direct
+  processor dispatch for each voice. Realtime processing performs no factory
+  calls, graph lookup, configuration/model parsing, or diagnostic payload
+  capture.
+- Processor reclamation accounts for all prepared voices, while configuration
+  revisions preserve eligible processor state and role changes replace the
+  concrete processor.
+- Tests cover compiled slot/lifetime routing, fan-out storage identity,
+  optional observation, plan replacement, independent and alternating voices,
+  configuration revision behavior, authoritative preview sharing, and zero
+  `operator new` allocations at both maximum and shorter prepared block sizes.
+- The complete `CycleV2_tests` target passes after the migration.

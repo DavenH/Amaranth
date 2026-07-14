@@ -8,6 +8,7 @@ struct NodeModuleDescriptor {
     NodeKind kind { NodeKind::GenericProcessor };
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
+    PreviewContract previewContract { PreviewContract::None };
     bool executable {};
     bool previewable {};
     bool cycle1AdapterBacked {};
