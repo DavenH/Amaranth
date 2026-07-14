@@ -332,6 +332,10 @@ Current status:
   scaling conversion, batch rendering, bounds, and snapshot publication.
   Cycle 1's global `GraphicRasterizer` is now an adapter for morph settings,
   scratch position, updater detail state, singleton lookup, and its interactor.
+- `Rasterization::TimeColumnRasterizer` owns time-column traversal, deterministic
+  layer/column noise seeds, scratch-time application, waveform sampling, layer
+  panning, and summation. Cycle 1 translates `MeshLibrary` records and its view
+  stage into explicit shared layer values and a scratch-time resolver.
 
 Next target:
 
@@ -636,10 +640,11 @@ Complete one module end-to-end before starting the next:
   Cycle 1 singleton configuration in a thin adapter.
 - [x] Extract graphic render/state behavior and keep Cycle settings, morph,
   scratch-channel, updater, and interactor access in an adapter.
+- [x] Extract time-column rendering behind explicit layer values, work buffers,
+  view inputs, and scratch-time resolution.
 - [ ] Define shared voice-rasterizer request and prepared-output snapshots when
   Cycle 2 oscillator publication requires them.
-- [ ] Extract application-neutral E3 grid rendering and time-column policy into
-  `AmaranthLib`.
+- [ ] Extract application-neutral E3 grid rendering into `AmaranthLib`.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.

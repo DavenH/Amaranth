@@ -91,6 +91,9 @@ chaining.
 Graphic render-state, scaling, batch, and publication behavior likewise lives
 in `Rasterization::GraphicRasterizer`. The Cycle adapter retains application
 settings, scratch position, updater detail state, and interactor access.
+Time-column traversal and layer summation now consume explicit shared layer
+values; Cycle retains only `MeshLibrary` translation, view-stage selection, and
+scratch-property lookup.
 
 Suggested direction:
 

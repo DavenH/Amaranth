@@ -432,8 +432,14 @@ void VisualDsp::calcTimeDomain(int numColumns) {
         return;
     }
 
+    std::vector<Rasterization::TimeColumnRasterizer::Layer> layers;
+    layers.reserve(timeGroup.size());
+    for (const auto& layer : timeGroup.layers) {
+        layers.push_back({ layer.mesh, layer.props->active, layer.props->pan });
+    }
+
     Cycle::Rasterization::TimeColumnRasterizer::Context context;
-    context.timeGroup = &timeGroup;
+    context.layers = &layers;
     context.rasterizer = timeRasterizer;
     context.columns = &preEnvCols;
     context.zoomProgress = zoomProgress;
@@ -443,14 +449,18 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     context.numActiveLayers = numActiveLayers;
     context.timeIncrement = timeInc;
     context.primeDimension = primeDim;
-    context.viewStage = stage;
     context.panelTime = modTime;
-    context.panelPan = modPan;
-    context.resolveScratchTime = [this](MeshLibrary::Properties* props,
-                                        int sampleIndex,
-                                        float fallback,
-                                        float& scratchTime) {
-        return getScratchTimeForLayer(props, sampleIndex, fallback, scratchTime);
+    context.panelPan = (float) modPan;
+    context.useScratchTime = stage >= ViewStages::PostEnvelopes;
+    context.resolveScratchTime = [this, &timeGroup](int layerIndex,
+                                                    int sampleIndex,
+                                                    float fallback,
+                                                    float& scratchTime) {
+        return getScratchTimeForLayer(
+                timeGroup.layers[layerIndex].props,
+                sampleIndex,
+                fallback,
+                scratchTime);
     };
 
     Cycle::Rasterization::TimeColumnRasterizer().render(context);
