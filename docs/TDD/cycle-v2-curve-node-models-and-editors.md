@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-14).
 
 Depends on:
 
@@ -258,3 +258,37 @@ node default during migration; processing must not discover malformed state.
 - Preview, serialization, and DSP configuration identify the same typed model
   revision.
 
+## Implementation Notes
+
+- `FlatCurveModel` owns a plain `Mesh`, stable vertex identities, selection,
+  atomic validation, and a versioned JSON snapshot. `EnvelopeNodeModel` alone
+  owns `EnvelopeMesh`, topology/markers, morph/link intent, selection, and its
+  versioned snapshot.
+- `WaveshaperNodeModel`, `ImpulseResponseNodeModel`, and
+  `GuideCurveNodeModel` compose a flat curve with named typed controls. The
+  four named editor component types publish their schema-specific control
+  bindings through the curve-editor factory.
+- `CurvePanelEnvironment`, `CurvePanelSnapshotCache`, and the interaction
+  transaction contract contain host-edge services without owning a mesh or
+  branching on node kind. The compatibility panel adapter now allocates a
+  plain `Mesh` for flat curves and an `EnvelopeMesh` only for Envelope.
+- `GraphCommandDispatcher::publishCurveModel` validates a typed snapshot and
+  publishes its payload/revision atomically. Slider and morph drags use
+  compound graph edits; curve gestures publish once when the existing
+  interactor commits the gesture.
+- `curve.modelSnapshot` and `curve.modelRevision` are schema-owned parameters.
+  Legacy `effect.vertices` and `envelope.snapshot` values migrate explicitly,
+  while preview/editor synchronization and immutable Waveshaper, IR, and
+  Envelope DSP configuration prefer the typed snapshot.
+
+Verification on macOS:
+
+- `CycleV2_tests`: 2,355 assertions in 231 test cases.
+- Focused curve model/editor suite: 63 assertions in 11 test cases.
+- Focused curve-model/editor tests cover atomic validation, stable selection,
+  typed and legacy round trips, Envelope topology and markers, semantic undo,
+  named controls, typed DSP parity, and independent Envelope DSP state.
+- The Effect2D automation fixture passed for Envelope, Waveshaper, IR, and
+  Guide interactions. A final runner-side OS capture verified the expanded
+  Waveshaper OpenGL editor, compact preview, canvas cables, and legend after
+  model-owned mesh extraction.

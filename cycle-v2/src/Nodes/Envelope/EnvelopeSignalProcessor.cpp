@@ -1,5 +1,7 @@
 #include "EnvelopeSignalProcessor.h"
 
+#include "../Effect2D/CurveNodeModels.h"
+
 #include <Curve/Curve.h>
 
 namespace CycleV2 {
@@ -29,7 +31,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
                 delete meshToDelete;
             });
 
-    const String snapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
+    const String snapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
 
     if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
         return {};
@@ -109,7 +111,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
 }
 
 bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
-    const String nextSnapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
+    const String nextSnapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
 
     const bool snapshotChanged = nextSnapshot != snapshotState;
     if (snapshotChanged) {

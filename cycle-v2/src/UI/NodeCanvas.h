@@ -10,7 +10,7 @@
 #include "../Graph/GraphDocument.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
-#include "../Nodes/Effect2D/Effect2DExpandedEditorComponent.h"
+#include "../Nodes/Effect2D/CurveNodeEditors.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"

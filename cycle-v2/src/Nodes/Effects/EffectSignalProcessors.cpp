@@ -1,6 +1,7 @@
 #include "EffectSignalProcessors.h"
 
 #include "../../Graph/NodeDefinition.h"
+#include "../Effect2D/CurveNodeModels.h"
 #include "../Effect2D/Effect2DMeshState.h"
 
 #include <Algo/ConvReverb.h>
@@ -62,7 +63,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedRasterizer.setScalingMode(FXRasterizer::Bipolar);
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = Effect2DMeshState::parse(typedParameterString(parameters, Effect2DMeshState::parameterId()));
+    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters);
     if (vertices.empty()) {
         vertices = defaultIrVertices();
     }
@@ -190,7 +191,8 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 }
 
 void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
-    const String serializedVertices = typedParameterString(parametersToUse, Effect2DMeshState::parameterId());
+    const String serializedVertices = Effect2DMeshState::serialize(
+            CurveNodeModelCodec::flatVerticesFromParameters(parametersToUse));
     if (serializedVertices == lastVertexState
             && impulse.size() == impulseLength
             && impulseHighPass == highPass) {

@@ -106,6 +106,14 @@ String Effect2DWidget::serializedMeshState() {
     return bridge.serializedMeshState();
 }
 
+String Effect2DWidget::serializedModelSnapshot() {
+    return bridge.serializedModelSnapshot();
+}
+
+uint64_t Effect2DWidget::modelRevision() const {
+    return bridge.modelRevision();
+}
+
 std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() const {
     return bridge.selectedVertexParameters();
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "CurveNodeModels.h"
+#include "CurvePanelInfrastructure.h"
 #include "Effect2DMeshState.h"
 #include "../Trimesh/TrimeshPanelEnvironment.h"
 #include "../Trimesh/TrimeshNodeModel.h"
@@ -52,6 +54,8 @@ public:
     var automationState() const;
     std::vector<PreviewVertex> previewVertices();
     String serializedMeshState();
+    String serializedModelSnapshot();
+    uint64_t modelRevision() const { return curveModelRevision; }
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
@@ -64,8 +68,6 @@ private:
     void initialisePanelHost();
     void initialiseMesh();
     void addVertex(float x, float y, float curve = 0.f);
-    void clearMesh();
-    bool applyMeshState(const std::vector<Effect2DVertexState>& vertices);
     void notifyMeshEdited();
     PanelHostCallbacks createPanelHostCallbacks();
     void applyPanelSettings();
@@ -76,8 +78,11 @@ private:
             bool& hasVisibleContent) const;
 
     NodeKind kind;
-    TrimeshPanelEnvironment environment;
-    EnvelopeMesh mesh;
+    CurvePanelEnvironment environment;
+    std::unique_ptr<FlatCurveModel> flatModel;
+    std::unique_ptr<EnvelopeNodeModel> envelopeModel;
+    EnvelopeMesh* envelopeMesh {};
+    Mesh* mesh {};
     std::unique_ptr<EffectPanel> panel;
     std::unique_ptr<PanelHostComponent> panelHost;
     std::unique_ptr<GLPanelRenderer> panelRenderer;
@@ -87,12 +92,8 @@ private:
     std::function<void()> meshEditedCallback;
     juce::String lastSyncedNodeId;
     juce::String lastSyncedMeshState;
-    mutable juce::CriticalSection previewImageLock;
-    juce::Image previewImage;
-    mutable juce::CriticalSection expandedImageLock;
-    juce::Image expandedImage;
-    bool previewImageHasVisibleContent {};
-    bool expandedImageHasVisibleContent {};
+    CurvePanelSnapshotCache previewSnapshot;
+    CurvePanelSnapshotCache expandedSnapshot;
     bool panelHostInitialised {};
     bool sharedGlResourcesInitialised {};
     bool effectEnabled { true };
@@ -103,6 +104,7 @@ private:
     bool envelopeLogarithmicValue {};
     std::atomic<bool> envelopeRedLinked { true };
     std::atomic<bool> envelopeBlueLinked { true };
+    uint64_t curveModelRevision { 1 };
 };
 
 }

@@ -1,5 +1,7 @@
 #include "GraphCommandDispatcher.h"
 
+#include "../Nodes/Effect2D/CurveNodeModels.h"
+
 namespace CycleV2 {
 
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
@@ -112,6 +114,68 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
         const juce::String& value) {
     return apply([&](auto& graph) {
         return GraphEditor().setNodeParameter(graph, nodeId, parameterId, label, value);
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::publishCurveModel(
+        const juce::String& nodeId,
+        const juce::String& snapshot,
+        uint64_t modelRevision) {
+    return apply([&](auto& graph) {
+        const Node* node = graph.findNode(nodeId);
+        if (node == nullptr) {
+            GraphEditResult missing;
+            missing.code = GraphEditCode::MissingNode;
+            return missing;
+        }
+
+        bool validSnapshot = false;
+        uint64_t snapshotRevision {};
+        if (node->kind == NodeKind::Envelope) {
+            EnvelopeNodeModel model;
+            validSnapshot = model.loadSnapshot(snapshot);
+            snapshotRevision = model.revision();
+        } else if (node->kind == NodeKind::Waveshaper
+                || node->kind == NodeKind::ImpulseResponse
+                || node->kind == NodeKind::GuideCurve) {
+            FlatCurveModel model;
+            validSnapshot = model.loadSnapshot(snapshot);
+            snapshotRevision = model.revision();
+        }
+
+        const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node->parameters);
+        if (!validSnapshot || snapshotRevision != modelRevision || modelRevision < currentRevision) {
+            GraphEditResult invalid;
+            invalid.code = GraphEditCode::InvalidParameterValue;
+            return invalid;
+        }
+
+        auto result = GraphEditor().setNodeParameter(
+                graph,
+                nodeId,
+                CurveNodeModelCodec::snapshotParameterId(),
+                "Curve Model Snapshot",
+                snapshot);
+        if (!result.succeeded()) {
+            return result;
+        }
+
+        auto revisionResult = GraphEditor().setNodeParameter(
+                graph,
+                nodeId,
+                CurveNodeModelCodec::revisionParameterId(),
+                "Curve Model Revision",
+                juce::String((int64_t) modelRevision));
+        if (!revisionResult.succeeded()) {
+            return revisionResult;
+        }
+        result.changes.nodeIds.insert(
+                result.changes.nodeIds.end(),
+                revisionResult.changes.nodeIds.begin(),
+                revisionResult.changes.nodeIds.end());
+        result.changes.parameterImpacts = result.changes.parameterImpacts
+                | revisionResult.changes.parameterImpacts;
+        return result;
     });
 }
 

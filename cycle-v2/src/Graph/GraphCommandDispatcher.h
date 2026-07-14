@@ -31,6 +31,10 @@ public:
             const juce::String& parameterId,
             const juce::String& label,
             const juce::String& value);
+    GraphEditResult publishCurveModel(
+            const juce::String& nodeId,
+            const juce::String& snapshot,
+            uint64_t modelRevision);
     GraphEditResult moveNode(const juce::String& nodeId, juce::Point<float> position);
     GraphEditResult resizeNode(const juce::String& nodeId, juce::Rectangle<float> bounds);
     GraphEditResult editNodePresentation(

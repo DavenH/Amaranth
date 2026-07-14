@@ -15,6 +15,9 @@ public:
         std::function<void()> close;
         std::function<void()> repaintOpenGL;
         std::function<void(const String& parameterId, const String& label, const String& value)> setNodeParameter;
+        std::function<void(const String& snapshot, uint64_t revision)> publishModel;
+        std::function<void()> beginTransaction;
+        std::function<void()> commitTransaction;
     };
 
     explicit Effect2DExpandedEditorComponent(Effect2DWidget& widget);
@@ -89,6 +92,7 @@ private:
     bool draggingVertexParameter {};
     String activeVertexParameterId;
     bool syncingControls {};
+    bool transactionActive {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Effect2DExpandedEditorComponent)
 };

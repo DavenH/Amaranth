@@ -3404,7 +3404,7 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
         }
 
         if (effect2DExpandedEditor == nullptr) {
-            effect2DExpandedEditor = std::make_unique<Effect2DExpandedEditorComponent>(widget);
+            effect2DExpandedEditor = createCurveNodeEditor(node->kind, widget);
             effect2DExpandedEditorNodeId = node->id;
             auto safeThis = Component::SafePointer<NodeCanvas>(this);
             Effect2DExpandedEditorComponent::Callbacks callbacks;
@@ -3443,6 +3443,30 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                 safeThis->scheduleCompiledStateRefresh();
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->repaint();
+            };
+            callbacks.publishModel = [safeThis](const String& snapshot, uint64_t revision) {
+                if (safeThis == nullptr || safeThis->expandedNodeId.isEmpty()) {
+                    return;
+                }
+
+                const auto result = safeThis->commands.publishCurveModel(
+                        safeThis->expandedNodeId, snapshot, revision);
+                if (!result.succeeded()) {
+                    return;
+                }
+                safeThis->scheduleCompiledStateRefresh();
+                safeThis->openGLContext.triggerRepaint();
+                safeThis->repaint();
+            };
+            callbacks.beginTransaction = [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->commands.beginCompoundEdit();
+                }
+            };
+            callbacks.commitTransaction = [safeThis] {
+                if (safeThis != nullptr) {
+                    safeThis->commands.commitCompoundEdit();
+                }
             };
             effect2DExpandedEditor->setCallbacks(std::move(callbacks));
             addAndMakeVisible(effect2DExpandedEditor.get());

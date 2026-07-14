@@ -53,6 +53,9 @@ set(CANVAS_ARCHITECTURE_SOURCES
 )
 
 set(NODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeModels.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurvePanelInfrastructure.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DExpandedEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DMeshState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DPanelBridge.cpp"

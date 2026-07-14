@@ -37,6 +37,8 @@ public:
     var automationState() const;
     std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
     String serializedMeshState();
+    String serializedModelSnapshot();
+    uint64_t modelRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool selectedEnvelopeMarkerState(bool loopMarker) const;

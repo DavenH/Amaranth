@@ -836,6 +836,11 @@ void Effect2DExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    if (callbacks.beginTransaction != nullptr) {
+        callbacks.beginTransaction();
+        transactionActive = true;
+    }
+
     if (beginVertexParameterEdit(event.position)) {
         return;
     }
@@ -854,6 +859,10 @@ void Effect2DExpandedEditorComponent::mouseUp(const MouseEvent& event) {
     draggingEnvelopeMorphPlane = false;
     draggingVertexParameter = false;
     activeVertexParameterId = {};
+    if (transactionActive && callbacks.commitTransaction != nullptr) {
+        callbacks.commitTransaction();
+    }
+    transactionActive = false;
 }
 
 void Effect2DExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
@@ -961,6 +970,24 @@ void Effect2DExpandedEditorComponent::configureControls() {
     controls.firstSlider.onValueChange = [this] { pushControlValues(); };
     controls.secondSlider.onValueChange = [this] { pushControlValues(); };
     controls.thirdSlider.onValueChange = [this] { pushControlValues(); };
+    const auto beginSliderTransaction = [this] {
+        if (callbacks.beginTransaction != nullptr) {
+            callbacks.beginTransaction();
+            transactionActive = true;
+        }
+    };
+    const auto endSliderTransaction = [this] {
+        if (transactionActive && callbacks.commitTransaction != nullptr) {
+            callbacks.commitTransaction();
+        }
+        transactionActive = false;
+    };
+    controls.firstSlider.onDragStart = beginSliderTransaction;
+    controls.secondSlider.onDragStart = beginSliderTransaction;
+    controls.thirdSlider.onDragStart = beginSliderTransaction;
+    controls.firstSlider.onDragEnd = endSliderTransaction;
+    controls.secondSlider.onDragEnd = endSliderTransaction;
+    controls.thirdSlider.onDragEnd = endSliderTransaction;
     controls.menu.onChange = [this] { pushControlValues(); };
     controls.firstButton.onClick = nullptr;
     controls.secondButton.onClick = nullptr;
@@ -1030,11 +1057,20 @@ void Effect2DExpandedEditorComponent::configureControls() {
         controls.thirdButton.setClickingTogglesState(true);
         controls.thirdButton.setToggleState(envelopeLogarithmic, dontSendNotification);
         controls.thirdButton.onClick = [this] {
+            if (callbacks.beginTransaction != nullptr) {
+                callbacks.beginTransaction();
+            }
             envelopeLogarithmic = controls.thirdButton.getToggleState();
             if (callbacks.setNodeParameter != nullptr) {
                 callbacks.setNodeParameter("logarithmic", "Logarithmic", envelopeLogarithmic ? "1" : "0");
             }
             widget.setEnvelopeLogarithmic(envelopeLogarithmic);
+            if (callbacks.publishModel != nullptr) {
+                callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
+            }
+            if (callbacks.commitTransaction != nullptr) {
+                callbacks.commitTransaction();
+            }
 
             if (callbacks.repaintOpenGL != nullptr) {
                 callbacks.repaintOpenGL();
@@ -1184,23 +1220,34 @@ void Effect2DExpandedEditorComponent::syncControlValuesFromNode() {
     controls.enabled.setToggleState(boolParameterValue(node, "enabled", true), dontSendNotification);
 
     if (node.kind == NodeKind::Waveshaper) {
-        controls.firstSlider.setValue(floatParameterValue(node, "pre", 0.5f), dontSendNotification);
-        controls.secondSlider.setValue(floatParameterValue(node, "post", 0.5f), dontSendNotification);
+        WaveshaperNodeModel model;
+        model.syncFromNode(node);
+        controls.enabled.setToggleState(model.enabled, dontSendNotification);
+        controls.firstSlider.setValue(model.preGain, dontSendNotification);
+        controls.secondSlider.setValue(model.postGain, dontSendNotification);
         controls.thirdSlider.setValue(0.5, dontSendNotification);
-        controls.menu.setSelectedId(intParameterValue(node, "aaFactor", 1), dontSendNotification);
+        controls.menu.setSelectedId(model.oversampling, dontSendNotification);
     } else if (node.kind == NodeKind::ImpulseResponse) {
-        controls.firstSlider.setValue(floatParameterValue(node, "size", 0.5f), dontSendNotification);
-        controls.secondSlider.setValue(floatParameterValue(node, "post", 0.5f), dontSendNotification);
-        controls.thirdSlider.setValue(floatParameterValue(node, "highPass", 0.5f), dontSendNotification);
+        ImpulseResponseNodeModel model;
+        model.syncFromNode(node);
+        controls.enabled.setToggleState(model.enabled, dontSendNotification);
+        controls.firstSlider.setValue(model.size, dontSendNotification);
+        controls.secondSlider.setValue(model.postGain, dontSendNotification);
+        controls.thirdSlider.setValue(model.highPass, dontSendNotification);
         controls.menu.setSelectedId(0, dontSendNotification);
     } else if (node.kind == NodeKind::GuideCurve) {
-        controls.firstSlider.setValue(floatParameterValue(node, "noise", 0.5f), dontSendNotification);
-        controls.secondSlider.setValue(floatParameterValue(node, "dcOffset", 0.5f), dontSendNotification);
-        controls.thirdSlider.setValue(floatParameterValue(node, "phase", 0.5f), dontSendNotification);
+        GuideCurveNodeModel model;
+        model.syncFromNode(node);
+        controls.enabled.setToggleState(model.enabled, dontSendNotification);
+        controls.firstSlider.setValue(model.noise, dontSendNotification);
+        controls.secondSlider.setValue(model.dcOffset, dontSendNotification);
+        controls.thirdSlider.setValue(model.phase, dontSendNotification);
         controls.menu.setSelectedId(0, dontSendNotification);
     } else if (node.kind == NodeKind::Envelope) {
-        controls.firstSlider.setValue(floatParameterValue(node, "red", 0.5f), dontSendNotification);
-        controls.secondSlider.setValue(floatParameterValue(node, "blue", 0.5f), dontSendNotification);
+        EnvelopeNodeModel model;
+        model.syncFromNode(node);
+        controls.firstSlider.setValue(model.red, dontSendNotification);
+        controls.secondSlider.setValue(model.blue, dontSendNotification);
         controls.thirdSlider.setValue(0.5, dontSendNotification);
         controls.menu.setSelectedId(0, dontSendNotification);
     }
@@ -1696,6 +1743,12 @@ bool Effect2DExpandedEditorComponent::findVertexGuideAt(
 }
 
 void Effect2DExpandedEditorComponent::pushControlValues() {
+    const bool ownsTransaction = !syncingControls && !transactionActive
+            && callbacks.beginTransaction != nullptr;
+    if (ownsTransaction) {
+        callbacks.beginTransaction();
+    }
+
     widget.setControlValues(
             controls.enabled.getToggleState(),
             (float) controls.firstSlider.getValue(),
@@ -1726,23 +1779,27 @@ void Effect2DExpandedEditorComponent::pushControlValues() {
         }
     }
 
+    if (!syncingControls && callbacks.publishModel != nullptr) {
+        callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
+    }
+
+    if (ownsTransaction && callbacks.commitTransaction != nullptr) {
+        callbacks.commitTransaction();
+    }
+
     if (callbacks.repaintOpenGL != nullptr) {
         callbacks.repaintOpenGL();
     }
 }
 
 void Effect2DExpandedEditorComponent::persistEffectMeshState() {
-    if (callbacks.setNodeParameter == nullptr
-            || syncingControls) {
+    if (syncingControls) {
         return;
     }
 
-    callbacks.setNodeParameter(
-            node.kind == NodeKind::Envelope
-                    ? EnvelopeMeshState::parameterId()
-                    : Effect2DMeshState::parameterId(),
-            node.kind == NodeKind::Envelope ? "Envelope Snapshot" : "Effect Vertices",
-            widget.serializedMeshState());
+    if (callbacks.publishModel != nullptr) {
+        callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
+    }
 
     if (callbacks.repaintOpenGL != nullptr) {
         callbacks.repaintOpenGL();
