@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GraphNodeFactory.h"
+#include "NodeDefinition.h"
 #include "GraphValidator.h"
 
 namespace CycleV2 {
@@ -17,13 +18,23 @@ enum class GraphEditCode {
     MissingPort,
     MissingEdge,
     DirectionMismatch,
-    ValidationRejected
+    ValidationRejected,
+    UnknownParameter,
+    InvalidParameterValue
+};
+
+struct GraphChangeSet {
+    std::vector<String> nodeIds;
+    bool topologyChanged {};
+    bool layoutChanged {};
+    ParameterImpact parameterImpacts { ParameterImpact::None };
 };
 
 struct GraphEditResult {
     GraphEditCode code { GraphEditCode::Connected };
     String nodeId;
     std::vector<GraphValidationIssue> validationIssues;
+    GraphChangeSet changes;
 
     bool succeeded() const { return code == GraphEditCode::Connected; }
 };

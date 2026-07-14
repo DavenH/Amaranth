@@ -35,32 +35,6 @@ float averageSummary(const std::vector<float>& summary) {
     return total / (float) summary.size();
 }
 
-float parameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        float fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getFloatValue();
-        }
-    }
-
-    return fallback;
-}
-
-String parameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
-}
-
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
         return Vertex::Red;
@@ -75,9 +49,9 @@ int primaryAxisFromParameter(const String& axisName) {
 
 MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& parameters) {
     return {
-            parameterFloat(parameters, "yellow", 0.5f),
-            parameterFloat(parameters, "red", 0.5f),
-            parameterFloat(parameters, "blue", 0.5f)
+            typedParameterFloat(parameters, "yellow", 0.5f),
+            typedParameterFloat(parameters, "red", 0.5f),
+            typedParameterFloat(parameters, "blue", 0.5f)
     };
 }
 
@@ -176,7 +150,7 @@ private:
         }
 
         const float denominator = context.pointCount > 1 ? (float) (context.pointCount - 1) : 1.f;
-        const float amplitude = parameterFloat(context.parameters, "amplitude", 1.f);
+        const float amplitude = typedParameterFloat(context.parameters, "amplitude", 1.f);
 
         for (size_t i = 0; i < context.pointCount; ++i) {
             const float phase = (float) i / denominator;
@@ -204,7 +178,7 @@ private:
         Mesh& mesh = meshForPreview(context.parameters);
         const MorphPosition morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
-                parameterString(context.parameters, "primaryAxis", "yellow"));
+                typedParameterString(context.parameters, "primaryAxis", "yellow"));
         const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);

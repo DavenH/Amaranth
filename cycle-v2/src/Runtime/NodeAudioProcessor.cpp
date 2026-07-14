@@ -63,27 +63,6 @@ void publishGridColumns(
     }
 }
 
-String parameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
-}
-
-bool parameterBool(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        bool fallback) {
-    const String value = parameterString(parameters, id, fallback ? "1" : "0").toLowerCase();
-    return value == "1" || value == "true" || value == "on" || value == "yes";
-}
-
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
         return Vertex::Red;
@@ -284,7 +263,7 @@ private:
 
         const auto morph = meshMorphFromParameters(context.parameters);
         const int primaryAxis = primaryAxisFromParameter(
-                parameterString(context.parameters, "primaryAxis", "yellow"));
+                typedParameterString(context.parameters, "primaryAxis", "yellow"));
         syncMeshEdits(context.parameters);
 
         trimeshDsp.setMesh(defaultMesh.get());
@@ -378,7 +357,7 @@ private:
             return;
         }
 
-        if (!parameterBool(context.parameters, "enabled", true)) {
+        if (!typedParameterBool(context.parameters, "enabled", true)) {
             processPassthrough(context);
             return;
         }

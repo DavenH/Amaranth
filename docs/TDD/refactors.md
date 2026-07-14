@@ -1,11 +1,34 @@
 # Refactor Notes
 
+## Cycle 2 Node Architecture TDDs
+
+The repository-wide node architecture review is captured in four ordered TDDs:
+
+1. `cycle-v2-node-definition-and-graph-model.md` defines the authoritative node
+   registry, typed parameter schema, graph aggregate, transactions, change
+   sets, and versioned serialization.
+2. `cycle-v2-node-module-runtime.md` defines concrete processor and preview
+   module boundaries plus compiled buffer-slot ownership and realtime views.
+3. `cycle-v2-node-canvas-architecture.md` defines graph-document, command,
+   viewport, scene, hit-testing, rendering, editor-hosting, presentation, and
+   automation boundaries.
+4. `cycle-v2-curve-node-models-and-editors.md` separates flat curve nodes from
+   Envelope domain state and replaces the shared Effect2D god-objects with
+   composed panel infrastructure and cohesive node editors.
+
+Implement the definition and graph-model foundation first. Runtime, canvas, and
+curve-model work may then proceed independently where their touched boundaries
+do not overlap.
+
 ## Cycle 2 DSP Configuration Publication
 
 The graph-wide lifecycle, ownership, migration plan, and verification gates are
 specified in `cycle-v2-dsp-configuration-publication.md`.
 
 ## Cycle 2 Node Canvas Responsibilities
+
+The authoritative design and staged extraction plan now live in
+`cycle-v2-node-canvas-architecture.md`.
 
 `cycle-v2/src/UI/NodeCanvas.*` is currently carrying rendering, hit-testing, graph editing dispatch, snapshot save/load, undo/redo, and graph-status presentation. This was acceptable for fast prototyping, but it should be split before deeper interaction work lands.
 
@@ -19,6 +42,9 @@ Suggested extraction points:
 Keep the graph mutation rules in `GraphEditor`; the canvas layer should remain a client of that API rather than duplicating graph semantics.
 
 ## Cycle 2 Graph Audio Buffer Ownership
+
+The authoritative runtime storage, compiled-slot, and verification plan now
+lives in `cycle-v2-node-module-runtime.md`.
 
 `cycle-v2/src/Runtime/AudioProcessBlock` currently owns `std::vector<float>`
 sample storage. This is acceptable scaffolding, but it should not become the
@@ -42,6 +68,9 @@ audio-thread execution.
 
 ## Cycle 2 Runtime Node Processor Boundaries
 
+The authoritative processor, preview, and module-factory design now lives in
+`cycle-v2-node-module-runtime.md`.
+
 `cycle-v2/src/Runtime/NodeAudioProcessor.cpp` currently contains too many
 node-specific implementations inside one `FixedRoleProcessor` class. That was
 useful scaffolding while the graph payload model was moving, but it violates
@@ -63,6 +92,9 @@ Suggested direction:
   on editable `Panel2D` curves.
 
 ## Cycle 2 Effect2D Mesh Ownership
+
+The authoritative model, panel-host, editor, and migration design now lives in
+`cycle-v2-curve-node-models-and-editors.md`.
 
 `Effect2DPanelBridge` currently uses `EnvelopeMesh` as the backing store for
 all effect-style panels. That is semantically wrong for waveshaper, guide, and

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AudioProcessTypes.h"
+#include "../Graph/NodeDefinition.h"
 
 #include <Array/Buffer.h>
 #include <Array/VecOps.h>
@@ -218,13 +219,7 @@ inline float parameterFloat(
         const std::vector<NodeParameter>& parameters,
         const String& id,
         float fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getFloatValue();
-        }
-    }
-
-    return fallback;
+    return typedParameterFloat(parameters, id, fallback);
 }
 
 inline void publishVectorAsTraversalGrid(

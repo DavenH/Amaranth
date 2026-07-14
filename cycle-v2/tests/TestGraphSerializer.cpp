@@ -48,8 +48,8 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
 
 TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     NodeGraph source = NodeGraph::createDemoGraph();
-    source.getNodesForEditing()[0].parameters.push_back({ "mode", "Mode", "spectral" });
-    source.getNodesForEditing()[1].parameters.push_back({ "mesh.vertex.2.curve", "Sharpness", "0.75" });
+    source.findNodeForEditing("voice")->parameters.push_back({ "mode", "Mode", "spectral" });
+    source.findNodeForEditing("waveMesh")->parameters.push_back({ "mesh.vertex.2.curve", "Sharpness", "0.75" });
 
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
@@ -81,11 +81,7 @@ TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {
 TEST_CASE("Graph serializer preserves mesh output port side", "[cycle-v2][graph]") {
     NodeGraph source = NodeGraph::createDemoGraph();
 
-    for (auto& node : source.getNodesForEditing()) {
-        if (node.id == "waveMesh") {
-            node.outputs[0].side = PortSide::Bottom;
-        }
-    }
+    source.findNodeForEditing("waveMesh")->outputs[0].side = PortSide::Bottom;
 
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
@@ -107,9 +103,25 @@ TEST_CASE("Graph serializer round trips XML", "[cycle-v2][graph]") {
     const NodeGraph restored = serializer.fromXmlString(xml);
 
     REQUIRE(xml.contains("cycleV2Graph"));
+    REQUIRE(xml.contains("formatVersion=\"2\""));
     REQUIRE(restored.getNodes().size() == source.getNodes().size());
     REQUIRE(restored.getEdges().size() == source.getEdges().size());
     REQUIRE(GraphValidator().isValid(restored));
+}
+
+TEST_CASE("Graph serializer reports unsupported and unknown graph data", "[cycle-v2][graph][migration]") {
+    GraphSerializer serializer;
+    ValueTree future("cycleV2Graph");
+    future.setProperty("formatVersion", GraphSerializer::currentFormatVersion + 1, nullptr);
+    REQUIRE(serializer.loadValueTree(future).issues.front().code == GraphLoadCode::UnsupportedVersion);
+
+    ValueTree unknown("cycleV2Graph");
+    unknown.setProperty("formatVersion", GraphSerializer::currentFormatVersion, nullptr);
+    ValueTree node("node");
+    node.setProperty("id", "mystery", nullptr);
+    node.setProperty("kind", "not-installed", nullptr);
+    unknown.addChild(node, -1, nullptr);
+    REQUIRE(serializer.loadValueTree(unknown).issues.front().code == GraphLoadCode::UnknownNodeType);
 }
 
 TEST_CASE("Bundled default graph loads", "[cycle-v2][graph]") {

@@ -29,13 +29,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
                 delete meshToDelete;
             });
 
-    String snapshot;
-    for (const auto& parameter : parameters) {
-        if (parameter.id == EnvelopeMeshState::parameterId()) {
-            snapshot = parameter.value;
-            break;
-        }
-    }
+    const String snapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
 
     if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
         return {};
@@ -114,14 +108,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
 }
 
 bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
-    String nextSnapshot;
-
-    for (const auto& parameter : parameters) {
-        if (parameter.id == EnvelopeMeshState::parameterId()) {
-            nextSnapshot = parameter.value;
-            break;
-        }
-    }
+    const String nextSnapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
 
     const bool snapshotChanged = nextSnapshot != snapshotState;
     if (snapshotChanged) {

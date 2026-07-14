@@ -388,7 +388,7 @@ TEST_CASE("Graph preview executor passes parameters to preview processors", "[cy
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
-    graph.getNodesForEditing().back().parameters = { { "amplitude", "Amplitude", "0.5" } };
+    graph.replaceNodeParameters("wave", { { "amplitude", "Amplitude", "0.5" } });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());

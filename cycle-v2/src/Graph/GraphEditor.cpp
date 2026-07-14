@@ -260,16 +260,43 @@ GraphEditResult GraphEditor::setNodeParameter(
         return { GraphEditCode::MissingNode, {}, {} };
     }
 
+    const auto& registry = NodeDefinitionRegistry::instance();
+    const auto* nodeDefinition = registry.find(node->kind);
+    const auto* parameterDefinition = registry.findParameter(node->kind, parameterId);
+    if (parameterDefinition == nullptr
+            && (nodeDefinition == nullptr || !nodeDefinition->allowsDynamicParameters)) {
+        return { GraphEditCode::UnknownParameter, nodeId, {} };
+    }
+    if (parameterDefinition != nullptr && !parameterDefinition->accepts(value)) {
+        return { GraphEditCode::InvalidParameterValue, nodeId, {} };
+    }
+
+    const String normalizedValue = parameterDefinition != nullptr
+            ? parameterDefinition->normalized(value)
+            : value;
+    const String resolvedLabel = parameterDefinition != nullptr ? parameterDefinition->label : label;
+    const ParameterImpact impacts = parameterDefinition != nullptr
+            ? parameterDefinition->impacts
+            : ParameterImpact::Preview | ParameterImpact::DspConfiguration;
+
     for (auto& parameter : node->parameters) {
         if (parameter.id == parameterId) {
-            parameter.label = label;
-            parameter.value = value;
-            return { GraphEditCode::Connected, nodeId, {} };
+            parameter.label = resolvedLabel;
+            parameter.value = normalizedValue;
+            graph.markChanged();
+            GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+            result.changes.nodeIds.push_back(nodeId);
+            result.changes.parameterImpacts = impacts;
+            return result;
         }
     }
 
-    node->parameters.push_back({ parameterId, label, value });
-    return { GraphEditCode::Connected, nodeId, {} };
+    node->parameters.push_back({ parameterId, resolvedLabel, normalizedValue });
+    graph.markChanged();
+    GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.parameterImpacts = impacts;
+    return result;
 }
 
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
@@ -283,13 +310,7 @@ const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) 
 }
 
 Node* GraphEditor::findMutableNode(NodeGraph& graph, const String& nodeId) const {
-    for (auto& node : graph.getNodesForEditing()) {
-        if (node.id == nodeId) {
-            return &node;
-        }
-    }
-
-    return nullptr;
+    return graph.findNodeForEditing(nodeId);
 }
 
 const Port* GraphEditor::findPort(const Node& node, const String& portId, bool input) const {
@@ -322,27 +343,8 @@ String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) co
 }
 
 String GraphEditor::baseIdForKind(NodeKind kind) const {
-    switch (kind) {
-        case NodeKind::VoiceContext:                 return "voice";
-        case NodeKind::WaveSource:                   return "wave";
-        case NodeKind::ImageSource:                  return "image";
-        case NodeKind::TrilinearMesh:                return "mesh";
-        case NodeKind::Fft:                          return "fft";
-        case NodeKind::Ifft:                         return "ifft";
-        case NodeKind::Envelope:                     return "env";
-        case NodeKind::Add:                          return "add";
-        case NodeKind::Multiply:                     return "multiply";
-        case NodeKind::GuideCurve:                   return "guide";
-        case NodeKind::ImpulseResponse:              return "ir";
-        case NodeKind::Waveshaper:                   return "waveshaper";
-        case NodeKind::Reverb:                       return "reverb";
-        case NodeKind::Delay:                        return "delay";
-        case NodeKind::Spy:                          return "spy";
-        case NodeKind::StereoSplit:                  return "split";
-        case NodeKind::StereoJoin:                   return "join";
-        case NodeKind::Output:                       return "out";
-        default:                                     return "processor";
-    }
+    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
+    return definition != nullptr ? definition->defaultInstanceIdPrefix : "processor";
 }
 
 }

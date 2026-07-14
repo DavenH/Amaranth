@@ -107,20 +107,27 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
-    std::vector<Node>& getNodesForEditing() { return nodes; }
-    std::vector<Edge>& getEdgesForEditing() { return edges; }
+    uint64_t getRevision() const { return revision; }
+
+    const Node* findNode(const String& nodeId) const;
+    Node* findNodeForEditing(const String& nodeId);
 
     void addNode(Node node);
     void addEdge(Edge edge);
     void removeNode(const String& nodeId);
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
+    bool replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters);
+    bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
+    void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
+    void markChanged() { ++revision; }
 
     static NodeGraph createDemoGraph();
 
 private:
     std::vector<Node> nodes;
     std::vector<Edge> edges;
+    uint64_t revision {};
 };
 
 Colour colourForDomain(PortDomain domain);

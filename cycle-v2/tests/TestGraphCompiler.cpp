@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 
 #include <algorithm>
@@ -140,7 +141,7 @@ TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2]
 
     const auto first = compiler.compile(graph);
     const auto unchanged = compiler.compile(graph);
-    graph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    REQUIRE(GraphEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = compiler.compile(graph);
 
     REQUIRE(first.succeeded());
@@ -165,7 +166,7 @@ TEST_CASE("Failed node configuration construction retains the last valid publica
     REQUIRE(valid.succeeded());
     REQUIRE(valid.plan.steps.front().configuration.isValid());
 
-    for (auto& parameter : graph.getNodesForEditing().front().parameters) {
+    for (auto& parameter : graph.findNodeForEditing("env")->parameters) {
         if (parameter.id == "envelope.snapshot") {
             parameter.value = "not an envelope snapshot";
         }
@@ -184,10 +185,10 @@ TEST_CASE("Compiler declares IFFT carry-buffer latency", "[cycle-v2][graph]") {
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 0.f, 0.f }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("ifft", {
             { "cycleFrames", "Cycle Frames", "4096" },
             { "mode", "Mode", "acyclicCarry" }
-    };
+    });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -202,10 +203,10 @@ TEST_CASE("Compiler preserves FFT fixed-window mode", "[cycle-v2][graph]") {
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 0.f, 0.f }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("fft", {
             { "cycleFrames", "Cycle Frames", "4096" },
             { "mode", "Mode", "fixedWindow" }
-    };
+    });
 
     const auto result = GraphCompiler().compile(graph);
 

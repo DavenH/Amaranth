@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
@@ -157,7 +158,7 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
-    graph.getNodesForEditing().back().parameters = { { "level", "Level", "0.5" } };
+    graph.replaceNodeParameters("wave", { { "level", "Level", "0.5" } });
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
 
@@ -175,12 +176,12 @@ TEST_CASE("Graph audio executor preserves per-node processor state between block
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", { 260.f, 0.f }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("delay", {
             { "enabled", "Enabled", "1" },
             { "time", "Time", "0" },
             { "feedback", "Feedback", "1" },
             { "wet", "Wet", "1" }
-    };
+    });
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
     graph.addEdge({ "wave", "out", "delay", "time", PortDomain::TimeSignal, false });
     graph.addEdge({ "delay", "time", "out", "time", PortDomain::TimeSignal, false });
@@ -213,7 +214,7 @@ TEST_CASE("Graph audio execution preparation retains unchanged configuration rev
     executor.prepareExecution(first.plan, spec);
     REQUIRE(executor.preparationCount("shape") == 1);
 
-    graph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    REQUIRE(GraphEditor().setNodeParameter(graph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = compiler.compile(graph);
     REQUIRE(changed.succeeded());
     executor.prepareExecution(changed.plan, spec);
@@ -228,7 +229,7 @@ TEST_CASE("Graph audio execution preparation distinguishes keys from restarted r
     REQUIRE(first.succeeded());
 
     NodeGraph changedGraph = firstGraph;
-    changedGraph.getNodesForEditing().front().parameters.push_back({ "pre", "Pre", "0.75" });
+    REQUIRE(GraphEditor().setNodeParameter(changedGraph, "shape", "pre", "Pre", "0.75").succeeded());
     const auto changed = GraphCompiler().compile(changedGraph);
     REQUIRE(changed.succeeded());
     REQUIRE(changed.plan.steps.front().configuration.revision

@@ -4306,13 +4306,7 @@ const Node* NodeCanvas::findNode(const String& id) const {
 }
 
 Node* NodeCanvas::findMutableNode(const String& id) {
-    for (auto& node : graph.getNodesForEditing()) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-
-    return nullptr;
+    return graph.findNodeForEditing(id);
 }
 
 const Node* NodeCanvas::findNodeAt(Point<float> worldPosition) const {
@@ -5490,11 +5484,7 @@ void NodeCanvas::shoveNodesForwardAfterSplice(const String& insertedNodeId, cons
         }
     }
 
-    for (auto& node : graph.getNodesForEditing()) {
-        if (containsString(downstreamNodeIds, node.id)) {
-            node.bounds = node.bounds.translated(xOffset, 0.f);
-        }
-    }
+    graph.translateNodes(downstreamNodeIds, { xOffset, 0.f });
 }
 
 bool NodeCanvas::clearSelection() {

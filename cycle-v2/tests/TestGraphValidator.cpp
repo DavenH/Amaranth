@@ -234,9 +234,9 @@ TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][gra
     REQUIRE(validator.edgeHasValidationIssue(graph, signalEdge));
     REQUIRE(validator.resolvedDomainForEdge(graph, signalEdge) == PortDomain::SpectralMagnitudeSignal);
 
-    graph.getNodesForEditing().front().parameters = {
+    graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" }
-    };
+    });
 
     REQUIRE(validator.isValid(graph));
     REQUIRE_FALSE(validator.edgeHasValidationIssue(graph, signalEdge));
@@ -347,15 +347,15 @@ TEST_CASE("Fixed wave source context validity follows voice domain parameter", "
 
     REQUIRE(GraphValidator().isValid(graph));
 
-    graph.getNodesForEditing().front().parameters = {
+    graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "spectral" }
-    };
+    });
 
     REQUIRE_FALSE(GraphValidator().isValid(graph));
 
-    graph.getNodesForEditing().front().parameters = {
+    graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" }
-    };
+    });
 
     REQUIRE(GraphValidator().isValid(graph));
 }

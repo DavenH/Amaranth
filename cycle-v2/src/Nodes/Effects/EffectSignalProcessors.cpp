@@ -1,5 +1,6 @@
 #include "EffectSignalProcessors.h"
 
+#include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/Effect2DMeshState.h"
 
 #include <Algo/ConvReverb.h>
@@ -23,19 +24,6 @@ void ensureCurveTable() {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
-}
-
-String parameterValue(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback = {}) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
 }
 
 std::vector<Effect2DVertexState> defaultIrVertices() {
@@ -73,7 +61,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedRasterizer.setScalingMode(FXRasterizer::Bipolar);
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = Effect2DMeshState::parse(parameterValue(parameters, Effect2DMeshState::parameterId()));
+    auto vertices = Effect2DMeshState::parse(typedParameterString(parameters, Effect2DMeshState::parameterId()));
     if (vertices.empty()) {
         vertices = defaultIrVertices();
     }
@@ -201,7 +189,7 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 }
 
 void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
-    const String serializedVertices = parameterValue(parametersToUse, Effect2DMeshState::parameterId());
+    const String serializedVertices = typedParameterString(parametersToUse, Effect2DMeshState::parameterId());
     if (serializedVertices == lastVertexState
             && impulse.size() == impulseLength
             && impulseHighPass == highPass) {

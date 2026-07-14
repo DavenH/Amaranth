@@ -6,21 +6,8 @@ namespace CycleV2 {
 
 namespace {
 
-String parameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
-}
-
 bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
-    return parameterString(parameters, "mode", "cyclic") == "acyclicCarry";
+    return typedParameterString(parameters, "mode", "cyclic") == "acyclicCarry";
 }
 
 }

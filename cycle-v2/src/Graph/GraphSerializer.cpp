@@ -1,6 +1,8 @@
 #include "GraphSerializer.h"
 
-#include "../Nodes/Envelope/EnvelopeMeshState.h"
+#include "GraphNodeFactory.h"
+#include "GraphValidator.h"
+#include "NodeDefinition.h"
 
 #include <memory>
 
@@ -14,158 +16,6 @@ Identifier inputType("input");
 Identifier outputType("output");
 Identifier edgeType("edge");
 Identifier parameterType("parameter");
-
-String idForNodeKind(NodeKind kind) {
-    switch (kind) {
-        case NodeKind::VoiceContext:                 return "voiceContext";
-        case NodeKind::WaveSource:                   return "waveSource";
-        case NodeKind::ImageSource:                  return "imageSource";
-        case NodeKind::TrilinearMesh:                return "trilinearMesh";
-        case NodeKind::Fft:                          return "fft";
-        case NodeKind::Ifft:                         return "ifft";
-        case NodeKind::Envelope:                     return "envelope";
-        case NodeKind::Add:                          return "add";
-        case NodeKind::Multiply:                     return "multiply";
-        case NodeKind::GuideCurve:                   return "guideCurve";
-        case NodeKind::ImpulseResponse:              return "impulseResponse";
-        case NodeKind::Waveshaper:                   return "waveshaper";
-        case NodeKind::Reverb:                       return "reverb";
-        case NodeKind::Delay:                        return "delay";
-        case NodeKind::Spy:                          return "spy";
-        case NodeKind::StereoSplit:                  return "stereoSplit";
-        case NodeKind::StereoJoin:                   return "stereoJoin";
-        case NodeKind::Output:                       return "output";
-        default:                                     return "genericProcessor";
-    }
-}
-
-NodeKind nodeKindForId(const String& id) {
-    if (id == "voiceContext") {
-        return NodeKind::VoiceContext;
-    }
-    if (id == "waveSource") {
-        return NodeKind::WaveSource;
-    }
-    if (id == "imageSource") {
-        return NodeKind::ImageSource;
-    }
-    if (id == "trilinearMesh") {
-        return NodeKind::TrilinearMesh;
-    }
-    if (id == "fft") {
-        return NodeKind::Fft;
-    }
-    if (id == "ifft") {
-        return NodeKind::Ifft;
-    }
-    if (id == "envelope") {
-        return NodeKind::Envelope;
-    }
-    if (id == "add") {
-        return NodeKind::Add;
-    }
-    if (id == "multiply") {
-        return NodeKind::Multiply;
-    }
-    if (id == "guideCurve") {
-        return NodeKind::GuideCurve;
-    }
-    if (id == "impulseResponse") {
-        return NodeKind::ImpulseResponse;
-    }
-    if (id == "waveshaper") {
-        return NodeKind::Waveshaper;
-    }
-    if (id == "reverb") {
-        return NodeKind::Reverb;
-    }
-    if (id == "delay") {
-        return NodeKind::Delay;
-    }
-    if (id == "spy") {
-        return NodeKind::Spy;
-    }
-    if (id == "stereoSplit") {
-        return NodeKind::StereoSplit;
-    }
-    if (id == "stereoJoin") {
-        return NodeKind::StereoJoin;
-    }
-    if (id == "output") {
-        return NodeKind::Output;
-    }
-
-    return NodeKind::GenericProcessor;
-}
-
-void normalizeNodePresentation(Node& node) {
-    auto ensureParameter = [&](const String& id, const String& label, const String& value) {
-        for (const auto& parameter : node.parameters) {
-            if (parameter.id == id) {
-                return;
-            }
-        }
-
-        node.parameters.push_back({ id, label, value });
-    };
-
-    if (node.kind == NodeKind::VoiceContext) {
-        ensureParameter("domain", "Start Domain", "waveform");
-        ensureParameter("voices", "Voices", "1");
-        ensureParameter("octave", "Octave", "0");
-        ensureParameter("pitch", "Pitch", "0");
-        ensureParameter("portamento", "Portamento", "0");
-        ensureParameter("oversampling", "Oversampling", "1x");
-    }
-
-    if (node.kind == NodeKind::Fft) {
-        ensureParameter("cycleFrames", "Cycle Frames", "2048");
-        ensureParameter("mode", "Mode", "cycle");
-        node.title = String::fromUTF8("Time → Freq");
-        node.subtitle = parameterValueForNode(node, "mode", "cycle") == "fixedWindow" ? "fixed window" : "cycle chunks";
-    }
-
-    if (node.kind == NodeKind::Ifft) {
-        ensureParameter("cycleFrames", "Cycle Frames", "2048");
-        ensureParameter("mode", "Mode", "cyclic");
-        node.title = String::fromUTF8("Freq → Time");
-        node.subtitle = parameterValueForNode(node, "mode", "cyclic") == "acyclicCarry"
-                ? "carry overlap"
-                : "cyclic overlap";
-    }
-
-    if (node.kind == NodeKind::Envelope) {
-        ensureParameter("logarithmic", "Logarithmic", "0");
-        ensureParameter(
-                EnvelopeMeshState::parameterId(),
-                "Envelope Snapshot",
-                EnvelopeMeshState::defaultSnapshot());
-
-        for (auto& parameter : node.parameters) {
-            if (parameter.id == EnvelopeMeshState::parameterId() && parameter.value.isEmpty()) {
-                parameter.value = EnvelopeMeshState::defaultSnapshot();
-            }
-        }
-    }
-
-    if (node.kind == NodeKind::Spy) {
-        node.outputs.clear();
-    }
-
-    if (node.kind == NodeKind::VoiceContext
-            || node.kind == NodeKind::Fft
-            || node.kind == NodeKind::Ifft
-            || node.kind == NodeKind::GuideCurve
-            || node.kind == NodeKind::ImpulseResponse
-            || node.kind == NodeKind::Waveshaper
-            || node.kind == NodeKind::Add
-            || node.kind == NodeKind::Multiply
-            || node.kind == NodeKind::Spy
-            || node.kind == NodeKind::Output) {
-        const auto naturalSize = naturalSizeForNode(node);
-        node.bounds.setSize(naturalSize.width, naturalSize.height);
-    }
-}
 
 String idForDomain(PortDomain domain) {
     switch (domain) {
@@ -312,15 +162,47 @@ NodeParameter parameterFromTree(const ValueTree& tree) {
     };
 }
 
+ValueTree migrateToCurrentFormat(const ValueTree& source, std::vector<GraphLoadIssue>& issues) {
+    ValueTree migrated = source.createCopy();
+    int version = migrated.hasProperty("formatVersion") ? (int) migrated["formatVersion"] : 1;
+    if (version < 1 || version > GraphSerializer::currentFormatVersion) {
+        issues.push_back({
+                GraphLoadCode::UnsupportedVersion,
+                "Unsupported Cycle 2 graph format version " + String(version)
+        });
+        return {};
+    }
+
+    while (version < GraphSerializer::currentFormatVersion) {
+        if (version == 1) {
+            for (auto child : migrated) {
+                if (child.hasType(nodeType) && !child.hasProperty("definitionVersion")) {
+                    child.setProperty("definitionVersion", 1, nullptr);
+                }
+            }
+            version = 2;
+            migrated.setProperty("formatVersion", version, nullptr);
+            continue;
+        }
+        issues.push_back({ GraphLoadCode::UnsupportedVersion, "No migration is available" });
+        return {};
+    }
+    return migrated;
+}
+
 }
 
 ValueTree GraphSerializer::toValueTree(const NodeGraph& graph) const {
     ValueTree root(graphType);
+    root.setProperty("formatVersion", currentFormatVersion, nullptr);
 
     for (const auto& node : graph.getNodes()) {
         ValueTree nodeTree(nodeType);
+        const auto& registry = NodeDefinitionRegistry::instance();
+        const auto* definition = registry.find(node.kind);
         nodeTree.setProperty("id", node.id, nullptr);
-        nodeTree.setProperty("kind", idForNodeKind(node.kind), nullptr);
+        nodeTree.setProperty("kind", registry.typeIdFor(node.kind), nullptr);
+        nodeTree.setProperty("definitionVersion", definition != nullptr ? definition->version : 1, nullptr);
         nodeTree.setProperty("title", node.title, nullptr);
         nodeTree.setProperty("subtitle", node.subtitle, nullptr);
         nodeTree.setProperty("x", node.bounds.getX(), nullptr);
@@ -358,14 +240,34 @@ ValueTree GraphSerializer::toValueTree(const NodeGraph& graph) const {
 }
 
 NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
-    NodeGraph graph;
+    return loadValueTree(tree).graph;
+}
 
-    for (const auto& child : tree) {
+GraphLoadResult GraphSerializer::loadValueTree(const ValueTree& tree) const {
+    GraphLoadResult result;
+    if (!tree.isValid() || !tree.hasType(graphType)) {
+        result.issues.push_back({ GraphLoadCode::InvalidXml, "Root element is not a Cycle 2 graph" });
+        return result;
+    }
+
+    const ValueTree migrated = migrateToCurrentFormat(tree, result.issues);
+    if (!result.issues.empty()) {
+        return result;
+    }
+
+    const auto& registry = NodeDefinitionRegistry::instance();
+
+    for (const auto& child : migrated) {
         if (child.hasType(nodeType)) {
             Node node;
             const String kindId = child["kind"].toString();
+            const auto* definition = registry.find(kindId);
+            if (definition == nullptr) {
+                result.issues.push_back({ GraphLoadCode::UnknownNodeType, "Unknown node type '" + kindId + "'" });
+                continue;
+            }
             node.id = child["id"].toString();
-            node.kind = nodeKindForId(kindId);
+            node.kind = definition->kind;
             node.title = child["title"].toString();
             node.subtitle = child["subtitle"].toString();
             node.bounds = {
@@ -385,10 +287,10 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
                 }
             }
 
-            normalizeNodePresentation(node);
-            graph.addNode(std::move(node));
+            registry.normalize(node);
+            result.graph.addNode(std::move(node));
         } else if (child.hasType(edgeType)) {
-            graph.addEdge({
+            result.graph.addEdge({
                     child["sourceNodeId"].toString(),
                     child["sourcePortId"].toString(),
                     child["destNodeId"].toString(),
@@ -399,7 +301,12 @@ NodeGraph GraphSerializer::fromValueTree(const ValueTree& tree) const {
         }
     }
 
-    return graph;
+    if (result.issues.empty()) {
+        for (const auto& issue : GraphValidator().validate(result.graph)) {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph, issue.message });
+        }
+    }
+    return result;
 }
 
 String GraphSerializer::toXmlString(const NodeGraph& graph) const {
@@ -413,13 +320,19 @@ String GraphSerializer::toXmlString(const NodeGraph& graph) const {
 }
 
 NodeGraph GraphSerializer::fromXmlString(const String& xml) const {
+    return loadXmlString(xml).graph;
+}
+
+GraphLoadResult GraphSerializer::loadXmlString(const String& xml) const {
     std::unique_ptr<XmlElement> root = parseXML(xml);
 
     if (root == nullptr) {
-        return {};
+        GraphLoadResult result;
+        result.issues.push_back({ GraphLoadCode::InvalidXml, "Could not parse Cycle 2 graph XML" });
+        return result;
     }
 
-    return fromValueTree(ValueTree::fromXml(*root));
+    return loadValueTree(ValueTree::fromXml(*root));
 }
 
 }
