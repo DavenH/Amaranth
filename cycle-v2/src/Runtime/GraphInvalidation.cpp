@@ -5,12 +5,22 @@ namespace CycleV2 {
 GraphInvalidationResult GraphInvalidation::invalidateFrom(
         const GraphExecutionPlan& plan,
         const String& nodeId,
-        GraphChangeKind changeKind) const {
+        ParameterImpact impacts) const {
     GraphInvalidationResult result;
-    result.requiresRecompile = changeKind == GraphChangeKind::PortSchema;
+    result.requiresRecompile = hasImpact(impacts, ParameterImpact::GraphSemantics);
 
-    appendDependents(plan, nodeId, result.audioNodes);
-    result.previewNodes = result.audioNodes;
+    const bool dirtiesAudio = result.requiresRecompile
+            || hasImpact(impacts, ParameterImpact::DspConfiguration)
+            || hasImpact(impacts, ParameterImpact::ProcessorReset);
+    const bool dirtiesPreview = dirtiesAudio
+            || hasImpact(impacts, ParameterImpact::Preview);
+
+    if (dirtiesAudio) {
+        appendDependents(plan, nodeId, result.audioNodes);
+    }
+    if (dirtiesPreview) {
+        appendDependents(plan, nodeId, result.previewNodes);
+    }
 
     return result;
 }

@@ -3,14 +3,20 @@
 #include "FftBlockwiseDsp.h"
 #include "../../Runtime/AudioProcessContextUtils.h"
 
+#include <memory>
+#include <vector>
+
 namespace CycleV2 {
 
 class FftSignalProcessor {
 public:
+    void prepareExecution(size_t maximumFrameCount);
     void processForward(AudioProcessContext& context);
     void processInverse(AudioProcessContext& context);
+    void processInverse(AudioProcessContext& context, bool useHalfCycleCarry);
 
 private:
+    FftBlockwiseDsp& blockwiseFor(size_t frameCount);
     void publishForwardTraversalGrids(
             const SignalPayload& input,
             SignalPayload& magnitude,
@@ -30,6 +36,7 @@ private:
             const AudioProcessWorkArena* arena);
 
     FftBlockwiseDsp blockwiseDsp;
+    std::vector<std::unique_ptr<FftBlockwiseDsp>> preparedBlockwiseDsp;
     FftBlockwiseDsp traversalDsp;
     AudioProcessBlock scratchTimeColumn;
     AudioProcessBlock scratchMagnitudeColumn;

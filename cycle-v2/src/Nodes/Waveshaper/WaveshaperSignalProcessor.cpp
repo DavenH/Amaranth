@@ -1,5 +1,6 @@
 #include "WaveshaperSignalProcessor.h"
 
+#include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/Effect2DMeshState.h"
 
 #include <Curve/Curve.h>
@@ -20,19 +21,6 @@ void ensureCurveTable() {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
-}
-
-String parameterValue(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback = {}) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
 }
 
 std::vector<Effect2DVertexState> defaultVertices() {
@@ -58,13 +46,14 @@ WaveshaperSignalProcessor::~WaveshaperSignalProcessor() {
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<WaveshaperConfiguration>();
+    result->enabled = typedParameterBool(parameters, "enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
     Mesh preparedMesh("CycleV2WaveshaperConfiguration");
     FXRasterizer preparedRasterizer(nullptr, "CycleV2WaveshaperConfigurationRasterizer");
     preparedRasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = Effect2DMeshState::parse(parameterValue(parameters, Effect2DMeshState::parameterId()));
+    auto vertices = Effect2DMeshState::parse(typedParameterString(parameters, Effect2DMeshState::parameterId()));
     if (vertices.empty()) {
         vertices = defaultVertices();
     }
@@ -168,7 +157,7 @@ void WaveshaperSignalProcessor::processBuffer(Buffer<float> buffer, const Signal
 }
 
 void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParameter>& parameters) {
-    const String serializedVertices = parameterValue(parameters, Effect2DMeshState::parameterId());
+    const String serializedVertices = typedParameterString(parameters, Effect2DMeshState::parameterId());
 
     if (serializedVertices == lastVertexState && mesh.getNumVerts() > 0) {
         return;

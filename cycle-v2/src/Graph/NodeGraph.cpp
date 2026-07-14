@@ -1,6 +1,7 @@
 #include "NodeGraph.h"
 
 #include "GraphNodeFactory.h"
+#include "NodeDefinition.h"
 
 #include <algorithm>
 
@@ -44,30 +45,6 @@ Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<flo
     return result;
 }
 
-NodeNaturalSize minimumPreviewSizeForKind(NodeKind kind) {
-    switch (kind) {
-        case NodeKind::WaveSource:                  return { 220.f, 90.f };
-        case NodeKind::ImageSource:                 return { 220.f, 90.f };
-        case NodeKind::TrilinearMesh:                return { 260.f, 130.f };
-        case NodeKind::VoiceContext:                 return { 0.f, 0.f };
-        case NodeKind::Fft:                          return { 0.f, 0.f };
-        case NodeKind::Ifft:                         return { 0.f, 0.f };
-        case NodeKind::Envelope:                     return { 220.f, 92.f };
-        case NodeKind::Add:                          return { 58.f, 44.f };
-        case NodeKind::Multiply:                     return { 58.f, 44.f };
-        case NodeKind::GuideCurve:                   return { 220.f, 100.f };
-        case NodeKind::ImpulseResponse:              return { 230.f, 92.f };
-        case NodeKind::Waveshaper:                   return { 154.f, 174.f };
-        case NodeKind::Reverb:                       return { 0.f, 0.f };
-        case NodeKind::Delay:                        return { 0.f, 0.f };
-        case NodeKind::Spy:                          return { 170.f, 76.f };
-        case NodeKind::StereoSplit:                  return { 0.f, 0.f };
-        case NodeKind::StereoJoin:                   return { 0.f, 0.f };
-        case NodeKind::Output:                       return { 0.f, 0.f };
-        default:                                     return { 190.f, 76.f };
-    }
-}
-
 template<typename Container, typename Predicate>
 void eraseIf(Container& container, Predicate predicate) {
     container.erase(
@@ -81,14 +58,20 @@ void eraseIf(Container& container, Predicate predicate) {
 }
 
 void NodeGraph::addNode(Node nodeToAdd) {
+    if (findNode(nodeToAdd.id) != nullptr) {
+        return;
+    }
     nodes.push_back(std::move(nodeToAdd));
+    ++revision;
 }
 
 void NodeGraph::addEdge(Edge edgeToAdd) {
     edges.push_back(std::move(edgeToAdd));
+    ++revision;
 }
 
 void NodeGraph::removeNode(const String& nodeId) {
+    const size_t previousNodeCount = nodes.size();
     eraseIf(nodes, [&](const Node& node) {
         return node.id == nodeId;
     });
@@ -96,6 +79,9 @@ void NodeGraph::removeNode(const String& nodeId) {
     eraseIf(edges, [&](const Edge& edge) {
         return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
     });
+    if (nodes.size() != previousNodeCount) {
+        ++revision;
+    }
 }
 
 void NodeGraph::removeEdgeAt(size_t index) {
@@ -104,12 +90,68 @@ void NodeGraph::removeEdgeAt(size_t index) {
     }
 
     edges.erase(edges.begin() + (int) index);
+    ++revision;
 }
 
 void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
+    const size_t previousEdgeCount = edges.size();
     eraseIf(edges, [&](const Edge& edge) {
         return edge.destNodeId == nodeId && edge.destPortId == portId;
     });
+    if (edges.size() != previousEdgeCount) {
+        ++revision;
+    }
+}
+
+const Node* NodeGraph::findNode(const String& nodeId) const {
+    for (const auto& node : nodes) {
+        if (node.id == nodeId) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+Node* NodeGraph::findNodeForEditing(const String& nodeId) {
+    for (auto& node : nodes) {
+        if (node.id == nodeId) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+bool NodeGraph::replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters) {
+    auto* node = findNodeForEditing(nodeId);
+    if (node == nullptr) {
+        return false;
+    }
+    node->parameters = std::move(parameters);
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::setNodeBounds(const String& nodeId, Rectangle<float> bounds) {
+    auto* node = findNodeForEditing(nodeId);
+    if (node == nullptr) {
+        return false;
+    }
+    node->bounds = bounds;
+    ++revision;
+    return true;
+}
+
+void NodeGraph::translateNodes(const std::vector<String>& nodeIds, Point<float> offset) {
+    bool changed = false;
+    for (auto& node : nodes) {
+        if (std::find(nodeIds.begin(), nodeIds.end(), node.id) != nodeIds.end()) {
+            node.bounds = node.bounds.translated(offset.x, offset.y);
+            changed = true;
+        }
+    }
+    if (changed) {
+        ++revision;
+    }
 }
 
 NodeGraph NodeGraph::createDemoGraph() {
@@ -125,14 +167,14 @@ NodeGraph NodeGraph::createDemoGraph() {
             {
                     output("context", "Context", PortDomain::DomainContext)
             }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" },
             { "voices", "Voices", "6" },
             { "octave", "Octave", "0" },
             { "pitch", "Pitch", "0" },
             { "portamento", "Portamento", "0" },
             { "oversampling", "Oversampling", "1x" }
-    };
+    });
 
     graph.addNode(node(
             "waveMesh",
@@ -157,10 +199,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     output("phase", "Phase", PortDomain::SpectralPhaseSignal)
             }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("fft", {
             { "cycleFrames", "Cycle Frames", "2048" },
             { "mode", "Mode", "cycle" }
-    };
+    });
 
     graph.addNode(node(
             "magMesh",
@@ -221,10 +263,10 @@ NodeGraph NodeGraph::createDemoGraph() {
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
             },
             { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
-    graph.getNodesForEditing().back().parameters = {
+    graph.replaceNodeParameters("ifft", {
             { "cycleFrames", "Cycle Frames", "2048" },
             { "mode", "Mode", "cyclic" }
-    };
+    });
 
     GraphNodeFactory nodeFactory;
     Node volumeEnvelope = nodeFactory.createNode(NodeKind::Envelope, "env", { 1660.f, 610.f });
@@ -319,28 +361,8 @@ String labelForChannelLayout(ChannelLayout layout) {
 }
 
 String labelForNodeKind(NodeKind kind) {
-    switch (kind) {
-        case NodeKind::GenericProcessor:             return "Generic Processor";
-        case NodeKind::VoiceContext:                 return "Voice Context";
-        case NodeKind::WaveSource:                   return "Wave Source";
-        case NodeKind::ImageSource:                  return "Image Source";
-        case NodeKind::TrilinearMesh:                return "Trilinear Mesh";
-        case NodeKind::Fft:                          return String::fromUTF8("Time → Freq");
-        case NodeKind::Ifft:                         return String::fromUTF8("Freq → Time");
-        case NodeKind::Envelope:                     return "Envelope";
-        case NodeKind::Add:                          return "Add";
-        case NodeKind::Multiply:                     return "Multiply";
-        case NodeKind::GuideCurve:                   return "Guide Curve";
-        case NodeKind::ImpulseResponse:              return "Impulse Response";
-        case NodeKind::Waveshaper:                   return "Waveshaper";
-        case NodeKind::Reverb:                       return "Reverb";
-        case NodeKind::Delay:                        return "Delay";
-        case NodeKind::Spy:                          return "Spy";
-        case NodeKind::StereoSplit:                  return "Stereo Split";
-        case NodeKind::StereoJoin:                   return "Stereo Join";
-        case NodeKind::Output:                       return "Output";
-        default:                                     return "Unknown";
-    }
+    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
+    return definition != nullptr ? definition->displayName : "Unknown";
 }
 
 String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback) {
@@ -355,22 +377,12 @@ String parameterValueForNode(const Node& node, const String& parameterId, const 
 
 NodeNaturalSize naturalSizeForNode(const Node& node) {
     const int portRows = jmax((int) node.inputs.size(), (int) node.outputs.size());
-    const auto preview = minimumPreviewSizeForKind(node.kind);
-
-    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
-        return { 150.f, 118.f };
-    }
-
-    if (node.kind == NodeKind::VoiceContext) {
-        return { 300.f, 128.f };
-    }
-
-    if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        return { 278.f, 178.f };
-    }
-
-    if (node.kind == NodeKind::Output) {
-        return { 190.f, 160.f };
+    const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
+    const auto preview = definition != nullptr
+            ? definition->minimumPreviewSize
+            : NodeNaturalSize { 190.f, 76.f };
+    if (definition != nullptr && definition->fixedNaturalSize.width > 0.f) {
+        return definition->fixedNaturalSize;
     }
 
     const float titleWidth = (float) node.title.length() * 8.5f;

@@ -6,12 +6,6 @@
 
 namespace CycleV2 {
 
-enum class GraphChangeKind {
-    NodeParameters,
-    NodeContent,
-    PortSchema
-};
-
 struct GraphInvalidationResult {
     std::vector<String> audioNodes;
     std::vector<String> previewNodes;
@@ -23,7 +17,7 @@ public:
     GraphInvalidationResult invalidateFrom(
             const GraphExecutionPlan& plan,
             const String& nodeId,
-            GraphChangeKind changeKind) const;
+            ParameterImpact impacts) const;
 
 private:
     void appendDependents(

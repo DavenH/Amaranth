@@ -15,6 +15,22 @@ void ensureCurveTable() {
 
 }
 
+void TrimeshBlockwiseDsp::prepare(
+        Mesh* meshToRender,
+        const MorphPosition& morphPosition,
+        int axis,
+        bool shouldWrap) {
+    setMesh(meshToRender);
+    setMorphPosition(morphPosition);
+    setPrimaryViewAxis(axis);
+    setCyclic(shouldWrap);
+    ensureCurveTable();
+    prepareRequest();
+    if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
+        rasterizer.updateWaveform(mesh, 0.f);
+    }
+}
+
 void TrimeshBlockwiseDsp::setMesh(Mesh* meshToRender) {
     mesh = meshToRender;
 }
@@ -36,6 +52,15 @@ void TrimeshBlockwiseDsp::renderCycle(
         PortDomain domain,
         ChannelLayout channelLayout,
         SignalPayload& output) {
+    prepare(mesh, morph, primaryViewAxis, cyclic);
+    renderPrepared(frameCount, domain, channelLayout, output);
+}
+
+void TrimeshBlockwiseDsp::renderPrepared(
+        size_t frameCount,
+        PortDomain domain,
+        ChannelLayout channelLayout,
+        SignalPayload& output) {
     output.block.samples.resize(frameCount);
     output.domain = domain;
     output.channelLayout = channelLayout;
@@ -50,9 +75,6 @@ void TrimeshBlockwiseDsp::renderCycle(
         return;
     }
 
-    ensureCurveTable();
-    prepareRequest();
-    rasterizer.updateWaveform(mesh, 0.f);
     sampleOutput(output);
 }
 

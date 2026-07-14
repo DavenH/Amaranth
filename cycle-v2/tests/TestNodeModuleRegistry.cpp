@@ -75,3 +75,16 @@ TEST_CASE("Node module role labels are stable", "[cycle-v2][runtime]") {
     REQUIRE(labelForAudioModuleRole(AudioModuleRole::ImageSource) == "Image Source");
     REQUIRE(labelForPreviewModuleRole(PreviewModuleRole::MeshSurface) == "Mesh Surface");
 }
+
+TEST_CASE("Node module registry declares preview authority explicitly", "[cycle-v2][runtime]") {
+    const NodeModuleRegistry registry;
+
+    REQUIRE(registry.descriptorFor(NodeKind::TrilinearMesh).previewContract
+            == PreviewContract::AuthoritativeModel);
+    REQUIRE(registry.descriptorFor(NodeKind::Spy).previewContract
+            == PreviewContract::RuntimeTap);
+    REQUIRE(registry.descriptorFor(NodeKind::WaveSource).previewContract
+            == PreviewContract::Qualitative);
+    REQUIRE(registry.descriptorFor(NodeKind::Fft).previewContract
+            == PreviewContract::None);
+}

@@ -1,225 +1,27 @@
 #include "GraphNodeFactory.h"
 
-#include "../Nodes/Envelope/EnvelopeMeshState.h"
+#include "NodeDefinition.h"
 
 namespace CycleV2 {
 
 Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> position) const {
+    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
+    if (definition == nullptr) {
+        definition = NodeDefinitionRegistry::instance().find(NodeKind::GenericProcessor);
+    }
+
+    jassert(definition != nullptr);
     Node node;
     node.id = id;
-    node.kind = kind;
+    node.kind = definition->kind;
+    node.title = definition->displayName;
+    node.subtitle = definition->subtitle;
     node.bounds = { position.x, position.y, 240.f, 170.f };
-
-    switch (kind) {
-        case NodeKind::VoiceContext:
-            node.title = "Voice Context";
-            node.subtitle = "waveform start";
-            node.parameters = {
-                    { "domain", "Start Domain", "waveform" },
-                    { "voices", "Voices", "1" },
-                    { "octave", "Octave", "0" },
-                    { "pitch", "Pitch", "0" },
-                    { "portamento", "Portamento", "0" },
-                    { "oversampling", "Oversampling", "1x" }
-            };
-            node.outputs = {
-                    output("context", "Context", PortDomain::DomainContext)
-            };
-            break;
-
-        case NodeKind::WaveSource:
-            node.title = "Wave";
-            node.subtitle = "time source";
-            node.inputs = { input("context", "Context", PortDomain::DomainContext) };
-            node.outputs = { output("out", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::ImageSource:
-            node.title = "Image";
-            node.subtitle = "raster source";
-            node.inputs = { input("context", "Context", PortDomain::DomainContext) };
-            node.outputs = { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::TrilinearMesh:
-            node.title = "Trilinear Mesh";
-            node.subtitle = "mesh operand";
-            node.parameters = {
-                    { "yellow", "Yellow", "0.5" },
-                    { "red", "Red", "0.5" },
-                    { "blue", "Blue", "0.5" },
-                    { "primaryAxis", "Primary Axis", "yellow" }
-            };
-            node.inputs = {
-                    input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
-            };
-            node.outputs = {
-                    output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo)
-            };
-            break;
-
-        case NodeKind::Fft:
-            node.title = String::fromUTF8("Time → Freq");
-            node.subtitle = "cycle chunks";
-            node.parameters = {
-                    { "cycleFrames", "Cycle Frames", "2048" },
-                    { "mode", "Mode", "cycle" }
-            };
-            node.inputs = { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = {
-                    output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    output("phase", "Phase", PortDomain::SpectralPhaseSignal)
-            };
-            break;
-
-        case NodeKind::Ifft:
-            node.title = String::fromUTF8("Freq → Time");
-            node.subtitle = "cyclic overlap";
-            node.parameters = {
-                    { "cycleFrames", "Cycle Frames", "2048" },
-                    { "mode", "Mode", "cyclic" }
-            };
-            node.inputs = {
-                    input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
-                    input("phase", "Phase", PortDomain::SpectralPhaseSignal)
-            };
-            node.outputs = { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Envelope:
-            node.title = "Envelope";
-            node.subtitle = "control curve";
-            node.parameters = {
-                    { "logarithmic", "Logarithmic", "0" },
-                    { "envelope.snapshot", "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot() }
-            };
-            node.outputs = { output("env", "Env", PortDomain::EnvelopeSignal) };
-            break;
-
-        case NodeKind::Add:
-            node.title = "Add";
-            node.subtitle = "combine";
-            node.inputs = {
-                    input("left", "A", PortDomain::ControlSignal),
-                    input("right", "B", PortDomain::ControlSignal)
-            };
-            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
-            break;
-
-        case NodeKind::Multiply:
-            node.title = "Multiply";
-            node.subtitle = "operation";
-            node.inputs = {
-                    input("left", "A", PortDomain::ControlSignal),
-                    input("right", "B", PortDomain::ControlSignal)
-            };
-            node.outputs = { output("out", "Out", PortDomain::ControlSignal) };
-            break;
-
-        case NodeKind::GuideCurve:
-            node.title = "Guide";
-            node.subtitle = "mesh attachment";
-            node.parameters = {
-                    { "enabled", "Enabled", "1" },
-                    { "noise", "Noise", "0.5" },
-                    { "dcOffset", "DC Offset", "0.5" },
-                    { "phase", "Phase", "0.5" }
-            };
-            node.outputs = { output("guide", "Guide", PortDomain::EnvelopeSignal) };
-            break;
-
-        case NodeKind::ImpulseResponse:
-            node.title = "IR";
-            node.subtitle = "convolution";
-            node.parameters = {
-                    { "enabled", "Enabled", "1" },
-                    { "size", "Size", "0.5" },
-                    { "post", "Post", "0.5" },
-                    { "highPass", "HighPass", "0.5" }
-            };
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Waveshaper:
-            node.title = "Waveshaper";
-            node.subtitle = "transfer curve";
-            node.parameters = {
-                    { "enabled", "Enabled", "1" },
-                    { "pre", "Pre", "0.5" },
-                    { "post", "Post", "0.5" },
-                    { "aaFactor", "AA Factor", "1" }
-            };
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Reverb:
-            node.title = "Reverb";
-            node.subtitle = "space";
-            node.parameters = {
-                    { "enabled", "Enabled", "1" },
-                    { "size", "Size", "0.35" },
-                    { "damp", "Damp", "0.25" },
-                    { "width", "Width", "0.75" },
-                    { "wet", "Wet", "0.35" }
-            };
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Delay:
-            node.title = "Delay";
-            node.subtitle = "echo";
-            node.parameters = {
-                    { "enabled", "Enabled", "1" },
-                    { "time", "Time", "0.25" },
-                    { "feedback", "Feedback", "0.25" },
-                    { "wet", "Wet", "0.5" }
-            };
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Spy:
-            node.title = "Spy";
-            node.subtitle = "signal monitor";
-            node.inputs = { input("in", "In", PortDomain::ControlSignal) };
-            break;
-
-        case NodeKind::StereoSplit:
-            node.title = "Stereo Split";
-            node.subtitle = "L/R breakout";
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = {
-                    output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
-                    output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right)
-            };
-            break;
-
-        case NodeKind::StereoJoin:
-            node.title = "Stereo Join";
-            node.subtitle = "L/R combine";
-            node.inputs = {
-                    input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left),
-                    input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right)
-            };
-            node.outputs = { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        case NodeKind::Output:
-            node.title = "Output";
-            node.subtitle = "sink";
-            node.inputs = { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
-
-        default:
-            node.title = "Processor";
-            node.subtitle = "generic";
-            node.inputs = { input("in", "In", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            node.outputs = { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) };
-            break;
+    node.inputs = definition->inputs;
+    node.outputs = definition->outputs;
+    node.parameters.reserve(definition->parameters.size());
+    for (const auto& parameter : definition->parameters) {
+        node.parameters.push_back({ parameter.id, parameter.label, parameter.defaultValue });
     }
 
     const auto naturalSize = naturalSizeForNode(node);

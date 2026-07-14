@@ -1,5 +1,6 @@
 #include "EffectSignalProcessors.h"
 
+#include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/Effect2DMeshState.h"
 
 #include <Algo/ConvReverb.h>
@@ -23,19 +24,6 @@ void ensureCurveTable() {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
-}
-
-String parameterValue(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback = {}) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
 }
 
 std::vector<Effect2DVertexState> defaultIrVertices() {
@@ -64,6 +52,7 @@ IrSignalProcessor::~IrSignalProcessor() {
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<IrConfiguration>();
+    result->enabled = typedParameterBool(parameters, "enabled", true);
     const float highPass = parameterFloat(parameters, "highPass", 0.5f);
     const size_t impulseLength = (size_t) CycleDsp::irImpulseLength(
             parameterFloat(parameters, "size", 0.5f));
@@ -73,7 +62,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedRasterizer.setScalingMode(FXRasterizer::Bipolar);
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = Effect2DMeshState::parse(parameterValue(parameters, Effect2DMeshState::parameterId()));
+    auto vertices = Effect2DMeshState::parse(typedParameterString(parameters, Effect2DMeshState::parameterId()));
     if (vertices.empty()) {
         vertices = defaultIrVertices();
     }
@@ -201,7 +190,7 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 }
 
 void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
-    const String serializedVertices = parameterValue(parametersToUse, Effect2DMeshState::parameterId());
+    const String serializedVertices = typedParameterString(parametersToUse, Effect2DMeshState::parameterId());
     if (serializedVertices == lastVertexState
             && impulse.size() == impulseLength
             && impulseHighPass == highPass) {
@@ -301,23 +290,35 @@ void IrSignalProcessor::addVertex(float x, float y, float curve) {
 void DelaySignalProcessor::configure(
         const std::vector<NodeParameter>& parametersToUse,
         const AudioProcessTiming& timing) {
+    DelayConfiguration prepared;
+    prepared.time = parameterFloat(parametersToUse, "time", 0.5f);
+    prepared.feedback = parameterFloat(parametersToUse, "feedback", 0.5f);
+    prepared.spin = parameterFloat(parametersToUse, "spin", 1.f);
+    prepared.wet = parameterFloat(parametersToUse, "wet", 0.9f);
+    prepared.spinIterations = parameterFloat(parametersToUse, "spinIters", 0.f);
+    configure(prepared, timing);
+}
+
+void DelaySignalProcessor::configure(
+        const DelayConfiguration& prepared,
+        const AudioProcessTiming& timing) {
     bpm = std::max(1.0, timing.bpm);
     beatsPerMeasure = std::max(1, timing.beatsPerMeasure);
 
     CycleDsp::DelayConfiguration configuration;
     configuration.sampleRate = std::max(1.0, timing.sampleRate);
     configuration.delaySeconds = CycleDsp::delayTimeSeconds(
-            parameterFloat(parametersToUse, "time", 0.5f),
+            prepared.time,
             bpm,
             beatsPerMeasure);
     configuration.feedback = jlimit(
             0.f,
             0.98f,
-            parameterFloat(parametersToUse, "feedback", 0.5f));
-    configuration.spin = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "spin", 1.f));
-    configuration.wet = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "wet", 0.9f));
+            prepared.feedback);
+    configuration.spin = jlimit(0.f, 1.f, prepared.spin);
+    configuration.wet = jlimit(0.f, 1.f, prepared.wet);
     configuration.spinIterations = CycleDsp::delaySpinIterations(
-            parameterFloat(parametersToUse, "spinIters", 0.f));
+            prepared.spinIterations);
 
     blockDelay.configure(configuration);
     traversalDelay.configure(configuration);
@@ -359,6 +360,7 @@ void ReverbSignalProcessor::prepareLegacy(
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<ReverbConfiguration>();
+    result->enabled = typedParameterBool(parameters, "enabled", true);
     const float roomSize = jlimit(0.f, 1.f, parameterFloat(parameters, "size", 0.35f));
     const float damping = jlimit(0.f, 1.f, parameterFloat(parameters, "damp", 0.2f)) * 0.7f;
     const float highPass = jlimit(0.f, 1.f, parameterFloat(parameters, "highPass", 0.05f));

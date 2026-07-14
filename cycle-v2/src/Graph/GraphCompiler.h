@@ -23,6 +23,7 @@ struct GraphStepInput {
     String sourcePortId;
     String destPortId;
     int destPortIndex {};
+    int sourceBufferIndex { -1 };
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
@@ -31,6 +32,15 @@ struct GraphStepOutput {
     String portId;
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
+    int bufferIndex { -1 };
+};
+
+struct GraphStepAttachment {
+    String sourceNodeId;
+    String sourcePortId;
+    String destPortId;
+    PortDomain domain {};
+    int sourceBufferIndex { -1 };
 };
 
 struct GraphBufferPlan {
@@ -39,13 +49,17 @@ struct GraphBufferPlan {
     String sourcePortId;
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
+    int firstProducerStep { -1 };
+    int lastConsumerStep { -1 };
 };
 
 struct GraphExecutionStep {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
+    bool outputSink {};
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
+    PreviewContract previewContract { PreviewContract::None };
     bool previewable {};
     bool cycle1AdapterBacked {};
     String cycle1Reference;
@@ -56,9 +70,14 @@ struct GraphExecutionStep {
     PublishedNodeConfiguration configuration;
     std::vector<GraphStepInput> inputs;
     std::vector<GraphStepOutput> outputs;
+    std::vector<GraphStepAttachment> attachments;
 };
 
 struct GraphExecutionPlan {
+    size_t maximumInputCount {};
+    size_t maximumOutputCount { 1 };
+    size_t maximumAttachmentCount {};
+    size_t maximumTraversalColumns { 8 };
     std::vector<String> nodeOrder;
     std::vector<GraphExecutionStep> steps;
     std::vector<GraphBufferPlan> buffers;

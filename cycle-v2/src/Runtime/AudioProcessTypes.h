@@ -82,7 +82,7 @@ struct AudioProcessAttachment {
     String sourcePortId;
     String destPortId;
     PortDomain domain {};
-    SignalPayload payload;
+    SignalPayload* payload {};
 };
 
 struct AudioProcessTiming {
@@ -141,13 +141,18 @@ struct AudioProcessWorkArena {
 struct AudioProcessContext {
     size_t frameCount {};
     AudioProcessTiming timing;
+    const AudioVoiceContext* voiceView {};
     AudioVoiceContext voice;
     AudioProcessWorkArena* workArena {};
     const PublishedNodeConfiguration* configuration {};
+    bool captureTraversalGrid { true };
+    const std::vector<NodeParameter>* parameterView {};
     std::vector<NodeParameter> parameters;
+    std::vector<SignalPayload*> inputViews;
     std::vector<SignalPayload> inputs;
     std::vector<AudioProcessAttachment> attachments;
     std::vector<AudioOutputPort> outputPorts;
+    std::vector<SignalPayload*> outputViews;
     std::vector<SignalPayload> outputs;
 };
 

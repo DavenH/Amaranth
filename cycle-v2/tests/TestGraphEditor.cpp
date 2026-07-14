@@ -378,9 +378,26 @@ TEST_CASE("Graph editor updates node parameters", "[cycle-v2][graph]") {
             "Tempo Sync",
             "true");
 
-    REQUIRE(addResult.succeeded());
-    REQUIRE(parameterValueForNode(graph.getNodes().front(), "tempoSync") == "true");
-    REQUIRE(graph.getNodes().front().parameters.size() == initialParameterCount + 1);
+    REQUIRE_FALSE(addResult.succeeded());
+    REQUIRE(addResult.code == GraphEditCode::UnknownParameter);
+    REQUIRE(parameterValueForNode(graph.getNodes().front(), "tempoSync").isEmpty());
+    REQUIRE(graph.getNodes().front().parameters.size() == initialParameterCount);
+}
+
+TEST_CASE("Graph editor validates and normalizes declared parameters", "[cycle-v2][graph][definitions]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+
+    const auto normalized = GraphEditor().setNodeParameter(
+            graph, "voice", "portamento", "Ignored Label", "true");
+    const auto invalid = GraphEditor().setNodeParameter(
+            graph, "voice", "octave", "Octave", "99");
+
+    REQUIRE(normalized.succeeded());
+    REQUIRE(parameterValueForNode(*graph.findNode("voice"), "portamento") == "1");
+    REQUIRE(normalized.changes.parameterImpacts != ParameterImpact::None);
+    REQUIRE_FALSE(invalid.succeeded());
+    REQUIRE(invalid.code == GraphEditCode::InvalidParameterValue);
 }
 
 TEST_CASE("Graph editor reports missing node parameter updates", "[cycle-v2][graph]") {

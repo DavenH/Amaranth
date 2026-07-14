@@ -29,13 +29,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
                 delete meshToDelete;
             });
 
-    String snapshot;
-    for (const auto& parameter : parameters) {
-        if (parameter.id == EnvelopeMeshState::parameterId()) {
-            snapshot = parameter.value;
-            break;
-        }
-    }
+    const String snapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
 
     if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
         return {};
@@ -86,12 +80,13 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    const bool ready = configuration != nullptr ? modelReady : syncModel(context.parameters);
+    const bool ready = configuration != nullptr ? modelReady : syncModel(processParameters(context));
     if (ready) {
         size_t rendered = 0;
 
-        for (const auto& event : context.voice.events) {
-            if (event.voiceIndex != context.voice.voiceIndex) {
+        const auto& voice = processVoice(context);
+        for (const auto& event : voice.events) {
+            if (event.voiceIndex != voice.voiceIndex) {
                 continue;
             }
 
@@ -108,20 +103,13 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
     }
 
-    outputBuffer.mul(configuration != nullptr ? level : parameterFloat(context.parameters, "level", 1.f));
+    outputBuffer.mul(configuration != nullptr ? level : parameterFloat(processParameters(context), "level", 1.f));
     publishVectorAsTraversalGrid(output, defaultTraversalColumns, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
 
 bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
-    String nextSnapshot;
-
-    for (const auto& parameter : parameters) {
-        if (parameter.id == EnvelopeMeshState::parameterId()) {
-            nextSnapshot = parameter.value;
-            break;
-        }
-    }
+    const String nextSnapshot = typedParameterString(parameters, EnvelopeMeshState::parameterId());
 
     const bool snapshotChanged = nextSnapshot != snapshotState;
     if (snapshotChanged) {

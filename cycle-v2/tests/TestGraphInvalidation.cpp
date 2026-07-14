@@ -21,7 +21,7 @@ TEST_CASE("Graph invalidation marks downstream signal dependents", "[cycle-v2][r
     const auto result = GraphInvalidation().invalidateFrom(
             compileResult.plan,
             "fft",
-            GraphChangeKind::NodeParameters);
+            ParameterImpact::DspConfiguration);
 
     REQUIRE_FALSE(result.requiresRecompile);
     REQUIRE(containsNode(result.audioNodes, "fft"));
@@ -40,7 +40,7 @@ TEST_CASE("Graph invalidation follows attachment dependencies", "[cycle-v2][runt
     const auto result = GraphInvalidation().invalidateFrom(
             compileResult.plan,
             "scratchEnv",
-            GraphChangeKind::NodeContent);
+            ParameterImpact::DspConfiguration | ParameterImpact::Preview);
 
     REQUIRE(containsNode(result.audioNodes, "scratchEnv"));
     REQUIRE(containsNode(result.audioNodes, "waveMesh"));
@@ -49,14 +49,29 @@ TEST_CASE("Graph invalidation follows attachment dependencies", "[cycle-v2][runt
     REQUIRE(containsNode(result.audioNodes, "out"));
 }
 
-TEST_CASE("Graph invalidation flags schema changes for recompilation", "[cycle-v2][runtime]") {
+TEST_CASE("Graph invalidation limits preview impacts to preview dependents", "[cycle-v2][runtime]") {
     const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
     REQUIRE(compileResult.succeeded());
 
     const auto result = GraphInvalidation().invalidateFrom(
             compileResult.plan,
             "waveMesh",
-            GraphChangeKind::PortSchema);
+            ParameterImpact::Preview);
+
+    REQUIRE_FALSE(result.requiresRecompile);
+    REQUIRE(result.audioNodes.empty());
+    REQUIRE(containsNode(result.previewNodes, "waveMesh"));
+    REQUIRE(containsNode(result.previewNodes, "out"));
+}
+
+TEST_CASE("Graph invalidation flags graph semantic impacts for recompilation", "[cycle-v2][runtime]") {
+    const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compileResult.succeeded());
+
+    const auto result = GraphInvalidation().invalidateFrom(
+            compileResult.plan,
+            "waveMesh",
+            ParameterImpact::GraphSemantics);
 
     REQUIRE(result.requiresRecompile);
     REQUIRE(containsNode(result.audioNodes, "waveMesh"));

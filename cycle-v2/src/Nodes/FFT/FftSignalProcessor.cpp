@@ -6,23 +6,35 @@ namespace CycleV2 {
 
 namespace {
 
-String parameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        const String& fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
+bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
+    return typedParameterString(parameters, "mode", "cyclic") == "acyclicCarry";
+}
+
+}
+
+void FftSignalProcessor::prepareExecution(size_t maximumFrameCount) {
+    preparedBlockwiseDsp.clear();
+    for (size_t frameCount = 1; frameCount <= maximumFrameCount; frameCount *= 2) {
+        auto processor = std::make_unique<FftBlockwiseDsp>();
+        processor->prepare(frameCount);
+        preparedBlockwiseDsp.push_back(std::move(processor));
+        if (frameCount > maximumFrameCount / 2) {
+            break;
         }
     }
-
-    return fallback;
 }
 
-bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
-    return parameterString(parameters, "mode", "cyclic") == "acyclicCarry";
-}
-
+FftBlockwiseDsp& FftSignalProcessor::blockwiseFor(size_t frameCount) {
+    if (frameCount > 0 && (frameCount & (frameCount - 1)) == 0) {
+        size_t exponent = 0;
+        for (size_t value = frameCount; value > 1; value /= 2) {
+            ++exponent;
+        }
+        if (exponent < preparedBlockwiseDsp.size()) {
+            return *preparedBlockwiseDsp[exponent];
+        }
+    }
+    return blockwiseDsp;
 }
 
 void FftSignalProcessor::processForward(AudioProcessContext& context) {
@@ -35,13 +47,17 @@ void FftSignalProcessor::processForward(AudioProcessContext& context) {
 
     auto magnitude = makeOutputPayload(context, 0);
     auto phase = makeOutputPayload(context, 1);
-    blockwiseDsp.forward(input->block, magnitude.block, phase.block);
+    blockwiseFor(input->block.samples.size()).forward(input->block, magnitude.block, phase.block);
     publishForwardTraversalGrids(*input, magnitude, phase, context.workArena);
 
     publishOutputs(context, std::move(magnitude), std::move(phase));
 }
 
 void FftSignalProcessor::processInverse(AudioProcessContext& context) {
+    processInverse(context, inverseUsesHalfCycleCarry(processParameters(context)));
+}
+
+void FftSignalProcessor::processInverse(AudioProcessContext& context, bool useHalfCycleCarry) {
     SignalPayload* magnitude = inputAt(context, 0);
 
     if (magnitude == nullptr) {
@@ -51,9 +67,9 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context) {
 
     auto output = makeOutputPayload(context, 0);
     SignalPayload* phase = inputAt(context, 1);
-    const bool useHalfCycleCarry = inverseUsesHalfCycleCarry(context.parameters);
-    blockwiseDsp.setHalfCycleCarryEnabled(useHalfCycleCarry);
-    blockwiseDsp.inverse(magnitude->block, phase != nullptr ? &phase->block : nullptr, output.block);
+    auto& blockwise = blockwiseFor(output.block.samples.size());
+    blockwise.setHalfCycleCarryEnabled(useHalfCycleCarry);
+    blockwise.inverse(magnitude->block, phase != nullptr ? &phase->block : nullptr, output.block);
     publishInverseTraversalGrid(*magnitude, phase, output, useHalfCycleCarry, context.workArena);
     publishSingleOutput(context, std::move(output));
 }
