@@ -336,6 +336,10 @@ Current status:
   layer/column noise seeds, scratch-time application, waveform sampling, layer
   panning, and summation. Cycle 1 translates `MeshLibrary` records and its view
   stage into explicit shared layer values and a scratch-time resolver.
+- `Rasterization::EnvelopeGridRasterizer` owns the E3 half-bipolar request,
+  morph-axis grid traversal, mesh rasterization, and perfect column sampling.
+  Cycle 1 retains window/detail sizing, array allocation and locking, current
+  mesh/axis lookup, and updater scheduling.
 
 Next target:
 
@@ -644,7 +648,8 @@ Complete one module end-to-end before starting the next:
   view inputs, and scratch-time resolution.
 - [ ] Define shared voice-rasterizer request and prepared-output snapshots when
   Cycle 2 oscillator publication requires them.
-- [ ] Extract application-neutral E3 grid rendering into `AmaranthLib`.
+- [x] Extract application-neutral E3 grid rendering behind explicit mesh,
+  resolution, morph axis, and output-column inputs.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.

@@ -94,6 +94,9 @@ settings, scratch position, updater detail state, and interactor access.
 Time-column traversal and layer summation now consume explicit shared layer
 values; Cycle retains only `MeshLibrary` translation, view-stage selection, and
 scratch-property lookup.
+E3 envelope grid traversal and sampling now live in
+`Rasterization::EnvelopeGridRasterizer`; Cycle retains UI sizing, storage,
+locking, mesh selection, and update dispatch.
 
 Suggested direction:
 
