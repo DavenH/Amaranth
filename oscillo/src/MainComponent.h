@@ -89,7 +89,7 @@ private:
     static constexpr int kNoteHistoryCount = PhaseVelocityHistory::kNumTracks;
     static constexpr int kNoteHistoryFrames = 512;
     static constexpr int kNoteHistoryAdvancePerTick = 4;
-    static constexpr int kSpectrogramHeight = 64;
+    static constexpr int kSpectrogramHeight = 10;
     static constexpr int kPitchDebugHeight = 88;
     static constexpr int kNumColours = 64;
     static constexpr int kPhaseVelocityWidth = 20;
@@ -117,7 +117,7 @@ private:
     int lastClickedMidiNote = 60;
     float trueDrift = 0.0f;
     float trueDriftMagnitude = 0.0f;
-    float keyboardKeyWidth = 12.0f;
+    float keyboardKeyWidth = 18.0f;
 
     Image phaseVelocityBar;
     Image cyclogram, spectrogram, phasigram;

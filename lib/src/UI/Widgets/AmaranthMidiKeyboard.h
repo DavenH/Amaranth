@@ -14,6 +14,7 @@ public:
     void setHighlightedNote(int note);
     [[nodiscard]] int getHighlightedNote() const { return highlightedNote; }
     void setMidiRange(const Range<int>& range);
+    void setUseVectorKeys(bool shouldUseVectorKeys);
 
 protected:
     void drawBlackNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
@@ -41,10 +42,13 @@ private:
     };
 
     void drawKeyImage(Graphics& g, Rectangle<float> area, int sourceY) const;
+    void drawVectorKey(Graphics& g, Rectangle<float> area, bool blackKey,
+        bool isDown, bool isOver, bool isHighlighted) const;
 
     Image keys;
     Range<int> midiRange;
     int highlightedNote = -1;
+    bool useVectorKeys = false;
 
     JUCE_LEAK_DETECTOR(AmaranthMidiKeyboard)
 };

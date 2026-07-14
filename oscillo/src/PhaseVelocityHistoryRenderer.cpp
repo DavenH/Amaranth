@@ -49,6 +49,7 @@ void PhaseVelocityHistoryRenderer::draw(
     const float xStep = 6.0f * area.getWidth() / jmax(1, PhaseVelocityHistory::kNumFrames - 1);
     const float halfHeight = 0.5f * area.getHeight();
     const float harmonicScale = harmonicIndex < 0 ? 1.0f : 1.0f / (float) (harmonicIndex + 1);
+    const float referenceFrequency = (float) MidiMessage::getMidiNoteInHertz(60);
 
     for (const PhaseVelocityHistory* history : ordered) {
         if (history->length < 2) {
@@ -61,12 +62,18 @@ void PhaseVelocityHistoryRenderer::draw(
         const int colourIndex = roundToInt(recency * (float) (colourMap.size() - 1));
         const Colour trackColour = colourMap.getColour(colourIndex);
         const float trackAlpha = 0.45f + 0.55f * recency;
+        const float rawPitchScale = jlimit(0.25f, 4.0f,
+            referenceFrequency / (float) MidiMessage::getMidiNoteInHertz(history->midiNote));
+        const float pitchScale = rawPitchScale > 1.0f
+            ? 1.0f + 0.8f * (rawPitchScale - 1.0f)
+            : rawPitchScale;
 
         auto getPoint = [&](int index) {
             const float velocity = harmonicIndex < 0
                 ? history->weightedValues[(size_t) index]
                 : history->values[(size_t) harmonicIndex][(size_t) index] * harmonicScale;
-            const float normalized = jlimit(-1.0f, 1.0f, velocity / maxVelocity);
+            const float normalized = jlimit(-1.0f, 1.0f,
+                pitchScale * velocity / maxVelocity);
             return Point<float>(
                 (float) area.getX() + xStep * index,
                 (float) area.getCentreY() - normalized * halfHeight);

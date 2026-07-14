@@ -12,6 +12,11 @@ AmaranthMidiKeyboard::AmaranthMidiKeyboard(MidiKeyboardState& state, Orientation
 
 void AmaranthMidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
                                          bool isDown, bool isOver, Colour noteFillColour) {
+    if (useVectorKeys) {
+        drawVectorKey(g, area, true, isDown, isOver, midiNoteNumber == highlightedNote);
+        return;
+    }
+
     drawKeyImage(g, area, pxGreyBlack);
 
     if (midiNoteNumber != highlightedNote) {
@@ -35,6 +40,11 @@ void AmaranthMidiKeyboard::drawBlackNote(int midiNoteNumber, Graphics& g, Rectan
 void AmaranthMidiKeyboard::drawWhiteNote(int midiNoteNumber, Graphics& g, Rectangle<float> area,
                                          bool isDown, bool isOver, Colour lineColourDefault,
                                          Colour textColour) {
+    if (useVectorKeys) {
+        drawVectorKey(g, area, false, isDown, isOver, midiNoteNumber == highlightedNote);
+        return;
+    }
+
     drawKeyImage(g, area, pxGreyWhite);
 
     if (midiNoteNumber != highlightedNote) {
@@ -114,8 +124,10 @@ Range<float> AmaranthMidiKeyboard::getKeyPosition(int midiNoteNumber, float keyW
     const int octave = midiNoteNumber / 12;
     const int note = midiNoteNumber % 12;
 
-    const float x = octave * 7.0f * keyWidth + notePos[note] * keyWidth + offsets[note] + 0.5f;
-    const float w = widths[note] * keyWidth + 0.5f;
+    const float pixelOffset = useVectorKeys ? 0.0f : (float) offsets[note] + 0.5f;
+    const float widthAdjustment = useVectorKeys ? 0.0f : 0.5f;
+    const float x = octave * 7.0f * keyWidth + notePos[note] * keyWidth + pixelOffset;
+    const float w = widths[note] * keyWidth + widthAdjustment;
 
     return { x, x + w };
 }
@@ -134,6 +146,44 @@ void AmaranthMidiKeyboard::setHighlightedNote(int note) {
 void AmaranthMidiKeyboard::setMidiRange(const Range<int>& range) {
     midiRange = range;
     repaint();
+}
+
+void AmaranthMidiKeyboard::setUseVectorKeys(bool shouldUseVectorKeys) {
+    if (useVectorKeys != shouldUseVectorKeys) {
+        useVectorKeys = shouldUseVectorKeys;
+        resized();
+        repaint();
+    }
+}
+
+void AmaranthMidiKeyboard::drawVectorKey(
+        Graphics& g, Rectangle<float> area, bool blackKey,
+        bool isDown, bool isOver, bool isHighlighted) const {
+    const bool accented = isDown || isOver || isHighlighted;
+    const Colour top = accented
+        ? (isDown ? Colour(0xffb7642f) : Colour(0xff4f89aa))
+        : (blackKey ? Colour(0xff707070) : Colour(0xffb8b8b8));
+    const Colour bottom = accented
+        ? (isDown ? Colour(0xff4f210d) : Colour(0xff18384a))
+        : (blackKey ? Colour(0xff202020) : Colour(0xff484848));
+
+    const float corner = blackKey ? jmin(2.5f, area.getWidth() * 0.18f) : 1.0f;
+    Path key;
+    key.addRoundedRectangle(area.reduced(0.5f), corner);
+
+    ColourGradient fill(top, area.getCentreX(), area.getY(),
+        bottom, area.getCentreX(), area.getBottom(), false);
+    fill.addColour(0.78, bottom.interpolatedWith(Colours::black, 0.18f));
+    g.setGradientFill(fill);
+    g.fillPath(key);
+
+    g.setColour(Colours::black.withAlpha(0.9f));
+    g.strokePath(key, PathStrokeType(1.0f));
+
+    const Rectangle<float> highlight = area.reduced(1.5f).removeFromLeft(
+        jmax(1.0f, area.getWidth() * 0.12f));
+    g.setColour(Colours::white.withAlpha(blackKey ? 0.18f : 0.10f));
+    g.fillRoundedRectangle(highlight, corner * 0.5f);
 }
 
 void AmaranthMidiKeyboard::drawKeyImage(Graphics& g, Rectangle<float> area, int sourceY) const {

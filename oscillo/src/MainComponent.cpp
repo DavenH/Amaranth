@@ -35,6 +35,7 @@ MainComponent::MainComponent()
     setWantsKeyboardFocus(true);
     keyboardState.addListener(this);
     keyboard = std::make_unique<HighlightKeyboard>(keyboardState, MidiKeyboardComponent::horizontalKeyboard);
+    keyboard->setUseVectorKeys(true);
     keyboard->setKeyWidth(keyboardKeyWidth);
     keyboard->setColour(MidiKeyboardComponent::whiteNoteColourId, kOscilloBackground);
     keyboard->setAvailableRange(21, 108);
@@ -239,9 +240,9 @@ void MainComponent::drawWeightedPhaseVelocityPlot(Graphics& g, const Rectangle<i
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    const int keyboardHeight = jmax(60, roundToInt(keyboardKeyWidth * 3.0f));
-    const int keyboardRegionHeight = roundToInt(keyboardHeight * 1.2f);
-    auto keyboardRegion = area.removeFromBottom(keyboardRegionHeight);
+    const int keyboardHeight = jmax(72, roundToInt(keyboardKeyWidth * 4.2f));
+    area.removeFromBottom(8);
+    auto keyboardRegion = area.removeFromBottom(keyboardHeight);
 
     const int keyboardWidth = jmin((int) std::round(keyboard->getTotalKeyboardWidth()),
         keyboardRegion.getWidth());
@@ -422,19 +423,21 @@ void MainComponent::drawHistoryImage(Graphics& g) {
 
     Rectangle<int> local = plotBounds;
 
-    const int rightWidth = roundToInt(0.35f * local.getWidth());
+    const int rightWidth = roundToInt(0.40f * local.getWidth());
     Rectangle<int> right = local.removeFromRight(rightWidth);
-    const int rowHeight = local.getHeight() / 2;
-    const int columnWidth = local.getWidth() / 3;
+    const int rowHeight = local.getHeight() / 3;
+    const int columnWidth = local.getWidth() / 2;
 
-    std::array<Rectangle<int>, 6> analysisAreas;
-    for (int row = 0; row < 2; ++row) {
-        for (int column = 0; column < 3; ++column) {
-            const int index = row * 3 + column;
+    std::array<Rectangle<int>, 5> analysisAreas;
+    analysisAreas[0] = Rectangle<int>(
+        local.getX(), local.getY(), local.getWidth(), rowHeight).reduced(6);
+    for (int row = 1; row < 3; ++row) {
+        for (int column = 0; column < 2; ++column) {
+            const int index = 1 + (row - 1) * 2 + column;
             const int x = local.getX() + column * columnWidth;
             const int y = local.getY() + row * rowHeight;
-            const int width = column == 2 ? local.getRight() - x : columnWidth;
-            const int height = row == 1 ? local.getBottom() - y : rowHeight;
+            const int width = column == 1 ? local.getRight() - x : columnWidth;
+            const int height = row == 2 ? local.getBottom() - y : rowHeight;
             analysisAreas[(size_t) index] = Rectangle<int>(x, y, width, height).reduced(6);
         }
     }
@@ -451,7 +454,7 @@ void MainComponent::drawHistoryImage(Graphics& g) {
         drawWeightedPhaseVelocityPlot(g, analysisAreas[0]);
     }
 
-    for (int harmonic = 0; harmonic < 5; ++harmonic) {
+    for (int harmonic = 0; harmonic < 4; ++harmonic) {
         Graphics::ScopedSaveState state(g);
         drawHarmonicPhaseVelocityPlot(g, analysisAreas[(size_t) harmonic + 1], harmonic);
     }
