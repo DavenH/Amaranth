@@ -274,13 +274,14 @@ protected:
         if (state.currentVertex == nullptr) {
             return;
         }
-        const float vertexY = state.currentVertex->values[dims.y];
-        const float distanceBefore = fabsf(state.lastMouse.y - vertexY);
-        const float distanceAfter = fabsf(state.currentMouse.y - vertexY);
-        const float approach = (distanceBefore - distanceAfter)
+        const float diffY = (state.currentMouse.y - state.lastMouse.y)
                 / sqrtf(panel->getZoomPanel()->rect.h);
         const Curve& curve = curves[(size_t) getStateValue(CurrentCurve)];
-        const float delta = approach * dragScale / (0.1f + curve.tp.scaleY);
+        const float gesturePole = state.start.y < state.currentVertex->values[dims.y]
+                ? 1.f
+                : -1.f;
+        const float delta = diffY * dragScale * gesturePole
+                / (0.1f + curve.tp.scaleY);
 
         for (auto* vertex : movingVertices) {
             float& weight = vertex->values[Vertex::Curve];
@@ -591,11 +592,13 @@ public:
         if (state.currentVertex == nullptr) {
             return;
         }
-        const float vertexY = state.currentVertex->values[dims.y];
-        const float distanceBefore = fabsf(state.lastMouse.y - vertexY);
-        const float distanceAfter = fabsf(state.currentMouse.y - vertexY);
-        const float approach = (distanceBefore - distanceAfter) / sqrtf(panel->getZoomPanel()->rect.h);
-        const float diff = approach / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
+        const Curve& curve = curves[(size_t) getStateValue(CurrentCurve)];
+        const float diffY = (state.currentMouse.y - state.lastMouse.y)
+                / sqrtf(panel->getZoomPanel()->rect.h);
+        const float gesturePole = state.start.y < state.currentVertex->values[dims.y]
+                ? 1.f
+                : -1.f;
+        const float diff = diffY * gesturePole / (0.1f + curve.tp.scaleY);
 
         for (auto* vertex : movingVerts) {
             float& weight = vertex->values[Vertex::Curve];

@@ -39,6 +39,17 @@ class NativeEditSmoke:
             self.command({"command": "quit"})
         except (ConnectionError, FileNotFoundError):
             pass
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            result = subprocess.run(
+                ["pgrep", "-x", "CycleV2"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if result.returncode != 0:
+                return
+            time.sleep(0.02)
+        raise AssertionError("CycleV2 did not exit after native edit smoke")
 
     def command(self, command):
         self.request_id += 1
@@ -223,8 +234,8 @@ class NativeEditSmoke:
             )
             assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.03
             curve_end = panel_position(
-                curve_point["x"] + (control_vertex["x"] - curve_point["x"]) * 0.8,
-                curve_point["y"] + (control_vertex["y"] - curve_point["y"]) * 0.8,
+                curve_point["x"] + (control_vertex["x"] - curve_point["x"]) * 1.2,
+                curve_point["y"] + (control_vertex["y"] - curve_point["y"]) * 1.2,
             )
             self.drag(curve_start, curve_end)
             reshaped = self.flat_snapshot(self.inspect("waveshaper"))
