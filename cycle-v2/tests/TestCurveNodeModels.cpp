@@ -5,6 +5,8 @@
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Effect2D/EnvelopePanelAdapter.h"
+#include "../src/Nodes/Effect2D/FlatCurvePanelAdapter.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
 #include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
@@ -14,6 +16,34 @@
 #include <Obj/MorphPosition.h>
 
 using namespace CycleV2;
+
+TEST_CASE("Curve panel adapters make flat and Envelope ownership unambiguous",
+          "[cycle-v2][curve-panel-adapters]") {
+    FlatCurvePanelAdapter flat(NodeKind::Waveshaper);
+    EnvelopePanelAdapter envelope;
+
+    flat.initialiseDefaultMesh();
+    envelope.initialiseDefaultMesh();
+    REQUIRE(flat.mesh().getNumVerts() == 4);
+    REQUIRE(flat.mesh().getNumCubes() == 0);
+    REQUIRE(envelope.mesh().getNumCubes() > 0);
+}
+
+TEST_CASE("Curve panel adapters synchronize only their typed domain",
+          "[cycle-v2][curve-panel-adapters]") {
+    GraphNodeFactory factory;
+    Node waveshaper = factory.createNode(NodeKind::Waveshaper, "shape", {});
+    Node envelopeNode = factory.createNode(NodeKind::Envelope, "env", {});
+    FlatCurvePanelAdapter flat(NodeKind::Waveshaper);
+    EnvelopePanelAdapter envelope;
+
+    REQUIRE(flat.syncFromNode(waveshaper));
+    REQUIRE_FALSE(flat.syncFromNode(envelopeNode));
+    REQUIRE(envelope.syncFromNode(envelopeNode));
+    REQUIRE_FALSE(envelope.syncFromNode(waveshaper));
+    REQUIRE(flat.lastNodeId() == "shape");
+    REQUIRE(envelope.lastNodeId() == "env");
+}
 
 TEST_CASE("Flat curve models validate atomically and preserve stable selection",
         "[cycle-v2][curve-model]") {

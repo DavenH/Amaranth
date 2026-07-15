@@ -64,6 +64,7 @@ class NativeEditSmoke:
             x = round(source[0] + (destination[0] - source[0]) * step / 4)
             y = round(source[1] + (destination[1] - source[1]) * step / 4)
             moves.append(f"dm:{x},{y}")
+            moves.append("w:5")
         self.click(
             f"m:{source[0]},{source[1]}",
             "w:60",
@@ -75,6 +76,7 @@ class NativeEditSmoke:
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
         self.command({"command": command, "nodeId": node_id})
+        time.sleep(SETTLE_SECONDS)
         return self.inspect(node_id)
 
     def inspect(self, node_id):
@@ -127,6 +129,7 @@ class NativeEditSmoke:
 
         source = panel_position(added_vertex["x"], added_vertex["y"])
         destination = panel_position(min(0.85, added_vertex["x"] + 0.08), min(0.85, added_vertex["y"] + 0.08))
+        self.click(f"m:{source[0]},{source[1]}")
         self.drag(source, destination)
         moved = self.flat_snapshot(self.inspect("waveshaper"))
         moved_vertex = next(vertex for vertex in moved["vertices"] if vertex["id"] == added_vertex["id"])
@@ -137,15 +140,25 @@ class NativeEditSmoke:
             (vertex for vertex in moved["vertices"] if vertex["id"] != moved_vertex["id"]),
             key=lambda vertex: abs(vertex["x"] - moved_vertex["x"]),
         )
-        curve_start = panel_position(
-            (moved_vertex["x"] + neighbour["x"]) * 0.5,
-            (moved_vertex["y"] + neighbour["y"]) * 0.5,
+        left_x = min(moved_vertex["x"], neighbour["x"])
+        right_x = max(moved_vertex["x"], neighbour["x"])
+        curve_points = self.inspect("waveshaper")["effect2D"]["panelState"]["curvePoints"]
+        eligible_curve_points = [
+            point for point in curve_points
+            if abs(point["controlX"] - moved_vertex["x"]) < 0.001
+        ]
+        assert eligible_curve_points
+        curve_point = min(
+            eligible_curve_points,
+            key=lambda point: abs(point["x"] - (left_x + right_x) * 0.5),
         )
+        curve_start = panel_position(curve_point["x"], curve_point["y"])
         curve_end = panel_position(
             moved_vertex["x"],
             moved_vertex["y"],
         )
         old_curve = moved_vertex["curve"]
+        self.click(f"m:{curve_start[0]},{curve_start[1]}")
         self.drag(curve_start, curve_end)
         reshaped = self.flat_snapshot(self.inspect("waveshaper"))
         reshaped_vertex = next(vertex for vertex in reshaped["vertices"] if vertex["id"] == added_vertex["id"])

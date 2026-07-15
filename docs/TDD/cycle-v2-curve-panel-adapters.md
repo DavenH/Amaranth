@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on `cycle-v2-curve-identity-and-edit-commands.md`.
 
@@ -102,3 +102,28 @@ graph commands, revisions, or duplicated generic control values.
 - Graph/document controls and revisions are owned outside panel adapters.
 - `Effect2DPanelBridge` no longer acts as a cross-domain god object.
 
+## Implementation
+
+- `CurvePanelHost` now owns the JUCE host component, native event forwarding,
+  OpenGL resources, scissor restoration, framebuffer snapshots, and repaint
+  callbacks without knowing the node kind or curve model.
+- `FlatCurvePanelAdapter` owns only `FlatCurveModel`/plain `Mesh` translation,
+  defaults, serialization, and preview extraction.
+- `EnvelopePanelAdapter` owns `EnvelopeNodeModel`/`EnvelopeMesh` translation,
+  morph inputs, axis-link and logarithmic state, serialization, and preview
+  extraction. Flat construction cannot contain an Envelope mesh.
+- The remaining `Effect2DPanelBridge` is a composition façade. Generic effect
+  controls and publication revision remain outside adapters, while the mature
+  panel/interactor/rasterizer implementation is hosted rather than copied.
+- Flat and Envelope adapters expose separate typed APIs and live in a closed
+  variant at the composition boundary. There is no common interface with
+  Envelope-shaped no-op methods and no invalid both/neither construction.
+- The obsolete duplicate host component and bridge-local OpenGL clipping code
+  were removed.
+
+Verification covers typed adapter construction and domain rejection, the full
+Cycle V2 unit suite, repeated native macOS edit smoke sequences, and OS-level
+OpenGL capture. Native curve reshape targeting comes from the authoritative
+rasterized curve geometry rather than assuming a linear segment. The capture
+confirms the canvas, cables, previews, and legend remain composited after the
+host extraction.

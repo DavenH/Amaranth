@@ -4,10 +4,14 @@
 
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
+#include <Inter/Interactor2D.h>
 #include <Obj/MorphPosition.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelHostContext.h>
+#include <UI/Panels/Panel2D.h>
 #include <Util/Arithmetic.h>
 
 #include <algorithm>
@@ -30,39 +34,6 @@ bool isEffect2DNode(NodeKind kind) {
         || kind == NodeKind::ImpulseResponse
         || kind == NodeKind::Waveshaper;
 }
-
-class ScopedGLScissor {
-public:
-    ScopedGLScissor(Rectangle<float> bounds, float scaleFactor) {
-        glGetBooleanv(GL_SCISSOR_TEST, &wasEnabled);
-        glGetIntegerv(GL_SCISSOR_BOX, previousBox);
-
-        GLint viewport[4] {};
-        glGetIntegerv(GL_VIEWPORT, viewport);
-
-        const int x = jmax(0, roundToInt(bounds.getX() * scaleFactor));
-        const int y = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
-        const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
-        const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
-
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(x, y, width, height);
-    }
-
-    ~ScopedGLScissor() {
-        if (wasEnabled != 0) {
-            glEnable(GL_SCISSOR_TEST);
-        } else {
-            glDisable(GL_SCISSOR_TEST);
-        }
-
-        glScissor(previousBox[0], previousBox[1], previousBox[2], previousBox[3]);
-    }
-
-private:
-    GLboolean wasEnabled {};
-    GLint previousBox[4] {};
-};
 
 }
 
@@ -532,6 +503,20 @@ public:
                 root->setProperty("midIntercept", interceptToVar(intercepts[intercepts.size() / 2]));
                 root->setProperty("lastIntercept", interceptToVar(intercepts.back()));
             }
+        } else {
+            auto snapshot = const_cast<FXRasterizer&>(fxRasterizer).snapshotView();
+            ScopedLock dataLock(snapshot.lock());
+            Array<var> curvePoints;
+            for (const Curve& curve : snapshot.curves()) {
+                const int resolution = Curve::resolution >> curve.resIndex;
+                const int centre = jlimit(0, resolution - 1, resolution / 2);
+                auto* point = new DynamicObject();
+                point->setProperty("x", curve.transformX[centre]);
+                point->setProperty("y", curve.transformY[centre]);
+                point->setProperty("controlX", curve.b.x);
+                curvePoints.add(point);
+            }
+            root->setProperty("curvePoints", curvePoints);
         }
 
         return var(root);
@@ -1389,213 +1374,33 @@ private:
     bool envelopeBlueLinked { true };
 };
 
-class Effect2DPanelBridge::PanelHostComponent :
-        public Component {
-public:
-    PanelHostComponent(Effect2DPanelBridge& owningBridge, Panel& targetPanel) :
-            owner(owningBridge)
-        ,   panel(targetPanel) {
-        setPaintingIsUnclipped(false);
-        setInterceptsMouseClicks(true, true);
-        setOpaque(false);
-        setWantsKeyboardFocus(true);
-    }
-
-    void paint(Graphics& g) override {
-        owner.paintExpandedSnapshot(g, getLocalBounds().toFloat());
-    }
-
-    void mouseEnter(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        mouseInside = true;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseEnter(localEvent);
-        }
-    }
-
-    void mouseMove(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseMove(localEvent);
-        }
-    }
-
-    void mouseDown(const MouseEvent& event) override {
-        if (!event.mods.isLeftButtonDown() && !event.mods.isRightButtonDown()) {
-            activePointer = false;
-            return;
-        }
-
-        activePointer = true;
-        grabKeyboardFocus();
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDown(localEvent);
-        }
-    }
-
-    void mouseDoubleClick(const MouseEvent& event) override {
-        if (!event.mods.isLeftButtonDown()) {
-            return;
-        }
-
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDoubleClick(localEvent);
-        }
-
-        owner.notifyMeshEdited();
-    }
-
-    void mouseDrag(const MouseEvent& event) override {
-        if (!activePointer || !event.mods.isLeftButtonDown()) {
-            return;
-        }
-
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDrag(localEvent);
-        }
-    }
-
-    void mouseUp(const MouseEvent& event) override {
-        if (!activePointer) {
-            return;
-        }
-
-        activePointer = false;
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseUp(localEvent);
-        }
-
-        if (!owner.notifyMeshEdited()) {
-            owner.synchronizeModelSelection();
-        }
-    }
-
-    void mouseExit(const MouseEvent& event) override {
-        exitIfNeeded(currentMouseEvent(event));
-    }
-
-    void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseWheelMove(localEvent, wheel);
-        }
-    }
-
-    bool keyPressed(const KeyPress& key) override {
-        if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
-            return false;
-        }
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->eraseSelected();
-            interactor->performUpdate(Update);
-            owner.notifyMeshEdited();
-            return true;
-        }
-        return false;
-    }
-
-    void resized() override {
-        panel.panelResized();
-    }
-
-private:
-    MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        const Point<float> localPosition = event.eventComponent == this
-                ? event.position
-                : getLocalPoint(event.eventComponent, event.position).toFloat();
-        return localMouseEvent(event, localPosition);
-    }
-
-    MouseEvent localMouseEvent(const MouseEvent& event, Point<float> localPosition) const {
-        const Point<float> localMouseDown = event.eventComponent == this
-                ? event.mouseDownPosition
-                : event.eventComponent != nullptr
-                ? getLocalPoint(event.eventComponent, event.mouseDownPosition).toFloat()
-                : localPosition;
-
-        return MouseEvent(
-                event.source,
-                localPosition,
-                event.mods,
-                event.pressure,
-                event.orientation,
-                event.rotation,
-                event.tiltX,
-                event.tiltY,
-                const_cast<PanelHostComponent*>(this),
-                event.originalComponent,
-                event.eventTime,
-                localMouseDown,
-                event.mouseDownTime,
-                event.getNumberOfClicks(),
-                event.mouseWasDraggedSinceMouseDown());
-    }
-
-    void enterIfNeeded(const MouseEvent& event) {
-        if (mouseInside) {
-            return;
-        }
-
-        mouseInside = true;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseEnter(event);
-        }
-    }
-
-    void exitIfNeeded(const MouseEvent& event) {
-        if (!mouseInside) {
-            return;
-        }
-
-        mouseInside = false;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseExit(event);
-        }
-    }
-
-    Effect2DPanelBridge& owner;
-    Panel& panel;
-    bool mouseInside {};
-    bool activePointer {};
-};
-
 Effect2DPanelBridge::Effect2DPanelBridge(NodeKind nodeKind) :
-        kind    (nodeKind) {
+        kind    (nodeKind)
+    ,   adapter (nodeKind == NodeKind::Envelope
+                ? decltype(adapter)(std::in_place_type<EnvelopePanelAdapter>)
+                : decltype(adapter)(std::in_place_type<FlatCurvePanelAdapter>, nodeKind)) {
     jassert(isEffect2DNode(kind));
-
-    if (kind == NodeKind::Envelope) {
-        envelopeModel = std::make_unique<EnvelopeNodeModel>();
-        envelopeMesh = &envelopeModel->getMesh();
-        mesh = envelopeMesh;
-    } else {
-        flatModel = std::make_unique<FlatCurveModel>("CycleV2FlatCurve");
-        mesh = &flatModel->getMesh();
-    }
 
     panel = std::make_unique<EffectPanel>(
             &environment.services().getRepo(),
             "CycleV2Effect2DPanel",
             environment.services(),
-            *mesh,
-            envelopeMesh);
+            adapterMesh(),
+            envelopeAdapter() != nullptr ? &envelopeAdapter()->mesh() : nullptr);
     panel->setNodeKind(kind);
+    host = std::make_unique<CurvePanelHost>(
+            *panel,
+            [this](Component* component) {
+                panel->initWithHost(component);
+                panel->stopTimer();
+            },
+            [this](bool resetView) { panel->updateZoomBounds(resetView); },
+            [this] {
+                applyPanelSettings();
+                panel->refreshRasterizer();
+            },
+            [this] { return notifyMeshEdited(); },
+            [this] { synchronizeModelSelection(); });
 
     if (kind != NodeKind::Envelope) {
         initialiseMesh();
@@ -1610,79 +1415,37 @@ void Effect2DPanelBridge::syncFromNode(const Node& node) {
     if (node.kind != kind) {
         return;
     }
-
-    const String typedSnapshot = parameterValueForNode(
-            node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (typedSnapshot.isEmpty()) {
-        return;
-    }
-    if (lastSyncedNodeId == node.id && lastSyncedModelSnapshot == typedSnapshot) {
+    const bool didSync = std::visit([&node](auto& typedAdapter) {
+        return typedAdapter.syncFromNode(node);
+    }, adapter);
+    if (!didSync) {
         return;
     }
 
-    String nextMeshState;
-    bool modelApplied = false;
-
-    if (typedSnapshot.isNotEmpty()) {
-        if (kind == NodeKind::Envelope) {
-            if (envelopeModel->loadSnapshot(typedSnapshot)) {
-                nextMeshState = EnvelopeMeshState::serialize(envelopeModel->getMesh());
-                envelopeLogarithmicValue = envelopeModel->logarithmic;
-                firstControlValue = envelopeModel->red;
-                secondControlValue = envelopeModel->blue;
-                envelopeRedLinked.store(envelopeModel->redLinked);
-                envelopeBlueLinked.store(envelopeModel->blueLinked);
-                modelApplied = true;
-            }
-        } else {
-            if (flatModel->loadSnapshot(typedSnapshot)) {
-                std::vector<Effect2DVertexState> vertices;
-                for (const auto& vertex : flatModel->getVertices()) {
-                    vertices.push_back({ vertex.x, vertex.y, vertex.curve });
-                }
-                nextMeshState = Effect2DMeshState::serialize(vertices);
-                modelApplied = true;
-            }
-        }
-    }
-    curveModelRevision = jmax<uint64_t>(1, (uint64_t) parameterValueForNode(
+    std::visit([this](const auto& typedAdapter) {
+        lastSyncedNodeId = typedAdapter.lastNodeId();
+        lastSyncedModelSnapshot = typedAdapter.lastModelSnapshot();
+        lastSyncedMeshState = typedAdapter.lastMeshState();
+    }, adapter);
+    publicationRevision = jmax<uint64_t>(1, (uint64_t) parameterValueForNode(
             node, CurveNodeModelCodec::revisionParameterId(), "1").getLargeIntValue());
-    const bool nodeChanged = lastSyncedNodeId != node.id;
-    const bool meshChanged = lastSyncedMeshState != nextMeshState;
-
-    if (nodeChanged || meshChanged) {
-        if (!modelApplied) {
-            return;
-        }
-        if (nodeChanged && mesh->getNumVerts() == 0) {
-            initialiseMesh();
-        }
-
-        lastSyncedMeshState = nextMeshState;
-    } else if (!nodeChanged) {
-        return;
-    }
-
-    lastSyncedNodeId = node.id;
-    lastSyncedModelSnapshot = typedSnapshot;
+    applyPanelSettings();
     panel->refreshRasterizer();
 }
 
 Component* Effect2DPanelBridge::getPanelHostComponent() {
-    initialisePanelHost();
-    return panelHost.get();
+    initialiseMesh();
+    return host->component();
 }
 
 Component* Effect2DPanelBridge::getPanelHostComponentIfCreated() {
-    return panelHostInitialised ? panelHost.get() : nullptr;
+    return host->componentIfCreated();
 }
 
 void Effect2DPanelBridge::setPanelHostCallbacks(
         std::function<void()> repaintCallback,
         std::function<void(const MouseCursor&)> cursorCallback) {
-    panelHostRepaintCallback = std::move(repaintCallback);
-    panelHostCursorCallback = std::move(cursorCallback);
-    panel->setHostCallbacks(createPanelHostCallbacks());
+    host->setCallbacks(std::move(repaintCallback), std::move(cursorCallback));
 }
 
 void Effect2DPanelBridge::setMeshEditedCallback(std::function<void()> callback) {
@@ -1695,27 +1458,31 @@ void Effect2DPanelBridge::setControlValues(
         float secondValue,
         float thirdValue,
         int menuId) {
-    const bool changed = effectEnabled != enabled
-            || firstControlValue != firstValue
-            || secondControlValue != secondValue
-            || thirdControlValue != thirdValue
-            || menuControlId != menuId;
-    effectEnabled = enabled;
-    firstControlValue = firstValue;
-    secondControlValue = secondValue;
-    thirdControlValue = thirdValue;
-    menuControlId = menuId;
+    const ControlState next { enabled, firstValue, secondValue, thirdValue, menuId };
+    const bool changed = controls.enabled != next.enabled
+            || controls.first != next.first
+            || controls.second != next.second
+            || controls.third != next.third
+            || controls.menuId != next.menuId;
+    controls = next;
+    if (auto* envelope = envelopeAdapter()) {
+        envelope->setMorph(firstValue, secondValue);
+    }
     if (changed) {
-        ++curveModelRevision;
+        ++publicationRevision;
     }
     applyPanelSettings();
 }
 
 void Effect2DPanelBridge::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
-    if (envelopeLogarithmicValue != shouldUseLogarithmicScale) {
-        ++curveModelRevision;
+    auto* envelope = envelopeAdapter();
+    if (envelope == nullptr) {
+        return;
     }
-    envelopeLogarithmicValue = shouldUseLogarithmicScale;
+    if (envelope->logarithmic() != shouldUseLogarithmicScale) {
+        ++publicationRevision;
+    }
+    envelope->setLogarithmic(shouldUseLogarithmicScale);
 
     if (panel != nullptr) {
         panel->setEnvelopeLogarithmic(shouldUseLogarithmicScale);
@@ -1723,300 +1490,95 @@ void Effect2DPanelBridge::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale)
 }
 
 void Effect2DPanelBridge::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
-    if (envelopeRedLinked.load() != redLinked || envelopeBlueLinked.load() != blueLinked) {
-        ++curveModelRevision;
+    auto* envelope = envelopeAdapter();
+    if (envelope == nullptr) {
+        return;
     }
-    envelopeRedLinked.store(redLinked);
-    envelopeBlueLinked.store(blueLinked);
+    if (envelope->redLinked() != redLinked || envelope->blueLinked() != blueLinked) {
+        ++publicationRevision;
+    }
+    envelope->setAxisLinks(redLinked, blueLinked);
+    panel->setEnvelopeAxisLinks(redLinked, blueLinked);
 }
 
 void Effect2DPanelBridge::renderPanel(
         Rectangle<float> bounds,
         Rectangle<float> clipBounds,
         float scaleFactor) {
-    if (bounds.isEmpty()) {
-        return;
-    }
-
-    initialiseSharedGlResources();
-    applyPanelSettings();
-
-    PanelHostContext context;
-    context.bounds = bounds;
-    context.clip = bounds;
-    context.scaleFactor = scaleFactor;
-    context.visible = true;
-    context.callbacks = createPanelHostCallbacks();
-    panel->setHostContext(context);
-    panel->panelResized();
-    panel->refreshRasterizer();
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    ignoreUnused(clipBounds);
-
-    ScopedGLScissor scissor(bounds, scaleFactor);
-    panel->render();
-
-    Image nextImage;
-    bool hasVisibleContent {};
-    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
-
-    expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
-
-    if (panelHost != nullptr) {
-        auto safeHost = Component::SafePointer<Component>(panelHost.get());
-        auto repaintCallback = panelHostRepaintCallback;
-        MessageManager::callAsync([safeHost, repaintCallback] {
-            if (safeHost != nullptr) {
-                safeHost->repaint();
-            }
-
-            if (repaintCallback != nullptr) {
-                repaintCallback();
-            }
-        });
-    }
+    host->render(bounds, clipBounds, scaleFactor);
 }
 
 void Effect2DPanelBridge::renderPreviewSnapshot(Rectangle<float> bounds, float scaleFactor) {
-    if (bounds.isEmpty()) {
-        return;
-    }
-
-    initialiseSharedGlResources();
-    applyPanelSettings();
-
-    const ZoomRect interactiveZoom = panel->getZoomPanel()->rect;
-
-    PanelHostContext context;
-    context.bounds = bounds;
-    context.clip = bounds;
-    context.scaleFactor = scaleFactor;
-    context.visible = true;
-    context.callbacks = createPanelHostCallbacks();
-    panel->setHostContext(context);
-    panel->panelResized();
-    panel->updateZoomBounds(true);
-    panel->refreshRasterizer();
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    ScopedGLScissor scissor(bounds, scaleFactor);
-    panel->render();
-    panel->getZoomPanel()->rect = interactiveZoom;
-
-    Image nextImage;
-    bool hasVisibleContent {};
-    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
-
-    previewSnapshot.publish(std::move(nextImage), hasVisibleContent);
-}
-
-void Effect2DPanelBridge::captureRenderedPanelImage(
-        Rectangle<float> bounds,
-        float scaleFactor,
-        Image& destination,
-        bool& hasVisibleContent) const {
-    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
-    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
-    const int sourceX = roundToInt(bounds.getX() * scaleFactor);
-    GLint viewport[4] {};
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    const int sourceY = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
-
-    HeapBlock<uint8> pixels(width * height * 4);
-    glFlush();
-    glReadBuffer(GL_BACK);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(sourceX, sourceY, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
-
-    Image nextImage(Image::RGB, width, height, true);
-    Image::BitmapData bitmap(nextImage, Image::BitmapData::writeOnly);
-    bool nextHasVisibleContent = false;
-
-    for (int y = 0; y < height; ++y) {
-        const uint8* srcRow = pixels.get() + (height - 1 - y) * width * 4;
-
-        for (int x = 0; x < width; ++x) {
-            const uint8* src = srcRow + x * 4;
-            bitmap.setPixelColour(x, y, Colour::fromRGB(src[0], src[1], src[2]));
-
-            if ((src[0] + src[1] + src[2]) > 160) {
-                nextHasVisibleContent = true;
-            }
-        }
-    }
-
-    destination = nextImage;
-    hasVisibleContent = nextHasVisibleContent;
+    host->renderPreview(bounds, scaleFactor);
 }
 
 bool Effect2DPanelBridge::paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const {
-    return expandedSnapshot.paint(g, bounds, true);
+    return host->paintExpandedSnapshot(g, bounds);
 }
 
 bool Effect2DPanelBridge::paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const {
-    return previewSnapshot.paint(g, bounds, false);
+    return host->paintPreviewSnapshot(g, bounds);
 }
 
 void Effect2DPanelBridge::initialiseSharedGlResources() {
-    initialisePanelHost();
-
-    if (sharedGlResourcesInitialised) {
-        return;
-    }
-
-    panelGfx = new CommonGL(panel.get());
-    panelRenderer = std::make_unique<GLPanelRenderer>(panelGfx);
-    panel->setGraphicsHelper(panelGfx);
-    panel->setPanelRenderer(panelRenderer.get());
-    panelGfx->initializeTextures();
-    panel->bakeTexturesNextRepaint();
-    sharedGlResourcesInitialised = true;
+    host->component();
 }
 
 void Effect2DPanelBridge::releaseSharedGlResources() {
-    panel->setPanelRenderer(nullptr);
-    panelRenderer = nullptr;
-    panel->setGraphicsHelper(nullptr);
-    panelGfx = nullptr;
-    sharedGlResourcesInitialised = false;
+    host->releaseSharedGlResources();
 }
 
 void Effect2DPanelBridge::applyPanelSettings() {
     if (panel != nullptr) {
         panel->setControlValues(
-                effectEnabled,
-                firstControlValue,
-                secondControlValue,
-                thirdControlValue,
-                menuControlId);
-        panel->setEnvelopeLogarithmic(envelopeLogarithmicValue);
-        panel->setEnvelopeAxisLinks(envelopeRedLinked.load(), envelopeBlueLinked.load());
+                controls.enabled,
+                controls.first,
+                controls.second,
+                controls.third,
+                controls.menuId);
+        if (const auto* envelope = envelopeAdapter()) {
+            panel->setEnvelopeLogarithmic(envelope->logarithmic());
+            panel->setEnvelopeAxisLinks(envelope->redLinked(), envelope->blueLinked());
+        }
     }
 }
 
 int Effect2DPanelBridge::vertexCountForAutomation() const {
-    return mesh->getNumVerts();
+    return adapterMesh().getNumVerts();
 }
 
 var Effect2DPanelBridge::automationState() const {
     var state = panel != nullptr ? panel->automationState() : var(new DynamicObject());
     if (auto* object = state.getDynamicObject()) {
-        object->setProperty("modelRevision", (int64) curveModelRevision);
+        object->setProperty("modelRevision", (int64) publicationRevision);
         object->setProperty("domainModel", kind == NodeKind::Envelope ? "envelope" : "flatCurve");
     }
     return state;
 }
 
 std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DPanelBridge::previewVertices() {
-    std::vector<PreviewVertex> result;
-
-    if (kind == NodeKind::Envelope) {
-        result.reserve((size_t) mesh->getNumCubes());
-        MorphPosition position;
-        position.time.setValueDirect(0.f);
-        position.red.setValueDirect(firstControlValue);
-        position.blue.setValueDirect(secondControlValue);
-        position.timeDepth = 0.001f;
-        position.redDepth = 1.f;
-        position.blueDepth = 1.f;
-
-        for (VertCube* cube : mesh->getCubes()) {
-            if (cube == nullptr) {
-                continue;
-            }
-
-            VertCube::ReductionData reduction;
-            cube->getFinalIntercept(reduction, position);
-
-            if (!reduction.pointOverlaps) {
-                continue;
-            }
-
-            result.push_back({
-                    reduction.v.values[Vertex::Phase],
-                    reduction.v.values[Vertex::Amp],
-                    reduction.v.values[Vertex::Curve]
-            });
-        }
-
-        std::sort(result.begin(), result.end(), [](const PreviewVertex& lhs, const PreviewVertex& rhs) {
-            return lhs.x < rhs.x;
-        });
-        return result;
-    }
-
-    result.reserve((size_t) mesh->getNumVerts());
-
-    for (const auto* vertex : mesh->getVerts()) {
-        if (vertex == nullptr) {
-            continue;
-        }
-
-        result.push_back({
-                vertex->values[Vertex::Phase],
-                vertex->values[Vertex::Amp],
-                vertex->values[Vertex::Curve]
-        });
-    }
-
-    std::sort(result.begin(), result.end(), [](const PreviewVertex& lhs, const PreviewVertex& rhs) {
-        return lhs.x < rhs.x;
-    });
-    return result;
+    return std::visit([](auto& typedAdapter) {
+        return typedAdapter.previewVertices();
+    }, adapter);
 }
 
 String Effect2DPanelBridge::serializedMeshState() {
-    if (kind == NodeKind::Envelope) {
-        return EnvelopeMeshState::serialize(*envelopeMesh);
-    }
-
-    std::vector<Effect2DVertexState> vertices;
-    vertices.reserve((size_t) mesh->getNumVerts());
-
-    for (const auto* vertex : mesh->getVerts()) {
-        if (vertex == nullptr) {
-            continue;
-        }
-
-        vertices.push_back({
-                vertex->values[Vertex::Phase],
-                vertex->values[Vertex::Amp],
-                vertex->values[Vertex::Curve]
-        });
-    }
-
-    return Effect2DMeshState::serialize(vertices);
+    return std::visit([](auto& typedAdapter) {
+        return typedAdapter.serializedMeshState();
+    }, adapter);
 }
 
 String Effect2DPanelBridge::serializedModelSnapshot() {
-    if (kind == NodeKind::Envelope) {
-        const bool synchronized = envelopeModel->synchronizeFromMesh(panel != nullptr
-                ? panel->selectedEnvelopeCubeForModel()
-                : nullptr);
-        if (!synchronized && panel != nullptr) {
-            panel->clearInteractionState();
-            panel->refreshRasterizer();
-        }
-        envelopeModel->logarithmic = envelopeLogarithmicValue;
-        envelopeModel->red = firstControlValue;
-        envelopeModel->blue = secondControlValue;
-        envelopeModel->redLinked = envelopeRedLinked.load();
-        envelopeModel->blueLinked = envelopeBlueLinked.load();
-        envelopeModel->setPublicationRevision(curveModelRevision);
-        lastSyncedModelSnapshot = envelopeModel->snapshot();
-        return lastSyncedModelSnapshot;
-    }
-
-    const bool synchronized = flatModel->synchronizeFromMesh(
-            panel != nullptr ? panel->selectedFlatVertexForModel() : nullptr);
-    if (!synchronized && panel != nullptr) {
+    Vertex* selectedVertex = panel != nullptr ? panel->selectedFlatVertexForModel() : nullptr;
+    VertCube* selectedCube = panel != nullptr ? panel->selectedEnvelopeCubeForModel() : nullptr;
+    const String snapshot = flatAdapter() != nullptr
+            ? flatAdapter()->serializedModelSnapshot(selectedVertex, publicationRevision)
+            : envelopeAdapter()->serializedModelSnapshot(selectedCube, publicationRevision);
+    if (snapshot.isEmpty() && panel != nullptr) {
         panel->clearInteractionState();
         panel->refreshRasterizer();
     }
-    flatModel->setPublicationRevision(curveModelRevision);
-    lastSyncedModelSnapshot = flatModel->snapshot();
+    lastSyncedModelSnapshot = snapshot;
     return lastSyncedModelSnapshot;
 }
 
@@ -2046,48 +1608,10 @@ void Effect2DPanelBridge::toggleSelectedEnvelopeMarker(bool loopMarker) {
     notifyMeshEdited();
 }
 
-void Effect2DPanelBridge::initialisePanelHost() {
-    if (panelHostInitialised) {
-        return;
-    }
-
-    panelHost = std::make_unique<PanelHostComponent>(*this, *panel);
-    panel->initWithHost(panelHost.get());
-    panelHost->removeMouseListener(panel->getInteractor().get());
-    panel->stopTimer();
-    panelHostInitialised = true;
-    initialiseMesh();
-}
-
 void Effect2DPanelBridge::initialiseMesh() {
-    if (mesh->getNumVerts() > 0) {
-        return;
-    }
-
-    if (kind == NodeKind::GuideCurve) {
-        addVertex(kGuidePadding, 0.5f, 1.f);
-        addVertex(0.34f, 0.64f, 0.4f);
-        addVertex(0.62f, 0.36f, 0.4f);
-        addVertex(1.f - kGuidePadding, 0.5f, 1.f);
-    } else if (kind == NodeKind::ImpulseResponse) {
-        addVertex(kIrPadding * 0.5f, 0.5f);
-        addVertex(kIrPadding - 0.001f, 0.5f);
-        addVertex(kIrPadding + 0.001f, 0.5f);
-        addVertex(kIrPadding + 0.003f, 0.5f);
-        addVertex(kIrPadding + 0.005f, 1.0f);
-        addVertex(kIrPadding + 0.010f, 0.1313f);
-        addVertex(kIrPadding + 0.1f, 0.6f);
-        addVertex(kIrPadding + 0.15f, 0.5f);
-        addVertex(kIrPadding + 0.2f, 0.5f);
-        addVertex(1.f, 0.5f);
-    } else if (kind == NodeKind::Waveshaper) {
-        addVertex(kWaveshaperPadding * 0.5f, kWaveshaperPadding * 0.5f, 1.f);
-        addVertex(kWaveshaperPadding, kWaveshaperPadding, 1.f);
-        addVertex(1.f - kWaveshaperPadding, 1.f - kWaveshaperPadding, 1.f);
-        addVertex(1.f - kWaveshaperPadding * 0.5f, 1.f - kWaveshaperPadding * 0.5f, 1.f);
-    } else if (kind == NodeKind::Envelope) {
-        EnvelopeMeshState::apply(EnvelopeMeshState::defaultSnapshot(), *envelopeMesh);
-    }
+    std::visit([](auto& typedAdapter) {
+        typedAdapter.initialiseDefaultMesh();
+    }, adapter);
 
     panel->refreshRasterizer();
 
@@ -2096,54 +1620,22 @@ void Effect2DPanelBridge::initialiseMesh() {
     }
 }
 
-void Effect2DPanelBridge::addVertex(float x, float y, float curve) {
-    if (kind == NodeKind::Envelope) {
-        auto* cube = new VertCube(envelopeMesh);
-        MorphPosition position;
-        position.time.setValueDirect(0.f);
-        position.timeDepth = 0.001f;
-        position.red.setValueDirect(0.f);
-        position.redDepth = 1.f;
-        position.blue.setValueDirect(0.f);
-        position.blueDepth = 1.f;
-        cube->initVerts(position);
-
-        for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-            Vertex* vertex = cube->getVertex(i);
-            vertex->values[Vertex::Phase] = x;
-            vertex->values[Vertex::Amp] = y;
-
-            if (curve >= 0.f) {
-                vertex->values[Vertex::Curve] = curve;
-            }
-        }
-
-        envelopeMesh->addCube(cube);
-        return;
-    }
-
-    auto* vertex = new Vertex(x, y);
-    vertex->values[Vertex::Curve] = curve;
-
-    if (curve >= 1.f) {
-        vertex->setMaxSharpness();
-    }
-
-    mesh->addVertex(vertex);
-}
-
 bool Effect2DPanelBridge::notifyMeshEdited() {
     if (meshEditedCallback == nullptr) {
         return false;
     }
 
-    const String nextState = serializedMeshState();
-    if (nextState == lastSyncedMeshState) {
+    const bool changed = std::visit([](auto& typedAdapter) {
+        return typedAdapter.registerMeshEdit();
+    }, adapter);
+    if (!changed) {
         return false;
     }
 
-    lastSyncedMeshState = nextState;
-    ++curveModelRevision;
+    std::visit([this](const auto& typedAdapter) {
+        lastSyncedMeshState = typedAdapter.lastMeshState();
+    }, adapter);
+    ++publicationRevision;
     meshEditedCallback();
     return true;
 }
@@ -2152,31 +1644,41 @@ void Effect2DPanelBridge::synchronizeModelSelection() {
     if (panel == nullptr) {
         return;
     }
-    if (kind == NodeKind::Envelope) {
-        envelopeModel->synchronizeFromMesh(panel->selectedEnvelopeCubeForModel());
+    if (auto* flat = flatAdapter()) {
+        flat->serializedModelSnapshot(
+                panel->selectedFlatVertexForModel(), publicationRevision);
     } else {
-        flatModel->synchronizeFromMesh(panel->selectedFlatVertexForModel());
+        envelopeAdapter()->serializedModelSnapshot(
+                panel->selectedEnvelopeCubeForModel(), publicationRevision);
     }
 }
 
-PanelHostCallbacks Effect2DPanelBridge::createPanelHostCallbacks() {
-    PanelHostCallbacks callbacks;
-    callbacks.setRepaintCallback([this](Panel*, PanelDirtyState::Flag) {
-        if (panelHostRepaintCallback != nullptr) {
-            panelHostRepaintCallback();
-        }
-    });
-    callbacks.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
-        if (panelHostCursorCallback != nullptr) {
-            panelHostCursorCallback(cursor);
-        }
+Mesh& Effect2DPanelBridge::adapterMesh() {
+    return std::visit([](auto& typedAdapter) -> Mesh& {
+        return typedAdapter.mesh();
+    }, adapter);
+}
 
-        if (panelHost != nullptr) {
-            panelHost->setMouseCursor(cursor);
-        }
-    });
+const Mesh& Effect2DPanelBridge::adapterMesh() const {
+    return std::visit([](const auto& typedAdapter) -> const Mesh& {
+        return typedAdapter.mesh();
+    }, adapter);
+}
 
-    return callbacks;
+FlatCurvePanelAdapter* Effect2DPanelBridge::flatAdapter() {
+    return std::get_if<FlatCurvePanelAdapter>(&adapter);
+}
+
+const FlatCurvePanelAdapter* Effect2DPanelBridge::flatAdapter() const {
+    return std::get_if<FlatCurvePanelAdapter>(&adapter);
+}
+
+EnvelopePanelAdapter* Effect2DPanelBridge::envelopeAdapter() {
+    return std::get_if<EnvelopePanelAdapter>(&adapter);
+}
+
+const EnvelopePanelAdapter* Effect2DPanelBridge::envelopeAdapter() const {
+    return std::get_if<EnvelopePanelAdapter>(&adapter);
 }
 
 }

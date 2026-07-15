@@ -16,18 +16,21 @@ The repository-wide node architecture review is captured in four ordered TDDs:
    Envelope domain state and replaces the shared Effect2D god-objects with
    composed panel infrastructure and cohesive node editors.
 
-The post-implementation review identified five focused follow-ups, in this
+The post-implementation review identified six focused follow-ups, in this
 order where dependencies apply:
 
 1. `cycle-v2-curve-identity-and-edit-commands.md` makes flat vertex and
    Envelope cube identity stable through live editing.
 2. `cycle-v2-curve-state-publication.md` publishes controls, model snapshot,
    and revision as one conflict-checked graph mutation.
-3. `cycle-v2-concrete-curve-editors.md` moves real behavior out of the generic
-   positional editor into cohesive node-specific editors.
-4. `cycle-v2-curve-panel-adapters.md` separates flat and Envelope panel
+3. `cycle-v2-curve-panel-adapters.md` separates flat and Envelope panel
    adaptation from shared OpenGL/panel hosting.
-5. `cycle-v2-node-editor-hosting.md` removes node-specific expanded-editor
+4. `cycle-v2-concrete-curve-panels.md` extracts mature Cycle 1 drawing and
+   interaction policy into reusable domain panels and removes the
+   node-kind-switching compatibility panel.
+5. `cycle-v2-concrete-curve-editors.md` moves controls and bindings out of the
+   generic positional editor into cohesive node-specific editors.
+6. `cycle-v2-node-editor-hosting.md` removes node-specific expanded-editor
    construction and command wiring from `NodeCanvas`.
 
 Implement the definition and graph-model foundation first. Runtime, canvas, and
