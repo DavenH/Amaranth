@@ -61,6 +61,7 @@ public:
     void renderPreview(Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
+    bool usesCursor(const MouseCursor& cursor) const;
     void releaseSharedGlResources();
 
 private:

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented 2026-07-14.
 
 Depends on `cycle-v2-curve-state-publication.md`.
 
@@ -105,3 +105,27 @@ deprecation tests.
 - Adding another curve editor does not require changing an existing editor or
   shared host.
 
+## Implementation Notes
+
+- `Effect2DExpandedEditorComponent` is now a 231-line domain-neutral host. It
+  owns only popup chrome, panel placement, transaction/publication plumbing,
+  and OpenGL repaint delegation; it contains no `NodeKind` branch or curve
+  parameter ID.
+- Waveshaper, impulse-response, guide, and Envelope controls, typed bindings,
+  layout, automation names, and interaction state live in their concrete
+  editor classes.
+- The positional `firstSlider`/`secondSlider`/`thirdSlider` production API and
+  its hard-coded ID-array test were removed. Typed model binding tests and the
+  native event-delivery smoke cover semantic behavior instead.
+- The editor factory remains the composition root that registers node kinds;
+  adding an editor does not modify the shared host or any existing editor.
+
+## Verification Results
+
+- `cmake --build --preset tests --parallel 10`
+- `cmake --build --preset standalone-debug --parallel 10`
+- `CycleV2_tests "[cycle-v2][curve-model]"`: 156 assertions in 17 cases
+- `cycle-v2-agent-effect2d-panels.json`: all four concrete editors opened and
+  Waveshaper/IR panel gestures completed without an assertion or crash.
+- The native edit smoke completed its Effect2D sequence, then exposed an
+  unrelated open Trimesh deletion regression recorded in `ui-bugs.md`.

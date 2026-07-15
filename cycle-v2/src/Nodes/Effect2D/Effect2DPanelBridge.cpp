@@ -32,7 +32,6 @@ Effect2DPanelBridge::Effect2DPanelBridge(NodeKind nodeKind) :
             panel->hostedPanel(),
             [this](Component* component) {
                 panel->initWithHost(component);
-                panel->stopUpdates();
             },
             [this](bool resetView) { panel->updateZoomBounds(resetView); },
             [this] {
@@ -192,6 +191,7 @@ var Effect2DPanelBridge::automationState() const {
     if (auto* object = state.getDynamicObject()) {
         object->setProperty("modelRevision", (int64) publicationRevision);
         object->setProperty("domainModel", kind == NodeKind::Envelope ? "envelope" : "flatCurve");
+        object->setProperty("curveResizeCursor", host->usesCursor(MouseCursor::UpDownResizeCursor));
     }
     return state;
 }

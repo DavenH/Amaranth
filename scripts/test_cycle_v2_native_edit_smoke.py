@@ -73,6 +73,19 @@ class NativeEditSmoke:
             f"du:{destination[0]},{destination[1]}",
         )
 
+    def capture(self, name, bounds):
+        directory = os.environ.get("CYCLE_V2_NATIVE_CAPTURE_DIR")
+        if not directory:
+            return
+        time.sleep(0.25)
+        os.makedirs(directory, exist_ok=True)
+        region = "{x},{y},{width},{height}".format(**{
+            key: round(bounds[key]) for key in ("x", "y", "width", "height")
+        })
+        subprocess.run([
+            "screencapture", "-C", "-x", f"-R{region}", os.path.join(directory, f"{name}.png")
+        ], check=True)
+
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
         self.command({"command": command, "nodeId": node_id})
@@ -136,43 +149,104 @@ class NativeEditSmoke:
         assert abs(moved_vertex["x"] - added_vertex["x"]) > 0.02
         assert moved["selection"] == added_vertex["id"]
 
-        neighbour = min(
-            (vertex for vertex in moved["vertices"] if vertex["id"] != moved_vertex["id"]),
-            key=lambda vertex: abs(vertex["x"] - moved_vertex["x"]),
-        )
-        left_x = min(moved_vertex["x"], neighbour["x"])
-        right_x = max(moved_vertex["x"], neighbour["x"])
-        curve_points = self.inspect("waveshaper")["effect2D"]["panelState"]["curvePoints"]
-        eligible_curve_points = [
-            point for point in curve_points
-            if abs(point["controlX"] - moved_vertex["x"]) < 0.001
-        ]
-        assert eligible_curve_points
-        curve_point = min(
-            eligible_curve_points,
-            key=lambda point: abs(point["x"] - (left_x + right_x) * 0.5),
-        )
-        curve_start = panel_position(curve_point["x"], curve_point["y"])
-        curve_end = panel_position(
-            moved_vertex["x"],
-            moved_vertex["y"],
-        )
-        old_curve = moved_vertex["curve"]
-        self.click(f"m:{curve_start[0]},{curve_start[1]}")
-        self.drag(curve_start, curve_end)
-        reshaped = self.flat_snapshot(self.inspect("waveshaper"))
-        reshaped_vertex = next(vertex for vertex in reshaped["vertices"] if vertex["id"] == added_vertex["id"])
-        assert abs(reshaped_vertex["curve"] - old_curve) > 0.01
+        reshaped = moved
+        used_vertex_ids = set()
+        for polarity in (1, -1):
+            def polarity_candidates():
+                current_inspection = self.inspect("waveshaper")
+                current = self.flat_snapshot(current_inspection)
+                vertices = {vertex["x"]: vertex for vertex in current["vertices"]}
+                found = []
+                internal_vertices = sorted(vertices.values(), key=lambda item: item["x"])[1:-1]
+                for point in current_inspection["effect2D"]["panelState"]["waveformPoints"]:
+                    vertex = min(internal_vertices, key=lambda item: abs(item["x"] - point["x"]))
+                    vertical_delta = vertex["y"] - point["y"]
+                    if (vertical_delta * polarity > 0.03
+                            and vertex["curve"] < 0.9
+                            and vertex["id"] not in used_vertex_ids):
+                        found.append((abs(vertical_delta), point, vertex))
+                return found
 
-        selected_point = panel_position(reshaped_vertex["x"], reshaped_vertex["y"])
-        self.click(f"c:{selected_point[0]},{selected_point[1]}", "kp:delete")
+            candidates = polarity_candidates()
+            if not candidates:
+                current = self.flat_snapshot(self.inspect("waveshaper"))
+                movable = [
+                    vertex for vertex in sorted(current["vertices"], key=lambda item: item["x"])[1:-1]
+                    if vertex["id"] not in used_vertex_ids and vertex["curve"] < 0.9
+                ]
+                if movable:
+                    control_vertex = movable[0]
+                    source = panel_position(control_vertex["x"], control_vertex["y"])
+                    destination = panel_position(control_vertex["x"], 0.85 if polarity > 0 else 0.2)
+                    self.click(f"m:{source[0]},{source[1]}")
+                    self.drag(source, destination)
+                    candidates = polarity_candidates()
+                else:
+                    before_add = current
+                    add_position = panel_position(
+                        open_phase(before_add["vertices"]), 0.85 if polarity > 0 else 0.2
+                    )
+                    self.click(f"rc:{add_position[0]},{add_position[1]}")
+                    after_add = self.flat_snapshot(self.inspect("waveshaper"))
+                    assert any(vertex["id"] not in {
+                        item["id"] for item in before_add["vertices"]
+                    } for vertex in after_add["vertices"])
+                    candidates = polarity_candidates()
+                    assert candidates, ("missing curve polarity after insertion", polarity)
+            assert candidates, ("missing curve polarity", polarity)
+            _, curve_point, control_vertex = max(candidates, key=lambda item: item[0])
+            used_vertex_ids.add(control_vertex["id"])
+
+            curve_start = panel_position(curve_point["x"], curve_point["y"])
+            if polarity == 1:
+                blank = self.point(panel, 0.5, 0.1)
+                self.click(
+                    f"m:{blank[0] + 8},{blank[1]}",
+                    "w:20",
+                    f"m:{blank[0]},{blank[1]}",
+                )
+                blank_state = self.inspect("waveshaper")["effect2D"]["panelState"]
+                assert not blank_state["curveHover"], "curve hover remained active away from the curve"
+                assert not blank_state["curveResizeCursor"], "curve cursor remained active away from the curve"
+                self.capture("effect2d-before-hover", panel)
+            self.click(f"m:{curve_start[0]},{curve_start[1]}")
+            hover_state = self.inspect("waveshaper")["effect2D"]["panelState"]
+            assert hover_state["curveHover"], ("curve hover callback missing", polarity)
+            assert hover_state["curveResizeCursor"], ("curve resize cursor missing", polarity)
+            if polarity == 1:
+                self.capture("effect2d-after-hover", panel)
+            hovered_vertex = hover_state["currentVertex"]
+            before_drag = self.flat_snapshot(self.inspect("waveshaper"))
+            control_vertex = min(
+                before_drag["vertices"],
+                key=lambda item: abs(item["x"] - hovered_vertex["x"]) + abs(item["y"] - hovered_vertex["y"]),
+            )
+            assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.03
+            curve_end = panel_position(
+                curve_point["x"] + (control_vertex["x"] - curve_point["x"]) * 0.8,
+                curve_point["y"] + (control_vertex["y"] - curve_point["y"]) * 0.8,
+            )
+            self.drag(curve_start, curve_end)
+            reshaped = self.flat_snapshot(self.inspect("waveshaper"))
+            reshaped_vertex = next(
+                vertex for vertex in reshaped["vertices"] if vertex["id"] == control_vertex["id"]
+            )
+            assert reshaped_vertex["curve"] > control_vertex["curve"] + 0.01, (
+                polarity, control_vertex["curve"], reshaped_vertex["curve"]
+            )
+
+        vertex_to_delete = reshaped["selection"]
+        assert vertex_to_delete > 0
+        selected_vertex = next(item for item in reshaped["vertices"] if item["id"] == vertex_to_delete)
+        selected_point = panel_position(selected_vertex["x"], selected_vertex["y"])
+        self.click(f"c:{selected_point[0]},{selected_point[1]}", "w:60", "kp:delete")
         deleted = self.flat_snapshot(self.inspect("waveshaper"))
-        assert all(vertex["id"] != added_vertex["id"] for vertex in deleted["vertices"])
+        assert all(item["id"] != vertex_to_delete for item in deleted["vertices"])
 
         second_add = panel_position(open_phase(deleted["vertices"]), 0.68)
         self.click(f"rc:{second_add[0]},{second_add[1]}")
         final = self.flat_snapshot(self.inspect("waveshaper"))
-        assert len(final["vertices"]) == len(initial["vertices"]) + 1
+        assert len(final["vertices"]) == len(deleted["vertices"]) + 1
 
     def trimesh_sequence(self):
         state = self.open_editor("waveMesh", trimesh=True)
@@ -258,6 +332,11 @@ class NativeEditSmoke:
     def run(self):
         self.start()
         try:
+            self.command({
+                "command": "openGraph",
+                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+            })
+            time.sleep(SETTLE_SECONDS)
             self.effect2d_sequence()
             self.trimesh_sequence()
         finally:

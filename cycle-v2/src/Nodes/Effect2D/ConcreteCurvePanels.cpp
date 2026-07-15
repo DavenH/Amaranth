@@ -54,7 +54,7 @@ public:
         speedApplicable = false;
         guideCurveApplicable = false;
         alwaysDrawDepthLines = true;
-        drawLinesAfterFill = true;
+        drawLinesAfterFill = false;
         curveIsBipolar = bipolar;
         bgPaddingLeft = padding;
         bgPaddingRight = padding;
@@ -84,7 +84,6 @@ public:
     }
 
     Panel& hostedPanel() override { return *this; }
-    void stopUpdates() override { stopTimer(); }
     void init() override {
         Panel2D::init();
         Interactor2D::init();
@@ -136,6 +135,7 @@ public:
         return Interactor::locateClosestElement();
     }
     void setExtraElements(float x) override { Interactor2D::setExtraElements(x); }
+    float getCurveProximityThreshold() const override { return 20.f; }
     bool addNewCube(float startTime, float x, float y, float curve) override {
         ignoreUnused(startTime);
         auto* vertex = new Vertex(x, y);
@@ -182,6 +182,17 @@ public:
             curvePoints.add(point);
         }
         root->setProperty("curvePoints", curvePoints);
+        Array<var> waveformPoints;
+        const Buffer<Float32> waveX = snapshot.waveX();
+        const Buffer<Float32> waveY = snapshot.waveY();
+        for (int index = 0; index < jmin(waveX.size(), waveY.size()); ++index) {
+            auto* point = new DynamicObject();
+            point->setProperty("x", waveX[index]);
+            point->setProperty("y", waveY[index]);
+            waveformPoints.add(point);
+        }
+        root->setProperty("waveformPoints", waveformPoints);
+        root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         return var(root);
     }
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const override {
@@ -238,6 +249,49 @@ public:
     }
 
 protected:
+    void doReshapeCurve(const MouseEvent& event) override {
+        ignoreUnused(event);
+        auto snapshot = rasterizerSnapshot();
+        if (snapshot.curves().empty()) {
+            return;
+        }
+
+        flag(LoweredRes) = true;
+        const vector<Curve>& curves = snapshot.curves();
+        {
+            ScopedLock lock(vertexLock);
+            vector<Vertex*>& selected = getSelected();
+            selected.clear();
+            if (state.currentVertex != nullptr) {
+                selected.push_back(state.currentVertex);
+                updateSelectionFrames();
+            }
+        }
+        resetFinalSelection();
+
+        const Array<Vertex*> movingVertices = getVerticesToMove(state.currentCube, state.currentVertex);
+        const float dragScale = getDragMovementScale(state.currentCube);
+        if (state.currentVertex == nullptr) {
+            return;
+        }
+        const float vertexY = state.currentVertex->values[dims.y];
+        const float distanceBefore = fabsf(state.lastMouse.y - vertexY);
+        const float distanceAfter = fabsf(state.currentMouse.y - vertexY);
+        const float approach = (distanceBefore - distanceAfter)
+                / sqrtf(panel->getZoomPanel()->rect.h);
+        const Curve& curve = curves[(size_t) getStateValue(CurrentCurve)];
+        const float delta = approach * dragScale / (0.1f + curve.tp.scaleY);
+
+        for (auto* vertex : movingVertices) {
+            float& weight = vertex->values[Vertex::Curve];
+            weight += delta;
+            NumberUtils::constrain(weight, 0.f, 1.f);
+        }
+
+        listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
+        flag(DidMeshChange) |= delta != 0.f;
+    }
+
     CurvePanelDrawing::Canvas drawingCanvas() {
         return {
             *gfx,
@@ -314,7 +368,6 @@ friend class Effect2DPanelBridge;
 
 public:
     Panel& hostedPanel() override { return *this; }
-    void stopUpdates() override { stopTimer(); }
 
     EnvelopeCurvePanel(
             SingletonRepo* repo,
@@ -336,7 +389,7 @@ public:
         speedApplicable = false;
         guideCurveApplicable = false;
         alwaysDrawDepthLines = true;
-        drawLinesAfterFill = true;
+        drawLinesAfterFill = false;
 
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = Color(0.92f, 0.93f, 0.96f, 0.92f);
@@ -446,6 +499,7 @@ public:
     bool locateClosestElement() override {
         return Interactor2D::locateClosestElement();
     }
+    float getCurveProximityThreshold() const override { return 20.f; }
 
     void setExtraElements(float x) override {
         ScopedLock lock(vertexLock);
@@ -534,13 +588,18 @@ public:
         resetFinalSelection();
 
         Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
-        const float diffY = (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
-        const float diff = diffY / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
-        const int pole = curves[getStateValue(CurrentCurve)].tp.ypole;
+        if (state.currentVertex == nullptr) {
+            return;
+        }
+        const float vertexY = state.currentVertex->values[dims.y];
+        const float distanceBefore = fabsf(state.lastMouse.y - vertexY);
+        const float distanceAfter = fabsf(state.currentMouse.y - vertexY);
+        const float approach = (distanceBefore - distanceAfter) / sqrtf(panel->getZoomPanel()->rect.h);
+        const float diff = approach / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
 
         for (auto* vertex : movingVerts) {
             float& weight = vertex->values[Vertex::Curve];
-            weight += diff * pole;
+            weight += diff;
             NumberUtils::constrain(weight, 0.f, 1.f);
         }
 
@@ -636,6 +695,7 @@ public:
 
         root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
+        root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         Array<var> vertexParameters;
         for (const auto& parameter : selectedVertexParameters()) {
             auto* encoded = new DynamicObject();

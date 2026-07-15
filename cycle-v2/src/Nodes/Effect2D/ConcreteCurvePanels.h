@@ -24,7 +24,6 @@ public:
     virtual ~CurvePanel() = default;
 
     virtual Panel& hostedPanel() = 0;
-    virtual void stopUpdates() = 0;
     virtual void initWithHost(Component* hostComponent) = 0;
     virtual void clearInteractionState() = 0;
     virtual void setControlValues(

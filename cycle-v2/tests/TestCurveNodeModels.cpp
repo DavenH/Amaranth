@@ -315,18 +315,6 @@ TEST_CASE("Envelope typed loading rejects malformed state without mutation",
     REQUIRE(model.snapshot() == before);
 }
 
-TEST_CASE("Named curve editors expose only their schema controls",
-        "[cycle-v2][curve-editor]") {
-    REQUIRE(WaveshaperEditorComponent::controlIds()
-            == StringArray({ "enabled", "pre", "post", "aaFactor" }));
-    REQUIRE(ImpulseResponseEditorComponent::controlIds()
-            == StringArray({ "enabled", "size", "post", "highPass" }));
-    REQUIRE(GuideCurveEditorComponent::controlIds()
-            == StringArray({ "enabled", "noise", "dcOffset", "phase" }));
-    REQUIRE(EnvelopeEditorComponent::controlIds()
-            == StringArray({ "logarithmic", "red", "blue", "level" }));
-}
-
 TEST_CASE("Node-specific curve models bind named controls without positional semantics",
         "[cycle-v2][curve-model][controls]") {
     GraphNodeFactory factory;

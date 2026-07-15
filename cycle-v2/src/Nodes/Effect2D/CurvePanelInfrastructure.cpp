@@ -95,6 +95,7 @@ public:
         mouseInside = true;
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseEnter(localEvent);
+            interactor->mouseMove(localEvent);
         }
     }
 
@@ -186,9 +187,8 @@ public:
 
 private:
     MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        const Point<float> localPosition = event.eventComponent == this
-                ? event.position
-                : getLocalPoint(event.eventComponent, event.position).toFloat();
+        const Point<float> localPosition = getLocalPoint(
+                nullptr, Desktop::getMousePosition()).toFloat();
         const Point<float> localMouseDown = event.eventComponent == this
                 ? event.mouseDownPosition
                 : event.eventComponent != nullptr
@@ -344,6 +344,10 @@ bool CurvePanelHost::paintExpandedSnapshot(Graphics& graphics, Rectangle<float> 
 
 bool CurvePanelHost::paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const {
     return previewSnapshot.paint(graphics, bounds, false);
+}
+
+bool CurvePanelHost::usesCursor(const MouseCursor& cursor) const {
+    return hostComponent != nullptr && hostComponent->getMouseCursor() == cursor;
 }
 
 void CurvePanelHost::releaseSharedGlResources() {
