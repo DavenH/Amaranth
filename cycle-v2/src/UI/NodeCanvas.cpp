@@ -2443,9 +2443,6 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
-    const Node* expandedNode = findNode(expandedNodeId);
-    const bool hasExpandedEditor = expandedEditorBlocksCanvas(expandedNode);
-    const Rectangle<float> expandedPanel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
 
     for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
         const auto& edge = edges[(size_t) edgeIndex];
@@ -2462,10 +2459,6 @@ void NodeCanvas::drawEdges(Graphics& g) {
         const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
 
         if (!cableBounds.intersects(visibleArea)) {
-            continue;
-        }
-
-        if (hasExpandedEditor && expandedPanel.intersects(cableBounds)) {
             continue;
         }
 

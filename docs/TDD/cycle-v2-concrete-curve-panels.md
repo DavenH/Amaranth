@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on:
 
@@ -223,3 +223,24 @@ No shared host or base panel may contain `switch (NodeKind)`, `if (kind ==
 - Adding a new curve node requires a new domain panel and registration, not
   modification of an existing shared panel.
 
+## Implementation Notes
+
+- `ConcreteCurvePanels` now provides independently constructed Waveshaper,
+  Guide, impulse-response, and Envelope panels. The three flat panels share
+  only plain `Mesh`/`FXRasterizer` mechanics; Envelope requires an
+  `EnvelopeMesh` and owns its `EnvRasterizer`, morph, marker, seam, grid, and
+  cube interaction policies.
+- Flat and Envelope factories are separately typed, so an Envelope panel
+  cannot be constructed with a plain mesh or through a nullable dependency.
+  The only remaining `NodeKind` dispatch is the flat-panel registration
+  factory at the composition boundary.
+- `CurvePanelDrawing` extracts the mature Waveshaper, Guide, and IR decoration
+  used by both Cycle 1 and Cycle 2. Cycle 1 remains responsible for translating
+  application-owned IR buffers and effect state; no Cycle application service
+  leaks into the shared drawing layer.
+- `Effect2DPanelBridge::EffectPanel`, `setNodeKind()`, and its rendering,
+  rasterizer, zoom, and interaction branches were deleted. The bridge now
+  composes a typed model adapter, concrete panel, and domain-neutral host.
+- Curve presentation continues through the mature rasterizers and `Panel2D`;
+  the former extra sorted-vertex drawing pass was removed rather than retained
+  as a second approximation of curve geometry.

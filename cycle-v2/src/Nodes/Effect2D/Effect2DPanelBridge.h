@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "ConcreteCurvePanels.h"
 #include "CurvePanelInfrastructure.h"
 #include "EnvelopePanelAdapter.h"
 #include "FlatCurvePanelAdapter.h"
@@ -53,8 +54,6 @@ public:
     void toggleSelectedEnvelopeMarker(bool loopMarker);
 
 private:
-    class EffectPanel;
-
     void initialiseMesh();
     bool notifyMeshEdited();
     void synchronizeModelSelection();
@@ -65,6 +64,10 @@ private:
     const FlatCurvePanelAdapter* flatAdapter() const;
     EnvelopePanelAdapter* envelopeAdapter();
     const EnvelopePanelAdapter* envelopeAdapter() const;
+    FlatCurvePanelContract* flatPanel();
+    const FlatCurvePanelContract* flatPanel() const;
+    EnvelopeCurvePanelContract* envelopePanel();
+    const EnvelopeCurvePanelContract* envelopePanel() const;
 
     struct ControlState {
         bool enabled { true };
@@ -77,7 +80,7 @@ private:
     NodeKind kind;
     CurvePanelEnvironment environment;
     std::variant<FlatCurvePanelAdapter, EnvelopePanelAdapter> adapter;
-    std::unique_ptr<EffectPanel> panel;
+    std::unique_ptr<CurvePanel> panel;
     std::unique_ptr<CurvePanelHost> host;
     std::function<void()> meshEditedCallback;
     ControlState controls;

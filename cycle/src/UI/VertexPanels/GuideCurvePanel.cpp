@@ -8,6 +8,8 @@
 
 #include "GuideCurvePanel.h"
 
+#include <UI/Panels/CurvePanelDrawing.h>
+
 #include <Util/ScopedFunction.h>
 
 #include "../Panels/VertexPropertiesPanel.h"
@@ -151,41 +153,21 @@ void GuideCurvePanel::rasterizeTable() {
 
 void GuideCurvePanel::preDraw()
 {
-    float padding	= getRealConstant(GuideCurvePadding);
-    int left 		= 0;
-    int right 		= getWidth();
-    int innerRight 	= sx(1 - padding);
-    int innerLeft 	= sx(padding);
-    int bottom 		= 0;
-    int top 		= getHeight();
-
-    gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
-    gfx->fillRect(left, top, innerLeft, bottom, false);
-    gfx->fillRect(right, top, innerRight, bottom, false);
-
-    gfx->disableSmoothing();
-    gfx->setCurrentColour(0.2f, 0.2f, 0.2f, 0.5f);
-
-    gfx->drawLine(innerLeft, top, innerLeft, bottom, false);
-    gfx->drawLine(innerRight, top, innerRight, bottom, false);
-    gfx->enableSmoothing();
-
     int currentLayer = meshLib->getLayerGroup(LayerGroups::GroupGuideCurve).current;
-
     GuideCurveProps& props = guideTables[currentLayer];
-
-    float rectLeft = padding;
-    float rectRight = 1 - padding;
-    float rectSize = 1 - 2 * padding;
-
-    gfx->setCurrentColour(0.7f, 0.55f, 0.18f, 0.17f);
-    gfx->fillRect(rectLeft, 0.5 + 0.5 * props.noiseLevel, rectRight, 0.5f - 0.5f * props.noiseLevel, true);
-
-    gfx->setCurrentColour(0.7f, 0.08f, 0.5f, 0.17f);
-    gfx->fillRect(rectLeft, 0.5 + 0.5 * props.vertOffsetLevel, rectRight, 0.5f - 0.5f * props.vertOffsetLevel, true);
-
-    gfx->setCurrentColour(0.3f, 0.6f, 0.9f, 0.17f);
-    gfx->fillRect(0.5 - 0.5 * rectSize * props.phaseOffsetLevel, 0, 0.5 + 0.5 * rectSize * props.phaseOffsetLevel, 1.f, true);
+    CurvePanelDrawing::Canvas canvas {
+        *gfx,
+        getWidth(),
+        getHeight(),
+        [this](float x) { return sx(x); },
+        [this](float y) { return sy(y); }
+    };
+    CurvePanelDrawing::drawGuideBackground(canvas, {
+        (float) getRealConstant(GuideCurvePadding),
+        props.noiseLevel,
+        props.vertOffsetLevel,
+        props.phaseOffsetLevel
+    });
 }
 
 bool GuideCurvePanel::isEffectEnabled() const {
