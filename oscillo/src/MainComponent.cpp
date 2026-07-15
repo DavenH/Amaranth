@@ -226,7 +226,7 @@ void MainComponent::drawPhaseVelocityBarChart(Graphics& g, const Rectangle<int>&
 void MainComponent::drawHarmonicPhaseVelocityPlot(
         Graphics& g, const Rectangle<int>& area, int harmonicIndex) {
     PhaseVelocityHistoryRenderer::draw(g, area, harmonicIndex,
-        "H" + String(harmonicIndex + 1) + " phase velocity", noteHistories,
+        "H" + String(harmonicIndex + 1), noteHistories,
         noteSequenceCounter, viridis, kOscilloPanelBackground, kOscilloGrid,
         kOscilloLabel, kPlotMaxVelocity);
 
@@ -234,7 +234,7 @@ void MainComponent::drawHarmonicPhaseVelocityPlot(
 
 void MainComponent::drawWeightedPhaseVelocityPlot(Graphics& g, const Rectangle<int>& area) {
     PhaseVelocityHistoryRenderer::draw(g, area, -1,
-        "Weighted phase velocity", noteHistories, noteSequenceCounter, inferno,
+        "Pitch", noteHistories, noteSequenceCounter, inferno,
         kOscilloPanelBackground, kOscilloGrid, kOscilloLabel, kPlotMaxVelocity);
 }
 
