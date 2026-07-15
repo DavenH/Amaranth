@@ -29,6 +29,8 @@ Oscillo is a standalone tuner and pitch-analysis tool for piano work. It listens
 to microphone input, tracks real-time pitch, and visualizes period, spectrum,
 phase, drift, and note history against a keyboard reference.
 
+![Oscillo main UI](oscillo/media/screenshot.jpg)
+
 Read more in [`oscillo/README.md`](oscillo/README.md).
 
 ### AmaranthLib
