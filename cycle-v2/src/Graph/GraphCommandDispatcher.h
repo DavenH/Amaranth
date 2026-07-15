@@ -6,6 +6,14 @@
 
 namespace CycleV2 {
 
+struct CurveNodeStatePublication {
+    juce::String nodeId;
+    uint64_t expectedRevision {};
+    uint64_t revision {};
+    juce::String modelSnapshot;
+    std::vector<NodeParameter> controls;
+};
+
 class GraphCommandDispatcher {
 public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
@@ -31,10 +39,7 @@ public:
             const juce::String& parameterId,
             const juce::String& label,
             const juce::String& value);
-    GraphEditResult publishCurveModel(
-            const juce::String& nodeId,
-            const juce::String& snapshot,
-            uint64_t modelRevision);
+    GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
     GraphEditResult moveNode(const juce::String& nodeId, juce::Point<float> position);
     GraphEditResult resizeNode(const juce::String& nodeId, juce::Rectangle<float> bounds);
     GraphEditResult editNodePresentation(

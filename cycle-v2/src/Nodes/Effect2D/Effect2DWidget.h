@@ -39,6 +39,7 @@ public:
     std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
     String serializedMeshState();
     String serializedModelSnapshot();
+    String prepareModelPublication(uint64_t currentRevision);
     uint64_t modelRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);

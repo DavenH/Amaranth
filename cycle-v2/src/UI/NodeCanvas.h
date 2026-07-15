@@ -142,6 +142,8 @@ private:
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
     bool trimeshVertexParameterUndoPushed {};
+    bool curveTransactionActive {};
+    bool curvePublicationPending {};
     bool expandedEditorDragCaptured {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};

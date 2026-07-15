@@ -3419,52 +3419,54 @@ void NodeCanvas::updateExpandedEditorHost(const Node* node) {
                     safeThis->openGLContext.triggerRepaint();
                 }
             };
-            callbacks.setNodeParameter = [safeThis](const String& parameterId, const String& label, const String& value) {
+            callbacks.publishState = [safeThis](
+                    const String& snapshot,
+                    uint64_t revision,
+                    const std::vector<NodeParameter>& controls) {
                 if (safeThis == nullptr || safeThis->expandedNodeId.isEmpty()) {
-                    return;
+                    return false;
                 }
 
                 const Node* node = safeThis->findNode(safeThis->expandedNodeId);
-                if (node == nullptr || parameterValueForNode(*node, parameterId) == value) {
-                    return;
+                if (node == nullptr) {
+                    return false;
                 }
-
-                auto result = safeThis->commands.setNodeParameter(
+                const auto result = safeThis->commands.publishCurveState({
                         node->id,
-                        parameterId,
-                        label,
-                        value);
-
-                if (!result.succeeded()) {
-                    return;
+                        CurveNodeModelCodec::revisionFromParameters(node->parameters),
+                        revision,
+                        snapshot,
+                        controls
+                });
+                if (!result.succeeded() || !result.changed) {
+                    return result.succeeded();
                 }
-
-                safeThis->scheduleCompiledStateRefresh();
+                if (safeThis->curveTransactionActive) {
+                    safeThis->curvePublicationPending = true;
+                } else {
+                    safeThis->scheduleCompiledStateRefresh();
+                }
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->repaint();
-            };
-            callbacks.publishModel = [safeThis](const String& snapshot, uint64_t revision) {
-                if (safeThis == nullptr || safeThis->expandedNodeId.isEmpty()) {
-                    return;
-                }
-
-                const auto result = safeThis->commands.publishCurveModel(
-                        safeThis->expandedNodeId, snapshot, revision);
-                if (!result.succeeded()) {
-                    return;
-                }
-                safeThis->scheduleCompiledStateRefresh();
-                safeThis->openGLContext.triggerRepaint();
-                safeThis->repaint();
+                return true;
             };
             callbacks.beginTransaction = [safeThis] {
                 if (safeThis != nullptr) {
+                    safeThis->curveTransactionActive = true;
+                    safeThis->curvePublicationPending = false;
                     safeThis->commands.beginCompoundEdit();
                 }
             };
             callbacks.commitTransaction = [safeThis] {
                 if (safeThis != nullptr) {
                     safeThis->commands.commitCompoundEdit();
+                    safeThis->curveTransactionActive = false;
+                    if (safeThis->curvePublicationPending) {
+                        safeThis->curvePublicationPending = false;
+                        safeThis->scheduleCompiledStateRefresh();
+                        safeThis->openGLContext.triggerRepaint();
+                        safeThis->repaint();
+                    }
                 }
             };
             effect2DExpandedEditor->setCallbacks(std::move(callbacks));

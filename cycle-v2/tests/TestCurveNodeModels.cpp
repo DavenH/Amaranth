@@ -17,6 +17,34 @@
 
 using namespace CycleV2;
 
+namespace {
+
+std::vector<CycleV2::NodeParameter> curveControls(const Node& node) {
+    std::vector<CycleV2::NodeParameter> controls;
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
+                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
+            controls.push_back(parameter);
+        }
+    }
+    return controls;
+}
+
+CurveNodeStatePublication publicationFor(
+        const Node& node,
+        const String& snapshot,
+        uint64_t revision) {
+    return {
+        node.id,
+        CurveNodeModelCodec::revisionFromParameters(node.parameters),
+        revision,
+        snapshot,
+        curveControls(node)
+    };
+}
+
+}
+
 TEST_CASE("Curve panel adapters make flat and Envelope ownership unambiguous",
           "[cycle-v2][curve-panel-adapters]") {
     FlatCurvePanelAdapter flat(NodeKind::Waveshaper);
@@ -351,7 +379,8 @@ TEST_CASE("Curve model publication is one undoable semantic command",
     const String initialSnapshot = CurveNodeModelCodec::snapshotFromParameters(
             document.graph().findNode("shape")->parameters);
 
-    REQUIRE(commands.publishCurveModel("shape", model.snapshot(), model.revision()).succeeded());
+    REQUIRE(commands.publishCurveState(publicationFor(
+            *document.graph().findNode("shape"), model.snapshot(), model.revision())).succeeded());
     REQUIRE(document.canUndo());
     REQUIRE(CurveNodeModelCodec::snapshotFromParameters(
             document.graph().findNode("shape")->parameters) == model.snapshot());
@@ -371,14 +400,116 @@ TEST_CASE("Curve drag publications coalesce into one document undo entry",
     REQUIRE(model.replaceVertices({ { 1, 0.f, 0.f, 1.f }, { 2, 1.f, 1.f, 1.f } }));
 
     commands.beginCompoundEdit();
-    REQUIRE(commands.publishCurveModel("shape", model.snapshot(), model.revision()).succeeded());
+    REQUIRE(commands.publishCurveState(publicationFor(
+            *document.graph().findNode("shape"), model.snapshot(), model.revision())).succeeded());
     REQUIRE(model.replaceVertices({ { 1, 0.f, 0.1f, 1.f }, { 2, 1.f, 0.9f, 1.f } }));
-    REQUIRE(commands.publishCurveModel("shape", model.snapshot(), model.revision()).succeeded());
+    REQUIRE(commands.publishCurveState(publicationFor(
+            *document.graph().findNode("shape"), model.snapshot(), model.revision())).succeeded());
     commands.commitCompoundEdit();
 
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Curve state publication atomically commits controls model and revision",
+        "[cycle-v2][curve-state][commands]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({ { 1, 0.f, 0.2f, 1.f }, { 2, 1.f, 0.8f, 1.f } }));
+
+    auto publication = publicationFor(*document.graph().findNode("shape"), model.snapshot(), model.revision());
+    for (auto& control : publication.controls) {
+        if (control.id == "pre") {
+            control.value = "0.75";
+        }
+    }
+    int notifications = 0;
+    document.setListener([&](uint64_t, const GraphChangeSet&) {
+        ++notifications;
+        const Node* observed = document.graph().findNode("shape");
+        REQUIRE(parameterValueForNode(*observed, "pre") == "0.75");
+        REQUIRE(CurveNodeModelCodec::snapshotFromParameters(observed->parameters) == model.snapshot());
+        REQUIRE(CurveNodeModelCodec::revisionFromParameters(observed->parameters) == model.revision());
+    });
+
+    const uint64_t documentRevision = document.revision();
+    REQUIRE(commands.publishCurveState(publication).succeeded());
+    REQUIRE(document.revision() == documentRevision + 1);
+    REQUIRE(notifications == 1);
+    document.setListener({});
+    REQUIRE(document.undo());
+    const Node* restored = document.graph().findNode("shape");
+    REQUIRE(parameterValueForNode(*restored, "pre") == "0.5");
+    REQUIRE(CurveNodeModelCodec::revisionFromParameters(restored->parameters) == 1);
+}
+
+TEST_CASE("Curve state revisions distinguish retries conflicts and stale writes",
+        "[cycle-v2][curve-state][commands]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({ { 1, 0.f, 0.2f, 1.f }, { 2, 1.f, 0.8f, 1.f } }));
+    auto publication = publicationFor(*document.graph().findNode("shape"), model.snapshot(), model.revision());
+    REQUIRE(commands.publishCurveState(publication).succeeded());
+
+    publication.expectedRevision = model.revision();
+    const uint64_t documentRevision = document.revision();
+    const auto retry = commands.publishCurveState(publication);
+    REQUIRE(retry.succeeded());
+    REQUIRE_FALSE(retry.changed);
+    REQUIRE(document.revision() == documentRevision);
+    REQUIRE_FALSE(document.canRedo());
+
+    auto conflict = publication;
+    for (auto& control : conflict.controls) {
+        if (control.id == "pre") {
+            control.value = "0.75";
+        }
+    }
+    REQUIRE(commands.publishCurveState(conflict).code == GraphEditCode::ConflictingRevision);
+    auto stale = publication;
+    stale.expectedRevision = 1;
+    REQUIRE(commands.publishCurveState(stale).code == GraphEditCode::StaleRevision);
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Curve state publication rejects malformed typed and incomplete control state",
+        "[cycle-v2][curve-state][commands]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const Node& shape = *document.graph().findNode("shape");
+
+    auto malformed = publicationFor(shape, "not-json", 2);
+    REQUIRE(commands.publishCurveState(malformed).code == GraphEditCode::InvalidTypedSnapshot);
+    auto incomplete = publicationFor(
+            shape, CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper), 1);
+    incomplete.controls.pop_back();
+    REQUIRE(commands.publishCurveState(incomplete).code == GraphEditCode::InvalidControlValue);
+    CurveNodeStatePublication wrongKind {
+        "add", 0, 1, CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper), {}
+    };
+    REQUIRE(commands.publishCurveState(wrongKind).code == GraphEditCode::WrongNodeKind);
+
+    REQUIRE(commands.setNodeParameter(
+            "shape", CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", "not-json").succeeded());
+    FlatCurveModel replacement;
+    REQUIRE(replacement.replaceVertices({ { 1, 0.f, 0.f, 1.f }, { 2, 1.f, 1.f, 1.f } }));
+    auto againstCorruptState = publicationFor(
+            *document.graph().findNode("shape"), replacement.snapshot(), replacement.revision());
+    REQUIRE(commands.publishCurveState(againstCorruptState).code == GraphEditCode::InvalidTypedSnapshot);
 }
 
 TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
@@ -464,5 +595,40 @@ TEST_CASE("Curve node definitions provide canonical typed defaults",
         }
         REQUIRE(parameterValueForNode(node, "effect.vertices").isEmpty());
         REQUIRE(parameterValueForNode(node, "envelope.snapshot").isEmpty());
+    }
+}
+
+TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
+        "[cycle-v2][curve-state][presets]") {
+    for (const String& filename : { String("default.cyclegraph"), String("with-spies.cyclegraph") }) {
+        const File file = File(CYCLE_V2_SOURCE_DIR).getChildFile("resources").getChildFile(filename);
+        const NodeGraph graph = GraphSerializer().fromXmlString(file.loadFileAsString());
+        REQUIRE_FALSE(graph.getNodes().empty());
+        for (const auto& node : graph.getNodes()) {
+            if (node.kind != NodeKind::Envelope
+                    && node.kind != NodeKind::GuideCurve
+                    && node.kind != NodeKind::ImpulseResponse
+                    && node.kind != NodeKind::Waveshaper) {
+                continue;
+            }
+            const String snapshot = CurveNodeModelCodec::snapshotFromParameters(node.parameters);
+            const uint64_t revision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
+            REQUIRE(snapshot.isNotEmpty());
+            if (node.kind == NodeKind::Envelope) {
+                EnvelopeNodeModel model;
+                REQUIRE(model.loadSnapshot(snapshot));
+                REQUIRE(model.revision() == revision);
+                const String canonical = model.snapshot();
+                REQUIRE(model.loadSnapshot(canonical));
+                REQUIRE(model.snapshot() == canonical);
+            } else {
+                FlatCurveModel model;
+                REQUIRE(model.loadSnapshot(snapshot));
+                REQUIRE(model.revision() == revision);
+                const String canonical = model.snapshot();
+                REQUIRE(model.loadSnapshot(canonical));
+                REQUIRE(model.snapshot() == canonical);
+            }
+        }
     }
 }

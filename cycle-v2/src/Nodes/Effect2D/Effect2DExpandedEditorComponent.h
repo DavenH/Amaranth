@@ -14,8 +14,8 @@ public:
     struct Callbacks {
         std::function<void()> close;
         std::function<void()> repaintOpenGL;
-        std::function<void(const String& parameterId, const String& label, const String& value)> setNodeParameter;
-        std::function<void(const String& snapshot, uint64_t revision)> publishModel;
+        std::function<bool(const String& snapshot, uint64_t revision,
+                const std::vector<NodeParameter>& controls)> publishState;
         std::function<void()> beginTransaction;
         std::function<void()> commitTransaction;
     };
@@ -79,6 +79,8 @@ private:
     bool findVertexGuideAt(juce::Point<float> position, String& parameterId, Rectangle<int>& targetBounds) const;
     void pushControlValues();
     void persistEffectMeshState();
+    void publishCurrentState();
+    std::vector<NodeParameter> publicationControls() const;
 
     Effect2DWidget& widget;
     Callbacks callbacks;

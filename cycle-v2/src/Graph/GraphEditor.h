@@ -20,7 +20,12 @@ enum class GraphEditCode {
     DirectionMismatch,
     ValidationRejected,
     UnknownParameter,
-    InvalidParameterValue
+    InvalidParameterValue,
+    StaleRevision,
+    ConflictingRevision,
+    InvalidTypedSnapshot,
+    WrongNodeKind,
+    InvalidControlValue
 };
 
 struct GraphChangeSet {
@@ -35,6 +40,7 @@ struct GraphEditResult {
     String nodeId;
     std::vector<GraphValidationIssue> validationIssues;
     GraphChangeSet changes;
+    bool changed { true };
 
     bool succeeded() const { return code == GraphEditCode::Connected; }
 };
@@ -65,6 +71,10 @@ public:
             const String& parameterId,
             const String& label,
             const String& value) const;
+    GraphEditResult setNodeParametersAtomic(
+            NodeGraph& graph,
+            const String& nodeId,
+            const std::vector<NodeParameter>& parameters) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;

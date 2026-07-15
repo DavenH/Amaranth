@@ -2,7 +2,52 @@
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 
+#include <algorithm>
+#include <unordered_set>
+
 namespace CycleV2 {
+
+namespace {
+
+bool isCurveNodeKind(NodeKind kind) {
+    return kind == NodeKind::Envelope
+        || kind == NodeKind::GuideCurve
+        || kind == NodeKind::ImpulseResponse
+        || kind == NodeKind::Waveshaper;
+}
+
+bool canonicalCurveSnapshot(
+        NodeKind kind,
+        const juce::String& snapshot,
+        uint64_t& revision,
+        juce::String& canonical) {
+    if (kind == NodeKind::Envelope) {
+        EnvelopeNodeModel model;
+        if (!model.loadSnapshot(snapshot)) {
+            return false;
+        }
+        revision = model.revision();
+        canonical = model.snapshot();
+        return true;
+    }
+
+    FlatCurveModel model;
+    if (!model.loadSnapshot(snapshot)) {
+        return false;
+    }
+    revision = model.revision();
+    canonical = model.snapshot();
+    return true;
+}
+
+const NodeParameter* findParameter(const std::vector<NodeParameter>& parameters, const juce::String& id) {
+    const auto found = std::find_if(parameters.begin(), parameters.end(), [&](const auto& parameter) {
+        return parameter.id == id;
+    });
+    return found != parameters.end() ? &*found : nullptr;
+}
+
+}
 
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
@@ -117,65 +162,107 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
     });
 }
 
-GraphEditResult GraphCommandDispatcher::publishCurveModel(
-        const juce::String& nodeId,
-        const juce::String& snapshot,
-        uint64_t modelRevision) {
+GraphEditResult GraphCommandDispatcher::publishCurveState(
+        const CurveNodeStatePublication& publication) {
     return apply([&](auto& graph) {
-        const Node* node = graph.findNode(nodeId);
+        const Node* node = graph.findNode(publication.nodeId);
         if (node == nullptr) {
-            GraphEditResult missing;
-            missing.code = GraphEditCode::MissingNode;
-            return missing;
+            return GraphEditResult { GraphEditCode::MissingNode, publication.nodeId, {} };
         }
-
-        bool validSnapshot = false;
-        uint64_t snapshotRevision {};
-        if (node->kind == NodeKind::Envelope) {
-            EnvelopeNodeModel model;
-            validSnapshot = model.loadSnapshot(snapshot);
-            snapshotRevision = model.revision();
-        } else if (node->kind == NodeKind::Waveshaper
-                || node->kind == NodeKind::ImpulseResponse
-                || node->kind == NodeKind::GuideCurve) {
-            FlatCurveModel model;
-            validSnapshot = model.loadSnapshot(snapshot);
-            snapshotRevision = model.revision();
+        if (!isCurveNodeKind(node->kind)) {
+            return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
         }
 
         const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node->parameters);
-        if (!validSnapshot || snapshotRevision != modelRevision || modelRevision < currentRevision) {
-            GraphEditResult invalid;
-            invalid.code = GraphEditCode::InvalidParameterValue;
-            return invalid;
+        if (publication.expectedRevision != currentRevision || publication.revision < currentRevision) {
+            return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
         }
 
-        auto result = GraphEditor().setNodeParameter(
-                graph,
-                nodeId,
-                CurveNodeModelCodec::snapshotParameterId(),
-                "Curve Model Snapshot",
-                snapshot);
-        if (!result.succeeded()) {
-            return result;
+        uint64_t snapshotRevision {};
+        juce::String canonicalSnapshot;
+        if (!canonicalCurveSnapshot(
+                    node->kind, publication.modelSnapshot, snapshotRevision, canonicalSnapshot)
+                || snapshotRevision != publication.revision) {
+            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
+        }
+        uint64_t currentSnapshotRevision {};
+        juce::String canonicalCurrentSnapshot;
+        if (!canonicalCurveSnapshot(
+                    node->kind,
+                    CurveNodeModelCodec::snapshotFromParameters(node->parameters),
+                    currentSnapshotRevision,
+                    canonicalCurrentSnapshot)
+                || currentSnapshotRevision != currentRevision) {
+            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
         }
 
-        auto revisionResult = GraphEditor().setNodeParameter(
-                graph,
-                nodeId,
+        const auto* definition = NodeDefinitionRegistry::instance().find(node->kind);
+        if (definition == nullptr) {
+            return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
+        }
+
+        std::unordered_set<std::string> requiredControls;
+        for (const auto& parameter : definition->parameters) {
+            if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
+                    && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
+                requiredControls.insert(parameter.id.toStdString());
+            }
+        }
+        std::vector<NodeParameter> parameters;
+        parameters.reserve(publication.controls.size() + 2);
+        for (const auto& control : publication.controls) {
+            const auto required = requiredControls.find(control.id.toStdString());
+            const auto* controlDefinition = NodeDefinitionRegistry::instance().findParameter(
+                    node->kind, control.id);
+            if (required == requiredControls.end() || controlDefinition == nullptr
+                    || !controlDefinition->accepts(control.value)) {
+                return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
+            }
+            requiredControls.erase(required);
+            parameters.push_back({ control.id, controlDefinition->label, controlDefinition->normalized(control.value) });
+        }
+        if (!requiredControls.empty()) {
+            return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
+        }
+        if (node->kind == NodeKind::Envelope) {
+            EnvelopeNodeModel envelope;
+            if (!envelope.loadSnapshot(canonicalSnapshot)) {
+                return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
+            }
+            const auto* red = findParameter(parameters, "red");
+            const auto* blue = findParameter(parameters, "blue");
+            const auto* logarithmic = findParameter(parameters, "logarithmic");
+            if (red == nullptr || blue == nullptr || logarithmic == nullptr
+                    || red->value.getFloatValue() != envelope.red
+                    || blue->value.getFloatValue() != envelope.blue
+                    || (logarithmic->value.getIntValue() != 0) != envelope.logarithmic) {
+                return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
+            }
+        }
+        parameters.push_back({
+                CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", canonicalSnapshot });
+        parameters.push_back({
                 CurveNodeModelCodec::revisionParameterId(),
                 "Curve Model Revision",
-                juce::String((int64_t) modelRevision));
-        if (!revisionResult.succeeded()) {
-            return revisionResult;
+                juce::String((int64_t) publication.revision) });
+
+        if (publication.revision == currentRevision) {
+            const bool identical = std::all_of(parameters.begin(), parameters.end(), [&](const auto& parameter) {
+                const auto* current = findParameter(node->parameters, parameter.id);
+                if (current == nullptr) {
+                    return false;
+                }
+                if (parameter.id == CurveNodeModelCodec::snapshotParameterId()) {
+                    return canonicalCurrentSnapshot == parameter.value;
+                }
+                return current->value == parameter.value;
+            });
+            if (!identical) {
+                return GraphEditResult { GraphEditCode::ConflictingRevision, publication.nodeId, {} };
+            }
         }
-        result.changes.nodeIds.insert(
-                result.changes.nodeIds.end(),
-                revisionResult.changes.nodeIds.begin(),
-                revisionResult.changes.nodeIds.end());
-        result.changes.parameterImpacts = result.changes.parameterImpacts
-                | revisionResult.changes.parameterImpacts;
-        return result;
+
+        return GraphEditor().setNodeParametersAtomic(graph, publication.nodeId, parameters);
     });
 }
 
@@ -270,6 +357,9 @@ GraphEditResult GraphCommandDispatcher::apply(
     const juce::String before = compoundActive ? juce::String() : document.toXml();
     GraphEditResult result = command(document.graphForCommand());
     if (!result.succeeded()) {
+        return result;
+    }
+    if (!result.changed) {
         return result;
     }
 

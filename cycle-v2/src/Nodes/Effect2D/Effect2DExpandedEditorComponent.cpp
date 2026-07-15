@@ -1040,6 +1040,7 @@ void Effect2DExpandedEditorComponent::configureControls() {
         controls.firstButton.onClick = [this] {
             widget.toggleSelectedEnvelopeMarker(true);
             updateEnvelopeMarkerButtons();
+            publishCurrentState();
 
             if (callbacks.repaintOpenGL != nullptr) {
                 callbacks.repaintOpenGL();
@@ -1048,6 +1049,7 @@ void Effect2DExpandedEditorComponent::configureControls() {
         controls.secondButton.onClick = [this] {
             widget.toggleSelectedEnvelopeMarker(false);
             updateEnvelopeMarkerButtons();
+            publishCurrentState();
 
             if (callbacks.repaintOpenGL != nullptr) {
                 callbacks.repaintOpenGL();
@@ -1061,13 +1063,8 @@ void Effect2DExpandedEditorComponent::configureControls() {
                 callbacks.beginTransaction();
             }
             envelopeLogarithmic = controls.thirdButton.getToggleState();
-            if (callbacks.setNodeParameter != nullptr) {
-                callbacks.setNodeParameter("logarithmic", "Logarithmic", envelopeLogarithmic ? "1" : "0");
-            }
             widget.setEnvelopeLogarithmic(envelopeLogarithmic);
-            if (callbacks.publishModel != nullptr) {
-                callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
-            }
+            publishCurrentState();
             if (callbacks.commitTransaction != nullptr) {
                 callbacks.commitTransaction();
             }
@@ -1599,6 +1596,7 @@ bool Effect2DExpandedEditorComponent::updateEnvelopeViewAxisFromPoint(Point<floa
         if (i != 0 && envelopeLinkToggleBounds(controlsArea, i).contains(position)) {
             envelopeAxisLinked[i] = !envelopeAxisLinked[i];
             syncEnvelopeAxisLinksToWidget();
+            publishCurrentState();
             repaint();
 
             if (callbacks.repaintOpenGL != nullptr) {
@@ -1756,31 +1754,8 @@ void Effect2DExpandedEditorComponent::pushControlValues() {
             (float) controls.thirdSlider.getValue(),
             controls.menu.getSelectedId());
 
-    if (!syncingControls && callbacks.setNodeParameter != nullptr) {
-        if (usesRightControlRail(node.kind)) {
-            callbacks.setNodeParameter("enabled", "Enabled", controls.enabled.getToggleState() ? "1" : "0");
-        }
-
-        if (node.kind == NodeKind::Waveshaper) {
-            callbacks.setNodeParameter("pre", "Pre", String(controls.firstSlider.getValue()));
-            callbacks.setNodeParameter("post", "Post", String(controls.secondSlider.getValue()));
-            callbacks.setNodeParameter("aaFactor", "AA Factor", String(controls.menu.getSelectedId()));
-        } else if (node.kind == NodeKind::ImpulseResponse) {
-            callbacks.setNodeParameter("size", "Size", String(controls.firstSlider.getValue()));
-            callbacks.setNodeParameter("post", "Post", String(controls.secondSlider.getValue()));
-            callbacks.setNodeParameter("highPass", "HighPass", String(controls.thirdSlider.getValue()));
-        } else if (node.kind == NodeKind::GuideCurve) {
-            callbacks.setNodeParameter("noise", "Noise", String(controls.firstSlider.getValue()));
-            callbacks.setNodeParameter("dcOffset", "DC Offset", String(controls.secondSlider.getValue()));
-            callbacks.setNodeParameter("phase", "Phase", String(controls.thirdSlider.getValue()));
-        } else if (node.kind == NodeKind::Envelope) {
-            callbacks.setNodeParameter("red", "Red", String(controls.firstSlider.getValue()));
-            callbacks.setNodeParameter("blue", "Blue", String(controls.secondSlider.getValue()));
-        }
-    }
-
-    if (!syncingControls && callbacks.publishModel != nullptr) {
-        callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
+    if (!syncingControls) {
+        publishCurrentState();
     }
 
     if (ownsTransaction && callbacks.commitTransaction != nullptr) {
@@ -1797,13 +1772,80 @@ void Effect2DExpandedEditorComponent::persistEffectMeshState() {
         return;
     }
 
-    if (callbacks.publishModel != nullptr) {
-        callbacks.publishModel(widget.serializedModelSnapshot(), widget.modelRevision());
-    }
+    publishCurrentState();
 
     if (callbacks.repaintOpenGL != nullptr) {
         callbacks.repaintOpenGL();
     }
+}
+
+void Effect2DExpandedEditorComponent::publishCurrentState() {
+    if (syncingControls || callbacks.publishState == nullptr) {
+        return;
+    }
+
+    const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
+    const String snapshot = widget.prepareModelPublication(currentRevision);
+    const auto controlsToPublish = publicationControls();
+    if (!callbacks.publishState(snapshot, widget.modelRevision(), controlsToPublish)) {
+        return;
+    }
+
+    for (const auto& control : controlsToPublish) {
+        for (auto& parameter : node.parameters) {
+            if (parameter.id == control.id) {
+                parameter = control;
+                break;
+            }
+        }
+    }
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == CurveNodeModelCodec::snapshotParameterId()) {
+            parameter.value = snapshot;
+        } else if (parameter.id == CurveNodeModelCodec::revisionParameterId()) {
+            parameter.value = String((int64_t) widget.modelRevision());
+        }
+    }
+}
+
+std::vector<NodeParameter> Effect2DExpandedEditorComponent::publicationControls() const {
+    std::vector<NodeParameter> result;
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
+                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
+            result.push_back(parameter);
+        }
+    }
+
+    auto setValue = [&](const String& id, const String& value) {
+        const auto found = std::find_if(result.begin(), result.end(), [&](const auto& parameter) {
+            return parameter.id == id;
+        });
+        if (found != result.end()) {
+            found->value = value;
+        }
+    };
+    if (usesRightControlRail(node.kind)) {
+        setValue("enabled", controls.enabled.getToggleState() ? "1" : "0");
+    }
+    if (node.kind == NodeKind::Waveshaper) {
+        setValue("pre", String(controls.firstSlider.getValue()));
+        setValue("post", String(controls.secondSlider.getValue()));
+        setValue("aaFactor", String(controls.menu.getSelectedId()));
+    } else if (node.kind == NodeKind::ImpulseResponse) {
+        setValue("size", String(controls.firstSlider.getValue()));
+        setValue("post", String(controls.secondSlider.getValue()));
+        setValue("highPass", String(controls.thirdSlider.getValue()));
+    } else if (node.kind == NodeKind::GuideCurve) {
+        setValue("noise", String(controls.firstSlider.getValue()));
+        setValue("dcOffset", String(controls.secondSlider.getValue()));
+        setValue("phase", String(controls.thirdSlider.getValue()));
+    } else if (node.kind == NodeKind::Envelope) {
+        setValue("red", String(controls.firstSlider.getValue()));
+        setValue("blue", String(controls.secondSlider.getValue()));
+        setValue("logarithmic", envelopeLogarithmic ? "1" : "0");
+    }
+    return result;
 }
 
 }

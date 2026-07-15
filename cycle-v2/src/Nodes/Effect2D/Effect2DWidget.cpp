@@ -114,6 +114,10 @@ String Effect2DWidget::serializedModelSnapshot() {
     return bridge.serializedModelSnapshot();
 }
 
+String Effect2DWidget::prepareModelPublication(uint64_t currentRevision) {
+    return bridge.prepareModelPublication(currentRevision);
+}
+
 uint64_t Effect2DWidget::modelRevision() const {
     return bridge.modelRevision();
 }

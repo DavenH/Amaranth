@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on `cycle-v2-curve-identity-and-edit-commands.md` and
 `cycle-v2-node-definition-and-graph-model.md`.
@@ -111,3 +111,25 @@ typed snapshot, wrong node kind, and invalid control value.
 - Curve controls, snapshot, and revision change atomically.
 - Revision equality cannot identify different content.
 - Typed corruption is observable and cannot silently activate legacy data.
+
+## Implementation Notes
+
+- `CurveNodeStatePublication` carries the expected base revision, new revision,
+  canonical typed snapshot, and complete named control state. The dispatcher
+  validates the node kind, schema, control completeness, Envelope snapshot/
+  control consistency, embedded revision, and current typed state before any
+  mutation.
+- `GraphEditor::setNodeParametersAtomic()` validates and normalizes the full
+  parameter batch before replacing node state and advances the graph revision
+  once. Observers therefore cannot see mixed control/model combinations.
+- Equal-revision canonical retries return a successful no-op without document
+  notification or undo history. Equal-revision differences report
+  `ConflictingRevision`; unexpected bases report `StaleRevision`; malformed
+  current or incoming typed state reports `InvalidTypedSnapshot`.
+- Curve editors now publish one semantic state value. Live drag publications
+  remain atomic and coalesce into one undo entry, while compilation scheduling
+  is deferred until the gesture transaction commits.
+- Repository presets are verified to contain valid typed state whose embedded
+  revision agrees with the node revision and whose canonical serialization is
+  deterministic. Present-but-malformed typed state is rejected rather than
+  replaced with defaults.

@@ -224,6 +224,11 @@ String Effect2DPanelBridge::serializedModelSnapshot() {
     return lastSyncedModelSnapshot;
 }
 
+String Effect2DPanelBridge::prepareModelPublication(uint64_t currentRevision) {
+    publicationRevision = jmax(publicationRevision, currentRevision + 1);
+    return serializedModelSnapshot();
+}
+
 std::vector<TrimeshVertexParameter> Effect2DPanelBridge::selectedVertexParameters() const {
     return panel != nullptr ? panel->selectedVertexParameters() : std::vector<TrimeshVertexParameter>();
 }
