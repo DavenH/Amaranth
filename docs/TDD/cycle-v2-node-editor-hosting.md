@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented on 2026-07-15.
 
 Depends on `cycle-v2-node-canvas-architecture.md` and
 `cycle-v2-concrete-curve-editors.md`.
@@ -99,3 +99,34 @@ preview, JUCE repaint, and OpenGL repaint invalidation based on the returned
 - Node definitions/view modules advertise editor capability.
 - Presentation invalidation is coalesced from graph change impact.
 
+## Implementation Notes
+
+- `NodeEditorHost` owns the active type-erased editor, stable node identity,
+  document-revision rebinding, bounds, automation inspection, and teardown.
+- `NodeViewModule::editorFactory()` advertises expanded-editor capability;
+  unsupported node kinds require no canvas branch.
+- Factory adapters host the existing concrete Effect2D and Trimesh editors.
+  Their domain interaction and rendering behavior was reused rather than
+  reimplemented in the host.
+- `NodeEditorCommandService` owns semantic curve publication and Trimesh edit
+  transactions. Editors depend only on command, presentation, and resource
+  interfaces, not on `NodeCanvas`.
+- Presentation work is scheduled only for successful, changed graph edits and
+  is coalesced across compound curve and Trimesh gestures.
+- `NodeCanvas` now supplies composition, bounds, selected-node identity, and
+  the narrow presentation/resource interfaces. It contains no concrete
+  expanded-editor construction or curve/Trimesh editor parameter IDs.
+
+## Verification Evidence
+
+- `TestNodeEditorHost.cpp` verifies unsupported capabilities, factory-created
+  editors, stable editor reuse, document-revision rebinding, node replacement,
+  automation forwarding, and safe close behavior without constructing a
+  `NodeCanvas` or OpenGL context.
+- `TestNodeCanvasArchitecture.cpp` verifies view-module editor capability for
+  curve and Trimesh nodes and its absence for unsupported nodes.
+- The Cycle V2 test executable passes 245 test cases with 2603 assertions.
+- The native macOS edit smoke fixture completed successfully during the
+  integration pass. Subsequent repeated runs exposed nondeterministic pointer
+  delivery in the existing fixture (at different curve and Trimesh steps), so
+  the deterministic host tests above remain the completion gate for this TDD.

@@ -933,7 +933,7 @@ bool expandedEditorBlocksCanvas(const Node* node) {
 }
 
 bool hasHostedExpandedEditor(const Node& node) {
-    return NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities().hostedEditor;
+    return NodeViewModuleRegistry::instance().moduleFor(node.kind).editorFactory() != nullptr;
 }
 
 void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
@@ -1777,7 +1777,9 @@ NodeCanvas::NodeCanvas() :
     ,   graph(document.graph())
     ,   compileResult(presentation.compileResult())
     ,   runtimeTrace(presentation.runtimeTrace())
-    ,   previewResult(presentation.previewResult()) {
+    ,   previewResult(presentation.previewResult())
+    ,   editorCommands(*this, document, commands, *this, *this)
+    ,   editorHost(*this, editorCommands, *this, *this) {
     refreshCompiledState();
 
     setOpaque(true);
@@ -1868,7 +1870,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             closeButton = Rectangle<float>(18.f, 18.f).withCentre({ panel.getRight() - 18.f, panel.getY() + 15.f });
         }
 
-        if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
+        if (expandedNode != nullptr && hasHostedExpandedEditor(*expandedNode)) {
             repaint();
             return;
         }
@@ -2072,8 +2074,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             spliceTargetEdgeIndex = -1;
             activeSnapHasX = false;
             activeSnapHasY = false;
-            endTrimeshMorphEdit();
-            endTrimeshVertexParameterEdit();
+            editorCommands.endTrimeshMorphEdit();
+            editorCommands.endTrimeshVertexParameterEdit();
             expandedEditorDragCaptured = false;
             repaint();
             return;
@@ -2086,8 +2088,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         spliceTargetEdgeIndex = -1;
         activeSnapHasX = false;
         activeSnapHasY = false;
-        endTrimeshMorphEdit();
-        endTrimeshVertexParameterEdit();
+        editorCommands.endTrimeshMorphEdit();
+        editorCommands.endTrimeshVertexParameterEdit();
         expandedEditorDragCaptured = false;
         repaint();
         return;
@@ -2101,8 +2103,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     spliceTargetEdgeIndex = -1;
     activeSnapHasX = false;
     activeSnapHasY = false;
-    endTrimeshMorphEdit();
-    endTrimeshVertexParameterEdit();
+    editorCommands.endTrimeshMorphEdit();
+    editorCommands.endTrimeshVertexParameterEdit();
     expandedEditorDragCaptured = false;
 
     if (findConnectablePortAt(event.position, connectingPort, destPort)) {
@@ -2207,8 +2209,7 @@ void NodeCanvas::renderOpenGL() {
             drawGlNodeShells();
         }
         drawGlEffect2DPreviews();
-        drawGlTrimeshExpandedPanel();
-        drawGlEffect2DExpandedPanel();
+        drawGlExpandedEditor();
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
@@ -2373,38 +2374,8 @@ void NodeCanvas::drawGlNodeShells() {
     }
 }
 
-bool NodeCanvas::drawGlEffect2DExpandedPanel() {
-    const Node* expandedNode = findNode(expandedNodeId);
-
-    if (expandedNode == nullptr) {
-        return false;
-    }
-
-    if ((expandedNode->kind == NodeKind::Envelope
-            || expandedNode->kind == NodeKind::GuideCurve
-            || expandedNode->kind == NodeKind::ImpulseResponse
-            || expandedNode->kind == NodeKind::Waveshaper)
-            && effect2DExpandedEditor != nullptr
-            && effect2DExpandedEditor->isVisible()) {
-        effect2DExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
-        return true;
-    }
-
-    return false;
-}
-
-void NodeCanvas::drawGlTrimeshExpandedPanel() {
-    const Node* expandedNode = findNode(expandedNodeId);
-
-    if (expandedNode == nullptr) {
-        return;
-    }
-
-    if (expandedNode->kind == NodeKind::TrilinearMesh
-            && trimeshExpandedEditor != nullptr
-            && trimeshExpandedEditor->isVisible()) {
-        trimeshExpandedEditor->renderOpenGL((float) openGLContext.getRenderingScale());
-    }
+void NodeCanvas::drawGlExpandedEditor() {
+    editorHost.renderOpenGL((float) openGLContext.getRenderingScale());
 }
 
 void NodeCanvas::drawGlEffect2DPreviews() {
@@ -3130,7 +3101,7 @@ TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
     auto safeThis = Component::SafePointer<NodeCanvas>(this);
     trimeshWidgets.back().second->setMeshEditedCallback([safeThis, nodeId] {
         if (safeThis != nullptr) {
-            safeThis->persistTrimeshMeshEdits(nodeId);
+            safeThis->editorCommands.persistTrimeshMeshEdits(nodeId);
         }
     });
     return *trimeshWidgets.back().second;
@@ -3369,225 +3340,14 @@ void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
 }
 
 void NodeCanvas::updateExpandedEditorHost(const Node* node) {
-    const bool shouldShowTrimesh = node != nullptr && node->kind == NodeKind::TrilinearMesh;
-    const bool shouldShowEffect2D = node != nullptr
-            && (node->kind == NodeKind::Envelope
-                || node->kind == NodeKind::GuideCurve
-                || node->kind == NodeKind::ImpulseResponse
-                || node->kind == NodeKind::Waveshaper);
-    const String hostedNodeId = shouldShowTrimesh || shouldShowEffect2D ? node->id : String();
-    hideExpandedEditorHostsExcept(hostedNodeId);
+    hideExpandedEditorHostsExcept(node != nullptr ? node->id : String());
+    const Rectangle<int> bounds = node != nullptr
+            ? expandedEditorBoundsForNode(getLocalBounds().toFloat(), node).toNearestInt()
+            : Rectangle<int>();
+    editorHost.bind(node, bounds, document.revision());
+    openGLContext.triggerRepaint();
+    return;
 
-    if (!shouldShowTrimesh && trimeshExpandedEditor != nullptr) {
-        trimeshExpandedEditor->setVisible(false);
-        trimeshExpandedEditorNodeId = {};
-    }
-
-    if (!shouldShowEffect2D && effect2DExpandedEditor != nullptr) {
-        effect2DExpandedEditor->setVisible(false);
-        effect2DExpandedEditorNodeId = {};
-    }
-
-    if (shouldShowEffect2D) {
-        if (trimeshExpandedEditor != nullptr) {
-            trimeshExpandedEditor->setVisible(false);
-        }
-        trimeshExpandedEditorNodeId = {};
-
-        Effect2DWidget& widget = effect2DWidgetFor(*node);
-
-        if (effect2DExpandedEditor != nullptr && effect2DExpandedEditorNodeId != node->id) {
-            effect2DExpandedEditor->setVisible(false);
-            removeChildComponent(effect2DExpandedEditor.get());
-            effect2DExpandedEditor.reset();
-        }
-
-        if (effect2DExpandedEditor == nullptr) {
-            effect2DExpandedEditor = createCurveNodeEditor(node->kind, widget);
-            effect2DExpandedEditorNodeId = node->id;
-            auto safeThis = Component::SafePointer<NodeCanvas>(this);
-            Effect2DExpandedEditorComponent::Callbacks callbacks;
-            callbacks.close = [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->expandedNodeId = {};
-                    safeThis->updateExpandedEditorHost(nullptr);
-                    safeThis->repaint();
-                }
-            };
-            callbacks.repaintOpenGL = [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->openGLContext.triggerRepaint();
-                }
-            };
-            callbacks.publishState = [safeThis](
-                    const String& snapshot,
-                    uint64_t revision,
-                    const std::vector<NodeParameter>& controls) {
-                if (safeThis == nullptr || safeThis->expandedNodeId.isEmpty()) {
-                    return false;
-                }
-
-                const Node* node = safeThis->findNode(safeThis->expandedNodeId);
-                if (node == nullptr) {
-                    return false;
-                }
-                const auto result = safeThis->commands.publishCurveState({
-                        node->id,
-                        CurveNodeModelCodec::revisionFromParameters(node->parameters),
-                        revision,
-                        snapshot,
-                        controls
-                });
-                if (!result.succeeded() || !result.changed) {
-                    return result.succeeded();
-                }
-                if (safeThis->curveTransactionActive) {
-                    safeThis->curvePublicationPending = true;
-                } else {
-                    safeThis->scheduleCompiledStateRefresh();
-                }
-                safeThis->openGLContext.triggerRepaint();
-                safeThis->repaint();
-                return true;
-            };
-            callbacks.beginTransaction = [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->curveTransactionActive = true;
-                    safeThis->curvePublicationPending = false;
-                    safeThis->commands.beginCompoundEdit();
-                }
-            };
-            callbacks.commitTransaction = [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->commands.commitCompoundEdit();
-                    safeThis->curveTransactionActive = false;
-                    if (safeThis->curvePublicationPending) {
-                        safeThis->curvePublicationPending = false;
-                        safeThis->scheduleCompiledStateRefresh();
-                        safeThis->openGLContext.triggerRepaint();
-                        safeThis->repaint();
-                    }
-                }
-            };
-            effect2DExpandedEditor->setCallbacks(std::move(callbacks));
-            addAndMakeVisible(effect2DExpandedEditor.get());
-        }
-
-        const Rectangle<int> editorBounds = expandedEditorBoundsForNode(getLocalBounds().toFloat(), node).toNearestInt();
-
-        if (effect2DExpandedEditor->getBounds() != editorBounds) {
-            effect2DExpandedEditor->setBounds(editorBounds);
-        }
-
-        effect2DExpandedEditor->setNode(*node);
-        effect2DExpandedEditor->setVisible(true);
-        effect2DExpandedEditor->toFront(false);
-        openGLContext.triggerRepaint();
-        return;
-    }
-
-    if (!shouldShowTrimesh) {
-        return;
-    }
-
-    TrimeshWidget& widget = trimeshWidgetFor(node->id);
-    auto safeThis = Component::SafePointer<NodeCanvas>(this);
-
-    if (trimeshExpandedEditor != nullptr && trimeshExpandedEditorNodeId != node->id) {
-        trimeshExpandedEditor->setVisible(false);
-        removeChildComponent(trimeshExpandedEditor.get());
-        trimeshExpandedEditor.reset();
-    }
-
-    if (trimeshExpandedEditor == nullptr) {
-        trimeshExpandedEditor = std::make_unique<TrimeshExpandedEditorComponent>(widget);
-        trimeshExpandedEditorNodeId = node->id;
-        TrimeshExpandedEditorComponent::Callbacks callbacks;
-        callbacks.close = [safeThis] {
-            if (safeThis != nullptr) {
-                safeThis->expandedNodeId = {};
-                safeThis->updateExpandedEditorHost(nullptr);
-                safeThis->repaint();
-            }
-        };
-        callbacks.repaintOpenGL = [safeThis] {
-            if (safeThis != nullptr) {
-                safeThis->openGLContext.triggerRepaint();
-            }
-        };
-        callbacks.setPrimaryAxis = [safeThis](const String& axisValue) {
-            if (safeThis != nullptr) {
-                safeThis->setTrimeshPrimaryAxisValue(axisValue);
-            }
-        };
-        callbacks.toggleLinkAxis = [safeThis](const String& axisValue) {
-            if (safeThis != nullptr) {
-                safeThis->toggleTrimeshLinkAxisValue(axisValue);
-            }
-        };
-        callbacks.beginMorphEdit = [safeThis](const String& parameterId, float value) {
-            if (safeThis != nullptr) {
-                safeThis->beginTrimeshMorphEdit(parameterId, value);
-            }
-        };
-        callbacks.updateMorphEdit = [safeThis](float value) {
-            if (safeThis != nullptr) {
-                safeThis->updateTrimeshMorphEditValue(value);
-            }
-        };
-        callbacks.endMorphEdit = [safeThis] {
-            if (safeThis != nullptr) {
-                safeThis->endTrimeshMorphEdit();
-            }
-        };
-        callbacks.beginVertexParameterEdit = [safeThis](const String& parameterId, float value) {
-            if (safeThis != nullptr) {
-                safeThis->beginTrimeshVertexParameterEdit(parameterId, value);
-            }
-        };
-        callbacks.updateVertexParameterEdit = [safeThis](float value) {
-            if (safeThis != nullptr) {
-                safeThis->updateTrimeshVertexParameterEditValue(value);
-            }
-        };
-        callbacks.endVertexParameterEdit = [safeThis] {
-            if (safeThis != nullptr) {
-                safeThis->endTrimeshVertexParameterEdit();
-            }
-        };
-        callbacks.showVertexGuideAttachmentMenu = [safeThis](
-                const String& parameterField,
-                Rectangle<int> targetScreenArea) {
-            if (safeThis != nullptr) {
-                safeThis->showTrimeshGuideAttachmentMenu(parameterField, targetScreenArea);
-            }
-        };
-        callbacks.selectVertex = [safeThis](int vertexIndex) {
-            if (safeThis != nullptr) {
-                safeThis->selectTrimeshVertexIndex(vertexIndex);
-            }
-        };
-        trimeshExpandedEditor->setCallbacks(std::move(callbacks));
-        addAndMakeVisible(trimeshExpandedEditor.get());
-    }
-
-    widget.setMeshEditedCallback([safeThis, nodeId = node->id] {
-        if (safeThis != nullptr) {
-            safeThis->persistTrimeshMeshEdits(nodeId);
-        }
-    });
-
-    const Rectangle<int> editorBounds = expandedEditorBounds(getLocalBounds().toFloat()).toNearestInt();
-
-    if (trimeshExpandedEditor->getBounds() != editorBounds) {
-        trimeshExpandedEditor->setBounds(editorBounds);
-    }
-
-    trimeshExpandedEditor->setRenderProfile(renderProfileForNodeOutput(*node, "out"));
-    trimeshExpandedEditor->setGuideAttachmentLabels(trimeshGuideAttachmentLabelsForNode(*node));
-    trimeshExpandedEditor->setNode(*node);
-    trimeshExpandedEditor->setVisible(true);
-    trimeshExpandedEditor->toFront(false);
 }
 
 void NodeCanvas::hideExpandedEditorHosts() {
@@ -3639,9 +3399,7 @@ void NodeCanvas::detachExpandedEditorHosts() {
         }
     }
 
-    if (effect2DExpandedEditor != nullptr && effect2DExpandedEditor->getParentComponent() == this) {
-        removeChildComponent(effect2DExpandedEditor.get());
-    }
+    editorHost.detach();
 }
 
 void NodeCanvas::drawMiniMap(Graphics& g) {
@@ -4754,11 +4512,11 @@ bool NodeCanvas::setMorphSliderForAutomation(const String& nodeId, const String&
         return false;
     }
 
-    if (!beginTrimeshMorphEdit(axis, jlimit(0.f, 1.f, value))) {
+    if (!editorCommands.beginTrimeshMorphEdit(nodeId, axis, jlimit(0.f, 1.f, value))) {
         return false;
     }
 
-    endTrimeshMorphEdit();
+    editorCommands.endTrimeshMorphEdit();
     return true;
 }
 
@@ -4767,7 +4525,7 @@ bool NodeCanvas::setPrimaryAxisForAutomation(const String& nodeId, const String&
         return false;
     }
 
-    return setTrimeshPrimaryAxisValue(axis);
+    return editorCommands.setTrimeshPrimaryAxisValue(nodeId, axis);
 }
 
 bool NodeCanvas::toggleLinkForAutomation(const String& nodeId, const String& axis) {
@@ -4775,7 +4533,7 @@ bool NodeCanvas::toggleLinkForAutomation(const String& nodeId, const String& axi
         return false;
     }
 
-    return toggleTrimeshLinkAxisValue(axis);
+    return editorCommands.toggleTrimeshLinkAxisValue(nodeId, axis);
 }
 
 bool NodeCanvas::selectVertexForAutomation(const String& nodeId, int vertexIndex) {
@@ -4783,7 +4541,7 @@ bool NodeCanvas::selectVertexForAutomation(const String& nodeId, int vertexIndex
         return false;
     }
 
-    return selectTrimeshVertexIndex(vertexIndex);
+    return editorCommands.selectTrimeshVertexIndex(nodeId, vertexIndex);
 }
 
 bool NodeCanvas::setVertexParameterForAutomation(
@@ -4794,11 +4552,12 @@ bool NodeCanvas::setVertexParameterForAutomation(
         return false;
     }
 
-    if (!beginTrimeshVertexParameterEdit(parameterId, jlimit(0.f, 1.f, value))) {
+    if (!editorCommands.beginTrimeshVertexParameterEdit(
+            nodeId, parameterId, jlimit(0.f, 1.f, value))) {
         return false;
     }
 
-    endTrimeshVertexParameterEdit();
+    editorCommands.endTrimeshVertexParameterEdit();
     repaint();
     return true;
 }
@@ -4829,75 +4588,8 @@ var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
     }
     root->setProperty("parameters", parameters);
 
-    if (node->kind == NodeKind::TrilinearMesh) {
-        TrimeshWidget& widget = const_cast<NodeCanvas*>(this)->trimeshWidgetFor(nodeId);
-        Array<var> morphSliders;
-
-        for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
-            auto* slider = new DynamicObject();
-            slider->setProperty("id", axis);
-            slider->setProperty("value", parameterValueForNode(*node, axis, "0.5").getDoubleValue());
-            slider->setProperty("minimum", 0.0);
-            slider->setProperty("maximum", 1.0);
-            morphSliders.add(slider);
-        }
-
-        Array<var> primaryAxisButtons;
-        Array<var> linkToggles;
-
-        for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
-            auto* primary = new DynamicObject();
-            primary->setProperty("id", axis);
-            primary->setProperty("selected", parameterValueForNode(*node, "primaryAxis", "yellow") == axis);
-            primaryAxisButtons.add(primary);
-
-            auto* link = new DynamicObject();
-            const String defaultValue = axis == "yellow" ? "1" : "0";
-            link->setProperty("id", axis);
-            link->setProperty("selected", parameterValueForNode(*node, "link." + axis, defaultValue).getIntValue() != 0);
-            linkToggles.add(link);
-        }
-
-        root->setProperty("morphSliders", morphSliders);
-        root->setProperty("primaryAxisButtons", primaryAxisButtons);
-        root->setProperty("linkToggles", linkToggles);
-
-        auto* meshState = new DynamicObject();
-        const TrimeshMeshEditState edits = widget.currentMeshEditState();
-        int vertexCount = 0;
-        for (const auto& edit : edits.getVertexEdits()) {
-            vertexCount = jmax(vertexCount, edit.vertexIndex + 1);
-        }
-        const int selectedVertexIndex = widget.selectedVertexIndexForPanel();
-        meshState->setProperty("vertexCount", vertexCount);
-        meshState->setProperty("selectedVertexIndex", selectedVertexIndex);
-        Array<var> selectedParameters;
-        for (const auto& parameter : widget.vertexParametersForIndex(selectedVertexIndex)) {
-            auto* encoded = new DynamicObject();
-            encoded->setProperty("id", parameter.id);
-            encoded->setProperty("value", parameter.value);
-            selectedParameters.add(encoded);
-        }
-        meshState->setProperty("selectedVertexParameters", selectedParameters);
-        Array<var> vertexMarkers;
-        for (const auto& marker : widget.vertexMarkers()) {
-            auto* encoded = new DynamicObject();
-            encoded->setProperty("index", marker.index);
-            encoded->setProperty("phase", marker.phase);
-            encoded->setProperty("amp", marker.amp);
-            vertexMarkers.add(encoded);
-        }
-        meshState->setProperty("vertexMarkers", vertexMarkers);
-        root->setProperty("trimesh", meshState);
-    }
-
-    if ((node->kind == NodeKind::Envelope
-            || node->kind == NodeKind::GuideCurve
-            || node->kind == NodeKind::ImpulseResponse
-            || node->kind == NodeKind::Waveshaper)
-            && expandedNodeId == nodeId
-            && effect2DExpandedEditor != nullptr) {
-        root->setProperty("effect2D", effect2DExpandedEditor->automationState());
+    if (editorHost.isEditing(nodeId)) {
+        editorHost.appendAutomationState(*root);
     }
 
     return root;
@@ -4988,13 +4680,9 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
                         region.parameterId,
                         region.axisValue));
             }
-        } else if ((expandedNode->kind == NodeKind::Envelope
-                || expandedNode->kind == NodeKind::GuideCurve
-                || expandedNode->kind == NodeKind::ImpulseResponse
-                || expandedNode->kind == NodeKind::Waveshaper)
-                && effect2DExpandedEditor != nullptr) {
-            const Rectangle<float> panelHost = effect2DExpandedEditor
-                    ->panelBoundsForAutomation()
+        } else if (!editorHost.panelBoundsForAutomation().isEmpty()) {
+            const Rectangle<float> panelHost = editorHost
+                    .panelBoundsForAutomation()
                     .translated(panel.getX(), panel.getY());
             targets.add(pointerTargetToVar(
                     "expanded:" + expandedNode->id + ".panel2D",
@@ -5035,12 +4723,12 @@ var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
     root->setProperty("canvasBounds", rectangleToVar(getLocalBounds().toFloat()));
     root->setProperty("canvasScreenBounds", rectangleToVar(getScreenBounds().toFloat()));
     root->setProperty("expandedNodeId", expandedNodeId);
-    root->setProperty("trimeshExpandedEditorCreated", trimeshExpandedEditor != nullptr);
+    root->setProperty("trimeshExpandedEditorCreated", editorHost.hasEditor());
 
-    if (trimeshExpandedEditor != nullptr) {
+    if (Component* component = editorHost.component()) {
         root->setProperty("trimeshExpandedEditor", componentDiagnosticsToVar(
-                "trimeshExpandedEditor",
-                trimeshExpandedEditor.get()));
+                "hostedExpandedEditor",
+                component));
     }
 
     const Node* expandedNode = findNode(expandedNodeId);
@@ -5589,300 +5277,6 @@ bool NodeCanvas::handleTransformEditorClick(Point<float> screenPosition) {
     return false;
 }
 
-bool NodeCanvas::setTrimeshPrimaryAxisValue(const String& axisValue) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    if (parameterValueForNode(*node, "primaryAxis", "yellow") == axisValue) {
-        return true;
-    }
-
-    auto result = commands.setNodeParameter(
-            node->id,
-            "primaryAxis",
-            "Primary Axis",
-            axisValue);
-
-    if (!result.succeeded()) {
-        return false;
-    }
-
-    refreshCompiledState();
-    selectedNodeId = node->id;
-    selectedEdgeIndex = -1;
-    editStatusMessage = "Primary view axis: " + axisValue;
-    repaint();
-    return true;
-}
-
-bool NodeCanvas::toggleTrimeshLinkAxisValue(const String& axisValue) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    const String parameterId = "link." + axisValue;
-    const String defaultValue = axisValue == "yellow" ? "1" : "0";
-    const bool linked = parameterValueForNode(*node, parameterId, defaultValue).getIntValue() != 0;
-    auto result = commands.setNodeParameter(
-            node->id,
-            parameterId,
-            "Link " + axisValue,
-            linked ? "0" : "1");
-
-    if (!result.succeeded()) {
-        return false;
-    }
-
-    refreshCompiledState();
-    selectedNodeId = node->id;
-    selectedEdgeIndex = -1;
-    editStatusMessage = "Link " + axisValue + (linked ? " off" : " on");
-    repaint();
-    return true;
-}
-
-bool NodeCanvas::beginTrimeshMorphEdit(const String& parameterId, float value) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    selectedNodeId = node->id;
-    selectedEdgeIndex = -1;
-    activeTrimeshMorphNodeId = node->id;
-    activeTrimeshMorphParameterId = parameterId;
-    draggingTrimeshMorph = true;
-    trimeshMorphUndoPushed = false;
-    commands.beginCompoundEdit();
-    return updateTrimeshMorphEditValue(value);
-}
-
-bool NodeCanvas::updateTrimeshMorphEditValue(float value) {
-    const Node* node = findNode(activeTrimeshMorphNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh || activeTrimeshMorphParameterId.isEmpty()) {
-        return false;
-    }
-
-    const String label = activeTrimeshMorphParameterId.substring(0, 1).toUpperCase()
-            + activeTrimeshMorphParameterId.substring(1);
-    commands.setNodeParameter(
-            node->id,
-            activeTrimeshMorphParameterId,
-            label,
-            String(value, 3));
-    scheduleCompiledStateRefresh();
-    editStatusMessage = "Morph " + label + " = " + String(value, 2);
-    repaint();
-    return true;
-}
-
-void NodeCanvas::endTrimeshMorphEdit() {
-    commands.commitCompoundEdit();
-    flushScheduledCompiledStateRefresh();
-    draggingTrimeshMorph = false;
-    trimeshMorphUndoPushed = false;
-    activeTrimeshMorphNodeId = {};
-    activeTrimeshMorphParameterId = {};
-}
-
-bool NodeCanvas::beginTrimeshVertexParameterEdit(const String& parameterId, float value) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    int vertexIndex = parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue();
-    commands.beginCompoundEdit();
-
-    if (vertexIndex < 0) {
-        vertexIndex = trimeshWidgetFor(node->id).resolvedSelectedVertexIndexForNode(*node);
-
-        if (vertexIndex >= 0) {
-            commands.setNodeParameter(
-                    node->id,
-                    "selectedVertexIndex",
-                    "Selected Vertex",
-                    String(vertexIndex));
-        }
-    }
-
-    if (vertexIndex < 0) {
-        commands.cancelCompoundEdit();
-        return false;
-    }
-
-    selectedNodeId = node->id;
-    selectedEdgeIndex = -1;
-    activeTrimeshVertexNodeId = node->id;
-    activeTrimeshVertexParameterId = parameterId;
-    activeTrimeshVertexIndex = vertexIndex;
-    draggingTrimeshVertexParameter = true;
-    return updateTrimeshVertexParameterEditValue(value);
-}
-
-bool NodeCanvas::updateTrimeshVertexParameterEditValue(float value) {
-    const Node* node = findNode(activeTrimeshVertexNodeId);
-
-    if (node == nullptr
-            || node->kind != NodeKind::TrilinearMesh
-            || activeTrimeshVertexParameterId.isEmpty()) {
-        return false;
-    }
-
-    String label = activeTrimeshVertexParameterId.fromFirstOccurrenceOf(".", false, false);
-    if (label.isEmpty()) {
-        label = activeTrimeshVertexParameterId;
-    }
-
-    if (activeTrimeshVertexIndex < 0) {
-        return false;
-    }
-
-    const String persistentParameterId = TrimeshMeshEditState::canonicalVertexParameterId(
-            activeTrimeshVertexIndex,
-            label);
-    commands.setNodeParameter(
-            node->id,
-            persistentParameterId,
-            label,
-            String(value, 3));
-    scheduleCompiledStateRefresh();
-    editStatusMessage = "Vertex #" + String(activeTrimeshVertexIndex) + " " + label + " = " + String(value, 2);
-    return true;
-}
-
-void NodeCanvas::endTrimeshVertexParameterEdit() {
-    commands.commitCompoundEdit();
-    flushScheduledCompiledStateRefresh();
-    draggingTrimeshVertexParameter = false;
-    trimeshVertexParameterUndoPushed = false;
-    activeTrimeshVertexNodeId = {};
-    activeTrimeshVertexParameterId = {};
-    activeTrimeshVertexIndex = -1;
-}
-
-void NodeCanvas::persistTrimeshMeshEdits(const String& nodeId) {
-    const Node* node = findNode(nodeId);
-
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return;
-    }
-
-    commands.beginCompoundEdit();
-    TrimeshWidget& widget = trimeshWidgetFor(nodeId);
-    TrimeshMeshEditState editState = widget.currentMeshEditState();
-    for (const TrimeshVertexEdit& edit : editState.getVertexEdits()) {
-        const String field = TrimeshMeshEditState::fieldForVertexValueIndex(edit.valueIndex);
-
-        if (field.isEmpty()) {
-            continue;
-        }
-
-        commands.setNodeParameter(
-                nodeId,
-                TrimeshMeshEditState::canonicalVertexParameterId(edit.vertexIndex, field),
-                field,
-                String(edit.value, 6));
-    }
-    commands.setNodeParameter(
-            nodeId,
-            "selectedVertexIndex",
-            "Selected Vertex",
-            String(widget.selectedVertexIndexForPanel()));
-    commands.commitCompoundEdit();
-
-    scheduleCompiledStateRefresh();
-    repaint();
-}
-
-bool NodeCanvas::showTrimeshGuideAttachmentMenu(
-        const String& parameterField,
-        Rectangle<int> targetScreenArea) {
-    if (trimeshExpandedEditorNodeId.isEmpty()) {
-        return false;
-    }
-
-    TrimeshWidget& widget = trimeshWidgetFor(trimeshExpandedEditorNodeId);
-    const Node* meshNode = findNode(trimeshExpandedEditorNodeId);
-
-    if (meshNode == nullptr || meshNode->kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(*meshNode);
-    const auto items = TrimeshGuideAttachmentMenu::itemsFor(
-            graph,
-            meshNode->id,
-            vertexIndex,
-            parameterField);
-
-    PopupMenu menu;
-
-    for (const auto& item : items) {
-        menu.addItem(
-                item.menuId,
-                item.label,
-                true,
-                item.attached);
-    }
-
-    auto safeThis = Component::SafePointer<NodeCanvas>(this);
-    const String meshNodeId = meshNode->id;
-    menu.showMenuAsync(
-            PopupMenu::Options().withTargetScreenArea(targetScreenArea),
-            [safeThis, meshNodeId, vertexIndex, parameterField, items](int selectedMenuId) {
-                if (safeThis == nullptr || selectedMenuId == 0) {
-                    return;
-                }
-
-                GraphEditResult result { GraphEditCode::ValidationRejected, {}, {} };
-
-                if (selectedMenuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
-                    result = safeThis->commands.createAndAttachGuideCurve(
-                            meshNodeId,
-                            vertexIndex,
-                            parameterField,
-                            safeThis->viewportCentreWorld());
-                } else {
-                    for (const auto& item : items) {
-                        if (item.menuId != selectedMenuId) {
-                            continue;
-                        }
-
-                        result = safeThis->commands.attachGuideCurve(
-                                item.guideNodeId,
-                                meshNodeId,
-                                vertexIndex,
-                                parameterField);
-                        break;
-                    }
-                }
-
-                if (!result.succeeded()) {
-                    safeThis->editStatusMessage = "Guide attachment failed";
-                    safeThis->repaint();
-                    return;
-                }
-
-                safeThis->selectedNodeId = result.nodeId.isEmpty() ? meshNodeId : result.nodeId;
-                safeThis->selectedEdgeIndex = -1;
-                safeThis->refreshCompiledState();
-                safeThis->updateExpandedEditorHost(safeThis->findNode(safeThis->expandedNodeId));
-                safeThis->editStatusMessage = "Guide " + parameterField + " attached";
-                safeThis->repaint();
-            });
-
-    return true;
-}
-
 std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node& meshNode) {
     std::array<String, 6> labels;
 
@@ -5914,32 +5308,62 @@ std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node
     return labels;
 }
 
-bool NodeCanvas::selectTrimeshVertexIndex(int vertexIndex) {
-    const Node* node = findNode(expandedNodeId);
+void NodeCanvas::closeNodeEditor() {
+    expandedNodeId = {};
+    editorHost.close();
+    repaintNodeEditor(true);
+}
 
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
-        return false;
+void NodeCanvas::repaintNodeEditor(bool openGl) {
+    if (openGl) {
+        openGLContext.triggerRepaint();
     }
+    repaint();
+}
 
-    if (parameterValueForNode(*node, "selectedVertexIndex", "-1").getIntValue() == vertexIndex) {
-        return true;
-    }
-
-    auto result = commands.setNodeParameter(
-            node->id,
-            "selectedVertexIndex",
-            "Selected Vertex",
-            String(vertexIndex));
-
-    if (!result.succeeded()) {
-        return false;
-    }
-
-    refreshCompiledState();
-    selectedNodeId = node->id;
+void NodeCanvas::selectEditedNode(const String& nodeId) {
+    selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
-    editStatusMessage = "Selected vertex #" + String(vertexIndex);
-    return true;
+}
+
+void NodeCanvas::setNodeEditorStatus(const String& message) {
+    editStatusMessage = message;
+}
+
+void NodeCanvas::scheduleNodeEditorRefresh() {
+    scheduleCompiledStateRefresh();
+}
+
+void NodeCanvas::flushNodeEditorRefresh() {
+    flushScheduledCompiledStateRefresh();
+}
+
+void NodeCanvas::refreshNodeEditorPresentation() {
+    refreshCompiledState();
+}
+
+Point<float> NodeCanvas::nodeEditorCreationPosition() const {
+    return viewportCentreWorld();
+}
+
+void NodeCanvas::rebindNodeEditor() {
+    updateExpandedEditorHost(findNode(expandedNodeId));
+}
+
+Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {
+    return &effect2DWidgetFor(node);
+}
+
+TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
+    return &trimeshWidgetFor(node.id);
+}
+
+TrimeshRenderProfile NodeCanvas::trimeshRenderProfile(const Node& node) const {
+    return renderProfileForNodeOutput(node, "out");
+}
+
+std::array<String, 6> NodeCanvas::trimeshGuideLabels(const Node& node) {
+    return trimeshGuideAttachmentLabelsForNode(node);
 }
 
 bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& second) const {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Graph/NodeDefinition.h"
+#include "NodeEditorHost.h"
 
 #include <memory>
 #include <optional>
@@ -21,6 +22,7 @@ class NodeViewModule {
 public:
     virtual ~NodeViewModule() = default;
     virtual const NodeViewCapabilities& capabilities() const = 0;
+    virtual const NodeEditorFactory* editorFactory() const = 0;
     virtual juce::Rectangle<float> expandedEditorBounds(
             juce::Rectangle<float> componentBounds,
             float minimumMargin) const = 0;

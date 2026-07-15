@@ -226,6 +226,9 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).capabilities().outputSideControl);
     REQUIRE(registry.moduleFor(NodeKind::Add).capabilities().operationLayoutControl);
     REQUIRE_FALSE(registry.moduleFor(NodeKind::Output).capabilities().hostedEditor);
+    REQUIRE(registry.moduleFor(NodeKind::Envelope).editorFactory() != nullptr);
+    REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).editorFactory() != nullptr);
+    REQUIRE(registry.moduleFor(NodeKind::Output).editorFactory() == nullptr);
 
     const auto bounds = registry.moduleFor(NodeKind::ImpulseResponse)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);

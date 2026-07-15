@@ -26,6 +26,11 @@ public:
     }
 
     const NodeViewCapabilities& capabilities() const override { return viewCapabilities; }
+    const NodeEditorFactory* editorFactory() const override {
+        return viewCapabilities.hostedEditor
+                ? NodeEditorFactoryRegistry::instance().find(kind)
+                : nullptr;
+    }
 
     Rectangle<float> expandedEditorBounds(
             Rectangle<float> componentBounds,
