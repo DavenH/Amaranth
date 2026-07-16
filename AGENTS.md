@@ -78,10 +78,18 @@ instruction is sufficient.
    with an imperative subject. For an explicitly requested implementation train,
    continue through this stage without waiting for a separate commit prompt
    unless the user asked to leave changes uncommitted.
+6. **Continue to completion**: reread the active TDD and return to step 2 for
+   the next incomplete slice. Repeat implementation, refactor, style, testing,
+   and commit until every completion criterion and deletion target is satisfied.
+   Stop only for a genuine unresolved design ambiguity, an external blocker, or
+   explicit user direction. A passing slice, a clean commit, limited remaining
+   time, or the availability of further useful work is not a stopping point.
 
 Before committing, report internally against this checklist in sequence. If a
 stage uncovers an architectural defect that cannot be corrected within scope,
 record it in the active TDD/refactor document rather than silently proceeding.
+After committing, actively inspect the TDD for remaining work; do not wait for
+the user to prompt the next slice or to act as the implementation scheduler.
 
 ## Reuse Before Reimplementation
 - If you are about to write interpolation, rasterization, curve evaluation, oversampling, convolution, envelope/loop semantics, mesh traversal, or DSP transfer logic, stop and locate the existing implementation first. Reuse it or create a narrow adapter. Do not reimplement it in place.

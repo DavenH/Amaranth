@@ -76,3 +76,5 @@ feeds a bounded request policy:
   audible-output semantic test.
 - Direct assignment is reserved for initialization/reset and stateless graphic
   requests.
+- Continue through committed slices without user scheduling until every
+  completion criterion above is satisfied.

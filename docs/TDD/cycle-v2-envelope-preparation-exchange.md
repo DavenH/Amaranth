@@ -80,3 +80,5 @@ forwarding helpers that reproduce the exchange implementation in the processor.
   same single-producer/single-consumer contract genuinely applies.
 - Existing dynamic Envelope behavior and realtime allocation guarantees remain
   intact.
+- Continue through committed slices without user scheduling until every
+  deletion target and completion criterion above is satisfied.

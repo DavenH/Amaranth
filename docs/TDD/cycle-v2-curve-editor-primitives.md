@@ -69,3 +69,5 @@ Envelope domain behavior.
   its concrete editor.
 - The production diff passes the repository engineering loop: design,
   implementation, refactor, style check, semantic verification, and commit.
+- Continue through committed slices without user scheduling until every
+  deletion target and completion criterion above is satisfied.
