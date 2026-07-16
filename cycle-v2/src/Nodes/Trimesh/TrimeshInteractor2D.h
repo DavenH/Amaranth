@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TrimeshMeshEditEvent.h"
+
 #include <Inter/Interactor2D.h>
 
 #include <functional>
@@ -24,10 +26,10 @@ public:
     void mouseUp(const MouseEvent& event) override;
     void deleteSelected();
 
-    void setMeshEditedCallback(std::function<void(bool)> callback);
+    void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
 
 private:
-    std::function<void(bool)> meshEditedCallback;
+    std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
     Mesh* mesh {};
 };
 

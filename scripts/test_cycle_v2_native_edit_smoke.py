@@ -614,16 +614,32 @@ class NativeEditSmoke:
             for parameter in moved_state["trimesh"]["selectedVertexParameters"]
         }
         assert abs(float(moved["vertex.phase"]) - source_phase) > 0.01
+        topology_before_parameter_edit = self.parameters(moved_state)["mesh.topology"]
 
         amp_slider = self.target("expanded:waveMesh.trimeshVertexParameter.vertex.amp")
-        amp_point = self.point(amp_slider, 0.78, 0.5)
+        moved_amp = float(moved["vertex.amp"])
+        amp_target = 0.15 if moved_amp > 0.5 else 0.85
+        amp_point = self.point(amp_slider, amp_target, 0.5)
         self.click(f"c:{amp_point[0]},{amp_point[1]}")
         parameter_state = self.inspect("waveMesh")
         parameter_edited = {
             parameter["id"]: parameter["value"]
             for parameter in parameter_state["trimesh"]["selectedVertexParameters"]
         }
-        assert abs(float(parameter_edited["vertex.amp"]) - float(moved["vertex.amp"])) > 0.01
+        assert abs(float(parameter_edited["vertex.amp"]) - float(moved["vertex.amp"])) > 0.01, (
+            moved["vertex.amp"],
+            parameter_edited["vertex.amp"],
+            amp_target,
+        )
+        topology_after_parameter_edit = self.parameters(parameter_state)["mesh.topology"]
+        assert topology_after_parameter_edit != topology_before_parameter_edit
+
+        self.key_chord("z")
+        parameter_undone = self.inspect("waveMesh")
+        assert self.parameters(parameter_undone)["mesh.topology"] == topology_before_parameter_edit
+        self.key_chord("z", shift=True)
+        parameter_redone = self.inspect("waveMesh")
+        assert self.parameters(parameter_redone)["mesh.topology"] == topology_after_parameter_edit
 
         red_slider = self.target("expanded:waveMesh.trimeshMorphRail.red")
         red_point = self.point(red_slider, 0.72, 0.5)
@@ -645,6 +661,21 @@ class NativeEditSmoke:
         final_state = self.inspect("waveMesh")
         final_count = final_state["trimesh"]["vertexCount"]
         assert final_count > deleted_count
+        final_parameters = self.parameters(final_state)
+        assert "mesh.topology" in final_parameters
+        assert not any(parameter_id.startswith("mesh.vertex.") for parameter_id in final_parameters)
+        topology = json.loads(final_parameters["mesh.topology"])
+        assert len(topology["vertices"]) == final_count
+        assert len(topology["cubes"]) > 0
+        assert all(len(cube["vertexIds"]) == 8 for cube in topology["cubes"])
+
+        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-trimesh.cyclegraph")
+        self.command({"command": "saveGraph", "path": saved_path})
+        self.command({"command": "openGraph", "path": saved_path})
+        reloaded_state = self.open_editor("waveMesh", trimesh=True)
+        reloaded_parameters = self.parameters(reloaded_state)
+        assert reloaded_parameters["mesh.topology"] == final_parameters["mesh.topology"]
+        assert reloaded_state["trimesh"]["vertexCount"] == final_count
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
 
     def run(self):

@@ -28,7 +28,8 @@ TrimeshInteractor2D::TrimeshInteractor2D(
         SingletonAccessor(repo, name)
     ,   Interactor2D(repo, name, dimensions) {}
 
-void TrimeshInteractor2D::setMeshEditedCallback(std::function<void(bool)> callback) {
+void TrimeshInteractor2D::setMeshEditedCallback(
+        std::function<void(TrimeshMeshEditEvent)> callback) {
     meshEditedCallback = std::move(callback);
 }
 
@@ -51,7 +52,7 @@ void TrimeshInteractor2D::setExtraElements(float) {
 bool TrimeshInteractor2D::doCreateVertex() {
     const bool created = Interactor2D::doCreateVertex();
     if (created && meshEditedCallback != nullptr) {
-        meshEditedCallback(false);
+        meshEditedCallback({ false, false });
     }
     return created;
 }
@@ -60,7 +61,7 @@ void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
     Interactor2D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
-        meshEditedCallback(false);
+        meshEditedCallback({ false, false });
     }
 }
 
@@ -96,7 +97,7 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     flag(SimpleRepaint) = false;
 
     if (meshChanged && meshEditedCallback != nullptr) {
-        meshEditedCallback(false);
+        meshEditedCallback({ false, true });
     }
 }
 
@@ -107,7 +108,7 @@ void TrimeshInteractor2D::deleteSelected() {
     eraseSelected();
     performUpdate(Update);
     if (meshEditedCallback != nullptr) {
-        meshEditedCallback(false);
+        meshEditedCallback({ false, true });
     }
 }
 

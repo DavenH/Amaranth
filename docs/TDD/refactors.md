@@ -17,7 +17,3 @@ Suggested direction:
 - Keep node shells and node contents in the same render layer unless the whole
   node widget moves to GL, because split shell/content rendering breaks
   overlap z-order.
-
-## Trimesh Topology Snapshot
-
-- [`cycle-v2-trimesh-topology-snapshot.md`](cycle-v2-trimesh-topology-snapshot.md)

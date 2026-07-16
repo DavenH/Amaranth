@@ -437,6 +437,7 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
     }
     activeVertexNodeId = nodeId;
     activeVertexParameterId = parameterId;
+    activeVertexWidget = widget;
     activeVertexIndex = vertexIndex;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshVertexParameterEditValue(value);
@@ -444,8 +445,7 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
 
 bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value) {
     const Node* node = findNode(activeVertexNodeId);
-    TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
-    if (node == nullptr || widget == nullptr
+    if (node == nullptr || activeVertexWidget == nullptr
             || activeVertexParameterId.isEmpty() || activeVertexIndex < 0) {
         return false;
     }
@@ -453,7 +453,10 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     if (label.isEmpty()) {
         label = activeVertexParameterId;
     }
-    if (!widget->setVertexParameter(activeVertexIndex, activeVertexParameterId, value)) {
+    if (!activeVertexWidget->setVertexParameter(
+            activeVertexIndex,
+            activeVertexParameterId,
+            value)) {
         return false;
     }
     presentation.setNodeEditorStatus(
@@ -464,18 +467,24 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
 
 void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     const Node* node = findNode(activeVertexNodeId);
-    TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
-    if (widget != nullptr) {
-        commands.setNodeParameter(
+    bool published {};
+    if (node != nullptr && activeVertexWidget != nullptr) {
+        const auto result = commands.setNodeParameter(
                 activeVertexNodeId,
                 TrimeshMeshState::parameterId(),
                 "Mesh Topology",
-                widget->currentMeshState());
+                activeVertexWidget->currentMeshState());
+        published = result.succeeded();
     }
-    commands.commitCompoundEdit();
+    if (published) {
+        commands.commitCompoundEdit();
+    } else {
+        commands.cancelCompoundEdit();
+    }
     presentation.flushNodeEditorRefresh();
     activeVertexNodeId = {};
     activeVertexParameterId = {};
+    activeVertexWidget = nullptr;
     activeVertexIndex = -1;
 }
 

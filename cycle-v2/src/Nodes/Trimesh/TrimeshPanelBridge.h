@@ -51,7 +51,7 @@ public:
     int selectedVertexIndexForPanel();
 
 private:
-    void refreshAfterMeshEdit(bool sourceIs3D);
+    void refreshAfterMeshEdit(TrimeshMeshEditEvent event);
     void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
 

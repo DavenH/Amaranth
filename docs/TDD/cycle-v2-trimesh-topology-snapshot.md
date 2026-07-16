@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed.
+Implemented.
+
+Implemented in July 2026. `mesh.topology` now adapts the authoritative Mesh
+JSON contract across the editor, graph serializer, DSP configuration, realtime
+fallback, and preview paths. Sparse indexed persistence and its selected-vertex
+fallback were deleted. Live gestures retain Mesh identity, refresh locally,
+and publish one complete snapshot at the semantic boundary.
 
 ## Problem
 
