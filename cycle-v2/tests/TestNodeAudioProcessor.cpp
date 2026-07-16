@@ -3,6 +3,7 @@
 
 #include "../src/Runtime/AudioProcessContextUtils.h"
 #include "../src/Runtime/NodeAudioProcessor.h"
+#include "../src/Runtime/SmoothedMorphPosition.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
 #include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
@@ -15,6 +16,31 @@
 #include <numeric>
 
 using namespace CycleV2;
+
+TEST_CASE("Morph controls smooth monotonically and independently of block partitioning",
+        "[cycle-v2][runtime][morph][smoothing]") {
+    SmoothedMorphPosition whole;
+    SmoothedMorphPosition partitioned;
+    const MorphPosition initial(0.f, 0.f, 0.75f);
+    const MorphPosition target(1.f, 1.f, 0.25f);
+    whole.reset(initial);
+    partitioned.reset(initial);
+    whole.setTargets(target);
+    partitioned.setTargets(target);
+
+    REQUIRE(whole.advance(64, 44100.0) == 64);
+    REQUIRE(partitioned.advance(32, 44100.0) == 32);
+    const float halfway = partitioned.current().red.getCurrentValue();
+    REQUIRE(partitioned.advance(32, 44100.0) == 32);
+
+    REQUIRE(halfway > 0.f);
+    REQUIRE(halfway < whole.current().red.getCurrentValue());
+    REQUIRE(whole.current().red.getCurrentValue() < 1.f);
+    REQUIRE(partitioned.current().red.getCurrentValue()
+            == Catch::Approx(whole.current().red.getCurrentValue()));
+    REQUIRE(partitioned.current().blue.getCurrentValue()
+            == Catch::Approx(whole.current().blue.getCurrentValue()));
+}
 
 namespace {
 
@@ -377,6 +403,80 @@ TEST_CASE("Dynamic Envelope morph preparation is coalesced off the process path"
     const auto newestDynamic = processAt(0.7f, 0.8f, false);
     REQUIRE(newestDynamic != firstDynamic);
     REQUIRE(processor.dynamicDiagnostics().adoptions == 2);
+}
+
+TEST_CASE("Smoothed Envelope morph requests have bounded cadence at audio rate",
+        "[cycle-v2][runtime][envelope][modulation][smoothing]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "smoothed-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 44100.0;
+    processor.prepareExecution(spec);
+
+    const auto processTarget = [&](bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 16;
+        context.timing.sampleRate = 44100.0;
+        context.inputs = { payload({ 1.f }), payload({ 0.5f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+    };
+
+    processTarget(true);
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    processTarget(false);
+    processTarget(false);
+    processTarget(false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    processTarget(false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 2);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+}
+
+TEST_CASE("Prepared Envelope adoption preserves sample continuity",
+        "[cycle-v2][runtime][envelope][modulation][smoothing]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "continuous-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    spec.sampleRate = 44100.0;
+    processor.prepareExecution(spec);
+
+    AudioProcessContext first;
+    first.frameCount = 64;
+    first.timing.sampleRate = 44100.0;
+    first.inputs = { payload({ 1.f }), payload({ 0.5f }) };
+    first.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    first.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    processor.process(first);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+
+    AudioProcessContext adopted = first;
+    adopted.outputs.clear();
+    adopted.voice.events.clear();
+    processor.process(adopted);
+
+    REQUIRE(output(adopted).block.samples.front()
+            == Catch::Approx(output(first).block.samples.back()).margin(1.0e-6f));
 }
 
 TEST_CASE("Disabled dynamic Envelope latches absolute morph inputs per note",
@@ -1278,8 +1378,14 @@ TEST_CASE("Mesh source morph inputs are absolute and override persisted position
     modulated.inputs[4] = payload({ 0.2f });
     modulated.outputPorts = base.outputPorts;
     modulatedProcessor->process(modulated);
+    const auto firstSmoothedBlock = output(modulated).block.samples;
 
-    REQUIRE(output(modulated).block.samples != output(base).block.samples);
+    REQUIRE(firstSmoothedBlock != output(base).block.samples);
+
+    AudioProcessContext continued = modulated;
+    continued.outputs.clear();
+    modulatedProcessor->process(continued);
+    REQUIRE(output(continued).block.samples != firstSmoothedBlock);
 
     AudioProcessContext clamped = modulated;
     clamped.outputs.clear();

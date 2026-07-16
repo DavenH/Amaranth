@@ -3,6 +3,7 @@
 #include "AudioProcessContextUtils.h"
 #include "BinarySignalProcessor.h"
 #include "NodeAudioProcessor.h"
+#include "SmoothedMorphPosition.h"
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/FFT/FftSignalProcessor.h"
@@ -364,6 +365,8 @@ public:
             return;
         }
         preparedDomain = spec.domain;
+        smoothedMorph.reset(configuration->morph);
+        morphInitialized = true;
         trimeshDsp.prepare(
                 configuration->mesh.get(),
                 configuration->morph,
@@ -394,14 +397,14 @@ private:
         return jlimit(0.f, 1.f, input->block.samples.front());
     }
 
-    static MorphPosition effectiveMorph(
+    static MorphPosition morphTargets(
             AudioProcessContext& context,
             const MorphPosition& fallback) {
-        MorphPosition morph = fallback;
-        morph.time.setValueDirect(absoluteMorphValue(context, 2, fallback.time.getCurrentValue()));
-        morph.red.setValueDirect(absoluteMorphValue(context, 3, fallback.red.getCurrentValue()));
-        morph.blue.setValueDirect(absoluteMorphValue(context, 4, fallback.blue.getCurrentValue()));
-        return morph;
+        return {
+                absoluteMorphValue(context, 2, fallback.time.getCurrentValue()),
+                absoluteMorphValue(context, 3, fallback.red.getCurrentValue()),
+                absoluteMorphValue(context, 4, fallback.blue.getCurrentValue())
+        };
     }
 
     static bool hasConnectedMorphInput(AudioProcessContext& context) {
@@ -414,7 +417,7 @@ private:
         return false;
     }
 
-    void processMeshSource(AudioProcessContext& context) const {
+    void processMeshSource(AudioProcessContext& context) {
         AudioOutputPort outputPort;
         if (!context.outputPorts.empty()) {
             outputPort = context.outputPorts.front();
@@ -434,7 +437,13 @@ private:
         const auto baseMorph = configuration != nullptr
                 ? configuration->morph
                 : meshMorphFromParameters(processParameters(context));
-        const MorphPosition morph = effectiveMorph(context, baseMorph);
+        if (!morphInitialized) {
+            smoothedMorph.reset(baseMorph);
+            morphInitialized = true;
+        }
+        smoothedMorph.setTargets(morphTargets(context, baseMorph));
+        smoothedMorph.advance(context.frameCount, context.timing.sampleRate);
+        const MorphPosition& morph = smoothedMorph.current();
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : primaryAxisFromParameter(typedParameterString(
@@ -498,7 +507,7 @@ private:
         publishSingleOutput(context, std::move(output));
     }
 
-    void syncMeshEdits(const std::vector<NodeParameter>& parameters) const {
+    void syncMeshEdits(const std::vector<NodeParameter>& parameters) {
         const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
 
         if (nextState == meshEditState) {
@@ -511,11 +520,13 @@ private:
         meshEditState = nextState;
     }
 
-    mutable TrimeshBlockwiseDsp trimeshDsp;
-    mutable TrimeshGridwiseDsp trimeshGridDsp;
-    mutable std::unique_ptr<Mesh> defaultMesh;
-    mutable TrimeshMeshEditState meshEditState;
+    bool morphInitialized {};
     PortDomain preparedDomain { PortDomain::ControlSignal };
+    SmoothedMorphPosition smoothedMorph;
+    TrimeshBlockwiseDsp trimeshDsp;
+    TrimeshGridwiseDsp trimeshGridDsp;
+    std::unique_ptr<Mesh> defaultMesh;
+    TrimeshMeshEditState meshEditState;
     std::shared_ptr<const TrimeshConfiguration> configuration;
 };
 

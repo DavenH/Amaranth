@@ -2,6 +2,7 @@
 
 #include "../../Runtime/AudioProcessContextUtils.h"
 #include "../../Runtime/NodeDspConfiguration.h"
+#include "../../Runtime/SmoothedMorphPosition.h"
 #include "EnvelopeMeshState.h"
 
 #include <Array/ScopedAlloc.h>
@@ -77,9 +78,12 @@ private:
             float blue);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
     void renderSegment(Buffer<float> output, size_t start, size_t count, const AudioProcessTiming& timing);
+    void applyAdoptionTransition(Buffer<float> rendered);
     void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 
     static constexpr size_t defaultTraversalColumns = 8;
+    static constexpr float morphRequestThreshold = 0.002f;
+    static constexpr int morphRequestInterval44k = 64;
 
     EnvelopeMesh mesh;
     EnvRasterizer rasterizer;
@@ -112,6 +116,14 @@ private:
     float lastRequestedRed { 0.5f };
     float lastRequestedBlue { 0.5f };
     bool hasRequestedMorph {};
+    bool morphInitialized {};
+    bool adoptionTransitionPending {};
+    int samplesSinceMorphRequest {};
+    int transitionSamplesRemaining {};
+    float lastOutputSample {};
+    float transitionOffset {};
+    SmoothedMorphPosition smoothedMorph;
+    ScopedAlloc<float> transitionMemory { 8192 };
     ScopedAlloc<float> traversalMemory { 2 * defaultTraversalColumns };
 };
 

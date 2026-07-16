@@ -29,6 +29,5 @@ second topology format in the canvas or editor.
 
 ## Cycle V2 Morph And Editor Follow-ups
 
-- [`cycle-v2-smoothed-morph-control.md`](cycle-v2-smoothed-morph-control.md)
 - [`cycle-v2-envelope-preparation-exchange.md`](cycle-v2-envelope-preparation-exchange.md)
 - [`cycle-v2-curve-editor-primitives.md`](cycle-v2-curve-editor-primitives.md)

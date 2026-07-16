@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -78,3 +78,21 @@ feeds a bounded request policy:
   requests.
 - Continue through committed slices without user scheduling until every
   completion criterion above is satisfied.
+
+## Implementation Notes
+
+- `SmoothedMorphPosition` owns a mature `MorphPosition` per retained processor
+  and converts arbitrary host block sizes to the established 44.1 kHz smoothing
+  clock while preserving fractional elapsed samples across block partitions.
+- Trimesh live inputs now set smoothing targets; `setValueDirect()` is limited
+  to initial/reset state. Stateless graphic traversal still receives an
+  explicit current position.
+- Envelope red/blue inputs feed the same per-voice smoothing state. Preparation
+  requests use a 0.002 movement threshold, a 64-sample minimum cadence, a
+  single newest request, and an explicit final-target publication.
+- Prepared Envelope adoption applies a preallocated 128-sample continuity ramp
+  from the preceding output sample. This avoids an audible step while retaining
+  playback position and requires no realtime allocation.
+- Semantic coverage proves monotonic and block-partition-equivalent smoothing,
+  bounded request cadence, progressive Trimesh output, adoption continuity,
+  and the existing zero-allocation realtime boundary.
