@@ -2,8 +2,7 @@
 
 ## Status
 
-In progress. Voice and envelope render boundaries are implemented; remaining
-realtime effect rasterizers still require audit.
+Implemented.
 
 Depends on `envelope-grid-time-application.md` for envelope-grid semantics.
 
@@ -73,4 +72,10 @@ must not publish implicitly.
   render-only APIs.
 - Envelope preparation, adoption, and realtime morph refresh now use
   render-only APIs; snapshot publication is an explicit panel operation.
+- `FXRasterizer` exposes render-only geometry and waveform operations and
+  retains its intercept scratch storage. Cycle v1 IR audio rendering and Cycle
+  v2 IR/Waveshaper configuration refreshes use that boundary without redundant
+  geometry-plus-waveform passes.
+- A source audit finds no publishing `updateWaveform()` call in Cycle v1 audio
+  or Cycle v2 effect/envelope/waveshaper processing paths.
 - Full regression proof: 414 of 414 discovered tests pass.

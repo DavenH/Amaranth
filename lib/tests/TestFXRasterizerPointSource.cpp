@@ -134,6 +134,27 @@ TEST_CASE("FXRasterizer can rasterize a direct vertex list", "[rasterization][fx
     REQUIRE(copyBuffer(sampleBuffer).front() == Catch::Approx(rasterizer.sampler().sampleAt(0.0)));
 }
 
+TEST_CASE("FX render-only preparation does not publish", "[rasterization][fx][boundary]") {
+    CurveTableScope curveTableScope;
+    MeshOwner owner("FxRenderBoundary");
+    populateFxMesh(owner.mesh);
+
+    FXRasterizer rasterizer(nullptr, "FxRenderBoundary");
+    rasterizer.setMesh(&owner.mesh);
+    rasterizer.renderWaveformOnly();
+    REQUIRE(rasterizer.sampler().isSampleable());
+    {
+        auto unpublished = rasterizer.snapshotView();
+        REQUIRE(unpublished.intercepts().empty());
+        REQUIRE_FALSE(unpublished.isSampleable());
+    }
+
+    rasterizer.publishCurrentResult();
+    auto published = rasterizer.snapshotView();
+    REQUIRE(published.intercepts().size() == owner.mesh.getVerts().size());
+    REQUIRE(published.isSampleable());
+}
+
 TEST_CASE("FXRasterizer mesh adapter matches direct vertex list rasterization", "[rasterization][fx]") {
     CurveTableScope curveTableScope;
     MeshOwner owner("FxPointSourceMesh");

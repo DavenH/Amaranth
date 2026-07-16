@@ -44,7 +44,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             parameterFloat(parameters, "red", 0.f),
             parameterFloat(parameters, "blue", 0.f)
     });
-    result->rasterizer->updateWaveform(result->mesh.get(), 0.f);
+    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
     result->rasterizer->validateState();
     if (!result->rasterizer->canRasterizeWaveform()) {
         return {};

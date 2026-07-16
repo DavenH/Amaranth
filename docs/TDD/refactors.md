@@ -22,7 +22,6 @@ Suggested direction:
 
 The completed ownership audit produced focused follow-up designs:
 
-- [`rasterizer-realtime-render-boundary.md`](rasterizer-realtime-render-boundary.md)
 - [`envelope-renderer-playback-separation.md`](envelope-renderer-playback-separation.md)
 - [`waveform-sampling-contract.md`](waveform-sampling-contract.md)
 - [`rasterizer-immutable-snapshot-exchange.md`](rasterizer-immutable-snapshot-exchange.md)

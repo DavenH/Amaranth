@@ -69,8 +69,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     }
 
     ensureCurveTable();
-    preparedRasterizer.updateGeometry();
-    preparedRasterizer.updateWaveform();
+    preparedRasterizer.renderWaveformOnly();
 
     result->impulse.resize(impulseLength);
     std::vector<float> rawImpulse(impulseLength);
@@ -202,8 +201,7 @@ void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parameters
     if (lengthChanged) {
         impulseTransform.allocate((int) impulseLength, Transform::DivFwdByN, true);
     }
-    rasterizer.updateGeometry();
-    rasterizer.updateWaveform();
+    rasterizer.renderWaveformOnly();
 
     Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
     if (rasterizer.canRasterizeWaveform()) {
