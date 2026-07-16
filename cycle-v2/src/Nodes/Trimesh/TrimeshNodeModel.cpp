@@ -23,17 +23,6 @@ float parameterFloat(const Node& node, const String& id, float fallback) {
     return fallback;
 }
 
-bool parameterFloatValue(const Node& node, const String& id, float& value) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            value = parameter.value.getFloatValue();
-            return true;
-        }
-    }
-
-    return false;
-}
-
 String parameterString(const Node& node, const String& id, const String& fallback) {
     for (const auto& parameter : node.parameters) {
         if (parameter.id == id) {
@@ -88,7 +77,7 @@ TrimeshNodeModel::~TrimeshNodeModel() {
 
 TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
         ownedMesh       (std::move(other.ownedMesh))
-    ,   meshEditState   (std::move(other.meshEditState))
+    ,   topologySnapshot(std::move(other.topologySnapshot))
     ,   morph           (other.morph)
     ,   primaryViewAxis (other.primaryViewAxis)
     ,   selectedVertexIndex (other.selectedVertexIndex)
@@ -99,7 +88,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
     if (this != &other) {
         clearMesh();
         ownedMesh = std::move(other.ownedMesh);
-        meshEditState = std::move(other.meshEditState);
+        topologySnapshot = std::move(other.topologySnapshot);
         morph = other.morph;
         primaryViewAxis = other.primaryViewAxis;
         selectedVertexIndex = other.selectedVertexIndex;
@@ -119,7 +108,10 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameterString(node, "primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = parameterInt(node, "selectedVertexIndex", -1);
-    const TrimeshMeshEditState nextMeshEditState = TrimeshMeshEditState::fromNode(node);
+    const String nextTopologySnapshot = parameterString(
+            node,
+            TrimeshMeshState::parameterId(),
+            {});
 
     if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
             || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
@@ -138,11 +130,7 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
         bumpSelectedControlRevision();
     }
 
-    if (applySerializedMeshEdits(nextMeshEditState)) {
-        bumpMeshContentRevision();
-    }
-
-    if (nextMeshEditState.empty() && applyLegacySelectedVertexOverride(node)) {
+    if (applyTopologySnapshot(nextTopologySnapshot)) {
         bumpMeshContentRevision();
     }
 }
@@ -316,12 +304,12 @@ void TrimeshNodeModel::markMeshEdited() {
     bumpMeshContentRevision();
 }
 
-TrimeshMeshEditState TrimeshNodeModel::currentMeshEditState() {
+String TrimeshNodeModel::currentMeshState() {
     if (ownedMesh == nullptr) {
         return {};
     }
-
-    return TrimeshMeshEditState::fromMesh(*ownedMesh);
+    topologySnapshot = TrimeshMeshState::serialize(*ownedMesh);
+    return topologySnapshot;
 }
 
 Mesh& TrimeshNodeModel::mesh() {
@@ -417,6 +405,48 @@ void TrimeshNodeModel::selectVertex(Vertex* vertex) {
     }
 }
 
+bool TrimeshNodeModel::setVertexParameter(
+        int vertexIndex,
+        const String& parameterId,
+        float value) {
+    Vertex* vertex = vertexAtIndex(vertexIndex);
+    const int valueIndex = vertexValueIndex(parameterId);
+    if (vertex == nullptr || valueIndex < 0) {
+        return false;
+    }
+    const float clampedValue = jlimit(0.f, 1.f, value);
+    if (vertex->values[valueIndex] == clampedValue) {
+        return true;
+    }
+    vertex->values[valueIndex] = clampedValue;
+    topologySnapshot.clear();
+    bumpMeshContentRevision();
+    return true;
+}
+
+int TrimeshNodeModel::vertexValueIndex(const String& parameterId) {
+    const String field = parameterId.fromLastOccurrenceOf(".", false, false);
+    if (field == "time") {
+        return Vertex::Time;
+    }
+    if (field == "red") {
+        return Vertex::Red;
+    }
+    if (field == "blue") {
+        return Vertex::Blue;
+    }
+    if (field == "phase") {
+        return Vertex::Phase;
+    }
+    if (field == "amp") {
+        return Vertex::Amp;
+    }
+    if (field == "curve") {
+        return Vertex::Curve;
+    }
+    return -1;
+}
+
 Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     Mesh& activeMesh = mesh();
     auto& verts = activeMesh.getVerts();
@@ -428,78 +458,15 @@ Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     return nullptr;
 }
 
-bool TrimeshNodeModel::applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState) {
-    const bool changed = nextMeshEditState.applyTo(mesh());
-    meshEditState = nextMeshEditState;
-    return changed;
-}
-
-bool TrimeshNodeModel::applyLegacySelectedVertexOverride(const Node& node) {
-    bool changed {};
-    float time {};
-    float red {};
-    float blue {};
-    float phase {};
-    float amp {};
-    float curve {};
-    const bool hasTime = parameterFloatValue(node, "vertex.time", time);
-    const bool hasRed = parameterFloatValue(node, "vertex.red", red);
-    const bool hasBlue = parameterFloatValue(node, "vertex.blue", blue);
-    const bool hasPhase = parameterFloatValue(node, "vertex.phase", phase);
-    const bool hasAmp = parameterFloatValue(node, "vertex.amp", amp);
-    const bool hasCurve = parameterFloatValue(node, "vertex.curve", curve);
-    const int overrideIndex = parameterInt(node, "vertexOverrideIndex", selectedVertexIndex);
-
-    if (!hasTime && !hasRed && !hasBlue && !hasPhase && !hasAmp && !hasCurve) {
+bool TrimeshNodeModel::applyTopologySnapshot(const String& snapshot) {
+    if (snapshot.isEmpty() || snapshot == topologySnapshot) {
         return false;
     }
-
-    if (overrideIndex != selectedVertexIndex) {
+    if (!TrimeshMeshState::apply(snapshot, mesh())) {
         return false;
     }
-
-    Vertex* vertex = selectedVertex();
-
-    if (vertex == nullptr) {
-        return false;
-    }
-
-    auto apply = [&](int index, float value) {
-        const float clampedValue = jlimit(0.f, 1.f, value);
-
-        if (vertex->values[index] == clampedValue) {
-            return;
-        }
-
-        vertex->values[index] = clampedValue;
-        changed = true;
-    };
-
-    if (hasTime) {
-        apply(Vertex::Time, time);
-    }
-
-    if (hasRed) {
-        apply(Vertex::Red, red);
-    }
-
-    if (hasBlue) {
-        apply(Vertex::Blue, blue);
-    }
-
-    if (hasAmp) {
-        apply(Vertex::Amp, amp);
-    }
-
-    if (hasPhase) {
-        apply(Vertex::Phase, phase);
-    }
-
-    if (hasCurve) {
-        apply(Vertex::Curve, curve);
-    }
-
-    return changed;
+    topologySnapshot = snapshot;
+    return true;
 }
 
 void TrimeshNodeModel::clearMesh() {

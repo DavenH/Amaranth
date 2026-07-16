@@ -73,7 +73,8 @@ public:
             std::function<void(const juce::MouseCursor&)> cursorCallback,
             std::function<void(juce::Point<float>)> hoverCallback);
     void setMeshEditedCallback(std::function<void()> callback);
-    TrimeshMeshEditState currentMeshEditState();
+    juce::String currentMeshState();
+    bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
     int selectedVertexIndexForPanel();
     std::vector<TrimeshVertexMarker> vertexMarkers();

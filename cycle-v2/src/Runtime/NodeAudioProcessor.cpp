@@ -9,7 +9,7 @@
 #include "../Nodes/FFT/FftSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
@@ -508,7 +508,10 @@ private:
     }
 
     void syncMeshEdits(const std::vector<NodeParameter>& parameters) {
-        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+        const String nextState = typedParameterString(
+                parameters,
+                TrimeshMeshState::parameterId(),
+                {});
 
         if (nextState == meshEditState) {
             return;
@@ -516,7 +519,9 @@ private:
 
         defaultMesh->destroy();
         defaultMesh = TrimeshMeshFactory::createDefaultMesh();
-        nextState.applyTo(*defaultMesh);
+        if (nextState.isNotEmpty()) {
+            TrimeshMeshState::apply(nextState, *defaultMesh);
+        }
         meshEditState = nextState;
     }
 
@@ -526,7 +531,7 @@ private:
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
     std::unique_ptr<Mesh> defaultMesh;
-    TrimeshMeshEditState meshEditState;
+    String meshEditState;
     std::shared_ptr<const TrimeshConfiguration> configuration;
 };
 

@@ -3,6 +3,10 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+
+#include <Curve/Mesh/Mesh.h>
 
 using namespace CycleV2;
 
@@ -52,7 +56,14 @@ TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph
 TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     NodeGraph source = NodeGraph::createDemoGraph();
     source.findNodeForEditing("voice")->parameters.push_back({ "mode", "Mode", "spectral" });
-    source.findNodeForEditing("waveMesh")->parameters.push_back({ "mesh.vertex.2.curve", "Sharpness", "0.75" });
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("SerializedTopology");
+    const String topology = TrimeshMeshState::serialize(*authoredMesh);
+    authoredMesh->destroy();
+    source.findNodeForEditing("waveMesh")->parameters.push_back({
+            TrimeshMeshState::parameterId(),
+            "Mesh Topology",
+            topology
+    });
 
     const GraphSerializer serializer;
     const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
@@ -63,7 +74,7 @@ TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
     REQUIRE(parameterValueForNode(voice, "octave") == "0");
     REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
     REQUIRE(parameterValueForNode(voice, "missing", "fallback") == "fallback");
-    REQUIRE(parameterValueForNode(waveMesh, "mesh.vertex.2.curve") == "0.75");
+    REQUIRE(parameterValueForNode(waveMesh, TrimeshMeshState::parameterId()) == topology);
 }
 
 TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {

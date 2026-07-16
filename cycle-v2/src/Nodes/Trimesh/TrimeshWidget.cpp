@@ -248,8 +248,15 @@ void TrimeshWidget::setMeshEditedCallback(std::function<void()> callback) {
     bridge.setMeshEditedCallback(std::move(callback));
 }
 
-TrimeshMeshEditState TrimeshWidget::currentMeshEditState() {
-    return bridge.getModel().currentMeshEditState();
+String TrimeshWidget::currentMeshState() {
+    return bridge.getModel().currentMeshState();
+}
+
+bool TrimeshWidget::setVertexParameter(
+        int vertexIndex,
+        const String& parameterId,
+        float value) {
+    return bridge.getModel().setVertexParameter(vertexIndex, parameterId, value);
 }
 
 std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int vertexIndex) {

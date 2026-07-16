@@ -7,6 +7,11 @@
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 #include "../src/Runtime/NodePreviewProcessor.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
 #include <cmath>
@@ -246,13 +251,20 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from serializ
     };
 
     addGraph(baselineGraph, {});
+    auto editedMesh = TrimeshMeshFactory::createDefaultMesh("PreviewTopology");
+    editedMesh->getVerts()[0]->values[Vertex::Amp] = 0.05f;
+    editedMesh->getVerts()[1]->values[Vertex::Amp] = 0.95f;
+    editedMesh->getVerts()[2]->values[Vertex::Phase] = 0.44f;
     addGraph(
             editedGraph,
             {
-                    { "mesh.vertex.0.amp", "Amplitude", "0.05" },
-                    { "mesh.vertex.1.amp", "Amplitude", "0.95" },
-                    { "mesh.vertex.2.phase", "Phase", "0.44" }
+                    {
+                            TrimeshMeshState::parameterId(),
+                            "Mesh Topology",
+                            TrimeshMeshState::serialize(*editedMesh)
+                    }
             });
+    editedMesh->destroy();
 
     const auto baselineCompile = GraphCompiler().compile(baselineGraph);
     const auto editedCompile = GraphCompiler().compile(editedGraph);

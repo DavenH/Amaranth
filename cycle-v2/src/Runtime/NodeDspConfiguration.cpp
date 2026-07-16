@@ -4,8 +4,8 @@
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
 
@@ -17,7 +17,13 @@ std::shared_ptr<const TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto configuration = std::make_shared<TrimeshConfiguration>();
     auto mesh = TrimeshMeshFactory::createDefaultMesh();
-    TrimeshMeshEditState::fromParameters(parameters).applyTo(*mesh);
+    const String topology = typedParameterString(
+            parameters,
+            TrimeshMeshState::parameterId(),
+            {});
+    if (topology.isNotEmpty()) {
+        TrimeshMeshState::apply(topology, *mesh);
+    }
     configuration->mesh = std::shared_ptr<Mesh>(mesh.release(), [](Mesh* value) {
         value->destroy();
         delete value;

@@ -13,7 +13,6 @@
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPresentationModel.h"
 #include "NodeCanvasGlRenderer.h"

@@ -2,7 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 
 #include <Array/Buffer.h>
@@ -359,7 +359,10 @@ public:
 
 private:
     void syncMesh(const std::vector<NodeParameter>& parameters) {
-        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+        const String nextState = typedParameterString(
+                parameters,
+                TrimeshMeshState::parameterId(),
+                {});
         if (mesh != nullptr && nextState == meshEditState) {
             return;
         }
@@ -367,12 +370,14 @@ private:
             mesh->destroy();
         }
         mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
-        nextState.applyTo(*mesh);
+        if (nextState.isNotEmpty()) {
+            TrimeshMeshState::apply(nextState, *mesh);
+        }
         meshEditState = nextState;
     }
 
     std::unique_ptr<Mesh> mesh;
-    TrimeshMeshEditState meshEditState;
+    String meshEditState;
 };
 
 }

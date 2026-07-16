@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshMeshEditState.h"
+#include "TrimeshMeshState.h"
 
 #include "../../Graph/NodeGraph.h"
 
@@ -82,6 +82,7 @@ public:
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
     int getResolvedSelectedVertexIndex();
     void selectVertex(Vertex* vertex);
+    bool setVertexParameter(int vertexIndex, const String& parameterId, float value);
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }
@@ -90,15 +91,15 @@ public:
     uint64_t getRevision() const { return revision; }
     const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
-    TrimeshMeshEditState currentMeshEditState();
+    String currentMeshState();
 
 private:
     Mesh& mesh();
     int resolvedSelectedVertexIndex();
     Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
-    bool applySerializedMeshEdits(const TrimeshMeshEditState& nextMeshEditState);
-    bool applyLegacySelectedVertexOverride(const Node& node);
+    static int vertexValueIndex(const String& parameterId);
+    bool applyTopologySnapshot(const String& snapshot);
     void bumpMeshContentRevision();
     void bumpMorphRevision();
     void bumpPrimaryAxisRevision();
@@ -106,7 +107,7 @@ private:
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;
-    TrimeshMeshEditState meshEditState;
+    String topologySnapshot;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
     int selectedVertexIndex { -1 };
