@@ -2,8 +2,7 @@
 
 ## Status
 
-In progress. Render preparation and snapshot publication are separated;
-playback-state extraction remains.
+Implemented.
 
 ## Problem
 
@@ -88,3 +87,19 @@ time evolution. Neither owns UI publication policy.
   rebuild curves, replace waveform views, or mutate the display result on the
   processing path. A lifecycle regression test compares all prepared
   intercepts, curves, and waveform samples before and after both transitions.
+- `EnvelopePlaybackEngine` now owns note lifecycle, per-voice cursors, loop and
+  release transitions, release scaling, state validation, simulation, output
+  memory, and sample production. It consumes a const
+  `PreparedEnvelopePlaybackView` containing the complete display and loop
+  results plus their marker metadata.
+- `EnvRasterizer` remains as a compatibility facade for existing Cycle v1 and
+  Cycle v2 callers, but delegates playback behavior to the engine. Its
+  preparation path no longer implements or reaches into the playback state
+  machine.
+- A direct semantic test gives two playback engines the same prepared envelope,
+  advances them independently, enters release on only one, and proves neither
+  mutates the shared intercept or waveform data.
+- Focused proof: `AmaranthLib_tests '[rasterization][env][playback]'` passes 26
+  assertions without JUCE assertions. The full 421-test suite passes 420 tests;
+  the sole failure is the already documented exact-float reverb comparison in
+  `audio-bugs.md`, which is unrelated to envelope playback.

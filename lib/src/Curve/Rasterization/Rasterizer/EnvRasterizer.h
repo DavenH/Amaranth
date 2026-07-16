@@ -4,10 +4,9 @@
 #include <vector>
 
 #include <App/MeshLibrary.h>
-#include <Array/ScopedAlloc.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
-#include <Curve/Rasterization/EnvelopePlaybackState.h>
+#include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
@@ -35,8 +34,6 @@ public:
 
     enum { loopMinSizeIcpts = 1, graphicIndex = 0, headUnisonIndex };
     enum { NormalState, Looping, Releasing };
-
-    using EnvParams = Rasterization::EnvelopeVoicePlaybackState;
 
     /* ----------------------------------------------------------------------------- */
 
@@ -116,27 +113,26 @@ public:
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
     const Rasterization::RenderResult& preparedResult() const { return result; }
-    float getSustainLevel(int paramIndex) const { return playback.voice(paramIndex).sustainLevel; }
+    float getSustainLevel(int paramIndex) const { return playback.sustainLevel(paramIndex); }
     int getMode() const {
-        return playback.mode == Rasterization::EnvelopePlaybackMode::Looping
+        return playback.mode() == Rasterization::EnvelopePlaybackMode::Looping
                 ? Looping
-                : playback.mode == Rasterization::EnvelopePlaybackMode::Releasing
+                : playback.mode() == Rasterization::EnvelopePlaybackMode::Releasing
                         ? Releasing
                         : NormalState;
     }
     void setMode(int mode) {
-        playback.mode = mode == Looping
+        playback.setMode(mode == Looping
                 ? Rasterization::EnvelopePlaybackMode::Looping
                 : mode == Releasing
                         ? Rasterization::EnvelopePlaybackMode::Releasing
-                        : Rasterization::EnvelopePlaybackMode::Normal;
+                        : Rasterization::EnvelopePlaybackMode::Normal);
     }
-    bool wantsOneSamplePerCycle() const { return playback.oneSamplePerCycle; }
-    Buffer<float> getRenderBuffer()             { return renderBuffer;                  }
+    bool wantsOneSamplePerCycle() const { return playback.oneSamplePerCycle(); }
+    Buffer<float> getRenderBuffer() { return playback.output(); }
 
 
 private:
-    void changedToRelease();
     void clearOutput();
     void clearRasterizationResult(bool clearCurves);
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
@@ -147,25 +143,11 @@ private:
     void rebuildCurvesFromIntercepts();
     void bakeWaveform(Rasterization::RenderResult& target);
     Rasterization::GuideCurveApplier createGuideCurveApplier();
+    Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
 
     bool canLoop() const;
     const Rasterization::RenderResult& samplingResult() const;
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
     void markWaveformUnsampleable();
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    template<typename T>
-    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return Rasterization::WaveformSampler::sampleWithInterval(
-                samplingResult().waveform,
-                buffer,
-                delta,
-                phase);
-    }
-
-    int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
     float getLoopLength() const;
 
     /* ----------------------------------------------------------------------------- */
@@ -175,10 +157,7 @@ private:
     MeshLibrary::EnvProps defaultProps;
     EnvelopeMesh* envMesh;
 
-    Rasterization::EnvelopePlaybackState playback;
-
-    ScopedAlloc<float> preallocated;
-    Buffer<float> renderBuffer;
+    Rasterization::EnvelopePlaybackEngine playback;
 
     GuideCurveProvider* guideCurveProvider;
     Rasterization::RasterizationRequest request;

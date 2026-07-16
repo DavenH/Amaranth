@@ -7,6 +7,7 @@
 #include <Curve/Curve.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
 namespace {
@@ -54,6 +55,42 @@ namespace {
         }
 
         EnvelopeMesh mesh;
+    };
+
+    struct TestPreparedPlayback {
+        TestPreparedPlayback() {
+            display.intercepts = {
+                Intercept(0.f, 0.f, nullptr, 0.5f),
+                Intercept(0.5f, 0.5f, nullptr, 0.5f),
+                Intercept(1.f, 1.f, nullptr, 0.5f)
+            };
+            display.waveform.place(display.waveformMemory, 5);
+            for (int i = 0; i < 5; ++i) {
+                display.waveform.waveX[i] = -0.5f + 0.5f * (float) i;
+                display.waveform.waveY[i] = -0.5f + 0.5f * (float) i;
+                display.waveform.diffX[i] = i < 4 ? 0.5f : 0.f;
+                display.waveform.slope[i] = i < 4 ? 1.f : 0.f;
+                display.waveform.area[i] = 0.f;
+            }
+            display.waveform.zeroIndex = 1;
+            display.waveform.oneIndex = 3;
+            display.sampleable = true;
+        }
+
+        Rasterization::PreparedEnvelopePlaybackView view() const {
+            return {
+                    display,
+                    loop,
+                    -1,
+                    1,
+                    Rasterization::PointScalingMode::Unipolar,
+                    nullptr,
+                    -1
+            };
+        }
+
+        Rasterization::RenderResult display;
+        Rasterization::RenderResult loop;
     };
 }
 
@@ -140,6 +177,37 @@ TEST_CASE("Envelope playback states advance lifecycle independently", "[rasteriz
     REQUIRE(first.mode == Rasterization::EnvelopePlaybackMode::Normal);
     REQUIRE(first.voice(2).samplePosition == Catch::Approx(0.0));
     REQUIRE(second.voice(2).samplePosition == Catch::Approx(0.25));
+}
+
+TEST_CASE("Envelope playback engines independently consume one prepared envelope", "[rasterization][env][playback]") {
+    TestPreparedPlayback prepared;
+    const auto originalIntercepts = prepared.display.intercepts;
+    std::vector<float> originalWaveY(
+            prepared.display.waveform.waveY.get(),
+            prepared.display.waveform.waveY.get() + prepared.display.waveform.waveY.size());
+    Rasterization::EnvelopePlaybackEngine first;
+    Rasterization::EnvelopePlaybackEngine second;
+    MeshLibrary::EnvProps props;
+    props.active = true;
+
+    first.noteOn();
+    second.noteOn();
+    REQUIRE(first.renderToBuffer(prepared.view(), 3, 0.1, 1, props, 1.f));
+    REQUIRE(first.renderToBuffer(prepared.view(), 2, 0.1, 1, props, 1.f));
+    REQUIRE(second.renderToBuffer(prepared.view(), 2, 0.1, 1, props, 1.f));
+
+    REQUIRE(first.output()[0] > second.output()[0]);
+    REQUIRE(first.sustainLevel(1) > second.sustainLevel(1));
+    REQUIRE(prepared.display.intercepts == originalIntercepts);
+    REQUIRE(std::equal(
+            originalWaveY.begin(),
+            originalWaveY.end(),
+            prepared.display.waveform.waveY.get()));
+
+    first.noteOff(prepared.view());
+    REQUIRE(first.mode() == Rasterization::EnvelopePlaybackMode::Releasing);
+    first.renderToBuffer(prepared.view(), 2, 0.1, 1, props, 1.f);
+    REQUIRE(second.mode() == Rasterization::EnvelopePlaybackMode::Normal);
 }
 
 TEST_CASE("Envelope playback does not mutate prepared display data", "[rasterization][env][playback]") {
