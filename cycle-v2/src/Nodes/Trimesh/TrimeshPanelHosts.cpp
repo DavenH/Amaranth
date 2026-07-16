@@ -10,6 +10,14 @@
 
 namespace CycleV2 {
 
+namespace TrimeshPanelInvalidation {
+
+constexpr uint32_t Owner = 1u << 0;
+constexpr uint32_t Panel2DBake = 1u << 1;
+constexpr uint32_t Panel3DBake = 1u << 2;
+
+}
+
 class TrimeshPanelHosts::PanelHostComponent :
         public Component {
 public:
@@ -223,7 +231,8 @@ TrimeshPanelHosts::TrimeshPanelHosts(
         panel2D         (panel2DToHost)
     ,   panel3D         (panel3DToHost)
     ,   interactor2D    (interactor2DToHost)
-    ,   interactor3D    (interactor3DToHost) {
+    ,   interactor3D    (interactor3DToHost)
+    ,   invalidation    (*this) {
 }
 
 TrimeshPanelHosts::~TrimeshPanelHosts() {
@@ -264,10 +273,8 @@ void TrimeshPanelHosts::setCallbacks(
 
 PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
     PanelHostCallbacks callbacks;
-    callbacks.setRepaintCallback([this](Panel*, PanelDirtyState::Flag) {
-        if (panelHostRepaintCallback != nullptr) {
-            panelHostRepaintCallback();
-        }
+    callbacks.setRepaintCallback([this](Panel* panel, PanelDirtyState::Flag flag) {
+        requestPanelInvalidation(panel, flag);
     });
     callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
         if (panelHostCursorCallback != nullptr) {
@@ -360,14 +367,20 @@ void TrimeshPanelHosts::releaseSharedGlResources() {
     panel2DGfx = nullptr;
     panel3DGfx = nullptr;
     sharedGlResourcesInitialised = false;
+    panel2DVisible = false;
+    panel3DVisible = false;
 }
 
 void TrimeshPanelHosts::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {
+    panel3DVisible = !bounds.isEmpty();
+    invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
     renderPanel(panel3D, bounds, scaleFactor);
 }
 
 void TrimeshPanelHosts::renderPanel2D(Rectangle<float> bounds, float scaleFactor) {
+    panel2DVisible = !bounds.isEmpty();
+    invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
     renderPanel(panel2D, bounds, scaleFactor);
 }
@@ -387,6 +400,47 @@ void TrimeshPanelHosts::renderPanel(
     context.visible = true;
     context.callbacks = createPanelHostCallbacks();
     panel.render(context);
+}
+
+void TrimeshPanelHosts::requestPanelInvalidation(
+        Panel* sourcePanel,
+        PanelDirtyState::Flag flag) {
+    uint32_t categories = TrimeshPanelInvalidation::Owner;
+    const bool requiresBake = flag == PanelDirtyState::Flag::StaticVisual
+            || flag == PanelDirtyState::Flag::SurfaceCache
+            || flag == PanelDirtyState::Flag::Resource
+            || flag == PanelDirtyState::Flag::Full;
+    if (requiresBake && sourcePanel == &panel2D) {
+        categories |= TrimeshPanelInvalidation::Panel2DBake;
+    }
+    if (requiresBake && sourcePanel == &panel3D) {
+        categories |= TrimeshPanelInvalidation::Panel3DBake;
+    }
+    invalidation.request(categories);
+}
+
+uint32_t TrimeshPanelHosts::availableRenderInvalidations() const {
+    uint32_t available = TrimeshPanelInvalidation::Owner;
+    if (sharedGlResourcesInitialised && panel2DVisible) {
+        available |= TrimeshPanelInvalidation::Panel2DBake;
+    }
+    if (sharedGlResourcesInitialised && panel3DVisible) {
+        available |= TrimeshPanelInvalidation::Panel3DBake;
+    }
+    return available;
+}
+
+void TrimeshPanelHosts::flushRenderInvalidations(uint32_t categories) {
+    if ((categories & TrimeshPanelInvalidation::Panel2DBake) != 0) {
+        panel2D.bakeTexturesNextRepaint();
+    }
+    if ((categories & TrimeshPanelInvalidation::Panel3DBake) != 0) {
+        panel3D.bakeTexturesNextRepaint();
+    }
+    if ((categories & TrimeshPanelInvalidation::Owner) != 0
+            && panelHostRepaintCallback != nullptr) {
+        panelHostRepaintCallback();
+    }
 }
 
 }

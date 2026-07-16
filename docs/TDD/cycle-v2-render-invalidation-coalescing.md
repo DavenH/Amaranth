@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Completed 2026-07-16.
 
 ## Problem
 
@@ -40,3 +40,29 @@ Painting visible nodes and cables remains `O(Vvisible + Evisible)`.
 - Repaint and bake multiplicity is deterministic and fixture-tested.
 - Domain editors do not directly fan out host repaint callbacks.
 
+## Implemented
+
+- `RenderInvalidationAccumulator` provides one thread-safe, host-owned
+  scheduling boundary with category masks, hidden-surface deferral, and
+  deterministic diagnostics.
+- Curve panel repaint, owner repaint, and texture-bake requests accumulate at
+  `CurvePanelHost`; OpenGL snapshot publication no longer posts an independent
+  repaint callback.
+- Trimesh 2D and 3D texture categories accumulate independently while sharing
+  one owner repaint dispatch. Rasterization no longer bakes 3D textures and
+  separately requests a panel repaint for the same edit.
+- `NodeCanvas` routes authoring, editor lifecycle, pointer, viewport, and graph
+  movement repaints through one canvas category instead of calling JUCE
+  repaint from every path.
+- Texture categories remain pending while their render surface is unavailable
+  and flush when a visible render pass restores availability.
+
+## Proof
+
+- `TestRenderInvalidationAccumulator.cpp` verifies repeated-category
+  coalescing, distinct UI frames, and hidden texture deferral.
+- `CycleV2_tests`: 2,773 assertions in 253 test cases.
+- `CycleV2` standalone target builds successfully.
+- The focused Waveshaper editor fixture completed both commands and its macOS
+  OS capture showed the hosted OpenGL editor and surrounding canvas correctly
+  composited (`/private/tmp/cycle-v2-invalidation-os.png`).

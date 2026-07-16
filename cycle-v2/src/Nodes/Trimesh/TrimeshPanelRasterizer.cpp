@@ -39,7 +39,6 @@ void TrimeshPanelRasterizer::update(
 
     if (panelHosts.isPanel3DHostInitialised() && refresh3DGeometry) {
         interactor3D.updateIntercepts();
-        panel3D.bakeTexturesNextRepaint();
         panel3D.requestRepaint();
     }
 

@@ -5,8 +5,11 @@
 #include <JuceHeader.h>
 #include <UI/Panels/PanelHostContext.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
+
+#include "../../UI/RenderInvalidationAccumulator.h"
 
 class CommonGL;
 class GLPanelRenderer;
@@ -53,7 +56,7 @@ public:
     virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;
 };
 
-class CurvePanelHost {
+class CurvePanelHost : private RenderInvalidationTarget {
 public:
     CurvePanelHost(Panel& panel, CurvePanelHostDelegate& delegate);
     ~CurvePanelHost();
@@ -67,6 +70,10 @@ public:
     bool usesCursor(const MouseCursor& cursor) const;
     void releaseSharedGlResources();
 
+    RenderInvalidationAccumulator::Diagnostics invalidationDiagnostics() const {
+        return invalidation.diagnostics();
+    }
+
 private:
     class HostComponent;
 
@@ -78,6 +85,9 @@ private:
             Image& destination,
             bool& hasVisibleContent) const;
     PanelHostCallbacks callbacks() const;
+    void requestPanelInvalidation(PanelDirtyState::Flag flag);
+    uint32_t availableRenderInvalidations() const override;
+    void flushRenderInvalidations(uint32_t categories) override;
 
     Panel& panel;
     CurvePanelHostDelegate& delegate;
@@ -86,8 +96,10 @@ private:
     CommonGL* panelGfx {};
     CurvePanelSnapshotCache previewSnapshot;
     CurvePanelSnapshotCache expandedSnapshot;
+    RenderInvalidationAccumulator invalidation;
     bool componentInitialised {};
-    bool sharedGlResourcesInitialised {};
+    std::atomic<bool> sharedGlResourcesInitialised {};
+    std::atomic<bool> renderSurfaceVisible {};
 };
 
 }

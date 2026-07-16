@@ -21,6 +21,7 @@
 #include "NodeCanvasScene.h"
 #include "NodeCanvasViewport.h"
 #include "NodeEditorHost.h"
+#include "RenderInvalidationAccumulator.h"
 
 namespace CycleV2 {
 
@@ -29,7 +30,8 @@ class NodeCanvas :
     ,   private OpenGLRenderer
     ,   private Timer
     ,   private NodeEditorPresentation
-    ,   private NodeEditorResources {
+    ,   private NodeEditorResources
+    ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
     ~NodeCanvas() override;
@@ -66,6 +68,7 @@ public:
 
     void paint(Graphics& g) override;
     void resized() override;
+    void visibilityChanged() override;
     void mouseDown(const MouseEvent& event) override;
     void mouseMove(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
@@ -112,6 +115,7 @@ private:
     std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
     NodeEditorCommandService editorCommands;
     NodeEditorHost editorHost;
+    RenderInvalidationAccumulator renderInvalidation;
 
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
@@ -181,6 +185,9 @@ private:
     void drawEdgeLegend(Graphics& g);
     void drawNodePalette(Graphics& g);
     void drawHoverConsole(Graphics& g);
+    void requestCanvasRepaint();
+    uint32_t availableRenderInvalidations() const override;
+    void flushRenderInvalidations(uint32_t categories) override;
 
     Point<float> toScreen(Point<float> p) const;
     Point<float> toWorld(Point<float> p) const;

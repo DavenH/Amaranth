@@ -10,6 +10,14 @@ using namespace gl;
 
 namespace CycleV2 {
 
+namespace CurvePanelInvalidation {
+
+constexpr uint32_t HostSnapshot = 1u << 0;
+constexpr uint32_t Owner = 1u << 1;
+constexpr uint32_t TextureBake = 1u << 2;
+
+}
+
 void CurvePanelSnapshotCache::publish(Image nextImage, bool hasVisibleContent) {
     const ScopedLock scopedLock(lock);
     image = std::move(nextImage);
@@ -239,7 +247,8 @@ CurvePanelHost::CurvePanelHost(
         Panel& panelToHost,
         CurvePanelHostDelegate& delegateToUse) :
         panel(panelToHost)
-    ,   delegate(delegateToUse) {
+    ,   delegate(delegateToUse)
+    ,   invalidation(*this) {
 }
 
 CurvePanelHost::~CurvePanelHost() {
@@ -257,8 +266,11 @@ Component* CurvePanelHost::componentIfCreated() {
 
 void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float scaleFactor) {
     if (bounds.isEmpty()) {
+        renderSurfaceVisible = false;
         return;
     }
+    renderSurfaceVisible = true;
+    invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
     PanelHostContext context;
     context.bounds = bounds;
@@ -279,20 +291,18 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
     expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
 
-    auto safeHost = Component::SafePointer<Component>(hostComponent.get());
-    auto* delegateToNotify = &delegate;
-    MessageManager::callAsync([safeHost, delegateToNotify] {
-        if (safeHost != nullptr) {
-            safeHost->repaint();
-            delegateToNotify->repaintCurvePanel();
-        }
-    });
+    invalidation.request(
+            CurvePanelInvalidation::HostSnapshot
+            | CurvePanelInvalidation::Owner);
 }
 
 void CurvePanelHost::renderPreview(Rectangle<float> bounds, float scaleFactor) {
     if (bounds.isEmpty()) {
+        renderSurfaceVisible = false;
         return;
     }
+    renderSurfaceVisible = true;
+    invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
     const ZoomRect interactiveZoom = panel.getZoomPanel()->rect;
     PanelHostContext context;
@@ -335,6 +345,7 @@ void CurvePanelHost::releaseSharedGlResources() {
     panel.setGraphicsHelper(nullptr);
     panelGfx = nullptr;
     sharedGlResourcesInitialised = false;
+    renderSurfaceVisible = false;
 }
 
 void CurvePanelHost::initialiseComponent() {
@@ -397,8 +408,8 @@ void CurvePanelHost::captureRenderedPanelImage(
 
 PanelHostCallbacks CurvePanelHost::callbacks() const {
     PanelHostCallbacks result;
-    result.setRepaintCallback([this](Panel*, PanelDirtyState::Flag) {
-        delegate.repaintCurvePanel();
+    result.setRepaintCallback([this](Panel*, PanelDirtyState::Flag flag) {
+        const_cast<CurvePanelHost*>(this)->requestPanelInvalidation(flag);
     });
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
         delegate.setCurvePanelCursor(cursor);
@@ -407,6 +418,39 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
         }
     });
     return result;
+}
+
+void CurvePanelHost::requestPanelInvalidation(PanelDirtyState::Flag flag) {
+    uint32_t categories = CurvePanelInvalidation::Owner;
+    if (flag == PanelDirtyState::Flag::StaticVisual
+            || flag == PanelDirtyState::Flag::SurfaceCache
+            || flag == PanelDirtyState::Flag::Resource
+            || flag == PanelDirtyState::Flag::Full) {
+        categories |= CurvePanelInvalidation::TextureBake;
+    }
+    invalidation.request(categories);
+}
+
+uint32_t CurvePanelHost::availableRenderInvalidations() const {
+    uint32_t available = CurvePanelInvalidation::HostSnapshot
+            | CurvePanelInvalidation::Owner;
+    if (renderSurfaceVisible && sharedGlResourcesInitialised) {
+        available |= CurvePanelInvalidation::TextureBake;
+    }
+    return available;
+}
+
+void CurvePanelHost::flushRenderInvalidations(uint32_t categories) {
+    if ((categories & CurvePanelInvalidation::TextureBake) != 0) {
+        panel.bakeTexturesNextRepaint();
+    }
+    if ((categories & CurvePanelInvalidation::HostSnapshot) != 0
+            && hostComponent != nullptr) {
+        hostComponent->repaint();
+    }
+    if ((categories & CurvePanelInvalidation::Owner) != 0) {
+        delegate.repaintCurvePanel();
+    }
 }
 
 }

@@ -1,10 +1,13 @@
 #pragma once
 
+#include <atomic>
+#include <functional>
+#include <memory>
+
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/PanelHostContext.h>
 
-#include <functional>
-#include <memory>
+#include "../../UI/RenderInvalidationAccumulator.h"
 
 class CommonGL;
 class GLPanelRenderer;
@@ -16,7 +19,7 @@ class TrimeshPanel3D;
 class TrimeshInteractor2D;
 class TrimeshInteractor3D;
 
-class TrimeshPanelHosts {
+class TrimeshPanelHosts : private RenderInvalidationTarget {
 public:
     TrimeshPanelHosts(
             TrimeshPanel2D& panel2D,
@@ -42,6 +45,10 @@ public:
     bool isPanel3DHostInitialised() const { return panel3DHostInitialised; }
     bool isPanel2DHostInitialised() const { return panel2DHostInitialised; }
 
+    RenderInvalidationAccumulator::Diagnostics invalidationDiagnostics() const {
+        return invalidation.diagnostics();
+    }
+
 private:
     class PanelHostComponent;
 
@@ -50,6 +57,9 @@ private:
     void initialisePanel2DHost();
     void updatePanelHostPeers();
     void renderPanel(Panel& panel, Rectangle<float> bounds, float scaleFactor);
+    void requestPanelInvalidation(Panel* panel, PanelDirtyState::Flag flag);
+    uint32_t availableRenderInvalidations() const override;
+    void flushRenderInvalidations(uint32_t categories) override;
 
     TrimeshPanel2D& panel2D;
     TrimeshPanel3D& panel3D;
@@ -64,9 +74,12 @@ private:
     std::function<void()> panelHostRepaintCallback;
     std::function<void(const MouseCursor&)> panelHostCursorCallback;
     std::function<void(Point<float>)> panelHostHoverCallback;
+    RenderInvalidationAccumulator invalidation;
     bool panel3DHostInitialised {};
     bool panel2DHostInitialised {};
-    bool sharedGlResourcesInitialised {};
+    std::atomic<bool> sharedGlResourcesInitialised {};
+    std::atomic<bool> panel3DVisible {};
+    std::atomic<bool> panel2DVisible {};
 };
 
 }
