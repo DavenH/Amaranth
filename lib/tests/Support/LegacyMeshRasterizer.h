@@ -188,14 +188,12 @@ public:
     void setMesh(Mesh* mesh) {
         this->mesh = mesh;
     }
-    void updateOffsetSeeds(int layerSize, int tableSize);
     float getInterceptPadding() const               { return interceptPadding;          }
     VertCube::ReductionData& getReductionData()     { return reduct;                    }
 
 protected:
     void clearRasterizationResult(bool clearCurves);
     void markWaveformUnsampleable();
-    void randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize);
     bool canRasterizeMesh(Mesh* usedMesh) const;
     void beginCrossPointCalculation();
     void updateBuffers(int size);

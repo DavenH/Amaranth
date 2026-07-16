@@ -1,8 +1,11 @@
 #pragma once
 
+#include <utility>
+
 #include <App/MeshLibrary.h>
 #include <Array/ScopedAlloc.h>
 #include <Curve/Rasterization/EnvelopePlaybackState.h>
+#include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
 #include <Curve/Rasterization/Policies/Core/PointScalingPolicy.h>
 #include <Curve/Rasterization/RenderResult.h>
 
@@ -51,7 +54,12 @@ namespace Rasterization {
                 const MeshLibrary::EnvProps& props,
                 float tempoScale);
 
-        void randomizeVoiceOffsets(int tableSize);
+        void deriveVoiceOffsets(int tableSize, GuideCurveSeed seed);
+
+        std::pair<int, int> voiceOffsetSeeds(int voiceIndex) const {
+            const auto& context = state.voice(voiceIndex).guideCurveContext;
+            return { context.phaseOffsetSeed, context.vertOffsetSeed };
+        }
 
         EnvelopePlaybackMode mode() const { return state.mode; }
         bool oneSamplePerCycle() const { return state.oneSamplePerCycle; }

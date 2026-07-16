@@ -210,6 +210,31 @@ TEST_CASE("Envelope playback engines independently consume one prepared envelope
     REQUIRE(second.mode() == Rasterization::EnvelopePlaybackMode::Normal);
 }
 
+TEST_CASE("Envelope playback voice offsets follow explicit lifecycle seeds",
+        "[rasterization][env][seed]") {
+    Rasterization::EnvelopePlaybackEngine first;
+    Rasterization::EnvelopePlaybackEngine repeated;
+    Rasterization::EnvelopePlaybackEngine secondVoice;
+    first.ensureVoiceCount(2);
+    repeated.ensureVoiceCount(2);
+    secondVoice.ensureVoiceCount(2);
+
+    first.deriveVoiceOffsets(
+            256,
+            Rasterization::GuideCurveSeed::voiceLifecycle(101u));
+    repeated.deriveVoiceOffsets(
+            256,
+            Rasterization::GuideCurveSeed::voiceLifecycle(101u));
+    secondVoice.deriveVoiceOffsets(
+            256,
+            Rasterization::GuideCurveSeed::voiceLifecycle(202u));
+
+    REQUIRE(first.voiceOffsetSeeds(1) == repeated.voiceOffsetSeeds(1));
+    REQUIRE(first.voiceOffsetSeeds(2) == repeated.voiceOffsetSeeds(2));
+    REQUIRE(first.voiceOffsetSeeds(1) != secondVoice.voiceOffsetSeeds(1));
+    REQUIRE(first.voiceOffsetSeeds(2) != secondVoice.voiceOffsetSeeds(2));
+}
+
 TEST_CASE("Envelope playback does not mutate prepared display data", "[rasterization][env][playback]") {
     CurveTableScope curveTable;
     TestEnvelope envelope;

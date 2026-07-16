@@ -71,8 +71,14 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
         }
     }
 
-    freqRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
-    phaseRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+    freqRasterizer.updateOffsetSeeds(
+            1,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) parent->random.nextInt()));
+    phaseRasterizer.updateOffsetSeeds(
+            1,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) parent->random.nextInt()));
 
     if(parent->flags.haveFFTPhase) {
         phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();

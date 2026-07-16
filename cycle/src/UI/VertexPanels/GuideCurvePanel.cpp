@@ -29,8 +29,14 @@ GuideCurvePanel::GuideCurvePanel(SingletonRepo* repo) :
     ,	vertOffset	(repo, "offset", "Random DC Offset Range")
     ,	phaseOffset	(repo, "phase", "Random Phase Range")
     ,	constMemory	(tableSize * 2)
-    ,	random		(Time::currentTimeMillis())
 {
+}
+
+namespace {
+    int stableGuideSeed(int guideIndex) {
+        const uint32_t mixed = (uint32_t(guideIndex) + 1u) * 0x9e3779b9u;
+        return (int) (mixed % uint32_t(GuideCurveProvider::tableSize));
+    }
 }
 
 void GuideCurvePanel::init() {
@@ -68,7 +74,7 @@ void GuideCurvePanel::init() {
 
     samplingInterval = (1.f - 2 * getRealConstant(GuideCurvePadding)) / float(tableSize - 1);
 
-    unsigned int seed(Time::currentTimeMillis());
+    unsigned int seed = 0x47554944u;
     noiseArray = constMemory.place(tableSize);
     noiseArray.rand(seed).sub(0.5f);
     phaseMoveBuffer = constMemory.place(tableSize);
@@ -228,7 +234,7 @@ void GuideCurvePanel::addNewLayer(bool update) {
 
     {
         enterClientLock();
-        guideTables.emplace_back(this, currentLayer, 0, 0, 0, random.nextInt(tableSize));
+        guideTables.emplace_back(this, currentLayer, 0, 0, 0, stableGuideSeed(currentLayer));
         exitClientLock();
     }
 
@@ -413,7 +419,7 @@ bool GuideCurvePanel::ensureGuideTableCount() {
 
     while ((int) guideTables.size() < numMeshes) {
         int index = (int) guideTables.size();
-        guideTables.emplace_back(this, index, 0, 0, 0, random.nextInt(tableSize));
+        guideTables.emplace_back(this, index, 0, 0, 0, stableGuideSeed(index));
         changed = true;
     }
 
@@ -448,7 +454,7 @@ bool GuideCurvePanel::readXML(const XmlElement* element) {
             int seed			= propsElem->getIntAttribute	("noiseSeed",  -1);
 
             if(seed == -1) {
-                seed = random.nextInt(tableSize);
+                seed = stableGuideSeed(index);
             }
 
             guideTables.emplace_back(this, index++, noiseLevel, offsetLevel, phaseLevel, seed);
@@ -456,7 +462,8 @@ bool GuideCurvePanel::readXML(const XmlElement* element) {
     }
 
     while ((int) guideTables.size() < numMeshes) {
-        guideTables.emplace_back(this, index++, 0, 0, 0, random.nextInt(tableSize));
+        guideTables.emplace_back(this, index, 0, 0, 0, stableGuideSeed(index));
+        ++index;
     }
 
     panelControls->layerSelector->reset();
@@ -536,7 +543,7 @@ bool GuideCurvePanel::readJSON(const var& object) {
             int seed = PresetJson::intProperty(guideValue, "noiseSeed", -1);
 
             if (seed == -1) {
-                seed = random.nextInt(tableSize);
+                seed = stableGuideSeed(index);
             }
 
             guideTables.emplace_back(this, index++, noiseLevel, offsetLevel, phaseLevel, seed);
@@ -544,7 +551,8 @@ bool GuideCurvePanel::readJSON(const var& object) {
     }
 
     while ((int) guideTables.size() < numMeshes) {
-        guideTables.emplace_back(this, index++, 0, 0, 0, random.nextInt(tableSize));
+        guideTables.emplace_back(this, index, 0, 0, 0, stableGuideSeed(index));
+        ++index;
     }
 
     panelControls->layerSelector->reset();

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -42,3 +42,25 @@ spectrum panels, making the documented PSNR regression gate ineffective.
   across consecutive runs.
 - Seed derivation and lifecycle are documented at every call site.
 
+## Implementation Notes
+
+- `GuideCurveSeed` distinguishes stable visualization identity from explicit
+  voice-lifecycle entropy. Rasterizers derive offsets from that value with a
+  deterministic integer mixer and never read wall-clock time.
+- Cycle v1 visualization call sites use stable purpose/layer identities.
+  Audio voices supply their own lifecycle seeds when notes and voice caches are
+  initialized, preserving intentional variation without hiding ownership in a
+  rasterizer.
+- Envelope one-sample-per-cycle playback derives per-voice offsets from the
+  same explicit lifecycle seed contract.
+- Guide-curve noise storage and missing/persisted-seed fallbacks are stable by
+  guide index. New documents therefore remain reproducible, and saved guide
+  seeds retain their existing authority.
+- Repeated bongo preset loads were captured through the macOS OS-capture panel
+  workflow. All eight waveform, spectrum, guide, and waveshaper crops were
+  pixel-identical (`inf` PSNR), exceeding the 48 dB gate. Artifacts were
+  written to `/tmp/cycle-panel-seed-a` and `/tmp/cycle-panel-seed-b`.
+- CMake source discovery now uses `CONFIGURE_DEPENDS`, preventing newly added
+  rasterizer implementation files from silently appearing only in a freshly
+  configured test build while remaining absent from an older standalone
+  build tree.

@@ -421,11 +421,14 @@ namespace Rasterization {
         return true;
     }
 
-    void EnvelopePlaybackEngine::randomizeVoiceOffsets(int tableSize) {
-        Random random(Time::currentTimeMillis());
+    void EnvelopePlaybackEngine::deriveVoiceOffsets(int tableSize, GuideCurveSeed seed) {
+        GuideCurveOffsetSeeds offsets;
+        offsets.derive((int) state.allVoices().size(), tableSize, seed);
+        int voiceIndex = 0;
         for (auto& voice : state.allVoices()) {
-            voice.guideCurveContext.phaseOffsetSeed = random.nextInt(tableSize);
-            voice.guideCurveContext.vertOffsetSeed = random.nextInt(tableSize);
+            voice.guideCurveContext.phaseOffsetSeed = offsets.phaseAt(voiceIndex);
+            voice.guideCurveContext.vertOffsetSeed = offsets.verticalAt(voiceIndex);
+            ++voiceIndex;
         }
     }
 }

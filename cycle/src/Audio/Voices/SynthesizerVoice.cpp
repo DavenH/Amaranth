@@ -295,7 +295,10 @@ void SynthesizerVoice::initialiseEnvMeshes() {
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
         // TODO
-        envRasterizer->updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+        envRasterizer->updateOffsetSeeds(
+                1,
+                GuideCurvePanel::tableSize,
+                Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) random.nextInt()));
     }
 }
 

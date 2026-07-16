@@ -108,7 +108,10 @@ public:
         request.cyclic = wraps;
     }
     void update(UpdateType updateType) { Updateable::update(updateType); }
-    void updateOffsetSeeds(int layerSize, int tableSize);
+    void updateOffsetSeeds(
+            int layerSize,
+            int tableSize,
+            Rasterization::GuideCurveSeed seed);
     void updateValue(int dim, float value);
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }

@@ -89,7 +89,10 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     const int timeLayerSize = getTimeLayerGroup().size();
-    timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
+    timeRasterizer.updateOffsetSeeds(
+            timeLayerSize,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) random.nextInt()));
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampler().sampleAt(0) : 0.5;

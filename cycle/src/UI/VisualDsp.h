@@ -160,7 +160,6 @@ private:
 
     /* ----------------------------------------------------------------------------- */
 
-    Random random;
     ScratchContext defaultScratchContext;
 
     map<int, int> sizeToIndex;

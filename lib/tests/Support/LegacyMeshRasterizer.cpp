@@ -551,12 +551,3 @@ void MeshRasterizer::updateValue(int dim, float value) {
         default: break;
     }
 }
-
-void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
-}
-
-void MeshRasterizer::randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize) {
-    Random rand(Time::currentTimeMillis());
-    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
-}

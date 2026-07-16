@@ -469,14 +469,16 @@ void EnvRasterizer::ensureParamSize(int numUnisonVoices) {
     playback.ensureVoiceCount(numUnisonVoices);
 }
 
-void EnvRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
+void EnvRasterizer::updateOffsetSeeds(
+        int layerSize,
+        int tableSize,
+        Rasterization::GuideCurveSeed seed) {
     if (playback.oneSamplePerCycle()) {
-        playback.randomizeVoiceOffsets(tableSize);
+        playback.deriveVoiceOffsets(tableSize, seed);
         return;
     }
 
-    Random rand(Time::currentTimeMillis());
-    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
+    guideCurveOffsetSeeds.derive(layerSize, tableSize, seed);
 }
 
 Rasterization::PreparedEnvelopePlaybackView EnvRasterizer::preparedPlaybackView() const {

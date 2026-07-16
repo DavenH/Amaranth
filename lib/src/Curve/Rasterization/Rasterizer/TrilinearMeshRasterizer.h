@@ -221,9 +221,11 @@ namespace Rasterization {
             request.morph.time.setValueDirect(yellow);
         }
 
-        void updateOffsetSeeds(int layerSize, int tableSize) {
-            Random random(Time::currentTimeMillis());
-            guideCurveOffsetSeeds.randomize(layerSize, tableSize, random);
+        void updateOffsetSeeds(
+                int layerSize,
+                int tableSize,
+                GuideCurveSeed seed) {
+            guideCurveOffsetSeeds.derive(layerSize, tableSize, seed);
         }
 
     protected:
