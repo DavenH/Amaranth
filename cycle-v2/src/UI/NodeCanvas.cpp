@@ -4926,8 +4926,9 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
     }
 
     const Edge originalEdge = graph.getEdges()[(size_t) edgeIndex];
+    const bool attachingSpy = node->kind == NodeKind::Spy;
 
-    auto result = node->kind == NodeKind::Spy
+    auto result = attachingSpy
             ? commands.attachSpyToEdge((size_t) edgeIndex, selectedNodeId)
             : commands.spliceNodeIntoEdge((size_t) edgeIndex, selectedNodeId);
 
@@ -4935,11 +4936,11 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
         selectedNodeId = result.nodeId;
         selectedEdgeIndex = -1;
         expandedNodeId = {};
-        if (node->kind != NodeKind::Spy) {
-            shoveNodesForwardAfterSplice(result.nodeId, originalEdge.destNodeId);
+        if (!attachingSpy) {
+            spaceNodesAfterSplice(originalEdge.sourceNodeId, result.nodeId, originalEdge.destNodeId);
         }
         refreshCompiledState();
-        editStatusMessage = node->kind == NodeKind::Spy ? "Attached spy to cable" : "Inserted node into cable";
+        editStatusMessage = attachingSpy ? "Attached spy to cable" : "Inserted node into cable";
         return true;
     }
 
@@ -4950,15 +4951,30 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
     return false;
 }
 
-void NodeCanvas::shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId) {
+void NodeCanvas::spaceNodesAfterSplice(
+        const String& upstreamNodeId,
+        const String& insertedNodeId,
+        const String& downstreamNodeId) {
+    const Node* upstreamNode = findNode(upstreamNodeId);
     const Node* insertedNode = findNode(insertedNodeId);
-    const Node* downstreamNode = findNode(downstreamNodeId);
 
+    if (upstreamNode == nullptr || insertedNode == nullptr) {
+        return;
+    }
+
+    constexpr float neighbourSpacing = 56.f;
+    const float desiredInsertedLeft = upstreamNode->bounds.getRight() + neighbourSpacing;
+    if (insertedNode->bounds.getX() < desiredInsertedLeft) {
+        commands.resizeNode(insertedNodeId, insertedNode->bounds.withX(desiredInsertedLeft));
+    }
+
+    insertedNode = findNode(insertedNodeId);
+    const Node* downstreamNode = findNode(downstreamNodeId);
     if (insertedNode == nullptr || downstreamNode == nullptr) {
         return;
     }
 
-    const float desiredDownstreamLeft = insertedNode->bounds.getRight() + 56.f;
+    const float desiredDownstreamLeft = insertedNode->bounds.getRight() + neighbourSpacing;
     const float xOffset = desiredDownstreamLeft - downstreamNode->bounds.getX();
 
     if (xOffset <= 0.f) {

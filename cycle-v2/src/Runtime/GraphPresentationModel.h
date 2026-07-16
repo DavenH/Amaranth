@@ -39,7 +39,6 @@ private:
 
     GraphPresentationSnapshot current;
     GraphCompiler compiler;
-    mutable GraphAudioExecutor captureExecutor;
     mutable GraphAudioExecutor previewAudioExecutor;
     uint64_t requestedGraphRevision {};
     uint64_t presentationRevision { 1 };

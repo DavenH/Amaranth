@@ -33,6 +33,10 @@ class NativeEditSmoke:
             check=True,
             stdout=subprocess.DEVNULL,
         )
+        subprocess.run([
+            "osascript", "-e", 'tell application "CycleV2" to activate'
+        ], check=True)
+        time.sleep(0.1)
 
     def stop(self):
         try:
@@ -69,20 +73,53 @@ class NativeEditSmoke:
         subprocess.run([CLICK, "-w", "20", *commands], check=True)
         time.sleep(SETTLE_SECONDS)
 
-    def drag(self, source, destination):
+    def primary_click(self, point):
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{point[0] + 2},{point[1]}",
+            "w:10",
+            f"m:{point[0]},{point[1]}",
+            "w:20",
+            f"dd:{point[0]},{point[1]}",
+        ], check=True)
+        time.sleep(0.04)
+        subprocess.run([CLICK, "-w", "20", f"du:{point[0]},{point[1]}"], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def drag(self, source, destination, force_curve_reshape=False):
         moves = []
-        for step in range(1, 5):
-            x = round(source[0] + (destination[0] - source[0]) * step / 4)
-            y = round(source[1] + (destination[1] - source[1]) * step / 4)
+        for step in range(1, 7):
+            x = round(source[0] + (destination[0] - source[0]) * step / 6)
+            y = round(source[1] + (destination[1] - source[1]) * step / 6)
             moves.append(f"dm:{x},{y}")
-            moves.append("w:5")
-        self.click(
+            moves.append("w:4")
+        down_commands = [
+            CLICK,
+            "-w",
+            "20",
+            f"m:{source[0] + 2},{source[1]}",
+            "w:10",
             f"m:{source[0]},{source[1]}",
-            "w:60",
-            f"dd:{source[0]},{source[1]}",
+            "w:20",
+        ]
+        if force_curve_reshape:
+            down_commands.extend(["kd:cmd", "w:10"])
+        down_commands.append(f"dd:{source[0]},{source[1]}")
+        subprocess.run(down_commands, check=True)
+        time.sleep(0.04)
+        drag_commands = [
+            CLICK,
+            "-w",
+            "20",
             *moves,
             f"du:{destination[0]},{destination[1]}",
-        )
+        ]
+        if force_curve_reshape:
+            drag_commands.extend(["w:10", "ku:cmd"])
+        subprocess.run(drag_commands, check=True)
+        time.sleep(SETTLE_SECONDS)
 
     def capture(self, name, bounds):
         directory = os.environ.get("CYCLE_V2_NATIVE_CAPTURE_DIR")
@@ -100,7 +137,7 @@ class NativeEditSmoke:
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
         self.command({"command": command, "nodeId": node_id})
-        time.sleep(SETTLE_SECONDS)
+        time.sleep(0.2)
         return self.inspect(node_id)
 
     def inspect(self, node_id):
@@ -118,6 +155,43 @@ class NativeEditSmoke:
         targets = self.command({"command": "inspectPointerTargets"})["targets"]
         return next(target for target in targets if target["id"] == target_id)["screenBounds"]
 
+    def graph_state(self):
+        return self.command({"command": "snapshotState"})
+
+    def key_chord(self, key, shift=False):
+        commands = [CLICK, "-w", "20", "kd:cmd"]
+        if shift:
+            commands.append("kd:shift")
+        commands.append(f"t:{key}")
+        if shift:
+            commands.append("ku:shift")
+        commands.append("ku:cmd")
+        subprocess.run(commands, check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    @staticmethod
+    def press_native_delete():
+        subprocess.run([
+            "osascript", "-e", 'tell application "System Events" to key code 51'
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def create_from_palette(self, section_index, entry_index):
+        canvas = self.target("canvas")
+        group = (
+            round(canvas["x"] + 54),
+            round(canvas["y"] + 74 + 7 + section_index * 78 + 30),
+        )
+        entry = (
+            round(canvas["x"] + 100 + 72),
+            round(canvas["y"] + 74 + 7 + section_index * 78 + entry_index * 52 + 22),
+        )
+        self.click(f"m:{group[0]},{group[1]}")
+        self.primary_click(entry)
+        state = self.graph_state()
+        assert state["selectedNodeId"], (section_index, entry_index, state)
+        return state["selectedNodeId"]
+
     @staticmethod
     def point(bounds, x, y):
         return (
@@ -133,7 +207,152 @@ class NativeEditSmoke:
     def flat_snapshot(state):
         return json.loads(NativeEditSmoke.parameters(state)["curve.modelSnapshot"])
 
+    @staticmethod
+    def model_revision(state):
+        return int(NativeEditSmoke.parameters(state)["curve.modelRevision"])
+
+    @staticmethod
+    def selected_vertex_parameters(state):
+        return {
+            parameter["id"]: float(parameter["value"])
+            for parameter in state["effect2D"]["panelState"]["selectedVertexParameters"]
+        }
+
+    def audio_samples(self, frame_count=128):
+        return self.command({"command": "captureAudio", "frames": frame_count})["samples"]
+
+    @staticmethod
+    def assert_audio_changed(before, after, context):
+        assert len(before) == len(after)
+        maximum_delta = max(abs(float(lhs) - float(rhs)) for lhs, rhs in zip(before, after))
+        assert maximum_delta > 1.0e-5, (context, maximum_delta)
+
+    @staticmethod
+    def has_edge(state, source_node, source_port, dest_node, dest_port):
+        return any(
+            edge["sourceNodeId"] == source_node
+            and edge["sourcePortId"] == source_port
+            and edge["destNodeId"] == dest_node
+            and edge["destPortId"] == dest_port
+            for edge in state["edges"]
+        )
+
+    @staticmethod
+    def node_bounds(state, node_id):
+        return next(node["bounds"] for node in state["nodes"] if node["id"] == node_id)
+
+    @staticmethod
+    def horizontal_gap(left, right):
+        return float(right["x"]) - float(left["x"] + left["width"])
+
+    def graph_authoring_sequence(self):
+        initial = self.graph_state()
+        assert initial["compileSucceeded"]
+
+        created_envelope = self.create_from_palette(4, 0)
+        assert created_envelope == "env2"
+        created = self.graph_state()
+        assert created["nodeCount"] == initial["nodeCount"] + 1
+
+        envelope_output = self.target(f"output:{created_envelope}.env")
+        scratch_input = self.target("input:waveMesh.scratch")
+        self.drag(
+            self.point(envelope_output, 0.5, 0.5),
+            self.point(scratch_input, 0.5, 0.5),
+        )
+        connected = self.graph_state()
+        assert connected["compileSucceeded"]
+        assert self.has_edge(connected, created_envelope, "env", "waveMesh", "scratch")
+        assert not self.has_edge(connected, "scratchEnv", "env", "waveMesh", "scratch")
+
+        self.key_chord("z")
+        undone_connection = self.graph_state()
+        assert self.has_edge(undone_connection, "scratchEnv", "env", "waveMesh", "scratch")
+        assert not self.has_edge(undone_connection, created_envelope, "env", "waveMesh", "scratch")
+
+        self.key_chord("z", shift=True)
+        redone_connection = self.graph_state()
+        assert self.has_edge(redone_connection, created_envelope, "env", "waveMesh", "scratch")
+
+        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-authoring.cyclegraph")
+        self.command({"command": "saveGraph", "path": saved_path})
+        self.command({"command": "openGraph", "path": saved_path})
+        reloaded = self.graph_state()
+        assert reloaded["compileSucceeded"]
+        assert reloaded["nodeCount"] == created["nodeCount"]
+        assert self.has_edge(reloaded, created_envelope, "env", "waveMesh", "scratch")
+
+        created_node = self.target(f"node:{created_envelope}")
+        self.primary_click(self.point(created_node, 0.5, 0.5))
+        self.press_native_delete()
+        deleted = self.graph_state()
+        assert deleted["nodeCount"] == initial["nodeCount"]
+        assert not any(node["id"] == created_envelope for node in deleted["nodes"])
+
+        self.key_chord("z")
+        restored = self.graph_state()
+        assert restored["nodeCount"] == initial["nodeCount"] + 1
+        assert self.has_edge(restored, created_envelope, "env", "waveMesh", "scratch")
+
+        self.key_chord("z", shift=True)
+        deleted_again = self.graph_state()
+        assert deleted_again["nodeCount"] == initial["nodeCount"]
+
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+        })
+
+        insertion_initial = self.graph_state()
+        created_delay = self.create_from_palette(5, 3)
+        assert created_delay == "delay"
+        delay_node = self.target(f"node:{created_delay}")
+        wave_output = self.target("output:waveMesh.out")
+        fft_input = self.target("input:fft.time")
+        cable_midpoint = (
+            round((self.point(wave_output, 0.5, 0.5)[0] + self.point(fft_input, 0.5, 0.5)[0]) * 0.5),
+            round((self.point(wave_output, 0.5, 0.5)[1] + self.point(fft_input, 0.5, 0.5)[1]) * 0.5),
+        )
+        self.drag(self.point(delay_node, 0.5, 0.5), cable_midpoint)
+        inserted = self.graph_state()
+        assert inserted["compileSucceeded"]
+        assert inserted["nodeCount"] == insertion_initial["nodeCount"] + 1
+        assert inserted["edgeCount"] == insertion_initial["edgeCount"] + 1
+        assert not self.has_edge(inserted, "waveMesh", "out", "fft", "time")
+        assert self.has_edge(inserted, "waveMesh", "out", created_delay, "time")
+        assert self.has_edge(inserted, created_delay, "time", "fft", "time")
+        wave_bounds = self.node_bounds(inserted, "waveMesh")
+        delay_bounds = self.node_bounds(inserted, created_delay)
+        fft_bounds = self.node_bounds(inserted, "fft")
+        assert self.horizontal_gap(wave_bounds, delay_bounds) >= 55.9
+        assert self.horizontal_gap(delay_bounds, fft_bounds) >= 55.9
+
+        self.key_chord("z")
+        insertion_undone = self.graph_state()
+        assert self.has_edge(insertion_undone, "waveMesh", "out", "fft", "time")
+        assert not self.has_edge(insertion_undone, "waveMesh", "out", created_delay, "time")
+
+        self.key_chord("z", shift=True)
+        insertion_redone = self.graph_state()
+        assert self.has_edge(insertion_redone, "waveMesh", "out", created_delay, "time")
+        assert self.has_edge(insertion_redone, created_delay, "time", "fft", "time")
+        redone_wave_bounds = self.node_bounds(insertion_redone, "waveMesh")
+        redone_delay_bounds = self.node_bounds(insertion_redone, created_delay)
+        redone_fft_bounds = self.node_bounds(insertion_redone, "fft")
+        assert self.horizontal_gap(redone_wave_bounds, redone_delay_bounds) >= 55.9
+        assert self.horizontal_gap(redone_delay_bounds, redone_fft_bounds) >= 55.9
+
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+        })
+        reset = self.graph_state()
+        assert reset["nodeCount"] == initial["nodeCount"]
+        assert reset["edgeCount"] == initial["edgeCount"]
+        assert reset["compileSucceeded"]
+
     def effect2d_sequence(self):
+        initial_audio = self.audio_samples()
         state = self.open_editor("waveshaper")
         panel = self.target("expanded:waveshaper.panel2D")
         initial = self.flat_snapshot(state)
@@ -187,7 +406,7 @@ class NativeEditSmoke:
                 for point in current_inspection["effect2D"]["panelState"]["waveformPoints"]:
                     vertex = min(internal_vertices, key=lambda item: abs(item["x"] - point["x"]))
                     vertical_delta = vertex["y"] - point["y"]
-                    if (vertical_delta * polarity > 0.03
+                    if (vertical_delta * polarity > 0.06
                             and vertex["curve"] < 0.9
                             and vertex["id"] not in used_vertex_ids):
                         found.append((abs(vertical_delta), point, vertex))
@@ -247,12 +466,12 @@ class NativeEditSmoke:
                 before_drag["vertices"],
                 key=lambda item: abs(item["x"] - hovered_vertex["x"]) + abs(item["y"] - hovered_vertex["y"]),
             )
-            assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.03
+            assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.06
             curve_end = panel_position(
                 curve_point["x"] + (control_vertex["x"] - curve_point["x"]) * 1.2,
                 curve_point["y"] + (control_vertex["y"] - curve_point["y"]) * 1.2,
             )
-            self.drag(curve_start, curve_end)
+            self.drag(curve_start, curve_end, force_curve_reshape=True)
             reshaped_state = self.inspect_until(
                 "waveshaper",
                 lambda state: next(
@@ -280,8 +499,73 @@ class NativeEditSmoke:
         self.click(f"rc:{second_add[0]},{second_add[1]}")
         final = self.flat_snapshot(self.inspect("waveshaper"))
         assert len(final["vertices"]) == len(deleted["vertices"]) + 1
+        self.assert_audio_changed(initial_audio, self.audio_samples(), "Waveshaper downstream output")
+
+    def envelope_sequence(self):
+        initial_audio = self.audio_samples(2048)
+        initial_state = self.open_editor("env")
+        initial_snapshot = self.parameters(initial_state)["curve.modelSnapshot"]
+        panel = self.target("expanded:env.panel2D")
+        panel_state = initial_state["effect2D"]["panelState"]
+        zoom = panel_state["zoom"]
+        intercept = panel_state["intercepts"][1]
+
+        def panel_position(x, y):
+            return self.point(
+                panel,
+                (x - zoom["x"]) / zoom["w"],
+                1.0 - (y - zoom["y"]) / zoom["h"],
+            )
+
+        vertex_point = panel_position(intercept["x"], intercept["y"])
+        self.click(f"m:{vertex_point[0]},{vertex_point[1]}")
+        hovered = self.inspect("env")
+        hovered_panel = hovered["effect2D"]["panelState"]
+        assert hovered_panel["hasCurrentCube"], "Envelope hover did not resolve a cube"
+        assert "currentVertex" in hovered_panel, "Envelope hover did not resolve a vertex"
+
+        self.primary_click(vertex_point)
+        selected = self.inspect("env")
+        selected_parameters = self.selected_vertex_parameters(selected)
+        initial_revision = self.model_revision(selected)
+
+        blank = self.point(panel, 0.92, 0.12)
+        self.click(f"m:{blank[0]},{blank[1]}")
+        away = self.inspect("env")
+        assert self.selected_vertex_parameters(away) == selected_parameters, (
+            "Envelope parameter selection changed on hover",
+            selected_parameters,
+            self.selected_vertex_parameters(away),
+        )
+
+        self.click(f"m:{vertex_point[0]},{vertex_point[1]}")
+        destination = panel_position(
+            min(1.35, intercept["x"] + 0.08),
+            max(0.1, intercept["y"] - 0.12),
+        )
+        self.drag(vertex_point, destination)
+        moved = self.inspect_until(
+            "env",
+            lambda state: self.model_revision(state) > initial_revision,
+        )
+        moved_parameters = self.selected_vertex_parameters(moved)
+        assert self.model_revision(moved) == initial_revision + 1, (
+            initial_revision,
+            self.model_revision(moved),
+        )
+        assert (
+            abs(moved_parameters["vertex.phase"] - selected_parameters["vertex.phase"]) > 0.01
+            or abs(moved_parameters["vertex.amp"] - selected_parameters["vertex.amp"]) > 0.01
+        ), (selected_parameters, moved_parameters)
+        assert self.parameters(moved)["curve.modelSnapshot"] != initial_snapshot
+        self.assert_audio_changed(
+            initial_audio,
+            self.audio_samples(2048),
+            "Envelope downstream output",
+        )
 
     def trimesh_sequence(self):
+        initial_audio = self.audio_samples()
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
         initial = self.parameters(state)
@@ -361,6 +645,7 @@ class NativeEditSmoke:
         final_state = self.inspect("waveMesh")
         final_count = final_state["trimesh"]["vertexCount"]
         assert final_count > deleted_count
+        self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
 
     def run(self):
         self.start()
@@ -370,7 +655,9 @@ class NativeEditSmoke:
                 "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
             })
             time.sleep(SETTLE_SECONDS)
+            self.graph_authoring_sequence()
             self.effect2d_sequence()
+            self.envelope_sequence()
             self.trimesh_sequence()
         finally:
             self.stop()

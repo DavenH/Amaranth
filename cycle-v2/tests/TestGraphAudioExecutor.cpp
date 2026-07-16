@@ -4,6 +4,7 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <algorithm>
@@ -176,6 +177,85 @@ TEST_CASE("Graph audio executor applies envelope phase across traversal columns"
     }
 
     REQUIRE(maxError < 1.0e-5f);
+}
+
+TEST_CASE("Published curve edits change their node and downstream graph output",
+        "[contract][cycle-v2][invalidation][runtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "shape", "time", "multiply", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "multiply", "out", "out", "time", PortDomain::TimeSignal, false });
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 16.0;
+
+    const auto initialPlan = GraphCompiler().compile(graph);
+    REQUIRE(initialPlan.succeeded());
+    const auto initial = GraphAudioExecutor().process(graph, initialPlan.plan, 16, timing, voice);
+    const auto initialShape = samples(findNodeAudio(initial, "shape").output);
+    const auto initialEnvelope = samples(findNodeAudio(initial, "env").output);
+    const auto initialOutput = samples(initial.output);
+
+    FlatCurveModel shapeModel;
+    REQUIRE(shapeModel.loadSnapshot(parameterValueForNode(
+            *graph.findNode("shape"), CurveNodeModelCodec::snapshotParameterId())));
+    auto flatVertices = shapeModel.getVertices();
+    for (auto& vertex : flatVertices) {
+        vertex.y = 0.25f;
+    }
+    REQUIRE(shapeModel.replaceVertices(std::move(flatVertices)));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "shape",
+            CurveNodeModelCodec::snapshotParameterId(),
+            "Curve Model Snapshot",
+            shapeModel.snapshot()).succeeded());
+
+    const auto shapedPlan = GraphCompiler().compile(graph);
+    REQUIRE(shapedPlan.succeeded());
+    const auto shaped = GraphAudioExecutor().process(graph, shapedPlan.plan, 16, timing, voice);
+    const auto shapedNode = samples(findNodeAudio(shaped, "shape").output);
+    REQUIRE(shapedNode != initialShape);
+    REQUIRE(samples(shaped.output) != initialOutput);
+    REQUIRE(shapedNode[1] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
+    for (size_t index = 2; index + 1 < shapedNode.size(); ++index) {
+        REQUIRE(shapedNode[index] == Catch::Approx(shapedNode[1]).margin(1.0e-5f));
+    }
+
+    EnvelopeNodeModel envelopeModel;
+    REQUIRE(envelopeModel.syncFromNode(*graph.findNode("env")));
+    for (auto* vertex : envelopeModel.getMesh().getVerts()) {
+        vertex->values[Vertex::Amp] = 0.25f;
+    }
+    REQUIRE(envelopeModel.synchronizeFromMesh(envelopeModel.getMesh().getCubes().front()));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "env",
+            CurveNodeModelCodec::snapshotParameterId(),
+            "Curve Model Snapshot",
+            envelopeModel.snapshot()).succeeded());
+
+    const auto envelopePlan = GraphCompiler().compile(graph);
+    REQUIRE(envelopePlan.succeeded());
+    const auto enveloped = GraphAudioExecutor().process(graph, envelopePlan.plan, 16, timing, voice);
+    const auto editedEnvelope = samples(findNodeAudio(enveloped, "env").output);
+    const auto editedOutput = samples(enveloped.output);
+    REQUIRE(editedEnvelope != initialEnvelope);
+    REQUIRE(editedOutput != samples(shaped.output));
+    for (size_t index = 0; index < editedOutput.size(); ++index) {
+        REQUIRE(editedEnvelope[index] == Catch::Approx(0.25f).margin(1.0e-4f));
+        REQUIRE(editedOutput[index]
+                == Catch::Approx(shapedNode[index] * editedEnvelope[index]).margin(1.0e-5f));
+    }
 }
 
 TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[cycle-v2][runtime]") {
