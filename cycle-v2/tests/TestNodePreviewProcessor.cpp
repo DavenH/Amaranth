@@ -30,9 +30,10 @@ TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime
     REQUIRE(emptyContext.gridRows == 0);
 
     PreviewProcessContext gridContext;
-    gridContext.inputGrid = { 0.f, 0.25f, 0.5f, 0.75f };
-    gridContext.inputGridColumns = 2;
-    gridContext.inputGridRows = 2;
+    const std::vector<float> inputGrid { 0.f, 0.25f, 0.5f, 0.75f };
+    gridContext.input.grid = &inputGrid;
+    gridContext.input.gridColumns = 2;
+    gridContext.input.gridRows = 2;
     gridContext.domain = PortDomain::SpectralMagnitudeSignal;
     processor->render(gridContext);
 
@@ -99,7 +100,8 @@ TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runti
 
     PreviewProcessContext meters;
     meters.pointCount = 2;
-    meters.inputSummary = { 0.2f, 0.6f };
+    const std::vector<float> meterSummary { 0.2f, 0.6f };
+    meters.input.summary = &meterSummary;
     factory.create(PreviewModuleRole::OutputMeters)->render(meters);
 
     REQUIRE(meters.primary == std::vector<float> { 0.4f, 0.4f });
@@ -108,7 +110,8 @@ TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runti
 
     PreviewProcessContext mesh;
     mesh.pointCount = 3;
-    mesh.inputSummary = { 0.1f, 0.9f };
+    const std::vector<float> meshSummary { 0.1f, 0.9f };
+    mesh.input.summary = &meshSummary;
     factory.create(PreviewModuleRole::MeshSurface)->render(mesh);
 
     REQUIRE(mesh.secondary.size() == 3);

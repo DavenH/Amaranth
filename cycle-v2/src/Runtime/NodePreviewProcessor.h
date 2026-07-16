@@ -15,14 +15,19 @@ struct PreviewOutputPort {
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
 
+struct PreviewInputView {
+    const std::vector<float>* summary {};
+    const std::vector<float>* grid {};
+    size_t gridColumns {};
+    size_t gridRows {};
+    PortDomain domain { PortDomain::TimeSignal };
+};
+
 struct PreviewProcessContext {
     size_t pointCount {};
     std::vector<NodeParameter> parameters;
     std::vector<PreviewOutputPort> outputPorts;
-    std::vector<float> inputSummary;
-    std::vector<float> inputGrid;
-    size_t inputGridColumns {};
-    size_t inputGridRows {};
+    PreviewInputView input;
     std::vector<float> primary;
     std::vector<float> secondary;
     size_t gridColumns {};

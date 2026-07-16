@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -40,3 +40,16 @@ owner and is not copied merely to propagate its address downstream.
 - No `findSummary` or `findAudioOutput` linear scans remain in the execution loop.
 - Preview result ownership and view lifetimes are represented by types.
 
+## Implementation Notes
+
+- `GraphCompiler` resolves every input to stable source-step and source-output
+  indices alongside its buffer address.
+- `GraphPreviewExecutor` indexes captured audio results once, then resolves
+  preview and audio inputs by compiled indices without node or port scans.
+- An indexed workspace propagates `PreviewResultView` aliases through
+  previewless nodes. Only `GraphPreviewResult` owns produced preview vectors.
+- `PreviewProcessContext` accepts an explicit non-owning `PreviewInputView`, so
+  downstream processors cannot accidentally take ownership of upstream data.
+- Address and alias counters enforce linear scaling through `8/16/32`-node
+  previewless chains; existing spy, fan-out, and graph fixtures retain their
+  semantic output checks.

@@ -24,6 +24,8 @@ struct GraphStepInput {
     String destPortId;
     int destPortIndex {};
     int sourceBufferIndex { -1 };
+    int sourceStepIndex { -1 };
+    int sourceOutputIndex { -1 };
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };

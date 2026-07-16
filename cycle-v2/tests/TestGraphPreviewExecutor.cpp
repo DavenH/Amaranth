@@ -141,6 +141,26 @@ Node previewNode(String id, NodeKind kind, std::vector<Port> inputs, std::vector
     };
 }
 
+NodeGraph previewlessChain(size_t processorCount) {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+
+    String sourceId = "wave";
+    String sourcePort = "out";
+    for (size_t i = 0; i < processorCount; ++i) {
+        const String nodeId = "reverb" + String((int) i);
+        graph.addNode(factory.createNode(NodeKind::Reverb, nodeId, { (float) i * 100.f, 0.f }));
+        graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, false });
+        sourceId = nodeId;
+        sourcePort = "time";
+    }
+
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 500.f, 0.f }));
+    graph.addEdge({ sourceId, sourcePort, "shape", "time", PortDomain::TimeSignal, false });
+    return graph;
+}
+
 TEST_CASE("Graph preview executor can render spy nodes from audio traversal grids", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -313,6 +333,21 @@ TEST_CASE("Graph preview executor renders every spy in the bundled spy graph", "
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE(
+        "Graph preview address lookup scales with compiled inputs",
+        "[cycle-v2][runtime][complexity]") {
+    for (const size_t processorCount : { 8u, 16u, 32u }) {
+        const auto compileResult = GraphCompiler().compile(previewlessChain(processorCount));
+        REQUIRE(compileResult.succeeded());
+
+        const auto result = GraphPreviewExecutor().render(compileResult.plan, 16);
+        INFO("processor count: " << processorCount);
+        REQUIRE(findPreview(result, "shape").primary.size() == 16);
+        REQUIRE(result.addressLookupCount == processorCount + 1);
+        REQUIRE(result.aliasedInputCount == processorCount);
+    }
 }
 
 }

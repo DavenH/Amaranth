@@ -213,6 +213,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     edge.destPortId,
                     inputPortIndex(node, edge.destPortId),
                     -1,
+                    -1,
+                    -1,
                     edge.domain,
                     domainResolver.resolvedChannelLayoutForEdge(graph, edge)
             });
@@ -262,6 +264,26 @@ int bufferIndexFor(
     return -1;
 }
 
+int stepIndexFor(const GraphExecutionPlan& plan, const String& nodeId) {
+    for (int i = 0; i < (int) plan.steps.size(); ++i) {
+        if (plan.steps[(size_t) i].nodeId == nodeId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int outputIndexFor(const GraphExecutionStep& step, const String& portId) {
+    for (int i = 0; i < (int) step.outputs.size(); ++i) {
+        if (step.outputs[(size_t) i].portId == portId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 void compileRouting(GraphExecutionPlan& plan) {
     for (int stepIndex = 0; stepIndex < (int) plan.steps.size(); ++stepIndex) {
         auto& step = plan.steps[(size_t) stepIndex];
@@ -277,6 +299,12 @@ void compileRouting(GraphExecutionPlan& plan) {
                     plan.buffers,
                     input.sourceNodeId,
                     input.sourcePortId);
+            input.sourceStepIndex = stepIndexFor(plan, input.sourceNodeId);
+            if (input.sourceStepIndex >= 0) {
+                input.sourceOutputIndex = outputIndexFor(
+                        plan.steps[(size_t) input.sourceStepIndex],
+                        input.sourcePortId);
+            }
             if (input.sourceBufferIndex >= 0) {
                 plan.buffers[(size_t) input.sourceBufferIndex].lastConsumerStep = stepIndex;
             }

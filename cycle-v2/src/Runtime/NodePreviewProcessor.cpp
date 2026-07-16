@@ -21,18 +21,18 @@ void ensurePreview(PreviewProcessContext& context) {
     context.secondary.resize(context.pointCount);
 }
 
-float averageSummary(const std::vector<float>& summary) {
-    if (summary.empty()) {
+float averageSummary(const std::vector<float>* summary) {
+    if (summary == nullptr || summary->empty()) {
         return 0.f;
     }
 
     float total = 0.f;
 
-    for (const float value : summary) {
+    for (const float value : *summary) {
         total += value;
     }
 
-    return total / (float) summary.size();
+    return total / (float) summary->size();
 }
 
 int primaryAxisFromParameter(const String& axisName) {
@@ -170,8 +170,9 @@ protected:
 
     void renderMeters(PreviewProcessContext& context) const {
         ensurePreview(context);
-        const bool hasInput = !context.inputSummary.empty();
-        const float level = hasInput ? averageSummary(context.inputSummary) : 0.65f;
+        const bool hasInput = context.input.summary != nullptr
+                && !context.input.summary->empty();
+        const float level = hasInput ? averageSummary(context.input.summary) : 0.65f;
         const float secondaryLevel = hasInput ? level * 0.95f : 0.62f;
 
         for (size_t i = 0; i < context.pointCount; ++i) {
@@ -181,7 +182,7 @@ protected:
     }
 
     void renderSignalSpy(PreviewProcessContext& context) const {
-        if (context.inputGrid.empty()) {
+        if (context.input.grid == nullptr || context.input.grid->empty()) {
             context.primary.clear();
             context.secondary.clear();
             context.gridColumns = 0;
@@ -189,10 +190,10 @@ protected:
             return;
         }
 
-        context.primary = context.inputGrid;
+        context.primary.assign(context.input.grid->begin(), context.input.grid->end());
         context.secondary.clear();
-        context.gridColumns = context.inputGridColumns;
-        context.gridRows = context.inputGridRows;
+        context.gridColumns = context.input.gridColumns;
+        context.gridRows = context.input.gridRows;
     }
 
 private:
