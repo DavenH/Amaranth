@@ -229,6 +229,20 @@ namespace Rasterization {
         }
 
     protected:
+        void reserveTrilinearStorage(
+                size_t interceptCapacity,
+                size_t curveCapacity,
+                int waveformCapacity) {
+            output.intercepts.reserve(interceptCapacity);
+            output.frontPadding.reserve(curveCapacity);
+            output.backPadding.reserve(curveCapacity);
+            output.curves.reserve(curveCapacity);
+            output.guideCurveRegions.reserve(curveCapacity);
+            output.colorPoints.reserve(interceptCapacity);
+            output.waveformMemory.ensureSize(waveformCapacity * 5);
+            output.fixedWaveformCapacity = true;
+        }
+
         RasterizationRequest& compatibilityRequest() {
             return request;
         }

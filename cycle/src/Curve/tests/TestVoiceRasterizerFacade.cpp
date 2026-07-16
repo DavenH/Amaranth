@@ -196,6 +196,7 @@ TEST_CASE("VoiceMeshRasterizer builds chained voice slice intercepts", "[cycle][
     VoiceMeshRasterizer rasterizer(nullptr);
     rasterizer.setMesh(&mesh);
     rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(mesh), { &state });
     rasterizer.setMorphPosition(MorphPosition(0.50f, 0.50f, 0.50f));
 
     rasterizer.renderChained(0.85f);

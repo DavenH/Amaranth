@@ -215,6 +215,27 @@ void CycleBasedVoice::initCycleBuffers() {
     }
 }
 
+void CycleBasedVoice::prepareVoiceRasterizer() {
+    testNumLayersChanged();
+    Rasterization::VoiceRasterizerPreparation preparation;
+    auto& timeLayers = getTimeLayerGroup();
+    for (auto& layer : timeLayers.layers) {
+        if (layer.mesh != nullptr) {
+            preparation.include(*layer.mesh);
+        }
+    }
+
+    std::vector<Rasterization::VoiceCycleState*> states;
+    states.reserve(groups.size() * (size_t) timeLayers.size());
+    for (auto& group : groups) {
+        for (auto& state : group.layerStates) {
+            states.push_back(&state);
+        }
+    }
+
+    timeRasterizer.prepare(preparation, states);
+}
+
 void CycleBasedVoice::render(StereoBuffer& channelPair) {
     int numSamples = channelPair.left.size();
 

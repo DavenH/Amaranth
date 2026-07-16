@@ -40,6 +40,7 @@ public:
     CycleBasedVoice(SynthesizerVoice* voice, SingletonRepo*);
 
     void initCycleBuffers();
+    void prepareVoiceRasterizer();
     virtual void testNumLayersChanged();
 
     void testIfOversamplingChanged();

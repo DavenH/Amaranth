@@ -25,6 +25,16 @@ namespace Rasterization {
         int paddingSize { 1 };
         bool sampleable {};
         bool needsResorting {};
+        bool fixedWaveformCapacity {};
+
+        bool placeWaveform(int size) {
+            if (fixedWaveformCapacity) {
+                return waveform.placeInPreparedMemory(waveformMemory, size);
+            }
+
+            waveform.place(waveformMemory, size);
+            return true;
+        }
 
         void clearDerivedOutput() {
             frontPadding.clear();

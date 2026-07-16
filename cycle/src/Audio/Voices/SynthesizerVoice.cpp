@@ -560,6 +560,10 @@ void SynthesizerVoice::prepNewVoice() {
     unisonVoice.prepNewVoice();
 }
 
+void SynthesizerVoice::prepareVoiceRasterizer() {
+    unisonVoice.prepareVoiceRasterizer();
+}
+
 void SynthesizerVoice::envGlobalityChanged() {
     fetchEnvelopeMeshes();
 }

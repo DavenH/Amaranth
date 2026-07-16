@@ -113,6 +113,7 @@ void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleR
 
     for (auto voice: voices) {
         voice->initCycleBuffers();
+        voice->prepareVoiceRasterizer();
     }
 
     updateTempoScale();
@@ -284,6 +285,13 @@ void SynthAudioSource::prepNewVoice() {
 
     for (auto voice : voices) {
         voice->prepNewVoice();
+        voice->prepareVoiceRasterizer();
+    }
+}
+
+void SynthAudioSource::prepareVoiceRasterizersAtSafeBoundary() {
+    for (auto* voice : voices) {
+        voice->prepareVoiceRasterizer();
     }
 }
 

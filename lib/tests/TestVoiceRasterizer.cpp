@@ -6,6 +6,34 @@
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 
+#include <atomic>
+#include <cstdlib>
+#include <new>
+
+namespace {
+    thread_local bool countVoiceRenderAllocations = false;
+    std::atomic<size_t> voiceRenderAllocationCount {};
+}
+
+void* operator new(std::size_t size) {
+    if (countVoiceRenderAllocations) {
+        ++voiceRenderAllocationCount;
+    }
+    if (void* memory = std::malloc(size)) {
+        return memory;
+    }
+    throw std::bad_alloc();
+}
+
+void* operator new[](std::size_t size) {
+    return ::operator new(size);
+}
+
+void operator delete(void* memory) noexcept { std::free(memory); }
+void operator delete[](void* memory) noexcept { std::free(memory); }
+void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
+void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+
 namespace {
     using Catch::Approx;
 
@@ -17,6 +45,20 @@ namespace {
         ~CurveTableScope() {
             Curve::deleteTable();
         }
+    };
+
+    class ScopedVoiceRenderAllocationCount {
+    public:
+        ScopedVoiceRenderAllocationCount() {
+            voiceRenderAllocationCount = 0;
+            countVoiceRenderAllocations = true;
+        }
+
+        ~ScopedVoiceRenderAllocationCount() {
+            countVoiceRenderAllocations = false;
+        }
+
+        size_t count() const { return voiceRenderAllocationCount.load(); }
     };
 
     void setCubeAsVoicePoint(
@@ -63,6 +105,7 @@ TEST_CASE("Shared voice rasterizer builds chained slice intercepts", "[rasteriza
     Rasterization::VoiceRasterizer rasterizer;
     rasterizer.setMesh(&mesh);
     rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(mesh), { &state });
     rasterizer.setMorphPosition(MorphPosition(0.50f, 0.50f, 0.50f));
 
     rasterizer.renderChained(0.85f);
@@ -92,6 +135,7 @@ TEST_CASE("Voice rendering selects each result without publishing", "[rasterizat
     Rasterization::VoiceRasterizer rasterizer;
     rasterizer.setMesh(&mesh);
     rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(mesh), { &state });
     rasterizer.setMorphPosition(MorphPosition(0.50f, 0.50f, 0.50f));
 
     rasterizer.renderChained(0.85f);
@@ -138,6 +182,7 @@ TEST_CASE("Prepared voice renders reuse result storage", "[rasterization][voice]
     Rasterization::VoiceRasterizer rasterizer;
     rasterizer.setMesh(&mesh);
     rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(mesh), { &state });
     rasterizer.setMorphPosition(MorphPosition(0.50f, 0.50f, 0.50f));
 
     const std::initializer_list<float> phases { 0.20f, 0.35f, 0.55f, 0.75f };
@@ -181,4 +226,72 @@ TEST_CASE("Prepared voice renders reuse result storage", "[rasterization][voice]
     REQUIRE(chainedInterceptStorageB != nullptr);
 
     mesh.destroy();
+}
+
+TEST_CASE("Prepared voice rendering performs no heap allocation", "[rasterization][voice][realtime]") {
+    CurveTableScope curveTable;
+    Mesh mesh("VoiceAllocationMesh");
+    addVoiceCube(mesh, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
+    addVoiceCube(mesh, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
+
+    Rasterization::VoiceCycleState state;
+    Rasterization::VoiceRasterizer rasterizer;
+    rasterizer.setMesh(&mesh);
+    rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(mesh), { &state });
+    rasterizer.renderChained(0.10f);
+    rasterizer.renderChained(0.20f);
+    rasterizer.resetDiagnostics();
+
+    size_t allocationCount = 0;
+    {
+        ScopedVoiceRenderAllocationCount allocations;
+        rasterizer.renderOrdinary(&mesh, 0.30f);
+        rasterizer.renderChained(0.40f);
+        rasterizer.renderChained(0.50f);
+        allocationCount = allocations.count();
+    }
+
+    REQUIRE(allocationCount == 0);
+    REQUIRE(rasterizer.diagnostics().sliceCount == 3);
+    REQUIRE(rasterizer.diagnostics().sortCount == 3);
+    REQUIRE(rasterizer.diagnostics().bakeCount == 3);
+    REQUIRE(rasterizer.diagnostics().publicationCount == 0);
+    rasterizer.publishCurrentResult();
+    REQUIRE(rasterizer.diagnostics().publicationCount == 1);
+    mesh.destroy();
+}
+
+TEST_CASE("Voice topology growth waits for prepared capacity", "[rasterization][voice][realtime]") {
+    CurveTableScope curveTable;
+    Mesh original("OriginalVoiceMesh");
+    Mesh enlarged("EnlargedVoiceMesh");
+    addVoiceCube(original, 0.20f, 0.80f, 0.25f, 0.75f, 0.35f);
+    addVoiceCube(original, 0.10f, 0.40f, 0.10f, 0.30f, 0.55f);
+    enlarged.deepCopy(&original);
+    addVoiceCube(enlarged, 0.30f, 0.60f, 0.20f, 0.80f, 0.45f);
+
+    Rasterization::VoiceCycleState state;
+    Rasterization::VoiceRasterizer rasterizer;
+    rasterizer.setMesh(&original);
+    rasterizer.setState(&state);
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(original), { &state });
+    rasterizer.renderChained(0.10f);
+    const auto& valid = rasterizer.renderChained(0.20f);
+    REQUIRE(valid.sampleable);
+    const float previousSample = rasterizer.sampler().sampleAt(0.25f);
+
+    rasterizer.setMesh(&enlarged);
+    const auto& rejected = rasterizer.renderChained(0.30f);
+    REQUIRE(rejected.sampleable);
+    REQUIRE(rasterizer.sampler().sampleAt(0.25f) == Approx(previousSample));
+    REQUIRE(rasterizer.diagnostics().capacityFailureCount == 1);
+
+    state.reset();
+    rasterizer.prepare(Rasterization::VoiceRasterizerPreparation::forMesh(enlarged), { &state });
+    rasterizer.renderChained(0.30f);
+    REQUIRE(rasterizer.renderChained(0.40f).sampleable);
+
+    original.destroy();
+    enlarged.destroy();
 }

@@ -38,6 +38,7 @@ public:
 	void enablementChanged();
 	void envGlobalityChanged();
 	void prepNewVoice();
+    void prepareVoiceRasterizer();
 
 	/* Midi */
 	void startNote(int midiNoteNumber,

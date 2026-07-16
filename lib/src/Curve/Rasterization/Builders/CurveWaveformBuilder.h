@@ -79,7 +79,9 @@ namespace Rasterization {
                     output.curves,
                     context,
                     [&output](int totalRes) {
-                        output.waveform.place(output.waveformMemory, totalRes);
+                        if (!output.placeWaveform(totalRes)) {
+                            return WaveformBufferRefs();
+                        }
                         return WaveformBufferRefs(output.waveform);
                     });
 

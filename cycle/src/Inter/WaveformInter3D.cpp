@@ -152,6 +152,7 @@ void WaveformInter3D::exitClientLock(bool audioThreadApplicable) {
     panel->getRenderLock().exit();
 
     if (audioThreadApplicable) {
+        getObj(SynthAudioSource).prepareVoiceRasterizersAtSafeBoundary();
         getObj(SynthAudioSource).getLock().exit();
     }
 }

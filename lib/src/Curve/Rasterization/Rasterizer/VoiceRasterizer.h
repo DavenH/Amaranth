@@ -13,6 +13,23 @@
 
 namespace Rasterization {
 
+struct VoiceRasterizerPreparation {
+    size_t interceptCapacity {};
+    size_t curveCapacity {};
+    int waveformCapacity {};
+
+    static VoiceRasterizerPreparation forMesh(const Mesh& mesh);
+    void include(const Mesh& mesh);
+};
+
+struct VoiceRasterizerDiagnostics {
+    size_t sliceCount {};
+    size_t sortCount {};
+    size_t bakeCount {};
+    size_t publicationCount {};
+    size_t capacityFailureCount {};
+};
+
 class VoiceRasterizer : public TrilinearMeshRasterizer {
 private:
     enum class ActiveOutput {
@@ -33,6 +50,13 @@ public:
      */
     const RenderResult& renderOrdinary(Mesh* mesh, float phase);
     const RenderResult& renderChained(float phase);
+    void prepare(
+            const VoiceRasterizerPreparation& preparation,
+            const std::vector<VoiceCycleState*>& states = {});
+    bool isPreparedFor(const Mesh& mesh) const;
+    const VoiceRasterizerPreparation& preparedCapacity() const { return preparation; }
+    const VoiceRasterizerDiagnostics& diagnostics() const { return renderDiagnostics; }
+    void resetDiagnostics() { renderDiagnostics = {}; }
     void orphanOldVerts();
     void setState(VoiceCycleState* state) { this->state = state; }
 
@@ -51,7 +75,7 @@ public:
 private:
     WaveformBuffers currentWaveform() const;
     bool currentWaveformIsSampleable() const;
-    void bakeChainedWaveform();
+    bool bakeChainedWaveform();
     void cleanChainedOutput();
     const RenderResult& renderVoiceSlice(float oscPhase);
     void appendVoiceCubeIntercept(
@@ -61,8 +85,8 @@ private:
             GuideCurveApplier& applyGuide,
             std::vector<Intercept>& intercepts);
     void markChainedWaveformUnsampleable();
-    void updateChainBuffers(int size);
     void restrictIntercepts(std::vector<Intercept>& intercepts);
+    bool hasPreparedCapacity(const Mesh* candidate) const;
 
     VoiceCycleState* state {};
     RenderResult chainResult;
@@ -70,6 +94,8 @@ private:
     VertCube::ReductionData chainReduction;
     TrilinearMeshSlicer voiceSlicer;
     VoicePointPositionPolicy voicePointPositionPolicy;
+    VoiceRasterizerPreparation preparation;
+    VoiceRasterizerDiagnostics renderDiagnostics;
 
     float initialAdvancement;
     ActiveOutput activeOutput { ActiveOutput::Ordinary };

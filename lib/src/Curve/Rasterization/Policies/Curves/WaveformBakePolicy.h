@@ -38,6 +38,9 @@ namespace Rasterization {
             }
 
             context.waveform = allocateTarget(totalRes);
+            if (!context.waveform.isBound()) {
+                return false;
+            }
             bake(curves, context);
 
             return context.waveform.isSampleable();
