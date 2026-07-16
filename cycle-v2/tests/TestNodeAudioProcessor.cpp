@@ -6,14 +6,17 @@
 #include "../src/Runtime/SmoothedMorphPosition.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
+#include "../src/Nodes/Envelope/EnvelopePreparationExchange.h"
 #include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <numeric>
+#include <thread>
 
 using namespace CycleV2;
 
@@ -40,6 +43,83 @@ TEST_CASE("Morph controls smooth monotonically and independently of block partit
             == Catch::Approx(whole.current().red.getCurrentValue()));
     REQUIRE(partitioned.current().blue.getCurrentValue()
             == Catch::Approx(whole.current().blue.getCurrentValue()));
+}
+
+TEST_CASE("Envelope preparation request exchange publishes coherent newest values",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    LatestEnvelopePreparationRequest requests;
+    requests.publish(0.2f, 0.8f, 11);
+    requests.publish(0.7f, 0.3f, 12);
+
+    EnvelopePreparationRequest request;
+    REQUIRE(requests.latest(request));
+    REQUIRE(request.red == 0.7f);
+    REQUIRE(request.blue == 0.3f);
+    REQUIRE(request.noteSerial == 12);
+    REQUIRE(requests.isCurrent(request.generation));
+    requests.markPrepared(request.generation);
+    REQUIRE_FALSE(requests.latest(request));
+}
+
+TEST_CASE("Envelope preparation request exchange never mixes concurrent fields",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    LatestEnvelopePreparationRequest requests;
+    std::atomic<bool> writerFinished {};
+    std::atomic<bool> coherent { true };
+    std::thread writer([&] {
+        for (uint64_t i = 1; i <= 10000; ++i) {
+            const float red = (float) i / 10000.f;
+            requests.publish(red, 1.f - red, i);
+        }
+        writerFinished = true;
+    });
+
+    uint64_t observedGeneration = 0;
+    while (!writerFinished.load() || requests.publicationCount() < 10000) {
+        EnvelopePreparationRequest request;
+        if (!requests.latest(request)) {
+            continue;
+        }
+        observedGeneration = request.generation;
+        requests.markPrepared(observedGeneration);
+        const float expectedRed = (float) request.noteSerial / 10000.f;
+        if (request.red != expectedRed || request.blue != 1.f - expectedRed) {
+            coherent = false;
+        }
+    }
+    writer.join();
+
+    REQUIRE(coherent.load());
+    REQUIRE(requests.publicationCount() == 10000);
+}
+
+TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot ownership",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    const std::vector<NodeParameter> parameters {
+            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Envelope) },
+            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", "1" }
+    };
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+    PreparedEnvelopeExchange exchange;
+
+    REQUIRE(exchange.publish(configuration, 2, 1));
+    const auto stale = exchange.adoptNewest(2, false);
+    REQUIRE(stale.stale);
+    REQUIRE_FALSE(stale.adopted);
+
+    REQUIRE(exchange.publish(configuration, 4, 2));
+    const auto adopted = exchange.adoptNewest(2, false);
+    REQUIRE(adopted.adopted);
+    REQUIRE(adopted.configuration == configuration.get());
+    REQUIRE(exchange.active(nullptr) == configuration.get());
+
+    REQUIRE(exchange.publish(configuration, 6, 2));
+    REQUIRE(exchange.adoptNewest(2, true).adopted);
+    REQUIRE(exchange.preparationCount() == 3);
+    REQUIRE(exchange.adoptionCount() == 2);
+    REQUIRE(exchange.staleResultCount() == 1);
 }
 
 namespace {

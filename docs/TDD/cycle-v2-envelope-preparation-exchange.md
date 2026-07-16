@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on `cycle-v2-smoothed-morph-control.md` for the request source.
 
@@ -82,3 +82,18 @@ forwarding helpers that reproduce the exchange implementation in the processor.
   intact.
 - Continue through committed slices without user scheduling until every
   deletion target and completion criterion above is satisfied.
+
+## Implementation Notes
+
+- `LatestEnvelopePreparationRequest` now owns coherent red/blue/note
+  publication, the consumed generation, coalescing, and stale-build diagnostics.
+- `PreparedEnvelopeExchange` owns the three immutable slots, active/published
+  indices, generation rejection, note-latch validation, and concurrent
+  diagnostics.
+- `EnvelopeSignalProcessor` now orchestrates smoothing, request policy,
+  non-realtime preparation, block-boundary adoption, playback validation, and
+  rendering without exposing memory-ordering fields or slot mechanics.
+- A concurrent request test proves that red, blue, and note identity are never
+  observed from mixed publications. Slot tests cover stale-note rejection,
+  bounded reuse, newest adoption, and diagnostics; integration retains the
+  existing zero-allocation realtime test.

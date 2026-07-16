@@ -76,18 +76,12 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
             && previous->dynamicWhileLive
             && !configuration->dynamicWhileLive;
     if (freezeCurrentMorph) {
-        const int previousSlot = activeSlot.load(std::memory_order_acquire);
-        activeConfiguration = previousSlot >= 0
-                ? preparedSlots[(size_t) previousSlot].configuration
-                : activeConfiguration;
+        activeConfiguration = preparedEnvelopes.activeOwnership(activeConfiguration);
     } else {
         activeConfiguration = configuration;
     }
-    activeSlot.store(-1, std::memory_order_release);
-    publishedSlot.store(-1, std::memory_order_release);
-    requestedGeneration.store(0, std::memory_order_release);
-    preparedGeneration.store(0, std::memory_order_release);
-    adoptedDynamicGeneration.store(0, std::memory_order_release);
+    preparationRequests.reset();
+    preparedEnvelopes.reset();
     hasRequestedMorph = false;
     const MorphPosition baseMorph(0.f, configuration->redMorph, configuration->blueMorph);
     if (!morphInitialized) {
@@ -148,19 +142,9 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDyn
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
-    const uint64_t firstSequence = requestedGeneration.load(std::memory_order_acquire);
-    if ((firstSequence & 1u) != 0 || firstSequence == 0
-            || firstSequence <= preparedGeneration.load(std::memory_order_acquire)
-            || configuration == nullptr) {
-        return false;
-    }
-
-    DynamicRequest request;
-    request.generation = firstSequence;
-    request.noteSerial = requestNoteSerial.load(std::memory_order_relaxed);
-    request.red = requestedRed.load(std::memory_order_relaxed);
-    request.blue = requestedBlue.load(std::memory_order_relaxed);
-    if (requestedGeneration.load(std::memory_order_acquire) != firstSequence) {
+    EnvelopePreparationRequest request;
+    if (configuration == nullptr
+            || !preparationRequests.latest(request)) {
         return false;
     }
 
@@ -169,47 +153,29 @@ bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
     if (prepared == nullptr) {
         return false;
     }
-    if (requestedGeneration.load(std::memory_order_acquire) != firstSequence) {
-        ++staleResultCount;
+    if (!preparationRequests.isCurrent(request.generation)) {
+        preparationRequests.recordStaleResult();
         return false;
     }
-
-    const int published = publishedSlot.load(std::memory_order_acquire);
-    const int activePrepared = activeSlot.load(std::memory_order_acquire);
-    int destination = -1;
-    for (int i = 0; i < (int) preparedSlots.size(); ++i) {
-        if (i != published && i != activePrepared) {
-            destination = i;
-            break;
-        }
-    }
-    if (destination < 0) {
+    if (!preparedEnvelopes.publish(
+            std::move(prepared), request.generation, request.noteSerial)) {
         return false;
     }
-
-    preparedSlots[(size_t) destination] = {
-            std::move(prepared), request.generation, request.noteSerial
-    };
-    preparedGeneration.store(request.generation, std::memory_order_release);
-    publishedSlot.store(destination, std::memory_order_release);
-    ++preparationCount;
+    preparationRequests.markPrepared(request.generation);
     return true;
 }
 
 EnvelopeSignalProcessor::DynamicDiagnostics EnvelopeSignalProcessor::dynamicDiagnostics() const {
     return {
-            requestCount.load(std::memory_order_relaxed),
-            preparationCount.load(std::memory_order_relaxed),
-            adoptionCount.load(std::memory_order_relaxed),
-            staleResultCount.load(std::memory_order_relaxed)
+            preparationRequests.publicationCount(),
+            preparedEnvelopes.preparationCount(),
+            preparedEnvelopes.adoptionCount(),
+            preparationRequests.staleResultCount() + preparedEnvelopes.staleResultCount()
     };
 }
 
 const EnvelopeConfiguration* EnvelopeSignalProcessor::preparedConfiguration() const {
-    const int slot = activeSlot.load(std::memory_order_acquire);
-    return slot >= 0
-            ? preparedSlots[(size_t) slot].configuration.get()
-            : activeConfiguration.get();
+    return preparedEnvelopes.active(activeConfiguration.get());
 }
 
 void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context) {
@@ -264,39 +230,20 @@ void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context
     lastRequestedBlue = blue;
     hasRequestedMorph = true;
     samplesSinceMorphRequest = 0;
-    const uint64_t previous = requestedGeneration.load(std::memory_order_relaxed);
-    const uint64_t next = (previous & ~uint64_t(1)) + 2;
-    requestedGeneration.store(next - 1, std::memory_order_release);
-    requestedRed.store(red, std::memory_order_relaxed);
-    requestedBlue.store(blue, std::memory_order_relaxed);
-    requestNoteSerial.store(noteStarts ? noteSerial + 1 : noteSerial, std::memory_order_relaxed);
-    requestedGeneration.store(next, std::memory_order_release);
-    ++requestCount;
+    preparationRequests.publish(
+            red,
+            blue,
+            noteStarts ? noteSerial + 1 : noteSerial);
 }
 
 void EnvelopeSignalProcessor::adoptPreparedDynamicEnvelope() {
-    const int slotIndex = publishedSlot.load(std::memory_order_acquire);
-    if (slotIndex < 0) {
-        return;
-    }
-    const auto& slot = preparedSlots[(size_t) slotIndex];
-    if (slot.generation <= adoptedDynamicGeneration.load(std::memory_order_relaxed)
-            || slot.configuration == nullptr) {
-        return;
-    }
-
     const bool dynamic = configuration != nullptr && configuration->dynamicWhileLive;
-    if (!dynamic && slot.noteSerial != noteSerial) {
-        adoptedDynamicGeneration.store(slot.generation, std::memory_order_relaxed);
-        ++staleResultCount;
+    const auto adoption = preparedEnvelopes.adoptNewest(noteSerial, dynamic);
+    if (!adoption.adopted || adoption.configuration == nullptr) {
         return;
     }
-
-    activeSlot.store(slotIndex, std::memory_order_release);
-    adoptedDynamicGeneration.store(slot.generation, std::memory_order_relaxed);
-    playback.validate(slot.configuration->rasterizer->preparedPlaybackView());
+    playback.validate(adoption.configuration->rasterizer->preparedPlaybackView());
     adoptionTransitionPending = active;
-    ++adoptionCount;
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {

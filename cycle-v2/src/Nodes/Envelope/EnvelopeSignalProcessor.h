@@ -1,32 +1,18 @@
 #pragma once
 
+#include <Array/ScopedAlloc.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
+#include <Curve/Rasterization/EnvelopePlaybackEngine.h>
+#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
+
 #include "../../Runtime/AudioProcessContextUtils.h"
 #include "../../Runtime/NodeDspConfiguration.h"
 #include "../../Runtime/SmoothedMorphPosition.h"
+#include "EnvelopeConfiguration.h"
 #include "EnvelopeMeshState.h"
-
-#include <Array/ScopedAlloc.h>
-#include <Curve/Mesh/EnvelopeMesh.h>
-#include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
-#include <Curve/Rasterization/EnvelopePlaybackEngine.h>
-
-#include <array>
-#include <atomic>
+#include "EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
-
-struct EnvelopeConfiguration final : public INodeDspConfiguration {
-    AudioModuleRole role() const override { return AudioModuleRole::Envelope; }
-
-    std::shared_ptr<EnvelopeMesh> mesh;
-    std::shared_ptr<EnvRasterizer> rasterizer;
-    float level { 1.f };
-    float redMorph { 0.5f };
-    float blueMorph { 0.5f };
-    bool logarithmic {};
-    bool dynamicWhileLive {};
-    String meshSnapshot;
-};
 
 class EnvelopeSignalProcessor {
 public:
@@ -55,19 +41,6 @@ public:
     Rasterization::EnvelopePlaybackMode playbackMode() const { return playback.mode(); }
 
 private:
-    struct DynamicRequest {
-        uint64_t generation {};
-        uint64_t noteSerial {};
-        float red {};
-        float blue {};
-    };
-
-    struct PreparedSlot {
-        std::shared_ptr<const EnvelopeConfiguration> configuration;
-        uint64_t generation {};
-        uint64_t noteSerial {};
-    };
-
     bool syncModel(const std::vector<NodeParameter>& parameters);
     void requestEffectiveMorph(AudioProcessContext& context);
     void adoptPreparedDynamicEnvelope();
@@ -99,19 +72,8 @@ private:
     uint64_t pendingRevision {};
     std::shared_ptr<const EnvelopeConfiguration> configuration;
     std::shared_ptr<const EnvelopeConfiguration> activeConfiguration;
-    std::array<PreparedSlot, 3> preparedSlots;
-    std::atomic<uint64_t> requestedGeneration {};
-    std::atomic<uint64_t> preparedGeneration {};
-    std::atomic<uint64_t> adoptedDynamicGeneration {};
-    std::atomic<uint64_t> requestNoteSerial {};
-    std::atomic<float> requestedRed { 0.5f };
-    std::atomic<float> requestedBlue { 0.5f };
-    std::atomic<int> publishedSlot { -1 };
-    std::atomic<int> activeSlot { -1 };
-    std::atomic<uint64_t> requestCount {};
-    std::atomic<uint64_t> preparationCount {};
-    std::atomic<uint64_t> adoptionCount {};
-    std::atomic<uint64_t> staleResultCount {};
+    LatestEnvelopePreparationRequest preparationRequests;
+    PreparedEnvelopeExchange preparedEnvelopes;
     uint64_t noteSerial {};
     float lastRequestedRed { 0.5f };
     float lastRequestedBlue { 0.5f };
