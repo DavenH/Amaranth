@@ -184,7 +184,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         timeRasterizer.setMorphPosition(position);
         timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
-        timeRasterizer.updateWaveform(layer.mesh, 0.f);
+        timeRasterizer.renderOrdinary(layer.mesh, 0.f);
 
         auto sampler = timeRasterizer.sampler();
         if (sampler.isSampleable()) {
@@ -225,7 +225,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
         freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        freqRasterizer.updateWaveform(layer.mesh);
+        freqRasterizer.renderWaveformOnly(layer.mesh);
 
         auto sampler = freqRasterizer.sampler();
         if (sampler.isSampleable()) {
@@ -357,7 +357,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
             phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            phaseRasterizer.updateWaveform(layer.mesh);
+            phaseRasterizer.renderWaveformOnly(layer.mesh);
 
             auto sampler = phaseRasterizer.sampler();
             if (sampler.isSampleable()) {

@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed.
+In progress. The voice-render boundary is implemented; envelope realtime
+rendering remains under `envelope-renderer-playback-separation.md`.
 
 Depends on `envelope-grid-time-application.md` for envelope-grid semantics.
 
@@ -57,3 +58,17 @@ must not publish implicitly.
 - No fresh result/vector storage is constructed per voice render.
 - Publication and render-only APIs are distinguishable by type and name.
 
+## Implemented Voice Slice
+
+- `VoiceRasterizer::renderOrdinary()` and `renderChained()` return the exact
+  reusable `RenderResult` produced by the operation. Both select that result
+  immediately, so changing between Interpolate and Chain cannot leave the
+  sampler on stale output.
+- `publishCurrentResult()` is the sole explicit snapshot-copying operation for
+  voice results. Rendering invalid input and cleanup do not publish.
+- The temporary per-call voice-slice result is now retained storage. Tests
+  verify stable ordinary curve/intercept/waveform storage and the intentional
+  bounded two-buffer intercept rotation used by chained continuity.
+- Cycle v1 realtime time, frequency, and phase voice calculations now call
+  render-only APIs.
+- Full regression proof: 414 of 414 discovered tests pass.

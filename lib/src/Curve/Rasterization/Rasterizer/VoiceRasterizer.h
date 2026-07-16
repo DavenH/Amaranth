@@ -31,12 +31,18 @@ public:
      * Chains the minimum necessary number of points from the previous call to
      * the head of the subsequent call, preserving continuity between cycles.
      */
-    void updateChainedWaveform(float phase);
+    const RenderResult& renderOrdinary(Mesh* mesh, float phase);
+    const RenderResult& renderChained(float phase);
     void orphanOldVerts();
     void setState(VoiceCycleState* state) { this->state = state; }
 
     void cleanUp();
     void reset() { cleanUp(); }
+    void publishCurrentResult();
+
+    static SamplerView sampler(const RenderResult& result) {
+        return SamplerView(result.waveform, result.sampleable);
+    }
 
     Rasterization::SamplerView sampler() const override {
         return SamplerView(currentWaveform(), currentWaveformIsSampleable());
@@ -47,7 +53,7 @@ private:
     bool currentWaveformIsSampleable() const;
     void bakeChainedWaveform();
     void cleanChainedOutput();
-    RenderResult renderVoiceSlice(float oscPhase);
+    const RenderResult& renderVoiceSlice(float oscPhase);
     void appendVoiceCubeIntercept(
             VertCube* cube,
             float voiceTime,
@@ -55,12 +61,12 @@ private:
             GuideCurveApplier& applyGuide,
             std::vector<Intercept>& intercepts);
     void markChainedWaveformUnsampleable();
-    void publishSnapshot();
     void updateChainBuffers(int size);
     void restrictIntercepts(std::vector<Intercept>& intercepts);
 
     VoiceCycleState* state {};
     RenderResult chainResult;
+    RenderResult sliceResult;
     VertCube::ReductionData chainReduction;
     TrilinearMeshSlicer voiceSlicer;
     VoicePointPositionPolicy voicePointPositionPolicy;

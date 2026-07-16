@@ -26,18 +26,25 @@ VoiceRasterizer::VoiceRasterizer(float minimumLineLength) :
     updateChainBuffers(2048);
 }
 
-void VoiceRasterizer::updateChainedWaveform(float oscPhase) {
+const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase) {
+    activeOutput = ActiveOutput::Ordinary;
+    renderWaveformOnly(mesh, phase);
+    return result();
+}
+
+const RenderResult& VoiceRasterizer::renderChained(float oscPhase) {
+    activeOutput = ActiveOutput::Chained;
+
     if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
         cleanUp();
-        return;
+        activeOutput = ActiveOutput::Chained;
+        return chainResult;
     }
-
-    activeOutput = ActiveOutput::Chained;
 
     Rasterization::VoiceChainingPolicy chainingPolicy(&chainResult.needsResorting);
     chainingPolicy.beginCall(*state, chainResult.intercepts);
 
-    auto output = renderVoiceSlice(oscPhase);
+    const auto& output = renderVoiceSlice(oscPhase);
 
     chainingPolicy.publishNextIntercepts(
             output,
@@ -47,8 +54,7 @@ void VoiceRasterizer::updateChainedWaveform(float oscPhase) {
     if (!chainingPolicy.canBuildChainedCurves(*state, chainResult.intercepts)) {
         ++state->callCount;
         markChainedWaveformUnsampleable();
-        publishSnapshot();
-        return;
+        return chainResult;
     }
 
     if (state->callCount == 0) {
@@ -67,7 +73,7 @@ void VoiceRasterizer::updateChainedWaveform(float oscPhase) {
     }
 
     ++state->callCount;
-    publishSnapshot();
+    return chainResult;
 }
 
 void VoiceRasterizer::orphanOldVerts() {
@@ -77,7 +83,6 @@ void VoiceRasterizer::orphanOldVerts() {
 void VoiceRasterizer::cleanUp() {
     clearTrilinearOutput();
     cleanChainedOutput();
-    publishSnapshot();
 }
 
 bool VoiceRasterizer::currentWaveformIsSampleable() const {
@@ -122,11 +127,11 @@ void VoiceRasterizer::cleanChainedOutput() {
     chainResult.paddingSize = 2;
 }
 
-RenderResult VoiceRasterizer::renderVoiceSlice(float oscPhase) {
-    Rasterization::RenderResult output;
+const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
+    sliceResult.clear();
 
     if (mesh == nullptr || mesh->getNumCubes() == 0 || state == nullptr) {
-        return output;
+        return sliceResult;
     }
 
     float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
@@ -134,13 +139,13 @@ RenderResult VoiceRasterizer::renderVoiceSlice(float oscPhase) {
 
     auto& cubes = mesh->getCubes();
     for (int i = 0; i < (int) cubes.size(); ++i) {
-        appendVoiceCubeIntercept(cubes[i], voiceTime, oscPhase, guideApplier, output.intercepts);
+        appendVoiceCubeIntercept(cubes[i], voiceTime, oscPhase, guideApplier, sliceResult.intercepts);
     }
 
-    std::sort(output.intercepts.begin(), output.intercepts.end());
-    output.sampleable = output.intercepts.size() >= 2;
+    std::sort(sliceResult.intercepts.begin(), sliceResult.intercepts.end());
+    sliceResult.sampleable = sliceResult.intercepts.size() >= 2;
 
-    return output;
+    return sliceResult;
 }
 
 void VoiceRasterizer::appendVoiceCubeIntercept(
@@ -188,7 +193,7 @@ void VoiceRasterizer::markChainedWaveformUnsampleable() {
     chainResult.sampleable = false;
 }
 
-void VoiceRasterizer::publishSnapshot() {
+void VoiceRasterizer::publishCurrentResult() {
     Rasterization::RasterizerSnapshotSource source;
 
     if (activeOutput == ActiveOutput::Chained) {
