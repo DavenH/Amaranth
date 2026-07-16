@@ -286,7 +286,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
                 rast.rast.canRasterizeWaveform()) {
-                rast.rast.updateWaveform();
+                rast.rast.renderWaveformOnly(rast.rast.getCurrentMesh());
                 rast.sampleable = rast.rast.sampler().isSampleable();
             }
         }
@@ -476,7 +476,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
         rast->setCalcDepthDimensions(false);
         rast->setToOverrideDim(true);
         if (rast->getCurrentMesh() != nullptr) {
-            rast->updateWaveform();
+            rast->renderWaveformOnly(rast->getCurrentMesh());
             rast->validateState();
         }
     }

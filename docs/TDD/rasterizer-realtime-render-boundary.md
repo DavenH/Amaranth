@@ -2,8 +2,8 @@
 
 ## Status
 
-In progress. The voice-render boundary is implemented; envelope realtime
-rendering remains under `envelope-renderer-playback-separation.md`.
+In progress. Voice and envelope render boundaries are implemented; remaining
+realtime effect rasterizers still require audit.
 
 Depends on `envelope-grid-time-application.md` for envelope-grid semantics.
 
@@ -71,4 +71,6 @@ must not publish implicitly.
   bounded two-buffer intercept rotation used by chained continuity.
 - Cycle v1 realtime time, frequency, and phase voice calculations now call
   render-only APIs.
+- Envelope preparation, adoption, and realtime morph refresh now use
+  render-only APIs; snapshot publication is an explicit panel operation.
 - Full regression proof: 414 of 414 discovered tests pass.

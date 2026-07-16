@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposed.
+In progress. Render preparation and snapshot publication are separated;
+playback-state extraction remains.
 
 ## Problem
 
@@ -65,3 +66,16 @@ time evolution. Neither owns UI publication policy.
 - Playback code does not mutate prepared geometry or curves.
 - No class combines rendering, playback state machine, and panel publication.
 
+## Implemented Preparation Slice
+
+- `TrilinearMeshSlicer` now fills the envelope's authoritative `RenderResult`
+  directly. The temporary result and geometry-vector copies are gone.
+- `renderWaveformOnly()` and `renderGeometryOnly()` prepare data without
+  snapshot locks or copies; `publishCurrentResult()` is explicit.
+- `adoptPreparedData()` no longer publishes while Cycle v2 adopts a prepared
+  configuration on its processing path.
+- Cleanup clears curves, geometry, guide regions, and waveform together before
+  publishing one complete empty generation.
+- Cycle v1 and Cycle v2 envelope audio paths call render-only operations.
+- Boundary tests cover unpublished preparation, explicit publication,
+  complete cleanup, and unpublished prepared-data adoption.

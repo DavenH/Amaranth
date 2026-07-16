@@ -96,6 +96,9 @@ public:
 
     void calcIntercepts();
     void cleanUp();
+    void renderGeometryOnly(Mesh* mesh, float oscPhase = 0.f);
+    void renderWaveformOnly(Mesh* mesh, float oscPhase = 0.f);
+    void publishCurrentResult();
     void updateGeometry() override;
     void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
     void updateWaveform() override;
@@ -129,6 +132,7 @@ public:
     void updateValue(int dim, float value);
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
+    const Rasterization::RenderResult& preparedResult() const { return result; }
     float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
     int getMode() const                         { return state;                             }
     void setMode(int mode)                      { this->state = mode;                       }
@@ -138,6 +142,7 @@ public:
 
 private:
     void changedToRelease();
+    void clearOutput();
     void clearRasterizationResult(bool clearCurves);
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
@@ -147,7 +152,6 @@ private:
     void rebuildCurvesFromIntercepts();
     void bakeWaveform();
     void copyWaveformForRelease();
-    void publishSnapshot();
     void updateBuffers(int size);
     Rasterization::GuideCurveApplier createGuideCurveApplier();
 

@@ -136,7 +136,6 @@ void EnvRasterizer::adoptPreparedData(const EnvRasterizer& source) {
     source.waveYCopy.copyTo(waveYCopy);
     source.slopeCopy.copyTo(slopeCopy);
     validateState();
-    publishSnapshot();
 }
 
 void EnvRasterizer::setMesh(EnvelopeMesh* envelopeMesh) {
@@ -161,12 +160,13 @@ bool EnvRasterizer::hasReleaseCurve() {
 
 void EnvRasterizer::renderEnvelopeCrossPoints() {
     getMorphPosition().resetTime();
-    updateWaveform(envMesh, 0.f);
+    renderWaveformOnly(envMesh, 0.f);
 
     // do this even if we can't loop right now just in case
     // loopability changes by the time release curve is going
     // to be recalculated
     copyWaveformForRelease();
+    publishCurrentResult();
 
     //    evaluateLoopSustainIndices();
 }
@@ -244,49 +244,40 @@ Mesh* EnvRasterizer::getCurrentMesh() {
 }
 
 void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
+    renderWaveformOnly(mesh, oscPhase);
+    publishCurrentResult();
+}
+
+void EnvRasterizer::renderWaveformOnly(Mesh* mesh, float oscPhase) {
     EnvelopeMesh* envelopeMesh = dynamic_cast<EnvelopeMesh*>(mesh);
     jassert(mesh == nullptr || envelopeMesh != nullptr);
 
     if (mesh == nullptr || mesh->getNumCubes() == 0 || envelopeMesh == nullptr) {
-        cleanUp();
+        clearOutput();
         return;
     }
 
     envMesh = envelopeMesh;
-    result.intercepts.clear();
-    result.colorPoints.clear();
-    result.curves.clear();
-    result.guideCurveRegions.clear();
-    result.needsResorting = false;
-    result.sampleable = false;
 
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
-
-    Rasterization::RenderResult sliceOutput;
-    const Rasterization::RenderResult& output = Rasterization::TrilinearMeshSlicer().sliceMesh(
+    Rasterization::TrilinearMeshSlicer().sliceMesh(
             mesh,
             request,
             oscPhase,
             guideApplier,
-            sliceOutput,
+            result,
             reduction);
-    result.intercepts = output.intercepts;
-
-    if (request.calcDepthDimensions) {
-        result.colorPoints = output.colorPoints;
-    }
 
     processEnvelopeIntercepts(result.intercepts);
     Rasterization::InterceptSortPolicy(&result.needsResorting).sortIfNeeded(result.intercepts);
 
     switch (Rasterization::InterceptDegeneracyPolicy().classify(result.intercepts.size())) {
         case Rasterization::InterceptDegeneracyAction::CleanUp:
-            cleanUp();
+            clearOutput();
             return;
         case Rasterization::InterceptDegeneracyAction::MarkUnsampleable:
             result.curves.clear();
             markWaveformUnsampleable();
-            publishSnapshot();
             return;
         case Rasterization::InterceptDegeneracyAction::Continue:
             break;
@@ -298,7 +289,6 @@ void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
         rebuildCurvesFromIntercepts();
     }
 
-    publishSnapshot();
 }
 
 void EnvRasterizer::calcIntercepts() {
@@ -307,9 +297,13 @@ void EnvRasterizer::calcIntercepts() {
 }
 
 void EnvRasterizer::cleanUp() {
-    clearRasterizationResult(false);
+    clearOutput();
+    publishCurrentResult();
+}
+
+void EnvRasterizer::clearOutput() {
+    clearRasterizationResult(true);
     result.guideCurveRegions.clear();
-    publishSnapshot();
 }
 
 void EnvRasterizer::updateGeometry() {
@@ -318,8 +312,13 @@ void EnvRasterizer::updateGeometry() {
 }
 
 void EnvRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
+    renderGeometryOnly(mesh, oscPhase);
+    publishCurrentResult();
+}
+
+void EnvRasterizer::renderGeometryOnly(Mesh* mesh, float oscPhase) {
     ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
-    updateWaveform(mesh, oscPhase);
+    renderWaveformOnly(mesh, oscPhase);
 }
 
 void EnvRasterizer::updateWaveform() {
@@ -780,7 +779,7 @@ void EnvRasterizer::copyWaveformForRelease() {
     }
 }
 
-void EnvRasterizer::publishSnapshot() {
+void EnvRasterizer::publishCurrentResult() {
     Rasterization::RasterizerSnapshotSource source;
     source.intercepts = &result.intercepts;
     source.colorPoints = &result.colorPoints;

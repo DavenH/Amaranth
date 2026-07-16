@@ -933,7 +933,7 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
             envRast.updateValue(dim, value);
 
             if (props.dynamic) {
-                envRast.updateWaveform();
+                envRast.renderWaveformOnly(envRast.getCurrentMesh());
                 envRast.validateState();
 
                 renderRast.sampleable = envRast.sampler().isSampleable();

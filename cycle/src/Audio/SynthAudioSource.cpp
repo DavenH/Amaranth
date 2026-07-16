@@ -509,7 +509,7 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
                     rast.updateValue(dim, value);
 
                     if (props->dynamic) {
-                        rast.updateWaveform();
+                        rast.renderWaveformOnly(rast.getCurrentMesh());
                         rast.validateState();
 
                         scratchRast.sampleable = rast.sampler().isSampleable();
@@ -580,7 +580,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
         rast.updateValue(Vertex::Red, 0);
         rast.setWantOneSamplePerCycle(false);
         rast.setLowresCurves(true);
-        rast.updateWaveform();
+        rast.renderWaveformOnly(rast.getCurrentMesh());
         rast.validateState();
 
         scratchRast.sampleable = rast.sampler().isSampleable();

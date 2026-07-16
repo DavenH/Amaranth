@@ -175,7 +175,7 @@ bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parame
         redMorph = nextRed;
         blueMorph = nextBlue;
         rasterizer.setMorphPosition({ 0.f, redMorph, blueMorph });
-        rasterizer.updateWaveform(&mesh, 0.f);
+        rasterizer.renderWaveformOnly(&mesh, 0.f);
         rasterizer.validateState();
     }
 
@@ -197,7 +197,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
 
         case NoteLifecycleType::Reset:
             rasterizer.reset();
-            rasterizer.updateWaveform(&mesh, 0.f);
+            rasterizer.renderWaveformOnly(&mesh, 0.f);
             active = false;
             break;
     }
