@@ -32,15 +32,27 @@ namespace Rasterization {
         }
 
         void sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return;
+            }
             WaveformSampler::sampleAtIntervals(buffers(), intervals, dest);
         }
 
         template<typename T>
         T sampleWithInterval(Buffer<float> dest, T delta, T phase) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return phase;
+            }
             return WaveformSampler::sampleWithInterval(buffers(), dest, delta, phase);
         }
 
         float samplePerfectly(double delta, Buffer<float> dest, double phase) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return (float) phase;
+            }
             return WaveformSampler::samplePerfectly(buffers(), delta, dest, phase);
         }
 
