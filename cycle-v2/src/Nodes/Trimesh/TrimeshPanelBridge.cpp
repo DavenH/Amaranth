@@ -109,6 +109,12 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
             model.getPrimaryViewAxis()
     });
 
+    vector<Vertex*>& selected = sourceIs3D
+            ? interactor3D.getSelected()
+            : interactor2D.getSelected();
+    if (!selected.empty()) {
+        model.selectVertex(selected.front());
+    }
     model.markMeshEdited();
     syncPrimaryAxisContext();
     dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
@@ -122,6 +128,21 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
 
 void TrimeshPanelBridge::setMeshEditedCallback(std::function<void()> callback) {
     meshEditedCallback = std::move(callback);
+}
+
+int TrimeshPanelBridge::selectedVertexIndexForPanel() {
+    vector<Vertex*>& selected2D = interactor2D.getSelected();
+    vector<Vertex*>& selected3D = interactor3D.getSelected();
+    Vertex* selected = !selected2D.empty()
+            ? selected2D.front()
+            : (!selected3D.empty() ? selected3D.front() : nullptr);
+    const auto& vertices = model.getMeshForPanel().getVerts();
+    for (int i = 0; i < (int) vertices.size(); ++i) {
+        if (vertices[(size_t) i] == selected) {
+            return i;
+        }
+    }
+    return model.getResolvedSelectedVertexIndex();
 }
 
 void TrimeshPanelBridge::syncPrimaryAxisContext() {

@@ -35,10 +35,6 @@ VertCube* addCube(EnvelopeMesh& mesh, float x, float amp, float curve) {
 
 }
 
-juce::String EnvelopeMeshState::parameterId() {
-    return "envelope.snapshot";
-}
-
 juce::String EnvelopeMeshState::defaultSnapshot() {
     EnvelopeMesh mesh("CycleV2Envelope");
     addCube(mesh, 0.f, 0.f, 1.f);

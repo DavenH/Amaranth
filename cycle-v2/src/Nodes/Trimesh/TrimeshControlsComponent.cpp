@@ -80,8 +80,8 @@ TrimeshControlsComponent::TrimeshControlsComponent(TrimeshWidget& targetWidget) 
 
 TrimeshControlsComponent::~TrimeshControlsComponent() = default;
 
-void TrimeshControlsComponent::setCallbacks(Callbacks nextCallbacks) {
-    callbacks = std::move(nextCallbacks);
+void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate) {
+    delegate = nextDelegate;
 }
 
 void TrimeshControlsComponent::setNode(const Node& nextNode) {
@@ -211,14 +211,14 @@ void TrimeshControlsComponent::beginControlDrag(
 
     switch (region.kind) {
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
-            if (callbacks.setPrimaryAxis != nullptr) {
-                callbacks.setPrimaryAxis(region.axisValue);
+            if (delegate != nullptr) {
+                delegate->setTrimeshPrimaryAxis(region.axisValue);
             }
             break;
 
         case TrimeshExpandedHitRegionKind::LinkToggle:
-            if (callbacks.toggleLinkAxis != nullptr) {
-                callbacks.toggleLinkAxis(region.axisValue);
+            if (delegate != nullptr) {
+                delegate->toggleTrimeshLinkAxis(region.axisValue);
             }
             break;
 
@@ -227,8 +227,8 @@ void TrimeshControlsComponent::beginControlDrag(
             activeParameterId = region.parameterId;
 
             if (widget.morphValueForParameterAt(contentBounds, activeParameterId, position, value)
-                    && callbacks.beginMorphEdit != nullptr) {
-                callbacks.beginMorphEdit(activeParameterId, value);
+                    && delegate != nullptr) {
+                delegate->beginTrimeshMorphControlEdit(activeParameterId, value);
             }
             break;
 
@@ -237,14 +237,14 @@ void TrimeshControlsComponent::beginControlDrag(
             activeParameterId = region.parameterId;
 
             if (widget.vertexParameterValueForParameterAt(contentBounds, activeParameterId, position, value)
-                    && callbacks.beginVertexParameterEdit != nullptr) {
-                callbacks.beginVertexParameterEdit(activeParameterId, value);
+                    && delegate != nullptr) {
+                delegate->beginTrimeshVertexControlEdit(activeParameterId, value);
             }
             break;
 
         case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
-            if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-                callbacks.showVertexGuideAttachmentMenu(region.parameterId, screenArea);
+            if (delegate != nullptr) {
+                delegate->showTrimeshVertexGuideMenu(region.parameterId, screenArea);
             }
             break;
     }
@@ -258,15 +258,15 @@ void TrimeshControlsComponent::dragControl(
     switch (dragTarget) {
         case DragTarget::Morph:
             if (widget.morphValueForParameterAt(contentBounds, activeParameterId, position, value)
-                    && callbacks.updateMorphEdit != nullptr) {
-                callbacks.updateMorphEdit(value);
+                    && delegate != nullptr) {
+                delegate->updateTrimeshMorphControlEdit(value);
             }
             break;
 
         case DragTarget::VertexParameter:
             if (widget.vertexParameterValueForParameterAt(contentBounds, activeParameterId, position, value)
-                    && callbacks.updateVertexParameterEdit != nullptr) {
-                callbacks.updateVertexParameterEdit(value);
+                    && delegate != nullptr) {
+                delegate->updateTrimeshVertexControlEdit(value);
             }
             break;
 
@@ -276,10 +276,10 @@ void TrimeshControlsComponent::dragControl(
 }
 
 void TrimeshControlsComponent::endControlDrag() {
-    if (dragTarget == DragTarget::Morph && callbacks.endMorphEdit != nullptr) {
-        callbacks.endMorphEdit();
-    } else if (dragTarget == DragTarget::VertexParameter && callbacks.endVertexParameterEdit != nullptr) {
-        callbacks.endVertexParameterEdit();
+    if (dragTarget == DragTarget::Morph && delegate != nullptr) {
+        delegate->endTrimeshMorphControlEdit();
+    } else if (dragTarget == DragTarget::VertexParameter && delegate != nullptr) {
+        delegate->endTrimeshVertexControlEdit();
     }
 
     dragTarget = DragTarget::None;

@@ -25,6 +25,7 @@ namespace AppSettings {
     ,   LinkBlue
     ,   LastPopupClickedTransp
     ,   LastPopupClickedHorz
+    ,   CollisionDetection
 
     ,   numSettings
     };

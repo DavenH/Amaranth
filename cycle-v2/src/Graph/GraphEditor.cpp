@@ -299,6 +299,68 @@ GraphEditResult GraphEditor::setNodeParameter(
     return result;
 }
 
+GraphEditResult GraphEditor::setNodeParametersAtomic(
+        NodeGraph& graph,
+        const String& nodeId,
+        const std::vector<NodeParameter>& parameters) const {
+    Node* node = findMutableNode(graph, nodeId);
+    if (node == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+
+    const auto& registry = NodeDefinitionRegistry::instance();
+    std::vector<NodeParameter> normalized;
+    normalized.reserve(parameters.size());
+    ParameterImpact impacts = ParameterImpact::None;
+    for (const auto& parameter : parameters) {
+        const auto* definition = registry.findParameter(node->kind, parameter.id);
+        if (definition == nullptr || !definition->accepts(parameter.value)) {
+            return { GraphEditCode::InvalidControlValue, nodeId, {} };
+        }
+        const auto duplicate = std::find_if(normalized.begin(), normalized.end(), [&](const auto& item) {
+            return item.id == parameter.id;
+        });
+        if (duplicate != normalized.end()) {
+            return { GraphEditCode::InvalidControlValue, nodeId, {} };
+        }
+        normalized.push_back({
+                parameter.id,
+                definition->label,
+                definition->normalized(parameter.value)
+        });
+        impacts = impacts | definition->impacts;
+    }
+
+    auto nextParameters = node->parameters;
+    for (const auto& parameter : normalized) {
+        const auto existing = std::find_if(nextParameters.begin(), nextParameters.end(), [&](const auto& item) {
+            return item.id == parameter.id;
+        });
+        if (existing != nextParameters.end()) {
+            *existing = parameter;
+        } else {
+            nextParameters.push_back(parameter);
+        }
+    }
+    const bool unchanged = nextParameters.size() == node->parameters.size()
+            && std::equal(nextParameters.begin(), nextParameters.end(), node->parameters.begin(),
+                    [](const auto& left, const auto& right) {
+                        return left.id == right.id && left.label == right.label && left.value == right.value;
+                    });
+    if (unchanged) {
+        GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+        result.changed = false;
+        return result;
+    }
+
+    node->parameters = std::move(nextParameters);
+    graph.markChanged();
+    GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.parameterImpacts = impacts;
+    return result;
+}
+
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == nodeId) {

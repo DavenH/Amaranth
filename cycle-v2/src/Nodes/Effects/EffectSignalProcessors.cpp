@@ -1,6 +1,7 @@
 #include "EffectSignalProcessors.h"
 
 #include "../../Graph/NodeDefinition.h"
+#include "../Effect2D/CurveNodeModels.h"
 #include "../Effect2D/Effect2DMeshState.h"
 
 #include <Algo/ConvReverb.h>
@@ -24,16 +25,6 @@ void ensureCurveTable() {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
-}
-
-std::vector<Effect2DVertexState> defaultIrVertices() {
-    return {
-            { 0.f, 0.5f, 1.f },
-            { kIrPadding, 0.95f, 0.35f },
-            { kIrPadding * 2.f, 0.3f, 0.45f },
-            { kIrPadding * 3.f, 0.55f, 0.7f },
-            { 1.f, 0.5f, 1.f }
-    };
 }
 
 }
@@ -62,9 +53,10 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedRasterizer.setScalingMode(FXRasterizer::Bipolar);
     preparedRasterizer.setMesh(&preparedMesh);
 
-    auto vertices = Effect2DMeshState::parse(typedParameterString(parameters, Effect2DMeshState::parameterId()));
+    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::ImpulseResponse);
     if (vertices.empty()) {
-        vertices = defaultIrVertices();
+        preparedMesh.destroy();
+        return {};
     }
 
     for (const auto& state : vertices) {
@@ -190,7 +182,8 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
 }
 
 void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
-    const String serializedVertices = typedParameterString(parametersToUse, Effect2DMeshState::parameterId());
+    const String serializedVertices = Effect2DMeshState::serialize(
+            CurveNodeModelCodec::flatVerticesFromParameters(parametersToUse, NodeKind::ImpulseResponse));
     if (serializedVertices == lastVertexState
             && impulse.size() == impulseLength
             && impulseHighPass == highPass) {
@@ -266,12 +259,7 @@ void IrSignalProcessor::prepareConvolver(
 void IrSignalProcessor::rebuildMesh(const String& serializedVertices) {
     mesh.destroy();
 
-    auto vertices = Effect2DMeshState::parse(serializedVertices);
-    if (vertices.empty()) {
-        vertices = defaultIrVertices();
-    }
-
-    for (const auto& vertex : vertices) {
+    for (const auto& vertex : Effect2DMeshState::parse(serializedVertices)) {
         addVertex(vertex.x, vertex.y, vertex.curve);
     }
 }

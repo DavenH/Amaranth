@@ -24,6 +24,8 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCompiler.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphCommandDispatcher.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDocument.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphNodeFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphSerializer.cpp"
@@ -34,6 +36,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
@@ -42,10 +45,24 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
 )
 
+set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeAutomationFacade.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
+)
+
 set(NODE_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DExpandedEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/ConcreteCurvePanels.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeModels.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopePanelAdapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/FlatCurvePanelAdapter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurvePanelInfrastructure.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveExpandedEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DMeshState.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DPanelBridge.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurvePanelController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DWidget.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectSignalProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
@@ -130,7 +147,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${TEST_SOURCES})
+        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${CANVAS_ARCHITECTURE_SOURCES} ${TEST_SOURCES})
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1

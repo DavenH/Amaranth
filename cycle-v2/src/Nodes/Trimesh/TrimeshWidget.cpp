@@ -252,6 +252,18 @@ TrimeshMeshEditState TrimeshWidget::currentMeshEditState() {
     return bridge.getModel().currentMeshEditState();
 }
 
+std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int vertexIndex) {
+    return bridge.getModel().getVertexParametersForIndex(vertexIndex);
+}
+
+int TrimeshWidget::selectedVertexIndexForPanel() {
+    return bridge.selectedVertexIndexForPanel();
+}
+
+std::vector<TrimeshVertexMarker> TrimeshWidget::vertexMarkers() {
+    return bridge.getModel().getVertexMarkers();
+}
+
 bool TrimeshWidget::findMorphControlAt(
         Rectangle<float> content,
         Point<float> position,

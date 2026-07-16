@@ -25,4 +25,5 @@ public:
     void doReshapeCurve(const MouseEvent& e) override;
     void mouseDoubleClick (const MouseEvent& e) override;
     virtual void setExtraElements(float x);
+    virtual float getCurveProximityThreshold() const { return 7.f; }
 };

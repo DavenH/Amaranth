@@ -16,6 +16,7 @@ enum class BinarySignalOperation {
 enum class BinaryGridOperandMode {
     Block,
     MatchingGrid,
+    EnvelopeTraversal,
     BroadcastFirstColumn,
     Incompatible
 };
@@ -150,6 +151,20 @@ private:
             return;
         }
 
+        if (mode == BinaryGridOperandMode::EnvelopeTraversal) {
+            const SignalTraversalGrid& envelope = payload->traversalGrid;
+            const float sourcePosition = target.columns > 0
+                    ? (float) column * (float) envelope.columns / (float) target.columns
+                    : 0.f;
+            const size_t firstColumn = std::min((size_t) sourcePosition, envelope.columns - 1);
+            const size_t secondColumn = std::min(firstColumn + 1, envelope.columns - 1);
+            const float fraction = sourcePosition - (float) firstColumn;
+            const float first = envelope.values[firstColumn * envelope.rows];
+            const float second = envelope.values[secondColumn * envelope.rows];
+            dest.set(first + fraction * (second - first));
+            return;
+        }
+
         if (mode == BinaryGridOperandMode::BroadcastFirstColumn) {
             copyTraversalGridColumn(dest, payload->traversalGrid, 0);
             return;
@@ -262,6 +277,10 @@ private:
             return BinaryGridOperandMode::MatchingGrid;
         }
 
+        if (isEnvelopeTraversalGrid(payload->traversalGrid, target)) {
+            return BinaryGridOperandMode::EnvelopeTraversal;
+        }
+
         if (isRepeatedTimeVector(payload->traversalGrid, target)
                 || isSingleColumnVector(payload->traversalGrid, target)) {
             return BinaryGridOperandMode::BroadcastFirstColumn;
@@ -285,6 +304,15 @@ private:
                 && candidate.metadata.columnAxis == TraversalGridAxis::Repeated
                 && candidate.metadata.rowAxis == TraversalGridAxis::Time
                 && target.metadata.rowAxis == TraversalGridAxis::Time;
+    }
+
+    static bool isEnvelopeTraversalGrid(
+            const SignalTraversalGrid& candidate,
+            const SignalTraversalGrid&) {
+        return candidate.isValid()
+                && candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                && candidate.metadata.columnAxis == TraversalGridAxis::Time
+                && candidate.metadata.rowAxis == TraversalGridAxis::Repeated;
     }
 
     static bool isSingleColumnVector(const SignalTraversalGrid& candidate, const SignalTraversalGrid& target) {

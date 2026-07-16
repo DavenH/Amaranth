@@ -81,6 +81,7 @@ public:
     std::vector<TrimeshCubePreviewVertex> getSelectedCubePreviewVertices();
     int findNearestVertexIndexForPhaseAmp(float phase, float amp);
     int getResolvedSelectedVertexIndex();
+    void selectVertex(Vertex* vertex);
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }

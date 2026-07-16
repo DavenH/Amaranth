@@ -74,6 +74,9 @@ public:
             std::function<void(juce::Point<float>)> hoverCallback);
     void setMeshEditedCallback(std::function<void()> callback);
     TrimeshMeshEditState currentMeshEditState();
+    std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
+    int selectedVertexIndexForPanel();
+    std::vector<TrimeshVertexMarker> vertexMarkers();
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);

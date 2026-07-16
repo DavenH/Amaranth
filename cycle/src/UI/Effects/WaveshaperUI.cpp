@@ -9,6 +9,8 @@
 #include <UI/Widgets/Knob.h>
 
 #include "WaveshaperUI.h"
+
+#include <UI/Panels/CurvePanelDrawing.h>
 #include "../CycleDefs.h"
 #include "../Dialogs/PresetPage.h"
 #include "../Panels/Console.h"
@@ -144,29 +146,15 @@ void WaveshaperUI::preDraw() {
 }
 
 void WaveshaperUI::postCurveDraw() {
-    int left = 0;
-    int right = getWidth();
-    int innerRight = sx(1 - getRealConstant(WaveshaperPadding));
-    int innerLeft = sx(getRealConstant(WaveshaperPadding));
-
-    int bottom = 0;
-    int low = sy(1 - getRealConstant(WaveshaperPadding));
-    int high = sy(getRealConstant(WaveshaperPadding));
-    int top = getHeight();
-
-    gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
-
-    gfx->fillRect(innerLeft, top, innerRight, high, false);
-    gfx->fillRect(innerLeft, bottom, innerRight, low, false);
-    gfx->fillRect(left, top, innerLeft, bottom, false);
-    gfx->fillRect(right, top, innerRight, bottom, false);
-
-    gfx->setCurrentColour(0.3f, 0.3f, 0.3f, 0.5f);
-    gfx->setCurrentLineWidth(1.f);
-    gfx->disableSmoothing();
-
-    gfx->drawRect(innerLeft, high, innerRight, low, false);
-    gfx->enableSmoothing();
+    CurvePanelDrawing::Canvas canvas {
+        *gfx,
+        getWidth(),
+        getHeight(),
+        [this](float x) { return sx(x); },
+        [this](float y) { return sy(y); }
+    };
+    CurvePanelDrawing::drawWaveshaperBounds(
+            canvas, (float) getRealConstant(WaveshaperPadding));
 }
 
 void WaveshaperUI::setMeshAndUpdate(Mesh* mesh) {

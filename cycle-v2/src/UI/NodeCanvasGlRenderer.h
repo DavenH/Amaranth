@@ -63,4 +63,9 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvasGlRenderer)
 };
 
+// The current renderer backend is OpenGL, while NodeCanvas owns only the
+// context lifecycle and event translation. Keeping this public role name
+// backend-neutral allows another renderer without changing the canvas API.
+using NodeCanvasRenderer = NodeCanvasGlRenderer;
+
 }

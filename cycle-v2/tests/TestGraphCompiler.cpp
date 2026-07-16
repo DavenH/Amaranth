@@ -3,6 +3,7 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 
 #include <algorithm>
 
@@ -167,7 +168,7 @@ TEST_CASE("Failed node configuration construction retains the last valid publica
     REQUIRE(valid.plan.steps.front().configuration.isValid());
 
     for (auto& parameter : graph.findNodeForEditing("env")->parameters) {
-        if (parameter.id == "envelope.snapshot") {
+        if (parameter.id == CurveNodeModelCodec::snapshotParameterId()) {
             parameter.value = "not an envelope snapshot";
         }
     }

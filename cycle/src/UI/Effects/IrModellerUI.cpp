@@ -18,6 +18,8 @@
 
 #include "IrModellerUI.h"
 
+#include <UI/Panels/CurvePanelDrawing.h>
+
 #include <Util/StatusChecker.h>
 
 #include "../Dialogs/PresetPage.h"
@@ -246,17 +248,15 @@ void IrModellerUI::preDraw() {
 
     VecOps::roundDown(mags.clip(0.f, 1.f).mul(511.f), indices);
 
-    int left 		= 0;
-    int bottom 		= 0;
-    int top 		= getHeight();
-//	int increment 	= jmax(1, int(mags.size() / height));
-    int innerLeft 	= sx(getRealConstant(IrModellerPadding));
-
-    gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
-    gfx->fillRect(left, top, innerLeft, bottom, false);
-    gfx->setCurrentColour(0.2f, 0.2f, 0.2f);
-    gfx->disableSmoothing();
-    gfx->drawLine(innerLeft, top, innerLeft, bottom, false);
+    CurvePanelDrawing::Canvas canvas {
+        *gfx,
+        getWidth(),
+        getHeight(),
+        [this](float x) { return sx(x); },
+        [this](float y) { return sy(y); }
+    };
+    CurvePanelDrawing::drawImpulseResponseBackground(
+            canvas, (float) getRealConstant(IrModellerPadding));
 
     int sizeY = mags.size(); // / increment;
     yBuffer.ensureSize(sizeY);
@@ -324,13 +324,14 @@ void IrModellerUI::postCurveDraw() {
         drawCurvesFrom(xy, alpha, red, red);
     }
 
-    int left = 0;
-    int innerLeft = sx(padding);
-    int bottom = 0;
-    int top = getHeight();
-
-    gfx->setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
-    gfx->drawRect(left, top, innerLeft, bottom, false);
+    CurvePanelDrawing::Canvas canvas {
+        *gfx,
+        getWidth(),
+        getHeight(),
+        [this](float x) { return sx(x); },
+        [this](float y) { return sy(y); }
+    };
+    CurvePanelDrawing::drawImpulseResponseBounds(canvas, (float) padding);
 }
 
 bool IrModellerUI::updateDsp(int knobIndex, double knobValue, bool doFurtherUpdate) {

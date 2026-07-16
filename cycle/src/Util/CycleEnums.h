@@ -82,7 +82,6 @@ namespace AppSettings {
         Waterfall,
         WaveLoaded,
         DebugLogging,
-        CollisionDetection,
         ReductionFactor,
         NativeDialogs,
         FilterEnabled,

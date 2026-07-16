@@ -21,6 +21,7 @@ public:
     bool locateClosestElement() override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
+    void deleteSelected();
 
     void setPrimaryViewAxis(int axis);
     void setMeshEditedCallback(std::function<void(bool)> callback);

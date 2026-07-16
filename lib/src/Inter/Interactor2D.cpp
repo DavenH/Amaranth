@@ -117,7 +117,7 @@ void Interactor2D::doExtraMouseMove(const MouseEvent& e) {
 void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
     ScopedLock sl(vertexLock);
 
-    const float distThresPX = 7.f;
+    const float distThresPX = getCurveProximityThreshold();
 
     auto snapshot = rasterizerSnapshot();
 

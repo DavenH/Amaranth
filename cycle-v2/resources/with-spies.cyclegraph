@@ -90,7 +90,8 @@
            purpose="signal" side="left"/>
     <output id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
             purpose="signal" side="right"/>
-    <parameter id="effect.vertices" label="Effect Vertices" value="0.062500,0.062500,1.000000;0.125000,0.125000,1.000000;0.322264,0.759764,0.027560;0.612793,0.640137,0.000000;0.871582,0.875000,1.000000;0.937500,0.937500,1.000000"/>
+    <parameter id="curve.modelSnapshot" label="Curve Model Snapshot" value="{&quot;version&quot;:1,&quot;type&quot;:&quot;flatCurve&quot;,&quot;revision&quot;:2,&quot;selection&quot;:-1,&quot;vertices&quot;:[{&quot;id&quot;:1,&quot;x&quot;:0.0625,&quot;y&quot;:0.0625,&quot;curve&quot;:1.0},{&quot;id&quot;:2,&quot;x&quot;:0.125,&quot;y&quot;:0.125,&quot;curve&quot;:1.0},{&quot;id&quot;:3,&quot;x&quot;:0.322264,&quot;y&quot;:0.759764,&quot;curve&quot;:0.02756},{&quot;id&quot;:4,&quot;x&quot;:0.612793,&quot;y&quot;:0.640137,&quot;curve&quot;:0.0},{&quot;id&quot;:5,&quot;x&quot;:0.871582,&quot;y&quot;:0.875,&quot;curve&quot;:1.0},{&quot;id&quot;:6,&quot;x&quot;:0.9375,&quot;y&quot;:0.9375,&quot;curve&quot;:1.0}]}"/>
+    <parameter id="curve.modelRevision" label="Curve Model Revision" value="2"/>
   </node>
   <node id="ir" kind="impulseResponse" title="IR" subtitle="convolution"
         x="2354.66650390625" y="457.9146423339844" w="256.0" h="210.0">

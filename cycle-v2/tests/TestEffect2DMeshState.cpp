@@ -11,7 +11,7 @@ TEST_CASE("Effect 2D mesh state serializes ordered vertex triples", "[cycle-v2][
             { 0.f, 0.1f, 1.f }
     };
 
-    const String serialized = Effect2DMeshState::serialize(vertices);
+    const juce::String serialized = Effect2DMeshState::serialize(vertices);
     const auto parsed = Effect2DMeshState::parse(serialized);
 
     REQUIRE(parsed.size() == 2);

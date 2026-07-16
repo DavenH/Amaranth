@@ -6,27 +6,30 @@
 #include <memory>
 
 #include "../Graph/GraphEditor.h"
+#include "../Graph/GraphCommandDispatcher.h"
+#include "../Graph/GraphDocument.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
-#include "../Graph/GraphSerializer.h"
-#include "../Nodes/Effect2D/Effect2DExpandedEditorComponent.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshMeshEditState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "../Runtime/GraphPreviewExecutor.h"
-#include "../Runtime/GraphAudioExecutor.h"
-#include "../Runtime/GraphRuntime.h"
+#include "../Runtime/GraphPresentationModel.h"
 #include "NodeCanvasGlRenderer.h"
+#include "NodeAutomationFacade.h"
+#include "NodeCanvasScene.h"
+#include "NodeCanvasViewport.h"
+#include "NodeEditorHost.h"
 
 namespace CycleV2 {
 
 class NodeCanvas :
         public Component
     ,   private OpenGLRenderer
-    ,   private Timer {
+    ,   private Timer
+    ,   private NodeEditorPresentation
+    ,   private NodeEditorResources {
 public:
     NodeCanvas();
     ~NodeCanvas() override;
@@ -92,34 +95,28 @@ private:
     };
 
     OpenGLContext openGLContext;
-    NodeCanvasGlRenderer glRenderer;
-    NodeGraph graph;
-    GraphCompiler graphCompiler;
-    GraphCompileResult compileResult;
-    RuntimeProcessTrace runtimeTrace;
-    GraphPreviewResult previewResult;
-    mutable GraphAudioExecutor audioExecutor;
-    mutable GraphAudioExecutor previewAudioExecutor;
-    std::vector<String> undoStack;
-    std::vector<String> redoStack;
+    NodeCanvasRenderer renderer;
+    mutable NodeCanvasViewport viewport;
+    mutable NodeCanvasScene sceneBuilder;
+    NodeCanvasHitTester hitTester;
+    GraphDocument document;
+    GraphCommandDispatcher commands;
+    NodeAutomationFacade automation;
+    const NodeGraph& graph;
+    GraphPresentationModel presentation;
+    const GraphCompileResult& compileResult;
+    const RuntimeProcessTrace& runtimeTrace;
+    const GraphPreviewResult& previewResult;
     std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
-    std::unique_ptr<TrimeshExpandedEditorComponent> trimeshExpandedEditor;
-    std::unique_ptr<Effect2DExpandedEditorComponent> effect2DExpandedEditor;
-    String trimeshExpandedEditorNodeId;
-    String effect2DExpandedEditorNodeId;
+    NodeEditorCommandService editorCommands;
+    NodeEditorHost editorHost;
 
-    float zoom { 0.58f };
-    Point<float> pan { 34.f, 38.f };
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
     String selectedNodeId;
     String expandedNodeId;
-    String activeTrimeshMorphNodeId;
-    String activeTrimeshMorphParameterId;
-    String activeTrimeshVertexNodeId;
-    String activeTrimeshVertexParameterId;
     String editStatusMessage;
     int activeTrimeshVertexIndex { -1 };
     int selectedEdgeIndex { -1 };
@@ -154,8 +151,7 @@ private:
     void drawGlEdges();
     void drawGlNodeShells();
     void drawGlEffect2DPreviews();
-    bool drawGlEffect2DExpandedPanel();
-    void drawGlTrimeshExpandedPanel();
+    void drawGlExpandedEditor();
     void drawEdges(Graphics& g);
     void drawConnectionPreview(Graphics& g);
     void drawNodes(Graphics& g);
@@ -207,7 +203,6 @@ private:
     int findEdgeAt(Point<float> screenPosition) const;
     int findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const;
     const Node* findNode(const String& id) const;
-    Node* findMutableNode(const String& id);
     const Node* findNodeAt(Point<float> worldPosition) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
@@ -232,8 +227,6 @@ private:
     bool loadSnapshot();
     bool undo();
     bool redo();
-    void pushUndoSnapshot();
-    void pushUndoSnapshot(String xml);
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
     void shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId);
@@ -245,18 +238,22 @@ private:
     bool handleTransformEditorClick(Point<float> screenPosition);
     bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
     bool setTransformParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
-    bool setTrimeshPrimaryAxisValue(const String& axisValue);
-    bool toggleTrimeshLinkAxisValue(const String& axisValue);
-    bool beginTrimeshMorphEdit(const String& parameterId, float value);
-    bool updateTrimeshMorphEditValue(float value);
-    void endTrimeshMorphEdit();
-    bool beginTrimeshVertexParameterEdit(const String& parameterId, float value);
-    bool updateTrimeshVertexParameterEditValue(float value);
-    void endTrimeshVertexParameterEdit();
-    void persistTrimeshMeshEdits(const String& nodeId);
-    bool showTrimeshGuideAttachmentMenu(const String& parameterField, Rectangle<int> targetScreenArea);
     std::array<String, 6> trimeshGuideAttachmentLabelsForNode(const Node& meshNode);
-    bool selectTrimeshVertexIndex(int vertexIndex);
+
+    void closeNodeEditor() override;
+    void repaintNodeEditor(bool openGl) override;
+    void selectEditedNode(const String& nodeId) override;
+    void setNodeEditorStatus(const String& message) override;
+    void scheduleNodeEditorRefresh() override;
+    void flushNodeEditorRefresh() override;
+    void refreshNodeEditorPresentation() override;
+    Point<float> nodeEditorCreationPosition() const override;
+    void rebindNodeEditor() override;
+
+    Effect2DWidget* effect2DWidget(const Node& node) override;
+    TrimeshWidget* trimeshWidget(const Node& node) override;
+    TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
+    std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     void updatePaletteHover(Point<float> screenPosition);
     Path createCablePath(

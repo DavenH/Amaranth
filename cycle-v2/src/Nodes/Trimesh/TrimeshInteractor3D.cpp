@@ -209,4 +209,15 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
     }
 }
 
+void TrimeshInteractor3D::deleteSelected() {
+    if (getSelected().empty()) {
+        return;
+    }
+    eraseSelected();
+    performUpdate(Update);
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback(true);
+    }
+}
+
 }

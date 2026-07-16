@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-15).
 
 Depends on:
 
@@ -171,9 +171,9 @@ Each node model defines a typed snapshot codec and version. The graph serializer
 stores the opaque node-model payload with its model version but delegates
 parsing and migration to the owning node definition/model codec.
 
-Legacy `effect2d.mesh` and `envelope.snapshot` strings receive explicit
-migrations. Empty or malformed state fails validation or uses a documented
-node default during migration; processing must not discover malformed state.
+Cycle V2 nodes are created with canonical typed snapshots. Transitional
+`effect.vertices` and `envelope.snapshot` scaffolding is not a compatibility
+contract and is rejected rather than migrated.
 
 ## Migration Plan
 
@@ -258,3 +258,58 @@ node default during migration; processing must not discover malformed state.
 - Preview, serialization, and DSP configuration identify the same typed model
   revision.
 
+## Implementation Notes
+
+- `FlatCurveModel` owns a plain `Mesh`, stable vertex identities, selection,
+  atomic validation, and a versioned JSON snapshot. `EnvelopeNodeModel` alone
+  owns `EnvelopeMesh`, topology/markers, morph/link intent, selection, and its
+  versioned snapshot.
+- `WaveshaperNodeModel`, `ImpulseResponseNodeModel`, and
+  `GuideCurveNodeModel` compose a flat curve with named typed controls. The
+  four named editor component types publish their schema-specific control
+  bindings through the curve-editor factory.
+- `CurvePanelEnvironment`, `CurvePanelSnapshotCache`, and the interaction
+  transaction contract contain host-edge services without owning a mesh or
+  branching on node kind. The compatibility panel adapter now allocates a
+  plain `Mesh` for flat curves and an `EnvelopeMesh` only for Envelope.
+- `GraphCommandDispatcher::publishCurveModel` validates a typed snapshot and
+  publishes its payload/revision atomically. Slider and morph drags use
+  compound graph edits; curve gestures publish once when the existing
+  interactor commits the gesture.
+- `curve.modelSnapshot` and `curve.modelRevision` are schema-owned parameters.
+  Preview/editor synchronization and immutable Waveshaper, IR, and Envelope
+  DSP configuration consume only the typed snapshot.
+- Canonical typed defaults are owned by the curve-model codec and installed by
+  node definitions. Transitional Cycle V2 parameters and fallback decoders
+  were removed; malformed typed state fails configuration construction.
+- The compatibility `Effect2DPanelBridge` was deleted. `Effect2DWidget` now
+  owns a `CurvePanelController` interface backed by separate flat and Envelope
+  controllers. Shared controller infrastructure contains lifecycle,
+  publication, and host composition only; Envelope controls and marker
+  semantics exist solely on `EnvelopeCurvePanelController`.
+- The generic expanded editor was narrowed and renamed
+  `CurveExpandedEditorComponent`. Named Waveshaper, IR, Guide, and Envelope
+  editors retain their domain controls while sharing only layout, panel
+  hosting, and transaction mechanics.
+- Long-lived editor command/lifecycle callback bundles were replaced by
+  `CurveExpandedEditorDelegate`, `TrimeshExpandedEditorDelegate`, and
+  `TrimeshControlsDelegate`. `CurvePanelHostDelegate` and
+  `CurvePanelControllerDelegate` likewise replace panel-host callback bundles.
+  Hosted editor adapters implement these protocols directly; local JUCE panel
+  callbacks remain only at the underlying framework API boundary.
+
+Verification on macOS:
+
+- `CycleV2_tests`: 2,603 assertions in 245 test cases.
+- Focused curve model/editor suite: 89 assertions in 13 test cases.
+- Focused curve-model/editor tests cover atomic validation, stable selection,
+  typed and legacy round trips, Envelope topology and markers, semantic undo,
+  named controls, typed DSP parity, and independent Envelope DSP state.
+- The Effect2D automation fixture passed for Envelope, Waveshaper, IR, and
+  Guide interactions. A final runner-side OS capture verified the expanded
+  Waveshaper OpenGL editor, compact preview, canvas cables, and legend after
+  model-owned mesh extraction.
+- Two consecutive native macOS smoke runs passed after final cleanup. They
+  cover Effect2D hover and cursor state, vertex add/move/delete, upward and
+  downward curve sharpening beyond the controlling vertex, plus Trimesh
+  collision, vertex parameters, morph controls, and deletion.

@@ -1,8 +1,9 @@
 #include "NodeDefinition.h"
 
-#include "../Nodes/Envelope/EnvelopeMeshState.h"
+#include "../Nodes/Effect2D/CurveNodeModels.h"
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 
 namespace CycleV2 {
@@ -251,7 +252,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env", {},
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
-                            snapshot(EnvelopeMeshState::parameterId(), "Envelope Snapshot", EnvelopeMeshState::defaultSnapshot()),
+                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Envelope)),
+                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
@@ -267,7 +270,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             number("noise", "Noise", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("dcOffset", "DC Offset", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("phase", "Phase", 0.5f, 0.f, 1.f, dsp | preview | presentation)
+                            number("phase", "Phase", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::GuideCurve)),
+                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
                     }, true),
             definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -275,7 +281,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("size", "Size", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation)
+                            number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation),
+                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::ImpulseResponse)),
+                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
                     }, true),
             definition("waveshaper", NodeKind::Waveshaper, "Waveshaper", "transfer curve", "waveshaper",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -283,7 +292,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("pre", "Pre", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
-                            choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation)
+                            choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation),
+                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper)),
+                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
                     }, true),
             definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },

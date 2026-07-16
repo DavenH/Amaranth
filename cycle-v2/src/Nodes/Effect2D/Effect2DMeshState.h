@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Graph/NodeGraph.h"
+#include <JuceHeader.h>
 
 #include <vector>
 
@@ -14,10 +14,8 @@ struct Effect2DVertexState {
 
 class Effect2DMeshState {
 public:
-    static String parameterId();
-    static std::vector<Effect2DVertexState> parse(const String& serialized);
-    static String serialize(const std::vector<Effect2DVertexState>& vertices);
-    static std::vector<Effect2DVertexState> fromParameters(const std::vector<NodeParameter>& parameters);
+    static std::vector<Effect2DVertexState> parse(const juce::String& serialized);
+    static juce::String serialize(const std::vector<Effect2DVertexState>& vertices);
 };
 
 }

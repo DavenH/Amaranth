@@ -4,6 +4,7 @@
 #include "../../Runtime/NodeDspConfiguration.h"
 #include "EnvelopeMeshState.h"
 
+#include <Array/ScopedAlloc.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
@@ -35,6 +36,7 @@ private:
     bool syncModel(const std::vector<NodeParameter>& parameters);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
     void renderSegment(Buffer<float> output, size_t start, size_t count, const AudioProcessTiming& timing);
+    void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 
     static constexpr size_t defaultTraversalColumns = 8;
 
@@ -50,6 +52,7 @@ private:
     uint64_t adoptedRevision {};
     uint64_t pendingRevision {};
     std::shared_ptr<const EnvelopeConfiguration> configuration;
+    ScopedAlloc<float> traversalMemory { 2 * defaultTraversalColumns };
 };
 
 }

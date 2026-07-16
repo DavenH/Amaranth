@@ -5,30 +5,33 @@
 
 #include <JuceHeader.h>
 
-#include <functional>
 #include <memory>
 #include <vector>
 
 namespace CycleV2 {
 
+class TrimeshControlsDelegate {
+public:
+    virtual ~TrimeshControlsDelegate() = default;
+    virtual void setTrimeshPrimaryAxis(const juce::String& axis) = 0;
+    virtual void toggleTrimeshLinkAxis(const juce::String& axis) = 0;
+    virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
+    virtual void updateTrimeshMorphControlEdit(float value) = 0;
+    virtual void endTrimeshMorphControlEdit() = 0;
+    virtual void beginTrimeshVertexControlEdit(const juce::String& id, float value) = 0;
+    virtual void updateTrimeshVertexControlEdit(float value) = 0;
+    virtual void endTrimeshVertexControlEdit() = 0;
+    virtual void showTrimeshVertexGuideMenu(
+            const juce::String& id,
+            juce::Rectangle<int> screenArea) = 0;
+};
+
 class TrimeshControlsComponent : public juce::Component {
 public:
-    struct Callbacks {
-        std::function<void(const juce::String&)> setPrimaryAxis;
-        std::function<void(const juce::String&)> toggleLinkAxis;
-        std::function<void(const juce::String&, float)> beginMorphEdit;
-        std::function<void(float)> updateMorphEdit;
-        std::function<void()> endMorphEdit;
-        std::function<void(const juce::String&, float)> beginVertexParameterEdit;
-        std::function<void(float)> updateVertexParameterEdit;
-        std::function<void()> endVertexParameterEdit;
-        std::function<void(const juce::String&, juce::Rectangle<int>)> showVertexGuideAttachmentMenu;
-    };
-
     explicit TrimeshControlsComponent(TrimeshWidget& widget);
     ~TrimeshControlsComponent() override;
 
-    void setCallbacks(Callbacks nextCallbacks);
+    void setDelegate(TrimeshControlsDelegate* nextDelegate);
     void setNode(const Node& nextNode);
     void setContentBounds(juce::Rectangle<float> nextContentBounds);
     int getControlRegionCount() const { return (int) controlRegions.size(); }
@@ -59,7 +62,7 @@ private:
     void endControlDrag();
 
     TrimeshWidget& widget;
-    Callbacks callbacks;
+    TrimeshControlsDelegate* delegate {};
     Node node;
     DragTarget dragTarget { DragTarget::None };
     juce::String activeParameterId;
