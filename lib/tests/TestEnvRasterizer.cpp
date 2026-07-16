@@ -1,6 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <vector>
+
 #include <Curve/Curve.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -42,7 +45,8 @@ namespace {
                 }
                 mesh.addCube(cube);
             }
-            mesh.setSustainToLast();
+            mesh.loopCubes.insert(mesh.getCubes()[0]);
+            mesh.sustainCubes.insert(mesh.getCubes()[1]);
         }
 
         ~TestEnvelope() {
@@ -136,4 +140,39 @@ TEST_CASE("Envelope playback states advance lifecycle independently", "[rasteriz
     REQUIRE(first.mode == Rasterization::EnvelopePlaybackMode::Normal);
     REQUIRE(first.voice(2).samplePosition == Catch::Approx(0.0));
     REQUIRE(second.voice(2).samplePosition == Catch::Approx(0.25));
+}
+
+TEST_CASE("Envelope playback does not mutate prepared display data", "[rasterization][env][playback]") {
+    CurveTableScope curveTable;
+    TestEnvelope envelope;
+    EnvRasterizer rasterizer;
+    rasterizer.renderWaveformOnly(&envelope.mesh);
+    const auto& prepared = rasterizer.preparedResult();
+    const auto originalIntercepts = prepared.intercepts;
+    const auto originalCurves = prepared.curves;
+    std::vector<float> originalWaveY(
+            prepared.waveform.waveY.get(),
+            prepared.waveform.waveY.get() + prepared.waveform.waveY.size());
+
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    rasterizer.setNoteOn();
+    REQUIRE(rasterizer.renderToBuffer(12, 0.1, EnvRasterizer::headUnisonIndex, props, 1.f));
+    REQUIRE(rasterizer.getMode() == EnvRasterizer::Looping);
+    REQUIRE(prepared.intercepts == originalIntercepts);
+    REQUIRE(prepared.curves == originalCurves);
+    REQUIRE(std::equal(
+            originalWaveY.begin(),
+            originalWaveY.end(),
+            prepared.waveform.waveY.get()));
+
+    rasterizer.setNoteOff();
+    rasterizer.renderToBuffer(4, 0.1, EnvRasterizer::headUnisonIndex, props, 1.f);
+    REQUIRE(rasterizer.getMode() == EnvRasterizer::Releasing);
+    REQUIRE(prepared.intercepts == originalIntercepts);
+    REQUIRE(prepared.curves == originalCurves);
+    REQUIRE(std::equal(
+            originalWaveY.begin(),
+            originalWaveY.end(),
+            prepared.waveform.waveY.get()));
 }

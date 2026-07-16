@@ -83,3 +83,8 @@ time evolution. Neither owns UI publication policy.
   sampling cursors now live in `EnvelopePlaybackState` rather than as loose
   renderer members. Independent-state tests prove lifecycle changes and cursor
   resets do not cross between playback instances.
+- Preparation now bakes display and looping sampling results before playback.
+  Loop and release transitions select an existing result; they no longer
+  rebuild curves, replace waveform views, or mutate the display result on the
+  processing path. A lifecycle regression test compares all prepared
+  intercepts, curves, and waveform samples before and after both transitions.

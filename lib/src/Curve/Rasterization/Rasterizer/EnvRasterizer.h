@@ -90,7 +90,8 @@ public:
     bool canRasterizeWaveform();
 
     Rasterization::SamplerView sampler() const override {
-        return Rasterization::SamplerView(result.waveform, result.sampleable);
+        const auto& active = samplingResult();
+        return Rasterization::SamplerView(active.waveform, active.sampleable);
     }
 
     void setMesh(Mesh* mesh);
@@ -140,16 +141,15 @@ private:
     void clearRasterizationResult(bool clearCurves);
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
-    void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
+    void preparePlaybackResults();
     void renderEnvelopeCrossPoints();
     void processEnvelopeIntercepts(vector<Intercept>& intercepts);
     void rebuildCurvesFromIntercepts();
-    void bakeWaveform();
-    void copyWaveformForRelease();
-    void updateBuffers(int size);
+    void bakeWaveform(Rasterization::RenderResult& target);
     Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
+    const Rasterization::RenderResult& samplingResult() const;
     bool isSampleable() const;
     bool isSampleableAt(float x) const;
     void markWaveformUnsampleable();
@@ -159,7 +159,7 @@ private:
     template<typename T>
     T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
         return Rasterization::WaveformSampler::sampleWithInterval(
-                result.waveform,
+                samplingResult().waveform,
                 buffer,
                 delta,
                 phase);
@@ -178,12 +178,12 @@ private:
     Rasterization::EnvelopePlaybackState playback;
 
     ScopedAlloc<float> preallocated;
-    ScopedAlloc<float> waveformMemory;
-    Buffer<float> waveXCopy, waveYCopy, slopeCopy, renderBuffer;
+    Buffer<float> renderBuffer;
 
     GuideCurveProvider* guideCurveProvider;
     Rasterization::RasterizationRequest request;
     Rasterization::RenderResult result;
+    Rasterization::RenderResult loopResult;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     VertCube::ReductionData reduction;
 
