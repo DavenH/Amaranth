@@ -79,3 +79,7 @@ time evolution. Neither owns UI publication policy.
 - Cycle v1 and Cycle v2 envelope audio paths call render-only operations.
 - Boundary tests cover unpublished preparation, explicit publication,
   complete cleanup, and unpublished prepared-data adoption.
+- Note lifecycle, release intent, per-voice cursors, sustain levels, and guide
+  sampling cursors now live in `EnvelopePlaybackState` rather than as loose
+  renderer members. Independent-state tests prove lifecycle changes and cursor
+  resets do not cross between playback instances.

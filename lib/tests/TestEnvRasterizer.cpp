@@ -115,3 +115,25 @@ TEST_CASE("Adopting prepared envelope data does not publish", "[rasterization][e
     REQUIRE(published.intercepts().size() == source.preparedResult().intercepts.size());
     REQUIRE(published.isSampleable());
 }
+
+TEST_CASE("Envelope playback states advance lifecycle independently", "[rasterization][env][playback]") {
+    Rasterization::EnvelopePlaybackState first;
+    Rasterization::EnvelopePlaybackState second;
+    first.ensureVoiceCount(4);
+    second.ensureVoiceCount(4);
+
+    first.voice(2).samplePosition = 0.75;
+    second.voice(2).samplePosition = 0.25;
+    first.requestRelease(true);
+
+    REQUIRE(first.mode == Rasterization::EnvelopePlaybackMode::Releasing);
+    REQUIRE(first.consumeReleaseRequest());
+    REQUIRE_FALSE(first.consumeReleaseRequest());
+    REQUIRE(second.mode == Rasterization::EnvelopePlaybackMode::Normal);
+    REQUIRE(second.voice(2).samplePosition == Catch::Approx(0.25));
+
+    first.noteOn(1);
+    REQUIRE(first.mode == Rasterization::EnvelopePlaybackMode::Normal);
+    REQUIRE(first.voice(2).samplePosition == Catch::Approx(0.0));
+    REQUIRE(second.voice(2).samplePosition == Catch::Approx(0.25));
+}

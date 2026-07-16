@@ -7,6 +7,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <Curve/Rasterization/EnvelopePlaybackState.h>
 #include <Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
@@ -35,26 +36,7 @@ public:
     enum { loopMinSizeIcpts = 1, graphicIndex = 0, headUnisonIndex };
     enum { NormalState, Looping, Releasing };
 
-    // one per unison voice
-    class EnvParams {
-    public:
-        EnvParams() : sustainLevel(1.f),
-                      samplePosition(0.),
-                      sampleIndex(0) {
-        }
-
-        void reset() {
-            samplePosition = 0;
-            sampleIndex = 0;
-            guideCurveContext.currentIndex = 0;
-        }
-
-        int sampleIndex;
-        float sustainLevel;
-        double samplePosition;
-
-        GuideCurveContext guideCurveContext;
-    };
+    using EnvParams = Rasterization::EnvelopeVoicePlaybackState;
 
     /* ----------------------------------------------------------------------------- */
 
@@ -133,10 +115,22 @@ public:
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
     const Rasterization::RenderResult& preparedResult() const { return result; }
-    float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
-    int getMode() const                         { return state;                             }
-    void setMode(int mode)                      { this->state = mode;                       }
-    bool wantsOneSamplePerCycle() const         { return oneSamplePerCycle;                 }
+    float getSustainLevel(int paramIndex) const { return playback.voice(paramIndex).sustainLevel; }
+    int getMode() const {
+        return playback.mode == Rasterization::EnvelopePlaybackMode::Looping
+                ? Looping
+                : playback.mode == Rasterization::EnvelopePlaybackMode::Releasing
+                        ? Releasing
+                        : NormalState;
+    }
+    void setMode(int mode) {
+        playback.mode = mode == Looping
+                ? Rasterization::EnvelopePlaybackMode::Looping
+                : mode == Releasing
+                        ? Rasterization::EnvelopePlaybackMode::Releasing
+                        : Rasterization::EnvelopePlaybackMode::Normal;
+    }
+    bool wantsOneSamplePerCycle() const { return playback.oneSamplePerCycle; }
     Buffer<float> getRenderBuffer()             { return renderBuffer;                  }
 
 
@@ -176,14 +170,12 @@ private:
 
     /* ----------------------------------------------------------------------------- */
 
-    bool sampleReleaseNextCall, oneSamplePerCycle;
-    int loopIndex, sustainIndex, state;
-    double releaseScale;
+    int loopIndex, sustainIndex;
 
     MeshLibrary::EnvProps defaultProps;
     EnvelopeMesh* envMesh;
 
-    vector<EnvParams> params;
+    Rasterization::EnvelopePlaybackState playback;
 
     ScopedAlloc<float> preallocated;
     ScopedAlloc<float> waveformMemory;
