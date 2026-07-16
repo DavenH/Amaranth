@@ -20,9 +20,4 @@ Suggested direction:
 
 ## Trimesh Topology Snapshot
 
-Trimesh vertex field parameters preserve value edits but do not explicitly
-encode cube/vertex topology. Add/delete works in the live editor, but durable
-save/reload parity needs a typed topology snapshot rather than inferring a mesh
-from sparse `mesh.vertex.<index>.<field>` overrides. Reuse the mature `Mesh`
-serialization boundary behind a narrow Trimesh model adapter; do not invent a
-second topology format in the canvas or editor.
+- [`cycle-v2-trimesh-topology-snapshot.md`](cycle-v2-trimesh-topology-snapshot.md)
