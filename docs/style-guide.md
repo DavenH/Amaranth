@@ -50,6 +50,12 @@ This document summarises formatting patterns observed in the repository. When ed
   - Overrides of base-class hooks
   - Protected helpers
   - Data members
+- Use one declaration per statement and one executable statement per line.
+  Do not compress adjacent member declarations, callback assignments, layout
+  operations, or control flow onto one line.
+- Do not use an inline one-line definition to conceal a multi-step operation.
+  Expand it and group the steps by purpose even when the compiler accepts the
+  compressed form.
 - Use the section-break comment:
 
   ```cpp
@@ -221,6 +227,10 @@ Mirror this order in constructor initializer lists.
 - Name operations for the domain product they compute. A method that renders one morph-position cross-section should say `crossSection` or `slice` and accept that position explicitly; a generic name such as `renderMesh` conceals both cost and dependency.
 - Preserve asymptotic intent. A single-object edit should not scan, sort, serialize, or rebuild the whole collection unless that work is inherent to a separately defined commit/publication boundary. State expected complexity when introducing lookup structures or reconciliation passes.
 - Try to keep methods and functions under 30 lines
+- A large translation unit containing several concrete domain components is a
+  refactor signal even when each method is individually short. Split concrete
+  components into their own files and extract only genuinely shared primitives;
+  do not use file-local helpers as a substitute for cohesive ownership.
 - Look for repeatable contracts before adding another node-specific or feature-specific class. If several implementations need the same lifecycle and data movement shape, model that shape explicitly and leave only the domain operation in the specialization.
   - Example: signal processors that all expose a method like:
 
