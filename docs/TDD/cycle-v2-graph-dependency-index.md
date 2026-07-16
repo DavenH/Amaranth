@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -40,3 +40,14 @@ compatible with execution order.
 - Invalidation contains no recursive full-edge scans or linear duplicate checks.
 - The compiler owns dependency indexing and its revision lifecycle.
 
+## Implementation Notes
+
+- `GraphCompiler` now builds one combined signal/attachment adjacency index
+  using stable execution-plan node indices.
+- Invalidation uses an indexed visited bitmap and inspects each reachable
+  dependency once. Converging paths do not rescan downstream adjacency.
+- Audio invalidation results are reused for preview invalidation when both are
+  dirty; the traversal is not repeated.
+- Results are emitted in deterministic execution order.
+- Operation counters and `16/32/64` scaling tests enforce `O(Vr + Er)` work,
+  including a converging fan-in graph.

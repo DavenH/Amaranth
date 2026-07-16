@@ -53,6 +53,11 @@ struct GraphBufferPlan {
     int lastConsumerStep { -1 };
 };
 
+struct GraphDependencyIndex {
+    std::vector<String> nodeIds;
+    std::vector<std::vector<int>> dependents;
+};
+
 struct GraphExecutionStep {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -83,6 +88,7 @@ struct GraphExecutionPlan {
     std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
+    GraphDependencyIndex dependencyIndex;
 };
 
 struct GraphCompileResult {
