@@ -18,23 +18,6 @@ Suggested direction:
   node widget moves to GL, because split shell/content rendering breaks
   overlap z-order.
 
-## Rasterizer Follow-up TDDs
-
-The completed ownership audit produced focused follow-up designs:
-
-- [`envelope-renderer-playback-separation.md`](envelope-renderer-playback-separation.md)
-- [`waveform-sampling-contract.md`](waveform-sampling-contract.md)
-- [`rasterizer-immutable-snapshot-exchange.md`](rasterizer-immutable-snapshot-exchange.md)
-- [`typed-rasterization-commands.md`](typed-rasterization-commands.md)
-- [`point-list-incremental-bake.md`](point-list-incremental-bake.md)
-- [`deterministic-guide-curve-seeds.md`](deterministic-guide-curve-seeds.md)
-- [`semantic-complexity-audit.md`](semantic-complexity-audit.md)
-- [`cycle-v2-trimesh-traversal-workspace.md`](cycle-v2-trimesh-traversal-workspace.md)
-- [`cycle-v2-preview-execution-index.md`](cycle-v2-preview-execution-index.md)
-- [`cycle-v2-graph-dependency-index.md`](cycle-v2-graph-dependency-index.md)
-- [`cycle-v2-render-invalidation-coalescing.md`](cycle-v2-render-invalidation-coalescing.md)
-- [`voice-rasterizer-realtime-storage.md`](voice-rasterizer-realtime-storage.md)
-
 ## Trimesh Topology Snapshot
 
 Trimesh vertex field parameters preserve value edits but do not explicitly
