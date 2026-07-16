@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -93,3 +93,26 @@ counts establish the cause.
   scope than its changing inputs require.
 - Complexity tests fail on representative `O(nR)` or `O(n log n)` regressions
   where the contract requires `O(R + n)` or local-edit cost.
+
+## Audit Results
+
+| Operation | Semantic unit and current cost | Required cost | Evidence and disposition |
+| --- | --- | --- | --- |
+| Envelope traversal grid | Prepare one envelope on configuration revision, sample `C` time positions once, then write `C * R` repeated grid cells. | `O(S + C + C*R)`; no per-column slice. | `EnvelopeSignalProcessor::publishTraversalGrid`; corrected before this audit and retained. |
+| E3 envelope morph surface | Each column changes the selected morph axis and is a genuine cross-section. | `O(C * (S + R))`. | `EnvelopeMorphSurfaceRasterizer`; per-column render is inherent, method now names the varying morph input. |
+| Trimesh traversal audio | Each morph column requires a slice/bake, but owning column vectors allocate on the audio path. | `O(C * (S + R))`, zero prepared-path allocation. | Follow-up: [`cycle-v2-trimesh-traversal-workspace.md`](cycle-v2-trimesh-traversal-workspace.md). |
+| Trimesh source preview | Independently repeats the audio traversal render when captured traversal already exists. | Reuse at `O(C*R)` presentation cost; zero extra slices. | Same traversal-workspace TDD. |
+| Point movement | One point influences three curve triplets and four blended waveform segments. | `O(Raffected)` unless endpoint padding or resolution layout changes. | Implemented in [`point-list-incremental-bake.md`](point-list-incremental-bake.md); counters reject full rebuild/sort for an ordinary edit. |
+| Curve identity/edit publication | Move the selected object in place and publish one conflict-checked state. | `O(1)` model mutation plus affected render range. | Covered by completed curve identity/state TDDs and live JUCE smoke fixtures. |
+| Envelope configuration adoption | Build on configuration revision, then adopt prepared render data once; blocks reuse playback state/storage. | `O(S + R)` per revision, `O(B)` per block. | `EnvelopeSignalProcessor::prepareExecution`; accepted. Dynamic live modulation remains a separate product contract. |
+| Ordinary voice slice | Slice each cube, then order potentially crossing/deformed intercepts before baking. | `O(K*S + K log K + R)` per required voice render. | `VoiceRasterizer::renderVoiceSlice`; sorting is semantically required because guide/deformation output can reorder phase. No snapshot publication occurs unless explicitly requested. |
+| Chained voice render | Accumulate the next slice and rebake the evolving chained waveform; fixed 2048 storage can grow from render. | Dependent on chain growth, zero realtime allocation, no hidden publication. | Follow-up: [`voice-rasterizer-realtime-storage.md`](voice-rasterizer-realtime-storage.md). |
+| Snapshot publication | Copy one complete generation outside the exchange and atomically swap ownership. | `O(output)` once per publication; `O(1)` reader acquisition. | Implemented in [`rasterizer-immutable-snapshot-exchange.md`](rasterizer-immutable-snapshot-exchange.md), including nonblocking publication tests. |
+| Preview graph execution | Repeated linear summary/audio lookup creates quadratic graph overhead and propagates owning vectors. | `O(V + E + samples written)`. | Follow-up: [`cycle-v2-preview-execution-index.md`](cycle-v2-preview-execution-index.md). |
+| Graph invalidation | Recursively scans all edges and linearly checks visited output per reachable node. | `O(Vr + Er)`. | Follow-up: [`cycle-v2-graph-dependency-index.md`](cycle-v2-graph-dependency-index.md). |
+| Graph edit validation/layout | Transactional connect/splice copies and validates a candidate graph; single-node placement examines neighbours to uphold non-overlap. | `O(V + E)` per committed authoring action; no per-mousemove serialization. | Existing authoring smoke tests assert semantic spacing. Accepted for committed edits; keep candidate copies out of drag frames. |
+| Panel painting | Visible-node/cable scans are clipped; repaint and texture-bake calls arrive through several editor/host layers. | `O(Vvisible + Evisible)` paint and one dirty request per affected surface/frame. | Follow-up: [`cycle-v2-render-invalidation-coalescing.md`](cycle-v2-render-invalidation-coalescing.md). |
+
+The audit deliberately retains loops whose outputs or changing inputs require
+them. The five follow-up TDDs isolate the remaining architectural changes so a
+test for one cost contract cannot pressure unrelated production code.

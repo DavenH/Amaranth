@@ -30,6 +30,11 @@ The completed ownership audit produced focused follow-up designs:
 - [`deterministic-guide-curve-seeds.md`](deterministic-guide-curve-seeds.md)
 - [`semantic-complexity-audit.md`](semantic-complexity-audit.md)
 - [`cycle-v2-dynamic-envelope-modulation.md`](cycle-v2-dynamic-envelope-modulation.md)
+- [`cycle-v2-trimesh-traversal-workspace.md`](cycle-v2-trimesh-traversal-workspace.md)
+- [`cycle-v2-preview-execution-index.md`](cycle-v2-preview-execution-index.md)
+- [`cycle-v2-graph-dependency-index.md`](cycle-v2-graph-dependency-index.md)
+- [`cycle-v2-render-invalidation-coalescing.md`](cycle-v2-render-invalidation-coalescing.md)
+- [`voice-rasterizer-realtime-storage.md`](voice-rasterizer-realtime-storage.md)
 
 ## Trimesh Topology Snapshot
 
