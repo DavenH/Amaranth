@@ -86,6 +86,31 @@ namespace Rasterization {
             return output;
         }
 
+        void rebakeAffectedRange(
+                RenderResult& output,
+                const RasterizationRequest& request,
+                int firstCurve,
+                int endCurve,
+                GuideCurveProvider* guideCurveProvider = nullptr,
+                GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            GuideCurveOffsetSeeds* resolvedOffsetSeeds = offsetSeeds != nullptr
+                    ? offsetSeeds
+                    : &fallbackOffsetSeeds;
+
+            WaveformBakePolicy::Context bakeContext;
+            bakeContext.lowResCurves = request.lowResCurves;
+            bakeContext.morph = request.morph;
+            bakeContext.decoupleComponentDfrms = request.decoupleComponentDeforms;
+            bakeContext.noiseSeed = request.noiseSeed;
+            bakeContext.guideCurveProvider = guideCurveProvider;
+            bakeContext.guideCurveRegions = &output.guideCurveRegions;
+            bakeContext.offsetSeeds = resolvedOffsetSeeds;
+            bakeContext.waveform = WaveformBufferRefs(output.waveform);
+
+            waveformBuilder.rebakeRange(output.curves, bakeContext, firstCurve, endCurve);
+            output.sampleable = bakeContext.waveform.isSampleable();
+        }
+
     private:
         static void buildCurves(
                 std::vector<Intercept>& intercepts,

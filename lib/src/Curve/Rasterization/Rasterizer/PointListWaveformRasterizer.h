@@ -21,6 +21,11 @@ namespace Rasterization {
 
     class PointListWaveformRasterizer {
     public:
+        struct Diagnostics {
+            int fullBakeCount {};
+            int affectedRangeBakeCount {};
+        };
+
         RenderResult& result() { return output; }
         const RenderResult& result() const { return output; }
 
@@ -36,6 +41,7 @@ namespace Rasterization {
                 std::vector<Intercept>& intercepts,
                 const RasterizationRequest& request,
                 GuideCurveProvider* guideCurveProvider = nullptr) {
+            ++diagnostics.fullBakeCount;
             builder.renderIntercepts(
                     intercepts,
                     output,
@@ -44,6 +50,57 @@ namespace Rasterization {
                     &guideCurveOffsetSeeds);
 
             return output;
+        }
+
+        bool rebakeAffectedRange(
+                int firstCurve,
+                int endCurve,
+                const RasterizationRequest& request) {
+            const int baseResolution = Curve::resolution / 2;
+            const float resolutionThreshold = 0.1f / float(Curve::resolution);
+            const int firstResolutionCurve = jmax(1, firstCurve - 1);
+            const int endResolutionCurve = jmin(
+                    (int) output.curves.size() - 1,
+                    endCurve + 1);
+
+            for (int curveIndex = firstResolutionCurve;
+                    curveIndex < endResolutionCurve;
+                    ++curveIndex) {
+                const float width = output.curves[curveIndex + 1].c.x
+                                  - output.curves[curveIndex - 1].a.x;
+                int expectedIndex = 0;
+                for (int resolutionIndex = 0;
+                        resolutionIndex < Curve::resolutions;
+                        ++resolutionIndex) {
+                    const int resolution = Curve::resolution >> resolutionIndex;
+                    if (width < resolutionThreshold * float(resolution)) {
+                        expectedIndex = resolutionIndex;
+                    }
+                }
+
+                if (output.curves[curveIndex].resIndex != expectedIndex) {
+                    return false;
+                }
+            }
+
+            for (int curveIndex = firstCurve; curveIndex < endCurve; ++curveIndex) {
+                const Curve& curve = output.curves[curveIndex];
+                const Curve& next = output.curves[curveIndex + 1];
+                const int expectedResolution = jmin(
+                        baseResolution >> curve.resIndex,
+                        baseResolution >> next.resIndex);
+                if (curve.curveRes != expectedResolution) {
+                    return false;
+                }
+            }
+
+            builder.rebakeAffectedRange(output, request, firstCurve, endCurve);
+            ++diagnostics.affectedRangeBakeCount;
+            return true;
+        }
+
+        const Diagnostics& getDiagnostics() const {
+            return diagnostics;
         }
 
         const RenderResult& renderGeometry(
@@ -138,5 +195,6 @@ namespace Rasterization {
         RenderResult output;
         CurveWaveformBuilder builder;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
+        Diagnostics diagnostics;
     };
 }

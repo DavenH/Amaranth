@@ -12,14 +12,10 @@
 class Rasterizer2D {
 public:
     explicit Rasterizer2D(vector<Intercept>& verts, bool cyclic = false)
-            : points(verts), cyclic(cyclic) {
-        unsampleable = false;
-    }
+            : points(verts), cyclic(cyclic) {}
 
     void updateCurve(int index, const Intercept& position) {
         vector<Curve>& curves = pointListRasterizer.result().curves;
-        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
-
         jassert(index < curves.size());
 
         if(index < 1 || index > (int) curves.size() - 2) {
@@ -49,80 +45,31 @@ public:
         next.validate();
         next.recalculateCurve();
 
+        const int pointIndex = index - getPaddingSize();
+        if (isPositiveAndBelow(pointIndex, (int) points.size())) {
+            points[pointIndex] = position;
+        }
+
+        if (pointIndex == 0 || pointIndex == (int) points.size() - 1) {
+            renderPointListWaveform();
+            return;
+        }
+
         updateWaveform(index);
     }
 
     void updateWaveform(int index) {
         vector<Curve>& curves = pointListRasterizer.result().curves;
-        Rasterization::WaveformBuffers& waveform = pointListRasterizer.result().waveform;
+        const int startIndex = jmax(0, index - 2);
+        const int endIndex = jmin((int) curves.size() - 1, index + 2);
+        const auto request = createRasterizationRequest();
 
-        int res         = Curve::resolution / 2;
-        int startIdx    = jmax(0, index - 1);
-        int endIdx      = jmin((int) curves.size() - 1, index + 2);
-        int waveIdx     = curves[startIdx].waveIdx;
-
-        for (int c = startIdx; c < endIdx; ++c) {
-            Curve& thisCurve    = curves[c];
-            Curve& nextCurve    = curves[c + 1];
-
-            jassert(waveIdx == curves[c].waveIdx);
-
-            waveIdx             = curves[c].waveIdx;
-
-            int indexA          = 0;
-            int indexB          = 0;
-            int minCurveRes     = jmin(res >> thisCurve.resIndex, res >> nextCurve.resIndex);
-            int offset          = res >> thisCurve.resIndex;
-            int xferInc         = Curve::resolution / minCurveRes;
-
-            int thisShift       = jmax(0, (nextCurve.resIndex - thisCurve.resIndex));
-            int nextShift       = jmax(0, (thisCurve.resIndex - nextCurve.resIndex));
-
-            float xferValue;
-            float t1x = 0, t1y = 0;
-            float t2x = 0, t2y = 0;
-
-            const float* transferTable = Rasterization::TransferTable::values();
-
-            for (int i = 0; i < minCurveRes; ++i) {
-                xferValue = transferTable[i * xferInc];
-                indexA = (i << thisShift) + offset;
-                indexB = (i << nextShift);
-
-                t1x = thisCurve.transformX[indexA] * (1 - xferValue);
-                t1y = thisCurve.transformY[indexA] * (1 - xferValue);
-
-                t2x = nextCurve.transformX[indexB] * xferValue;
-                t2y = nextCurve.transformY[indexB] * xferValue;
-
-                waveform.waveX[waveIdx] = t1x + t2x;
-                waveform.waveY[waveIdx] = t1y + t2y;
-
-                ++waveIdx;
-            }
+        if (!pointListRasterizer.rebakeAffectedRange(
+                    startIndex,
+                    endIndex,
+                    request)) {
+            renderPointListWaveform();
         }
-
-        int waveStart   = curves[startIdx].waveIdx;
-        int waveEnd     = waveIdx;
-        int size        = waveEnd - waveStart;
-
-        if(waveEnd == waveform.waveX.size()) {
-            --size;
-        }
-
-        Buffer<Float32> ex   = waveform.waveX.section(waveStart, size);
-        Buffer<float> why   = waveform.waveY.section(waveStart, size);
-        Buffer<float> diffx = waveform.diffX.section(waveStart, size);
-        Buffer<float> slp   = waveform.slope.section(waveStart, size);
-
-        VecOps::diff(ex, diffx);
-        diffx.threshLT(1e-6f);
-        VecOps::diff(why, slp);
-        slp.div(diffx);
-        // ippsSub_32f(ex, ex + 1, diffx, size);
-        // ippsThreshold_LT_32f_I(diffx, size, 1e-06f);
-        // ippsSub_32f(why, why + 1, slp, size);
-        // ippsDiv_32f_I(diffx, slp, size);
     }
 
     void performUpdate(UpdateType updateType) {
@@ -137,8 +84,6 @@ public:
 
     void cleanUp() {
         pointListRasterizer.cleanUp();
-        paddingSize = getPaddingSize();
-        unsampleable = true;
     }
 
     void validateCurves() {
@@ -167,15 +112,20 @@ public:
     }
 
     bool isSampleable() const {
-        return !unsampleable && pointListRasterizer.sampler().isSampleable();
+        return pointListRasterizer.sampler().isSampleable();
     }
 
     Buffer<float> getWaveX() { return pointListRasterizer.result().waveform.waveX; }
     Buffer<float> getWaveY() { return pointListRasterizer.result().waveform.waveY; }
+    const Rasterization::RenderResult& result() const { return pointListRasterizer.result(); }
 
     void setCyclicity(bool isCyclic)    { cyclic = isCyclic;    }
     bool isCyclic() const               { return cyclic;        }
     static int getPaddingSize()         { return 2;             }
+
+    const Rasterization::PointListWaveformRasterizer::Diagnostics& getDiagnostics() const {
+        return pointListRasterizer.getDiagnostics();
+    }
 
 private:
     void renderPointListWaveform();
@@ -183,9 +133,6 @@ private:
 protected:
     vector<Intercept>& points;
     Rasterization::PointListWaveformRasterizer pointListRasterizer;
-    int paddingSize { getPaddingSize() };
-    bool needsResorting {};
-    bool unsampleable { true };
     bool cyclic;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Rasterizer2D)
@@ -206,6 +153,4 @@ inline void Rasterizer2D::renderPointListWaveform() {
         return;
     }
 
-    paddingSize = result.paddingSize;
-    unsampleable = false;
 }

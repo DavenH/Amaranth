@@ -104,6 +104,49 @@ namespace Rasterization {
             finalizeBuffers(context, cumeRes);
         }
 
+        void rebakeRange(
+                std::vector<Curve>& curves,
+                Context& context,
+                int firstCurve,
+                int endCurve) const {
+            jassert(firstCurve >= 0);
+            jassert(endCurve <= (int) curves.size() - 1);
+            jassert(firstCurve < endCurve);
+
+            const int res = Curve::resolution / 2;
+            const int waveStart = curves[firstCurve].waveIdx;
+            int waveEnd = waveStart;
+
+            for (int curveIndex = firstCurve; curveIndex < endCurve; ++curveIndex) {
+                Curve& thisCurve = curves[curveIndex];
+                Curve& nextCurve = curves[curveIndex + 1];
+                int writeIndex = thisCurve.waveIdx;
+
+                if (hasComponentGuide(thisCurve.b.cube, context.guideCurveProvider)) {
+                    bakeGuideCurve(
+                            thisCurve,
+                            nextCurve,
+                            context,
+                            writeIndex,
+                            thisCurve.curveRes);
+                } else {
+                    bakeInterpolatedCurve(
+                            thisCurve,
+                            nextCurve,
+                            context,
+                            writeIndex,
+                            thisCurve.curveRes,
+                            res);
+                }
+
+                waveEnd = writeIndex;
+            }
+
+            finalizeRange(context, waveStart, waveEnd);
+            refreshBoundaryIndex(context, 0.f, context.waveform.zeroIndex, waveStart, waveEnd, false);
+            refreshBoundaryIndex(context, 1.f, context.waveform.oneIndex, waveStart, waveEnd, true);
+        }
+
     private:
         static bool hasComponentGuide(VertCube* cube, GuideCurveProvider* guideCurveProvider) {
             return cube != nullptr && guideCurveProvider != nullptr && cube->getCompGuideCurve() >= 0;
@@ -257,6 +300,69 @@ namespace Rasterization {
             diffX.offset(resSubOne).zero();
             slope.offset(resSubOne).zero();
             area.offset(resSubOne).zero();
+        }
+
+        static void finalizeRange(
+                Context& context,
+                int waveStart,
+                int waveEnd) {
+            Buffer<float>& waveX = *context.waveform.waveX;
+            Buffer<float>& waveY = *context.waveform.waveY;
+            Buffer<float>& diffX = *context.waveform.diffX;
+            Buffer<float>& slope = *context.waveform.slope;
+            Buffer<float>& area = *context.waveform.area;
+
+            const int derivativeStart = jmax(0, waveStart - 1);
+            const int derivativeEnd = jmin(waveX.size() - 1, waveEnd);
+            const int derivativeSize = derivativeEnd - derivativeStart;
+
+            if (derivativeSize > 0) {
+                Buffer<float> dif = diffX.section(derivativeStart, derivativeSize);
+                Buffer<float> slp = slope.section(derivativeStart, derivativeSize);
+                Buffer<float> are = area.section(derivativeStart, derivativeSize);
+                VecOps::sub(waveX + derivativeStart + 1, waveX + derivativeStart, dif);
+                VecOps::sub(waveY + derivativeStart + 1, waveY + derivativeStart, slp);
+                VecOps::sub(waveY + derivativeStart + 1, waveY + derivativeStart, are);
+                dif.threshLT(1e-6f);
+                slp.div(dif);
+                are.mul(dif).mul(0.5f);
+            }
+
+            if (waveEnd == waveX.size()) {
+                diffX.back() = 0.f;
+                slope.back() = 0.f;
+                area.back() = 0.f;
+            }
+        }
+
+        static void refreshBoundaryIndex(
+                Context& context,
+                float boundary,
+                int* boundaryIndex,
+                int waveStart,
+                int waveEnd,
+                bool includesBoundary) {
+            Buffer<float>& waveX = *context.waveform.waveX;
+            const int searchStart = jmax(0, waveStart - 1);
+            const int searchEnd = jmin(waveX.size() - 1, waveEnd);
+            const auto below = [boundary, includesBoundary](float value) {
+                return includesBoundary ? value < boundary : value <= boundary;
+            };
+
+            if (searchStart > 0 && !below(waveX[searchStart])) {
+                return;
+            }
+
+            if (searchEnd < waveX.size() - 1 && below(waveX[searchEnd])) {
+                return;
+            }
+
+            for (int i = searchStart; i < searchEnd; ++i) {
+                if (below(waveX[i]) && !below(waveX[i + 1])) {
+                    *boundaryIndex = i;
+                    return;
+                }
+            }
         }
     };
 }

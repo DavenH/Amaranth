@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -47,3 +47,21 @@ occurs for an in-order point movement.
 - `Rasterizer2D` has no parallel status scalars.
 - Fault injection leaving area or an index stale fails the semantic test.
 
+## Implementation Notes
+
+- `WaveformBakePolicy::rebakeRange` is the shared affected-range baker. It
+  rewrites waveform x/y, difference, slope, area, and zero/one boundary
+  indices for the four curve segments influenced by a moved point.
+- `Rasterizer2D` updates the source point and delegates derived-state work to
+  `PointListWaveformRasterizer`; it no longer keeps parallel padding,
+  sampleability, or resort flags.
+- Ordinary interior edits preserve the waveform allocation and do not sort or
+  rebuild the point list. Diagnostics make that complexity contract directly
+  testable.
+- Endpoint edits rebuild because non-cyclic padding is derived from endpoint
+  values. A detected resolution-layout transition also rebuilds because it
+  changes every later curve's waveform offset.
+- Semantic tests compare incremental output with an independent full bake,
+  including x/y, differences, slopes, area, boundary indices, sampleability,
+  and integrated samples. They cover interior and endpoint edits, sharpness
+  extremes, zero/one boundary movement, and resolution transitions.
