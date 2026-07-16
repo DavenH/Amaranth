@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -54,3 +54,19 @@ the renderer instance may remain a member.
 - Operation names state whether publication occurs.
 - `calcInterceptsOnly` and legacy `paddingSize` are absent from the common
   request.
+
+## Implementation Notes
+
+- `GeometryRenderCommand` and `WaveformRenderCommand` carry a borrowed mesh,
+  immutable request snapshot, and oscillator phase for one render.
+- Rendering returns the rasterizer-owned `RenderResult` without publishing;
+  `publish` requires explicit `PublicationMetadata`.
+- Cycle v2 Trimesh audio and panel rendering submit complete commands. The
+  stateful `Updateable` and `render*Only` methods remain narrowly as the Cycle
+  v1 compatibility facade.
+- The public request view is const. Legacy configuration is expressed through
+  named setters, while derived Cycle v1 rasterizers alone can configure the
+  compatibility request directly.
+- Envelope geometry-only execution is a distinct operation rather than a
+  mutable `calcInterceptsOnly` request flag. The unused `paddingSize` request
+  round-trip was removed.

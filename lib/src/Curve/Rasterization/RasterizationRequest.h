@@ -5,6 +5,8 @@
 #include "../../Inter/Dimensions.h"
 #include "../../Obj/MorphPosition.h"
 
+class Mesh;
+
 namespace Rasterization {
     struct RasterizationRequest {
         Dimensions dims;
@@ -12,7 +14,6 @@ namespace Rasterization {
 
         PointScalingMode scalingMode { PointScalingMode::Unipolar };
         bool calcDepthDimensions { true };
-        bool calcInterceptsOnly {};
         bool cyclic { true };
         bool decoupleComponentDeforms {};
         bool integralSampling {};
@@ -23,11 +24,26 @@ namespace Rasterization {
         int noiseSeed { -1 };
         int overridingDimension { Vertex::Time };
         int primaryViewDimension { Vertex::Time };
-        int paddingSize { 2 };
 
         float interceptPadding {};
         float xMinimum {};
         float xMaximum { 1.f };
+    };
+
+    struct GeometryRenderCommand {
+        Mesh& mesh;
+        const RasterizationRequest request;
+        const float oscillatorPhase {};
+    };
+
+    struct WaveformRenderCommand {
+        Mesh& mesh;
+        const RasterizationRequest request;
+        const float oscillatorPhase {};
+    };
+
+    struct PublicationMetadata {
+        bool wrapsVertices {};
     };
 
     inline PointScalingMode pointScalingModeFromLegacy(int scalingType) {

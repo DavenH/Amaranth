@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <type_traits>
 
 #include "../src/Array/ScopedAlloc.h"
 #include "../src/Curve/Rasterization/GuideCurveOffsetSeeds.h"
@@ -8,6 +9,11 @@
 #include "../src/Curve/Mesh/VertCube.h"
 
 using namespace Rasterization;
+
+static_assert(std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<GeometryRenderCommand>().request)>>);
+static_assert(std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<WaveformRenderCommand>().request)>>);
 
 namespace {
     class CountingRandom {
@@ -109,13 +115,11 @@ TEST_CASE("RasterizationRequest defaults match MeshRasterizer compatibility defa
     REQUIRE(request.scalingMode == PointScalingMode::Unipolar);
     REQUIRE(request.cyclic);
     REQUIRE(request.calcDepthDimensions);
-    REQUIRE_FALSE(request.calcInterceptsOnly);
     REQUIRE_FALSE(request.lowResCurves);
     REQUIRE_FALSE(request.integralSampling);
     REQUIRE(request.noiseSeed == -1);
     REQUIRE(request.overridingDimension == Vertex::Time);
     REQUIRE(request.primaryViewDimension == Vertex::Time);
-    REQUIRE(request.paddingSize == 2);
     REQUIRE(request.xMinimum == 0.f);
     REQUIRE(request.xMaximum == 1.f);
 }
@@ -128,7 +132,6 @@ TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rast
     rasterizer.setBatchMode(true);
     rasterizer.setWrapsEnds(false);
     rasterizer.setCalcDepthDimensions(false);
-    rasterizer.setCalcInterceptsOnly(true);
     rasterizer.setIntegralSampling(true);
     rasterizer.setInterpolatesCurves(true);
     rasterizer.setLowresCurves(true);
@@ -151,7 +154,6 @@ TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rast
     REQUIRE(request.scalingMode == PointScalingMode::HalfBipolar);
     REQUIRE_FALSE(request.cyclic);
     REQUIRE_FALSE(request.calcDepthDimensions);
-    REQUIRE(request.calcInterceptsOnly);
     REQUIRE(request.integralSampling);
     REQUIRE(request.interpolateCurves);
     REQUIRE(request.lowResCurves);

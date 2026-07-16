@@ -26,9 +26,10 @@ GraphicRasterizer::ScopedRenderState::~ScopedRenderState() {
 }
 
 GraphicRasterizer::GraphicRasterizer(bool cyclic, float margin) {
-    getRequest().cyclic = cyclic;
-    getRequest().xMinimum = -margin;
-    getRequest().xMaximum = 1.f + margin;
+    auto& request = compatibilityRequest();
+    request.cyclic = cyclic;
+    request.xMinimum = -margin;
+    request.xMaximum = 1.f + margin;
     rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = cyclic;
 }
@@ -38,7 +39,7 @@ void GraphicRasterizer::restoreStateFrom(RenderState& state) {
         mesh = state.mesh;
     }
 
-    auto& request = getRequest();
+    auto& request = compatibilityRequest();
     request.lowResCurves = state.lowResCurves;
     request.calcDepthDimensions = state.calcDepthDims;
     request.noiseSeed = state.noiseSeed;

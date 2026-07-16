@@ -444,6 +444,31 @@ TEST_CASE("Trilinear render-only output does not mutate the published panel snap
     REQUIRE(refreshedSnapshot.isSampleable() == rasterizer.sampler().isSampleable());
 }
 
+TEST_CASE("Trilinear commands do not leak render state into later operations",
+        "[meshrasterizer][command][state]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+    Rasterization::TrilinearMeshRasterizer rasterizer;
+    Rasterization::RasterizationRequest firstRequest;
+    firstRequest.cyclic = false;
+    firstRequest.morph = MorphPosition(0.1f, 0.2f, 0.3f);
+    firstRequest.scalingMode = Rasterization::PointScalingMode::Bipolar;
+
+    rasterizer.renderGeometry({ *mesh, firstRequest, 0.25f });
+
+    const auto& compatibilityState = rasterizer.getRequest();
+    REQUIRE(compatibilityState.cyclic);
+    REQUIRE(compatibilityState.morph.time.getTargetValue() == 0.f);
+    REQUIRE(compatibilityState.scalingMode == Rasterization::PointScalingMode::Unipolar);
+
+    Rasterization::RasterizationRequest secondRequest;
+    rasterizer.renderWaveform({ *mesh, secondRequest, 0.f });
+
+    REQUIRE(rasterizer.result().sampleable);
+    REQUIRE(rasterizer.getRequest().cyclic);
+    REQUIRE(rasterizer.getRequest().morph.time.getTargetValue() == 0.f);
+}
+
 TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pipeline][intercepts]") {
     vector<Intercept> intercepts {
         Intercept(0.75f, 0.1f),
@@ -586,9 +611,13 @@ TEST_CASE("TrilinearMeshRasterizer preserves component guide waveform baking", "
     reference.calcCrossPoints();
 
     Rasterization::TrilinearMeshRasterizer composed;
-    composed.getRequest() = reference.createRasterizationRequest();
     composed.setGuideCurveProvider(&provider);
-    composed.updateWaveform(mesh.get());
+    const Rasterization::WaveformRenderCommand command {
+        *mesh,
+        reference.createRasterizationRequest(),
+        0.f
+    };
+    composed.renderWaveform(command);
 
     REQUIRE(reference.isSampleable());
     REQUIRE(composed.isSampleable());

@@ -208,6 +208,10 @@ void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
 }
 
 void EnvRasterizer::renderWaveformOnly(Mesh* mesh, float oscPhase) {
+    renderEnvelope(mesh, oscPhase, true);
+}
+
+void EnvRasterizer::renderEnvelope(Mesh* mesh, float oscPhase, bool buildWaveform) {
     EnvelopeMesh* envelopeMesh = dynamic_cast<EnvelopeMesh*>(mesh);
     jassert(mesh == nullptr || envelopeMesh != nullptr);
 
@@ -244,7 +248,7 @@ void EnvRasterizer::renderWaveformOnly(Mesh* mesh, float oscPhase) {
 
     Rasterization::InterceptPaddingFlagPolicy().apply(result.intercepts);
 
-    if (!request.calcInterceptsOnly) {
+    if (buildWaveform) {
         rebuildCurvesFromIntercepts();
         preparePlaybackResults();
     }
@@ -252,7 +256,6 @@ void EnvRasterizer::renderWaveformOnly(Mesh* mesh, float oscPhase) {
 }
 
 void EnvRasterizer::calcIntercepts() {
-    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
     updateGeometry();
 }
 
@@ -268,8 +271,8 @@ void EnvRasterizer::clearOutput() {
 }
 
 void EnvRasterizer::updateGeometry() {
-    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
-    updateWaveform(envMesh, 0.f);
+    renderGeometryOnly(envMesh, 0.f);
+    publishCurrentResult();
 }
 
 void EnvRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
@@ -278,8 +281,7 @@ void EnvRasterizer::updateGeometry(Mesh* mesh, float oscPhase) {
 }
 
 void EnvRasterizer::renderGeometryOnly(Mesh* mesh, float oscPhase) {
-    ScopedValueSetter calcInterceptsOnly(request.calcInterceptsOnly, true, request.calcInterceptsOnly);
-    renderWaveformOnly(mesh, oscPhase);
+    renderEnvelope(mesh, oscPhase, false);
 }
 
 void EnvRasterizer::updateWaveform() {

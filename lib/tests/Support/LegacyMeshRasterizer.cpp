@@ -101,7 +101,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.morph                     = morph;
     request.scalingMode               = Rasterization::pointScalingModeFromLegacy(scalingType);
     request.calcDepthDimensions       = calcDepthDims;
-    request.calcInterceptsOnly        = calcInterceptsOnly;
     request.cyclic                    = cyclic;
     request.decoupleComponentDeforms  = decoupleComponentDfrms;
     request.integralSampling          = integralSampling;
@@ -111,7 +110,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.noiseSeed                 = noiseSeed;
     request.overridingDimension       = overridingDim;
     request.primaryViewDimension      = overrideDim ? overridingDim : getPrimaryViewDimension();
-    request.paddingSize               = paddingSize;
     request.interceptPadding          = interceptPadding;
     request.xMinimum                  = xMinimum;
     request.xMaximum                  = xMaximum;

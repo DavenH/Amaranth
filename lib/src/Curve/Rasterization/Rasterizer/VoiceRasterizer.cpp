@@ -16,7 +16,7 @@ VoiceRasterizer::VoiceRasterizer(float minimumLineLength) :
         chainResult()
     ,   chainReduction()
     ,   initialAdvancement(minimumLineLength * 1.1f) {
-    auto& request = getRequest();
+    auto& request = compatibilityRequest();
     request.overrideDimension = true;
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
@@ -135,7 +135,10 @@ const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
     }
 
     float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
-    auto guideApplier = createGuideCurveApplier(chainReduction, &chainResult.needsResorting);
+    auto guideApplier = createGuideCurveApplier(
+            chainReduction,
+            &chainResult.needsResorting,
+            getRequest());
 
     auto& cubes = mesh->getCubes();
     for (int i = 0; i < (int) cubes.size(); ++i) {

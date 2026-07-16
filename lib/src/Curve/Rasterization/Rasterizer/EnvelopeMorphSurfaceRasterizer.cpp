@@ -3,7 +3,7 @@
 namespace Rasterization {
 
 EnvelopeMorphSurfaceRasterizer::EnvelopeMorphSurfaceRasterizer() {
-    auto& request = getRequest();
+    auto& request = compatibilityRequest();
     request.lowResCurves = true;
     request.cyclic = false;
     request.calcDepthDimensions = false;

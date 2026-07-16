@@ -41,7 +41,7 @@ public:
             SignalPayload& output);
 
 private:
-    void prepareRequest();
+    Rasterization::RasterizationRequest createRequest() const;
     void sampleOutput(SignalPayload& output);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 

@@ -138,6 +138,7 @@ private:
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
     void preparePlaybackResults();
+    void renderEnvelope(Mesh* mesh, float oscPhase, bool buildWaveform);
     void renderEnvelopeCrossPoints();
     void processEnvelopeIntercepts(vector<Intercept>& intercepts);
     void rebuildCurvesFromIntercepts();

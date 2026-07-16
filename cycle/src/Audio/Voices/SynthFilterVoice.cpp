@@ -46,20 +46,16 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
     auto& guideCurvePanel = getObj(GuideCurvePanel);
 
     freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    auto& freqRequest = freqRasterizer.getRequest();
-    freqRequest.cyclic = false;
-    freqRequest.calcDepthDimensions = false;
-    freqRequest.xMinimum = -(float) spectMargin;
-    freqRequest.xMaximum = 1.f + (float) spectMargin;
+    freqRasterizer.setWrapsEnds(false);
+    freqRasterizer.setCalcDepthDimensions(false);
+    freqRasterizer.setXLimits(-(float) spectMargin, 1.f + (float) spectMargin);
 
     phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    auto& phaseRequest = phaseRasterizer.getRequest();
-    phaseRequest.cyclic = false;
-    phaseRequest.calcDepthDimensions = false;
-    phaseRequest.xMinimum = -(float) spectMargin;
-    phaseRequest.xMaximum = 1.f + (float) spectMargin;
-    phaseRequest.scalingMode = ::Rasterization::PointScalingMode::Bipolar;
-    phaseRequest.interpolateCurves = true;
+    phaseRasterizer.setWrapsEnds(false);
+    phaseRasterizer.setCalcDepthDimensions(false);
+    phaseRasterizer.setXLimits(-(float) spectMargin, 1.f + (float) spectMargin);
+    phaseRasterizer.setScalingMode(::Rasterization::PointScalingMode::Bipolar);
+    phaseRasterizer.setInterpolateCurves(true);
 
     cycleCompositeAlgo = Interpolate;
 }

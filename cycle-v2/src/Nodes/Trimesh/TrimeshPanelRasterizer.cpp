@@ -21,7 +21,7 @@ void TrimeshPanelRasterizer::update(
         bool refresh3DGeometry) {
     const auto& curveStyle = renderProfile.getCurveStyle();
     const bool cyclic = curveStyle.cyclic;
-    auto& request = rasterizer.getRequest();
+    Rasterization::RasterizationRequest request;
     request.cyclic = cyclic;
     request.xMinimum = curveStyle.xMinimum;
     request.xMaximum = curveStyle.xMaximum;
@@ -31,11 +31,11 @@ void TrimeshPanelRasterizer::update(
     request.scalingMode = Rasterization::PointScalingMode::Unipolar;
     request.calcDepthDimensions = true;
     request.lowResCurves = false;
-    rasterizer.setWrapsEnds(cyclic);
-    rasterizer.setMesh(&model.getMeshForPanel());
+    auto& mesh = model.getMeshForPanel();
     interactor2D.setMesh(&model.getMeshForPanel());
     interactor3D.setMesh(&model.getMeshForPanel());
-    rasterizer.updateWaveform();
+    const auto& result = rasterizer.renderWaveform({ mesh, request, 0.f });
+    rasterizer.publish(result, { cyclic });
 
     if (panelHosts.isPanel3DHostInitialised() && refresh3DGeometry) {
         interactor3D.updateIntercepts();

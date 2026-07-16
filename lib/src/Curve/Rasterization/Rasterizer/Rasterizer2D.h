@@ -153,7 +153,6 @@ public:
     Rasterization::RasterizationRequest createRasterizationRequest() const {
         Rasterization::RasterizationRequest request;
         request.cyclic = cyclic;
-        request.paddingSize = paddingSize;
 
         return request;
     }

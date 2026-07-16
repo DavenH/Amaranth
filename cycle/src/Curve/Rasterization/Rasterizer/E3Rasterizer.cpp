@@ -48,6 +48,6 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     setMesh(currentMesh);
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
-    getRequest().primaryViewDimension = dependentAxis;
+    setPrimaryViewDimension(dependentAxis);
     renderSurface(currentMesh, columns, res, dependentAxis, getMorphPosition());
 }

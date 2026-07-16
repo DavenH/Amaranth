@@ -25,9 +25,8 @@ void TrimeshBlockwiseDsp::prepare(
     setPrimaryViewAxis(axis);
     setCyclic(shouldWrap);
     ensureCurveTable();
-    prepareRequest();
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.renderWaveformOnly(mesh, 0.f);
+        rasterizer.renderWaveform({ *mesh, createRequest(), 0.f });
     }
 }
 
@@ -78,8 +77,8 @@ void TrimeshBlockwiseDsp::renderPrepared(
     sampleOutput(output);
 }
 
-void TrimeshBlockwiseDsp::prepareRequest() {
-    auto& request = rasterizer.getRequest();
+Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest() const {
+    Rasterization::RasterizationRequest request;
     request.cyclic = cyclic;
     request.xMinimum = cyclic ? -0.05f : 0.f;
     request.xMaximum = cyclic ? 1.05f : 1.f;
@@ -88,7 +87,7 @@ void TrimeshBlockwiseDsp::prepareRequest() {
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
-    rasterizer.setWrapsEnds(cyclic);
+    return request;
 }
 
 void TrimeshBlockwiseDsp::sampleOutput(SignalPayload& output) {
