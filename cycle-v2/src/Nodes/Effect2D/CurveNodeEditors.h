@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Effect2DExpandedEditorComponent.h"
+#include "CurveExpandedEditorComponent.h"
 
 #include <memory>
 
 namespace CycleV2 {
 
-class WaveshaperEditorComponent final : public Effect2DExpandedEditorComponent {
+class WaveshaperEditorComponent final : public CurveExpandedEditorComponent {
 public:
     explicit WaveshaperEditorComponent(Effect2DWidget& widget);
     ~WaveshaperEditorComponent() override;
@@ -25,7 +25,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-class ImpulseResponseEditorComponent final : public Effect2DExpandedEditorComponent {
+class ImpulseResponseEditorComponent final : public CurveExpandedEditorComponent {
 public:
     explicit ImpulseResponseEditorComponent(Effect2DWidget& widget);
     ~ImpulseResponseEditorComponent() override;
@@ -44,7 +44,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-class GuideCurveEditorComponent final : public Effect2DExpandedEditorComponent {
+class GuideCurveEditorComponent final : public CurveExpandedEditorComponent {
 public:
     explicit GuideCurveEditorComponent(Effect2DWidget& widget);
     ~GuideCurveEditorComponent() override;
@@ -63,7 +63,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-class EnvelopeEditorComponent final : public Effect2DExpandedEditorComponent {
+class EnvelopeEditorComponent final : public CurveExpandedEditorComponent {
 public:
     explicit EnvelopeEditorComponent(Effect2DWidget& widget);
     ~EnvelopeEditorComponent() override;
@@ -86,7 +86,7 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-std::unique_ptr<Effect2DExpandedEditorComponent> createCurveNodeEditor(
+std::unique_ptr<CurveExpandedEditorComponent> createCurveNodeEditor(
         NodeKind kind,
         Effect2DWidget& widget);
 

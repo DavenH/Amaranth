@@ -41,22 +41,25 @@ public:
     virtual void commitEdit() = 0;
 };
 
+class CurvePanelHostDelegate {
+public:
+    virtual ~CurvePanelHostDelegate() = default;
+    virtual void initialiseCurvePanel(Component* component) = 0;
+    virtual void updateCurvePanelZoom(bool resetView) = 0;
+    virtual void prepareCurvePanel() = 0;
+    virtual bool publishCurvePanelEdit() = 0;
+    virtual void synchronizeCurvePanelSelection() = 0;
+    virtual void repaintCurvePanel() = 0;
+    virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;
+};
+
 class CurvePanelHost {
 public:
-    CurvePanelHost(
-            Panel& panel,
-            std::function<void(Component*)> initialisePanel,
-            std::function<void(bool)> updateZoom,
-            std::function<void()> preparePanel,
-            std::function<bool()> publishEdit,
-            std::function<void()> synchronizeSelection);
+    CurvePanelHost(Panel& panel, CurvePanelHostDelegate& delegate);
     ~CurvePanelHost();
 
     Component* component();
     Component* componentIfCreated();
-    void setCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const MouseCursor&)> cursorCallback);
     void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
     void renderPreview(Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
@@ -77,13 +80,7 @@ private:
     PanelHostCallbacks callbacks() const;
 
     Panel& panel;
-    std::function<void(Component*)> initialisePanel;
-    std::function<void(bool)> updateZoom;
-    std::function<void()> preparePanel;
-    std::function<bool()> publishEdit;
-    std::function<void()> synchronizeSelection;
-    std::function<void()> repaintCallback;
-    std::function<void(const MouseCursor&)> cursorCallback;
+    CurvePanelHostDelegate& delegate;
     std::unique_ptr<HostComponent> hostComponent;
     std::unique_ptr<GLPanelRenderer> panelRenderer;
     CommonGL* panelGfx {};

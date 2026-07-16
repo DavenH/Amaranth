@@ -157,6 +157,15 @@ bool FlatCurveModel::selectVertex(std::optional<CurveVertexId> vertexId) {
     return true;
 }
 
+Vertex* FlatCurveModel::vertexForIdentity(CurveVertexId vertexId) const {
+    const auto found = verticesByIdentity.find(vertexId);
+    return found != verticesByIdentity.end() ? found->second : nullptr;
+}
+
+Vertex* FlatCurveModel::selectedMeshVertex() const {
+    return selection.has_value() ? vertexForIdentity(*selection) : nullptr;
+}
+
 bool FlatCurveModel::synchronizeFromMesh(Vertex* selectedVertex) {
     std::vector<FlatCurveVertex> nextVertices;
     nextVertices.reserve((size_t) mesh.getNumVerts());
@@ -413,6 +422,15 @@ bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
     }
     selection = cubeId;
     return true;
+}
+
+VertCube* EnvelopeNodeModel::cubeForIdentity(EnvelopeCubeId cubeId) const {
+    const auto found = cubesByIdentity.find(cubeId);
+    return found != cubesByIdentity.end() ? found->second : nullptr;
+}
+
+VertCube* EnvelopeNodeModel::selectedMeshCube() const {
+    return selection.has_value() ? cubeForIdentity(*selection) : nullptr;
 }
 
 bool EnvelopeNodeModel::synchronizeFromMesh(VertCube* selectedCube) {

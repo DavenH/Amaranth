@@ -110,6 +110,8 @@ TEST_CASE("Flat curve typed snapshots preserve values and selection",
     REQUIRE(restored.getVertices().size() == 2);
     REQUIRE(restored.selectedVertexId() == 2);
     REQUIRE(restored.getVertices()[1].y == 0.75f);
+    REQUIRE(restored.selectedMeshVertex() != nullptr);
+    REQUIRE(restored.selectedMeshVertex()->values[Vertex::Amp] == 0.75f);
 }
 
 TEST_CASE("Flat curve publication retains identities around inserted vertices",
@@ -260,6 +262,10 @@ TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
     REQUIRE_FALSE(restored.redLinked);
     REQUIRE(restored.blueLinked);
     REQUIRE(restored.selectedCubeId() == selectedId);
+    REQUIRE(restored.selectedMeshCube() != nullptr);
+    const auto& restoredCubes = restored.getMesh().getCubes();
+    REQUIRE(std::find(restoredCubes.begin(), restoredCubes.end(), restored.selectedMeshCube())
+            != restoredCubes.end());
 }
 
 TEST_CASE("Envelope mesh adapter preserves cube identities across insertion deletion and reorder",

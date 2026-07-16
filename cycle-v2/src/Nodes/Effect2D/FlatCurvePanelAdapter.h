@@ -18,7 +18,9 @@ public:
     NodeKind kind() const { return nodeKind; }
     Mesh& mesh() { return model.getMesh(); }
     const Mesh& mesh() const { return model.getMesh(); }
+    bool needsNodeSync(const Node& node) const;
     bool syncFromNode(const Node& node);
+    Vertex* selectedMeshVertex() const { return model.selectedMeshVertex(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
     String serializedModelSnapshot(Vertex* selectedVertex, uint64_t publicationRevision);
@@ -40,4 +42,3 @@ private:
 };
 
 }
-

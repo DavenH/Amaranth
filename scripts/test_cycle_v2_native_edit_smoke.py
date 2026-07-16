@@ -106,6 +106,14 @@ class NativeEditSmoke:
     def inspect(self, node_id):
         return self.command({"command": "inspectNodeControls", "nodeId": node_id})
 
+    def inspect_until(self, node_id, predicate):
+        deadline = time.monotonic() + 0.1
+        state = self.inspect(node_id)
+        while not predicate(state) and time.monotonic() < deadline:
+            time.sleep(0.005)
+            state = self.inspect(node_id)
+        return state
+
     def target(self, target_id):
         targets = self.command({"command": "inspectPointerTargets"})["targets"]
         return next(target for target in targets if target["id"] == target_id)["screenBounds"]
@@ -155,7 +163,14 @@ class NativeEditSmoke:
         destination = panel_position(min(0.85, added_vertex["x"] + 0.08), min(0.85, added_vertex["y"] + 0.08))
         self.click(f"m:{source[0]},{source[1]}")
         self.drag(source, destination)
-        moved = self.flat_snapshot(self.inspect("waveshaper"))
+        moved_state = self.inspect_until(
+            "waveshaper",
+            lambda state: abs(next(
+                vertex for vertex in self.flat_snapshot(state)["vertices"]
+                if vertex["id"] == added_vertex["id"]
+            )["x"] - added_vertex["x"]) > 0.02,
+        )
+        moved = self.flat_snapshot(moved_state)
         moved_vertex = next(vertex for vertex in moved["vertices"] if vertex["id"] == added_vertex["id"])
         assert abs(moved_vertex["x"] - added_vertex["x"]) > 0.02
         assert moved["selection"] == added_vertex["id"]
@@ -238,7 +253,14 @@ class NativeEditSmoke:
                 curve_point["y"] + (control_vertex["y"] - curve_point["y"]) * 1.2,
             )
             self.drag(curve_start, curve_end)
-            reshaped = self.flat_snapshot(self.inspect("waveshaper"))
+            reshaped_state = self.inspect_until(
+                "waveshaper",
+                lambda state: next(
+                    vertex for vertex in self.flat_snapshot(state)["vertices"]
+                    if vertex["id"] == control_vertex["id"]
+                )["curve"] > control_vertex["curve"] + 0.01,
+            )
+            reshaped = self.flat_snapshot(reshaped_state)
             reshaped_vertex = next(
                 vertex for vertex in reshaped["vertices"] if vertex["id"] == control_vertex["id"]
             )

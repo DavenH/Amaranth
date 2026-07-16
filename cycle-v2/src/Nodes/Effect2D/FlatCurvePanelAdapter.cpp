@@ -22,15 +22,23 @@ FlatCurvePanelAdapter::FlatCurvePanelAdapter(NodeKind kindToUse) : nodeKind(kind
             || nodeKind == NodeKind::Waveshaper);
 }
 
+bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
+    if (node.kind != nodeKind) {
+        return false;
+    }
+    const String snapshot = parameterValueForNode(
+            node, CurveNodeModelCodec::snapshotParameterId(), {});
+    return snapshot.isNotEmpty()
+            && (syncedNodeId != node.id || syncedModelSnapshot != snapshot);
+}
+
 bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != nodeKind) {
         return false;
     }
     const String snapshot = parameterValueForNode(
             node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (snapshot.isEmpty()
-            || (syncedNodeId == node.id && syncedModelSnapshot == snapshot)
-            || !model.loadSnapshot(snapshot)) {
+    if (!needsNodeSync(node) || !model.loadSnapshot(snapshot)) {
         return false;
     }
     syncedNodeId = node.id;
@@ -130,4 +138,3 @@ void FlatCurvePanelAdapter::addVertex(float x, float y, float curve) {
 }
 
 }
-

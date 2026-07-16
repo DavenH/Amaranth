@@ -22,26 +22,9 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() = default;
 
-void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
-    callbacks = std::move(nextCallbacks);
-
-    TrimeshControlsComponent::Callbacks controlCallbacks;
-    controlCallbacks.setPrimaryAxis = callbacks.setPrimaryAxis;
-    controlCallbacks.toggleLinkAxis = callbacks.toggleLinkAxis;
-    controlCallbacks.beginMorphEdit = callbacks.beginMorphEdit;
-    controlCallbacks.updateMorphEdit = callbacks.updateMorphEdit;
-    controlCallbacks.endMorphEdit = callbacks.endMorphEdit;
-    controlCallbacks.beginVertexParameterEdit = callbacks.beginVertexParameterEdit;
-    controlCallbacks.updateVertexParameterEdit = callbacks.updateVertexParameterEdit;
-    controlCallbacks.endVertexParameterEdit = callbacks.endVertexParameterEdit;
-    controlCallbacks.showVertexGuideAttachmentMenu = [this](
-            const String& parameterId,
-            Rectangle<int> screenArea) {
-        if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-            callbacks.showVertexGuideAttachmentMenu(vertexGuideParameterField(parameterId), screenArea);
-        }
-    };
-    controls.setCallbacks(std::move(controlCallbacks));
+void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* nextDelegate) {
+    delegate = nextDelegate;
+    controls.setDelegate(this);
 
     auto safeThis = Component::SafePointer<TrimeshExpandedEditorComponent>(this);
     widget.setExpandedPanelCallbacks(
@@ -49,8 +32,8 @@ void TrimeshExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
                 if (safeThis != nullptr) {
                     safeThis->repaint();
 
-                    if (safeThis->callbacks.repaintOpenGL != nullptr) {
-                        safeThis->callbacks.repaintOpenGL();
+                    if (safeThis->delegate != nullptr) {
+                        safeThis->delegate->repaintTrimeshEditorOpenGL();
                     }
                 }
             },
@@ -158,8 +141,8 @@ void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
 
 void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     if (closeButtonBounds().contains(event.position)) {
-        if (callbacks.close != nullptr) {
-            callbacks.close();
+        if (delegate != nullptr) {
+            delegate->closeTrimeshEditor();
         }
         return;
     }
@@ -171,15 +154,15 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     int vertexIndex {};
 
     if (widget.findPrimaryAxisAt(content, event.position, axisValue)) {
-        if (callbacks.setPrimaryAxis != nullptr) {
-            callbacks.setPrimaryAxis(axisValue);
+        if (delegate != nullptr) {
+            delegate->setTrimeshPrimaryAxisValue(axisValue);
         }
         return;
     }
 
     if (widget.findLinkToggleAt(content, event.position, axisValue)) {
-        if (callbacks.toggleLinkAxis != nullptr) {
-            callbacks.toggleLinkAxis(axisValue);
+        if (delegate != nullptr) {
+            delegate->toggleTrimeshLinkAxisValue(axisValue);
         }
         return;
     }
@@ -188,8 +171,8 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         dragTarget = DragTarget::Morph;
         activeParameterId = parameterId;
 
-        if (callbacks.beginMorphEdit != nullptr) {
-            callbacks.beginMorphEdit(parameterId, value);
+        if (delegate != nullptr) {
+            delegate->beginTrimeshMorphEdit(parameterId, value);
         }
         return;
     }
@@ -198,15 +181,15 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         dragTarget = DragTarget::VertexParameter;
         activeParameterId = parameterId;
 
-        if (callbacks.beginVertexParameterEdit != nullptr) {
-            callbacks.beginVertexParameterEdit(parameterId, value);
+        if (delegate != nullptr) {
+            delegate->beginTrimeshVertexParameterEdit(parameterId, value);
         }
         return;
     }
 
     if (widget.findVertexGuideAttachmentAt(content, event.position, parameterId)) {
-        if (callbacks.showVertexGuideAttachmentMenu != nullptr) {
-            callbacks.showVertexGuideAttachmentMenu(
+        if (delegate != nullptr) {
+            delegate->showTrimeshGuideAttachmentMenu(
                     vertexGuideParameterField(parameterId),
                     Rectangle<int>(localPointToGlobal(event.position.roundToInt()), { 1, 1 }));
         }
@@ -214,8 +197,8 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     }
 
     if (widget.findVertexSelectionAt(node, content, event.position, vertexIndex)) {
-        if (callbacks.selectVertex != nullptr) {
-            callbacks.selectVertex(vertexIndex);
+        if (delegate != nullptr) {
+            delegate->selectTrimeshVertex(vertexIndex);
         }
     }
 }
@@ -227,15 +210,15 @@ void TrimeshExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
     switch (dragTarget) {
         case DragTarget::Morph:
             if (widget.morphValueForParameterAt(content, activeParameterId, event.position, value)
-                    && callbacks.updateMorphEdit != nullptr) {
-                callbacks.updateMorphEdit(value);
+                    && delegate != nullptr) {
+                delegate->updateTrimeshMorphEdit(value);
             }
             break;
 
         case DragTarget::VertexParameter:
             if (widget.vertexParameterValueForParameterAt(content, activeParameterId, event.position, value)
-                    && callbacks.updateVertexParameterEdit != nullptr) {
-                callbacks.updateVertexParameterEdit(value);
+                    && delegate != nullptr) {
+                delegate->updateTrimeshVertexParameterEdit(value);
             }
             break;
 
@@ -245,14 +228,74 @@ void TrimeshExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
 }
 
 void TrimeshExpandedEditorComponent::mouseUp(const MouseEvent&) {
-    if (dragTarget == DragTarget::Morph && callbacks.endMorphEdit != nullptr) {
-        callbacks.endMorphEdit();
-    } else if (dragTarget == DragTarget::VertexParameter && callbacks.endVertexParameterEdit != nullptr) {
-        callbacks.endVertexParameterEdit();
+    if (dragTarget == DragTarget::Morph && delegate != nullptr) {
+        delegate->endTrimeshMorphEdit();
+    } else if (dragTarget == DragTarget::VertexParameter && delegate != nullptr) {
+        delegate->endTrimeshVertexParameterEdit();
     }
 
     dragTarget = DragTarget::None;
     activeParameterId = {};
+}
+
+void TrimeshExpandedEditorComponent::setTrimeshPrimaryAxis(const String& axis) {
+    if (delegate != nullptr) {
+        delegate->setTrimeshPrimaryAxisValue(axis);
+    }
+}
+
+void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
+    if (delegate != nullptr) {
+        delegate->toggleTrimeshLinkAxisValue(axis);
+    }
+}
+
+void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
+        const String& id,
+        float value) {
+    if (delegate != nullptr) {
+        delegate->beginTrimeshMorphEdit(id, value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
+    if (delegate != nullptr) {
+        delegate->updateTrimeshMorphEdit(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
+    if (delegate != nullptr) {
+        delegate->endTrimeshMorphEdit();
+    }
+}
+
+void TrimeshExpandedEditorComponent::beginTrimeshVertexControlEdit(
+        const String& id,
+        float value) {
+    if (delegate != nullptr) {
+        delegate->beginTrimeshVertexParameterEdit(id, value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshVertexControlEdit(float value) {
+    if (delegate != nullptr) {
+        delegate->updateTrimeshVertexParameterEdit(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::endTrimeshVertexControlEdit() {
+    if (delegate != nullptr) {
+        delegate->endTrimeshVertexParameterEdit();
+    }
+}
+
+void TrimeshExpandedEditorComponent::showTrimeshVertexGuideMenu(
+        const String& id,
+        Rectangle<int> screenArea) {
+    if (delegate != nullptr) {
+        delegate->showTrimeshGuideAttachmentMenu(vertexGuideParameterField(id), screenArea);
+    }
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {

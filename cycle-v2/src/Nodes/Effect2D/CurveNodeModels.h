@@ -69,6 +69,8 @@ public:
     Mesh& getMesh() { return mesh; }
     const std::vector<FlatCurveVertex>& getVertices() const { return vertices; }
     std::optional<CurveVertexId> selectedVertexId() const { return selection; }
+    Vertex* vertexForIdentity(CurveVertexId vertexId) const;
+    Vertex* selectedMeshVertex() const;
     uint64_t revision() const { return modelRevision; }
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 
@@ -106,6 +108,8 @@ public:
     const EnvelopeMesh& getMesh() const { return mesh; }
     uint64_t revision() const { return modelRevision; }
     std::optional<EnvelopeCubeId> selectedCubeId() const { return selection; }
+    VertCube* cubeForIdentity(EnvelopeCubeId cubeId) const;
+    VertCube* selectedMeshCube() const;
     const std::vector<EnvelopeCubeId>& getCubeIds() const { return cubeIds; }
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 

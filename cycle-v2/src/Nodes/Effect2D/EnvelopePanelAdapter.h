@@ -17,7 +17,9 @@ public:
 
     EnvelopeMesh& mesh() { return model.getMesh(); }
     const EnvelopeMesh& mesh() const { return model.getMesh(); }
+    bool needsNodeSync(const Node& node) const;
     bool syncFromNode(const Node& node);
+    VertCube* selectedMeshCube() const { return model.selectedMeshCube(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
     String serializedModelSnapshot(VertCube* selectedCube, uint64_t publicationRevision);
@@ -43,4 +45,3 @@ private:
 };
 
 }
-

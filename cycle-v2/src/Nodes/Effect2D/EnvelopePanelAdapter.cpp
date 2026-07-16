@@ -11,15 +11,23 @@ namespace CycleV2 {
 
 EnvelopePanelAdapter::EnvelopePanelAdapter() = default;
 
+bool EnvelopePanelAdapter::needsNodeSync(const Node& node) const {
+    if (node.kind != NodeKind::Envelope) {
+        return false;
+    }
+    const String snapshot = parameterValueForNode(
+            node, CurveNodeModelCodec::snapshotParameterId(), {});
+    return snapshot.isNotEmpty()
+            && (syncedNodeId != node.id || syncedModelSnapshot != snapshot);
+}
+
 bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != NodeKind::Envelope) {
         return false;
     }
     const String snapshot = parameterValueForNode(
             node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (snapshot.isEmpty()
-            || (syncedNodeId == node.id && syncedModelSnapshot == snapshot)
-            || !model.syncFromNode(node)) {
+    if (!needsNodeSync(node) || !model.syncFromNode(node)) {
         return false;
     }
     syncedNodeId = node.id;
@@ -104,4 +112,3 @@ void EnvelopePanelAdapter::setAxisLinks(bool redLinkedToUse, bool blueLinkedToUs
 }
 
 }
-

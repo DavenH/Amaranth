@@ -2,13 +2,7 @@
 
 ## Status
 
-In Progress (2026-07-14).
-
-Typed models and editor behavior exist, but the central architecture is not
-complete: `Effect2DPanelBridge` still reimplements and combines mature flat
-effect and Envelope interaction/rendering behavior. This TDD cannot return to
-`Implemented` until the shared Cycle 1/Cycle 2 panel core is extracted and the
-compatibility god object is deleted or reduced to literal host translation.
+Implemented (2026-07-15).
 
 Depends on:
 
@@ -288,10 +282,25 @@ contract and is rejected rather than migrated.
 - Canonical typed defaults are owned by the curve-model codec and installed by
   node definitions. Transitional Cycle V2 parameters and fallback decoders
   were removed; malformed typed state fails configuration construction.
+- The compatibility `Effect2DPanelBridge` was deleted. `Effect2DWidget` now
+  owns a `CurvePanelController` interface backed by separate flat and Envelope
+  controllers. Shared controller infrastructure contains lifecycle,
+  publication, and host composition only; Envelope controls and marker
+  semantics exist solely on `EnvelopeCurvePanelController`.
+- The generic expanded editor was narrowed and renamed
+  `CurveExpandedEditorComponent`. Named Waveshaper, IR, Guide, and Envelope
+  editors retain their domain controls while sharing only layout, panel
+  hosting, and transaction mechanics.
+- Long-lived editor command/lifecycle callback bundles were replaced by
+  `CurveExpandedEditorDelegate`, `TrimeshExpandedEditorDelegate`, and
+  `TrimeshControlsDelegate`. `CurvePanelHostDelegate` and
+  `CurvePanelControllerDelegate` likewise replace panel-host callback bundles.
+  Hosted editor adapters implement these protocols directly; local JUCE panel
+  callbacks remain only at the underlying framework API boundary.
 
 Verification on macOS:
 
-- `CycleV2_tests`: 2,392 assertions in 233 test cases.
+- `CycleV2_tests`: 2,603 assertions in 245 test cases.
 - Focused curve model/editor suite: 89 assertions in 13 test cases.
 - Focused curve-model/editor tests cover atomic validation, stable selection,
   typed and legacy round trips, Envelope topology and markers, semantic undo,
@@ -300,3 +309,7 @@ Verification on macOS:
   Guide interactions. A final runner-side OS capture verified the expanded
   Waveshaper OpenGL editor, compact preview, canvas cables, and legend after
   model-owned mesh extraction.
+- Two consecutive native macOS smoke runs passed after final cleanup. They
+  cover Effect2D hover and cursor state, vertex add/move/delete, upward and
+  downward curve sharpening beyond the controlling vertex, plus Trimesh
+  collision, vertex parameters, morph controls, and deletion.

@@ -21,7 +21,8 @@ String parameterValue(const Node& node, const String& parameterId, const String&
     return fallback;
 }
 
-class CurveNodeEditor final : public NodeEditor {
+class CurveNodeEditor final : public NodeEditor,
+                              private CurveExpandedEditorDelegate {
 public:
     CurveNodeEditor(
             const Node& node,
@@ -29,18 +30,7 @@ public:
             commands     (context.commands)
         ,   presentation (context.presentation)
         ,   editor       (createCurveNodeEditor(node.kind, *context.resources.effect2DWidget(node))) {
-        Effect2DExpandedEditorComponent::Callbacks callbacks;
-        callbacks.close = [this] { presentation.closeNodeEditor(); };
-        callbacks.repaintOpenGL = [this] { presentation.repaintNodeEditor(true); };
-        callbacks.publishState = [this](
-                const String& snapshot,
-                uint64_t revision,
-                const std::vector<NodeParameter>& controls) {
-            return commands.publishCurveState(nodeId, snapshot, revision, controls);
-        };
-        callbacks.beginTransaction = [this] { commands.beginCurveTransaction(); };
-        callbacks.commitTransaction = [this] { commands.commitCurveTransaction(); };
-        editor->setCallbacks(std::move(callbacks));
+        editor->setDelegate(this);
     }
 
     Component& component() override { return *editor; }
@@ -60,9 +50,32 @@ public:
     void releaseOpenGLResources() override {}
 
 private:
+    void closeEffect2DEditor() override {
+        presentation.closeNodeEditor();
+    }
+
+    void repaintEffect2DEditorOpenGL() override {
+        presentation.repaintNodeEditor(true);
+    }
+
+    bool publishEffect2DState(
+            const String& snapshot,
+            uint64_t revision,
+            const std::vector<NodeParameter>& controls) override {
+        return commands.publishCurveState(nodeId, snapshot, revision, controls);
+    }
+
+    void beginEffect2DTransaction() override {
+        commands.beginCurveTransaction();
+    }
+
+    void commitEffect2DTransaction() override {
+        commands.commitCurveTransaction();
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
-    std::unique_ptr<Effect2DExpandedEditorComponent> editor;
+    std::unique_ptr<CurveExpandedEditorComponent> editor;
     String nodeId;
 };
 
@@ -75,7 +88,8 @@ public:
     }
 };
 
-class TrimeshNodeEditor final : public NodeEditor {
+class TrimeshNodeEditor final : public NodeEditor,
+                                private TrimeshExpandedEditorDelegate {
 public:
     TrimeshNodeEditor(
             const Node& node,
@@ -85,32 +99,7 @@ public:
         ,   resources    (context.resources)
         ,   editor       (std::make_unique<TrimeshExpandedEditorComponent>(
                     *context.resources.trimeshWidget(node))) {
-        TrimeshExpandedEditorComponent::Callbacks callbacks;
-        callbacks.close = [this] { presentation.closeNodeEditor(); };
-        callbacks.repaintOpenGL = [this] { presentation.repaintNodeEditor(true); };
-        callbacks.setPrimaryAxis = [this](const String& axis) {
-            commands.setTrimeshPrimaryAxisValue(nodeId, axis);
-        };
-        callbacks.toggleLinkAxis = [this](const String& axis) {
-            commands.toggleTrimeshLinkAxisValue(nodeId, axis);
-        };
-        callbacks.beginMorphEdit = [this](const String& id, float value) {
-            commands.beginTrimeshMorphEdit(nodeId, id, value);
-        };
-        callbacks.updateMorphEdit = [this](float value) { commands.updateTrimeshMorphEditValue(value); };
-        callbacks.endMorphEdit = [this] { commands.endTrimeshMorphEdit(); };
-        callbacks.beginVertexParameterEdit = [this](const String& id, float value) {
-            commands.beginTrimeshVertexParameterEdit(nodeId, id, value);
-        };
-        callbacks.updateVertexParameterEdit = [this](float value) {
-            commands.updateTrimeshVertexParameterEditValue(value);
-        };
-        callbacks.endVertexParameterEdit = [this] { commands.endTrimeshVertexParameterEdit(); };
-        callbacks.showVertexGuideAttachmentMenu = [this](const String& field, Rectangle<int> area) {
-            commands.showTrimeshGuideAttachmentMenu(nodeId, field, area);
-        };
-        callbacks.selectVertex = [this](int index) { commands.selectTrimeshVertexIndex(nodeId, index); };
-        editor->setCallbacks(std::move(callbacks));
+        editor->setDelegate(this);
     }
 
     Component& component() override { return *editor; }
@@ -192,6 +181,56 @@ public:
     void releaseOpenGLResources() override {}
 
 private:
+    void closeTrimeshEditor() override {
+        presentation.closeNodeEditor();
+    }
+
+    void repaintTrimeshEditorOpenGL() override {
+        presentation.repaintNodeEditor(true);
+    }
+
+    void setTrimeshPrimaryAxisValue(const String& axis) override {
+        commands.setTrimeshPrimaryAxisValue(nodeId, axis);
+    }
+
+    void toggleTrimeshLinkAxisValue(const String& axis) override {
+        commands.toggleTrimeshLinkAxisValue(nodeId, axis);
+    }
+
+    void beginTrimeshMorphEdit(const String& id, float value) override {
+        commands.beginTrimeshMorphEdit(nodeId, id, value);
+    }
+
+    void updateTrimeshMorphEdit(float value) override {
+        commands.updateTrimeshMorphEditValue(value);
+    }
+
+    void endTrimeshMorphEdit() override {
+        commands.endTrimeshMorphEdit();
+    }
+
+    void beginTrimeshVertexParameterEdit(const String& id, float value) override {
+        commands.beginTrimeshVertexParameterEdit(nodeId, id, value);
+    }
+
+    void updateTrimeshVertexParameterEdit(float value) override {
+        commands.updateTrimeshVertexParameterEditValue(value);
+    }
+
+    void endTrimeshVertexParameterEdit() override {
+        commands.endTrimeshVertexParameterEdit();
+    }
+
+    void showTrimeshGuideAttachmentMenu(
+            const String& field,
+            Rectangle<int> area) override {
+        commands.showTrimeshGuideAttachmentMenu(nodeId, field, area);
+    }
+
+    void selectTrimeshVertex(int index) override {
+        commands.selectTrimeshVertexIndex(nodeId, index);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;

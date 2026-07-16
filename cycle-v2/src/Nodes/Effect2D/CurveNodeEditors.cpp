@@ -201,7 +201,7 @@ struct WaveshaperEditorComponent::Impl {
 };
 
 WaveshaperEditorComponent::WaveshaperEditorComponent(Effect2DWidget& target) :
-        Effect2DExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
+        CurveExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
     addCommonFlatControls(*this, impl->enabled, { &impl->preGain, &impl->postGain },
             { &impl->preGainLabel, &impl->postGainLabel });
     styleLabel(impl->enabledLabel, "Enable");
@@ -284,7 +284,7 @@ struct ImpulseResponseEditorComponent::Impl {
     TextButton load; TextButton unload; TextButton model;
 };
 ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(Effect2DWidget& target) :
-        Effect2DExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
+        CurveExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
     addCommonFlatControls(*this, impl->enabled, { &impl->size, &impl->postGain, &impl->highPass },
             { &impl->sizeLabel, &impl->postGainLabel, &impl->highPassLabel });
     styleLabel(impl->sizeLabel, "Size"); styleLabel(impl->postGainLabel, "Post");
@@ -331,7 +331,7 @@ struct GuideCurveEditorComponent::Impl {
     Label noiseLabel; Label dcOffsetLabel; Label phaseLabel; TextButton add; TextButton remove;
 };
 GuideCurveEditorComponent::GuideCurveEditorComponent(Effect2DWidget& target) :
-        Effect2DExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
+        CurveExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
     addCommonFlatControls(*this, impl->enabled, { &impl->noise, &impl->dcOffset, &impl->phase },
             { &impl->noiseLabel, &impl->dcOffsetLabel, &impl->phaseLabel });
     styleLabel(impl->noiseLabel, "Noise"); styleLabel(impl->dcOffsetLabel, "DC Offset"); styleLabel(impl->phaseLabel, "Phase");
@@ -376,7 +376,7 @@ struct EnvelopeEditorComponent::Impl {
     bool draggingMorph {}; bool draggingParameter {}; String parameterId;
 };
 EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
-        Effect2DExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
+        CurveExpandedEditorComponent(target), impl(std::make_unique<Impl>()) {
     for (auto* slider : { &impl->redMorph, &impl->blueMorph }) { styleSlider(*slider); addAndMakeVisible(*slider); }
     styleLabel(impl->timeLabel, "Time"); styleLabel(impl->redLabel, "Red"); styleLabel(impl->blueLabel, "Blue");
     for (auto* label : { &impl->timeLabel, &impl->redLabel, &impl->blueLabel }) { addAndMakeVisible(*label); }
@@ -521,7 +521,7 @@ void EnvelopeEditorComponent::editorMouseUp() {
     impl->draggingMorph = false; impl->draggingParameter = false; impl->parameterId.clear();
 }
 
-std::unique_ptr<Effect2DExpandedEditorComponent> createCurveNodeEditor(NodeKind kind, Effect2DWidget& widget) {
+std::unique_ptr<CurveExpandedEditorComponent> createCurveNodeEditor(NodeKind kind, Effect2DWidget& widget) {
     switch (kind) {
         case NodeKind::Waveshaper:      return std::make_unique<WaveshaperEditorComponent>(widget);
         case NodeKind::ImpulseResponse: return std::make_unique<ImpulseResponseEditorComponent>(widget);

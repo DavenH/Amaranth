@@ -33,15 +33,11 @@ order where dependencies apply:
 6. `cycle-v2-node-editor-hosting.md` removes node-specific expanded-editor
    construction and command wiring from `NodeCanvas`.
 
-The hosting extraction exposed one further boundary to address before adding
-more editor behavior: long-lived component collaboration is still represented
-by `Effect2DExpandedEditorComponent::Callbacks`,
-`TrimeshExpandedEditorComponent::Callbacks`, and
-`TrimeshControlsComponent::Callbacks`. Replace these callback bundles with
-named delegate interfaces implemented by the hosted editor adapters. Keep
-local one-shot JUCE button/menu handlers as callables; the refactor target is
-the cohesive cross-component command, lifecycle, and presentation protocols,
-not every lambda in the UI.
+The hosting extraction exposed long-lived editor callback bundles. This was
+addressed by `CurveExpandedEditorDelegate`,
+`TrimeshExpandedEditorDelegate`, `TrimeshControlsDelegate`,
+`CurvePanelHostDelegate`, and `CurvePanelControllerDelegate`; local one-shot
+JUCE button/menu handlers remain callables.
 
 Implement the definition and graph-model foundation first. Runtime, canvas, and
 curve-model work may then proceed independently where their touched boundaries

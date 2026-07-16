@@ -2856,7 +2856,7 @@ void drawEffect2DPreview(
         Graphics& g,
         Rectangle<float> area,
         NodeKind kind,
-        const std::vector<Effect2DPanelBridge::PreviewVertex>& vertices,
+        const std::vector<CurvePreviewVertex>& vertices,
         float zoom) {
     const Colour line = Colour(0xffe2e8ef);
     const Colour dim = Colour(0xff8b95a3);

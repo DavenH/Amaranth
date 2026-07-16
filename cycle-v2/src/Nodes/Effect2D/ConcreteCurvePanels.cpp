@@ -107,6 +107,15 @@ public:
         const auto& selected = getSelected();
         return selected.empty() ? nullptr : selected.front();
     }
+    void restoreFlatSelection(Vertex* vertex) override {
+        clearInteractionState();
+        if (vertex == nullptr) {
+            return;
+        }
+        state.currentVertex = vertex;
+        getSelected().push_back(vertex);
+        updateSelectionFrames();
+    }
     void setControlValues(
             bool enabledToUse,
             float first,
@@ -365,8 +374,6 @@ class EnvelopeCurvePanel final :
         public Panel2D
     ,   public Interactor2D
     ,   public EnvelopeCurvePanelContract {
-friend class Effect2DPanelBridge;
-
 public:
     Panel& hostedPanel() override { return *this; }
 
@@ -446,6 +453,16 @@ public:
             return state.currentCube;
         }
         return closestEnvelopeCubeFor(selected.front());
+    }
+    void restoreEnvelopeSelection(VertCube* cube) override {
+        clearInteractionState();
+        if (cube == nullptr) {
+            return;
+        }
+        state.currentCube = cube;
+        state.currentVertex = cube->getVertex(0);
+        getSelected().push_back(state.currentVertex);
+        updateSelectionFrames();
     }
 
     bool isEffectEnabled() const { return enabled; }

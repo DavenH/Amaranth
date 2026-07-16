@@ -5,25 +5,30 @@
 
 #include <JuceHeader.h>
 
-#include <functional>
 #include <vector>
 
 namespace CycleV2 {
 
-class Effect2DExpandedEditorComponent : public Component {
+class CurveExpandedEditorDelegate {
 public:
-    struct Callbacks {
-        std::function<void()> close;
-        std::function<void()> repaintOpenGL;
-        std::function<bool(const String&, uint64_t, const std::vector<NodeParameter>&)> publishState;
-        std::function<void()> beginTransaction;
-        std::function<void()> commitTransaction;
-    };
+    virtual ~CurveExpandedEditorDelegate() = default;
+    virtual void closeEffect2DEditor() = 0;
+    virtual void repaintEffect2DEditorOpenGL() = 0;
+    virtual bool publishEffect2DState(
+            const String& snapshot,
+            uint64_t revision,
+            const std::vector<NodeParameter>& controls) = 0;
+    virtual void beginEffect2DTransaction() = 0;
+    virtual void commitEffect2DTransaction() = 0;
+};
 
-    explicit Effect2DExpandedEditorComponent(Effect2DWidget& widget);
-    ~Effect2DExpandedEditorComponent() override;
+class CurveExpandedEditorComponent : public Component,
+                                     private CurvePanelControllerDelegate {
+public:
+    explicit CurveExpandedEditorComponent(Effect2DWidget& widget);
+    ~CurveExpandedEditorComponent() override;
 
-    void setCallbacks(Callbacks nextCallbacks);
+    void setDelegate(CurveExpandedEditorDelegate* nextDelegate);
     void setNode(const Node& nextNode);
     void renderOpenGL(float scaleFactor);
     Rectangle<float> panelBoundsForAutomation() const;
@@ -58,17 +63,20 @@ protected:
 
     Effect2DWidget& widget;
     Node node;
-    Callbacks callbacks;
+    CurveExpandedEditorDelegate* delegate {};
     bool syncingControls {};
 
 private:
     Rectangle<float> closeButtonBounds() const;
     void updatePanelHost();
     void persistEffectMeshState();
+    void repaintCurvePanelController() override;
+    void setCurvePanelControllerCursor(const MouseCursor& cursor) override;
+    void curvePanelControllerEdited() override;
 
     bool transactionActive {};
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Effect2DExpandedEditorComponent)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)
 };
 
 }

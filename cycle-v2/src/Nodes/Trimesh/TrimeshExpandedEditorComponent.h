@@ -7,32 +7,36 @@
 #include <JuceHeader.h>
 
 #include <array>
-#include <functional>
 #include <memory>
 
 namespace CycleV2 {
 
-class TrimeshExpandedEditorComponent : public juce::Component {
+class TrimeshExpandedEditorDelegate {
 public:
-    struct Callbacks {
-        std::function<void()> close;
-        std::function<void()> repaintOpenGL;
-        std::function<void(const juce::String&)> setPrimaryAxis;
-        std::function<void(const juce::String&)> toggleLinkAxis;
-        std::function<void(const juce::String&, float)> beginMorphEdit;
-        std::function<void(float)> updateMorphEdit;
-        std::function<void()> endMorphEdit;
-        std::function<void(const juce::String&, float)> beginVertexParameterEdit;
-        std::function<void(float)> updateVertexParameterEdit;
-        std::function<void()> endVertexParameterEdit;
-        std::function<void(const juce::String&, juce::Rectangle<int>)> showVertexGuideAttachmentMenu;
-        std::function<void(int)> selectVertex;
-    };
+    virtual ~TrimeshExpandedEditorDelegate() = default;
+    virtual void closeTrimeshEditor() = 0;
+    virtual void repaintTrimeshEditorOpenGL() = 0;
+    virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
+    virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
+    virtual void beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
+    virtual void updateTrimeshMorphEdit(float value) = 0;
+    virtual void endTrimeshMorphEdit() = 0;
+    virtual void beginTrimeshVertexParameterEdit(const juce::String& id, float value) = 0;
+    virtual void updateTrimeshVertexParameterEdit(float value) = 0;
+    virtual void endTrimeshVertexParameterEdit() = 0;
+    virtual void showTrimeshGuideAttachmentMenu(
+            const juce::String& field,
+            juce::Rectangle<int> area) = 0;
+    virtual void selectTrimeshVertex(int index) = 0;
+};
 
+class TrimeshExpandedEditorComponent : public juce::Component,
+                                       private TrimeshControlsDelegate {
+public:
     explicit TrimeshExpandedEditorComponent(TrimeshWidget& widget);
     ~TrimeshExpandedEditorComponent() override;
 
-    void setCallbacks(Callbacks nextCallbacks);
+    void setDelegate(TrimeshExpandedEditorDelegate* nextDelegate);
     void setNode(const Node& nextNode);
     void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
     void setDisplayDomain(PortDomain domain);
@@ -60,9 +64,20 @@ private:
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();
     void updateControlsHost();
+    void setTrimeshPrimaryAxis(const juce::String& axis) override;
+    void toggleTrimeshLinkAxis(const juce::String& axis) override;
+    void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
+    void updateTrimeshMorphControlEdit(float value) override;
+    void endTrimeshMorphControlEdit() override;
+    void beginTrimeshVertexControlEdit(const juce::String& id, float value) override;
+    void updateTrimeshVertexControlEdit(float value) override;
+    void endTrimeshVertexControlEdit() override;
+    void showTrimeshVertexGuideMenu(
+            const juce::String& id,
+            juce::Rectangle<int> screenArea) override;
 
     TrimeshWidget& widget;
-    Callbacks callbacks;
+    TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };

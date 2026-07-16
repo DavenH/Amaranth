@@ -4,7 +4,8 @@ namespace CycleV2 {
 
 Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
         kind    (nodeKind)
-    ,   bridge  (nodeKind) {
+    ,   controller(createCurvePanelController(nodeKind)) {
+    jassert(controller != nullptr);
 }
 
 Effect2DWidget::~Effect2DWidget() = default;
@@ -18,22 +19,16 @@ Component* Effect2DWidget::prepareExpandedPanelComponent(
         return nullptr;
     }
 
-    bridge.syncFromNode(node);
-    return bridge.getPanelHostComponent();
+    controller->syncFromNode(node);
+    return controller->panelHostComponent();
 }
 
 Component* Effect2DWidget::getExpandedPanelComponentIfCreated() {
-    return bridge.getPanelHostComponentIfCreated();
+    return controller->panelHostComponentIfCreated();
 }
 
-void Effect2DWidget::setExpandedPanelCallbacks(
-        std::function<void()> repaintCallback,
-        std::function<void(const MouseCursor&)> cursorCallback) {
-    bridge.setPanelHostCallbacks(std::move(repaintCallback), std::move(cursorCallback));
-}
-
-void Effect2DWidget::setMeshEditedCallback(std::function<void()> callback) {
-    bridge.setMeshEditedCallback(std::move(callback));
+void Effect2DWidget::setDelegate(CurvePanelControllerDelegate* delegate) {
+    controller->setDelegate(delegate);
 }
 
 void Effect2DWidget::setControlValues(
@@ -42,20 +37,24 @@ void Effect2DWidget::setControlValues(
         float secondValue,
         float thirdValue,
         int menuId) {
-    bridge.setControlValues(enabled, firstValue, secondValue, thirdValue, menuId);
+    controller->setControlValues(enabled, firstValue, secondValue, thirdValue, menuId);
 }
 
 void Effect2DWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
-    bridge.setEnvelopeLogarithmic(shouldUseLogarithmicScale);
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setLogarithmic(shouldUseLogarithmicScale);
+    }
 }
 
 void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
-    bridge.setEnvelopeAxisLinks(redLinked, blueLinked);
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setAxisLinks(redLinked, blueLinked);
+    }
 }
 
 void Effect2DWidget::syncFromNode(const Node& node) {
     if (node.kind == kind) {
-        bridge.syncFromNode(node);
+        controller->syncFromNode(node);
     }
 }
 
@@ -68,7 +67,7 @@ void Effect2DWidget::renderExpandedPanelOpenGL(
         return;
     }
 
-    bridge.renderPanel(bounds, clipBounds, scaleFactor);
+    controller->render(bounds, clipBounds, scaleFactor);
 }
 
 void Effect2DWidget::renderPreviewSnapshotOpenGL(
@@ -79,63 +78,66 @@ void Effect2DWidget::renderPreviewSnapshotOpenGL(
         return;
     }
 
-    bridge.renderPreviewSnapshot(bounds, scaleFactor);
+    controller->renderPreview(bounds, scaleFactor);
 }
 
 bool Effect2DWidget::paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const {
-    return bridge.paintPreviewSnapshot(g, bounds);
+    return controller->paintPreviewSnapshot(g, bounds);
 }
 
 bool Effect2DWidget::paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const {
-    return bridge.paintExpandedSnapshot(g, bounds);
+    return controller->paintExpandedSnapshot(g, bounds);
 }
 
 void Effect2DWidget::releaseSharedGlResources() {
-    bridge.releaseSharedGlResources();
+    controller->releaseSharedGlResources();
 }
 
 int Effect2DWidget::vertexCountForAutomation() const {
-    return bridge.vertexCountForAutomation();
+    return controller->vertexCountForAutomation();
 }
 
 var Effect2DWidget::automationState() const {
-    return bridge.automationState();
+    return controller->automationState();
 }
 
-std::vector<Effect2DPanelBridge::PreviewVertex> Effect2DWidget::previewVertices() {
-    return bridge.previewVertices();
+std::vector<CurvePreviewVertex> Effect2DWidget::previewVertices() {
+    return controller->previewVertices();
 }
 
 String Effect2DWidget::serializedMeshState() {
-    return bridge.serializedMeshState();
+    return controller->serializedMeshState();
 }
 
 String Effect2DWidget::serializedModelSnapshot() {
-    return bridge.serializedModelSnapshot();
+    return controller->serializedModelSnapshot();
 }
 
 String Effect2DWidget::prepareModelPublication(uint64_t currentRevision) {
-    return bridge.prepareModelPublication(currentRevision);
+    return controller->prepareModelPublication(currentRevision);
 }
 
 uint64_t Effect2DWidget::modelRevision() const {
-    return bridge.modelRevision();
+    return controller->modelRevision();
 }
 
 std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() const {
-    return bridge.selectedVertexParameters();
+    return controller->selectedVertexParameters();
 }
 
 bool Effect2DWidget::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
-    return bridge.setSelectedVertexParameter(parameterId, normalizedValue);
+    return controller->setSelectedVertexParameter(parameterId, normalizedValue);
 }
 
 bool Effect2DWidget::selectedEnvelopeMarkerState(bool loopMarker) const {
-    return bridge.selectedEnvelopeMarkerState(loopMarker);
+    const auto* envelope = dynamic_cast<const EnvelopeCurvePanelController*>(controller.get());
+    return envelope != nullptr && envelope->selectedMarkerState(loopMarker);
 }
 
 void Effect2DWidget::toggleSelectedEnvelopeMarker(bool loopMarker) {
-    bridge.toggleSelectedEnvelopeMarker(loopMarker);
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->toggleSelectedMarker(loopMarker);
+    }
 }
 
 }

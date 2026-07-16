@@ -1,4 +1,4 @@
-#include "Effect2DExpandedEditorComponent.h"
+#include "CurveExpandedEditorComponent.h"
 
 #include "CurveNodeModels.h"
 
@@ -20,36 +20,22 @@ var rectangleToVar(Rectangle<float> bounds) {
 
 }
 
-Effect2DExpandedEditorComponent::Effect2DExpandedEditorComponent(Effect2DWidget& targetWidget) :
+CurveExpandedEditorComponent::CurveExpandedEditorComponent(Effect2DWidget& targetWidget) :
         widget(targetWidget) {
     setOpaque(false);
     setInterceptsMouseClicks(true, true);
 }
 
-Effect2DExpandedEditorComponent::~Effect2DExpandedEditorComponent() = default;
-
-void Effect2DExpandedEditorComponent::setCallbacks(Callbacks nextCallbacks) {
-    callbacks = std::move(nextCallbacks);
-    auto safeThis = Component::SafePointer<Effect2DExpandedEditorComponent>(this);
-    widget.setExpandedPanelCallbacks(
-            [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->requestRepaint();
-                }
-            },
-            [safeThis](const MouseCursor& cursor) {
-                if (safeThis != nullptr) {
-                    safeThis->setMouseCursor(cursor);
-                }
-            });
-    widget.setMeshEditedCallback([safeThis] {
-        if (safeThis != nullptr) {
-            safeThis->persistEffectMeshState();
-        }
-    });
+CurveExpandedEditorComponent::~CurveExpandedEditorComponent() {
+    widget.setDelegate(nullptr);
 }
 
-void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
+void CurveExpandedEditorComponent::setDelegate(CurveExpandedEditorDelegate* nextDelegate) {
+    delegate = nextDelegate;
+    widget.setDelegate(this);
+}
+
+void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
@@ -59,7 +45,7 @@ void Effect2DExpandedEditorComponent::setNode(const Node& nextNode) {
     repaint();
 }
 
-void Effect2DExpandedEditorComponent::renderOpenGL(float scaleFactor) {
+void CurveExpandedEditorComponent::renderOpenGL(float scaleFactor) {
     widget.renderExpandedPanelOpenGL(
             node,
             editorPanelBounds().translated((float) getX(), (float) getY()),
@@ -67,7 +53,7 @@ void Effect2DExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             scaleFactor);
 }
 
-void Effect2DExpandedEditorComponent::paint(Graphics& graphics) {
+void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     Rectangle<float> outer = getLocalBounds().toFloat();
     graphics.saveState();
     graphics.excludeClipRegion(editorPanelBounds().toNearestInt());
@@ -101,12 +87,12 @@ void Effect2DExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.75f), 8.f, 1.3f);
 }
 
-void Effect2DExpandedEditorComponent::resized() {
+void CurveExpandedEditorComponent::resized() {
     updatePanelHost();
     layoutEditor();
 }
 
-void Effect2DExpandedEditorComponent::mouseMove(const MouseEvent& event) {
+void CurveExpandedEditorComponent::mouseMove(const MouseEvent& event) {
     if (!editorMouseMove(event.position)) {
         setMouseCursor(closeButtonBounds().contains(event.position)
                 ? MouseCursor::PointingHandCursor
@@ -114,10 +100,10 @@ void Effect2DExpandedEditorComponent::mouseMove(const MouseEvent& event) {
     }
 }
 
-void Effect2DExpandedEditorComponent::mouseDown(const MouseEvent& event) {
+void CurveExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     if (closeButtonBounds().contains(event.position)) {
-        if (callbacks.close != nullptr) {
-            callbacks.close();
+        if (delegate != nullptr) {
+            delegate->closeEffect2DEditor();
         }
         return;
     }
@@ -125,21 +111,21 @@ void Effect2DExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     editorMouseDown(event.position);
 }
 
-void Effect2DExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
+void CurveExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
     editorMouseDrag(event.position);
 }
 
-void Effect2DExpandedEditorComponent::mouseUp(const MouseEvent& event) {
+void CurveExpandedEditorComponent::mouseUp(const MouseEvent& event) {
     ignoreUnused(event);
     editorMouseUp();
     commitTransaction();
 }
 
-Rectangle<float> Effect2DExpandedEditorComponent::panelBoundsForAutomation() const {
+Rectangle<float> CurveExpandedEditorComponent::panelBoundsForAutomation() const {
     return editorPanelBounds();
 }
 
-var Effect2DExpandedEditorComponent::automationState() const {
+var CurveExpandedEditorComponent::automationState() const {
     auto* root = new DynamicObject();
     root->setProperty("panelBounds", rectangleToVar(editorPanelBounds()));
     root->setProperty("controlBounds", rectangleToVar(editorControlBounds()));
@@ -149,26 +135,26 @@ var Effect2DExpandedEditorComponent::automationState() const {
     return root;
 }
 
-bool Effect2DExpandedEditorComponent::editorMouseMove(Point<float>) { return false; }
-bool Effect2DExpandedEditorComponent::editorMouseDown(Point<float>) { return false; }
-bool Effect2DExpandedEditorComponent::editorMouseDrag(Point<float>) { return false; }
-void Effect2DExpandedEditorComponent::editorMouseUp() {}
+bool CurveExpandedEditorComponent::editorMouseMove(Point<float>) { return false; }
+bool CurveExpandedEditorComponent::editorMouseDown(Point<float>) { return false; }
+bool CurveExpandedEditorComponent::editorMouseDrag(Point<float>) { return false; }
+void CurveExpandedEditorComponent::editorMouseUp() {}
 
-Rectangle<float> Effect2DExpandedEditorComponent::contentBounds() const {
+Rectangle<float> CurveExpandedEditorComponent::contentBounds() const {
     Rectangle<float> bounds = getLocalBounds().toFloat();
     bounds.removeFromTop(kHeaderHeight);
     return bounds.reduced(12.f, 10.f);
 }
 
-void Effect2DExpandedEditorComponent::publishCurrentState() {
-    if (syncingControls || callbacks.publishState == nullptr) {
+void CurveExpandedEditorComponent::publishCurrentState() {
+    if (syncingControls || delegate == nullptr) {
         return;
     }
     applyEditorStateToWidget();
     const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
     const String snapshot = widget.prepareModelPublication(currentRevision);
     const auto controls = editorControls();
-    if (!callbacks.publishState(snapshot, widget.modelRevision(), controls)) {
+    if (!delegate->publishEffect2DState(snapshot, widget.modelRevision(), controls)) {
         return;
     }
     node.parameters = controls;
@@ -177,33 +163,33 @@ void Effect2DExpandedEditorComponent::publishCurrentState() {
             "Curve Model Revision", String((int64_t) widget.modelRevision()) });
 }
 
-void Effect2DExpandedEditorComponent::beginTransaction() {
-    if (!transactionActive && callbacks.beginTransaction != nullptr) {
-        callbacks.beginTransaction();
+void CurveExpandedEditorComponent::beginTransaction() {
+    if (!transactionActive && delegate != nullptr) {
+        delegate->beginEffect2DTransaction();
         transactionActive = true;
     }
 }
 
-void Effect2DExpandedEditorComponent::commitTransaction() {
-    if (transactionActive && callbacks.commitTransaction != nullptr) {
-        callbacks.commitTransaction();
+void CurveExpandedEditorComponent::commitTransaction() {
+    if (transactionActive && delegate != nullptr) {
+        delegate->commitEffect2DTransaction();
     }
     transactionActive = false;
 }
 
-void Effect2DExpandedEditorComponent::requestRepaint() {
+void CurveExpandedEditorComponent::requestRepaint() {
     repaint();
-    if (callbacks.repaintOpenGL != nullptr) {
-        callbacks.repaintOpenGL();
+    if (delegate != nullptr) {
+        delegate->repaintEffect2DEditorOpenGL();
     }
 }
 
-Rectangle<float> Effect2DExpandedEditorComponent::closeButtonBounds() const {
+Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {
     const auto bounds = getLocalBounds().toFloat();
     return Rectangle<float>(22.f, 22.f).withCentre({ bounds.getRight() - 22.f, kHeaderHeight * 0.5f });
 }
 
-void Effect2DExpandedEditorComponent::updatePanelHost() {
+void CurveExpandedEditorComponent::updatePanelHost() {
     if (getWidth() <= 0 || getHeight() <= 0) {
         return;
     }
@@ -223,9 +209,21 @@ void Effect2DExpandedEditorComponent::updatePanelHost() {
     panel->repaint();
 }
 
-void Effect2DExpandedEditorComponent::persistEffectMeshState() {
+void CurveExpandedEditorComponent::persistEffectMeshState() {
     publishCurrentState();
     requestRepaint();
+}
+
+void CurveExpandedEditorComponent::repaintCurvePanelController() {
+    requestRepaint();
+}
+
+void CurveExpandedEditorComponent::setCurvePanelControllerCursor(const MouseCursor& cursor) {
+    setMouseCursor(cursor);
+}
+
+void CurveExpandedEditorComponent::curvePanelControllerEdited() {
+    persistEffectMeshState();
 }
 
 }

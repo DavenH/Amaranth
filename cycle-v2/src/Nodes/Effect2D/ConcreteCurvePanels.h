@@ -38,11 +38,13 @@ public:
 class FlatCurvePanelContract : public CurvePanel {
 public:
     virtual Vertex* selectedFlatVertexForModel() = 0;
+    virtual void restoreFlatSelection(Vertex* vertex) = 0;
 };
 
 class EnvelopeCurvePanelContract : public CurvePanel {
 public:
     virtual VertCube* selectedEnvelopeCubeForModel() = 0;
+    virtual void restoreEnvelopeSelection(VertCube* cube) = 0;
     virtual void setEnvelopeLogarithmic(bool logarithmic) = 0;
     virtual void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) = 0;
     virtual bool selectedEnvelopeMarkerState(bool loopMarker) const = 0;

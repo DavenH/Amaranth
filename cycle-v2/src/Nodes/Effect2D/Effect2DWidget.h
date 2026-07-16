@@ -1,11 +1,10 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
-#include "Effect2DPanelBridge.h"
+#include "CurvePanelController.h"
 
 #include <JuceHeader.h>
 
-#include <functional>
 #include <memory>
 
 namespace CycleV2 {
@@ -17,10 +16,7 @@ public:
 
     Component* prepareExpandedPanelComponent(const Node& node, Rectangle<float> contentBounds);
     Component* getExpandedPanelComponentIfCreated();
-    void setExpandedPanelCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const MouseCursor&)> cursorCallback);
-    void setMeshEditedCallback(std::function<void()> callback);
+    void setDelegate(CurvePanelControllerDelegate* delegate);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
@@ -36,7 +32,7 @@ public:
     void releaseSharedGlResources();
     int vertexCountForAutomation() const;
     var automationState() const;
-    std::vector<Effect2DPanelBridge::PreviewVertex> previewVertices();
+    std::vector<CurvePreviewVertex> previewVertices();
     String serializedMeshState();
     String serializedModelSnapshot();
     String prepareModelPublication(uint64_t currentRevision);
@@ -48,7 +44,7 @@ public:
 
 private:
     NodeKind kind;
-    Effect2DPanelBridge bridge;
+    std::unique_ptr<CurvePanelController> controller;
 };
 
 }

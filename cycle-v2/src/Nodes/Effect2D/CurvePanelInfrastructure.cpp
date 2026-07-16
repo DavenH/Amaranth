@@ -74,12 +74,10 @@ public:
     HostComponent(
             Panel& targetPanel,
             CurvePanelSnapshotCache& snapshot,
-            std::function<bool()> publishEditCallback,
-            std::function<void()> synchronizeSelectionCallback) :
+            CurvePanelHostDelegate& delegateToUse) :
             panel(targetPanel)
         ,   snapshot(snapshot)
-        ,   publishEdit(std::move(publishEditCallback))
-        ,   synchronizeSelection(std::move(synchronizeSelectionCallback)) {
+        ,   delegate(delegateToUse) {
         setPaintingIsUnclipped(false);
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
@@ -130,7 +128,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseDoubleClick(localEvent);
         }
-        publishEdit();
+        delegate.publishCurvePanelEdit();
     }
 
     void mouseDrag(const MouseEvent& event) override {
@@ -153,8 +151,8 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseUp(localEvent);
         }
-        if (!publishEdit()) {
-            synchronizeSelection();
+        if (!delegate.publishCurvePanelEdit()) {
+            delegate.synchronizeCurvePanelSelection();
         }
     }
 
@@ -175,7 +173,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->eraseSelected();
             interactor->performUpdate(Update);
-            publishEdit();
+            delegate.publishCurvePanelEdit();
             return true;
         }
         return false;
@@ -232,25 +230,16 @@ private:
 
     Panel& panel;
     CurvePanelSnapshotCache& snapshot;
-    std::function<bool()> publishEdit;
-    std::function<void()> synchronizeSelection;
+    CurvePanelHostDelegate& delegate;
     bool mouseInside {};
     bool activePointer {};
 };
 
 CurvePanelHost::CurvePanelHost(
         Panel& panelToHost,
-        std::function<void(Component*)> initialisePanelCallback,
-        std::function<void(bool)> updateZoomCallback,
-        std::function<void()> preparePanelCallback,
-        std::function<bool()> publishEditCallback,
-        std::function<void()> synchronizeSelectionCallback) :
+        CurvePanelHostDelegate& delegateToUse) :
         panel(panelToHost)
-    ,   initialisePanel(std::move(initialisePanelCallback))
-    ,   updateZoom(std::move(updateZoomCallback))
-    ,   preparePanel(std::move(preparePanelCallback))
-    ,   publishEdit(std::move(publishEditCallback))
-    ,   synchronizeSelection(std::move(synchronizeSelectionCallback)) {
+    ,   delegate(delegateToUse) {
 }
 
 CurvePanelHost::~CurvePanelHost() {
@@ -266,14 +255,6 @@ Component* CurvePanelHost::componentIfCreated() {
     return componentInitialised ? hostComponent.get() : nullptr;
 }
 
-void CurvePanelHost::setCallbacks(
-        std::function<void()> repaintCallbackToUse,
-        std::function<void(const MouseCursor&)> cursorCallbackToUse) {
-    repaintCallback = std::move(repaintCallbackToUse);
-    cursorCallback = std::move(cursorCallbackToUse);
-    panel.setHostCallbacks(callbacks());
-}
-
 void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float scaleFactor) {
     if (bounds.isEmpty()) {
         return;
@@ -287,7 +268,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     context.callbacks = callbacks();
     panel.setHostContext(context);
     panel.panelResized();
-    preparePanel();
+    delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedCurvePanelScissor scissor(bounds, scaleFactor);
@@ -299,13 +280,11 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
 
     auto safeHost = Component::SafePointer<Component>(hostComponent.get());
-    auto callback = repaintCallback;
-    MessageManager::callAsync([safeHost, callback] {
+    auto* delegateToNotify = &delegate;
+    MessageManager::callAsync([safeHost, delegateToNotify] {
         if (safeHost != nullptr) {
             safeHost->repaint();
-        }
-        if (callback != nullptr) {
-            callback();
+            delegateToNotify->repaintCurvePanel();
         }
     });
 }
@@ -324,8 +303,8 @@ void CurvePanelHost::renderPreview(Rectangle<float> bounds, float scaleFactor) {
     context.callbacks = callbacks();
     panel.setHostContext(context);
     panel.panelResized();
-    updateZoom(true);
-    preparePanel();
+    delegate.updateCurvePanelZoom(true);
+    delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     ScopedCurvePanelScissor scissor(bounds, scaleFactor);
@@ -363,11 +342,11 @@ void CurvePanelHost::initialiseComponent() {
         return;
     }
     hostComponent = std::make_unique<HostComponent>(
-            panel, expandedSnapshot, publishEdit, synchronizeSelection);
-    initialisePanel(hostComponent.get());
+            panel, expandedSnapshot, delegate);
+    delegate.initialiseCurvePanel(hostComponent.get());
     hostComponent->removeMouseListener(panel.getInteractor().get());
     componentInitialised = true;
-    preparePanel();
+    delegate.prepareCurvePanel();
 }
 
 void CurvePanelHost::initialiseSharedGlResources() {
@@ -418,15 +397,11 @@ void CurvePanelHost::captureRenderedPanelImage(
 
 PanelHostCallbacks CurvePanelHost::callbacks() const {
     PanelHostCallbacks result;
-    result.setRepaintCallback([callback = repaintCallback](Panel*, PanelDirtyState::Flag) {
-        if (callback != nullptr) {
-            callback();
-        }
+    result.setRepaintCallback([this](Panel*, PanelDirtyState::Flag) {
+        delegate.repaintCurvePanel();
     });
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
-        if (cursorCallback != nullptr) {
-            cursorCallback(cursor);
-        }
+        delegate.setCurvePanelCursor(cursor);
         if (hostComponent != nullptr) {
             hostComponent->setMouseCursor(cursor);
         }
