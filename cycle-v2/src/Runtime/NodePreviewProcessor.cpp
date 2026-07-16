@@ -74,6 +74,17 @@ void normalizeBipolarBlock(SignalPayload& payload) {
             .clip(0.f, 1.f);
 }
 
+void normalizeBipolarBlockValues(std::vector<float>& values) {
+    if (values.empty()) {
+        return;
+    }
+
+    Buffer<float>(values.data(), (int) values.size())
+            .mul(0.5f)
+            .add(0.5f)
+            .clip(0.f, 1.f);
+}
+
 class PreviewProcessorBase : public NodePreviewProcessor {
 public:
     explicit PreviewProcessorBase(PreviewModuleRole roleToUse) : previewRole(roleToUse) {}
@@ -273,6 +284,20 @@ public:
         if (context.pointCount == 0) {
             context.primary.clear();
             context.secondary.clear();
+            return;
+        }
+
+        if (context.capturedOutput != nullptr
+                && context.capturedOutput->traversalGrid.isValid()
+                && context.capturedOutput->traversalGrid.rows == context.pointCount) {
+            context.primary = context.capturedOutput->traversalGrid.values;
+            context.secondary = context.capturedOutput->block.samples;
+            normalizeBipolarBlockValues(context.primary);
+            normalizeBipolarBlockValues(context.secondary);
+            context.gridColumns = context.capturedOutput->traversalGrid.columns;
+            context.gridRows = context.capturedOutput->traversalGrid.rows;
+            context.domain = context.capturedOutput->traversalGrid.metadata.valueDomain;
+            context.reusedCapturedTraversal = true;
             return;
         }
 

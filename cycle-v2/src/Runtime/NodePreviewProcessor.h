@@ -34,6 +34,8 @@ struct PreviewProcessContext {
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };
     const PublishedNodeConfiguration* configuration {};
+    const SignalPayload* capturedOutput {};
+    bool reusedCapturedTraversal {};
 };
 
 class NodePreviewProcessor {

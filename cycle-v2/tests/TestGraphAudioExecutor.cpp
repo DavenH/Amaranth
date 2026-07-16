@@ -5,6 +5,8 @@
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <algorithm>
@@ -588,6 +590,32 @@ TEST_CASE("Prepared graph audio processing performs no heap allocations", "[cycl
     REQUIRE(output.isValid());
     REQUIRE(shorterOutput.isValid());
     REQUIRE(allocations.count() == 0);
+}
+
+TEST_CASE(
+        "Prepared Trimesh traversal rendering performs no heap allocations",
+        "[cycle-v2][runtime][realtime][trimesh]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition center(0.5f, 0.5f, 0.5f);
+    TrimeshGridwiseDsp dsp;
+    dsp.setCyclic(true);
+    dsp.prepare(*mesh, center, Vertex::Time, 32, 32);
+    std::vector<float> destination(32 * 32);
+
+    ScopedRealtimeAllocationCount allocations;
+    for (const size_t columns : { 8u, 16u, 32u }) {
+        REQUIRE(dsp.renderColumnsInto(
+                *mesh,
+                center,
+                Vertex::Time,
+                columns,
+                Buffer<float>(destination.data(), (int) (columns * 32))));
+    }
+
+    REQUIRE(allocations.count() == 0);
+    REQUIRE(dsp.counters().sliceCount == 56);
+    REQUIRE(dsp.counters().bakeCount == 56);
+    mesh->destroy();
 }
 
 TEST_CASE("Realtime observation is optional and fan-out shares compiled slot storage", "[cycle-v2][runtime]") {

@@ -189,6 +189,26 @@ TEST_CASE("Graph preview executor can render spy nodes from audio traversal grid
     REQUIRE(spy.primary == meshAudio.output.traversalGrid.values);
 }
 
+TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][runtime][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 0.f }));
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 16);
+
+    const auto reused = GraphPreviewExecutor().render(compileResult.plan, audio, 16);
+    REQUIRE(reused.reusedCapturedTraversalCount == 1);
+    REQUIRE(findPreview(reused, "mesh").gridRows == 16);
+    REQUIRE(findPreview(reused, "mesh").gridColumns == 8);
+
+    const auto distinctResolution = GraphPreviewExecutor().render(
+            compileResult.plan, audio, 12);
+    REQUIRE(distinctResolution.reusedCapturedTraversalCount == 0);
+    REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 12);
+}
+
 TEST_CASE("Graph preview executor does not invent spy traversal grids without audio data", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

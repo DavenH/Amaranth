@@ -155,6 +155,9 @@ GraphPreviewResult renderPreview(
         PreviewProcessContext context;
         context.pointCount = pointCount;
         context.configuration = &step.configuration;
+        if (stepIndex < audioIndex.size() && audioIndex[stepIndex] != nullptr) {
+            context.capturedOutput = &audioIndex[stepIndex]->output;
+        }
         context.parameters = step.parameters;
         context.outputPorts.reserve(step.outputs.size());
 
@@ -176,6 +179,9 @@ GraphPreviewResult renderPreview(
         }
         addAudioTraversalGridToContext(context, step, audioIndex, result);
         processor->render(context);
+        if (context.reusedCapturedTraversal) {
+            ++result.reusedCapturedTraversalCount;
+        }
 
         result.nodes.push_back({
                 step.nodeId,

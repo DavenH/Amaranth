@@ -31,38 +31,6 @@ size_t traversalRowsForDomain(PortDomain domain, size_t frameCount) {
     return frameCount;
 }
 
-void publishGridColumns(
-        SignalPayload& payload,
-        const std::vector<TrimeshGridColumn>& columns,
-        const AudioProcessWorkArena* arena) {
-    if (columns.empty() || columns.front().signal.block.samples.empty()) {
-        payload.traversalGrid = {};
-        return;
-    }
-
-    const size_t rows = columns.front().signal.block.samples.size();
-    configureTraversalGrid(
-            payload.traversalGrid,
-            columns.size(),
-            rows,
-            makeTraversalGridMetadata(
-                    payload.domain,
-                    columns.size(),
-                    rows,
-                    TraversalGridAxis::Time,
-                    defaultTraversalRowAxisForDomain(payload.domain)),
-            arena);
-
-    for (size_t column = 0; column < columns.size(); ++column) {
-        const auto& samples = columns[column].signal.block.samples;
-        const size_t count = std::min(rows, samples.size());
-        std::copy(
-                samples.begin(),
-                samples.begin() + (ptrdiff_t) count,
-                payload.traversalGrid.values.begin() + (ptrdiff_t) (column * rows));
-    }
-}
-
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
         return Vertex::Red;
@@ -398,6 +366,13 @@ public:
                 configuration->morph,
                 configuration->primaryViewAxis,
                 preparedDomain == PortDomain::TimeSignal);
+        trimeshGridDsp.setCyclic(preparedDomain == PortDomain::TimeSignal);
+        trimeshGridDsp.prepare(
+                *configuration->mesh,
+                configuration->morph,
+                configuration->primaryViewAxis,
+                std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
+                traversalRowsForDomain(preparedDomain, spec.maximumFrameCount));
     }
 
     void process(AudioProcessContext& context) override {
@@ -451,39 +426,32 @@ private:
 
         if (context.captureTraversalGrid) {
             Mesh& gridMesh = configuration != nullptr ? *configuration->mesh : *defaultMesh;
-            publishGridColumns(
-                output,
-                renderMeshColumns(
-                        gridMesh,
-                        morph,
-                        primaryAxis,
-                        std::max(kDefaultTraversalColumns, context.frameCount / 2),
-                        traversalRowsForDomain(outputPort.domain, context.frameCount),
-                        outputPort.domain,
-                        outputPort.channelLayout),
-                context.workArena);
+            const size_t columnCount = std::max(
+                    kDefaultTraversalColumns, context.frameCount / 2);
+            const size_t rowCount = traversalRowsForDomain(
+                    outputPort.domain, context.frameCount);
+            configureTraversalGrid(
+                    output.traversalGrid,
+                    columnCount,
+                    rowCount,
+                    makeTraversalGridMetadata(
+                            output.domain,
+                            columnCount,
+                            rowCount,
+                            TraversalGridAxis::Time,
+                            defaultTraversalRowAxisForDomain(output.domain)),
+                    context.workArena);
+            trimeshGridDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
+            trimeshGridDsp.renderColumnsInto(
+                    gridMesh,
+                    morph,
+                    primaryAxis,
+                    columnCount,
+                    Buffer<float>(
+                            output.traversalGrid.values.data(),
+                            (int) (columnCount * rowCount)));
         }
         publishSingleOutput(context, std::move(output));
-    }
-
-    std::vector<TrimeshGridColumn> renderMeshColumns(
-            Mesh& mesh,
-            const MorphPosition& morph,
-            int primaryAxis,
-            size_t columnCount,
-            size_t frameCount,
-            PortDomain domain,
-            ChannelLayout channelLayout) const {
-        TrimeshGridwiseDsp gridwiseDsp;
-        gridwiseDsp.setCyclic(domain == PortDomain::TimeSignal);
-        return gridwiseDsp.renderColumns(
-                mesh,
-                morph,
-                primaryAxis,
-                columnCount,
-                frameCount,
-                domain,
-                channelLayout);
     }
 
     void syncMeshEdits(const std::vector<NodeParameter>& parameters) const {
@@ -500,6 +468,7 @@ private:
     }
 
     mutable TrimeshBlockwiseDsp trimeshDsp;
+    mutable TrimeshGridwiseDsp trimeshGridDsp;
     mutable std::unique_ptr<Mesh> defaultMesh;
     mutable TrimeshMeshEditState meshEditState;
     PortDomain preparedDomain { PortDomain::ControlSignal };

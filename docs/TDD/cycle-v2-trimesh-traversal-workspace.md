@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 ## Problem
 
@@ -47,3 +47,19 @@ and no second `C * S` render for a preview consuming the same traversal result.
 - Prepared storage is reused across blocks up to the declared maximum.
 - Preview reuse is explicit and tested rather than inferred from shared data.
 
+## Implementation Notes
+
+- `TrimeshGridwiseDsp` now prepares its rasterizer and scratch storage at the
+  declared maximum, then renders each morph cross-section directly into a
+  caller-owned contiguous traversal buffer.
+- `TrimeshAudioProcessor` owns and reuses the gridwise DSP. It no longer builds
+  a temporary vector of owning column payloads or copies those payloads into a
+  second grid allocation.
+- `TrimeshBlockwiseDsp` accepts `Buffer<float>` destinations, keeping the
+  column loop to morph selection, slice/bake, and direct sampling.
+- Captured audio traversal data is indexed by `GraphPreviewExecutor` and reused
+  by the Trimesh preview when its row resolution matches the explicit preview
+  request. Distinct resolutions retain the fallback renderer.
+- Allocation guards cover prepared `8/16/32`-column rendering. Slice and bake
+  counters remain exactly one of each per morph column, and direct output is
+  compared numerically with the former owning-column API.

@@ -589,6 +589,48 @@ TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][
     mesh->destroy();
 }
 
+TEST_CASE(
+        "Trimesh gridwise DSP renders directly into prepared traversal storage",
+        "[cycle-v2][nodes][trimesh][complexity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition center(0.5f, 0.5f, 0.5f);
+    TrimeshGridwiseDsp owningDsp;
+    TrimeshGridwiseDsp directDsp;
+    owningDsp.setCyclic(false);
+    directDsp.setCyclic(false);
+
+    const auto columns = owningDsp.renderColumns(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            8,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono);
+    std::vector<float> directValues(32);
+    directDsp.prepare(*mesh, center, Vertex::Time, 4, 8);
+    REQUIRE(directDsp.counters().sliceCount == 0);
+    REQUIRE(directDsp.renderColumnsInto(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            Buffer<float>(directValues.data(), (int) directValues.size())));
+
+    std::vector<float> owningValues;
+    for (const auto& column : columns) {
+        owningValues.insert(
+                owningValues.end(),
+                column.signal.block.samples.begin(),
+                column.signal.block.samples.end());
+    }
+
+    REQUIRE(directValues == owningValues);
+    REQUIRE(directDsp.counters().sliceCount == 4);
+    REQUIRE(directDsp.counters().bakeCount == 4);
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

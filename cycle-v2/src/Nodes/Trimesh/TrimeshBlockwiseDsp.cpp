@@ -74,6 +74,20 @@ void TrimeshBlockwiseDsp::renderPrepared(
         return;
     }
 
+    sampleOutput(outputBuffer(output));
+}
+
+void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output) {
+    prepare(mesh, morph, primaryViewAxis, cyclic);
+    renderPreparedInto(output);
+}
+
+void TrimeshBlockwiseDsp::renderPreparedInto(Buffer<float> output) {
+    output.zero();
+    if (output.empty() || mesh == nullptr || !mesh->hasEnoughCubesForCrossSection()) {
+        return;
+    }
+
     sampleOutput(output);
 }
 
@@ -90,15 +104,14 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest() const {
     return request;
 }
 
-void TrimeshBlockwiseDsp::sampleOutput(SignalPayload& output) {
+void TrimeshBlockwiseDsp::sampleOutput(Buffer<float> dest) {
     auto sampler = rasterizer.sampler();
 
     if (!sampler.isSampleable()) {
         return;
     }
 
-    Buffer<float> dest = outputBuffer(output);
-    const float delta = output.block.samples.size() > 0 ? 1.f / (float) output.block.samples.size() : 0.f;
+    const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
     int currentIndex = sampler.initialIndex();
 
     for (int i = 0; i < dest.size(); ++i) {

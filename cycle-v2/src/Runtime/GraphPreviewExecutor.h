@@ -21,6 +21,7 @@ struct GraphPreviewResult {
     size_t indexedNodeCount {};
     size_t addressLookupCount {};
     size_t aliasedInputCount {};
+    size_t reusedCapturedTraversalCount {};
 };
 
 class GraphPreviewExecutor {
