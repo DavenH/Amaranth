@@ -96,7 +96,7 @@ public:
     bool wasCleanedUp() const { return unsampleable; }
 
     Rasterization::SamplerView sampler() const override { return Rasterization::SamplerView(createWaveformBuffers(), isSampleable()); }
-    Rasterization::SnapshotView snapshotView() override { return Rasterization::SnapshotView(rastArrays); }
+    Rasterization::SnapshotView snapshotView() const override { return Rasterization::SnapshotView(rastArrays); }
     void updateGeometry() override;
     void updateWaveform() override;
 

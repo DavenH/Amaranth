@@ -15,6 +15,11 @@ namespace Rasterization {
 
 class VoiceRasterizer : public TrilinearMeshRasterizer {
 private:
+    enum class ActiveOutput {
+        Ordinary,
+        Chained
+    };
+
     JUCE_LEAK_DETECTOR(VoiceRasterizer)
 
 public:
@@ -61,10 +66,7 @@ private:
     VoicePointPositionPolicy voicePointPositionPolicy;
 
     float initialAdvancement;
-    int chainPaddingSize { 2 };
-    bool chainUnsampleable { true };
-    bool chainNeedsResorting {};
-    bool chainedOutputActive {};
+    ActiveOutput activeOutput { ActiveOutput::Ordinary };
 };
 
 }

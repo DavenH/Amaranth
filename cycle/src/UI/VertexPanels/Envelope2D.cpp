@@ -216,7 +216,6 @@ void Envelope2D::drawCurvesAndSurfaces() {
     }
 
     auto snapshot = rast->snapshotView();
-    ScopedLock dataLock(snapshot.lock());
 
     bool reduceAlpha = ! isMeshEnabled();
 
@@ -230,7 +229,6 @@ void Envelope2D::drawCurvesAndSurfaces() {
     float stopPosition 	   = 1;
 
     {
-        ScopedLock sl(snapshot.lock());
 
         const vector<Intercept>& icpts  = snapshot.intercepts();
         waveX = snapshot.waveX();
@@ -364,7 +362,6 @@ void Envelope2D::getLoopPoints(float& loopStart, float& sustain) {
         rast->getIndices(loopIdx, sustIdx);
 
         auto snapshot = rast->snapshotView();
-        ScopedLock dataLock(snapshot.lock());
 
         const vector<Intercept>& icpts = snapshot.intercepts();
 

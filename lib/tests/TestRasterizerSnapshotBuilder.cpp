@@ -59,6 +59,7 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
             3);
     source.paddingSize = 4;
     source.wrapsVertices = true;
+    source.sampleable = true;
 
     RasterizerData data;
     Rasterization::RasterizerSnapshotBuilder().publish(data, source);
@@ -72,6 +73,7 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
     REQUIRE(data.oneIndex == source.waveform.oneIndex);
     REQUIRE(data.paddingSize == source.paddingSize);
     REQUIRE(data.wrapsVertices == source.wrapsVertices);
+    REQUIRE(data.sampleable == source.sampleable);
 
     REQUIRE(copyBuffer(data.waveX) == copyBuffer(waveX));
     REQUIRE(copyBuffer(data.waveY) == copyBuffer(waveY));

@@ -201,7 +201,8 @@ TEST_CASE("VoiceMeshRasterizer builds chained voice slice intercepts", "[cycle][
     rasterizer.updateChainedWaveform(0.85f);
     rasterizer.updateChainedWaveform(0.85f);
 
-    const auto& intercepts = rasterizer.snapshotView().intercepts();
+    auto snapshot = rasterizer.snapshotView();
+    const auto& intercepts = snapshot.intercepts();
     REQUIRE(intercepts.size() == 2);
     REQUIRE(intercepts[0].x == Approx(0.10f));
     REQUIRE(intercepts[0].y == Approx(-0.60f));

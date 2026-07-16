@@ -18,13 +18,18 @@ Suggested direction:
   node widget moves to GL, because split shell/content rendering breaks
   overlap z-order.
 
-## Trilinear Mesh Intercept Ownership
+## Rasterizer Follow-up TDDs
 
-`TrilinearMeshRasterizer` currently keeps its update-geometry intercept output
-in `meshIntercepts` and publishes that into the rasterizer snapshot, while the
-base rasterizer also has `rasterizerData.intercepts`. Refactor this to a single
-authoritative intercept store so UI overlays, interactors, and waveform baking
-cannot accidentally read different intercept sources.
+The completed ownership audit produced focused follow-up designs:
+
+- [`rasterizer-realtime-render-boundary.md`](rasterizer-realtime-render-boundary.md)
+- [`envelope-renderer-playback-separation.md`](envelope-renderer-playback-separation.md)
+- [`waveform-sampling-contract.md`](waveform-sampling-contract.md)
+- [`rasterizer-immutable-snapshot-exchange.md`](rasterizer-immutable-snapshot-exchange.md)
+- [`typed-rasterization-commands.md`](typed-rasterization-commands.md)
+- [`point-list-incremental-bake.md`](point-list-incremental-bake.md)
+- [`deterministic-guide-curve-seeds.md`](deterministic-guide-curve-seeds.md)
+- [`semantic-complexity-audit.md`](semantic-complexity-audit.md)
 
 ## Trimesh Topology Snapshot
 

@@ -718,34 +718,6 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getNumChildComponents() == 21);
 }
 
-TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {
-    ScopedJuceInitialiser_GUI juce;
-    Node node {
-            "mesh",
-            NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
-            {},
-            {},
-            {
-                    { "yellow", "Yellow", "0.5" },
-                    { "red", "Red", "0.5" },
-                    { "blue", "Blue", "0.5" },
-                    { "primaryAxis", "Primary Axis", "yellow" }
-            },
-            {},
-            {}
-    };
-    TrimeshPanelBridge bridge;
-
-    bridge.syncFromNode(node, 12, 4);
-
-    const auto& intercepts = bridge.getRasterizerIntercepts();
-    REQUIRE_FALSE(intercepts.empty());
-    REQUIRE(std::any_of(intercepts.begin(), intercepts.end(), [](const Intercept& intercept) {
-        return intercept.cube != nullptr;
-    }));
-}
-
 TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {

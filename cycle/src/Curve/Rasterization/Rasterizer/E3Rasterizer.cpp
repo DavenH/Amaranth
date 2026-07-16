@@ -11,7 +11,7 @@
 
 E3Rasterizer::E3Rasterizer(SingletonRepo* repo)	:
         SingletonAccessor(repo, "E3Rasterizer")
-    ,   Rasterization::EnvelopeGridRasterizer() {
+    ,   Rasterization::EnvelopeMorphSurfaceRasterizer() {
 }
 
 void E3Rasterizer::init() {
@@ -49,5 +49,5 @@ void E3Rasterizer::performUpdate(UpdateType updateType) {
     getObj(VisualDsp).resizeArrays(params);
     int dependentAxis = getSetting(CurrentMorphAxis);
     getRequest().primaryViewDimension = dependentAxis;
-    renderGrid(currentMesh, columns, res, dependentAxis);
+    renderSurface(currentMesh, columns, res, dependentAxis, getMorphPosition());
 }

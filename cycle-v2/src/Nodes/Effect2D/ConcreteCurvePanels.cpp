@@ -178,8 +178,7 @@ public:
     var automationState() const override {
         auto* root = new DynamicObject();
         appendCommonAutomation(*root);
-        auto snapshot = const_cast<FXRasterizer&>(rasterizer).snapshotView();
-        ScopedLock dataLock(snapshot.lock());
+        auto snapshot = rasterizer.snapshotView();
         Array<var> curvePoints;
         for (const Curve& curve : snapshot.curves()) {
             const int resolution = Curve::resolution >> curve.resIndex;
@@ -726,8 +725,7 @@ public:
         root->setProperty("selectedVertexParameters", vertexParameters);
 
         {
-            auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
-            ScopedLock dataLock(snapshot.lock());
+            auto snapshot = envRasterizer.snapshotView();
             const auto& intercepts = snapshot.intercepts();
             auto* morph = new DynamicObject();
             morph->setProperty("red", controlA);
@@ -832,8 +830,7 @@ public:
             return state.currentCube;
         }
 
-        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
-        ScopedLock dataLock(snapshot.lock());
+        auto snapshot = envRasterizer.snapshotView();
         VertCube* cube = nullptr;
 
         for (const auto& intercept : snapshot.intercepts()) {
@@ -1091,7 +1088,6 @@ protected:
 
         if (sustIdx >= 0) {
             auto snapshot = envRasterizer.snapshotView();
-            ScopedLock dataLock(snapshot.lock());
             const auto& intercepts = snapshot.intercepts();
 
             for (int i = 0; i < (int) intercepts.size(); ++i) {
@@ -1149,8 +1145,7 @@ protected:
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
-        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
-        ScopedLock dataLock(snapshot.lock());
+        auto snapshot = envRasterizer.snapshotView();
         const auto& intercepts = snapshot.intercepts();
 
         if (sustainIndex >= 0 && sustainIndex < (int) intercepts.size() && intercepts[(size_t) sustainIndex].cube != nullptr) {
@@ -1162,7 +1157,6 @@ protected:
 
     bool drawEnvelopeCurveAndSections() {
         auto snapshot = envRasterizer.snapshotView();
-        ScopedLock dataLock(snapshot.lock());
 
         const vector<Intercept>& icpts = snapshot.intercepts();
         Buffer<float> waveX = snapshot.waveX();
@@ -1279,8 +1273,7 @@ protected:
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
-        auto snapshot = const_cast<EnvRasterizer&>(envRasterizer).snapshotView();
-        ScopedLock dataLock(snapshot.lock());
+        auto snapshot = envRasterizer.snapshotView();
         const auto& intercepts = snapshot.intercepts();
 
         if (loopIndex >= 0 && loopIndex < (int) intercepts.size() && intercepts[(size_t) loopIndex].cube != nullptr) {
@@ -1298,7 +1291,6 @@ protected:
         envRasterizer.getIndices(loopIdx, sustIdx);
 
         auto snapshot = envRasterizer.snapshotView();
-        ScopedLock dataLock(snapshot.lock());
         const auto& intercepts = snapshot.intercepts();
 
         VertCube* loopCube = loopIdx >= 0 && loopIdx < (int) intercepts.size()

@@ -237,7 +237,8 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 
         flag(DidMeshChange) = true;
     } else if (actionIs(PaintingEdit)) {
-        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+        auto snapshot = rasterizerSnapshot();
+        const vector<Intercept>& icpts = snapshot.intercepts();
 
         float diff;
 

@@ -105,7 +105,7 @@ public:
     bool canRasterizeWaveform();
 
     Rasterization::SamplerView sampler() const override {
-        return Rasterization::SamplerView(result.waveform, !unsampleable);
+        return Rasterization::SamplerView(result.waveform, result.sampleable);
     }
 
     void setMesh(Mesh* mesh);
@@ -123,7 +123,6 @@ public:
     void setToOverrideDim(bool does) { request.overrideDimension = does; }
     void setWrapsEnds(bool wraps) {
         request.cyclic = wraps;
-        rasterizerData.wrapsVertices = wraps;
     }
     void update(UpdateType updateType) { Updateable::update(updateType); }
     void updateOffsetSeeds(int layerSize, int tableSize);
@@ -192,8 +191,6 @@ private:
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     VertCube::ReductionData reduction;
 
-    int paddingSize;
-    bool unsampleable, needsResorting;
     String name;
 
     JUCE_LEAK_DETECTOR(EnvRasterizer)

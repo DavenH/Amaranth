@@ -17,6 +17,7 @@ struct RasterizerData {
     int zeroIndex, oneIndex;
     int paddingSize {};
     bool wrapsVertices {};
+    bool sampleable {};
     ScopedAlloc<float> buffer;
     Buffer<float> waveX, waveY;
 
@@ -24,5 +25,5 @@ struct RasterizerData {
     vector<Intercept> intercepts;
     vector<Curve> curves;
 
-    CriticalSection lock;
+    mutable CriticalSection lock;
 };

@@ -11,7 +11,6 @@ namespace Rasterization {
         MorphPosition morph;
 
         PointScalingMode scalingMode { PointScalingMode::Unipolar };
-        bool batchMode {};
         bool calcDepthDimensions { true };
         bool calcInterceptsOnly {};
         bool cyclic { true };
@@ -20,7 +19,6 @@ namespace Rasterization {
         bool interpolateCurves {};
         bool lowResCurves {};
         bool overrideDimension {};
-        bool publishSnapshot { true };
 
         int noiseSeed { -1 };
         int overridingDimension { Vertex::Time };

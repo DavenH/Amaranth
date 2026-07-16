@@ -32,7 +32,6 @@ public:
     Interactor2D& getInteractor2D() { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
-    const std::vector<Intercept>& getRasterizerIntercepts() const { return panelRasterizer.getIntercepts(); }
     bool rasterizerWrapsVertices() { return panelRasterizer.wrapsVertices(); }
     Component* getPanel3DHostComponent();
     Component* getPanel3DHostComponentIfCreated();

@@ -149,7 +149,6 @@ TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rast
     REQUIRE(request.morph.red.getTargetValue() == 0.5f);
     REQUIRE(request.morph.blue.getTargetValue() == 0.75f);
     REQUIRE(request.scalingMode == PointScalingMode::HalfBipolar);
-    REQUIRE(request.batchMode);
     REQUIRE_FALSE(request.cyclic);
     REQUIRE_FALSE(request.calcDepthDimensions);
     REQUIRE(request.calcInterceptsOnly);
@@ -157,7 +156,6 @@ TEST_CASE("MeshRasterizer exposes current state as RasterizationRequest", "[rast
     REQUIRE(request.interpolateCurves);
     REQUIRE(request.lowResCurves);
     REQUIRE(request.decoupleComponentDeforms);
-    REQUIRE_FALSE(request.publishSnapshot);
     REQUIRE(request.noiseSeed == 17);
     REQUIRE(request.overrideDimension);
     REQUIRE(request.overridingDimension == Vertex::Blue);

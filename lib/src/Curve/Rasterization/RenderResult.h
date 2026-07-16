@@ -26,18 +26,21 @@ namespace Rasterization {
         bool sampleable {};
         bool needsResorting {};
 
-        void clear() {
-            intercepts.clear();
+        void clearDerivedOutput() {
             frontPadding.clear();
             backPadding.clear();
             curves.clear();
             guideCurveRegions.clear();
-            colorPoints.clear();
-            waveformMemory.clear();
             waveform.nullify();
             paddingSize = 1;
             sampleable = false;
             needsResorting = false;
+        }
+
+        void clear() {
+            intercepts.clear();
+            colorPoints.clear();
+            clearDerivedOutput();
         }
     };
 }

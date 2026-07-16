@@ -22,16 +22,14 @@ TEST_CASE("Shared graphic rasterizer restores scoped render state", "[rasterizat
     Rasterization::GraphicRasterizer::RenderState saved;
     {
         auto scopedState = rasterizer.preserveState(saved);
-        auto batchState = Rasterization::GraphicRasterizer::createBatchRenderState(
+        auto batchState = Rasterization::GraphicRasterizer::createAnalysisRenderState(
                 Rasterization::GraphicRasterizer::Scaling::HalfBipolar,
                 MorphPosition(0.75f, 0.25f, 0.50f));
         rasterizer.restoreStateFrom(batchState);
 
-        REQUIRE(rasterizer.getRequest().batchMode);
         REQUIRE(rasterizer.getRequest().scalingMode == Rasterization::PointScalingMode::HalfBipolar);
     }
 
-    REQUIRE_FALSE(rasterizer.getRequest().batchMode);
     REQUIRE(rasterizer.getNoiseSeed() == 17);
     REQUIRE(rasterizer.getMorphPosition().time.getTargetValue() == Approx(0.25f));
     REQUIRE(rasterizer.getMorphPosition().red.getTargetValue() == Approx(0.50f));

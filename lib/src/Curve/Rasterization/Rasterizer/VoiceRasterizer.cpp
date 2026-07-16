@@ -15,17 +15,14 @@ namespace Rasterization {
 VoiceRasterizer::VoiceRasterizer(float minimumLineLength) :
         chainResult()
     ,   chainReduction()
-    ,   initialAdvancement(minimumLineLength * 1.1f)
-    ,   chainPaddingSize(2)
-    ,   chainUnsampleable(true)
-    ,   chainNeedsResorting(false)
-    ,   chainedOutputActive(false) {
+    ,   initialAdvancement(minimumLineLength * 1.1f) {
     auto& request = getRequest();
     request.overrideDimension = true;
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
     rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = request.cyclic;
+    chainResult.paddingSize = 2;
     updateChainBuffers(2048);
 }
 
@@ -35,9 +32,9 @@ void VoiceRasterizer::updateChainedWaveform(float oscPhase) {
         return;
     }
 
-    chainedOutputActive = true;
+    activeOutput = ActiveOutput::Chained;
 
-    Rasterization::VoiceChainingPolicy chainingPolicy(&chainNeedsResorting);
+    Rasterization::VoiceChainingPolicy chainingPolicy(&chainResult.needsResorting);
     chainingPolicy.beginCall(*state, chainResult.intercepts);
 
     auto output = renderVoiceSlice(oscPhase);
@@ -59,7 +56,7 @@ void VoiceRasterizer::updateChainedWaveform(float oscPhase) {
     }
 
     if (state->callCount > 0) {
-        chainPaddingSize = Rasterization::VoiceChainedPaddingPolicy().build(
+        chainResult.paddingSize = Rasterization::VoiceChainedPaddingPolicy().build(
                 chainResult.intercepts,
                 state->backIcpts,
                 *state,
@@ -84,13 +81,13 @@ void VoiceRasterizer::cleanUp() {
 }
 
 bool VoiceRasterizer::currentWaveformIsSampleable() const {
-    return chainedOutputActive
-           ? Rasterization::WaveformSampler::isSampleable(chainResult.waveform)
+    return activeOutput == ActiveOutput::Chained
+           ? chainResult.sampleable
            : Rasterization::TrilinearMeshRasterizer::sampler().isSampleable();
 }
 
 WaveformBuffers VoiceRasterizer::currentWaveform() const {
-    return chainedOutputActive ? chainResult.waveform : waveform();
+    return activeOutput == ActiveOutput::Chained ? chainResult.waveform : waveform();
 }
 
 void VoiceRasterizer::bakeChainedWaveform() {
@@ -111,7 +108,7 @@ void VoiceRasterizer::bakeChainedWaveform() {
     context.guideCurveRegions = &chainResult.guideCurveRegions;
     context.offsetSeeds = nullptr;
 
-    chainUnsampleable = !Rasterization::WaveformBakePolicy().build(
+    chainResult.sampleable = Rasterization::WaveformBakePolicy().build(
             chainResult.curves,
             context,
             [this](int totalRes) {
@@ -122,9 +119,7 @@ void VoiceRasterizer::bakeChainedWaveform() {
 
 void VoiceRasterizer::cleanChainedOutput() {
     chainResult.clear();
-    chainPaddingSize = 2;
-    chainUnsampleable = true;
-    chainNeedsResorting = false;
+    chainResult.paddingSize = 2;
 }
 
 RenderResult VoiceRasterizer::renderVoiceSlice(float oscPhase) {
@@ -135,7 +130,7 @@ RenderResult VoiceRasterizer::renderVoiceSlice(float oscPhase) {
     }
 
     float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
-    auto guideApplier = createGuideCurveApplier(chainReduction, &chainNeedsResorting);
+    auto guideApplier = createGuideCurveApplier(chainReduction, &chainResult.needsResorting);
 
     auto& cubes = mesh->getCubes();
     for (int i = 0; i < (int) cubes.size(); ++i) {
@@ -190,19 +185,20 @@ void VoiceRasterizer::appendVoiceCubeIntercept(
 void VoiceRasterizer::markChainedWaveformUnsampleable() {
     chainResult.waveform.waveX.nullify();
     chainResult.waveform.waveY.nullify();
-    chainUnsampleable = true;
+    chainResult.sampleable = false;
 }
 
 void VoiceRasterizer::publishSnapshot() {
     Rasterization::RasterizerSnapshotSource source;
 
-    if (chainedOutputActive) {
+    if (activeOutput == ActiveOutput::Chained) {
         source.intercepts = &chainResult.intercepts;
         source.colorPoints = &chainResult.colorPoints;
         source.curves = &chainResult.curves;
         source.waveform = chainResult.waveform;
-        source.paddingSize = chainPaddingSize;
+        source.paddingSize = chainResult.paddingSize;
         source.wrapsVertices = getRequest().cyclic;
+        source.sampleable = chainResult.sampleable;
     } else {
         source = createSnapshotSource();
     }

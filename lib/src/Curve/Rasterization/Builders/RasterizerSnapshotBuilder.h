@@ -16,6 +16,7 @@ namespace Rasterization {
         WaveformBuffers waveform;
         int paddingSize {};
         bool wrapsVertices {};
+        bool sampleable {};
     };
 
     class RasterizerSnapshotBuilder {
@@ -25,6 +26,7 @@ namespace Rasterization {
 
             target.paddingSize = source.paddingSize;
             target.wrapsVertices = source.wrapsVertices;
+            target.sampleable = source.sampleable;
 
             if (source.intercepts != nullptr) {
                 target.intercepts = *source.intercepts;

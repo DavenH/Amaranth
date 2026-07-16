@@ -136,6 +136,12 @@ namespace {
         rasterizer.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
         rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue));
     }
+
+    void configureWaveRasterizer(Rasterization::TrilinearMeshRasterizer& rasterizer, Mesh* mesh) {
+        rasterizer.setMesh(mesh);
+        rasterizer.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
+        rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue));
+    }
 }
 
 TEST_CASE("MeshRasterizer creates finite monotonic wave buffers for a synthetic mesh", "[meshrasterizer][wave]") {
@@ -367,7 +373,8 @@ TEST_CASE("MeshRasterizer characterizes hidden-dimension color points", "[meshra
     REQUIRE(timePoints == mesh->getNumCubes());
     REQUIRE(redPoints == mesh->getNumCubes());
     REQUIRE(bluePoints == mesh->getNumCubes());
-    REQUIRE(rasterizer.snapshotView().colorPoints().size() == colorPoints.size());
+    auto snapshot = rasterizer.snapshotView();
+    REQUIRE(snapshot.colorPoints().size() == colorPoints.size());
 }
 
 TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point slicing", "[meshrasterizer][pipeline][slice]") {
@@ -390,21 +397,51 @@ TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point 
             [](Intercept&, const MorphPosition&, bool) {},
             output,
             reduction);
+    auto snapshot = rasterizer.snapshotView();
 
     REQUIRE(output.sampleable);
-    REQUIRE(output.intercepts.size() == rasterizer.snapshotView().intercepts().size());
+    REQUIRE(output.intercepts.size() == snapshot.intercepts().size());
 
     for (int i = 0; i < (int) output.intercepts.size(); ++i) {
         INFO("intercept=" << i);
-        RasterizerCompare::requireInterceptNear(output.intercepts[i], rasterizer.snapshotView().intercepts()[i]);
+        RasterizerCompare::requireInterceptNear(output.intercepts[i], snapshot.intercepts()[i]);
     }
 
-    REQUIRE(output.colorPoints.size() == rasterizer.snapshotView().colorPoints().size());
+    REQUIRE(output.colorPoints.size() == snapshot.colorPoints().size());
 
     for (int i = 0; i < (int) output.colorPoints.size(); ++i) {
         INFO("colorPoint=" << i);
-        RasterizerCompare::requireColorPointNear(output.colorPoints[i], rasterizer.snapshotView().colorPoints()[i]);
+        RasterizerCompare::requireColorPointNear(output.colorPoints[i], snapshot.colorPoints()[i]);
     }
+}
+
+TEST_CASE("Trilinear render-only output does not mutate the published panel snapshot",
+        "[meshrasterizer][snapshot][ownership]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+    Rasterization::TrilinearMeshRasterizer rasterizer;
+    configureWaveRasterizer(rasterizer, mesh.get());
+
+    rasterizer.updateWaveform();
+    const size_t publishedInterceptCount = rasterizer.result().intercepts.size();
+    REQUIRE(publishedInterceptCount > 1);
+
+    rasterizer.renderWaveformOnly(nullptr);
+    REQUIRE(rasterizer.result().intercepts.empty());
+    REQUIRE_FALSE(rasterizer.sampler().isSampleable());
+
+    {
+        auto snapshot = rasterizer.snapshotView();
+        REQUIRE(snapshot.intercepts().size() == publishedInterceptCount);
+        REQUIRE_FALSE(snapshot.waveX().empty());
+        REQUIRE(snapshot.isSampleable());
+    }
+
+    rasterizer.updateWaveform(mesh.get());
+    auto refreshedSnapshot = rasterizer.snapshotView();
+    REQUIRE(refreshedSnapshot.intercepts().size() == rasterizer.result().intercepts.size());
+    REQUIRE(refreshedSnapshot.zeroIndex() == rasterizer.sampler().initialIndex());
+    REQUIRE(refreshedSnapshot.isSampleable() == rasterizer.sampler().isSampleable());
 }
 
 TEST_CASE("InterceptSortPolicy sorts only when requested", "[meshrasterizer][pipeline][intercepts]") {

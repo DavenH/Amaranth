@@ -41,17 +41,28 @@ namespace Rasterization {
                 std::vector<Intercept>& intercepts,
                 RenderResult& output,
                 const RasterizationRequest& request,
+            GuideCurveProvider* guideCurveProvider = nullptr,
+            GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            output.clear();
+            std::sort(intercepts.begin(), intercepts.end());
+            output.intercepts = intercepts;
+            return renderResult(output, request, guideCurveProvider, offsetSeeds);
+        }
+
+        const RenderResult& renderResult(
+                RenderResult& output,
+                const RasterizationRequest& request,
                 GuideCurveProvider* guideCurveProvider = nullptr,
                 GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
-            output.clear();
+            output.clearDerivedOutput();
             output.paddingSize = 2;
 
-            if (intercepts.empty()) {
+            if (output.intercepts.empty()) {
                 return output;
             }
 
-            std::sort(intercepts.begin(), intercepts.end());
-            buildCurves(intercepts, output, request);
+            std::sort(output.intercepts.begin(), output.intercepts.end());
+            buildCurves(output.intercepts, output, request);
 
             if (output.curves.size() < 2) {
                 return output;

@@ -27,7 +27,7 @@ void TrimeshBlockwiseDsp::prepare(
     ensureCurveTable();
     prepareRequest();
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.updateWaveform(mesh, 0.f);
+        rasterizer.renderWaveformOnly(mesh, 0.f);
     }
 }
 
@@ -88,8 +88,6 @@ void TrimeshBlockwiseDsp::prepareRequest() {
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
-    request.batchMode = true;
-
     rasterizer.setWrapsEnds(cyclic);
 }
 
@@ -102,7 +100,7 @@ void TrimeshBlockwiseDsp::sampleOutput(SignalPayload& output) {
 
     Buffer<float> dest = outputBuffer(output);
     const float delta = output.block.samples.size() > 0 ? 1.f / (float) output.block.samples.size() : 0.f;
-    int currentIndex = rasterizer.snapshotView().zeroIndex();
+    int currentIndex = sampler.initialIndex();
 
     for (int i = 0; i < dest.size(); ++i) {
         const float phase = (float) i * delta;

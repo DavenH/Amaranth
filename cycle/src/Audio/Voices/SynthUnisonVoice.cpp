@@ -52,7 +52,6 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
         for (int meshIdx = 0; meshIdx < group.layerStates.size(); ++meshIdx) {
             CycleState& state = group.layerStates[meshIdx];
             MeshLibrary::Layer layer = parent->meshLib->getLayer(LayerGroups::GroupTime, meshIdx);
-            //			Waveform3D::LayerProps& props = surface->getPropertiesForLayer(meshIdx);
 
             state.reset();
 

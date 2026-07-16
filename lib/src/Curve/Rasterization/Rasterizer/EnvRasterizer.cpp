@@ -56,13 +56,11 @@ EnvRasterizer::EnvRasterizer(GuideCurveProvider* guideCurveProvider, const Strin
     ,    result()
     ,    guideCurveOffsetSeeds()
     ,    reduction()
-    ,    paddingSize(2)
-    ,    unsampleable(true)
-    ,    needsResorting(false)
     ,    name(nameToUse) {
     setWrapsEnds(false);
     setLimits(0.f, 10.f);
-    rasterizerData.paddingSize = paddingSize;
+    result.paddingSize = 2;
+    rasterizerData.paddingSize = result.paddingSize;
     rasterizerData.wrapsVertices = request.cyclic;
     updateBuffers(2048);
 
@@ -85,12 +83,11 @@ EnvRasterizer& EnvRasterizer::operator=(const EnvRasterizer& copy) {
     this->releaseScale          = copy.releaseScale;
     this->guideCurveProvider    = copy.guideCurveProvider;
     this->request               = copy.request;
-    this->paddingSize           = copy.paddingSize;
     this->name                  = copy.name;
     this->rasterizerData.paddingSize = copy.rasterizerData.paddingSize;
     this->rasterizerData.wrapsVertices = copy.rasterizerData.wrapsVertices;
-    this->unsampleable          = true;
-    this->needsResorting        = false;
+    this->result.sampleable     = false;
+    this->result.needsResorting = false;
 
     params = copy.params;
 
@@ -111,11 +108,8 @@ EnvRasterizer::~EnvRasterizer() {
 void EnvRasterizer::adoptPreparedData(const EnvRasterizer& source) {
     envMesh = source.envMesh;
     request = source.request;
-    paddingSize = source.paddingSize;
     rasterizerData.paddingSize = source.rasterizerData.paddingSize;
     rasterizerData.wrapsVertices = source.rasterizerData.wrapsVertices;
-    unsampleable = source.unsampleable;
-    needsResorting = source.needsResorting;
     loopIndex = source.loopIndex;
     sustainIndex = source.sustainIndex;
 
@@ -263,7 +257,8 @@ void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
     result.colorPoints.clear();
     result.curves.clear();
     result.guideCurveRegions.clear();
-    needsResorting = false;
+    result.needsResorting = false;
+    result.sampleable = false;
 
     Rasterization::GuideCurveApplier guideApplier = createGuideCurveApplier();
 
@@ -282,7 +277,7 @@ void EnvRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
     }
 
     processEnvelopeIntercepts(result.intercepts);
-    Rasterization::InterceptSortPolicy(&needsResorting).sortIfNeeded(result.intercepts);
+    Rasterization::InterceptSortPolicy(&result.needsResorting).sortIfNeeded(result.intercepts);
 
     switch (Rasterization::InterceptDegeneracyPolicy().classify(result.intercepts.size())) {
         case Rasterization::InterceptDegeneracyAction::CleanUp:
@@ -344,17 +339,17 @@ bool EnvRasterizer::isSampleableAt(float x) const {
 }
 
 float EnvRasterizer::sampleAt(double angle) {
-    return Rasterization::WaveformSampler::sampleAt(result.waveform, unsampleable, angle);
+    return Rasterization::WaveformSampler::sampleAt(result.waveform, !result.sampleable, angle);
 }
 
 float EnvRasterizer::sampleAt(double angle, int& currentIndex) {
-    return Rasterization::WaveformSampler::sampleAt(result.waveform, unsampleable, angle, currentIndex);
+    return Rasterization::WaveformSampler::sampleAt(result.waveform, !result.sampleable, angle, currentIndex);
 }
 
 float EnvRasterizer::sampleAtDecoupled(double angle, GuideCurveContext& context) {
     return Rasterization::GuideCurveSampler::sampleDecoupled(
             result.waveform,
-            unsampleable,
+            !result.sampleable,
             angle,
             context,
             result.guideCurveRegions,
@@ -709,7 +704,7 @@ void EnvRasterizer::processEnvelopeIntercepts(vector<Intercept>& intercepts) {
     context.sustainIndex = sustainIndex;
     context.addFloorPoint = getScalingType() != Rasterization::PointScalingMode::Bipolar;
 
-    needsResorting |= Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
+    result.needsResorting |= Rasterization::EnvelopeSustainPointPolicy().apply(intercepts, context);
 }
 
 void EnvRasterizer::rebuildCurvesFromIntercepts() {
@@ -737,7 +732,7 @@ void EnvRasterizer::bakeWaveform() {
     resolutionContext.lowResCurves = request.lowResCurves;
     resolutionContext.integralSampling = request.integralSampling;
     resolutionContext.interpolateCurves = request.interpolateCurves;
-    resolutionContext.paddingSize = paddingSize;
+    resolutionContext.paddingSize = result.paddingSize;
     Rasterization::CurveResolutionPolicy().apply(result.curves, resolutionContext);
 
     Rasterization::CurveWaveformPreparationPolicy().apply(result.curves);
@@ -755,7 +750,7 @@ void EnvRasterizer::bakeWaveform() {
     context.guideCurveRegions = &result.guideCurveRegions;
     context.offsetSeeds = &guideCurveOffsetSeeds;
 
-    unsampleable = !Rasterization::WaveformBakePolicy().build(
+    result.sampleable = Rasterization::WaveformBakePolicy().build(
             result.curves,
             context,
             [this](int totalRes) {
@@ -791,8 +786,9 @@ void EnvRasterizer::publishSnapshot() {
     source.colorPoints = &result.colorPoints;
     source.curves = &result.curves;
     source.waveform = result.waveform;
-    source.paddingSize = paddingSize;
+    source.paddingSize = result.paddingSize;
     source.wrapsVertices = request.cyclic;
+    source.sampleable = result.sampleable;
 
     Rasterization::BaseRasterizer::publishSnapshot(source);
 }
@@ -804,7 +800,7 @@ void EnvRasterizer::updateBuffers(int size) {
 void EnvRasterizer::markWaveformUnsampleable() {
     result.waveform.waveX.nullify();
     result.waveform.waveY.nullify();
-    unsampleable = true;
+    result.sampleable = false;
 }
 
 void EnvRasterizer::clearRasterizationResult(bool clearCurves) {
@@ -826,7 +822,7 @@ Rasterization::GuideCurveApplier EnvRasterizer::createGuideCurveApplier() {
     context.reduction = &reduction;
     context.scalingMode = request.scalingMode;
     context.cyclic = request.cyclic;
-    context.needsResorting = &needsResorting;
+    context.needsResorting = &result.needsResorting;
     context.noiseSeed = request.noiseSeed;
     context.offsetSeeds = &guideCurveOffsetSeeds;
 

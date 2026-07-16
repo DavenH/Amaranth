@@ -44,6 +44,10 @@ namespace Rasterization {
             return WaveformSampler::samplePerfectly(buffers(), delta, dest, phase);
         }
 
+        int initialIndex() const {
+            return waveform.zeroIndex;
+        }
+
     private:
         const WaveformBuffers& buffers() const {
             return waveform;
@@ -57,33 +61,59 @@ namespace Rasterization {
     public:
         SnapshotView() = default;
 
-        explicit SnapshotView(RasterizerData& data) :
-                data(&data) {
+        explicit SnapshotView(const RasterizerData& data) :
+                data(&data)
+            ,   lock(&data.lock) {
+            lock->enter();
         }
 
-        std::vector<Intercept>& intercepts() const {
+        SnapshotView(const SnapshotView&) = delete;
+        SnapshotView& operator=(const SnapshotView&) = delete;
+
+        SnapshotView(SnapshotView&& other) noexcept :
+                data(other.data)
+            ,   lock(other.lock) {
+            other.data = nullptr;
+            other.lock = nullptr;
+        }
+
+        SnapshotView& operator=(SnapshotView&& other) noexcept {
+            release();
+            data = other.data;
+            lock = other.lock;
+            other.data = nullptr;
+            other.lock = nullptr;
+            return *this;
+        }
+
+        ~SnapshotView() {
+            release();
+        }
+
+        const std::vector<Intercept>& intercepts() const & {
             return dataRef().intercepts;
         }
+        const std::vector<Intercept>& intercepts() const && = delete;
 
-        std::vector<Curve>& curves() const {
+        const std::vector<Curve>& curves() const & {
             return dataRef().curves;
         }
+        const std::vector<Curve>& curves() const && = delete;
 
-        std::vector<ColorPoint>& colorPoints() const {
+        const std::vector<ColorPoint>& colorPoints() const & {
             return dataRef().colorPoints;
         }
+        const std::vector<ColorPoint>& colorPoints() const && = delete;
 
-        CriticalSection& lock() const {
-            return dataRef().lock;
-        }
-
-        Buffer<float> waveX() const {
+        Buffer<float> waveX() const & {
             return dataRef().waveX;
         }
+        Buffer<float> waveX() const && = delete;
 
-        Buffer<float> waveY() const {
+        Buffer<float> waveY() const & {
             return dataRef().waveY;
         }
+        Buffer<float> waveY() const && = delete;
 
         int zeroIndex() const {
             return dataRef().zeroIndex;
@@ -101,12 +131,24 @@ namespace Rasterization {
             return dataRef().wrapsVertices;
         }
 
+        bool isSampleable() const {
+            return dataRef().sampleable;
+        }
+
     private:
-        RasterizerData& dataRef() const {
+        void release() {
+            if (lock != nullptr) {
+                lock->exit();
+                lock = nullptr;
+            }
+        }
+
+        const RasterizerData& dataRef() const {
             jassert(data != nullptr);
             return *data;
         }
 
-        RasterizerData* data {};
+        const RasterizerData* data {};
+        CriticalSection* lock {};
     };
 }

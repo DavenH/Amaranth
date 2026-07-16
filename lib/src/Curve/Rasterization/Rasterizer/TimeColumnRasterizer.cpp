@@ -54,7 +54,7 @@ void TimeColumnRasterizer::render(Context context) const {
 
             context.rasterizer->setNoiseSeed(noiseSeedForColumnLayer(colIdx, layerIdx));
             context.rasterizer->setYellow(scratchTime);
-            context.rasterizer->updateWaveform(layer.mesh, 0.f);
+            context.rasterizer->renderWaveformOnly(layer.mesh, 0.f);
 
             auto sampler = context.rasterizer->sampler();
             if (!sampler.isSampleable()) {

@@ -100,7 +100,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.dims                      = dims;
     request.morph                     = morph;
     request.scalingMode               = Rasterization::pointScalingModeFromLegacy(scalingType);
-    request.batchMode                 = batchMode;
     request.calcDepthDimensions       = calcDepthDims;
     request.calcInterceptsOnly        = calcInterceptsOnly;
     request.cyclic                    = cyclic;
@@ -109,7 +108,6 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.interpolateCurves         = interpolateCurves;
     request.lowResCurves              = lowResCurves;
     request.overrideDimension         = overrideDim;
-    request.publishSnapshot           = !batchMode;
     request.noiseSeed                 = noiseSeed;
     request.overridingDimension       = overridingDim;
     request.primaryViewDimension      = overrideDim ? overridingDim : getPrimaryViewDimension();
@@ -526,6 +524,7 @@ void MeshRasterizer::makeCopy() {
     source.waveform = waveform;
     source.paddingSize = paddingSize;
     source.wrapsVertices = cyclic;
+    source.sampleable = !unsampleable;
 
     Rasterization::RasterizerSnapshotBuilder().publish(rastArrays, source);
 }

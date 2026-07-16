@@ -233,7 +233,8 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
     }
 
     auto logRasterizerState = [envEnum](const char* context, EnvRasterizer& rast) {
-        const auto& icpts = rast.snapshotView().intercepts();
+        auto snapshot = rast.snapshotView();
+        const auto& icpts = snapshot.intercepts();
         Mesh* mesh = rast.getCurrentMesh();
         DBG(String::formatted("VisualDsp::rasterizeEnv %s env=%s(%d) rast=%p mesh=%p cubesEnough=%d icpts=%d sampleable=%d",
                               context,
@@ -416,7 +417,7 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     GraphicRasterizer::RenderState timeState;
     auto scopedState = timeRasterizer->preserveState(timeState);
 
-    auto batchState = GraphicRasterizer::createBatchRenderState(
+    auto batchState = GraphicRasterizer::createAnalysisRenderState(
             GraphicRasterizer::Scaling::HalfBipolar,
             timeState.pos);
     batchState.pos.time = 0;
@@ -537,7 +538,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     GraphicRasterizer::RenderState freqState, phaseState;
     auto freqStateScoped = spectRasterizer->preserveState(freqState);
     auto phaseStateScoped = phaseRasterizer->preserveState(phaseState);
-    auto batchState = GraphicRasterizer::createBatchRenderState(
+    auto batchState = GraphicRasterizer::createAnalysisRenderState(
             GraphicRasterizer::Scaling::Bipolar,
             freqState.pos);
 
@@ -619,7 +620,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if (colIdx % colMagRatio == 0) {
                     spectRasterizer->setNoiseSeed(colIdx * 1997);
                     spectRasterizer->setYellow(scratchTime);
-                    spectRasterizer->updateWaveform(spectLayer.mesh, 0.f);
+                    spectRasterizer->renderWaveformOnly(spectLayer.mesh, 0.f);
 
                     auto sampler = spectRasterizer->sampler();
                     if (!sampler.isSampleable()) {
@@ -685,7 +686,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if(colIdx % colPhaseRatio == 0) {
                     phaseRasterizer->setNoiseSeed(colIdx * 671);
                     phaseRasterizer->setYellow(scratchTime);
-                    phaseRasterizer->updateWaveform(layer.mesh, 0.f);
+                    phaseRasterizer->renderWaveformOnly(layer.mesh, 0.f);
 
                     auto sampler = phaseRasterizer->sampler();
                     if(sampler.isSampleable()) {

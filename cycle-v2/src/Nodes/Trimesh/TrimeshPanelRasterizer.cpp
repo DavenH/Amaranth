@@ -31,8 +31,6 @@ void TrimeshPanelRasterizer::update(
     request.scalingMode = Rasterization::PointScalingMode::Unipolar;
     request.calcDepthDimensions = true;
     request.lowResCurves = false;
-    request.batchMode = true;
-
     rasterizer.setWrapsEnds(cyclic);
     rasterizer.setMesh(&model.getMeshForPanel());
     interactor2D.setMesh(&model.getMeshForPanel());

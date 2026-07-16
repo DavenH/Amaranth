@@ -5,6 +5,7 @@
 #include "../src/Runtime/NodeAudioProcessor.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
+#include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -245,10 +246,11 @@ TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2
 
 TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][runtime][envelope][grid]") {
     NodeAudioProcessorFactory factory;
+    const auto parameters = envelopeParameters();
     AudioProcessContext envelopeContext;
     envelopeContext.frameCount = 4;
     envelopeContext.timing.sampleRate = 16.0;
-    envelopeContext.parameters = envelopeParameters();
+    envelopeContext.parameters = parameters;
     envelopeContext.outputPorts = {
             { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono }
     };
@@ -261,12 +263,51 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
     REQUIRE(envelope.traversalGrid.metadata.columnAxis == TraversalGridAxis::Time);
     REQUIRE(envelope.traversalGrid.metadata.rowAxis == TraversalGridAxis::Repeated);
 
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+    auto sampler = configuration->rasterizer->sampler();
+    REQUIRE(sampler.isSampleable());
+
     for (size_t column = 0; column < envelope.traversalGrid.columns; ++column) {
         const float columnValue = envelope.traversalGrid.values[column * envelope.traversalGrid.rows];
+        const float expected = sampler.sampleAt(
+                (double) column / (double) envelope.traversalGrid.columns);
+        REQUIRE(columnValue == Catch::Approx(expected));
         for (size_t row = 1; row < envelope.traversalGrid.rows; ++row) {
             REQUIRE(envelope.traversalGrid.values[column * envelope.traversalGrid.rows + row]
                     == Catch::Approx(columnValue));
         }
+    }
+
+    AudioProcessContext tallerContext;
+    tallerContext.frameCount = 6;
+    tallerContext.timing.sampleRate = 16.0;
+    tallerContext.parameters = parameters;
+    tallerContext.outputPorts = envelopeContext.outputPorts;
+    tallerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    factory.create(AudioModuleRole::Envelope)->process(tallerContext);
+
+    const SignalTraversalGrid& taller = output(tallerContext).traversalGrid;
+    REQUIRE(taller.columns == envelope.traversalGrid.columns);
+    REQUIRE(taller.rows == 6);
+    for (size_t column = 0; column < taller.columns; ++column) {
+        REQUIRE(taller.values[column * taller.rows]
+                == Catch::Approx(envelope.traversalGrid.values[column * envelope.traversalGrid.rows]));
+    }
+
+    AudioProcessContext widerContext;
+    widerContext.frameCount = 12;
+    widerContext.timing.sampleRate = 16.0;
+    widerContext.parameters = parameters;
+    widerContext.outputPorts = envelopeContext.outputPorts;
+    widerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    factory.create(AudioModuleRole::Envelope)->process(widerContext);
+
+    const SignalTraversalGrid& wider = output(widerContext).traversalGrid;
+    REQUIRE(wider.columns == 12);
+    for (size_t column = 0; column < wider.columns; ++column) {
+        REQUIRE(wider.values[column * wider.rows] == Catch::Approx(sampler.sampleAt(
+                (double) column / (double) wider.columns)));
     }
 
     REQUIRE(envelope.traversalGrid.values[0]

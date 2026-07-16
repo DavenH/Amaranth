@@ -4,14 +4,14 @@
 #include <App/SingletonRepo.h>
 #include <Array/Column.h>
 #include <Array/ScopedAlloc.h>
-#include <Curve/Rasterization/Rasterizer/EnvelopeGridRasterizer.h>
+#include <Curve/Rasterization/Rasterizer/EnvelopeMorphSurfaceRasterizer.h>
 #include <vector>
 
 using std::vector;
 
 class E3Rasterizer :
         public SingletonAccessor
-    ,   public Rasterization::EnvelopeGridRasterizer {
+    ,   public Rasterization::EnvelopeMorphSurfaceRasterizer {
 public:
     explicit E3Rasterizer(SingletonRepo* repo);
     ~E3Rasterizer() override = default;

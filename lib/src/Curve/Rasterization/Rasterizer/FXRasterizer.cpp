@@ -140,6 +140,7 @@ void FXRasterizer::publishSnapshot() {
     snapshot.waveform = renderResult.waveform;
     snapshot.paddingSize = renderResult.paddingSize;
     snapshot.wrapsVertices = false;
+    snapshot.sampleable = renderResult.sampleable;
 
     Rasterization::BaseRasterizer::publishSnapshot(snapshot);
 }
