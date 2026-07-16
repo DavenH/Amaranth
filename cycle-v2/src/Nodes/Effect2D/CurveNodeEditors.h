@@ -82,6 +82,10 @@ private:
     bool editorMouseDown(Point<float>) override;
     bool editorMouseDrag(Point<float>) override;
     void editorMouseUp() override;
+    bool handleAxisMouseDown(Point<float> position, Rectangle<float> controls);
+    bool handleVertexParameterMouseDown(Point<float> position, Rectangle<float> controls);
+    bool dragMorph(Point<float> position);
+    bool dragVertexParameter(Point<float> position);
 
     std::unique_ptr<Impl> impl;
 };

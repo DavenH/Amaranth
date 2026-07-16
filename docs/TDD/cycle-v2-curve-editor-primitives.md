@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed.
+Implemented.
+
+Implemented in July 2026. Repeated JUCE presentation and transaction mechanics
+now live in small parameter primitives, Envelope morph geometry/rendering lives
+in `EnvelopeMorphControls`, and every concrete curve editor has its own
+translation unit. The factory is a narrow construction switch and the former
+monolithic `CurveNodeEditors.cpp` has been deleted.
 
 ## Problem
 

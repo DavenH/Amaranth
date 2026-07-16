@@ -55,7 +55,13 @@ set(CANVAS_ARCHITECTURE_SOURCES
 )
 
 set(NODE_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveEditorPrimitives.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditorFactory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopeEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopeMorphControls.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/GuideCurveEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/ImpulseResponseEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/WaveshaperEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/ConcreteCurvePanels.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeModels.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopePanelAdapter.cpp"

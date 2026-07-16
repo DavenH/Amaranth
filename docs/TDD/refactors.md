@@ -26,7 +26,3 @@ save/reload parity needs a typed topology snapshot rather than inferring a mesh
 from sparse `mesh.vertex.<index>.<field>` overrides. Reuse the mature `Mesh`
 serialization boundary behind a narrow Trimesh model adapter; do not invent a
 second topology format in the canvas or editor.
-
-## Cycle V2 Morph And Editor Follow-ups
-
-- [`cycle-v2-curve-editor-primitives.md`](cycle-v2-curve-editor-primitives.md)
