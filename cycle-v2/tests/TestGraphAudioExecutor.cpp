@@ -133,6 +133,44 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
             != findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
+TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "redControl", "out", "env", "red", PortDomain::ControlSignal, false
+    });
+    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, false });
+    Node* envelope = graph.findNodeForEditing("env");
+    REQUIRE(envelope != nullptr);
+    for (auto& parameter : envelope->parameters) {
+        if (parameter.id == "dynamic") {
+            parameter.value = "1";
+        }
+    }
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphAudioExecutor executor;
+    AudioVoiceContext noteOn;
+    noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto initial = executor.process(graph, compiled.plan, 16, {}, noteOn);
+    const auto initialGrid = findNodeAudio(initial, "env").output.traversalGrid.values;
+
+    REQUIRE(executor.serviceNonRealtimePreparation() == 1);
+    const auto adopted = executor.process(graph, compiled.plan, 16, {}, {});
+    REQUIRE(findNodeAudio(adopted, "env").output.traversalGrid.values != initialGrid);
+    REQUIRE(executor.serviceNonRealtimePreparation() == 0);
+    REQUIRE(parameterValueForNode(*graph.findNode("env"), "red") == "0.5");
+}
+
 TEST_CASE("Graph audio executor applies envelope phase across traversal columns", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -590,6 +628,52 @@ TEST_CASE("Prepared graph audio processing performs no heap allocations", "[cycl
     REQUIRE(output.isValid());
     REQUIRE(shorterOutput.isValid());
     REQUIRE(allocations.count() == 0);
+}
+
+TEST_CASE("Dynamic Envelope request and adoption remain allocation-free on the realtime path",
+        "[cycle-v2][runtime][realtime][envelope][modulation]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({
+            "redControl", "out", "env", "red", PortDomain::ControlSignal, false
+    });
+    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, false });
+    Node* envelope = graph.findNodeForEditing("env");
+    REQUIRE(envelope != nullptr);
+    for (auto& parameter : envelope->parameters) {
+        if (parameter.id == "dynamic") {
+            parameter.value = "1";
+        }
+    }
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext noteOn;
+    noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    REQUIRE(executor.processRealtime(graph, compiled.plan, 64, {}, {}).isValid());
+
+    {
+        ScopedRealtimeAllocationCount allocations;
+        REQUIRE(executor.processRealtime(graph, compiled.plan, 64, {}, noteOn).isValid());
+        REQUIRE(allocations.count() == 0);
+    }
+    REQUIRE(executor.serviceNonRealtimePreparation() == 1);
+    {
+        ScopedRealtimeAllocationCount allocations;
+        REQUIRE(executor.processRealtime(graph, compiled.plan, 64, {}, {}).isValid());
+        REQUIRE(allocations.count() == 0);
+    }
 }
 
 TEST_CASE(

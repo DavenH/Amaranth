@@ -37,6 +37,7 @@ public:
             const AudioExecutionSpec& spec,
             int voiceIndex = 0) const;
     size_t preparationCount(const String& nodeId, int voiceIndex = 0) const;
+    size_t serviceNonRealtimePreparation() const;
 
     GraphAudioResult process(const NodeGraph& graph, const GraphExecutionPlan& plan, size_t frameCount) const;
     GraphAudioResult process(

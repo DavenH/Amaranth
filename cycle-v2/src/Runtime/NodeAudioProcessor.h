@@ -15,6 +15,7 @@ public:
     virtual AudioModuleRole role() const = 0;
     virtual void prepareExecution(const AudioExecutionSpec& spec);
     virtual void adoptConfiguration(const PublishedNodeConfiguration& configuration);
+    virtual bool serviceNonRealtimePreparation();
     virtual void process(AudioProcessContext& context) = 0;
 };
 

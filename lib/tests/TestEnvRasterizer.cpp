@@ -210,6 +210,36 @@ TEST_CASE("Envelope playback engines independently consume one prepared envelope
     REQUIRE(second.mode() == Rasterization::EnvelopePlaybackMode::Normal);
 }
 
+TEST_CASE("Prepared Envelope replacement preserves and reconciles live playback state",
+        "[rasterization][env][playback][replacement]") {
+    TestPreparedPlayback prepared;
+    Rasterization::EnvelopePlaybackEngine playback;
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    playback.noteOn();
+
+    REQUIRE(playback.renderToBuffer(prepared.view(), 3, 0.1, 1, props, 1.f));
+    const double beforeReplacement = playback.samplePosition(1);
+    playback.validate(prepared.view());
+    REQUIRE(playback.samplePosition(1) == Catch::Approx(beforeReplacement));
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Normal);
+
+    const Rasterization::PreparedEnvelopePlaybackView looping {
+            prepared.display,
+            prepared.loop,
+            0,
+            1,
+            Rasterization::PointScalingMode::Unipolar,
+            nullptr,
+            -1
+    };
+    REQUIRE(playback.renderToBuffer(looping, 4, 0.1, 1, props, 1.f));
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Looping);
+    playback.validate(prepared.view());
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Normal);
+    REQUIRE(playback.samplePosition(1) <= prepared.display.waveform.waveX.back());
+}
+
 TEST_CASE("Envelope playback voice offsets follow explicit lifecycle seeds",
         "[rasterization][env][seed]") {
     Rasterization::EnvelopePlaybackEngine first;

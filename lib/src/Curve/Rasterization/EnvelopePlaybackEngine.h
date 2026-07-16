@@ -62,6 +62,7 @@ namespace Rasterization {
         }
 
         EnvelopePlaybackMode mode() const { return state.mode; }
+        double samplePosition(int voiceIndex) const { return state.voice(voiceIndex).samplePosition; }
         bool oneSamplePerCycle() const { return state.oneSamplePerCycle; }
         float sustainLevel(int voiceIndex) const { return state.voice(voiceIndex).sustainLevel; }
         Buffer<float> output() { return renderBuffer; }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on the implemented preparation slices of
 `envelope-renderer-playback-separation.md` and
@@ -72,13 +72,21 @@ An envelope has persistent authoring controls and runtime modulation:
 
 ```text
 baseMorph       = (node.red, node.blue)
-modulation      = per-voice routed control values
-effectiveMorph  = constrain(combine(baseMorph, modulation), envelope domain)
+routedMorph     = connected per-voice ControlSignal values
+effectiveMorph  = connected(routedMorph) ? constrain(routedMorph) : baseMorph
 ```
 
-The modulation combination rule and range must be defined by the modulation
-matrix contract. The envelope processor consumes an `effectiveMorph`; it does
-not infer modulation polarity or depth from graph-edit state.
+Red and blue inputs are absolute effective morph positions in `[0, 1]`, not
+offsets applied to the persistent parameters. An unconnected axis falls back
+to its persistent node parameter independently of the other axis. Scaling,
+offset, polarity, depth, or combination belongs in upstream control-signal
+nodes. Cycle v2 deliberately has no separate modulation-matrix UI or hidden
+modulation routing subsystem.
+
+Envelope nodes expose top-side red and blue `ControlSignal` inputs. Trilinear
+Mesh nodes expose top-side yellow, red, and blue `ControlSignal` inputs under
+the same absolute-position contract. Canonical normalization adds these ports
+to previously saved Cycle v2 nodes without a separate migration layer.
 
 When dynamic playback is disabled, `effectiveMorph` is latched at note-on and
 remains fixed for that note. Changes remain available to the next note.
@@ -279,11 +287,12 @@ the total traversal samples.
 3. Extract or formalize the playback consumer and traversal consumer around the
    common prepared representation.
 4. Add the envelope dynamic policy and persistent serialization/UI control.
-5. Define the per-voice effective-morph input supplied by the modulation
-   runtime, without coupling it to graph mutations.
+5. Define absolute per-voice effective-morph `ControlSignal` inputs supplied by
+   graph edges, without coupling them to graph mutations.
 6. Add bounded non-realtime preparation and safe generation adoption.
 7. Add the audio lifecycle, traversal, coalescing, and realtime-boundary tests.
-8. Hook modulation-matrix red/blue destinations to the runtime control input.
+8. Route ordinary node-canvas control sources directly to the red/blue inputs;
+   keep scaling and combination in upstream control nodes.
 
 ## Completion Criteria
 
@@ -297,4 +306,3 @@ the total traversal samples.
 - Preparation and publication are absent from the realtime audio thread.
 - Modulation bursts cannot create an unbounded work queue.
 - Tests prove product semantics, not merely that callbacks or revisions occur.
-

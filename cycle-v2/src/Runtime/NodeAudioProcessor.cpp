@@ -244,6 +244,9 @@ public:
     void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
         processor.adoptConfiguration(configuration);
     }
+    bool serviceNonRealtimePreparation() override {
+        return processor.serviceNonRealtimePreparation();
+    }
     void process(AudioProcessContext& context) override { processor.process(context); }
 
 private:
@@ -380,6 +383,37 @@ public:
     }
 
 private:
+    static float absoluteMorphValue(
+            AudioProcessContext& context,
+            size_t inputIndex,
+            float fallback) {
+        const SignalPayload* input = inputAt(context, inputIndex);
+        if (input == nullptr || input->block.samples.empty()) {
+            return fallback;
+        }
+        return jlimit(0.f, 1.f, input->block.samples.front());
+    }
+
+    static MorphPosition effectiveMorph(
+            AudioProcessContext& context,
+            const MorphPosition& fallback) {
+        MorphPosition morph = fallback;
+        morph.time.setValueDirect(absoluteMorphValue(context, 2, fallback.time.getCurrentValue()));
+        morph.red.setValueDirect(absoluteMorphValue(context, 3, fallback.red.getCurrentValue()));
+        morph.blue.setValueDirect(absoluteMorphValue(context, 4, fallback.blue.getCurrentValue()));
+        return morph;
+    }
+
+    static bool hasConnectedMorphInput(AudioProcessContext& context) {
+        for (size_t inputIndex = 2; inputIndex < 5; ++inputIndex) {
+            const SignalPayload* input = inputAt(context, inputIndex);
+            if (input != nullptr && !input->block.samples.empty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void processMeshSource(AudioProcessContext& context) const {
         AudioOutputPort outputPort;
         if (!context.outputPorts.empty()) {
@@ -397,19 +431,29 @@ private:
             return;
         }
 
-        const auto morph = configuration != nullptr
+        const auto baseMorph = configuration != nullptr
                 ? configuration->morph
                 : meshMorphFromParameters(processParameters(context));
+        const MorphPosition morph = effectiveMorph(context, baseMorph);
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : primaryAxisFromParameter(typedParameterString(
                         processParameters(context), "primaryAxis", "yellow"));
         if (configuration != nullptr) {
-            trimeshDsp.renderPrepared(
-                    context.frameCount,
-                    outputPort.domain,
-                    outputPort.channelLayout,
-                    output);
+            if (hasConnectedMorphInput(context)) {
+                trimeshDsp.setMorphPosition(morph);
+                trimeshDsp.renderCycle(
+                        context.frameCount,
+                        outputPort.domain,
+                        outputPort.channelLayout,
+                        output);
+            } else {
+                trimeshDsp.renderPrepared(
+                        context.frameCount,
+                        outputPort.domain,
+                        outputPort.channelLayout,
+                        output);
+            }
         } else {
             syncMeshEdits(processParameters(context));
             trimeshDsp.prepare(
@@ -478,6 +522,8 @@ private:
 void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
 
 void NodeAudioProcessor::adoptConfiguration(const PublishedNodeConfiguration&) {}
+
+bool NodeAudioProcessor::serviceNonRealtimePreparation() { return false; }
 
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     using Factory = std::unique_ptr<NodeAudioProcessor> (*)();

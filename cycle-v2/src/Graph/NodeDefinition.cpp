@@ -230,7 +230,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }),
             definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
                     { input("context", "Context", PortDomain::DomainContext),
-                      input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment) },
+                      input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
+                      input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                      input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -249,7 +252,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cyclic", { "cyclic", "acyclicCarry" }, graph | dsp | presentation)
                     }),
-            definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env", {},
+            definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
+                    { input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top) },
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
@@ -257,6 +262,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            boolean("dynamic", "Dynamic While Live", false, dsp | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }, true),
             definition("add", NodeKind::Add, "Add", "combine", "add",
@@ -466,8 +472,13 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
     if (node.subtitle.isEmpty()) {
         node.subtitle = definitionToUse->subtitle;
     }
-    if (node.inputs.empty()) {
-        node.inputs = definitionToUse->inputs;
+    for (const auto& canonicalInput : definitionToUse->inputs) {
+        const auto existing = std::find_if(node.inputs.begin(), node.inputs.end(), [&](const auto& input) {
+            return input.id == canonicalInput.id;
+        });
+        if (existing == node.inputs.end()) {
+            node.inputs.push_back(canonicalInput);
+        }
     }
     if (node.outputs.empty() && !definitionToUse->outputs.empty()) {
         node.outputs = definitionToUse->outputs;

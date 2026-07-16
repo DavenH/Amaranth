@@ -328,6 +328,157 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
             == Catch::Approx(envelope.traversalGrid.values[4 * envelope.traversalGrid.rows]));
 }
 
+TEST_CASE("Dynamic Envelope morph preparation is coalesced off the process path",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "dynamic-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 32.0;
+    processor.prepareExecution(spec);
+
+    const auto processAt = [&](float red, float blue, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 32.0;
+        context.inputs = { payload({ red }), payload({ blue }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    const auto base = processAt(0.1f, 0.2f, true);
+    const double positionBeforeAdoption = processor.playbackPosition();
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    REQUIRE(processor.dynamicDiagnostics().preparations == 0);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto firstDynamic = processAt(0.1f, 0.2f, false);
+    REQUIRE(firstDynamic != base);
+    REQUIRE(processor.playbackPosition() > positionBeforeAdoption);
+    REQUIRE(processor.playbackMode() == Rasterization::EnvelopePlaybackMode::Normal);
+    REQUIRE(processor.dynamicDiagnostics().adoptions == 1);
+
+    processAt(0.3f, 0.4f, false);
+    processAt(0.7f, 0.8f, false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 3);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    REQUIRE(processor.dynamicDiagnostics().preparations == 2);
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+    const auto newestDynamic = processAt(0.7f, 0.8f, false);
+    REQUIRE(newestDynamic != firstDynamic);
+    REQUIRE(processor.dynamicDiagnostics().adoptions == 2);
+}
+
+TEST_CASE("Disabled dynamic Envelope latches absolute morph inputs per note",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "0" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "latched-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 32.0;
+    processor.prepareExecution(spec);
+
+    const auto processAt = [&](float red, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 32.0;
+        context.inputs = { payload({ red }), payload({ 0.25f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    processAt(0.1f, true);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto firstNote = processAt(0.1f, false);
+    const uint64_t requestsAfterLatch = processor.dynamicDiagnostics().requests;
+
+    const auto unchangedActiveNote = processAt(0.9f, false);
+    REQUIRE(unchangedActiveNote == firstNote);
+    REQUIRE(processor.dynamicDiagnostics().requests == requestsAfterLatch);
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+
+    processAt(0.9f, true);
+    REQUIRE(processor.dynamicDiagnostics().requests == requestsAfterLatch + 1);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto secondNote = processAt(0.9f, false);
+    REQUIRE(secondNote != firstNote);
+}
+
+TEST_CASE("Disabling live Envelope morph freezes each voice's adopted position",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto liveParameters = envelopeParameters();
+    liveParameters.push_back({ "red", "Red", "0.5" });
+    liveParameters.push_back({ "blue", "Blue", "0.5" });
+    liveParameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    auto latchedParameters = liveParameters;
+    for (auto& parameter : latchedParameters) {
+        if (parameter.id == "dynamic") {
+            parameter.value = "0";
+        }
+    }
+    const auto live = EnvelopeSignalProcessor::buildConfiguration(liveParameters);
+    const auto latched = EnvelopeSignalProcessor::buildConfiguration(latchedParameters);
+    REQUIRE(live != nullptr);
+    REQUIRE(latched != nullptr);
+
+    EnvelopeSignalProcessor first;
+    EnvelopeSignalProcessor second;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    spec.sampleRate = 64.0;
+    for (auto* processor : { &first, &second }) {
+        processor->adoptConfiguration({ 1, "live-envelope", live });
+        processor->prepareExecution(spec);
+    }
+    const auto processAt = [](EnvelopeSignalProcessor& processor, float red, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 64.0;
+        context.inputs = { payload({ red }), payload({ 0.5f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    processAt(first, 0.1f, true);
+    processAt(second, 0.9f, true);
+    REQUIRE(first.serviceNonRealtimePreparation());
+    REQUIRE(second.serviceNonRealtimePreparation());
+    const auto firstAdopted = processAt(first, 0.1f, false);
+    const auto secondAdopted = processAt(second, 0.9f, false);
+    REQUIRE(firstAdopted != secondAdopted);
+
+    first.adoptConfiguration({ 2, "latched-envelope", latched });
+    first.prepareExecution(spec);
+    const auto frozen = processAt(first, 0.9f, false);
+    REQUIRE(frozen == firstAdopted);
+    REQUIRE_FALSE(first.serviceNonRealtimePreparation());
+}
+
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {
     const String initialSnapshot = EnvelopeMeshState::defaultSnapshot();
     EnvelopeMesh editedMesh("EditedEnvelope");
@@ -1100,6 +1251,43 @@ TEST_CASE("Mesh source processor uses non-cyclic rendering for spectral outputs"
     REQUIRE(output(timeContext).domain == PortDomain::TimeSignal);
     REQUIRE(output(spectralContext).domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(output(timeContext).block.samples != output(spectralContext).block.samples);
+}
+
+TEST_CASE("Mesh source morph inputs are absolute and override persisted positions",
+        "[cycle-v2][runtime][modulation]") {
+    NodeAudioProcessorFactory factory;
+    auto baseProcessor = factory.create(AudioModuleRole::MeshSource);
+    auto modulatedProcessor = factory.create(AudioModuleRole::MeshSource);
+
+    AudioProcessContext base;
+    base.frameCount = 16;
+    base.parameters = {
+            { "yellow", "Yellow", "0.5" },
+            { "red", "Red", "0.5" },
+            { "blue", "Blue", "0.5" }
+    };
+    base.outputPorts = { { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo } };
+    baseProcessor->process(base);
+
+    AudioProcessContext modulated;
+    modulated.frameCount = 16;
+    modulated.parameters = base.parameters;
+    modulated.inputs.resize(5);
+    modulated.inputs[2] = payload({ 0.1f });
+    modulated.inputs[3] = payload({ 0.9f });
+    modulated.inputs[4] = payload({ 0.2f });
+    modulated.outputPorts = base.outputPorts;
+    modulatedProcessor->process(modulated);
+
+    REQUIRE(output(modulated).block.samples != output(base).block.samples);
+
+    AudioProcessContext clamped = modulated;
+    clamped.outputs.clear();
+    clamped.inputs[2] = payload({ -1.f });
+    clamped.inputs[3] = payload({ 2.f });
+    clamped.inputs[4] = payload({ 0.2f });
+    modulatedProcessor->process(clamped);
+    REQUIRE(output(clamped).block.samples != output(modulated).block.samples);
 }
 
 TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", "[cycle-v2][runtime]") {

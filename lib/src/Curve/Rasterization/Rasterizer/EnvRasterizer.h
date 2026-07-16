@@ -133,6 +133,7 @@ public:
     }
     bool wantsOneSamplePerCycle() const { return playback.oneSamplePerCycle(); }
     Buffer<float> getRenderBuffer() { return playback.output(); }
+    Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
 
 
 private:
@@ -147,7 +148,6 @@ private:
     void rebuildCurvesFromIntercepts();
     void bakeWaveform(Rasterization::RenderResult& target);
     Rasterization::GuideCurveApplier createGuideCurveApplier();
-    Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
 
     bool canLoop() const;
     const Rasterization::RenderResult& samplingResult() const;

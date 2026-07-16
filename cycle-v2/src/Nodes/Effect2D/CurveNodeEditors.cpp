@@ -372,6 +372,7 @@ void GuideCurveEditorComponent::appendEditorAutomation(DynamicObject& state) con
 struct EnvelopeEditorComponent::Impl {
     Slider redMorph; Slider blueMorph; Label timeLabel; Label redLabel; Label blueLabel;
     TextButton loop { "Loop" }; TextButton sustain { "Sustain" }; TextButton logarithmic { "Log" };
+    TextButton dynamic { "Live" };
     int viewAxis {}; bool redLinked { true }; bool blueLinked { true };
     bool draggingMorph {}; bool draggingParameter {}; String parameterId;
 };
@@ -380,8 +381,9 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
     for (auto* slider : { &impl->redMorph, &impl->blueMorph }) { styleSlider(*slider); addAndMakeVisible(*slider); }
     styleLabel(impl->timeLabel, "Time"); styleLabel(impl->redLabel, "Red"); styleLabel(impl->blueLabel, "Blue");
     for (auto* label : { &impl->timeLabel, &impl->redLabel, &impl->blueLabel }) { addAndMakeVisible(*label); }
-    for (auto* button : { &impl->loop, &impl->sustain, &impl->logarithmic }) { styleButton(*button, button->getButtonText()); addAndMakeVisible(*button); }
+    for (auto* button : { &impl->loop, &impl->sustain, &impl->logarithmic, &impl->dynamic }) { styleButton(*button, button->getButtonText()); addAndMakeVisible(*button); }
     impl->logarithmic.setClickingTogglesState(true);
+    impl->dynamic.setClickingTogglesState(true);
     auto morph = [this] { publishCurrentState(); requestRepaint(); };
     impl->redMorph.onValueChange = morph; impl->blueMorph.onValueChange = morph;
     for (auto* slider : { &impl->redMorph, &impl->blueMorph }) {
@@ -390,6 +392,7 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
     impl->loop.onClick = [this] { beginTransaction(); widget.toggleSelectedEnvelopeMarker(true); publishCurrentState(); commitTransaction(); requestRepaint(); };
     impl->sustain.onClick = [this] { beginTransaction(); widget.toggleSelectedEnvelopeMarker(false); publishCurrentState(); commitTransaction(); requestRepaint(); };
     impl->logarithmic.onClick = [this] { beginTransaction(); widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState()); publishCurrentState(); commitTransaction(); requestRepaint(); };
+    impl->dynamic.onClick = [this] { beginTransaction(); publishCurrentState(); commitTransaction(); requestRepaint(); };
 }
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const { auto b = contentBounds(); return b.removeFromTop(kEnvelopeControlsHeight); }
@@ -419,13 +422,15 @@ void EnvelopeEditorComponent::layoutEditor() {
     auto markerRow = envelopeRailColumn(controls).toNearestInt(); markerRow.removeFromTop(160); markerRow = markerRow.removeFromTop(30);
     impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2)); markerRow.removeFromLeft(8);
     impl->sustain.setBounds(markerRow.removeFromLeft(70).reduced(2)); markerRow.removeFromLeft(8);
-    impl->logarithmic.setBounds(markerRow.removeFromLeft(54).reduced(2));
+    impl->logarithmic.setBounds(markerRow.removeFromLeft(54).reduced(2)); markerRow.removeFromLeft(8);
+    impl->dynamic.setBounds(markerRow.removeFromLeft(54).reduced(2));
 }
 void EnvelopeEditorComponent::syncEditorFromNode() {
     EnvelopeNodeModel model; model.syncFromNode(node);
     impl->redMorph.setValue(model.red, dontSendNotification); impl->blueMorph.setValue(model.blue, dontSendNotification);
     impl->redLinked = model.redLinked; impl->blueLinked = model.blueLinked;
     impl->logarithmic.setToggleState(model.logarithmic, dontSendNotification);
+    impl->dynamic.setToggleState(model.dynamicWhileLive, dontSendNotification);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked); widget.setEnvelopeLogarithmic(model.logarithmic);
     impl->loop.setToggleState(widget.selectedEnvelopeMarkerState(true), dontSendNotification);
     impl->sustain.setToggleState(widget.selectedEnvelopeMarkerState(false), dontSendNotification);
@@ -438,6 +443,7 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
 std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
     addParameter(result, node, "logarithmic", "Logarithmic", impl->logarithmic.getToggleState() ? "1" : "0");
+    addParameter(result, node, "dynamic", "Dynamic While Live", impl->dynamic.getToggleState() ? "1" : "0");
     addParameter(result, node, "red", "Red Morph", String(impl->redMorph.getValue()));
     addParameter(result, node, "blue", "Blue Morph", String(impl->blueMorph.getValue()));
     addParameter(result, node, "level", "Level", retainedParameter(node, "level", "1"));
@@ -446,6 +452,7 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
 void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const {
     state.setProperty("redMorph", impl->redMorph.getValue()); state.setProperty("blueMorph", impl->blueMorph.getValue());
     state.setProperty("viewAxis", impl->viewAxis); state.setProperty("logarithmic", impl->logarithmic.getToggleState());
+    state.setProperty("dynamic", impl->dynamic.getToggleState());
     state.setProperty("morphPlaneBounds", boundsToVar(envelopeMorphPlaneBounds(editorControlBounds())));
 }
 bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
