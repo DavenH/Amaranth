@@ -229,7 +229,10 @@ private:
     bool redo();
     bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
-    void shoveNodesForwardAfterSplice(const String& insertedNodeId, const String& downstreamNodeId);
+    void spaceNodesAfterSplice(
+            const String& upstreamNodeId,
+            const String& insertedNodeId,
+            const String& downstreamNodeId);
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);

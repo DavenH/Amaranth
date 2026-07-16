@@ -63,6 +63,7 @@ GraphAudioResult GraphPresentationModel::captureAudio(
 
     AudioExecutionSpec spec;
     spec.maximumFrameCount = frameCount;
+    GraphAudioExecutor captureExecutor;
     captureExecutor.prepareExecution(current.compileResult.plan, spec);
     return captureExecutor.process(graph, current.compileResult.plan, frameCount);
 }

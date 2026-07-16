@@ -186,6 +186,7 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
     REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
     REQUIRE(presentation.compileResult().succeeded());
     const auto initialAudio = presentation.captureAudio(document.graph(), 128).output.block.samples;
+    REQUIRE(presentation.captureAudio(document.graph(), 128).output.block.samples == initialAudio);
 
     const auto revisionFor = [&](const String& nodeId) {
         const auto& steps = presentation.compileResult().plan.steps;

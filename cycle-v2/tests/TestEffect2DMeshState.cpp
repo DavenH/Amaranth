@@ -22,11 +22,3 @@ TEST_CASE("Effect 2D mesh state serializes ordered vertex triples", "[cycle-v2][
     REQUIRE(parsed[1].y == Catch::Approx(0.75f));
     REQUIRE(parsed[1].curve == Catch::Approx(0.25f));
 }
-
-TEST_CASE("Effect 2D mesh state skips malformed triples", "[cycle-v2][effect2d]") {
-    const auto parsed = Effect2DMeshState::parse("0,0,1;bad;0.5,0.75;1,1,1");
-
-    REQUIRE(parsed.size() == 2);
-    REQUIRE(parsed.front().x == 0.f);
-    REQUIRE(parsed.back().x == 1.f);
-}

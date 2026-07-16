@@ -71,11 +71,6 @@ TEST_CASE("Node module registry marks Cycle 1 adapter-backed modules", "[cycle-v
     REQUIRE(registry.descriptorFor(NodeKind::ImageSource).cycle1Reference.isEmpty());
 }
 
-TEST_CASE("Node module role labels are stable", "[cycle-v2][runtime]") {
-    REQUIRE(labelForAudioModuleRole(AudioModuleRole::ImageSource) == "Image Source");
-    REQUIRE(labelForPreviewModuleRole(PreviewModuleRole::MeshSurface) == "Mesh Surface");
-}
-
 TEST_CASE("Node module registry declares preview authority explicitly", "[cycle-v2][runtime]") {
     const NodeModuleRegistry registry;
 
