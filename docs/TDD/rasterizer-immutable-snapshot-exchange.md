@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented.
 
 Depends on `rasterizer-realtime-render-boundary.md`.
 
@@ -44,3 +44,30 @@ mechanism. Do not expose mutable buffers from the published value.
 - There is no nullable usable snapshot state and no raw producer lifetime.
 - Exchange time is independent of snapshot vector sizes.
 
+## Implementation Evidence
+
+- `RasterizerSnapshotData` is a complete owned generation containing geometry,
+  colour points, curves, waveform storage, indices, padding, wrapping, and
+  sampleability. Publication builds this value privately and exchanges a
+  `shared_ptr<const RasterizerSnapshotData>` with acquire/release atomic shared-
+  owner operations.
+- `SnapshotView` owns the loaded immutable generation. It contains no producer
+  pointer and acquires no producer lock while callers retain geometry or
+  waveform views. It is safely copyable, movable, and default-constructible as
+  a complete empty generation.
+- Snapshot construction and every vector/waveform copy occur before exchange.
+  Publishing performs one atomic shared-owner store whose work is independent
+  of intercept, curve, colour-point, or waveform lengths.
+- One publication allocates one combined snapshot/control block, capacity for
+  each non-empty intercept, colour-point, and curve vector, and one contiguous
+  two-waveform buffer. It performs at most three vector copies and two waveform
+  buffer copies. No copy or waveform allocation occurs during the exchange.
+- Tests retain an old generation across another publication and producer
+  destruction, verify both generations remain internally coherent, and prove
+  an asynchronously publishing writer completes within 100 ms while a reader
+  retains the old generation.
+- Focused proof: `AmaranthLib_tests '[rasterization][snapshot]'` passes 22
+  assertions in debug, AppleClang AddressSanitizer/UndefinedBehaviorSanitizer,
+  and ThreadSanitizer builds. ThreadSanitizer reports no race.
+- All 426 other discovered tests pass with the already documented exact-float
+  reverb comparison excluded.

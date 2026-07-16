@@ -71,36 +71,16 @@ namespace Rasterization {
 
     class SnapshotView {
     public:
-        SnapshotView() = default;
+        SnapshotView() : data(std::make_shared<const RasterizerSnapshotData>()) {}
 
         explicit SnapshotView(const RasterizerData& data) :
-                data(&data)
-            ,   lock(&data.lock) {
-            lock->enter();
+                data(data.snapshot()) {
         }
 
-        SnapshotView(const SnapshotView&) = delete;
-        SnapshotView& operator=(const SnapshotView&) = delete;
-
-        SnapshotView(SnapshotView&& other) noexcept :
-                data(other.data)
-            ,   lock(other.lock) {
-            other.data = nullptr;
-            other.lock = nullptr;
-        }
-
-        SnapshotView& operator=(SnapshotView&& other) noexcept {
-            release();
-            data = other.data;
-            lock = other.lock;
-            other.data = nullptr;
-            other.lock = nullptr;
-            return *this;
-        }
-
-        ~SnapshotView() {
-            release();
-        }
+        SnapshotView(const SnapshotView&) = default;
+        SnapshotView& operator =(const SnapshotView&) = default;
+        SnapshotView(SnapshotView&&) noexcept = default;
+        SnapshotView& operator =(SnapshotView&&) noexcept = default;
 
         const std::vector<Intercept>& intercepts() const & {
             return dataRef().intercepts;
@@ -148,19 +128,10 @@ namespace Rasterization {
         }
 
     private:
-        void release() {
-            if (lock != nullptr) {
-                lock->exit();
-                lock = nullptr;
-            }
-        }
-
-        const RasterizerData& dataRef() const {
-            jassert(data != nullptr);
+        const RasterizerSnapshotData& dataRef() const {
             return *data;
         }
 
-        const RasterizerData* data {};
-        CriticalSection* lock {};
+        std::shared_ptr<const RasterizerSnapshotData> data;
     };
 }

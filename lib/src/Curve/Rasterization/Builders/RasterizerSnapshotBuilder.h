@@ -22,47 +22,38 @@ namespace Rasterization {
     class RasterizerSnapshotBuilder {
     public:
         void publish(RasterizerData& target, const RasterizerSnapshotSource& source) const {
-            ScopedLock sl(target.lock);
+            auto next = std::make_shared<RasterizerSnapshotData>();
 
-            target.paddingSize = source.paddingSize;
-            target.wrapsVertices = source.wrapsVertices;
-            target.sampleable = source.sampleable;
+            next->paddingSize = source.paddingSize;
+            next->wrapsVertices = source.wrapsVertices;
+            next->sampleable = source.sampleable;
 
             if (source.intercepts != nullptr) {
-                target.intercepts = *source.intercepts;
-            } else {
-                target.intercepts.clear();
+                next->intercepts = *source.intercepts;
             }
 
             if (source.colorPoints != nullptr) {
-                target.colorPoints = *source.colorPoints;
-            } else {
-                target.colorPoints.clear();
+                next->colorPoints = *source.colorPoints;
             }
 
             if (source.curves != nullptr) {
-                target.curves = *source.curves;
-            } else {
-                target.curves.clear();
+                next->curves = *source.curves;
             }
 
             int size = source.waveform.waveX.size();
 
             if (size > 0) {
-                target.buffer.ensureSize(size * 2);
-                target.waveX = target.buffer.place(size);
-                target.waveY = target.buffer.place(size);
-                target.oneIndex = source.waveform.oneIndex;
-                target.zeroIndex = source.waveform.zeroIndex;
+                next->buffer.ensureSize(size * 2);
+                next->waveX = next->buffer.place(size);
+                next->waveY = next->buffer.place(size);
+                next->oneIndex = source.waveform.oneIndex;
+                next->zeroIndex = source.waveform.zeroIndex;
 
-                source.waveform.waveX.copyTo(target.waveX);
-                source.waveform.waveY.copyTo(target.waveY);
-            } else {
-                target.waveX.nullify();
-                target.waveY.nullify();
-                target.oneIndex = 0;
-                target.zeroIndex = 0;
+                source.waveform.waveX.copyTo(next->waveX);
+                source.waveform.waveY.copyTo(next->waveY);
             }
+
+            target.publish(std::shared_ptr<const RasterizerSnapshotData>(std::move(next)));
         }
     };
 }
