@@ -6,6 +6,49 @@
 
 namespace CycleV2 {
 
+namespace {
+
+std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
+        const String& name,
+        const String& snapshot,
+        float red,
+        float blue,
+        float level,
+        bool logarithmic,
+        bool dynamicWhileLive) {
+    auto result = std::make_shared<EnvelopeConfiguration>();
+    result->mesh = std::shared_ptr<EnvelopeMesh>(
+            new EnvelopeMesh(name + "Mesh"),
+            [](EnvelopeMesh* mesh) {
+                mesh->destroy();
+                delete mesh;
+            });
+
+    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
+        return {};
+    }
+
+    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
+    result->rasterizer->setMesh(result->mesh.get());
+    result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
+    result->rasterizer->validateState();
+
+    if (!result->rasterizer->canRasterizeWaveform()) {
+        return {};
+    }
+
+    result->level = level;
+    result->redMorph = red;
+    result->blueMorph = blue;
+    result->logarithmic = logarithmic;
+    result->dynamicWhileLive = dynamicWhileLive;
+    result->meshSnapshot = snapshot;
+    return result;
+}
+
+}
+
 EnvelopeSignalProcessor::EnvelopeSignalProcessor() {
     props.active = true;
 }
@@ -16,40 +59,15 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
         Curve::calcTable();
     }
 
-    auto result = std::make_shared<EnvelopeConfiguration>();
-    result->mesh = std::shared_ptr<EnvelopeMesh>(
-            new EnvelopeMesh("CycleV2EnvelopeConfiguration"),
-            [](EnvelopeMesh* meshToDelete) {
-                meshToDelete->destroy();
-                delete meshToDelete;
-            });
-
     const String snapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
-
-    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
-        return {};
-    }
-
-    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, "CycleV2EnvelopeConfigurationRasterizer");
-    result->rasterizer->setMesh(result->mesh.get());
-    result->redMorph = parameterFloat(parameters, "red", 0.5f);
-    result->blueMorph = parameterFloat(parameters, "blue", 0.5f);
-    result->rasterizer->setMorphPosition({
-            0.f,
-            result->redMorph,
-            result->blueMorph
-    });
-    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
-    result->rasterizer->validateState();
-    if (!result->rasterizer->canRasterizeWaveform()) {
-        return {};
-    }
-
-    result->level = parameterFloat(parameters, "level", 1.f);
-    result->logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
-    result->dynamicWhileLive = typedParameterBool(parameters, "dynamic", false);
-    result->meshSnapshot = snapshot;
-    return result;
+    return prepareEnvelopeConfiguration(
+            "CycleV2EnvelopeConfiguration",
+            snapshot,
+            parameterFloat(parameters, "red", 0.5f),
+            parameterFloat(parameters, "blue", 0.5f),
+            parameterFloat(parameters, "level", 1.f),
+            parameterFloat(parameters, "logarithmic", 0.f) != 0.f,
+            typedParameterBool(parameters, "dynamic", false));
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -101,34 +119,14 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDyn
         const EnvelopeConfiguration& base,
         float red,
         float blue) {
-    auto result = std::make_shared<EnvelopeConfiguration>();
-    result->mesh = std::shared_ptr<EnvelopeMesh>(
-            new EnvelopeMesh("CycleV2DynamicEnvelope"),
-            [](EnvelopeMesh* meshToDelete) {
-                meshToDelete->destroy();
-                delete meshToDelete;
-            });
-    if (!EnvelopeMeshState::apply(base.meshSnapshot, *result->mesh)) {
-        return {};
-    }
-
-    result->rasterizer = std::make_shared<EnvRasterizer>(
-            nullptr, "CycleV2DynamicEnvelopeRasterizer");
-    result->rasterizer->setMesh(result->mesh.get());
-    result->rasterizer->setMorphPosition({ 0.f, red, blue });
-    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
-    result->rasterizer->validateState();
-    if (!result->rasterizer->canRasterizeWaveform()) {
-        return {};
-    }
-
-    result->level = base.level;
-    result->redMorph = red;
-    result->blueMorph = blue;
-    result->logarithmic = base.logarithmic;
-    result->dynamicWhileLive = base.dynamicWhileLive;
-    result->meshSnapshot = base.meshSnapshot;
-    return result;
+    return prepareEnvelopeConfiguration(
+            "CycleV2DynamicEnvelope",
+            base.meshSnapshot,
+            red,
+            blue,
+            base.level,
+            base.logarithmic,
+            base.dynamicWhileLive);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
