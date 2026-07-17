@@ -1,11 +1,25 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
+#include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/NodeEditorHost.h"
+#include "../src/UI/NodePreviewResources.h"
+
+#include <Curve/Curve.h>
 
 using namespace CycleV2;
 using namespace juce;
 
 namespace {
+
+class CurveTableScope {
+public:
+    CurveTableScope() { Curve::calcTable(); }
+    ~CurveTableScope() { Curve::deleteTable(); }
+};
 
 struct EditorStats {
     int creations {};
@@ -95,6 +109,22 @@ public:
     void rebindNodeEditor() override {}
 };
 
+class RecordingPresentation final : public NodeEditorPresentation {
+public:
+    void closeNodeEditor() override {}
+    void repaintNodeEditor(bool) override { ++repaints; }
+    void selectEditedNode(const String&) override {}
+    void setNodeEditorStatus(const String&) override {}
+    void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
+    void flushNodeEditorRefresh() override {}
+    void refreshNodeEditorPresentation() override {}
+    Point<float> nodeEditorCreationPosition() const override { return {}; }
+    void rebindNodeEditor() override {}
+
+    int repaints {};
+    int scheduledRefreshes {};
+};
+
 class NullResources final : public NodeEditorResources {
 public:
     Effect2DWidget* effect2DWidget(const Node&) override { return nullptr; }
@@ -105,11 +135,72 @@ public:
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
 };
 
+class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
+public:
+    void closeEffect2DEditor() override {}
+    void repaintEffect2DEditorOpenGL() override { events.add("repaint"); }
+
+    bool publishEffect2DState(
+            const String&,
+            uint64_t,
+            const std::vector<NodeParameter>&) override {
+        events.add("publish");
+        return true;
+    }
+
+    void beginEffect2DTransaction() override { events.add("begin"); }
+    void commitEffect2DTransaction() override { events.add("commit"); }
+
+    StringArray events;
+};
+
+class LifecycleCurveEditor final : public CurveExpandedEditorComponent {
+public:
+    explicit LifecycleCurveEditor(Effect2DWidget& widget) :
+            CurveExpandedEditorComponent(widget)
+        ,   slider(*this, "Value")
+        ,   toggle(*this, "Enabled") {
+        bindContinuousControl(slider);
+        bindDiscreteControl(toggle);
+        bindDiscreteControl(menu);
+        bindDiscreteAction(action, [this] {
+            actionPerformed = true;
+        });
+    }
+
+    Rectangle<float> editorPanelBounds() const override { return {}; }
+    Rectangle<float> editorControlBounds() const override { return {}; }
+    void paintEditor(Graphics&) override {}
+    void layoutEditor() override {}
+    void syncEditorFromNode() override { widget.syncFromNode(node); }
+    void applyEditorStateToWidget() override {}
+    std::vector<NodeParameter> editorControls() const override { return {}; }
+    void appendEditorAutomation(DynamicObject&) const override {}
+
+    LabeledParameterSlider slider;
+    ParameterToggle toggle;
+    ComboBox menu;
+    TextButton action;
+    bool actionPerformed {};
+};
+
 Node node(String id, NodeKind kind) {
     Node result;
     result.id = std::move(id);
     result.kind = kind;
     return result;
+}
+
+std::vector<NodeParameter> curveControls(const Node& node) {
+    std::vector<NodeParameter> controls;
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
+                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
+            controls.push_back(parameter);
+        }
+    }
+
+    return controls;
 }
 
 }
@@ -152,4 +243,160 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     host.bind(nullptr, {});
     REQUIRE_FALSE(host.hasEditor());
     REQUIRE(stats.destructions == 2);
+}
+
+TEST_CASE("Canvas automation inspection is semantic and side effect free",
+        "[cycle-v2][canvas][automation]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    canvas.setBounds(0, 0, 1200, 800);
+
+    NullCommands commands;
+    NullPresentation editorPresentation;
+    NullResources resources;
+    EditorStats editorStats;
+    MockFactories factories(editorStats);
+    NodeEditorHost host(canvas, commands, editorPresentation, resources, factories);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 240.f, 180.f }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            editorPresentation,
+            resources);
+    NodePreviewResources previewResources(editorCommands);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds(canvas.getLocalBounds().toFloat());
+    NodeCanvasAutomationInspector inspector({
+            canvas,
+            document,
+            presentation,
+            viewport,
+            host
+    });
+    const NodeCanvasAutomationPresentation state {
+            "mesh",
+            "mesh",
+            "Opened editor: mesh",
+            -1
+    };
+    const uint64_t documentRevision = document.revision();
+    const uint64_t presentationRevision = presentation.revision();
+    const uint64_t viewportRevision = viewport.getRevision();
+    REQUIRE(previewResources.findTrimeshWidget("mesh") == nullptr);
+
+    const var pointerInspection = inspector.inspectPointerTargets(state);
+    const auto* pointerObject = pointerInspection.getDynamicObject();
+    REQUIRE(pointerObject != nullptr);
+    REQUIRE(pointerObject->getProperty("schema").toString() == "cycle-v2-pointer-targets.v1");
+
+    const Array<var>* targets = pointerObject->getProperty("targets").getArray();
+    REQUIRE(targets != nullptr);
+
+    auto hasTarget = [targets](const String& id) {
+        return std::any_of(targets->begin(), targets->end(), [&](const var& targetValue) {
+            const auto* target = targetValue.getDynamicObject();
+            return target != nullptr && target->getProperty("id").toString() == id;
+        });
+    };
+
+    REQUIRE(hasTarget("node:mesh"));
+    REQUIRE(hasTarget("expanded:mesh.panel3D"));
+    REQUIRE(hasTarget("expanded:mesh.trimeshMorphRail.yellow"));
+    REQUIRE(hasTarget("expanded:mesh.trimeshVertexParameter.vertex.phase"));
+
+    const var snapshot = inspector.exportState(state);
+    const auto* snapshotObject = snapshot.getDynamicObject();
+    REQUIRE(snapshotObject != nullptr);
+    REQUIRE((int) snapshotObject->getProperty("nodeCount") == 1);
+    REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
+    REQUIRE(inspector.exportGraphXml() == document.toXml());
+
+    REQUIRE(editorStats.creations == 0);
+    REQUIRE(previewResources.findTrimeshWidget("mesh") == nullptr);
+    REQUIRE(document.revision() == documentRevision);
+    REQUIRE(presentation.revision() == presentationRevision);
+    REQUIRE(viewport.getRevision() == viewportRevision);
+}
+
+TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Effect2DWidget widget(NodeKind::Waveshaper);
+    LifecycleCurveEditor editor(widget);
+    RecordingCurveDelegate delegate;
+
+    editor.setDelegate(&delegate);
+    editor.setNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "curve", {}));
+
+    editor.slider.slider.onDragStart();
+    editor.slider.slider.setValue(0.73, sendNotificationSync);
+    editor.slider.slider.onDragEnd();
+    REQUIRE(delegate.events == StringArray { "begin", "publish", "repaint", "commit" });
+
+    delegate.events.clear();
+    editor.toggle.button.onClick();
+    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+
+    delegate.events.clear();
+    editor.menu.addItem("Four", 4);
+    editor.menu.setSelectedId(4, sendNotificationSync);
+    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+
+    delegate.events.clear();
+    editor.action.onClick();
+    REQUIRE(editor.actionPerformed);
+    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+}
+
+TEST_CASE("Node editor command service publishes a curve drag as one transaction") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 1.f, 1.f }
+    }));
+    model.setPublicationRevision(
+            CurveNodeModelCodec::revisionFromParameters(
+                    document.graph().findNode("shape")->parameters) + 1);
+
+    commands.beginCurveTransaction();
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            model.snapshot(),
+            model.revision(),
+            curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.repaints == 1);
+    commands.commitCurveTransaction();
+
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(presentation.repaints == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.canUndo());
 }

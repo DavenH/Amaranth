@@ -1,5 +1,6 @@
 #include "CurveExpandedEditorComponent.h"
 
+#include "CurveEditorPrimitives.h"
 #include "CurveNodeModels.h"
 
 namespace CycleV2 {
@@ -135,10 +136,20 @@ var CurveExpandedEditorComponent::automationState() const {
     return root;
 }
 
-bool CurveExpandedEditorComponent::editorMouseMove(Point<float>) { return false; }
-bool CurveExpandedEditorComponent::editorMouseDown(Point<float>) { return false; }
-bool CurveExpandedEditorComponent::editorMouseDrag(Point<float>) { return false; }
-void CurveExpandedEditorComponent::editorMouseUp() {}
+bool CurveExpandedEditorComponent::editorMouseMove(Point<float>) {
+    return false;
+}
+
+bool CurveExpandedEditorComponent::editorMouseDown(Point<float>) {
+    return false;
+}
+
+bool CurveExpandedEditorComponent::editorMouseDrag(Point<float>) {
+    return false;
+}
+
+void CurveExpandedEditorComponent::editorMouseUp() {
+}
 
 Rectangle<float> CurveExpandedEditorComponent::contentBounds() const {
     Rectangle<float> bounds = getLocalBounds().toFloat();
@@ -182,6 +193,37 @@ void CurveExpandedEditorComponent::requestRepaint() {
     if (delegate != nullptr) {
         delegate->repaintEffect2DEditorOpenGL();
     }
+}
+
+void CurveExpandedEditorComponent::bindContinuousControl(LabeledParameterSlider& control) {
+    control.slider.onValueChange = [this] {
+        publishCurrentState();
+        requestRepaint();
+    };
+    control.slider.onDragStart = [this] {
+        beginTransaction();
+    };
+    control.slider.onDragEnd = [this] {
+        commitTransaction();
+    };
+}
+
+void CurveExpandedEditorComponent::bindContinuousControls(
+        std::initializer_list<LabeledParameterSlider*> controls) {
+    for (auto* control : controls) {
+        bindContinuousControl(*control);
+    }
+}
+
+void CurveExpandedEditorComponent::bindDiscreteControl(ParameterToggle& control) {
+    bindDiscreteAction(control.button, [] {});
+}
+
+void CurveExpandedEditorComponent::bindDiscreteControl(ComboBox& control) {
+    control.onChange = [this] {
+        auto noOperation = [] {};
+        performDiscreteEdit(noOperation);
+    };
 }
 
 Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {

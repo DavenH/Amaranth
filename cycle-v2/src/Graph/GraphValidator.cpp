@@ -70,112 +70,44 @@ void addIssue(
 
 }
 
-std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& graph) const {
-    std::vector<GraphValidationIssue> issues;
+class GraphValidator::EdgeIssueReporter {
+public:
+    explicit EdgeIssueReporter(std::vector<GraphValidationIssue>& issues) :
+            issues(&issues) {}
 
-    for (const auto& edge : graph.getEdges()) {
-        const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-        const Node* destNode = findNode(graph, edge.destNodeId);
+    EdgeIssueReporter() = default;
 
-        if (sourceNode == nullptr) {
-            addIssue(issues, GraphValidationCode::MissingSourceNode,
-                     "Missing source node: " + edge.sourceNodeId, &edge);
-            continue;
+    bool report(GraphValidationIssue issue) {
+        if (issues != nullptr) {
+            issues->push_back(std::move(issue));
+            return true;
         }
 
-        if (destNode == nullptr) {
-            addIssue(issues, GraphValidationCode::MissingDestinationNode,
-                     "Missing destination node: " + edge.destNodeId, &edge);
-            continue;
-        }
-
-        const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* dest = findPort(*destNode, edge.destPortId, true);
-        const bool trimeshGuideTarget = edge.attachment
-                && dest == nullptr
-                && isTrimeshGuideTarget(*destNode, edge.destPortId);
-
-        if (source == nullptr) {
-            addIssue(issues, GraphValidationCode::MissingSourcePort,
-                     "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId, &edge);
-            continue;
-        }
-
-        if (dest == nullptr && !trimeshGuideTarget) {
-            addIssue(issues, GraphValidationCode::MissingDestinationPort,
-                     "Missing destination port: " + edge.destNodeId + "." + edge.destPortId, &edge);
-            continue;
-        }
-
-        if (edge.attachment) {
-            if (trimeshGuideTarget) {
-                if (sourceNode->kind != NodeKind::GuideCurve) {
-                    addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
-                             "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId, &edge);
-                }
-
-                continue;
-            }
-
-            if (source->domain != PortDomain::EnvelopeSignal) {
-                addIssue(issues, GraphValidationCode::InvalidAttachmentSource,
-                         "Attachments currently require an envelope source: " + edge.sourceNodeId, &edge);
-            }
-
-            if (dest->purpose != PortPurpose::ScratchAttachment) {
-                addIssue(issues, GraphValidationCode::InvalidAttachmentDestination,
-                         "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id, &edge);
-            }
-
-            continue;
-        }
-
-        if (dest->purpose == PortPurpose::ScratchAttachment) {
-            addIssue(issues, GraphValidationCode::ScratchPortRequiresAttachment,
-                     "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id, &edge);
-            continue;
-        }
-
-        if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
-            addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId, &edge);
-        }
-
-        Port resolvedSource = *source;
-        resolvedSource.domain = domainResolver.resolvedDomainForEdge(graph, edge);
-
-        if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
-            addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId, &edge);
-        }
-
-        if (source->domain == PortDomain::ControlSignal
-                && dest->domain != PortDomain::ControlSignal
-                && resolvedSource.domain == dest->domain) {
-            resolvedSource.channelLayout = dest->channelLayout;
-        }
-
-        if (!domainsCompatible(resolvedSource, *dest)) {
-            addIssue(issues, GraphValidationCode::DomainMismatch,
-                     "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain),
-                     &edge);
-        }
-
-        if (!channelLayoutsCompatible(resolvedSource, *dest)) {
-            addIssue(issues, GraphValidationCode::ChannelLayoutMismatch,
-                     "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
-                         + " -> " + edge.destNodeId + "." + dest->id,
-                     &edge);
-        }
-
-        if (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest)) {
-            addIssue(issues, GraphValidationCode::PitchRequiresVoiceAwareDestination,
-                     "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id,
-                     &edge);
-        }
+        firstIssue = std::move(issue);
+        return false;
     }
 
-    validateOperationInputs(graph, issues);
+    const GraphValidationIssue& getFirstIssue() const { return firstIssue; }
+
+private:
+    std::vector<GraphValidationIssue>* issues {};
+    GraphValidationIssue firstIssue;
+};
+
+std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& graph) const {
+    std::vector<GraphValidationIssue> issues;
+    EdgeIssueReporter reporter(issues);
+    const GraphDomainResolution resolution = domainResolver.resolve(graph);
+
+    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+        validateEdge(
+                graph,
+                graph.getEdges()[edgeIndex],
+                resolution.domains[edgeIndex],
+                reporter);
+    }
+
+    validateOperationInputs(graph, resolution, issues);
 
     return issues;
 }
@@ -189,18 +121,42 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 }
 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
-    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
-    const Node* destNode = findNode(graph, edge.destNodeId);
+    EdgeIssueReporter reporter;
+    validateEdge(
+            graph,
+            edge,
+            domainResolver.resolvedDomainForEdge(graph, edge),
+            reporter);
+    return reporter.getFirstIssue();
+}
 
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return {
-                sourceNode == nullptr ? GraphValidationCode::MissingSourceNode : GraphValidationCode::MissingDestinationNode,
-                sourceNode == nullptr ? "Missing source node: " + edge.sourceNodeId : "Missing destination node: " + edge.destNodeId,
+void GraphValidator::validateEdge(
+        const NodeGraph& graph,
+        const Edge& edge,
+        PortDomain resolvedDomain,
+        EdgeIssueReporter& reporter) const {
+    auto report = [&edge, &reporter](GraphValidationCode code, String message) {
+        return reporter.report({
+                code,
+                std::move(message),
                 edge.sourceNodeId,
                 edge.sourcePortId,
                 edge.destNodeId,
                 edge.destPortId
-        };
+        });
+    };
+
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    const Node* destNode = findNode(graph, edge.destNodeId);
+
+    if (sourceNode == nullptr) {
+        report(GraphValidationCode::MissingSourceNode, "Missing source node: " + edge.sourceNodeId);
+        return;
+    }
+
+    if (destNode == nullptr) {
+        report(GraphValidationCode::MissingDestinationNode, "Missing destination node: " + edge.destNodeId);
+        return;
     }
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
@@ -209,120 +165,72 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
             && dest == nullptr
             && isTrimeshGuideTarget(*destNode, edge.destPortId);
 
-    if (source == nullptr || dest == nullptr) {
-        if (source != nullptr && trimeshGuideTarget) {
-            if (source->domain != PortDomain::EnvelopeSignal) {
-                return {
-                        GraphValidationCode::InvalidAttachmentSource,
-                        "Attachments currently require an envelope source: " + edge.sourceNodeId,
-                        edge.sourceNodeId,
-                        edge.sourcePortId,
-                        edge.destNodeId,
-                        edge.destPortId
-                };
-            }
+    if (source == nullptr) {
+        report(
+                GraphValidationCode::MissingSourcePort,
+                "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId);
+        return;
+    }
 
-            if (sourceNode->kind != NodeKind::GuideCurve) {
-                return {
-                        GraphValidationCode::InvalidAttachmentSource,
-                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId,
-                        edge.sourceNodeId,
-                        edge.sourcePortId,
-                        edge.destNodeId,
-                        edge.destPortId
-                };
-            }
-
-            return {};
-        }
-
-        return {
-                source == nullptr ? GraphValidationCode::MissingSourcePort : GraphValidationCode::MissingDestinationPort,
-                source == nullptr
-                        ? "Missing source port: " + edge.sourceNodeId + "." + edge.sourcePortId
-                        : "Missing destination port: " + edge.destNodeId + "." + edge.destPortId,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+    if (dest == nullptr && !trimeshGuideTarget) {
+        report(
+                GraphValidationCode::MissingDestinationPort,
+                "Missing destination port: " + edge.destNodeId + "." + edge.destPortId);
+        return;
     }
 
     if (edge.attachment) {
         if (trimeshGuideTarget) {
             if (sourceNode->kind != NodeKind::GuideCurve) {
-                return {
+                report(
                         GraphValidationCode::InvalidAttachmentSource,
-                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId,
-                        edge.sourceNodeId,
-                        edge.sourcePortId,
-                        edge.destNodeId,
-                        edge.destPortId
-                };
+                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId);
             }
 
-            return {};
+            return;
         }
 
         if (source->domain != PortDomain::EnvelopeSignal) {
-            return {
-                    GraphValidationCode::InvalidAttachmentSource,
-                    "Attachments currently require an envelope source: " + edge.sourceNodeId,
-                    edge.sourceNodeId,
-                    edge.sourcePortId,
-                    edge.destNodeId,
-                    edge.destPortId
-            };
+            if (!report(
+                        GraphValidationCode::InvalidAttachmentSource,
+                        "Attachments currently require an envelope source: " + edge.sourceNodeId)) {
+                return;
+            }
         }
 
         if (dest->purpose != PortPurpose::ScratchAttachment) {
-            return {
+            report(
                     GraphValidationCode::InvalidAttachmentDestination,
-                    "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id,
-                    edge.sourceNodeId,
-                    edge.sourcePortId,
-                    edge.destNodeId,
-                    edge.destPortId
-            };
+                    "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id);
         }
 
-        return {};
+        return;
     }
 
     if (dest->purpose == PortPurpose::ScratchAttachment) {
-        return {
+        report(
                 GraphValidationCode::ScratchPortRequiresAttachment,
-                "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+                "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id);
+        return;
     }
 
     if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
-        return {
-                GraphValidationCode::DomainMismatch,
-                "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+        if (!report(
+                    GraphValidationCode::DomainMismatch,
+                    "Wave source requires waveform Voice Context: " + edge.sourceNodeId + " -> " + edge.destNodeId)) {
+            return;
+        }
     }
 
     Port resolvedSource = *source;
-    resolvedSource.domain = resolvedDomainForEdge(graph, edge);
+    resolvedSource.domain = resolvedDomain;
 
     if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
-        return {
-                GraphValidationCode::DomainMismatch,
-                "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+        if (!report(
+                    GraphValidationCode::DomainMismatch,
+                    "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId)) {
+            return;
+        }
     }
 
     if (source->domain == PortDomain::ControlSignal
@@ -332,40 +240,27 @@ GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& gra
     }
 
     if (!domainsCompatible(resolvedSource, *dest)) {
-        return {
-                GraphValidationCode::DomainMismatch,
-                "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain),
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+        if (!report(
+                    GraphValidationCode::DomainMismatch,
+                    "Domain mismatch: " + labelForDomain(resolvedSource.domain) + " -> " + labelForDomain(dest->domain))) {
+            return;
+        }
     }
 
     if (!channelLayoutsCompatible(resolvedSource, *dest)) {
-        return {
-                GraphValidationCode::ChannelLayoutMismatch,
-                "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
-                    + " -> " + edge.destNodeId + "." + dest->id,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+        if (!report(
+                    GraphValidationCode::ChannelLayoutMismatch,
+                    "Channel layout mismatch: " + edge.sourceNodeId + "." + source->id
+                        + " -> " + edge.destNodeId + "." + dest->id)) {
+            return;
+        }
     }
 
     if (source->domain == PortDomain::PitchSignal && !isVoiceAwareDestination(*dest)) {
-        return {
+        report(
                 GraphValidationCode::PitchRequiresVoiceAwareDestination,
-                "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id,
-                edge.sourceNodeId,
-                edge.sourcePortId,
-                edge.destNodeId,
-                edge.destPortId
-        };
+                "Pitch can only feed voice-aware generators or processors: " + edge.destNodeId + "." + dest->id);
     }
-
-    return {};
 }
 
 PortDomain GraphValidator::resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const {
@@ -378,6 +273,7 @@ bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
 
 void GraphValidator::validateOperationInputs(
         const NodeGraph& graph,
+        const GraphDomainResolution& resolution,
         std::vector<GraphValidationIssue>& issues) const {
     for (const auto& node : graph.getNodes()) {
         if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
@@ -387,12 +283,13 @@ void GraphValidator::validateOperationInputs(
         PortDomain firstConcreteDomain {};
         bool hasConcreteDomain = false;
 
-        for (const auto& edge : graph.getEdges()) {
+        for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+            const Edge& edge = graph.getEdges()[edgeIndex];
             if (edge.attachment || edge.destNodeId != node.id) {
                 continue;
             }
 
-            const PortDomain domain = domainResolver.resolvedDomainForEdge(graph, edge);
+            const PortDomain domain = resolution.domains[edgeIndex];
 
             if (!GraphDomainResolver::isConcreteOperationDomain(domain)) {
                 continue;

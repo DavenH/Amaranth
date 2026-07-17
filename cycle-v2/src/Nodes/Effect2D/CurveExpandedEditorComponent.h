@@ -5,9 +5,14 @@
 
 #include <JuceHeader.h>
 
+#include <initializer_list>
+#include <utility>
 #include <vector>
 
 namespace CycleV2 {
+
+class LabeledParameterSlider;
+class ParameterToggle;
 
 class CurveExpandedEditorDelegate {
 public:
@@ -60,6 +65,17 @@ protected:
     void beginTransaction();
     void commitTransaction();
     void requestRepaint();
+    void bindContinuousControl(LabeledParameterSlider& control);
+    void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
+    void bindDiscreteControl(ParameterToggle& control);
+    void bindDiscreteControl(ComboBox& control);
+
+    template<typename Operation>
+    void bindDiscreteAction(Button& button, Operation operation) {
+        button.onClick = [this, operation = std::move(operation)] {
+            performDiscreteEdit(operation);
+        };
+    }
 
     Effect2DWidget& widget;
     Node node;
@@ -67,6 +83,15 @@ protected:
     bool syncingControls {};
 
 private:
+    template<typename Operation>
+    void performDiscreteEdit(Operation& operation) {
+        beginTransaction();
+        operation();
+        publishCurrentState();
+        commitTransaction();
+        requestRepaint();
+    }
+
     Rectangle<float> closeButtonBounds() const;
     void updatePanelHost();
     void persistEffectMeshState();

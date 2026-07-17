@@ -7,11 +7,68 @@
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeAutomationFacade.h"
+#include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
+#include "../src/UI/NodePalette.h"
 #include "../src/UI/NodeViewModule.h"
+#include "../src/UI/TransformCompactEditor.h"
+#include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
+
+namespace {
+
+uint64_t imageChecksum(const Image& image) {
+    const Image::BitmapData pixels(image, Image::BitmapData::readOnly);
+    uint64_t checksum = 1469598103934665603ULL;
+
+    for (int y = 0; y < pixels.height; ++y) {
+        for (int x = 0; x < pixels.width; ++x) {
+            checksum ^= pixels.getPixelColour(x, y).getARGB();
+            checksum *= 1099511628211ULL;
+        }
+    }
+
+    return checksum;
+}
+
+}
+
+TEST_CASE("Node palette resolves every authored node kind from its visible entry",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        REQUIRE(palette.updateHover(palette.groupBounds(sectionIndex).getCentre()));
+        REQUIRE(palette.activeSection() == sectionIndex);
+
+        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+            NodeKind resolvedKind {};
+            REQUIRE(palette.findKindAt(palette.entryBounds(sectionIndex, entryIndex).getCentre(), resolvedKind));
+            REQUIRE(resolvedKind == section.entries[entryIndex].kind);
+        }
+    }
+}
+
+TEST_CASE("Node palette hover remains open across its pullout and closes outside",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+    const int sourceSection = 3;
+    const int adjacentSection = 4;
+
+    REQUIRE(palette.updateHover(palette.groupBounds(sourceSection).getCentre()));
+    REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
+    REQUIRE(palette.activeSection() == sourceSection);
+
+    REQUIRE(palette.updateHover(palette.groupBounds(adjacentSection).getCentre()));
+    REQUIRE(palette.activeSection() == adjacentSection);
+
+    REQUIRE(palette.updateHover({ 800.f, 700.f }));
+    REQUIRE(palette.activeSection() == -1);
+    REQUIRE_FALSE(palette.close());
+}
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {
     NodeCanvasViewport viewport;
@@ -242,23 +299,16 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
 }
 
-TEST_CASE("Automation facade mutates through commands and inspects the shared scene", "[cycle-v2][canvas][automation]") {
+TEST_CASE("Automation facade mutates exclusively through graph commands", "[cycle-v2][canvas][automation]") {
     GraphDocument document(NodeGraph::createDemoGraph());
     GraphCommandDispatcher commands(document);
     NodeAutomationFacade automation(document, commands);
     REQUIRE(automation.setParameter("voice", "voices", "Voices", "6").succeeded());
     REQUIRE(document.canUndo());
 
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(document.graph(), viewport);
-    const auto voice = std::find_if(snapshot.targets.begin(), snapshot.targets.end(), [](const auto& target) {
-        return target.semanticId == "node:voice";
-    });
-    REQUIRE(voice != snapshot.targets.end());
-    const auto hit = automation.inspectPointer(snapshot, voice->bounds.getCentre());
-    REQUIRE(hit.has_value());
-    REQUIRE(hit->semanticId == "node:voice");
+    String voices;
+    REQUIRE(automation.getParameter("voice", "voices", voices));
+    REQUIRE(voices == "6");
 }
 
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
@@ -275,4 +325,122 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     REQUIRE(snapshot.edges.size() == 1);
     REQUIRE(snapshot.edges.front().destination.y
             == Catch::Approx(viewport.toScreen(graph.findNode("mesh")->bounds.getTopLeft()).y));
+    REQUIRE_FALSE(snapshot.edges.front().destinationPortLike);
+    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
+            .contains(snapshot.edges.front().source));
+    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
+            .contains(snapshot.edges.front().destination));
+    REQUIRE(snapshot.edges.front().hitPath.contains(
+            snapshot.edges.front().cablePath.getPointAlongPath(
+                    snapshot.edges.front().cablePath.getLength() * 0.5f)));
+}
+
+TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
+        "[cycle-v2][canvas][cables]") {
+    NodeSceneEdge edge;
+    edge.source = { 30.f, 50.f };
+    edge.destination = { 210.f, 130.f };
+    edge.cablePath = NodeCanvasScene::cablePath(
+            edge.source,
+            edge.destination,
+            PortSide::Right,
+            PortSide::Left,
+            1.f);
+
+    const std::array<NodeCableStyle, 5> styles {
+            NodeCableStyle { Colour(0xff42d3cf), false, false, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), true, false, false, false },
+            NodeCableStyle { Colour(0xffff5a5f), false, true, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, false, true }
+    };
+    std::array<uint64_t, styles.size()> checksums {};
+
+    for (size_t i = 0; i < styles.size(); ++i) {
+        Image image(Image::ARGB, 240, 180, true);
+        Graphics graphics(image);
+        NodeCableRenderer::paint(graphics, edge, styles[i], 1.f);
+        checksums[i] = imageChecksum(image);
+        REQUIRE(checksums[i] != imageChecksum(Image(Image::ARGB, 240, 180, true)));
+    }
+
+    for (size_t i = 0; i < checksums.size(); ++i) {
+        for (size_t j = i + 1; j < checksums.size(); ++j) {
+            REQUIRE(checksums[i] != checksums[j]);
+        }
+    }
+}
+
+TEST_CASE("Voice context editor resolves every authored control from its painted rows",
+        "[cycle-v2][canvas][compact-editor]") {
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
+
+    auto editAt = [&](Point<float> point) {
+        const auto edit = VoiceContextCompactEditor::editAt(voice, panel, point);
+        REQUIRE(edit.has_value());
+        return *edit;
+    };
+
+    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
+    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
+
+    auto edit = editAt({ 252.f, 59.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
+    REQUIRE(edit.value == "spectral");
+
+    edit = editAt({ 108.f, 85.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
+    REQUIRE(edit.value == "-2");
+    REQUIRE(editAt({ 389.f, 85.5f }).value == "0");
+    REQUIRE(editAt({ 670.f, 85.5f }).value == "2");
+
+    edit = editAt({ 106.f, 111.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
+    REQUIRE(edit.value == "-12");
+    REQUIRE(editAt({ 389.f, 111.5f }).value == "0");
+    REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
+
+    edit = editAt({ 112.f, 137.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
+    REQUIRE(edit.value == "1");
+
+    edit = editAt({ 106.f, 163.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
+    REQUIRE(edit.value == "1x");
+    REQUIRE(editAt({ 389.f, 163.5f }).value == "2x");
+    REQUIRE(editAt({ 672.f, 163.5f }).value == "4x");
+
+    const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
+            voice.bounds,
+            1.f);
+    REQUIRE(VoiceContextCompactEditor::hitNodeSelector(
+            voice.bounds,
+            1.f,
+            selector.getCentre()));
+}
+
+TEST_CASE("Transform editor exposes FFT and IFFT mode semantics through one geometry contract",
+        "[cycle-v2][canvas][compact-editor]") {
+    GraphNodeFactory factory;
+    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
+    const Point<float> left { 245.f, 61.f };
+    const Point<float> right { 535.f, 61.f };
+    Node fft = factory.createNode(NodeKind::Fft, "fft", {});
+    Node ifft = factory.createNode(NodeKind::Ifft, "ifft", {});
+
+    REQUIRE(TransformCompactEditor::modeAt(fft, panel, left) == TransformMode::Cycle);
+    REQUIRE(TransformCompactEditor::modeAt(fft, panel, right) == TransformMode::FixedWindow);
+    REQUIRE(TransformCompactEditor::parameterValue(TransformMode::FixedWindow) == "fixedWindow");
+    REQUIRE(TransformCompactEditor::subtitle(NodeKind::Fft, TransformMode::FixedWindow) == "fixed window");
+    REQUIRE(TransformCompactEditor::status(NodeKind::Fft, TransformMode::Cycle)
+            == "Time to freq: chunked by cycle");
+
+    REQUIRE(TransformCompactEditor::modeAt(ifft, panel, left) == TransformMode::Cyclic);
+    REQUIRE(TransformCompactEditor::modeAt(ifft, panel, right) == TransformMode::AcyclicCarry);
+    REQUIRE(TransformCompactEditor::parameterValue(TransformMode::AcyclicCarry) == "acyclicCarry");
+    REQUIRE(TransformCompactEditor::subtitle(NodeKind::Ifft, TransformMode::AcyclicCarry)
+            == "carry overlap");
+    REQUIRE(TransformCompactEditor::status(NodeKind::Ifft, TransformMode::Cyclic)
+            == "Freq to time: cyclic overlap");
 }

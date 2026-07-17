@@ -44,6 +44,27 @@ public:
     void resetCounters() { renderCounters = {}; }
 
 private:
+    template<typename RenderColumn>
+    void renderColumnRange(
+            Mesh& mesh,
+            const MorphPosition& center,
+            int primaryViewAxis,
+            size_t columnCount,
+            RenderColumn renderColumn) {
+        blockwiseDsp.setMesh(&mesh);
+        blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
+
+        for (size_t index = 0; index < columnCount; ++index) {
+            const MorphPosition morph = morphForColumn(
+                    center,
+                    primaryViewAxis,
+                    index,
+                    columnCount);
+            blockwiseDsp.setMorphPosition(morph);
+            renderColumn(index, morph);
+        }
+    }
+
     static MorphPosition morphForColumn(
             const MorphPosition& center,
             int primaryViewAxis,

@@ -209,7 +209,7 @@ Component* TrimeshWidget::prepareExpandedPanel3DComponent(
     return bridge.getPanel3DHostComponent();
 }
 
-Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() {
+Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() const {
     return bridge.getPanel3DHostComponentIfCreated();
 }
 
@@ -221,7 +221,7 @@ Component* TrimeshWidget::prepareExpandedPanel2DComponent(
     return bridge.getPanel2DHostComponent();
 }
 
-Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
+Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() const {
     return bridge.getPanel2DHostComponentIfCreated();
 }
 
@@ -234,14 +234,12 @@ int TrimeshWidget::resolvedSelectedVertexIndexForNode(const Node& node) {
     return bridge.getModel().getResolvedSelectedVertexIndex();
 }
 
-void TrimeshWidget::setExpandedPanelCallbacks(
-        std::function<void()> repaintCallback,
-        std::function<void(const MouseCursor&)> cursorCallback,
-        std::function<void(Point<float>)> hoverCallback) {
-    bridge.setPanelHostCallbacks(
-            std::move(repaintCallback),
-            std::move(cursorCallback),
-            std::move(hoverCallback));
+void TrimeshWidget::setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    bridge.setPanelHostDelegate(delegate);
+}
+
+void TrimeshWidget::clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    bridge.clearPanelHostDelegate(delegate);
 }
 
 void TrimeshWidget::setMeshEditedCallback(std::function<void()> callback) {
@@ -445,7 +443,7 @@ bool TrimeshWidget::findVertexSelectionAt(
     return vertexIndex >= 0;
 }
 
-std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) const {
+std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) {
     std::vector<TrimeshExpandedHitRegion> regions;
     const Rectangle<float> morphArea = morphPanelBounds(content);
     const std::array<String, 3> parameterIds {

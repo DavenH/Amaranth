@@ -33,8 +33,8 @@ public:
         hoverPeer = peer;
     }
 
-    void setOutsideHoverCallback(std::function<void(Point<float>)> callback) {
-        outsideHoverCallback = std::move(callback);
+    void setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
+        delegate = nextDelegate;
     }
 
     void paint(Graphics&) override {}
@@ -193,8 +193,8 @@ private:
             return true;
         }
 
-        if (outsideHoverCallback != nullptr) {
-            outsideHoverCallback(Desktop::getMousePosition().toFloat());
+        if (delegate != nullptr) {
+            delegate->handleMouseOutsideTrimeshPanels(Desktop::getMousePosition().toFloat());
         }
 
         return false;
@@ -219,7 +219,7 @@ private:
 
     Panel& panel;
     PanelHostComponent* hoverPeer {};
-    std::function<void(Point<float>)> outsideHoverCallback;
+    TrimeshPanelHostDelegate* delegate {};
     bool mouseInside {};
 };
 
@@ -244,7 +244,7 @@ Component* TrimeshPanelHosts::getPanel3DHostComponent() {
     return panel3DHost.get();
 }
 
-Component* TrimeshPanelHosts::getPanel3DHostComponentIfCreated() {
+Component* TrimeshPanelHosts::getPanel3DHostComponentIfCreated() const {
     return panel3DHostInitialised ? panel3DHost.get() : nullptr;
 }
 
@@ -253,22 +253,32 @@ Component* TrimeshPanelHosts::getPanel2DHostComponent() {
     return panel2DHost.get();
 }
 
-Component* TrimeshPanelHosts::getPanel2DHostComponentIfCreated() {
+Component* TrimeshPanelHosts::getPanel2DHostComponentIfCreated() const {
     return panel2DHostInitialised ? panel2DHost.get() : nullptr;
 }
 
-void TrimeshPanelHosts::setCallbacks(
-        std::function<void()> repaintCallback,
-        std::function<void(const MouseCursor&)> cursorCallback,
-        std::function<void(Point<float>)> hoverCallback) {
-    panelHostRepaintCallback = std::move(repaintCallback);
-    panelHostCursorCallback = std::move(cursorCallback);
-    panelHostHoverCallback = std::move(hoverCallback);
+void TrimeshPanelHosts::setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
+    delegate = nextDelegate;
 
     PanelHostCallbacks callbacks = createPanelHostCallbacks();
     panel3D.setHostCallbacks(callbacks);
     panel2D.setHostCallbacks(callbacks);
-    updatePanelHostPeers();
+
+    if (panel3DHost != nullptr) {
+        panel3DHost->setDelegate(delegate);
+    }
+
+    if (panel2DHost != nullptr) {
+        panel2DHost->setDelegate(delegate);
+    }
+}
+
+void TrimeshPanelHosts::clearDelegate(TrimeshPanelHostDelegate* delegateToClear) {
+    if (delegate != delegateToClear) {
+        return;
+    }
+
+    setDelegate(nullptr);
 }
 
 PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
@@ -277,8 +287,8 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
         requestPanelInvalidation(panel, flag);
     });
     callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
-        if (panelHostCursorCallback != nullptr) {
-            panelHostCursorCallback(cursor);
+        if (delegate != nullptr) {
+            delegate->setTrimeshPanelCursor(cursor);
         }
 
         if (panel == &panel3D && panel3DHost != nullptr) {
@@ -299,6 +309,7 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     }
 
     panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
+    panel3DHost->setDelegate(delegate);
     panel3D.setSharedCanvasMode(true);
     panel3D.initWithExternalComponent(panel3DHost.get());
     panel3DHost->removeMouseListener(&interactor3D);
@@ -314,6 +325,7 @@ void TrimeshPanelHosts::initialisePanel2DHost() {
     }
 
     panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
+    panel2DHost->setDelegate(delegate);
     panel2D.initWithExternalComponent(panel2DHost.get());
     panel2DHost->removeMouseListener(&interactor2D);
     interactor2D.stopTimer();
@@ -328,8 +340,6 @@ void TrimeshPanelHosts::updatePanelHostPeers() {
 
     panel3DHost->setHoverPeer(panel2DHost.get());
     panel2DHost->setHoverPeer(panel3DHost.get());
-    panel3DHost->setOutsideHoverCallback(panelHostHoverCallback);
-    panel2DHost->setOutsideHoverCallback(panelHostHoverCallback);
 }
 
 void TrimeshPanelHosts::initialiseSharedGlResources() {
@@ -437,9 +447,8 @@ void TrimeshPanelHosts::flushRenderInvalidations(uint32_t categories) {
     if ((categories & TrimeshPanelInvalidation::Panel3DBake) != 0) {
         panel3D.bakeTexturesNextRepaint();
     }
-    if ((categories & TrimeshPanelInvalidation::Owner) != 0
-            && panelHostRepaintCallback != nullptr) {
-        panelHostRepaintCallback();
+    if ((categories & TrimeshPanelInvalidation::Owner) != 0 && delegate != nullptr) {
+        delegate->requestTrimeshPanelRepaint();
     }
 }
 

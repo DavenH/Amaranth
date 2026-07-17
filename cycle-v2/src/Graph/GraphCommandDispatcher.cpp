@@ -47,49 +47,58 @@ const NodeParameter* findParameter(const std::vector<NodeParameter>& parameters,
     return found != parameters.end() ? &*found : nullptr;
 }
 
+struct EditAnnotation {
+    std::vector<juce::String> nodeIds;
+    bool topologyChanged {};
+    bool layoutChanged {};
+};
+
+GraphEditResult annotateSuccessful(
+        GraphEditResult result,
+        EditAnnotation annotation) {
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    result.changes.nodeIds = std::move(annotation.nodeIds);
+    result.changes.topologyChanged = annotation.topologyChanged;
+    result.changes.layoutChanged = annotation.layoutChanged;
+    return result;
+}
+
 }
 
 GraphEditResult GraphCommandDispatcher::addNode(NodeKind kind, juce::Point<float> position) {
     return apply([&](auto& graph) {
         auto result = GraphEditor().addNode(graph, kind, position);
-        if (result.succeeded()) {
-            result.changes.nodeIds.push_back(result.nodeId);
-            result.changes.topologyChanged = true;
-            result.changes.layoutChanged = true;
-        }
-        return result;
+        const juce::String addedNodeId = result.nodeId;
+        return annotateSuccessful(
+                std::move(result),
+                { { addedNodeId }, true, true });
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeNode(const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().removeNode(graph, nodeId);
-        if (result.succeeded()) {
-            result.changes.nodeIds.push_back(nodeId);
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().removeNode(graph, nodeId),
+                { { nodeId }, true, false });
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeEdgeAt(size_t edgeIndex) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().removeEdgeAt(graph, edgeIndex);
-        if (result.succeeded()) {
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().removeEdgeAt(graph, edgeIndex),
+                { {}, true, false });
     });
 }
 
 GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const PortAddress& second) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().connect(graph, first, second);
-        if (result.succeeded()) {
-            result.changes.nodeIds = { first.nodeId, second.nodeId };
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().connect(graph, first, second),
+                { { first.nodeId, second.nodeId }, true, false });
     });
 }
 
@@ -97,12 +106,9 @@ GraphEditResult GraphCommandDispatcher::attachSpyToEdge(
         size_t edgeIndex,
         const juce::String& spyNodeId) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().attachSpyToEdge(graph, edgeIndex, spyNodeId);
-        if (result.succeeded()) {
-            result.changes.nodeIds.push_back(spyNodeId);
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().attachSpyToEdge(graph, edgeIndex, spyNodeId),
+                { { spyNodeId }, true, false });
     });
 }
 
@@ -110,12 +116,9 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
         size_t edgeIndex,
         const juce::String& nodeId) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId);
-        if (result.succeeded()) {
-            result.changes.nodeIds.push_back(nodeId);
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().spliceNodeIntoEdge(graph, edgeIndex, nodeId),
+                { { nodeId }, true, false });
     });
 }
 
@@ -125,13 +128,14 @@ GraphEditResult GraphCommandDispatcher::attachGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
-                graph, guideNodeId, meshNodeId, vertexIndex, parameterField);
-        if (result.succeeded()) {
-            result.changes.nodeIds = { guideNodeId, meshNodeId };
-            result.changes.topologyChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+                        graph,
+                        guideNodeId,
+                        meshNodeId,
+                        vertexIndex,
+                        parameterField),
+                { { guideNodeId, meshNodeId }, true, false });
     });
 }
 
@@ -141,14 +145,14 @@ GraphEditResult GraphCommandDispatcher::createAndAttachGuideCurve(
         const juce::String& parameterField,
         juce::Point<float> guidePosition) {
     return apply([&](auto& graph) {
-        auto result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
-                graph, meshNodeId, vertexIndex, parameterField, guidePosition);
-        if (result.succeeded()) {
-            result.changes.nodeIds.push_back(meshNodeId);
-            result.changes.topologyChanged = true;
-            result.changes.layoutChanged = true;
-        }
-        return result;
+        return annotateSuccessful(
+                GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+                        graph,
+                        meshNodeId,
+                        vertexIndex,
+                        parameterField,
+                        guidePosition),
+                { { meshNodeId }, true, true });
     });
 }
 

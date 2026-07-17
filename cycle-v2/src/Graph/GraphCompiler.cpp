@@ -65,11 +65,15 @@ ChannelLayout outputPortChannelLayout(
         const NodeGraph& graph,
         const std::vector<Edge>& resolvedEdges,
         const GraphDomainResolver& domainResolver,
+        const GraphDomainResolution& domainResolution,
         const Node& node,
         const Port& port) {
     for (const auto& edge : resolvedEdges) {
         if (edge.sourceNodeId == node.id && edge.sourcePortId == port.id) {
-            return domainResolver.resolvedChannelLayoutForEdge(graph, edge);
+            return domainResolver.resolvedChannelLayoutForEdge(
+                    graph,
+                    edge,
+                    domainResolution);
         }
     }
 
@@ -80,6 +84,7 @@ std::vector<GraphStepOutput> buildStepOutputs(
         const NodeGraph& graph,
         const std::vector<Edge>& resolvedEdges,
         const GraphDomainResolver& domainResolver,
+        const GraphDomainResolution& domainResolution,
         const Node& node) {
     std::vector<GraphStepOutput> outputs;
     outputs.reserve(node.outputs.size());
@@ -88,7 +93,13 @@ std::vector<GraphStepOutput> buildStepOutputs(
         outputs.push_back({
                 port.id,
                 outputPortDomain(resolvedEdges, node, port),
-                outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port),
+                outputPortChannelLayout(
+                        graph,
+                        resolvedEdges,
+                        domainResolver,
+                        domainResolution,
+                        node,
+                        port),
                 -1
         });
     }
@@ -187,6 +198,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
         const std::vector<String>& nodeOrder,
         const std::vector<Edge>& resolvedEdges,
         const GraphDomainResolver& domainResolver,
+        const GraphDomainResolution& domainResolution,
         const NodeModuleRegistry& moduleRegistry) {
     std::vector<GraphExecutionStep> steps;
     steps.reserve(nodeOrder.size());
@@ -216,7 +228,10 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     -1,
                     -1,
                     edge.domain,
-                    domainResolver.resolvedChannelLayoutForEdge(graph, edge)
+                    domainResolver.resolvedChannelLayoutForEdge(
+                            graph,
+                            edge,
+                            domainResolution)
             });
         }
 
@@ -243,7 +258,12 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 node.parameters,
                 {},
                 std::move(inputs),
-                buildStepOutputs(graph, resolvedEdges, domainResolver, node)
+                buildStepOutputs(
+                        graph,
+                        resolvedEdges,
+                        domainResolver,
+                        domainResolution,
+                        node)
         });
     }
 
@@ -384,7 +404,8 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
 std::vector<GraphBufferPlan> buildBufferPlan(
         const NodeGraph& graph,
         const std::vector<Edge>& resolvedEdges,
-        const GraphDomainResolver& domainResolver) {
+        const GraphDomainResolver& domainResolver,
+        const GraphDomainResolution& domainResolution) {
     std::vector<GraphBufferPlan> buffers;
 
     for (const auto& node : graph.getNodes()) {
@@ -399,7 +420,13 @@ std::vector<GraphBufferPlan> buildBufferPlan(
                     node.id,
                     port.id,
                     domain,
-                    outputPortChannelLayout(graph, resolvedEdges, domainResolver, node, port)
+                    outputPortChannelLayout(
+                            graph,
+                            resolvedEdges,
+                            domainResolver,
+                            domainResolution,
+                            node,
+                            port)
             });
         }
     }
@@ -424,8 +451,16 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     result.plan.nodeOrder = buildNodeOrder(graph, result.compileIssues);
 
     if (result.compileIssues.empty()) {
-        result.plan.signalEdges = domainResolver.resolveSignalEdges(graph, result.plan.nodeOrder);
-        result.plan.buffers = buildBufferPlan(graph, result.plan.signalEdges, domainResolver);
+        const GraphDomainResolution domainResolution = domainResolver.resolve(graph);
+        result.plan.signalEdges = domainResolver.resolveSignalEdges(
+                graph,
+                result.plan.nodeOrder,
+                domainResolution);
+        result.plan.buffers = buildBufferPlan(
+                graph,
+                result.plan.signalEdges,
+                domainResolver,
+                domainResolution);
 
         for (const auto& edge : graph.getEdges()) {
             if (edge.attachment) {
@@ -438,6 +473,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 result.plan.nodeOrder,
                 result.plan.signalEdges,
                 domainResolver,
+                domainResolution,
                 moduleRegistry);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);

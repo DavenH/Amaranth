@@ -1,7 +1,8 @@
 #pragma once
 
+#include "TrimeshPanelHostDelegate.h"
+
 #include <atomic>
-#include <functional>
 #include <memory>
 
 #include <UI/Panels/Panel.h>
@@ -29,14 +30,12 @@ public:
     ~TrimeshPanelHosts();
 
     Component* getPanel3DHostComponent();
-    Component* getPanel3DHostComponentIfCreated();
+    Component* getPanel3DHostComponentIfCreated() const;
     Component* getPanel2DHostComponent();
-    Component* getPanel2DHostComponentIfCreated();
+    Component* getPanel2DHostComponentIfCreated() const;
 
-    void setCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const MouseCursor&)> cursorCallback,
-            std::function<void(Point<float>)> hoverCallback);
+    void setDelegate(TrimeshPanelHostDelegate* delegate);
+    void clearDelegate(TrimeshPanelHostDelegate* delegate);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void renderPanel3D(Rectangle<float> bounds, float scaleFactor);
@@ -71,9 +70,7 @@ private:
     std::unique_ptr<GLPanelRenderer> panel3DRenderer;
     CommonGL* panel2DGfx {};
     CommonGL* panel3DGfx {};
-    std::function<void()> panelHostRepaintCallback;
-    std::function<void(const MouseCursor&)> panelHostCursorCallback;
-    std::function<void(Point<float>)> panelHostHoverCallback;
+    TrimeshPanelHostDelegate* delegate {};
     RenderInvalidationAccumulator invalidation;
     bool panel3DHostInitialised {};
     bool panel2DHostInitialised {};

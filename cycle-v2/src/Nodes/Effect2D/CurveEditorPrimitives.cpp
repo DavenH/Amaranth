@@ -67,15 +67,6 @@ LabeledParameterSlider::~LabeledParameterSlider() {
     slider.setLookAndFeel(nullptr);
 }
 
-void LabeledParameterSlider::bind(
-        const std::function<void()>& publish,
-        const std::function<void()>& beginTransaction,
-        const std::function<void()>& commitTransaction) {
-    slider.onValueChange = publish;
-    slider.onDragStart = beginTransaction;
-    slider.onDragEnd = commitTransaction;
-}
-
 void LabeledParameterSlider::setBounds(Rectangle<int> bounds, int labelWidth, int gap) {
     label.setBounds(bounds.removeFromLeft(labelWidth));
     bounds.removeFromLeft(gap);
@@ -87,10 +78,6 @@ ParameterToggle::ParameterToggle(Component& owner, const String& labelText) {
     button.setButtonText("Enable");
     owner.addAndMakeVisible(label);
     owner.addAndMakeVisible(button);
-}
-
-void ParameterToggle::bind(const std::function<void()>& publish) {
-    button.onClick = publish;
 }
 
 void ParameterToggle::setBounds(Rectangle<int> bounds, int labelWidth, int gap) {

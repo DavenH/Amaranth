@@ -2,21 +2,55 @@
 
 #include "../Effect2D/CurveNodeModels.h"
 
-#include <Curve/Curve.h>
-
 #include <cmath>
 
 namespace CycleV2 {
 
-EnvelopeSignalProcessor::EnvelopeSignalProcessor() :
-        mesh      ("CycleV2EnvelopeDsp")
-    ,   rasterizer(nullptr, "CycleV2EnvelopeDspRasterizer") {
-    Curve::calcTable();
-    props.active = true;
+namespace {
+
+std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
+        const String& name,
+        const String& snapshot,
+        float red,
+        float blue,
+        float level,
+        bool logarithmic,
+        bool dynamicWhileLive) {
+    auto result = std::make_shared<EnvelopeConfiguration>();
+    result->mesh = std::shared_ptr<EnvelopeMesh>(
+            new EnvelopeMesh(name + "Mesh"),
+            [](EnvelopeMesh* mesh) {
+                mesh->destroy();
+                delete mesh;
+            });
+
+    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
+        return {};
+    }
+
+    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
+    result->rasterizer->setMesh(result->mesh.get());
+    result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
+    result->rasterizer->validateState();
+
+    if (!result->rasterizer->canRasterizeWaveform()) {
+        return {};
+    }
+
+    result->level = level;
+    result->redMorph = red;
+    result->blueMorph = blue;
+    result->logarithmic = logarithmic;
+    result->dynamicWhileLive = dynamicWhileLive;
+    result->meshSnapshot = snapshot;
+    return result;
 }
 
-EnvelopeSignalProcessor::~EnvelopeSignalProcessor() {
-    mesh.destroy();
+}
+
+EnvelopeSignalProcessor::EnvelopeSignalProcessor() {
+    props.active = true;
 }
 
 std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfiguration(
@@ -25,40 +59,15 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
         Curve::calcTable();
     }
 
-    auto result = std::make_shared<EnvelopeConfiguration>();
-    result->mesh = std::shared_ptr<EnvelopeMesh>(
-            new EnvelopeMesh("CycleV2EnvelopeConfiguration"),
-            [](EnvelopeMesh* meshToDelete) {
-                meshToDelete->destroy();
-                delete meshToDelete;
-            });
-
     const String snapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
-
-    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
-        return {};
-    }
-
-    result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, "CycleV2EnvelopeConfigurationRasterizer");
-    result->rasterizer->setMesh(result->mesh.get());
-    result->redMorph = parameterFloat(parameters, "red", 0.5f);
-    result->blueMorph = parameterFloat(parameters, "blue", 0.5f);
-    result->rasterizer->setMorphPosition({
-            0.f,
-            result->redMorph,
-            result->blueMorph
-    });
-    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
-    result->rasterizer->validateState();
-    if (!result->rasterizer->canRasterizeWaveform()) {
-        return {};
-    }
-
-    result->level = parameterFloat(parameters, "level", 1.f);
-    result->logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
-    result->dynamicWhileLive = typedParameterBool(parameters, "dynamic", false);
-    result->meshSnapshot = snapshot;
-    return result;
+    return prepareEnvelopeConfiguration(
+            "CycleV2EnvelopeConfiguration",
+            snapshot,
+            parameterFloat(parameters, "red", 0.5f),
+            parameterFloat(parameters, "blue", 0.5f),
+            parameterFloat(parameters, "level", 1.f),
+            parameterFloat(parameters, "logarithmic", 0.f) != 0.f,
+            typedParameterBool(parameters, "dynamic", false));
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -93,7 +102,6 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     playback.validate(activeConfiguration->rasterizer->preparedPlaybackView());
     props.logarithmic = configuration->logarithmic;
     level = configuration->level;
-    modelReady = true;
     adoptedRevision = pendingRevision;
 }
 
@@ -111,34 +119,14 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDyn
         const EnvelopeConfiguration& base,
         float red,
         float blue) {
-    auto result = std::make_shared<EnvelopeConfiguration>();
-    result->mesh = std::shared_ptr<EnvelopeMesh>(
-            new EnvelopeMesh("CycleV2DynamicEnvelope"),
-            [](EnvelopeMesh* meshToDelete) {
-                meshToDelete->destroy();
-                delete meshToDelete;
-            });
-    if (!EnvelopeMeshState::apply(base.meshSnapshot, *result->mesh)) {
-        return {};
-    }
-
-    result->rasterizer = std::make_shared<EnvRasterizer>(
-            nullptr, "CycleV2DynamicEnvelopeRasterizer");
-    result->rasterizer->setMesh(result->mesh.get());
-    result->rasterizer->setMorphPosition({ 0.f, red, blue });
-    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
-    result->rasterizer->validateState();
-    if (!result->rasterizer->canRasterizeWaveform()) {
-        return {};
-    }
-
-    result->level = base.level;
-    result->redMorph = red;
-    result->blueMorph = blue;
-    result->logarithmic = base.logarithmic;
-    result->dynamicWhileLive = base.dynamicWhileLive;
-    result->meshSnapshot = base.meshSnapshot;
-    return result;
+    return prepareEnvelopeConfiguration(
+            "CycleV2DynamicEnvelope",
+            base.meshSnapshot,
+            red,
+            blue,
+            base.level,
+            base.logarithmic,
+            base.dynamicWhileLive);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
@@ -253,9 +241,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    const bool ready = configuration != nullptr
-            ? preparedConfiguration() != nullptr && modelReady
-            : syncModel(processParameters(context));
+    const bool ready = preparedConfiguration() != nullptr;
     if (ready) {
         size_t rendered = 0;
 
@@ -278,7 +264,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
     }
 
-    outputBuffer.mul(configuration != nullptr ? level : parameterFloat(processParameters(context), "level", 1.f));
+    outputBuffer.mul(level);
     if (context.captureTraversalGrid) {
         publishTraversalGrid(output, context.workArena);
     }
@@ -299,9 +285,12 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     Buffer<float> values = traversalMemory.place((int) columns);
     positions.ramp(0.f, 1.f / (float) columns);
     const EnvelopeConfiguration* current = preparedConfiguration();
-    const auto sampler = current != nullptr
-            ? current->rasterizer->sampler()
-            : rasterizer.sampler();
+    if (current == nullptr) {
+        output.traversalGrid = {};
+        return;
+    }
+
+    const auto sampler = current->rasterizer->sampler();
     sampler.sampleAtIntervals(positions, values);
     values.mul(level);
 
@@ -325,74 +314,26 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     }
 }
 
-bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
-    const String nextSnapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
-
-    const bool snapshotChanged = nextSnapshot != snapshotState;
-    if (snapshotChanged) {
-        if (!EnvelopeMeshState::apply(nextSnapshot, mesh)) {
-            modelReady = false;
-            snapshotState = nextSnapshot;
-            return false;
-        }
-
-        snapshotState = nextSnapshot;
-        rasterizer.setMesh(&mesh);
-        modelReady = true;
-    }
-
-    const float nextRed = parameterFloat(parameters, "red", 0.5f);
-    const float nextBlue = parameterFloat(parameters, "blue", 0.5f);
-    const bool geometryChanged = nextRed != redMorph || nextBlue != blueMorph;
-
-    if (modelReady && (geometryChanged || snapshotChanged)) {
-        redMorph = nextRed;
-        blueMorph = nextBlue;
-        rasterizer.setMorphPosition({ 0.f, redMorph, blueMorph });
-        rasterizer.renderWaveformOnly(&mesh, 0.f);
-        rasterizer.validateState();
-    }
-
-    props.logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
-    level = parameterFloat(parameters, "level", 1.f);
-    return modelReady && rasterizer.canRasterizeWaveform();
-}
-
 void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& event) {
-    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
-        const auto prepared = current->rasterizer->preparedPlaybackView();
-        switch (event.type) {
-            case NoteLifecycleType::NoteOn:
-                ++noteSerial;
-                playback.noteOn();
-                active = true;
-                break;
-
-            case NoteLifecycleType::NoteOff:
-                playback.noteOff(prepared);
-                break;
-
-            case NoteLifecycleType::Reset:
-                playback.noteOn();
-                active = false;
-                break;
-        }
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current == nullptr) {
         return;
     }
 
+    const auto prepared = current->rasterizer->preparedPlaybackView();
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
-            rasterizer.setNoteOn();
+            ++noteSerial;
+            playback.noteOn();
             active = true;
             break;
 
         case NoteLifecycleType::NoteOff:
-            rasterizer.setNoteOff();
+            playback.noteOff(prepared);
             break;
 
         case NoteLifecycleType::Reset:
-            rasterizer.reset();
-            rasterizer.renderWaveformOnly(&mesh, 0.f);
+            playback.noteOn();
             active = false;
             break;
     }
@@ -407,26 +348,19 @@ void EnvelopeSignalProcessor::renderSegment(
         return;
     }
 
-    bool stillActive {};
-    Buffer<float> rendered;
-    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
-        stillActive = playback.renderToBuffer(
-                current->rasterizer->preparedPlaybackView(),
-                (int) count,
-                1. / timing.sampleRate,
-                Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
-                props,
-                1.f);
-        rendered = playback.output().withSize((int) count);
-    } else {
-        stillActive = rasterizer.renderToBuffer(
-                (int) count,
-                1. / timing.sampleRate,
-                EnvRasterizer::headUnisonIndex,
-                props,
-                1.f);
-        rendered = rasterizer.getRenderBuffer().withSize((int) count);
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current == nullptr) {
+        return;
     }
+
+    const bool stillActive = playback.renderToBuffer(
+            current->rasterizer->preparedPlaybackView(),
+            (int) count,
+            1. / timing.sampleRate,
+            Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+            props,
+            1.f);
+    Buffer<float> rendered = playback.output().withSize((int) count);
     applyAdoptionTransition(rendered);
     rendered.copyTo(output.section((int) start, (int) count));
     lastOutputSample = rendered.back();

@@ -15,14 +15,22 @@
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPresentationModel.h"
-#include "NodeCanvasGlRenderer.h"
 #include "NodeAutomationFacade.h"
+#include "NodeCanvasAutomationInspector.h"
+#include "NodeCableRenderer.h"
+#include "NodeCanvasGlRenderer.h"
 #include "NodeCanvasScene.h"
 #include "NodeCanvasViewport.h"
 #include "NodeEditorHost.h"
+#include "NodePalette.h"
+#include "NodePreviewRenderer.h"
+#include "NodePreviewResources.h"
 #include "RenderInvalidationAccumulator.h"
 
 namespace CycleV2 {
+
+struct VoiceContextEdit;
+enum class TransformMode;
 
 class NodeCanvas :
         public Component
@@ -82,20 +90,6 @@ private:
         Point<float> centre;
     };
 
-    struct CableEndpoint {
-        Point<float> centre;
-        PortSide side { PortSide::Left };
-        bool portLike { true };
-    };
-
-    struct CachedPreviewSprite {
-        Image image;
-        String signature;
-        PortDomain domain { PortDomain::ControlSignal };
-        int width {};
-        int height {};
-    };
-
     OpenGLContext openGLContext;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
@@ -109,12 +103,13 @@ private:
     const GraphCompileResult& compileResult;
     const RuntimeProcessTrace& runtimeTrace;
     const GraphPreviewResult& previewResult;
-    std::vector<std::pair<String, CachedPreviewSprite>> previewSpriteCache;
-    std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
-    std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
     NodeEditorCommandService editorCommands;
+    NodePreviewResources previewResources;
+    NodePreviewRenderer previewRenderer;
     NodeEditorHost editorHost;
+    NodeCanvasAutomationInspector automationInspector;
     RenderInvalidationAccumulator renderInvalidation;
+    NodePalette palette;
 
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
@@ -124,7 +119,6 @@ private:
     int activeTrimeshVertexIndex { -1 };
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
-    int activePaletteSectionIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
     Point<float> lastMousePosition;
@@ -161,18 +155,8 @@ private:
     void drawSnapGuides(Graphics& g);
     void drawNode(Graphics& g, const Node& node);
     void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
-    void drawPreviewUncached(Graphics& g, const Node& node, Rectangle<float> area, PortDomain previewDomain);
-    bool drawCachedPreviewHeatmapSurface(
-            Graphics& g,
-            const String& cacheKey,
-            Rectangle<float> area,
-            const NodePreviewResult& preview);
-    CachedPreviewSprite& cachedPreviewSpriteFor(const String& nodeId);
     TrimeshWidget& trimeshWidgetFor(const String& nodeId);
     Effect2DWidget& effect2DWidgetFor(const Node& node);
-    void drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed);
-    void drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed);
-    void drawEnvelopeCurve(Graphics& g, Rectangle<float> area);
     void drawExpandedEditor(Graphics& g, const Node& node);
     void setCanvasOpenGlAttached(bool shouldAttach);
     void updateExpandedEditorHost(const Node* node);
@@ -194,15 +178,8 @@ private:
     Rectangle<float> snappedNodeBounds(const Node& node, Rectangle<float> proposed);
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
-    bool resolveCableEndpoints(
-            const Edge& edge,
-            CableEndpoint& sourceEndpoint,
-            CableEndpoint& destEndpoint) const;
-    bool isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const;
-    CableEndpoint dynamicTrimeshGuideEndpoint(const Node& node, const String& portId) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
-    bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
@@ -226,6 +203,7 @@ private:
     Point<float> viewportCentreWorld() const;
     Point<float> paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const;
     void refreshCompiledState();
+    NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
     void flushScheduledCompiledStateRefresh();
     File snapshotFile() const;
@@ -243,10 +221,16 @@ private:
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
-    bool handleVoiceContextEditorClick(Point<float> screenPosition);
-    bool handleTransformEditorClick(Point<float> screenPosition);
+    bool handleVoiceContextEditorClick(
+            const Node& node,
+            Rectangle<float> panel,
+            Point<float> screenPosition);
+    bool handleTransformEditorClick(
+            const Node& node,
+            Rectangle<float> panel,
+            Point<float> screenPosition);
     bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
-    bool setTransformParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
+    bool setTransformMode(const Node& node, TransformMode mode);
     std::array<String, 6> trimeshGuideAttachmentLabelsForNode(const Node& meshNode);
 
     void closeNodeEditor() override;
@@ -264,14 +248,6 @@ private:
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
-    void updatePaletteHover(Point<float> screenPosition);
-    Path createCablePath(
-            Point<float> source,
-            Point<float> dest,
-            PortSide sourceSide,
-            PortSide destSide,
-            bool attachment) const;
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };
 

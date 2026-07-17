@@ -24,7 +24,6 @@ public:
     };
 
     EnvelopeSignalProcessor();
-    ~EnvelopeSignalProcessor();
 
     static std::shared_ptr<const EnvelopeConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters);
@@ -41,7 +40,6 @@ public:
     Rasterization::EnvelopePlaybackMode playbackMode() const { return playback.mode(); }
 
 private:
-    bool syncModel(const std::vector<NodeParameter>& parameters);
     void requestEffectiveMorph(AudioProcessContext& context);
     void adoptPreparedDynamicEnvelope();
     const EnvelopeConfiguration* preparedConfiguration() const;
@@ -58,15 +56,9 @@ private:
     static constexpr float morphRequestThreshold = 0.002f;
     static constexpr int morphRequestInterval44k = 64;
 
-    EnvelopeMesh mesh;
-    EnvRasterizer rasterizer;
     Rasterization::EnvelopePlaybackEngine playback;
     MeshLibrary::EnvProps props;
-    String snapshotState;
-    float redMorph { -1.f };
-    float blueMorph { -1.f };
     bool active {};
-    bool modelReady {};
     float level { 1.f };
     uint64_t adoptedRevision {};
     uint64_t pendingRevision {};

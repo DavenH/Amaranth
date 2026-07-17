@@ -31,20 +31,8 @@ struct ImpulseResponseEditorComponent::Impl {
 ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->enabled.bind(publish);
-    impl->size.bind(publish, begin, commit);
-    impl->postGain.bind(publish, begin, commit);
-    impl->highPass.bind(publish, begin, commit);
+    bindDiscreteControl(impl->enabled);
+    bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
 }
 
 ImpulseResponseEditorComponent::~ImpulseResponseEditorComponent() = default;
@@ -60,7 +48,8 @@ Rectangle<float> ImpulseResponseEditorComponent::editorPanelBounds() const {
     return bounds;
 }
 
-void ImpulseResponseEditorComponent::paintEditor(Graphics&) {}
+void ImpulseResponseEditorComponent::paintEditor(Graphics&) {
+}
 
 void ImpulseResponseEditorComponent::layoutEditor() {
     ParameterRail::layout(

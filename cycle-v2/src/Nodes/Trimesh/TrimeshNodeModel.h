@@ -61,6 +61,23 @@ struct TrimeshDerivedRevisions {
     uint64_t aggregate {};
 };
 
+enum class TrimeshDerivedProduct : uint32_t {
+    None = 0,
+    MeshContent = 1 << 0,
+    SliceRasterization = 1 << 1,
+    InterceptsRails = 1 << 2,
+    Columns3D = 1 << 3,
+    CompactPreview = 1 << 4,
+    SelectedControl = 1 << 5,
+    DspPreparation = 1 << 6
+};
+
+constexpr TrimeshDerivedProduct operator|(
+        TrimeshDerivedProduct left,
+        TrimeshDerivedProduct right) {
+    return (TrimeshDerivedProduct) ((uint32_t) left | (uint32_t) right);
+}
+
 class TrimeshNodeModel {
 public:
     TrimeshNodeModel();
@@ -104,6 +121,7 @@ private:
     void bumpMorphRevision();
     void bumpPrimaryAxisRevision();
     void bumpSelectedControlRevision();
+    void advanceDerivedRevisions(TrimeshDerivedProduct products);
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;

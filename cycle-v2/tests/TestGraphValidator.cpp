@@ -1,11 +1,49 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphDomainResolver.h"
 #include "../src/Graph/GraphValidator.h"
 
 #include <algorithm>
 
 using namespace CycleV2;
+
+namespace {
+
+bool addressesEdge(const GraphValidationIssue& issue, const Edge& edge) {
+    return issue.sourceNodeId == edge.sourceNodeId
+        && issue.sourcePortId == edge.sourcePortId
+        && issue.destNodeId == edge.destNodeId
+        && issue.destPortId == edge.destPortId;
+}
+
+void requireEdgeQueriesMatchBulkValidation(const NodeGraph& graph) {
+    const GraphValidator validator;
+    const auto issues = validator.validate(graph);
+
+    for (const auto& edge : graph.getEdges()) {
+        const auto first = std::find_if(
+                issues.begin(),
+                issues.end(),
+                [&edge](const GraphValidationIssue& issue) {
+                    return addressesEdge(issue, edge);
+                });
+        const auto queried = validator.validationIssueForEdge(graph, edge);
+
+        REQUIRE(validator.edgeHasValidationIssue(graph, edge) == (first != issues.end()));
+
+        if (first == issues.end()) {
+            REQUIRE(queried.message.isEmpty());
+            continue;
+        }
+
+        REQUIRE(queried.code == first->code);
+        REQUIRE(queried.message == first->message);
+        REQUIRE(addressesEdge(queried, edge));
+    }
+}
+
+}
 
 TEST_CASE("Demo graph validates", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
@@ -309,6 +347,84 @@ TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-
     REQUIRE(validator.resolvedDomainForEdge(graph, graph.getEdges()[1]) == PortDomain::SpectralMagnitudeSignal);
 }
 
+TEST_CASE("Domain resolution query and bulk products share one graph-order contract",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add-a", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+
+    Node spy = factory.createNode(NodeKind::Spy, "spy", {});
+    spy.outputs.push_back({
+            "out",
+            "Out",
+            PortDomain::ControlSignal,
+            ChannelLayout::Mono,
+            PortPurpose::Signal,
+            false
+    });
+    graph.addNode(std::move(spy));
+    graph.addNode(factory.createNode(NodeKind::Add, "add-b", {}));
+
+    graph.addEdge({ "wave", "out", "add-a", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "add-a", "out", "multiply", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "multiply", "out", "spy", "in", PortDomain::ControlSignal, false });
+    graph.addEdge({ "spy", "out", "add-b", "left", PortDomain::ControlSignal, false });
+
+    const GraphDomainResolver resolver;
+    const auto resolution = resolver.resolve(graph);
+    const auto bulk = resolver.resolveSignalEdges(
+            graph,
+            { "wave", "add-a", "multiply", "spy", "add-b" });
+
+    REQUIRE(resolution.domains.size() == graph.getEdges().size());
+    REQUIRE(bulk.size() == graph.getEdges().size());
+    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+        REQUIRE(resolution.domains[edgeIndex] == PortDomain::TimeSignal);
+        REQUIRE(resolver.resolvedDomainForEdge(graph, graph.getEdges()[edgeIndex])
+                == resolution.domains[edgeIndex]);
+        REQUIRE(bulk[edgeIndex].domain == resolution.domains[edgeIndex]);
+    }
+}
+
+TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({ "envelope", "env", "add", "left", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+
+    const auto resolution = GraphDomainResolver().resolve(graph);
+
+    REQUIRE(resolution.domains[0] == PortDomain::EnvelopeSignal);
+    REQUIRE(resolution.domains[1] == PortDomain::ControlSignal);
+}
+
+TEST_CASE("Domain resolution terminates deterministically for invalid cycles",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Add, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "second", {}));
+    graph.addEdge({ "first", "out", "second", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "second", "out", "first", "left", PortDomain::ControlSignal, false });
+
+    const GraphDomainResolver resolver;
+    const auto first = resolver.resolve(graph);
+    const auto second = resolver.resolve(graph);
+
+    REQUIRE(first.domains == second.domains);
+    REQUIRE(first.channelLayouts == second.channelLayouts);
+    REQUIRE(first.domains == std::vector<PortDomain> {
+            PortDomain::ControlSignal,
+            PortDomain::ControlSignal
+    });
+}
+
 TEST_CASE("Spectral voice context marks fixed wave sources invalid", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -472,4 +588,85 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
             [](const GraphValidationIssue& issue) {
                 return issue.code == GraphValidationCode::ChannelLayoutMismatch;
             }));
+}
+
+TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode({
+            "source",
+            NodeKind::GenericProcessor,
+            "Source",
+            {},
+            {},
+            {},
+            {},
+            { { "time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
+    });
+    graph.addNode({
+            "pitch",
+            NodeKind::GenericProcessor,
+            "Pitch",
+            {},
+            {},
+            {},
+            {},
+            { { "pitch", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
+    });
+    graph.addNode({
+            "guide",
+            NodeKind::GuideCurve,
+            "Guide",
+            {},
+            {},
+            {},
+            {},
+            { { "curve", "Curve", PortDomain::TimeSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
+    });
+    graph.addNode({
+            "dest",
+            NodeKind::GenericProcessor,
+            "Destination",
+            {},
+            {},
+            {},
+            {
+                    { "time", "Time", PortDomain::TimeSignal, ChannelLayout::Mono, PortPurpose::Signal, true },
+                    { "attachmentTarget", "Attachment Target", PortDomain::TimeSignal, ChannelLayout::Mono, PortPurpose::Signal, true },
+                    { "scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment, true }
+            },
+            {}
+    });
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = { { "domain", "Start Domain", "spectral" } };
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+
+    graph.addEdge({ "missingSource", "out", "dest", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "time", "missingDest", "in", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "missing", "dest", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "time", "dest", "missing", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "time", "dest", "attachmentTarget", PortDomain::TimeSignal, true });
+    graph.addEdge({ "source", "time", "dest", "scratch", PortDomain::TimeSignal, false });
+    graph.addEdge({ "guide", "curve", "mesh", "guide.vertex.0.amp", PortDomain::TimeSignal, true });
+    graph.addEdge({ "source", "time", "mesh", "guide.vertex.1.amp", PortDomain::TimeSignal, true });
+    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "pitch", "pitch", "dest", "time", PortDomain::PitchSignal, false });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+
+    requireEdgeQueriesMatchBulkValidation(graph);
+
+    const auto issues = GraphValidator().validate(graph);
+    const Edge& invalidAttachment = graph.getEdges()[4];
+    const auto issueCount = std::count_if(
+            issues.begin(),
+            issues.end(),
+            [&invalidAttachment](const GraphValidationIssue& issue) {
+                return addressesEdge(issue, invalidAttachment);
+            });
+
+    REQUIRE(issueCount == 2);
 }

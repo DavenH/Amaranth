@@ -187,19 +187,31 @@ std::array<bool, 8> linkedCubeHighlights(
         selected.fill(true);
     } else if (numLinks == 2) {
         if (!linkBlue) {
-            const int addend = (selectedIndex == 0 || selectedIndex == 2 || selectedIndex == 4 || selectedIndex == 6) ? 0 : 1;
+            const bool onYellowFace = selectedIndex == 0
+                    || selectedIndex == 2
+                    || selectedIndex == 4
+                    || selectedIndex == 6;
+            const int addend = onYellowFace ? 0 : 1;
             selected[(size_t) (0 + addend)] = true;
             selected[(size_t) (2 + addend)] = true;
             selected[(size_t) (4 + addend)] = true;
             selected[(size_t) (6 + addend)] = true;
         } else if (!linkRed) {
-            const int addend = (selectedIndex == 0 || selectedIndex == 1 || selectedIndex == 4 || selectedIndex == 5) ? 0 : 2;
+            const bool onRedFace = selectedIndex == 0
+                    || selectedIndex == 1
+                    || selectedIndex == 4
+                    || selectedIndex == 5;
+            const int addend = onRedFace ? 0 : 2;
             selected[(size_t) (0 + addend)] = true;
             selected[(size_t) (4 + addend)] = true;
             selected[(size_t) (5 + addend)] = true;
             selected[(size_t) (1 + addend)] = true;
         } else if (!linkYellow) {
-            const int addend = (selectedIndex == 0 || selectedIndex == 1 || selectedIndex == 2 || selectedIndex == 3) ? 0 : 4;
+            const bool onBlueFace = selectedIndex == 0
+                    || selectedIndex == 1
+                    || selectedIndex == 2
+                    || selectedIndex == 3;
+            const int addend = onBlueFace ? 0 : 4;
             selected[(size_t) (0 + addend)] = true;
             selected[(size_t) (1 + addend)] = true;
             selected[(size_t) (2 + addend)] = true;
@@ -485,9 +497,11 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
         const bool selected = hasPreviewCube && linkedHighlights[(size_t) i];
 
         g.setColour(Colours::black);
-        g.fillEllipse(Rectangle<float>(selected ? 5.f : 4.f, selected ? 5.f : 4.f).withCentre(previewPoints[(size_t) i]));
+        g.fillEllipse(Rectangle<float>(selected ? 5.f : 4.f, selected ? 5.f : 4.f)
+                .withCentre(previewPoints[(size_t) i]));
         g.setColour(selected ? Colours::red : Colours::white);
-        g.fillEllipse(Rectangle<float>(selected ? 2.2f : 1.5f, selected ? 2.2f : 1.5f).withCentre(previewPoints[(size_t) i]));
+        g.fillEllipse(Rectangle<float>(selected ? 2.2f : 1.5f, selected ? 2.2f : 1.5f)
+                .withCentre(previewPoints[(size_t) i]));
     }
 
     g.setColour(Colours::white);
@@ -562,8 +576,10 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
                     guideBox.getRight() - 10.f,
                     guideBox.getCentreY() - 3.f);
             g.strokePath(guideCurve, PathStrokeType(1.2f));
-            g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getX() + 7.f, guideBox.getCentreY() + 4.f }));
-            g.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre({ guideBox.getRight() - 11.f, guideBox.getCentreY() - 3.f }));
+            g.fillEllipse(Rectangle<float>(3.f, 3.f)
+                    .withCentre({ guideBox.getX() + 7.f, guideBox.getCentreY() + 4.f }));
+            g.fillEllipse(Rectangle<float>(3.f, 3.f)
+                    .withCentre({ guideBox.getRight() - 11.f, guideBox.getCentreY() - 3.f }));
         }
 
         Path chevron;

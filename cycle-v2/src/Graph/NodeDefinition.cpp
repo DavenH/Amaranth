@@ -139,6 +139,52 @@ NodeDefinition definition(
     };
 }
 
+class DefinitionBuilder {
+public:
+    explicit DefinitionBuilder(NodeDefinition definitionToBuild) : value(std::move(definitionToBuild)) {}
+
+    DefinitionBuilder& runtime(
+            AudioModuleRole audioRole,
+            PreviewModuleRole previewRole,
+            String cycle1Reference = {}) {
+        value.audioRole = audioRole;
+        value.previewRole = previewRole;
+        value.previewContract = previewRole == PreviewModuleRole::None
+                ? PreviewContract::None
+                : (previewRole == PreviewModuleRole::MeshSurface
+                        ? PreviewContract::AuthoritativeModel
+                        : (previewRole == PreviewModuleRole::SignalSpy
+                                ? PreviewContract::RuntimeTap
+                                : PreviewContract::Qualitative));
+        value.executable = audioRole != AudioModuleRole::None;
+        value.previewable = previewRole != PreviewModuleRole::None;
+        value.cycle1Reference = std::move(cycle1Reference);
+        return *this;
+    }
+
+    DefinitionBuilder& disablePreview() {
+        value.previewable = false;
+        return *this;
+    }
+
+    DefinitionBuilder& presentation(
+            NodeNaturalSize minimumPreviewSize,
+            NodeNaturalSize fixedNaturalSize = {}) {
+        value.minimumPreviewSize = minimumPreviewSize;
+        value.fixedNaturalSize = fixedNaturalSize;
+        return *this;
+    }
+
+    NodeDefinition finish() { return std::move(value); }
+
+private:
+    NodeDefinition value;
+};
+
+DefinitionBuilder buildDefinition(NodeDefinition value) {
+    return DefinitionBuilder(std::move(value));
+}
+
 bool isBooleanText(const String& value) {
     const String normalized = value.trim().toLowerCase();
     return normalized == "0" || normalized == "1"
@@ -205,10 +251,12 @@ const NodeDefinitionRegistry& NodeDefinitionRegistry::instance() {
 
 NodeDefinitionRegistry::NodeDefinitionRegistry() {
     nodeDefinitions = {
-            definition("genericProcessor", NodeKind::GenericProcessor, "Processor", "generic", "processor",
+            buildDefinition(definition("genericProcessor", NodeKind::GenericProcessor, "Processor", "generic", "processor",
                     { input("in", "In", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-                    { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true),
-            definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {},
+                    { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true))
+                    .runtime(AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic)
+                    .finish(),
+            buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {},
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
                             integer("voices", "Voices", 1, 1, 64, dsp),
@@ -216,19 +264,29 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
                             choice("oversampling", "Oversampling", "1x", { "1x", "2x", "4x", "8x" }, dsp | reset | presentation)
-                    }),
-            definition("waveSource", NodeKind::WaveSource, "Wave", "time source", "wave",
+                    }))
+                    .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
+                    .disablePreview()
+                    .presentation({}, { 300.f, 128.f })
+                    .finish(),
+            buildDefinition(definition("waveSource", NodeKind::WaveSource, "Wave", "time source", "wave",
                     { input("context", "Context", PortDomain::DomainContext) },
                     { output("out", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp | preview),
                             number("amplitude", "Amplitude", 1.f, 0.f, 1.f, preview)
-                    }),
-            definition("imageSource", NodeKind::ImageSource, "Image", "raster source", "image",
+                    }))
+                    .runtime(AudioModuleRole::WaveSource, PreviewModuleRole::Waveform)
+                    .presentation({ 220.f, 90.f })
+                    .finish(),
+            buildDefinition(definition("imageSource", NodeKind::ImageSource, "Image", "raster source", "image",
                     { input("context", "Context", PortDomain::DomainContext) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp | preview)
-                    }),
-            definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
+                    }))
+                    .runtime(AudioModuleRole::ImageSource, PreviewModuleRole::Image)
+                    .presentation({ 220.f, 90.f })
+                    .finish(),
+            buildDefinition(definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
                     { input("context", "Context", PortDomain::DomainContext),
                       input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
                       input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
@@ -239,20 +297,30 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
-                    }, true),
-            definition("fft", NodeKind::Fft, String::fromUTF8("Time → Freq"), "cycle chunks", "fft",
+                    }, true))
+                    .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
+                            "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
+                    .presentation({ 260.f, 130.f })
+                    .finish(),
+            buildDefinition(definition("fft", NodeKind::Fft, String::fromUTF8("Time → Freq"), "cycle chunks", "fft",
                     { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal), output("phase", "Phase", PortDomain::SpectralPhaseSignal) }, {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cycle", { "cycle", "fixedWindow" }, graph | dsp | presentation)
-                    }),
-            definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
+                    }))
+                    .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
+                    .presentation({}, { 278.f, 178.f })
+                    .finish(),
+            buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
                     { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal), input("phase", "Phase", PortDomain::SpectralPhaseSignal) },
                     { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cyclic", { "cyclic", "acyclicCarry" }, graph | dsp | presentation)
-                    }),
-            definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
+                    }))
+                    .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
+                    .presentation({}, { 278.f, 178.f })
+                    .finish(),
+            buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
                       input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top) },
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
@@ -264,14 +332,24 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             boolean("dynamic", "Dynamic While Live", false, dsp | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
-                    }, true),
-            definition("add", NodeKind::Add, "Add", "combine", "add",
+                    }, true))
+                    .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
+                            "cycle/src/Inter/EnvelopeInter2D.cpp")
+                    .presentation({ 220.f, 92.f })
+                    .finish(),
+            buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
-                    { output("out", "Out", PortDomain::ControlSignal) }),
-            definition("multiply", NodeKind::Multiply, "Multiply", "operation", "multiply",
+                    { output("out", "Out", PortDomain::ControlSignal) }))
+                    .runtime(AudioModuleRole::Add, PreviewModuleRole::None)
+                    .presentation({ 58.f, 44.f }, { 150.f, 118.f })
+                    .finish(),
+            buildDefinition(definition("multiply", NodeKind::Multiply, "Multiply", "operation", "multiply",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
-                    { output("out", "Out", PortDomain::ControlSignal) }),
-            definition("guideCurve", NodeKind::GuideCurve, "Guide", "mesh attachment", "guide", {},
+                    { output("out", "Out", PortDomain::ControlSignal) }))
+                    .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
+                    .presentation({ 58.f, 44.f }, { 150.f, 118.f })
+                    .finish(),
+            buildDefinition(definition("guideCurve", NodeKind::GuideCurve, "Guide", "mesh attachment", "guide", {},
                     { output("guide", "Guide", PortDomain::EnvelopeSignal) }, {
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             number("noise", "Noise", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -280,8 +358,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
                                     CurveNodeModelCodec::defaultSnapshot(NodeKind::GuideCurve)),
                             integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true),
-            definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
+                    }, true))
+                    .runtime(AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope,
+                            "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp")
+                    .presentation({ 220.f, 100.f })
+                    .finish(),
+            buildDefinition(definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
@@ -291,8 +373,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
                                     CurveNodeModelCodec::defaultSnapshot(NodeKind::ImpulseResponse)),
                             integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true),
-            definition("waveshaper", NodeKind::Waveshaper, "Waveshaper", "transfer curve", "waveshaper",
+                    }, true))
+                    .runtime(AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
+                            "cycle/src/Audio/Effects/IrModeller.cpp")
+                    .presentation({ 230.f, 92.f })
+                    .finish(),
+            buildDefinition(definition("waveshaper", NodeKind::Waveshaper, "Waveshaper", "transfer curve", "waveshaper",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
@@ -302,8 +388,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
                                     CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper)),
                             integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true),
-            definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
+                    }, true))
+                    .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
+                            "cycle/src/Audio/Effects/WaveShaper.cpp")
+                    .presentation({ 154.f, 174.f })
+                    .finish(),
+            buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
@@ -312,8 +402,11 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("width", "Width", 0.75f, 0.f, 1.f, dsp | presentation),
                             number("wet", "Wet", 0.35f, 0.f, 1.f, dsp | presentation),
                             number("highPass", "HighPass", 0.05f, 0.f, 1.f, dsp)
-                    }),
-            definition("delay", NodeKind::Delay, "Delay", "echo", "delay",
+                    }))
+                    .runtime(AudioModuleRole::Reverb, PreviewModuleRole::None,
+                            "cycle/src/Audio/Effects/Reverb.cpp")
+                    .finish(),
+            buildDefinition(definition("delay", NodeKind::Delay, "Delay", "echo", "delay",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
@@ -322,101 +415,31 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("wet", "Wet", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("spin", "Spin", 1.f, 0.f, 1.f, dsp),
                             integer("spinIters", "Spin Iterations", 0, 0, 16, dsp)
-                    }),
-            definition("spy", NodeKind::Spy, "Spy", "signal monitor", "spy",
-                    { input("in", "In", PortDomain::ControlSignal) }, {}),
-            definition("stereoSplit", NodeKind::StereoSplit, "Stereo Split", "L/R breakout", "split",
+                    }))
+                    .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
+                            "cycle/src/Audio/Effects/Delay.cpp")
+                    .finish(),
+            buildDefinition(definition("spy", NodeKind::Spy, "Spy", "signal monitor", "spy",
+                    { input("in", "In", PortDomain::ControlSignal) }, {}))
+                    .runtime(AudioModuleRole::Spy, PreviewModuleRole::SignalSpy)
+                    .presentation({ 170.f, 76.f })
+                    .finish(),
+            buildDefinition(definition("stereoSplit", NodeKind::StereoSplit, "Stereo Split", "L/R breakout", "split",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-                    { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }),
-            definition("stereoJoin", NodeKind::StereoJoin, "Stereo Join", "L/R combine", "join",
+                    { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }))
+                    .runtime(AudioModuleRole::StereoSplit, PreviewModuleRole::None)
+                    .finish(),
+            buildDefinition(definition("stereoJoin", NodeKind::StereoJoin, "Stereo Join", "L/R combine", "join",
                     { input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) },
-                    { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }),
-            definition("output", NodeKind::Output, "Output", "sink", "out",
-                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {})
+                    { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
+                    .runtime(AudioModuleRole::StereoJoin, PreviewModuleRole::None)
+                    .finish(),
+            buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
+                    .runtime(AudioModuleRole::Output, PreviewModuleRole::None)
+                    .presentation({}, { 190.f, 160.f })
+                    .finish()
     };
-
-    auto configureModule = [&](NodeKind kind, AudioModuleRole audioRole, PreviewModuleRole previewRole,
-                               String cycle1Reference = {}) {
-        for (auto& nodeDefinition : nodeDefinitions) {
-            if (nodeDefinition.kind != kind) {
-                continue;
-            }
-            nodeDefinition.audioRole = audioRole;
-            nodeDefinition.previewRole = previewRole;
-            nodeDefinition.previewContract = previewRole == PreviewModuleRole::None
-                    ? PreviewContract::None
-                    : (previewRole == PreviewModuleRole::MeshSurface
-                            ? PreviewContract::AuthoritativeModel
-                            : (previewRole == PreviewModuleRole::SignalSpy
-                                    ? PreviewContract::RuntimeTap
-                                    : PreviewContract::Qualitative));
-            nodeDefinition.executable = audioRole != AudioModuleRole::None;
-            nodeDefinition.previewable = previewRole != PreviewModuleRole::None;
-            nodeDefinition.cycle1Reference = std::move(cycle1Reference);
-            return;
-        }
-    };
-
-    configureModule(NodeKind::GenericProcessor, AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic);
-    configureModule(NodeKind::VoiceContext, AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext);
-    for (auto& nodeDefinition : nodeDefinitions) {
-        if (nodeDefinition.kind == NodeKind::VoiceContext) {
-            nodeDefinition.previewable = false;
-        }
-    }
-    configureModule(NodeKind::WaveSource, AudioModuleRole::WaveSource, PreviewModuleRole::Waveform);
-    configureModule(NodeKind::ImageSource, AudioModuleRole::ImageSource, PreviewModuleRole::Image);
-    configureModule(NodeKind::TrilinearMesh, AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
-            "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp");
-    configureModule(NodeKind::Fft, AudioModuleRole::Fft, PreviewModuleRole::None);
-    configureModule(NodeKind::Ifft, AudioModuleRole::Ifft, PreviewModuleRole::None);
-    configureModule(NodeKind::Envelope, AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
-            "cycle/src/Inter/EnvelopeInter2D.cpp");
-    configureModule(NodeKind::Add, AudioModuleRole::Add, PreviewModuleRole::None);
-    configureModule(NodeKind::Multiply, AudioModuleRole::Multiply, PreviewModuleRole::None);
-    configureModule(NodeKind::GuideCurve, AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope,
-            "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp");
-    configureModule(NodeKind::ImpulseResponse, AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
-            "cycle/src/Audio/Effects/IrModeller.cpp");
-    configureModule(NodeKind::Waveshaper, AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
-            "cycle/src/Audio/Effects/WaveShaper.cpp");
-    configureModule(NodeKind::Reverb, AudioModuleRole::Reverb, PreviewModuleRole::None,
-            "cycle/src/Audio/Effects/Reverb.cpp");
-    configureModule(NodeKind::Delay, AudioModuleRole::Delay, PreviewModuleRole::None,
-            "cycle/src/Audio/Effects/Delay.cpp");
-    configureModule(NodeKind::Spy, AudioModuleRole::Spy, PreviewModuleRole::SignalSpy);
-    configureModule(NodeKind::StereoSplit, AudioModuleRole::StereoSplit, PreviewModuleRole::None);
-    configureModule(NodeKind::StereoJoin, AudioModuleRole::StereoJoin, PreviewModuleRole::None);
-    configureModule(NodeKind::Output, AudioModuleRole::Output, PreviewModuleRole::None);
-
-    auto configurePresentation = [&](NodeKind kind, NodeNaturalSize previewSize,
-                                     NodeNaturalSize fixedSize = {}) {
-        for (auto& nodeDefinition : nodeDefinitions) {
-            if (nodeDefinition.kind == kind) {
-                nodeDefinition.minimumPreviewSize = previewSize;
-                nodeDefinition.fixedNaturalSize = fixedSize;
-                return;
-            }
-        }
-    };
-    configurePresentation(NodeKind::WaveSource, { 220.f, 90.f });
-    configurePresentation(NodeKind::ImageSource, { 220.f, 90.f });
-    configurePresentation(NodeKind::TrilinearMesh, { 260.f, 130.f });
-    configurePresentation(NodeKind::VoiceContext, {}, { 300.f, 128.f });
-    configurePresentation(NodeKind::Fft, {}, { 278.f, 178.f });
-    configurePresentation(NodeKind::Ifft, {}, { 278.f, 178.f });
-    configurePresentation(NodeKind::Envelope, { 220.f, 92.f });
-    configurePresentation(NodeKind::Add, { 58.f, 44.f }, { 150.f, 118.f });
-    configurePresentation(NodeKind::Multiply, { 58.f, 44.f }, { 150.f, 118.f });
-    configurePresentation(NodeKind::GuideCurve, { 220.f, 100.f });
-    configurePresentation(NodeKind::ImpulseResponse, { 230.f, 92.f });
-    configurePresentation(NodeKind::Waveshaper, { 154.f, 174.f });
-    configurePresentation(NodeKind::Reverb, {});
-    configurePresentation(NodeKind::Delay, {});
-    configurePresentation(NodeKind::Spy, { 170.f, 76.f });
-    configurePresentation(NodeKind::StereoSplit, {});
-    configurePresentation(NodeKind::StereoJoin, {});
-    configurePresentation(NodeKind::Output, {}, { 190.f, 160.f });
 }
 
 const NodeDefinition* NodeDefinitionRegistry::find(NodeKind kind) const {
@@ -427,7 +450,6 @@ const NodeDefinition* NodeDefinitionRegistry::find(NodeKind kind) const {
     }
     return nullptr;
 }
-
 const NodeDefinition* NodeDefinitionRegistry::find(const String& typeId) const {
     for (const auto& definitionToCheck : nodeDefinitions) {
         if (definitionToCheck.typeId == typeId) {

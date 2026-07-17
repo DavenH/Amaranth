@@ -26,8 +26,6 @@ private:
             const SignalTraversalGrid& inputGrid,
             const SignalPayload& output,
             size_t rows) const;
-    void copyGridColumnToBlock(const SignalTraversalGrid& grid, size_t column, AudioProcessBlock& block) const;
-    void copyBlockToGridColumn(const AudioProcessBlock& block, SignalTraversalGrid& grid, size_t column) const;
     void publishInverseTraversalGrid(
             const SignalPayload& magnitude,
             const SignalPayload* phase,

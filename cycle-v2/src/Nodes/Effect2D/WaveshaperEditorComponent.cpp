@@ -29,20 +29,9 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(Effect2DWidget& target) :
         impl->oversampling.addItem(String(value), value);
     }
 
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->enabled.bind(publish);
-    impl->preGain.bind(publish, begin, commit);
-    impl->postGain.bind(publish, begin, commit);
-    impl->oversampling.onChange = publish;
+    bindDiscreteControl(impl->enabled);
+    bindContinuousControls({ &impl->preGain, &impl->postGain });
+    bindDiscreteControl(impl->oversampling);
 }
 
 WaveshaperEditorComponent::~WaveshaperEditorComponent() = default;
@@ -60,7 +49,8 @@ Rectangle<float> WaveshaperEditorComponent::editorPanelBounds() const {
     return Rectangle<float>(size, size).withCentre({ bounds.getX() + size * 0.5f, bounds.getCentreY() });
 }
 
-void WaveshaperEditorComponent::paintEditor(Graphics&) {}
+void WaveshaperEditorComponent::paintEditor(Graphics&) {
+}
 
 void WaveshaperEditorComponent::layoutEditor() {
     auto bounds = editorControlBounds().toNearestInt().reduced(12, 8);

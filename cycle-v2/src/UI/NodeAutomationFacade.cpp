@@ -52,9 +52,4 @@ bool NodeAutomationFacade::getParameter(const juce::String& nodeId,
     return false;
 }
 
-std::optional<NodeSceneTarget> NodeAutomationFacade::inspectPointer(
-        const NodeCanvasSceneSnapshot& scene, juce::Point<float> position) const {
-    return hitTester.hitTest(scene, position);
-}
-
 }

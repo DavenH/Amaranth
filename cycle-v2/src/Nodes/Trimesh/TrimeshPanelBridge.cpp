@@ -171,7 +171,7 @@ Component* TrimeshPanelBridge::getPanel3DHostComponent() {
     return panelHosts.getPanel3DHostComponent();
 }
 
-Component* TrimeshPanelBridge::getPanel3DHostComponentIfCreated() {
+Component* TrimeshPanelBridge::getPanel3DHostComponentIfCreated() const {
     return panelHosts.getPanel3DHostComponentIfCreated();
 }
 
@@ -179,18 +179,16 @@ Component* TrimeshPanelBridge::getPanel2DHostComponent() {
     return panelHosts.getPanel2DHostComponent();
 }
 
-Component* TrimeshPanelBridge::getPanel2DHostComponentIfCreated() {
+Component* TrimeshPanelBridge::getPanel2DHostComponentIfCreated() const {
     return panelHosts.getPanel2DHostComponentIfCreated();
 }
 
-void TrimeshPanelBridge::setPanelHostCallbacks(
-        std::function<void()> repaintCallback,
-        std::function<void(const MouseCursor&)> cursorCallback,
-        std::function<void(Point<float>)> hoverCallback) {
-    panelHosts.setCallbacks(
-            std::move(repaintCallback),
-            std::move(cursorCallback),
-            std::move(hoverCallback));
+void TrimeshPanelBridge::setPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    panelHosts.setDelegate(delegate);
+}
+
+void TrimeshPanelBridge::clearPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    panelHosts.clearDelegate(delegate);
 }
 
 void TrimeshPanelBridge::initialiseSharedGlResources() {

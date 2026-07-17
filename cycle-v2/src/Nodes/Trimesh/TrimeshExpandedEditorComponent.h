@@ -2,6 +2,7 @@
 
 #include "../../Graph/NodeGraph.h"
 #include "TrimeshControlsComponent.h"
+#include "TrimeshPanelHostDelegate.h"
 #include "TrimeshWidget.h"
 
 #include <JuceHeader.h>
@@ -31,7 +32,8 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
-                                       private TrimeshControlsDelegate {
+                                       private TrimeshControlsDelegate,
+                                       private TrimeshPanelHostDelegate {
 public:
     explicit TrimeshExpandedEditorComponent(TrimeshWidget& widget);
     ~TrimeshExpandedEditorComponent() override;
@@ -51,12 +53,6 @@ public:
     void mouseUp(const juce::MouseEvent& event) override;
 
 private:
-    enum class DragTarget {
-        None,
-        Morph,
-        VertexParameter
-    };
-
     juce::Rectangle<float> closeButtonBounds() const;
     juce::Rectangle<float> contentBounds() const;
     juce::String vertexGuideParameterField(const juce::String& parameterId) const;
@@ -75,14 +71,16 @@ private:
     void showTrimeshVertexGuideMenu(
             const juce::String& id,
             juce::Rectangle<int> screenArea) override;
+    void selectTrimeshVertex(int index) override;
+    void requestTrimeshPanelRepaint() override;
+    void setTrimeshPanelCursor(const juce::MouseCursor& cursor) override;
+    void handleMouseOutsideTrimeshPanels(juce::Point<float> screenPosition) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
-    DragTarget dragTarget { DragTarget::None };
-    juce::String activeParameterId;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };

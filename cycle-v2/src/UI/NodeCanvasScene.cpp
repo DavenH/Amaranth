@@ -62,7 +62,7 @@ juce::Point<float> normalizedOrFallback(
     return length > 0.0001f ? vector / length : fallback;
 }
 
-juce::Path cablePath(
+juce::Path buildCablePath(
         juce::Point<float> source,
         juce::Point<float> destination,
         PortSide sourceSide,
@@ -104,6 +104,15 @@ juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port
             port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
             y
     };
+}
+
+juce::Path NodeCanvasScene::cablePath(
+        juce::Point<float> source,
+        juce::Point<float> destination,
+        PortSide sourceSide,
+        PortSide destinationSide,
+        float zoom) {
+    return buildCablePath(source, destination, sourceSide, destinationSide, zoom);
 }
 
 const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
@@ -179,15 +188,23 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 ? portWorldCentre(*destinationNode, *destinationPort)
                 : *attachmentCentre);
         const PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
+        juce::Path visiblePath = cablePath(
+                source,
+                destination,
+                sourcePort->side,
+                destinationSide,
+                viewport.getZoom());
         juce::Path hitPath;
-        juce::PathStrokeType(16.f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded)
-                .createStrokedPath(hitPath, cablePath(
-                        source,
-                        destination,
-                        sourcePort->side,
-                        destinationSide,
-                        viewport.getZoom()));
-        current.edges.push_back({ edgeIndex, source, destination, std::move(hitPath) });
+        juce::PathStrokeType(22.f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded)
+                .createStrokedPath(hitPath, visiblePath);
+        current.edges.push_back({
+                edgeIndex,
+                source,
+                destination,
+                std::move(visiblePath),
+                std::move(hitPath),
+                destinationPort != nullptr
+        });
     }
 
     return current;

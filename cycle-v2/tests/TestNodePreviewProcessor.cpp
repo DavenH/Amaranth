@@ -8,9 +8,27 @@ using namespace CycleV2;
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
 
-    auto processor = factory.create(PreviewModuleRole::MeshSurface);
-    REQUIRE(processor != nullptr);
-    REQUIRE(processor->role() == PreviewModuleRole::MeshSurface);
+    const PreviewModuleRole roles[] {
+            PreviewModuleRole::VoiceContext,
+            PreviewModuleRole::Waveform,
+            PreviewModuleRole::Image,
+            PreviewModuleRole::MeshSurface,
+            PreviewModuleRole::SpectrumMagnitude,
+            PreviewModuleRole::SpectrumPhase,
+            PreviewModuleRole::Envelope,
+            PreviewModuleRole::ImpulseResponse,
+            PreviewModuleRole::Waveshaper,
+            PreviewModuleRole::SignalSpy,
+            PreviewModuleRole::OutputMeters,
+            PreviewModuleRole::Generic
+    };
+
+    for (const PreviewModuleRole role : roles) {
+        CAPTURE(role);
+        auto processor = factory.create(role);
+        REQUIRE(processor != nullptr);
+        REQUIRE(processor->role() == role);
+    }
 
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
 }

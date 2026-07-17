@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TrimeshPanelBridge.h"
+#include "TrimeshPanelHostDelegate.h"
 #include "TrimeshRenderProfile.h"
 #include "TrimeshSidePanelRenderer.h"
 #include "TrimeshSliceRenderer2D.h"
@@ -61,17 +62,15 @@ public:
     juce::Component* prepareExpandedPanel3DComponent(
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* getExpandedPanel3DComponentIfCreated();
+    juce::Component* getExpandedPanel3DComponentIfCreated() const;
     juce::Component* prepareExpandedPanel2DComponent(
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* getExpandedPanel2DComponentIfCreated();
+    juce::Component* getExpandedPanel2DComponentIfCreated() const;
     void releaseSharedGlResources();
     int resolvedSelectedVertexIndexForNode(const Node& node);
-    void setExpandedPanelCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const juce::MouseCursor&)> cursorCallback,
-            std::function<void(juce::Point<float>)> hoverCallback);
+    void setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
+    void clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void setMeshEditedCallback(std::function<void()> callback);
     juce::String currentMeshState();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
@@ -120,7 +119,7 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             int& vertexIndex);
-    std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content) const;
+    static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content);
 
 private:
     struct CachedHeatmap {

@@ -1,5 +1,6 @@
 #include "TrimeshControlsComponent.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace CycleV2 {
@@ -21,21 +22,20 @@ public:
         setMouseCursor(MouseCursor::LeftRightResizeCursor);
     }
 
-    void paint(Graphics&) override {}
+    void paint(Graphics&) override {
+    }
 
     void mouseDown(const MouseEvent& event) override {
         owner.beginControlDrag(region, parentPosition(event.position), getScreenBounds());
     }
 
     void mouseDrag(const MouseEvent& event) override {
-        owner.dragControl(region, parentPosition(event.position));
+        owner.dragControl(parentPosition(event.position));
     }
 
     void mouseUp(const MouseEvent&) override {
         owner.endControlDrag();
     }
-
-    TrimeshExpandedHitRegionKind getRegionKind() const { return region.kind; }
 
 private:
     Point<float> parentPosition(Point<float> localPosition) const {
@@ -59,13 +59,12 @@ public:
         setTriggeredOnMouseDown(true);
     }
 
-    void paintButton(Graphics&, bool, bool) override {}
+    void paintButton(Graphics&, bool, bool) override {
+    }
 
     void clicked() override {
         owner.beginControlDrag(region, getBounds().toFloat().getCentre(), getScreenBounds());
     }
-
-    TrimeshExpandedHitRegionKind getRegionKind() const { return region.kind; }
 
 private:
     TrimeshControlsComponent& owner;
@@ -95,77 +94,74 @@ void TrimeshControlsComponent::setContentBounds(Rectangle<float> nextContentBoun
 }
 
 int TrimeshControlsComponent::getPrimaryAxisButtonCount() const {
-    int count {};
-
-    for (const auto& region : controlRegions) {
-        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
-
-        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::PrimaryAxis) {
-            ++count;
-        }
-    }
-
-    return count;
+    return countControlRegions(TrimeshExpandedHitRegionKind::PrimaryAxis);
 }
 
 int TrimeshControlsComponent::getMorphSliderCount() const {
-    int count {};
-
-    for (const auto& region : controlRegions) {
-        const auto* slider = dynamic_cast<ControlSlider*>(region.get());
-
-        if (slider != nullptr && slider->getRegionKind() == TrimeshExpandedHitRegionKind::MorphControl) {
-            ++count;
-        }
-    }
-
-    return count;
+    return countControlRegions(TrimeshExpandedHitRegionKind::MorphControl);
 }
 
 int TrimeshControlsComponent::getLinkToggleButtonCount() const {
-    int count {};
-
-    for (const auto& region : controlRegions) {
-        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
-
-        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::LinkToggle) {
-            ++count;
-        }
-    }
-
-    return count;
+    return countControlRegions(TrimeshExpandedHitRegionKind::LinkToggle);
 }
 
 int TrimeshControlsComponent::getVertexParameterSliderCount() const {
-    int count {};
-
-    for (const auto& region : controlRegions) {
-        const auto* slider = dynamic_cast<ControlSlider*>(region.get());
-
-        if (slider != nullptr && slider->getRegionKind() == TrimeshExpandedHitRegionKind::VertexParameter) {
-            ++count;
-        }
-    }
-
-    return count;
+    return countControlRegions(TrimeshExpandedHitRegionKind::VertexParameter);
 }
 
 int TrimeshControlsComponent::getVertexGuideAttachmentButtonCount() const {
-    int count {};
-
-    for (const auto& region : controlRegions) {
-        const auto* button = dynamic_cast<PrimaryAxisButton*>(region.get());
-
-        if (button != nullptr && button->getRegionKind() == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
-            ++count;
-        }
-    }
-
-    return count;
+    return countControlRegions(TrimeshExpandedHitRegionKind::VertexGuideAttachment);
 }
 
 void TrimeshControlsComponent::resized() {
     updateHitRegions();
+}
+
+MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
+    const auto* region = findControlRegion(position);
+
+    if (region != nullptr) {
+        if (region->kind == TrimeshExpandedHitRegionKind::MorphControl
+                || region->kind == TrimeshExpandedHitRegionKind::VertexParameter) {
+            return MouseCursor::LeftRightResizeCursor;
+        }
+
+        return MouseCursor::PointingHandCursor;
+    }
+
+    int vertexIndex {};
+
+    if (widget.findVertexSelectionAt(node, contentBounds, position, vertexIndex)) {
+        return MouseCursor::PointingHandCursor;
+    }
+
+    return MouseCursor::NormalCursor;
+}
+
+void TrimeshControlsComponent::beginPointerInteraction(
+        Point<float> position,
+        Rectangle<int> screenArea) {
+    const auto* region = findControlRegion(position);
+
+    if (region != nullptr) {
+        beginControlDrag(*region, position, screenArea);
+        return;
+    }
+
+    int vertexIndex {};
+
+    if (widget.findVertexSelectionAt(node, contentBounds, position, vertexIndex)
+            && delegate != nullptr) {
+        delegate->selectTrimeshVertex(vertexIndex);
+    }
+}
+
+void TrimeshControlsComponent::continuePointerInteraction(Point<float> position) {
+    dragControl(position);
+}
+
+void TrimeshControlsComponent::endPointerInteraction() {
+    endControlDrag();
 }
 
 void TrimeshControlsComponent::updateHitRegions() {
@@ -180,13 +176,16 @@ void TrimeshControlsComponent::updateHitRegions() {
     }
 
     controlRegions.clear();
+    controlHitRegions.clear();
     lastHitRegionContentBounds = nextContentBounds;
 
     if (node.kind != NodeKind::TrilinearMesh || contentBounds.isEmpty()) {
         return;
     }
 
-    for (const auto& region : widget.expandedControlHitRegions(contentBounds)) {
+    controlHitRegions = widget.expandedControlHitRegions(contentBounds);
+
+    for (const auto& region : controlHitRegions) {
         std::unique_ptr<Component> component;
 
         if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
@@ -201,6 +200,30 @@ void TrimeshControlsComponent::updateHitRegions() {
         addAndMakeVisible(component.get());
         controlRegions.push_back(std::move(component));
     }
+}
+
+int TrimeshControlsComponent::countControlRegions(TrimeshExpandedHitRegionKind kind) const {
+    return static_cast<int>(std::count_if(
+            controlHitRegions.begin(),
+            controlHitRegions.end(),
+            [kind](const TrimeshExpandedHitRegion& region) {
+                return region.kind == kind;
+            }));
+}
+
+const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Point<float> position) const {
+    const auto found = std::find_if(
+            controlHitRegions.begin(),
+            controlHitRegions.end(),
+            [position](const TrimeshExpandedHitRegion& region) {
+                return region.bounds.contains(position);
+            });
+
+    if (found == controlHitRegions.end()) {
+        return nullptr;
+    }
+
+    return &*found;
 }
 
 void TrimeshControlsComponent::beginControlDrag(
@@ -250,9 +273,7 @@ void TrimeshControlsComponent::beginControlDrag(
     }
 }
 
-void TrimeshControlsComponent::dragControl(
-        const TrimeshExpandedHitRegion&,
-        Point<float> position) {
+void TrimeshControlsComponent::dragControl(Point<float> position) {
     float value {};
 
     switch (dragTarget) {
