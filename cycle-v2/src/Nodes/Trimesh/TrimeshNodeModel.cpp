@@ -13,6 +13,23 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr TrimeshDerivedProduct renderProducts =
+        TrimeshDerivedProduct::SliceRasterization
+        | TrimeshDerivedProduct::InterceptsRails
+        | TrimeshDerivedProduct::Columns3D
+        | TrimeshDerivedProduct::CompactPreview
+        | TrimeshDerivedProduct::DspPreparation;
+
+bool includes(
+        TrimeshDerivedProduct products,
+        TrimeshDerivedProduct product) {
+    return ((uint32_t) products & (uint32_t) product) != 0;
+}
+
+}
+
+namespace {
+
 float parameterFloat(const Node& node, const String& id, float fallback) {
     for (const auto& parameter : node.parameters) {
         if (parameter.id == id) {
@@ -322,40 +339,47 @@ Mesh& TrimeshNodeModel::mesh() {
 }
 
 void TrimeshNodeModel::bumpMeshContentRevision() {
-    ++revision;
-    ++revisions.meshContent;
-    ++revisions.sliceRasterization;
-    ++revisions.interceptsRails;
-    ++revisions.columns3D;
-    ++revisions.compactPreview;
-    ++revisions.selectedControl;
-    ++revisions.dspPrep;
-    revisions.aggregate = revision;
+    advanceDerivedRevisions(
+            TrimeshDerivedProduct::MeshContent
+            | renderProducts
+            | TrimeshDerivedProduct::SelectedControl);
 }
 
 void TrimeshNodeModel::bumpMorphRevision() {
-    ++revision;
-    ++revisions.sliceRasterization;
-    ++revisions.interceptsRails;
-    ++revisions.columns3D;
-    ++revisions.compactPreview;
-    ++revisions.dspPrep;
-    revisions.aggregate = revision;
+    advanceDerivedRevisions(renderProducts);
 }
 
 void TrimeshNodeModel::bumpPrimaryAxisRevision() {
-    ++revision;
-    ++revisions.sliceRasterization;
-    ++revisions.interceptsRails;
-    ++revisions.columns3D;
-    ++revisions.compactPreview;
-    ++revisions.dspPrep;
-    revisions.aggregate = revision;
+    advanceDerivedRevisions(renderProducts);
 }
 
 void TrimeshNodeModel::bumpSelectedControlRevision() {
+    advanceDerivedRevisions(TrimeshDerivedProduct::SelectedControl);
+}
+
+void TrimeshNodeModel::advanceDerivedRevisions(TrimeshDerivedProduct products) {
     ++revision;
-    ++revisions.selectedControl;
+    if (includes(products, TrimeshDerivedProduct::MeshContent)) {
+        ++revisions.meshContent;
+    }
+    if (includes(products, TrimeshDerivedProduct::SliceRasterization)) {
+        ++revisions.sliceRasterization;
+    }
+    if (includes(products, TrimeshDerivedProduct::InterceptsRails)) {
+        ++revisions.interceptsRails;
+    }
+    if (includes(products, TrimeshDerivedProduct::Columns3D)) {
+        ++revisions.columns3D;
+    }
+    if (includes(products, TrimeshDerivedProduct::CompactPreview)) {
+        ++revisions.compactPreview;
+    }
+    if (includes(products, TrimeshDerivedProduct::SelectedControl)) {
+        ++revisions.selectedControl;
+    }
+    if (includes(products, TrimeshDerivedProduct::DspPreparation)) {
+        ++revisions.dspPrep;
+    }
     revisions.aggregate = revision;
 }
 
