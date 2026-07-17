@@ -3,6 +3,7 @@
 #include "TrimeshPanel2D.h"
 #include "TrimeshPanel3D.h"
 #include "TrimeshPanelEnvironment.h"
+#include "TrimeshPanelHostDelegate.h"
 #include "TrimeshPanelHosts.h"
 #include "TrimeshPanelRasterizer.h"
 #include "TrimeshInteractor2D.h"
@@ -37,10 +38,8 @@ public:
     Component* getPanel3DHostComponentIfCreated();
     Component* getPanel2DHostComponent();
     Component* getPanel2DHostComponentIfCreated();
-    void setPanelHostCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const MouseCursor&)> cursorCallback,
-            std::function<void(Point<float>)> hoverCallback);
+    void setPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
+    void clearPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void setMeshEditedCallback(std::function<void()> callback);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();

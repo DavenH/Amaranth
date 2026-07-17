@@ -234,14 +234,12 @@ int TrimeshWidget::resolvedSelectedVertexIndexForNode(const Node& node) {
     return bridge.getModel().getResolvedSelectedVertexIndex();
 }
 
-void TrimeshWidget::setExpandedPanelCallbacks(
-        std::function<void()> repaintCallback,
-        std::function<void(const MouseCursor&)> cursorCallback,
-        std::function<void(Point<float>)> hoverCallback) {
-    bridge.setPanelHostCallbacks(
-            std::move(repaintCallback),
-            std::move(cursorCallback),
-            std::move(hoverCallback));
+void TrimeshWidget::setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    bridge.setPanelHostDelegate(delegate);
+}
+
+void TrimeshWidget::clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
+    bridge.clearPanelHostDelegate(delegate);
 }
 
 void TrimeshWidget::setMeshEditedCallback(std::function<void()> callback) {

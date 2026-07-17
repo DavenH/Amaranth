@@ -18,36 +18,16 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setOpaque(false);
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
+    widget.setExpandedPanelHostDelegate(this);
 }
 
-TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() = default;
+TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
+    widget.clearExpandedPanelHostDelegate(this);
+}
 
 void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* nextDelegate) {
     delegate = nextDelegate;
     controls.setDelegate(this);
-
-    auto safeThis = Component::SafePointer<TrimeshExpandedEditorComponent>(this);
-    widget.setExpandedPanelCallbacks(
-            [safeThis] {
-                if (safeThis != nullptr) {
-                    safeThis->repaint();
-
-                    if (safeThis->delegate != nullptr) {
-                        safeThis->delegate->repaintTrimeshEditorOpenGL();
-                    }
-                }
-            },
-            [safeThis](const MouseCursor& cursor) {
-                if (safeThis != nullptr) {
-                    safeThis->setMouseCursor(cursor);
-                }
-            },
-            [safeThis](Point<float> screenPosition) {
-                if (safeThis != nullptr) {
-                    safeThis->updateCursor(
-                            safeThis->getLocalPoint(nullptr, screenPosition.roundToInt()).toFloat());
-                }
-            });
 }
 
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
@@ -224,6 +204,22 @@ void TrimeshExpandedEditorComponent::selectTrimeshVertex(int index) {
     if (delegate != nullptr) {
         delegate->selectTrimeshVertex(index);
     }
+}
+
+void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
+    repaint();
+
+    if (delegate != nullptr) {
+        delegate->repaintTrimeshEditorOpenGL();
+    }
+}
+
+void TrimeshExpandedEditorComponent::setTrimeshPanelCursor(const MouseCursor& cursor) {
+    setMouseCursor(cursor);
+}
+
+void TrimeshExpandedEditorComponent::handleMouseOutsideTrimeshPanels(Point<float> screenPosition) {
+    updateCursor(getLocalPoint(nullptr, screenPosition.roundToInt()).toFloat());
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {

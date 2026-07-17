@@ -2,6 +2,7 @@
 
 #include "../../Graph/NodeGraph.h"
 #include "TrimeshControlsComponent.h"
+#include "TrimeshPanelHostDelegate.h"
 #include "TrimeshWidget.h"
 
 #include <JuceHeader.h>
@@ -31,7 +32,8 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
-                                       private TrimeshControlsDelegate {
+                                       private TrimeshControlsDelegate,
+                                       private TrimeshPanelHostDelegate {
 public:
     explicit TrimeshExpandedEditorComponent(TrimeshWidget& widget);
     ~TrimeshExpandedEditorComponent() override;
@@ -70,6 +72,9 @@ private:
             const juce::String& id,
             juce::Rectangle<int> screenArea) override;
     void selectTrimeshVertex(int index) override;
+    void requestTrimeshPanelRepaint() override;
+    void setTrimeshPanelCursor(const juce::MouseCursor& cursor) override;
+    void handleMouseOutsideTrimeshPanels(juce::Point<float> screenPosition) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};

@@ -69,6 +69,27 @@ public:
     String guideParameter;
 };
 
+class RecordingTrimeshPanelHostDelegate final : public TrimeshPanelHostDelegate {
+public:
+    void requestTrimeshPanelRepaint() override { ++repaintCount; }
+
+    void setTrimeshPanelCursor(const MouseCursor& nextCursor) override {
+        cursor = nextCursor;
+        ++cursorCount;
+    }
+
+    void handleMouseOutsideTrimeshPanels(Point<float> screenPosition) override {
+        outsidePosition = screenPosition;
+        ++outsideCount;
+    }
+
+    int repaintCount {};
+    int cursorCount {};
+    int outsideCount {};
+    MouseCursor cursor;
+    Point<float> outsidePosition;
+};
+
 }
 
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
@@ -729,6 +750,37 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    RecordingTrimeshPanelHostDelegate delegate;
+
+    bridge.setPanelHostDelegate(&delegate);
+    Component* panel3DHost = bridge.getPanel3DHostComponent();
+    Component* panel2DHost = bridge.getPanel2DHostComponent();
+
+    bridge.getPanel3D().setPanelMouseCursor(MouseCursor::PointingHandCursor);
+    REQUIRE(delegate.cursorCount == 1);
+    REQUIRE(delegate.cursor == MouseCursor::PointingHandCursor);
+    REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::PointingHandCursor);
+
+    bridge.getPanel2D().setPanelMouseCursor(MouseCursor::LeftRightResizeCursor);
+    REQUIRE(delegate.cursorCount == 2);
+    REQUIRE(delegate.cursor == MouseCursor::LeftRightResizeCursor);
+    REQUIRE(panel2DHost->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
+
+    bridge.getPanel2D().requestRepaint(PanelDirtyState::Flag::Overlay);
+    MessageManager::getInstance()->runDispatchLoopUntil(20);
+    REQUIRE(delegate.repaintCount == 1);
+
+    bridge.clearPanelHostDelegate(&delegate);
+    bridge.getPanel3D().setPanelMouseCursor(MouseCursor::NormalCursor);
+    bridge.getPanel3D().requestRepaint(PanelDirtyState::Flag::Overlay);
+    MessageManager::getInstance()->runDispatchLoopUntil(20);
+    REQUIRE(delegate.cursorCount == 2);
+    REQUIRE(delegate.repaintCount == 1);
 }
 
 TEST_CASE("Trimesh controls component mounts expanded editor control regions", "[cycle-v2][nodes][trimesh]") {

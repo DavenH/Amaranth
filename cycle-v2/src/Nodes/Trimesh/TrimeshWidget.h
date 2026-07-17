@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TrimeshPanelBridge.h"
+#include "TrimeshPanelHostDelegate.h"
 #include "TrimeshRenderProfile.h"
 #include "TrimeshSidePanelRenderer.h"
 #include "TrimeshSliceRenderer2D.h"
@@ -68,10 +69,8 @@ public:
     juce::Component* getExpandedPanel2DComponentIfCreated();
     void releaseSharedGlResources();
     int resolvedSelectedVertexIndexForNode(const Node& node);
-    void setExpandedPanelCallbacks(
-            std::function<void()> repaintCallback,
-            std::function<void(const juce::MouseCursor&)> cursorCallback,
-            std::function<void(juce::Point<float>)> hoverCallback);
+    void setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
+    void clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void setMeshEditedCallback(std::function<void()> callback);
     juce::String currentMeshState();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
