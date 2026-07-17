@@ -3,6 +3,7 @@
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/UI/NodeEditorHost.h"
 
 #include <Curve/Curve.h>
@@ -106,6 +107,22 @@ public:
     void rebindNodeEditor() override {}
 };
 
+class RecordingPresentation final : public NodeEditorPresentation {
+public:
+    void closeNodeEditor() override {}
+    void repaintNodeEditor(bool) override { ++repaints; }
+    void selectEditedNode(const String&) override {}
+    void setNodeEditorStatus(const String&) override {}
+    void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
+    void flushNodeEditorRefresh() override {}
+    void refreshNodeEditorPresentation() override {}
+    Point<float> nodeEditorCreationPosition() const override { return {}; }
+    void rebindNodeEditor() override {}
+
+    int repaints {};
+    int scheduledRefreshes {};
+};
+
 class NullResources final : public NodeEditorResources {
 public:
     Effect2DWidget* effect2DWidget(const Node&) override { return nullptr; }
@@ -170,6 +187,18 @@ Node node(String id, NodeKind kind) {
     result.id = std::move(id);
     result.kind = kind;
     return result;
+}
+
+std::vector<NodeParameter> curveControls(const Node& node) {
+    std::vector<NodeParameter> controls;
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
+                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
+            controls.push_back(parameter);
+        }
+    }
+
+    return controls;
 }
 
 }
@@ -242,4 +271,46 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     editor.action.onClick();
     REQUIRE(editor.actionPerformed);
     REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+}
+
+TEST_CASE("Node editor command service publishes a curve drag as one transaction") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    FlatCurveModel model;
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.f, 1.f },
+            { 2, 1.f, 1.f, 1.f }
+    }));
+    model.setPublicationRevision(
+            CurveNodeModelCodec::revisionFromParameters(
+                    document.graph().findNode("shape")->parameters) + 1);
+
+    commands.beginCurveTransaction();
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            model.snapshot(),
+            model.revision(),
+            curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.repaints == 1);
+    commands.commitCurveTransaction();
+
+    REQUIRE(presentation.scheduledRefreshes == 1);
+    REQUIRE(presentation.repaints == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.canUndo());
 }

@@ -46,10 +46,12 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeAutomationFacade.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
 )
