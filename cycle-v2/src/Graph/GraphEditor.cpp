@@ -2,6 +2,8 @@
 
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
+#include <unordered_map>
+
 namespace CycleV2 {
 
 namespace {
@@ -13,6 +15,12 @@ PortDomain edgeDomainForConnection(const Port& source, const Port& dest) {
 
     return source.domain;
 }
+
+struct StringHash {
+    size_t operator()(const String& value) const {
+        return (size_t) value.hashCode64();
+    }
+};
 
 }
 
@@ -311,16 +319,15 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     const auto& registry = NodeDefinitionRegistry::instance();
     std::vector<NodeParameter> normalized;
     normalized.reserve(parameters.size());
+    std::unordered_map<String, size_t, StringHash> normalizedIndices;
+    normalizedIndices.reserve(parameters.size());
     ParameterImpact impacts = ParameterImpact::None;
     for (const auto& parameter : parameters) {
         const auto* definition = registry.findParameter(node->kind, parameter.id);
         if (definition == nullptr || !definition->accepts(parameter.value)) {
             return { GraphEditCode::InvalidControlValue, nodeId, {} };
         }
-        const auto duplicate = std::find_if(normalized.begin(), normalized.end(), [&](const auto& item) {
-            return item.id == parameter.id;
-        });
-        if (duplicate != normalized.end()) {
+        if (!normalizedIndices.emplace(parameter.id, normalized.size()).second) {
             return { GraphEditCode::InvalidControlValue, nodeId, {} };
         }
         normalized.push_back({
@@ -332,13 +339,18 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     }
 
     auto nextParameters = node->parameters;
+    std::unordered_map<String, size_t, StringHash> nextIndices;
+    nextIndices.reserve(nextParameters.size() + normalized.size());
+    for (size_t index = 0; index < nextParameters.size(); ++index) {
+        nextIndices.emplace(nextParameters[index].id, index);
+    }
+
     for (const auto& parameter : normalized) {
-        const auto existing = std::find_if(nextParameters.begin(), nextParameters.end(), [&](const auto& item) {
-            return item.id == parameter.id;
-        });
-        if (existing != nextParameters.end()) {
-            *existing = parameter;
+        const auto existing = nextIndices.find(parameter.id);
+        if (existing != nextIndices.end()) {
+            nextParameters[existing->second] = parameter;
         } else {
+            nextIndices.emplace(parameter.id, nextParameters.size());
             nextParameters.push_back(parameter);
         }
     }
