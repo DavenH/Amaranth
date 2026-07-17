@@ -220,6 +220,25 @@ Mirror this order in constructor initializer lists.
 
 ## Code Reuse and Complexity
 
+- Factor repeated mechanics far enough that the domain variant becomes the
+  visually dominant code. Reuse is not only about reducing line count: shared
+  setup, transaction framing, publication, repaint, validation, and teardown
+  should not be repeated around every small operation when that repetition
+  obscures the operation that actually differs.
+  - Extract the stable sequence into a narrowly named helper, scoped guard,
+    presentation primitive, or lifecycle contract. Call sites should primarily
+    state the varying operation and its meaningful arguments.
+  - Keep the helper at the abstraction level of the repeated contract. A
+    transaction helper may own begin/commit/publication/repaint mechanics, but
+    it must not become a node-kind switchboard or absorb the domain operation.
+  - Do not take this to extremes. Two short, obvious statements may remain
+    duplicated when the proposed abstraction adds indirection, policy, or a
+    vocabulary callers must decode. Extract when the common mechanics carry
+    enough complexity or repetition to compete visually with the variant.
+  - Formatting remains part of semantic visibility. Separate logical phases
+    with blank lines, keep one executable statement per line, and expand loop
+    and callback bodies so setup, shared mechanics, and the domain operation
+    can be scanned independently.
 - Where possible, encapsulate complexity at the "edges" (specialization classes or instances), rather than exposing this complexity in the interface
 - Keep adapters literal and narrow. They may translate representation, ownership, events, or lifecycle, but must delegate behavior to the authoritative implementation. Interaction algorithms, rendering policy, topology rules, and domain state machines do not belong in adapters.
 - Do not use a shared-looking class as a switchboard for unrelated domains. Repeated type/kind branches, nullable members for mutually exclusive clients, or domain-specific types in generic infrastructure indicate that the abstraction boundary is wrong.
