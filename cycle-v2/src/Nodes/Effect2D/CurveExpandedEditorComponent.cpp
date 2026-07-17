@@ -1,5 +1,6 @@
 #include "CurveExpandedEditorComponent.h"
 
+#include "CurveEditorPrimitives.h"
 #include "CurveNodeModels.h"
 
 namespace CycleV2 {
@@ -182,6 +183,30 @@ void CurveExpandedEditorComponent::requestRepaint() {
     if (delegate != nullptr) {
         delegate->repaintEffect2DEditorOpenGL();
     }
+}
+
+void CurveExpandedEditorComponent::bindContinuousControl(LabeledParameterSlider& control) {
+    control.slider.onValueChange = [this] {
+        publishCurrentState();
+        requestRepaint();
+    };
+    control.slider.onDragStart = [this] {
+        beginTransaction();
+    };
+    control.slider.onDragEnd = [this] {
+        commitTransaction();
+    };
+}
+
+void CurveExpandedEditorComponent::bindDiscreteControl(ParameterToggle& control) {
+    bindDiscreteAction(control.button, [] {});
+}
+
+void CurveExpandedEditorComponent::bindDiscreteControl(ComboBox& control) {
+    control.onChange = [this] {
+        auto noOperation = [] {};
+        performDiscreteEdit(noOperation);
+    };
 }
 
 Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {

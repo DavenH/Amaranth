@@ -28,20 +28,10 @@ struct GuideCurveEditorComponent::Impl {
 GuideCurveEditorComponent::GuideCurveEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->enabled.bind(publish);
-    impl->noise.bind(publish, begin, commit);
-    impl->dcOffset.bind(publish, begin, commit);
-    impl->phase.bind(publish, begin, commit);
+    bindDiscreteControl(impl->enabled);
+    bindContinuousControl(impl->noise);
+    bindContinuousControl(impl->dcOffset);
+    bindContinuousControl(impl->phase);
 }
 
 GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;

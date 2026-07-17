@@ -31,20 +31,10 @@ struct ImpulseResponseEditorComponent::Impl {
 ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->enabled.bind(publish);
-    impl->size.bind(publish, begin, commit);
-    impl->postGain.bind(publish, begin, commit);
-    impl->highPass.bind(publish, begin, commit);
+    bindDiscreteControl(impl->enabled);
+    bindContinuousControl(impl->size);
+    bindContinuousControl(impl->postGain);
+    bindContinuousControl(impl->highPass);
 }
 
 ImpulseResponseEditorComponent::~ImpulseResponseEditorComponent() = default;

@@ -29,20 +29,10 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(Effect2DWidget& target) :
         impl->oversampling.addItem(String(value), value);
     }
 
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->enabled.bind(publish);
-    impl->preGain.bind(publish, begin, commit);
-    impl->postGain.bind(publish, begin, commit);
-    impl->oversampling.onChange = publish;
+    bindDiscreteControl(impl->enabled);
+    bindContinuousControl(impl->preGain);
+    bindContinuousControl(impl->postGain);
+    bindDiscreteControl(impl->oversampling);
 }
 
 WaveshaperEditorComponent::~WaveshaperEditorComponent() = default;

@@ -4,9 +4,7 @@
 
 #include <JuceHeader.h>
 
-#include <functional>
 #include <initializer_list>
-#include <utility>
 #include <vector>
 
 namespace CycleV2 {
@@ -16,9 +14,6 @@ public:
     LabeledParameterSlider(Component& owner, const String& labelText);
     ~LabeledParameterSlider();
 
-    void bind(const std::function<void()>& publish,
-            const std::function<void()>& beginTransaction,
-            const std::function<void()>& commitTransaction);
     void setBounds(Rectangle<int> bounds, int labelWidth = 82, int gap = 12);
 
     Label label;
@@ -29,7 +24,6 @@ class ParameterToggle {
 public:
     ParameterToggle(Component& owner, const String& labelText);
 
-    void bind(const std::function<void()>& publish);
     void setBounds(Rectangle<int> bounds, int labelWidth = 82, int gap = 12);
 
     Label label;

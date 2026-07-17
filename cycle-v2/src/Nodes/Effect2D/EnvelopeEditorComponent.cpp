@@ -43,46 +43,19 @@ struct EnvelopeEditorComponent::Impl {
 EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    const auto publish = [this] {
-        publishCurrentState();
-        requestRepaint();
-    };
-    const auto begin = [this] {
-        beginTransaction();
-    };
-    const auto commit = [this] {
-        commitTransaction();
-    };
-    impl->redMorph.bind(publish, begin, commit);
-    impl->blueMorph.bind(publish, begin, commit);
+    bindContinuousControl(impl->redMorph);
+    bindContinuousControl(impl->blueMorph);
 
-    impl->loop.onClick = [this] {
-        beginTransaction();
+    bindDiscreteAction(impl->loop, [this] {
         widget.toggleSelectedEnvelopeMarker(true);
-        publishCurrentState();
-        commitTransaction();
-        requestRepaint();
-    };
-    impl->sustain.onClick = [this] {
-        beginTransaction();
+    });
+    bindDiscreteAction(impl->sustain, [this] {
         widget.toggleSelectedEnvelopeMarker(false);
-        publishCurrentState();
-        commitTransaction();
-        requestRepaint();
-    };
-    impl->logarithmic.onClick = [this] {
-        beginTransaction();
+    });
+    bindDiscreteAction(impl->logarithmic, [this] {
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
-        publishCurrentState();
-        commitTransaction();
-        requestRepaint();
-    };
-    impl->dynamic.onClick = [this] {
-        beginTransaction();
-        publishCurrentState();
-        commitTransaction();
-        requestRepaint();
-    };
+    });
+    bindDiscreteAction(impl->dynamic, [] {});
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
