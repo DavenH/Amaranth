@@ -83,7 +83,10 @@ public:
         vertexLimits[Vertex::Phase] = Range<float>(0.f, 1.f);
     }
 
-    Panel& hostedPanel() override { return *this; }
+    Panel& hostedPanel() override {
+        return *this;
+    }
+
     void init() override {
         Panel2D::init();
         Interactor2D::init();
@@ -128,8 +131,14 @@ public:
         controlC = third;
         selectedMenuId = menuId;
     }
-    bool isMeshEnabled() override { return enabled; }
-    Mesh* getMesh() override { return &mesh; }
+    bool isMeshEnabled() override {
+        return enabled;
+    }
+
+    Mesh* getMesh() override {
+        return &mesh;
+    }
+
     bool doCreateVertex() override {
         return addNewCube(0.f, state.currentMouse.x, state.currentMouse.y, 0.f);
     }
@@ -143,8 +152,13 @@ public:
         state.currentCube = nullptr;
         return Interactor::locateClosestElement();
     }
-    void setExtraElements(float x) override { Interactor2D::setExtraElements(x); }
-    float getCurveProximityThreshold() const override { return 20.f; }
+    void setExtraElements(float x) override {
+        Interactor2D::setExtraElements(x);
+    }
+
+    float getCurveProximityThreshold() const override {
+        return 20.f;
+    }
     bool addNewCube(float startTime, float x, float y, float curve) override {
         ignoreUnused(startTime);
         auto* vertex = new Vertex(x, y);
@@ -306,13 +320,25 @@ protected:
             *gfx,
             getWidth(),
             getHeight(),
-            [this](float x) { return sx(x); },
-            [this](float y) { return sy(y); }
+            [this](float x) {
+                return sx(x);
+            },
+            [this](float y) {
+                return sy(y);
+            }
         };
     }
-    float firstControl() const { return controlA; }
-    float secondControl() const { return controlB; }
-    float thirdControl() const { return controlC; }
+    float firstControl() const {
+        return controlA;
+    }
+
+    float secondControl() const {
+        return controlB;
+    }
+
+    float thirdControl() const {
+        return controlC;
+    }
 
 private:
     void appendCommonAutomation(DynamicObject& root) const {
@@ -352,9 +378,18 @@ private:
     }
     static int vertexDimensionForParameter(const String& parameterId) {
         const String field = parameterId.fromLastOccurrenceOf(".", false, false);
-        if (field == "phase") { return Vertex::Phase; }
-        if (field == "amp") { return Vertex::Amp; }
-        if (field == "curve") { return Vertex::Curve; }
+        if (field == "phase") {
+            return Vertex::Phase;
+        }
+
+        if (field == "amp") {
+            return Vertex::Amp;
+        }
+
+        if (field == "curve") {
+            return Vertex::Curve;
+        }
+
         return -1;
     }
 
@@ -429,4 +464,3 @@ std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(
 }
 
 }
-

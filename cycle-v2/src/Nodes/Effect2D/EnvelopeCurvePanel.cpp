@@ -25,7 +25,10 @@ class EnvelopeCurvePanel final :
     ,   public Interactor2D
     ,   public EnvelopeCurvePanelContract {
 public:
-    Panel& hostedPanel() override { return *this; }
+    Panel& hostedPanel() override {
+        return *this;
+    }
+
 
     EnvelopeCurvePanel(
             SingletonRepo* repo,
@@ -115,9 +118,17 @@ public:
         updateSelectionFrames();
     }
 
-    bool isEffectEnabled() const { return enabled; }
-    bool isMeshEnabled() override { return isEffectEnabled(); }
-    Mesh* getMesh() override { return &mesh; }
+    bool isEffectEnabled() const {
+        return enabled;
+    }
+
+    bool isMeshEnabled() override {
+        return isEffectEnabled();
+    }
+
+    Mesh* getMesh() override {
+        return &mesh;
+    }
 
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) override {
         envelopeLogarithmic = shouldUseLogarithmicScale;
@@ -167,7 +178,9 @@ public:
     bool locateClosestElement() override {
         return Interactor2D::locateClosestElement();
     }
-    float getCurveProximityThreshold() const override { return 20.f; }
+    float getCurveProximityThreshold() const override {
+        return 20.f;
+    }
 
     void setExtraElements(float x) override {
         ScopedLock lock(vertexLock);
@@ -604,12 +617,30 @@ protected:
     static int vertexDimensionForParameter(const String& parameterId) {
         const String field = parameterId.fromLastOccurrenceOf(".", false, false);
 
-        if (field == "time") { return Vertex::Time; }
-        if (field == "red") { return Vertex::Red; }
-        if (field == "blue") { return Vertex::Blue; }
-        if (field == "phase") { return Vertex::Phase; }
-        if (field == "amp") { return Vertex::Amp; }
-        if (field == "curve") { return Vertex::Curve; }
+        if (field == "time") {
+            return Vertex::Time;
+        }
+
+        if (field == "red") {
+            return Vertex::Red;
+        }
+
+        if (field == "blue") {
+            return Vertex::Blue;
+        }
+
+        if (field == "phase") {
+            return Vertex::Phase;
+        }
+
+        if (field == "amp") {
+            return Vertex::Amp;
+        }
+
+        if (field == "curve") {
+            return Vertex::Curve;
+        }
+
 
         return -1;
     }
@@ -787,8 +818,12 @@ protected:
             *gfx,
             getWidth(),
             getHeight(),
-            [this](float x) { return sx(x); },
-            [this](float y) { return sy(y); }
+            [this](float x) {
+                return sx(x);
+            },
+            [this](float y) {
+                return sy(y);
+            }
         };
     }
 
@@ -799,7 +834,9 @@ protected:
         auto snapshot = envRasterizer.snapshotView();
         const auto& intercepts = snapshot.intercepts();
 
-        if (sustainIndex >= 0 && sustainIndex < (int) intercepts.size() && intercepts[(size_t) sustainIndex].cube != nullptr) {
+        if (sustainIndex >= 0
+                && sustainIndex < (int) intercepts.size()
+                && intercepts[(size_t) sustainIndex].cube != nullptr) {
             return intercepts[(size_t) sustainIndex].x;
         }
 
@@ -814,12 +851,16 @@ protected:
         Buffer<float> waveY = snapshot.waveY();
         const float stopPosition = sx(icpts.empty() ? 1.f : icpts.back().x);
 
-        if (waveX.empty() || waveY.empty() || icpts.empty()) { return false; }
+        if (waveX.empty() || waveY.empty() || icpts.empty()) {
+            return false;
+        }
 
         const int istart = jmax(0, snapshot.zeroIndex() - 4);
         const int size = waveX.size() - istart;
 
-        if (size <= 1) { return false; }
+        if (size <= 1) {
+            return false;
+        }
 
         prepareBuffers(size, size);
         xy.copyFrom(waveX.offset(istart), waveY.offset(istart));
@@ -1052,4 +1093,3 @@ std::unique_ptr<EnvelopeCurvePanelContract> createEnvelopeCurvePanel(
 }
 
 }
-

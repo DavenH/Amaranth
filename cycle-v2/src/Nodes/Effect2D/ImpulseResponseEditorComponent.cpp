@@ -32,9 +32,7 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(Effect2DWidget& t
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindDiscreteControl(impl->enabled);
-    bindContinuousControl(impl->size);
-    bindContinuousControl(impl->postGain);
-    bindContinuousControl(impl->highPass);
+    bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
 }
 
 ImpulseResponseEditorComponent::~ImpulseResponseEditorComponent() = default;
@@ -50,7 +48,8 @@ Rectangle<float> ImpulseResponseEditorComponent::editorPanelBounds() const {
     return bounds;
 }
 
-void ImpulseResponseEditorComponent::paintEditor(Graphics&) {}
+void ImpulseResponseEditorComponent::paintEditor(Graphics&) {
+}
 
 void ImpulseResponseEditorComponent::layoutEditor() {
     ParameterRail::layout(

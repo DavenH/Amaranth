@@ -30,8 +30,7 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(Effect2DWidget& target) :
     }
 
     bindDiscreteControl(impl->enabled);
-    bindContinuousControl(impl->preGain);
-    bindContinuousControl(impl->postGain);
+    bindContinuousControls({ &impl->preGain, &impl->postGain });
     bindDiscreteControl(impl->oversampling);
 }
 
@@ -50,7 +49,8 @@ Rectangle<float> WaveshaperEditorComponent::editorPanelBounds() const {
     return Rectangle<float>(size, size).withCentre({ bounds.getX() + size * 0.5f, bounds.getCentreY() });
 }
 
-void WaveshaperEditorComponent::paintEditor(Graphics&) {}
+void WaveshaperEditorComponent::paintEditor(Graphics&) {
+}
 
 void WaveshaperEditorComponent::layoutEditor() {
     auto bounds = editorControlBounds().toNearestInt().reduced(12, 8);

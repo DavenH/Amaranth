@@ -62,6 +62,7 @@ private:
     };
 
     void updateHitRegions();
+    int countControlRegions(TrimeshExpandedHitRegionKind kind) const;
     const TrimeshExpandedHitRegion* findControlRegion(juce::Point<float> position) const;
     void beginControlDrag(
             const TrimeshExpandedHitRegion& region,

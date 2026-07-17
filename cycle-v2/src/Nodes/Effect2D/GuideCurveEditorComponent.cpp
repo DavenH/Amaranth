@@ -29,9 +29,7 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindDiscreteControl(impl->enabled);
-    bindContinuousControl(impl->noise);
-    bindContinuousControl(impl->dcOffset);
-    bindContinuousControl(impl->phase);
+    bindContinuousControls({ &impl->noise, &impl->dcOffset, &impl->phase });
 }
 
 GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;
@@ -47,7 +45,8 @@ Rectangle<float> GuideCurveEditorComponent::editorPanelBounds() const {
     return bounds;
 }
 
-void GuideCurveEditorComponent::paintEditor(Graphics&) {}
+void GuideCurveEditorComponent::paintEditor(Graphics&) {
+}
 
 void GuideCurveEditorComponent::layoutEditor() {
     ParameterRail::layout(

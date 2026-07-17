@@ -136,10 +136,20 @@ var CurveExpandedEditorComponent::automationState() const {
     return root;
 }
 
-bool CurveExpandedEditorComponent::editorMouseMove(Point<float>) { return false; }
-bool CurveExpandedEditorComponent::editorMouseDown(Point<float>) { return false; }
-bool CurveExpandedEditorComponent::editorMouseDrag(Point<float>) { return false; }
-void CurveExpandedEditorComponent::editorMouseUp() {}
+bool CurveExpandedEditorComponent::editorMouseMove(Point<float>) {
+    return false;
+}
+
+bool CurveExpandedEditorComponent::editorMouseDown(Point<float>) {
+    return false;
+}
+
+bool CurveExpandedEditorComponent::editorMouseDrag(Point<float>) {
+    return false;
+}
+
+void CurveExpandedEditorComponent::editorMouseUp() {
+}
 
 Rectangle<float> CurveExpandedEditorComponent::contentBounds() const {
     Rectangle<float> bounds = getLocalBounds().toFloat();
@@ -196,6 +206,13 @@ void CurveExpandedEditorComponent::bindContinuousControl(LabeledParameterSlider&
     control.slider.onDragEnd = [this] {
         commitTransaction();
     };
+}
+
+void CurveExpandedEditorComponent::bindContinuousControls(
+        std::initializer_list<LabeledParameterSlider*> controls) {
+    for (auto* control : controls) {
+        bindContinuousControl(*control);
+    }
 }
 
 void CurveExpandedEditorComponent::bindDiscreteControl(ParameterToggle& control) {

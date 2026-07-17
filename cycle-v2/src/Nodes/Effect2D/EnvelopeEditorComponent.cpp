@@ -43,8 +43,7 @@ struct EnvelopeEditorComponent::Impl {
 EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    bindContinuousControl(impl->redMorph);
-    bindContinuousControl(impl->blueMorph);
+    bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
 
     bindDiscreteAction(impl->loop, [this] {
         widget.toggleSelectedEnvelopeMarker(true);

@@ -5,6 +5,7 @@
 
 #include <JuceHeader.h>
 
+#include <initializer_list>
 #include <utility>
 #include <vector>
 
@@ -65,6 +66,7 @@ protected:
     void commitTransaction();
     void requestRepaint();
     void bindContinuousControl(LabeledParameterSlider& control);
+    void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
 
