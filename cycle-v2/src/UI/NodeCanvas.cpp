@@ -36,12 +36,6 @@ const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
-constexpr float kPaletteWidth = 72.f;
-constexpr float kPaletteX = 18.f;
-constexpr float kPaletteY = 74.f;
-constexpr float kPaletteRowHeight = 78.f;
-constexpr float kPalettePulloutWidth = 144.f;
-constexpr float kPalettePulloutRowHeight = 52.f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
@@ -60,67 +54,6 @@ struct SnapCandidate {
     int matches { 1 };
 };
 
-struct PaletteEntry {
-    NodeKind kind;
-    const char* label;
-};
-
-struct PaletteSection {
-    const char* title;
-    const char* shortLabel;
-    PortDomain domain {};
-    const PaletteEntry* entries {};
-    int entryCount {};
-};
-
-const PaletteEntry kContextEntries[] = {
-        { NodeKind::VoiceContext, "Voice Context" }
-};
-
-const PaletteEntry kTransformEntries[] = {
-        { NodeKind::Fft, "Time → Freq" },
-        { NodeKind::Ifft, "Freq → Time" }
-};
-
-const PaletteEntry kMathEntries[] = {
-        { NodeKind::Add, "Add" },
-        { NodeKind::Multiply, "Multiply" }
-};
-
-const PaletteEntry kSourceEntries[] = {
-        { NodeKind::TrilinearMesh, "Mesh" },
-        { NodeKind::ImageSource, "Image" },
-        { NodeKind::WaveSource, "Wave" }
-};
-
-const PaletteEntry kControlEntries[] = {
-        { NodeKind::Envelope, "Envelope" },
-        { NodeKind::GuideCurve, "Guide" }
-};
-
-const PaletteEntry kFxEntries[] = {
-        { NodeKind::ImpulseResponse, "IR" },
-        { NodeKind::Waveshaper, "Waveshaper" },
-        { NodeKind::Reverb, "Reverb" },
-        { NodeKind::Delay, "Delay" }
-};
-
-const PaletteEntry kChannelEntries[] = {
-        { NodeKind::Spy, "Spy" },
-        { NodeKind::StereoSplit, "Split" },
-        { NodeKind::StereoJoin, "Join" },
-        { NodeKind::Output, "Output" }
-};
-
-const PaletteSection kPaletteSections[] = {
-        { "Context",   "Context",   PortDomain::VoiceControlSignal, kContextEntries,   (int) std::size(kContextEntries) },
-        { "Transform", "Transform", PortDomain::SpectralMagnitudeSignal, kTransformEntries, (int) std::size(kTransformEntries) },
-        { "Math",      "Math",      PortDomain::ControlSignal, kMathEntries,      (int) std::size(kMathEntries) },
-        { "Source",    "Source",    PortDomain::TimeSignal, kSourceEntries,    (int) std::size(kSourceEntries) },
-        { "Control",   "Control",   PortDomain::EnvelopeSignal, kControlEntries,   (int) std::size(kControlEntries) },
-        { "FX",        "FX",        PortDomain::SpectralPhaseSignal, kFxEntries,        (int) std::size(kFxEntries) },
-        { "Channel",   "Channel",   PortDomain::TimeSignal, kChannelEntries,   (int) std::size(kChannelEntries) }
-};
 
 float cableScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom * kCableStrokeScale;
@@ -490,70 +423,6 @@ bool containsString(const std::vector<String>& values, const String& value) {
     }
 
     return false;
-}
-
-Rectangle<float> paletteRailBounds() {
-    return {
-            kPaletteX,
-            kPaletteY,
-            kPaletteWidth,
-            12.f + (float) std::size(kPaletteSections) * kPaletteRowHeight
-    };
-}
-
-Rectangle<float> paletteGroupBounds(int sectionIndex) {
-    return {
-            kPaletteX + 7.f,
-            kPaletteY + 7.f + (float) sectionIndex * kPaletteRowHeight,
-            kPaletteWidth - 14.f,
-            kPaletteRowHeight - 9.f
-    };
-}
-
-Rectangle<float> palettePulloutBounds(int sectionIndex) {
-    const auto group = paletteGroupBounds(sectionIndex);
-    const auto& section = kPaletteSections[(size_t) sectionIndex];
-    const float height = (float) section.entryCount * kPalettePulloutRowHeight;
-    return {
-            paletteRailBounds().getRight() + 10.f,
-            group.getY(),
-            kPalettePulloutWidth,
-            height
-    };
-}
-
-Rectangle<float> palettePulloutEntryBounds(int sectionIndex, int entryIndex) {
-    const auto panel = palettePulloutBounds(sectionIndex);
-    return {
-            panel.getX(),
-            panel.getY() + (float) entryIndex * kPalettePulloutRowHeight,
-            panel.getWidth(),
-            kPalettePulloutRowHeight - 7.f
-    };
-}
-
-Rectangle<float> paletteHoverBounds(int sectionIndex) {
-    const auto group = paletteGroupBounds(sectionIndex);
-    const auto pullout = palettePulloutBounds(sectionIndex);
-    const float top = jmin(group.getY(), pullout.getY()) - 22.f;
-    const float bottom = jmax(group.getBottom(), pullout.getBottom()) + 22.f;
-
-    return {
-            group.getX() - 6.f,
-            top,
-            pullout.getRight() - group.getX() + 12.f,
-            bottom - top
-    };
-}
-
-int paletteGroupIndexAt(Point<float> screenPosition) {
-    for (int i = 0; i < (int) std::size(kPaletteSections); ++i) {
-        if (paletteGroupBounds(i).expanded(3.f).contains(screenPosition)) {
-            return i;
-        }
-    }
-
-    return -1;
 }
 
 void drawPaletteGroupIcon(Graphics& g, const char* title, Rectangle<float> area, bool active) {
@@ -1845,14 +1714,14 @@ void NodeCanvas::visibilityChanged() {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
-    updatePaletteHover(event.position);
+    palette.updateHover(event.position);
     setMouseCursor(MouseCursor::NormalCursor);
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
-    updatePaletteHover(event.position);
+    palette.updateHover(event.position);
     editStatusMessage = {};
     dragStartPan = viewport.getPan();
     lastMousePosition = event.position;
@@ -1913,7 +1782,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     NodeKind paletteKind;
-    if (findPaletteKindAt(event.position, paletteKind)) {
+    if (palette.findKindAt(event.position, paletteKind)) {
         auto result = commands.addNode(
                 paletteKind,
                 paletteCreationWorldPosition(paletteKind, event.position));
@@ -1939,7 +1808,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             connectingCable = false;
             refreshCompiledState();
             editStatusMessage = "Node added";
-            activePaletteSectionIndex = -1;
+            palette.close();
             requestCanvasRepaint();
         }
 
@@ -2253,14 +2122,14 @@ void NodeCanvas::timerCallback() {
     updateExpandedEditorHost(findNode(expandedNodeId));
 
     const auto mouse = getMouseXYRelative().toFloat();
-    const int previousPaletteSectionIndex = activePaletteSectionIndex;
+    const int previousPaletteSectionIndex = palette.activeSection();
 
     if (getLocalBounds().toFloat().contains(mouse)) {
-        updatePaletteHover(mouse);
+        palette.updateHover(mouse);
     }
 
     if (getLocalBounds().toFloat().contains(mouse)
-            && (mouse != lastMousePosition || previousPaletteSectionIndex != activePaletteSectionIndex)) {
+            && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
         lastMousePosition = mouse;
         requestCanvasRepaint();
     }
@@ -3573,7 +3442,7 @@ void NodeCanvas::drawHoverConsole(Graphics& g) {
 }
 
 void NodeCanvas::drawNodePalette(Graphics& g) {
-    const int activeSectionIndex = activePaletteSectionIndex;
+    const int activeSectionIndex = palette.activeSection();
 
     auto drawEntryIcon = [&](NodeKind kind, Rectangle<float> area) {
         Node previewNode = GraphNodeFactory().createNode(kind, {}, {});
@@ -3583,10 +3452,10 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         drawPreviewUncached(g, previewNode, area, domain);
     };
 
-    for (int sectionIndex = 0; sectionIndex < (int) std::size(kPaletteSections); ++sectionIndex) {
-        const auto& section = kPaletteSections[(size_t) sectionIndex];
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
         const bool active = sectionIndex == activeSectionIndex;
-        const Rectangle<float> button = paletteGroupBounds(sectionIndex);
+        const Rectangle<float> button = palette.groupBounds(sectionIndex);
 
         g.setColour(Colour(active ? 0xff1d2631 : 0xff151b24).withAlpha(active ? 0.94f : 0.82f));
         g.fillRoundedRectangle(button, 7.f);
@@ -3605,12 +3474,12 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         return;
     }
 
-    const auto& activeSection = kPaletteSections[(size_t) activeSectionIndex];
+    const auto& activeSection = palette.section(activeSectionIndex);
     const Colour sectionColour = Colour(0xff8290a2);
 
     for (int entryIndex = 0; entryIndex < activeSection.entryCount; ++entryIndex) {
         const auto& entry = activeSection.entries[entryIndex];
-        const Rectangle<float> row = palettePulloutEntryBounds(activeSectionIndex, entryIndex);
+        const Rectangle<float> row = palette.entryBounds(activeSectionIndex, entryIndex);
         const bool hover = row.contains(lastMousePosition);
         g.setColour(Colour(hover ? 0xff202935 : 0xff161d26).withAlpha(hover ? 0.94f : 0.82f));
         g.fillRoundedRectangle(row, 6.f);
@@ -3815,31 +3684,6 @@ bool NodeCanvas::findConnectablePortAt(
     }
 
     return found;
-}
-
-bool NodeCanvas::findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const {
-    int sectionIndex = paletteGroupIndexAt(screenPosition);
-
-    if (sectionIndex < 0
-            && activePaletteSectionIndex >= 0
-            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
-        sectionIndex = activePaletteSectionIndex;
-    }
-
-    if (sectionIndex < 0) {
-        return false;
-    }
-
-    const auto& section = kPaletteSections[(size_t) sectionIndex];
-
-    for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
-        if (palettePulloutEntryBounds(sectionIndex, entryIndex).contains(screenPosition)) {
-            kind = section.entries[entryIndex].kind;
-            return true;
-        }
-    }
-
-    return false;
 }
 
 bool NodeCanvas::findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const {
@@ -4101,20 +3945,15 @@ int NodeCanvas::attachmentCount() const {
 String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
     NodeKind paletteKind;
 
-    if (findPaletteKindAt(screenPosition, paletteKind)) {
+    if (palette.findKindAt(screenPosition, paletteKind)) {
         Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
         return "Create " + node.title + "  /  " + node.subtitle;
     }
 
-    int paletteSectionIndex = paletteGroupIndexAt(screenPosition);
-    if (paletteSectionIndex < 0
-            && activePaletteSectionIndex >= 0
-            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
-        paletteSectionIndex = activePaletteSectionIndex;
-    }
+    const int paletteSectionIndex = palette.findSectionAt(screenPosition);
 
     if (paletteSectionIndex >= 0) {
-        return "Node group  /  " + String(kPaletteSections[(size_t) paletteSectionIndex].title);
+        return "Node group  /  " + String(palette.section(paletteSectionIndex).title);
     }
 
     String layoutNodeId;
@@ -4228,7 +4067,7 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 }
 
 Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const {
-    const float paletteRight = 18.f + kPaletteWidth;
+    const float paletteRight = palette.railBounds().getRight();
     const float x = jmin((float) getWidth() - 280.f, paletteRight + 32.f);
     Point<float> position = toWorld({ x, paletteClickPosition.y });
 
@@ -5400,30 +5239,6 @@ bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& se
 
     NodeGraph candidate = graph;
     return GraphEditor().connect(candidate, first, second).succeeded();
-}
-
-void NodeCanvas::updatePaletteHover(Point<float> screenPosition) {
-    if (activePaletteSectionIndex >= 0
-            && paletteHoverBounds(activePaletteSectionIndex).contains(screenPosition)) {
-        const int groupIndex = paletteGroupIndexAt(screenPosition);
-
-        if (groupIndex >= 0
-                && groupIndex != activePaletteSectionIndex
-                && paletteGroupBounds(groupIndex).contains(screenPosition)) {
-            activePaletteSectionIndex = groupIndex;
-        }
-
-        return;
-    }
-
-    const int groupIndex = paletteGroupIndexAt(screenPosition);
-
-    if (groupIndex >= 0) {
-        activePaletteSectionIndex = groupIndex;
-        return;
-    }
-
-    activePaletteSectionIndex = -1;
 }
 
 Path NodeCanvas::createCablePath(

@@ -8,10 +8,46 @@
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeAutomationFacade.h"
 #include "../src/UI/NodeCanvasViewport.h"
+#include "../src/UI/NodePalette.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Node palette resolves every authored node kind from its visible entry",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+
+    for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
+        const auto& section = palette.section(sectionIndex);
+        REQUIRE(palette.updateHover(palette.groupBounds(sectionIndex).getCentre()));
+        REQUIRE(palette.activeSection() == sectionIndex);
+
+        for (int entryIndex = 0; entryIndex < section.entryCount; ++entryIndex) {
+            NodeKind resolvedKind {};
+            REQUIRE(palette.findKindAt(palette.entryBounds(sectionIndex, entryIndex).getCentre(), resolvedKind));
+            REQUIRE(resolvedKind == section.entries[entryIndex].kind);
+        }
+    }
+}
+
+TEST_CASE("Node palette hover remains open across its pullout and closes outside",
+        "[cycle-v2][canvas][palette]") {
+    NodePalette palette;
+    const int sourceSection = 3;
+    const int adjacentSection = 4;
+
+    REQUIRE(palette.updateHover(palette.groupBounds(sourceSection).getCentre()));
+    REQUIRE_FALSE(palette.updateHover(palette.entryBounds(sourceSection, 0).getCentre()));
+    REQUIRE(palette.activeSection() == sourceSection);
+
+    REQUIRE(palette.updateHover(palette.groupBounds(adjacentSection).getCentre()));
+    REQUIRE(palette.activeSection() == adjacentSection);
+
+    REQUIRE(palette.updateHover({ 800.f, 700.f }));
+    REQUIRE(palette.activeSection() == -1);
+    REQUIRE_FALSE(palette.close());
+}
 
 TEST_CASE("Node canvas viewport transforms round trip and preserve zoom anchors", "[cycle-v2][canvas]") {
     NodeCanvasViewport viewport;

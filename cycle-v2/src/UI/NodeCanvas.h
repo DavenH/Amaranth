@@ -15,11 +15,12 @@
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPresentationModel.h"
-#include "NodeCanvasGlRenderer.h"
 #include "NodeAutomationFacade.h"
+#include "NodeCanvasGlRenderer.h"
 #include "NodeCanvasScene.h"
 #include "NodeCanvasViewport.h"
 #include "NodeEditorHost.h"
+#include "NodePalette.h"
 #include "RenderInvalidationAccumulator.h"
 
 namespace CycleV2 {
@@ -115,6 +116,7 @@ private:
     NodeEditorCommandService editorCommands;
     NodeEditorHost editorHost;
     RenderInvalidationAccumulator renderInvalidation;
+    NodePalette palette;
 
     Point<float> dragStartPan;
     Rectangle<float> dragStartNodeBounds;
@@ -124,7 +126,6 @@ private:
     int activeTrimeshVertexIndex { -1 };
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
-    int activePaletteSectionIndex { -1 };
     PortAddress connectingPort;
     Point<float> connectingPoint;
     Point<float> lastMousePosition;
@@ -202,7 +203,6 @@ private:
     CableEndpoint dynamicTrimeshGuideEndpoint(const Node& node, const String& portId) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
-    bool findPaletteKindAt(Point<float> screenPosition, NodeKind& kind) const;
     bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const;
     bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
@@ -264,7 +264,6 @@ private:
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
-    void updatePaletteHover(Point<float> screenPosition);
     Path createCablePath(
             Point<float> source,
             Point<float> dest,
