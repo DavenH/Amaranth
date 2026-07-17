@@ -2,10 +2,12 @@
 
 #include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/CurveNodeModels.h"
-#include "../Effect2D/Effect2DMeshState.h"
 
 #include <Curve/Curve.h>
+#include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
+#include <Inter/Dimensions.h>
 #include <Util/NumberUtils.h>
 
 namespace CycleV2 {
@@ -24,15 +26,6 @@ void ensureCurveTable() {
     }
 }
 
-}
-
-WaveshaperSignalProcessor::WaveshaperSignalProcessor() {
-    rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
-    rasterizer.setMesh(&mesh);
-}
-
-WaveshaperSignalProcessor::~WaveshaperSignalProcessor() {
-    mesh.destroy();
 }
 
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
@@ -94,24 +87,6 @@ void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfigurat
     adoptedRevision = published.revision;
 }
 
-void WaveshaperSignalProcessor::prepareLegacy(
-        const std::vector<NodeParameter>& parameters,
-        const AudioProcessTiming&) {
-    if (configuration != nullptr) {
-        return;
-    }
-
-    syncTransferTable(parameters);
-    preGain = cycle1GainForParameter(parameterFloat(parameters, "pre", 0.5f));
-    postGain = cycle1GainForParameter(parameterFloat(parameters, "post", 0.5f));
-    const int requestedFactor = (int) parameterFloat(parameters, "aaFactor", 1.f);
-    oversampleFactor = requestedFactor >= 8 ? 8
-            : requestedFactor >= 4 ? 4
-            : requestedFactor >= 2 ? 2
-            : 1;
-    oversampler.setOversampleFactor(oversampleFactor);
-}
-
 void WaveshaperSignalProcessor::beginBlock(size_t frameCount) {
     useOversampling = oversampleFactor > 1;
     if (!useOversampling) {
@@ -134,52 +109,19 @@ void WaveshaperSignalProcessor::endTraversalGrid() {
 }
 
 void WaveshaperSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
+    if (configuration == nullptr || configuration->transfer == nullptr) {
+        return;
+    }
+
     if (useOversampling) {
         oversampler.startOversamplingBlock(buffer);
     }
 
-    const WaveshaperTransfer& activeTransfer = configuration != nullptr
-            ? *configuration->transfer
-            : transfer;
-    activeTransfer.process(buffer, preGain, postGain);
+    configuration->transfer->process(buffer, preGain, postGain);
 
     if (useOversampling) {
         oversampler.stopOversamplingBlock();
     }
-}
-
-void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParameter>& parameters) {
-    const String serializedVertices = Effect2DMeshState::serialize(
-            CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::Waveshaper));
-
-    if (serializedVertices == lastVertexState && mesh.getNumVerts() > 0) {
-        return;
-    }
-
-    rebuildMesh(serializedVertices);
-    lastVertexState = serializedVertices;
-    ensureCurveTable();
-    rasterizer.renderWaveformOnly();
-    transfer.rasterizeFrom(rasterizer.sampler(), kWaveshaperPadding);
-}
-
-void WaveshaperSignalProcessor::rebuildMesh(const String& serializedVertices) {
-    mesh.destroy();
-
-    for (const auto& vertex : Effect2DMeshState::parse(serializedVertices)) {
-        addVertex(vertex.x, vertex.y, vertex.curve);
-    }
-}
-
-void WaveshaperSignalProcessor::addVertex(float x, float y, float curve) {
-    auto* vertex = new Vertex(x, y);
-    vertex->values[Vertex::Curve] = curve;
-
-    if (curve >= 1.f) {
-        vertex->setMaxSharpness();
-    }
-
-    mesh.addVertex(vertex);
 }
 
 }

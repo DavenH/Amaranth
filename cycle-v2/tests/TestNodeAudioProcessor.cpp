@@ -195,6 +195,22 @@ const SignalPayload& output(const AudioProcessContext& context, size_t index = 0
     return context.outputs[index];
 }
 
+void prepareProcessor(
+        NodeAudioProcessor& processor,
+        AudioModuleRole role,
+        const AudioProcessContext& context,
+        size_t maximumFrameCount = 0) {
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
+    spec.sampleRate = context.timing.sampleRate;
+    spec.bpm = context.timing.bpm;
+    spec.beatsPerMeasure = context.timing.beatsPerMeasure;
+    const auto configuration = NodeDspConfigurationFactory().create(role, context.parameters, spec);
+    REQUIRE(configuration != nullptr);
+    processor.adoptConfiguration({ 1, "test-configuration", configuration });
+    processor.prepareExecution(spec);
+}
+
 }
 
 TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2][runtime]") {
@@ -895,7 +911,9 @@ TEST_CASE("Waveshaper processor applies the same transform to block and traversa
             { "pre", "Pre", "2" },
             { "post", "Post", "0.5" }
     };
-    factory.create(AudioModuleRole::Waveshaper)->process(context);
+    auto processor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*processor, AudioModuleRole::Waveshaper, context);
+    processor->process(context);
 
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).traversalGrid.columns == 2);
@@ -910,6 +928,21 @@ TEST_CASE("Waveshaper processor applies the same transform to block and traversa
     REQUIRE(output(context).block.samples[2] > 0.f);
 }
 
+TEST_CASE("Unprepared configured effects bypass without realtime reconstruction", "[cycle-v2][runtime]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { payload({ -0.5f, 0.f, 0.5f }) };
+    context.parameters = {
+            { "pre", "Pre", "1" },
+            { "post", "Post", "0" }
+    };
+
+    factory.create(AudioModuleRole::Waveshaper)->process(context);
+
+    REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
+}
+
 TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
@@ -918,7 +951,9 @@ TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-
     defaultContext.inputs = {
             gridPayload({ -0.5f, 0.f, 0.5f }, 1, 3)
     };
-    factory.create(AudioModuleRole::Waveshaper)->process(defaultContext);
+    auto defaultProcessor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*defaultProcessor, AudioModuleRole::Waveshaper, defaultContext);
+    defaultProcessor->process(defaultContext);
 
     AudioProcessContext shapedContext;
     shapedContext.frameCount = 3;
@@ -929,7 +964,9 @@ TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-
             { 1, 0.0625f, 0.875f, 1.f },
             { 2, 0.9375f, 0.875f, 1.f }
     });
-    factory.create(AudioModuleRole::Waveshaper)->process(shapedContext);
+    auto shapedProcessor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*shapedProcessor, AudioModuleRole::Waveshaper, shapedContext);
+    shapedProcessor->process(shapedContext);
 
     REQUIRE(output(shapedContext).traversalGrid.isValid());
     REQUIRE(output(shapedContext).block.samples[2] != Catch::Approx(output(defaultContext).block.samples[2]));
@@ -955,7 +992,9 @@ TEST_CASE("Waveshaper oversamples audio while keeping traversal columns independ
             { "aaFactor", "AA Factor", "4" }
     });
 
-    factory.create(AudioModuleRole::Waveshaper)->process(context);
+    auto processor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*processor, AudioModuleRole::Waveshaper, context);
+    processor->process(context);
 
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).block.samples != output(context).traversalGrid.values);
@@ -978,7 +1017,9 @@ TEST_CASE("Disabled waveshaper passes block and traversal grid through unchanged
             { "pre", "Pre", "2" },
             { "post", "Post", "0.5" }
     };
-    factory.create(AudioModuleRole::Waveshaper)->process(context);
+    auto processor = factory.create(AudioModuleRole::Waveshaper);
+    prepareProcessor(*processor, AudioModuleRole::Waveshaper, context);
+    processor->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { -0.5f, 0.f, 0.5f });
     REQUIRE(output(context).traversalGrid.values
@@ -998,7 +1039,9 @@ TEST_CASE("IR processor transforms block and traversal grid through convolution"
             { "post", "Post", "0.5" },
             { "highPass", "HighPass", "0" }
     };
-    factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+    auto processor = factory.create(AudioModuleRole::ImpulseResponse);
+    prepareProcessor(*processor, AudioModuleRole::ImpulseResponse, context);
+    processor->process(context);
 
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).traversalGrid.columns == 2);
@@ -1032,18 +1075,21 @@ TEST_CASE("IR processor uses Cycle 1 post-gain and prefilter policies", "[cycle-
             { "post", "Post", "0.5" },
             { "highPass", "HighPass", "0" }
     });
+    prepareProcessor(*unityProcessor, AudioModuleRole::ImpulseResponse, unity);
     unityProcessor->process(unity);
 
     AudioProcessContext quiet = unity;
     std::find_if(quiet.parameters.begin(), quiet.parameters.end(), [](const auto& parameter) {
         return parameter.id == "post";
     })->value = "0";
+    prepareProcessor(*quietProcessor, AudioModuleRole::ImpulseResponse, quiet);
     quietProcessor->process(quiet);
 
     AudioProcessContext filtered = unity;
     std::find_if(filtered.parameters.begin(), filtered.parameters.end(), [](const auto& parameter) {
         return parameter.id == "highPass";
     })->value = "1";
+    prepareProcessor(*filteredProcessor, AudioModuleRole::ImpulseResponse, filtered);
     filteredProcessor->process(filtered);
 
     const auto& unitySamples = output(unity).block.samples;
@@ -1071,7 +1117,9 @@ TEST_CASE("Disabled IR processor passes its input through", "[cycle-v2][runtime]
             { "highPass", "HighPass", "1" }
     };
 
-    factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+    auto processor = factory.create(AudioModuleRole::ImpulseResponse);
+    prepareProcessor(*processor, AudioModuleRole::ImpulseResponse, context);
+    processor->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 1.f, -0.5f, 0.25f, 0.f });
 }
@@ -1105,7 +1153,9 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
         context.inputs.front().channelLayout = layout;
         context.parameters = parameters;
 
-        factory.create(AudioModuleRole::ImpulseResponse)->process(context);
+        auto processor = factory.create(AudioModuleRole::ImpulseResponse);
+        prepareProcessor(*processor, AudioModuleRole::ImpulseResponse, context);
+        processor->process(context);
 
         REQUIRE(output(context).channelLayout == layout);
         if (reference.empty()) {
@@ -1139,12 +1189,14 @@ TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cyc
     whole.frameCount = wholeInput.size();
     whole.inputs = { payload(wholeInput) };
     whole.parameters = parameters;
+    prepareProcessor(*wholeProcessor, AudioModuleRole::ImpulseResponse, whole);
     wholeProcessor->process(whole);
 
     AudioProcessContext firstHalf;
     firstHalf.frameCount = 64;
     firstHalf.inputs = { payload(std::vector<float>(wholeInput.begin(), wholeInput.begin() + 64)) };
     firstHalf.parameters = parameters;
+    prepareProcessor(*splitProcessor, AudioModuleRole::ImpulseResponse, firstHalf);
     splitProcessor->process(firstHalf);
 
     AudioProcessContext secondHalf;
@@ -1261,7 +1313,9 @@ TEST_CASE("Reverb processor transforms block and carries traversal tails across 
             { "width", "Width", "0.5" },
             { "wet", "Wet", "1" }
     };
-    factory.create(AudioModuleRole::Reverb)->process(context);
+    auto processor = factory.create(AudioModuleRole::Reverb);
+    prepareProcessor(*processor, AudioModuleRole::Reverb, context);
+    processor->process(context);
 
     REQUIRE(output(context).traversalGrid.isValid());
     REQUIRE(output(context).block.samples != context.inputs.front().block.samples);
@@ -1291,6 +1345,7 @@ TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v
     gridValues.front() = 1.f;
     gridValues[256] = 100.f;
     withGridFirst.inputs = { gridPayload(gridValues, 2, 256) };
+    prepareProcessor(*withGridProcessor, AudioModuleRole::Reverb, withGridFirst);
     withGridProcessor->process(withGridFirst);
 
     AudioProcessContext blockOnlyFirst;
@@ -1299,6 +1354,7 @@ TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v
     std::vector<float> impulse(256, 0.f);
     impulse.front() = 1.f;
     blockOnlyFirst.inputs = { payload(impulse) };
+    prepareProcessor(*blockOnlyProcessor, AudioModuleRole::Reverb, blockOnlyFirst);
     blockOnlyProcessor->process(blockOnlyFirst);
 
     AudioProcessContext withGridSecond;

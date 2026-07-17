@@ -2,7 +2,6 @@
 
 #include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/CurveNodeModels.h"
-#include "../Effect2D/Effect2DMeshState.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
@@ -27,17 +26,6 @@ void ensureCurveTable() {
     }
 }
 
-}
-
-IrSignalProcessor::IrSignalProcessor() {
-    rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
-    rasterizer.setScalingMode(FXRasterizer::Bipolar);
-    rasterizer.setMesh(&mesh);
-    impulseOversampler.setOversampleFactor(2);
-}
-
-IrSignalProcessor::~IrSignalProcessor() {
-    mesh.destroy();
 }
 
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
@@ -110,9 +98,7 @@ void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     prepareConvolver(blockConvolver, spec.maximumFrameCount, preparedBlockSize);
-    blockImpulseRevision = impulseRevision;
     prepareConvolver(traversalConvolver, spec.maximumFrameCount, preparedTraversalSize);
-    traversalImpulseRevision = impulseRevision;
     convolutionOutput.resize(spec.maximumFrameCount);
 }
 
@@ -124,31 +110,14 @@ void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& pub
 
     configuration = std::static_pointer_cast<const IrConfiguration>(published.value);
     postGain = configuration->postGain;
-    impulseRevision = (size_t) published.revision;
     preparedBlockSize = 0;
     preparedTraversalSize = 0;
     adoptedRevision = published.revision;
 }
 
-void IrSignalProcessor::prepareLegacy(
-        const std::vector<NodeParameter>& parametersToUse,
-        const AudioProcessTiming&) {
-    if (configuration != nullptr) {
-        return;
-    }
-
-    postGain = CycleDsp::irPostGain(parameterFloat(parametersToUse, "post", 0.5f));
-    highPass = parameterFloat(parametersToUse, "highPass", 0.5f);
-    impulseLength = (size_t) CycleDsp::irImpulseLength(parameterFloat(parametersToUse, "size", 0.5f));
-    syncImpulse(parametersToUse);
-}
-
 void IrSignalProcessor::beginBlock(size_t frameCount) {
+    ignoreUnused(frameCount);
     activeConvolver = &blockConvolver;
-    if (configuration == nullptr) {
-        prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
-    }
-    blockImpulseRevision = impulseRevision;
 }
 
 void IrSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
@@ -157,7 +126,6 @@ void IrSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
         preparedTraversalSize = 0;
         prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
     }
-    traversalImpulseRevision = impulseRevision;
 }
 
 void IrSignalProcessor::endTraversalGrid() {
@@ -165,8 +133,8 @@ void IrSignalProcessor::endTraversalGrid() {
 }
 
 void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    const bool hasImpulse = configuration != nullptr ? !configuration->impulse.empty() : !impulse.empty();
-    if (buffer.empty() || !hasImpulse || activeConvolver == nullptr) {
+    if (buffer.empty() || configuration == nullptr || configuration->impulse.empty()
+            || activeConvolver == nullptr) {
         return;
     }
 
@@ -180,97 +148,21 @@ void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessP
     buffer.mul(postGain);
 }
 
-void IrSignalProcessor::syncImpulse(const std::vector<NodeParameter>& parametersToUse) {
-    const String serializedVertices = Effect2DMeshState::serialize(
-            CurveNodeModelCodec::flatVerticesFromParameters(parametersToUse, NodeKind::ImpulseResponse));
-    if (serializedVertices == lastVertexState
-            && impulse.size() == impulseLength
-            && impulseHighPass == highPass) {
-        return;
-    }
-
-    rebuildMesh(serializedVertices);
-    lastVertexState = serializedVertices;
-    ensureCurveTable();
-
-    const bool lengthChanged = impulse.size() != impulseLength;
-    impulse.resize(impulseLength);
-    rawImpulse.resize(impulseLength);
-    oversampledImpulse.resize(impulseLength * (size_t) impulseOversampler.getOversampleFactor());
-    prefilterLevels.resize(impulseLength / 2);
-    if (lengthChanged) {
-        impulseTransform.allocate((int) impulseLength, Transform::DivFwdByN, true);
-    }
-    rasterizer.renderWaveformOnly();
-
-    Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
-    if (rasterizer.canRasterizeWaveform()) {
-        Buffer<float> oversampledBuffer(
-                oversampledImpulse.data(),
-                (int) oversampledImpulse.size());
-        impulseOversampler.setMemoryBuffer(oversampledBuffer);
-        CycleDsp::rasterizeIrImpulse(
-                rasterizer.sampler(),
-                rawImpulseBuffer,
-                impulseOversampler,
-                kIrPadding);
-    } else {
-        rawImpulseBuffer.zero();
-        rawImpulseBuffer.front() = 1.f;
-    }
-
-    Buffer<float> levelBuffer(prefilterLevels.data(), (int) prefilterLevels.size());
-    CycleDsp::buildIrPrefilterLevels(levelBuffer, highPass);
-    CycleDsp::applyIrFrequencyPrefilter(
-            rawImpulseBuffer,
-            { impulse.data(), (int) impulse.size() },
-            levelBuffer,
-            impulseTransform);
-    impulseHighPass = highPass;
-    ++impulseRevision;
-}
-
 void IrSignalProcessor::prepareConvolver(
         BlockConvolver& convolver,
         size_t blockSize,
         size_t& preparedSize) {
-    const bool isBlockConvolver = &convolver == &blockConvolver;
-    const size_t preparedRevision = isBlockConvolver
-            ? blockImpulseRevision
-            : traversalImpulseRevision;
-    if (blockSize == 0
-            || (preparedSize == blockSize && preparedRevision == impulseRevision)) {
+    if (configuration == nullptr || blockSize == 0 || preparedSize == blockSize) {
         return;
     }
 
     convolver.init(
             NumberUtils::nextPower2((unsigned) blockSize),
-            configuration != nullptr
-                    ? Buffer<float>(
-                            const_cast<float*>(configuration->impulse.data()),
-                            (int) configuration->impulse.size())
-                    : Buffer<float>(impulse.data(), (int) impulse.size()));
+            Buffer<float>(
+                    const_cast<float*>(configuration->impulse.data()),
+                    (int) configuration->impulse.size()));
     preparedSize = blockSize;
     convolutionOutput.resize(blockSize);
-}
-
-void IrSignalProcessor::rebuildMesh(const String& serializedVertices) {
-    mesh.destroy();
-
-    for (const auto& vertex : Effect2DMeshState::parse(serializedVertices)) {
-        addVertex(vertex.x, vertex.y, vertex.curve);
-    }
-}
-
-void IrSignalProcessor::addVertex(float x, float y, float curve) {
-    auto* vertex = new Vertex(x, y);
-    vertex->values[Vertex::Curve] = curve;
-
-    if (curve >= 1.f) {
-        vertex->setMaxSharpness();
-    }
-
-    mesh.addVertex(vertex);
 }
 
 void DelaySignalProcessor::configure(
@@ -327,22 +219,6 @@ void DelaySignalProcessor::processBuffer(Buffer<float> buffer, const SignalProce
     activeDelay->process(buffer);
 }
 
-void ReverbSignalProcessor::prepareLegacy(
-        const std::vector<NodeParameter>& parametersToUse,
-        const AudioProcessTiming&) {
-    if (configuration != nullptr) {
-        return;
-    }
-
-    roomSize = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "size", 0.35f));
-    rolloffFactor = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "damp", 0.2f)) * 0.7f;
-    width = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "width", 0.75f));
-    highPass = jlimit(0.f, 1.f, parameterFloat(parametersToUse, "highPass", 0.05f));
-    wetLevel = 0.25f * jlimit(0.f, 1.f, parameterFloat(parametersToUse, "wet", 0.5f));
-    kernelLength = (size_t) NumberUtils::nextPower2((unsigned) std::pow(2.f, 12.f + 6.f * roomSize));
-    syncKernel();
-}
-
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<ReverbConfiguration>();
@@ -373,9 +249,7 @@ void ReverbSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     prepareConvolver(blockConvolver, spec.maximumFrameCount, preparedBlockSize);
-    blockKernelRevision = kernelRevision;
     prepareConvolver(traversalConvolver, spec.maximumFrameCount, preparedTraversalSize);
-    traversalKernelRevision = kernelRevision;
     dryBuffer.resize(spec.maximumFrameCount);
     convolutionOutput.resize(spec.maximumFrameCount);
 }
@@ -387,20 +261,15 @@ void ReverbSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration&
     }
 
     configuration = std::static_pointer_cast<const ReverbConfiguration>(published.value);
-    width = configuration->width;
     wetLevel = configuration->wetLevel;
-    kernelRevision = (size_t) published.revision;
     preparedBlockSize = 0;
     preparedTraversalSize = 0;
     adoptedRevision = published.revision;
 }
 
 void ReverbSignalProcessor::beginBlock(size_t frameCount) {
+    ignoreUnused(frameCount);
     activeConvolver = &blockConvolver;
-    if (configuration == nullptr) {
-        prepareConvolver(blockConvolver, frameCount, preparedBlockSize);
-    }
-    blockKernelRevision = kernelRevision;
 }
 
 void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
@@ -409,7 +278,6 @@ void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
         preparedTraversalSize = 0;
         prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
     }
-    traversalKernelRevision = kernelRevision;
 }
 
 void ReverbSignalProcessor::endTraversalGrid() {
@@ -417,8 +285,8 @@ void ReverbSignalProcessor::endTraversalGrid() {
 }
 
 void ReverbSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
-    const bool hasKernel = configuration != nullptr ? !configuration->kernel.empty() : !kernel.empty();
-    if (buffer.empty() || !hasKernel || activeConvolver == nullptr) {
+    if (buffer.empty() || configuration == nullptr || configuration->kernel.empty()
+            || activeConvolver == nullptr) {
         return;
     }
 
@@ -435,39 +303,11 @@ void ReverbSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProc
     buffer.addProduct({ convolutionOutput.data(), buffer.size() }, wetLevel);
 }
 
-void ReverbSignalProcessor::syncKernel() {
-    const String signature = String(roomSize)
-            + ":" + String(rolloffFactor)
-            + ":" + String(highPass)
-            + ":" + String((int) kernelLength);
-
-    if (signature == kernelSignature && kernel.size() == kernelLength) {
-        return;
-    }
-
-    kernelSignature = signature;
-    kernel.assign(kernelLength, 0.f);
-    ++kernelRevision;
-
-    CycleDsp::ReverbKernelConfiguration configuration;
-    configuration.roomSize = roomSize;
-    configuration.damping = rolloffFactor;
-    configuration.highPass = highPass;
-    CycleDsp::buildReverbKernel(
-            configuration,
-            { kernel.data(), (int) kernel.size() });
-}
-
 void ReverbSignalProcessor::prepareConvolver(
         ConvReverb& convolver,
         size_t blockSize,
         size_t& preparedSize) {
-    const bool isBlockConvolver = &convolver == &blockConvolver;
-    const size_t preparedRevision = isBlockConvolver
-            ? blockKernelRevision
-            : traversalKernelRevision;
-    if (blockSize == 0
-            || (preparedSize == blockSize && preparedRevision == kernelRevision)) {
+    if (configuration == nullptr || blockSize == 0 || preparedSize == blockSize) {
         return;
     }
 
@@ -475,11 +315,9 @@ void ReverbSignalProcessor::prepareConvolver(
     convolver.init(
             headSize,
             16 * headSize,
-            configuration != nullptr
-                    ? Buffer<float>(
-                            const_cast<float*>(configuration->kernel.data()),
-                            (int) configuration->kernel.size())
-                    : Buffer<float>(kernel.data(), (int) kernel.size()));
+            Buffer<float>(
+                    const_cast<float*>(configuration->kernel.data()),
+                    (int) configuration->kernel.size()));
     preparedSize = blockSize;
     dryBuffer.resize(blockSize);
     convolutionOutput.resize(blockSize);

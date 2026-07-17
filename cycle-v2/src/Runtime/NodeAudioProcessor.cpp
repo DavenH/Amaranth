@@ -288,24 +288,18 @@ public:
     AudioModuleRole role() const override { return Role; }
     void prepareExecution(const AudioExecutionSpec& spec) override { operation.prepareExecution(spec); }
     void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
-        hasConfiguration = configuration.isValid() && configuration.value->role() == Role;
-        configurationEnabled = configuration.value == nullptr || configuration.value->isEnabled();
+        configurationReady = configuration.isValid() && configuration.value->role() == Role;
+        configurationEnabled = configurationReady && configuration.value->isEnabled();
         operation.adoptConfiguration(configuration);
     }
     void process(AudioProcessContext& context) override {
-        if (!hasConfiguration) {
-            operation.prepareLegacy(processParameters(context), context.timing);
-        }
-        const bool enabled = hasConfiguration
-                ? configurationEnabled
-                : typedParameterBool(processParameters(context), "enabled", true);
-        processUnaryEffect(operation, processor, context, enabled);
+        processUnaryEffect(operation, processor, context, configurationReady && configurationEnabled);
     }
 
 private:
     Operation operation;
     UnarySignalProcessor processor;
-    bool hasConfiguration {};
+    bool configurationReady {};
     bool configurationEnabled { true };
 };
 
