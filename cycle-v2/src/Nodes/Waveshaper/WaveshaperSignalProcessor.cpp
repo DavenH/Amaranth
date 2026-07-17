@@ -1,13 +1,8 @@
 #include "WaveshaperSignalProcessor.h"
 
 #include "../../Graph/NodeDefinition.h"
-#include "../Effect2D/CurveNodeModels.h"
+#include "../Effect2D/FlatCurvePreparation.h"
 
-#include <Curve/Curve.h>
-#include <Curve/Mesh/Mesh.h>
-#include <Curve/Mesh/Vertex.h>
-#include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
-#include <Inter/Dimensions.h>
 #include <Util/NumberUtils.h>
 
 namespace CycleV2 {
@@ -20,12 +15,6 @@ float cycle1GainForParameter(float value) {
     return (float) NumberUtils::fromDecibels(45.f * (2.f * value - 1.f));
 }
 
-void ensureCurveTable() {
-    if (Curve::table == nullptr) {
-        Curve::calcTable();
-    }
-}
-
 }
 
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
@@ -33,30 +22,16 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     auto result = std::make_shared<WaveshaperConfiguration>();
     result->enabled = typedParameterBool(parameters, "enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
-    Mesh preparedMesh("CycleV2WaveshaperConfiguration");
-    FXRasterizer preparedRasterizer(nullptr, "CycleV2WaveshaperConfigurationRasterizer");
-    preparedRasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
-    preparedRasterizer.setMesh(&preparedMesh);
-
-    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::Waveshaper);
-    if (vertices.empty()) {
-        preparedMesh.destroy();
+    FlatCurvePreparation curve(
+            "CycleV2WaveshaperConfiguration",
+            NodeKind::Waveshaper,
+            parameters,
+            FXRasterizer::Unipolar);
+    if (!curve.prepare()) {
         return {};
     }
 
-    for (const auto& state : vertices) {
-        auto* vertex = new Vertex(state.x, state.y);
-        vertex->values[Vertex::Curve] = state.curve;
-        if (state.curve >= 1.f) {
-            vertex->setMaxSharpness();
-        }
-        preparedMesh.addVertex(vertex);
-    }
-
-    ensureCurveTable();
-    preparedRasterizer.renderWaveformOnly();
-    preparedTransfer->rasterizeFrom(preparedRasterizer.sampler(), kWaveshaperPadding);
-    preparedMesh.destroy();
+    preparedTransfer->rasterizeFrom(curve.sampler(), kWaveshaperPadding);
 
     result->transfer = std::move(preparedTransfer);
     result->preGain = cycle1GainForParameter(parameterFloat(parameters, "pre", 0.5f));

@@ -1,14 +1,12 @@
 #include "EffectSignalProcessors.h"
 
 #include "../../Graph/NodeDefinition.h"
-#include "../Effect2D/CurveNodeModels.h"
+#include "../Effect2D/FlatCurvePreparation.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/CycleDsp/ReverbKernel.h>
-#include <Curve/Curve.h>
-#include <Curve/Mesh/Vertex.h>
 #include <Util/NumberUtils.h>
 
 #include <algorithm>
@@ -20,12 +18,6 @@ namespace {
 
 constexpr float kIrPadding = 0.0625f;
 
-void ensureCurveTable() {
-    if (Curve::table == nullptr) {
-        Curve::calcTable();
-    }
-}
-
 }
 
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
@@ -35,29 +27,14 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     const float highPass = parameterFloat(parameters, "highPass", 0.5f);
     const size_t impulseLength = (size_t) CycleDsp::irImpulseLength(
             parameterFloat(parameters, "size", 0.5f));
-    Mesh preparedMesh("CycleV2IrConfiguration");
-    FXRasterizer preparedRasterizer(nullptr, "CycleV2IrConfigurationRasterizer");
-    preparedRasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
-    preparedRasterizer.setScalingMode(FXRasterizer::Bipolar);
-    preparedRasterizer.setMesh(&preparedMesh);
-
-    auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters, NodeKind::ImpulseResponse);
-    if (vertices.empty()) {
-        preparedMesh.destroy();
+    FlatCurvePreparation curve(
+            "CycleV2IrConfiguration",
+            NodeKind::ImpulseResponse,
+            parameters,
+            FXRasterizer::Bipolar);
+    if (!curve.prepare()) {
         return {};
     }
-
-    for (const auto& state : vertices) {
-        auto* vertex = new Vertex(state.x, state.y);
-        vertex->values[Vertex::Curve] = state.curve;
-        if (state.curve >= 1.f) {
-            vertex->setMaxSharpness();
-        }
-        preparedMesh.addVertex(vertex);
-    }
-
-    ensureCurveTable();
-    preparedRasterizer.renderWaveformOnly();
 
     result->impulse.resize(impulseLength);
     std::vector<float> rawImpulse(impulseLength);
@@ -67,16 +44,11 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedOversampler.setOversampleFactor(2);
     preparedOversampler.setMemoryBuffer({ oversampledImpulse.data(), (int) oversampledImpulse.size() });
     Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
-    if (preparedRasterizer.canRasterizeWaveform()) {
-        CycleDsp::rasterizeIrImpulse(
-                preparedRasterizer.sampler(),
-                rawImpulseBuffer,
-                preparedOversampler,
-                kIrPadding);
-    } else {
-        rawImpulseBuffer.zero();
-        rawImpulseBuffer.front() = 1.f;
-    }
+    CycleDsp::rasterizeIrImpulse(
+            curve.sampler(),
+            rawImpulseBuffer,
+            preparedOversampler,
+            kIrPadding);
 
     Transform transform;
     transform.allocate((int) impulseLength, Transform::DivFwdByN, true);
@@ -88,7 +60,6 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             levels,
             transform);
     result->postGain = CycleDsp::irPostGain(parameterFloat(parameters, "post", 0.5f));
-    preparedMesh.destroy();
     return result;
 }
 
