@@ -2,6 +2,7 @@
 
 #include "../../Runtime/UnarySignalProcessor.h"
 #include "../../Runtime/NodeDspConfiguration.h"
+#include "PreparedConvolverPair.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/Oversampler.h>
@@ -58,14 +59,12 @@ public:
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
-    void prepareConvolver(BlockConvolver& convolver, size_t blockSize, size_t& preparedSize);
-    std::vector<float> convolutionOutput;
-    BlockConvolver blockConvolver;
-    BlockConvolver traversalConvolver;
-    BlockConvolver* activeConvolver { &blockConvolver };
+    void prepareBlockConvolver(size_t blockSize);
+    void prepareTraversalConvolver(size_t rowCount);
+    void prepareConvolver(BlockConvolver& convolver, size_t frameCount);
+
+    PreparedConvolverPair<BlockConvolver> convolvers;
     float postGain { 1.f };
-    size_t preparedBlockSize {};
-    size_t preparedTraversalSize {};
     uint64_t adoptedRevision {};
     std::shared_ptr<const IrConfiguration> configuration;
 };
@@ -104,16 +103,13 @@ public:
     void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
 
 private:
-    void prepareConvolver(ConvReverb& convolver, size_t blockSize, size_t& preparedSize);
+    void prepareBlockConvolver(size_t blockSize);
+    void prepareTraversalConvolver(size_t rowCount);
+    void prepareConvolver(ConvReverb& convolver, size_t frameCount);
 
-    std::vector<float> convolutionOutput;
     std::vector<float> dryBuffer;
-    ConvReverb blockConvolver;
-    ConvReverb traversalConvolver;
-    ConvReverb* activeConvolver { &blockConvolver };
+    PreparedConvolverPair<ConvReverb> convolvers;
     float wetLevel { 0.1f };
-    size_t preparedBlockSize {};
-    size_t preparedTraversalSize {};
     uint64_t adoptedRevision {};
     std::shared_ptr<const ReverbConfiguration> configuration;
 };

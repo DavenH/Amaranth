@@ -68,9 +68,9 @@ void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
         return;
     }
 
-    prepareConvolver(blockConvolver, spec.maximumFrameCount, preparedBlockSize);
-    prepareConvolver(traversalConvolver, spec.maximumFrameCount, preparedTraversalSize);
-    convolutionOutput.resize(spec.maximumFrameCount);
+    prepareBlockConvolver(spec.maximumFrameCount);
+    prepareTraversalConvolver(spec.maximumFrameCount);
+    convolvers.prepareScratch(spec.maximumFrameCount);
 }
 
 void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -81,59 +81,78 @@ void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& pub
 
     configuration = std::static_pointer_cast<const IrConfiguration>(published.value);
     postGain = configuration->postGain;
-    preparedBlockSize = 0;
-    preparedTraversalSize = 0;
+    convolvers.invalidate();
     adoptedRevision = published.revision;
 }
 
 void IrSignalProcessor::beginBlock(size_t frameCount) {
     ignoreUnused(frameCount);
-    activeConvolver = &blockConvolver;
+    convolvers.beginBlock();
 }
 
 void IrSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
-    activeConvolver = &traversalConvolver;
-    if (configuration == nullptr || preparedTraversalSize != rows) {
-        preparedTraversalSize = 0;
-        prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
-    }
+    convolvers.beginTraversal();
+    prepareConvolver(convolvers.traversal(), rows);
+    convolvers.markTraversalPrepared(rows);
 }
 
 void IrSignalProcessor::endTraversalGrid() {
-    activeConvolver = &blockConvolver;
+    convolvers.endTraversal();
 }
 
 void IrSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
     if (buffer.empty() || configuration == nullptr || configuration->impulse.empty()
-            || activeConvolver == nullptr) {
+            || convolvers.active() == nullptr) {
         return;
     }
 
-    convolutionOutput.resize((size_t) buffer.size());
-    activeConvolver->process(
-            buffer,
-            { convolutionOutput.data(), buffer.size() });
+    Buffer<float> convolutionOutput = convolvers.output((size_t) buffer.size());
+    if (convolutionOutput.empty()) {
+        return;
+    }
 
-    VecOps::copy(convolutionOutput.data(), buffer.get(), buffer.size());
+    convolvers.active()->process(
+            buffer,
+            convolutionOutput);
+
+    VecOps::copy(convolutionOutput.get(), buffer.get(), buffer.size());
 
     buffer.mul(postGain);
 }
 
+void IrSignalProcessor::prepareBlockConvolver(size_t blockSize) {
+    if (configuration == nullptr || blockSize == 0
+            || !convolvers.blockNeedsPreparation(blockSize)) {
+        return;
+    }
+
+    prepareConvolver(convolvers.block(), blockSize);
+    convolvers.markBlockPrepared(blockSize);
+}
+
+void IrSignalProcessor::prepareTraversalConvolver(size_t rowCount) {
+    if (configuration == nullptr || rowCount == 0
+            || !convolvers.traversalNeedsPreparation(rowCount)) {
+        return;
+    }
+
+    prepareConvolver(convolvers.traversal(), rowCount);
+    convolvers.markTraversalPrepared(rowCount);
+}
+
 void IrSignalProcessor::prepareConvolver(
         BlockConvolver& convolver,
-        size_t blockSize,
-        size_t& preparedSize) {
-    if (configuration == nullptr || blockSize == 0 || preparedSize == blockSize) {
+        size_t frameCount) {
+    if (configuration == nullptr || frameCount == 0) {
         return;
     }
 
     convolver.init(
-            NumberUtils::nextPower2((unsigned) blockSize),
+            NumberUtils::nextPower2((unsigned) frameCount),
             Buffer<float>(
                     const_cast<float*>(configuration->impulse.data()),
                     (int) configuration->impulse.size()));
-    preparedSize = blockSize;
-    convolutionOutput.resize(blockSize);
+    convolvers.prepareScratch(frameCount);
 }
 
 void DelaySignalProcessor::configure(
@@ -219,10 +238,10 @@ void ReverbSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
         return;
     }
 
-    prepareConvolver(blockConvolver, spec.maximumFrameCount, preparedBlockSize);
-    prepareConvolver(traversalConvolver, spec.maximumFrameCount, preparedTraversalSize);
+    prepareBlockConvolver(spec.maximumFrameCount);
+    prepareTraversalConvolver(spec.maximumFrameCount);
     dryBuffer.resize(spec.maximumFrameCount);
-    convolutionOutput.resize(spec.maximumFrameCount);
+    convolvers.prepareScratch(spec.maximumFrameCount);
 }
 
 void ReverbSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -233,65 +252,87 @@ void ReverbSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration&
 
     configuration = std::static_pointer_cast<const ReverbConfiguration>(published.value);
     wetLevel = configuration->wetLevel;
-    preparedBlockSize = 0;
-    preparedTraversalSize = 0;
+    convolvers.invalidate();
     adoptedRevision = published.revision;
 }
 
 void ReverbSignalProcessor::beginBlock(size_t frameCount) {
     ignoreUnused(frameCount);
-    activeConvolver = &blockConvolver;
+    convolvers.beginBlock();
 }
 
 void ReverbSignalProcessor::beginTraversalGrid(size_t, size_t rows) {
-    activeConvolver = &traversalConvolver;
-    if (configuration == nullptr || preparedTraversalSize != rows) {
-        preparedTraversalSize = 0;
-        prepareConvolver(traversalConvolver, rows, preparedTraversalSize);
-    }
+    convolvers.beginTraversal();
+    prepareConvolver(convolvers.traversal(), rows);
+    convolvers.markTraversalPrepared(rows);
 }
 
 void ReverbSignalProcessor::endTraversalGrid() {
-    activeConvolver = &blockConvolver;
+    convolvers.endTraversal();
 }
 
 void ReverbSignalProcessor::processBuffer(Buffer<float> buffer, const SignalProcessPosition&) {
     if (buffer.empty() || configuration == nullptr || configuration->kernel.empty()
-            || activeConvolver == nullptr) {
+            || convolvers.active() == nullptr) {
         return;
     }
 
-    dryBuffer.resize((size_t) buffer.size());
-    convolutionOutput.resize((size_t) buffer.size());
+    if ((size_t) buffer.size() > dryBuffer.size()) {
+        return;
+    }
+
+    Buffer<float> convolutionOutput = convolvers.output((size_t) buffer.size());
+    if (convolutionOutput.empty()) {
+        return;
+    }
+
     VecOps::copy(buffer.get(), dryBuffer.data(), buffer.size());
-    activeConvolver->process(
+    convolvers.active()->process(
             buffer,
-            { convolutionOutput.data(), buffer.size() });
+            convolutionOutput);
 
     const float dryScale = 1.f - 0.25f * wetLevel;
     buffer.mul(0.f);
     buffer.addProduct({ dryBuffer.data(), buffer.size() }, dryScale);
-    buffer.addProduct({ convolutionOutput.data(), buffer.size() }, wetLevel);
+    buffer.addProduct(convolutionOutput, wetLevel);
+}
+
+void ReverbSignalProcessor::prepareBlockConvolver(size_t blockSize) {
+    if (configuration == nullptr || blockSize == 0
+            || !convolvers.blockNeedsPreparation(blockSize)) {
+        return;
+    }
+
+    prepareConvolver(convolvers.block(), blockSize);
+    convolvers.markBlockPrepared(blockSize);
+}
+
+void ReverbSignalProcessor::prepareTraversalConvolver(size_t rowCount) {
+    if (configuration == nullptr || rowCount == 0
+            || !convolvers.traversalNeedsPreparation(rowCount)) {
+        return;
+    }
+
+    prepareConvolver(convolvers.traversal(), rowCount);
+    convolvers.markTraversalPrepared(rowCount);
 }
 
 void ReverbSignalProcessor::prepareConvolver(
         ConvReverb& convolver,
-        size_t blockSize,
-        size_t& preparedSize) {
-    if (configuration == nullptr || blockSize == 0 || preparedSize == blockSize) {
+        size_t frameCount) {
+    if (configuration == nullptr || frameCount == 0) {
         return;
     }
 
-    const int headSize = NumberUtils::nextPower2((unsigned) blockSize);
+    const int headSize = NumberUtils::nextPower2((unsigned) frameCount);
     convolver.init(
             headSize,
             16 * headSize,
             Buffer<float>(
                     const_cast<float*>(configuration->kernel.data()),
                     (int) configuration->kernel.size()));
-    preparedSize = blockSize;
-    dryBuffer.resize(blockSize);
-    convolutionOutput.resize(blockSize);
+    dryBuffer.resize(frameCount);
+    convolvers.prepareScratch(frameCount);
 }
 
 }

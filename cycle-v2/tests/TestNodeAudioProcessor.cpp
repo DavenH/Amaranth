@@ -1340,6 +1340,35 @@ TEST_CASE("Reverb processor transforms block and carries traversal tails across 
             [](float value) { return std::abs(value) > 0.000001f; }));
 }
 
+TEST_CASE("Reverb traversal state restarts for each grid render", "[cycle-v2][runtime][reverb]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Reverb);
+
+    AudioProcessContext first;
+    first.frameCount = 256;
+    std::vector<float> values(512, 0.f);
+    values.front() = 1.f;
+    first.inputs = { gridPayload(values, 2, 256) };
+    first.parameters = {
+            { "size", "Size", "0" },
+            { "damp", "Damp", "0.2" },
+            { "highPass", "HighPass", "0" },
+            { "width", "Width", "0.5" },
+            { "wet", "Wet", "1" }
+    };
+    prepareProcessor(*processor, AudioModuleRole::Reverb, first);
+    processor->process(first);
+    const auto firstGrid = output(first).traversalGrid.values;
+
+    AudioProcessContext second;
+    second.frameCount = first.frameCount;
+    second.inputs = first.inputs;
+    second.parameters = first.parameters;
+    processor->process(second);
+
+    REQUIRE(output(second).traversalGrid.values == firstGrid);
+}
+
 TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
     auto withGridProcessor = factory.create(AudioModuleRole::Reverb);
