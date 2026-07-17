@@ -1,5 +1,6 @@
 #include "TrimeshControlsComponent.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace CycleV2 {
@@ -28,7 +29,7 @@ public:
     }
 
     void mouseDrag(const MouseEvent& event) override {
-        owner.dragControl(region, parentPosition(event.position));
+        owner.dragControl(parentPosition(event.position));
     }
 
     void mouseUp(const MouseEvent&) override {
@@ -168,6 +169,53 @@ void TrimeshControlsComponent::resized() {
     updateHitRegions();
 }
 
+MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
+    const auto* region = findControlRegion(position);
+
+    if (region != nullptr) {
+        if (region->kind == TrimeshExpandedHitRegionKind::MorphControl
+                || region->kind == TrimeshExpandedHitRegionKind::VertexParameter) {
+            return MouseCursor::LeftRightResizeCursor;
+        }
+
+        return MouseCursor::PointingHandCursor;
+    }
+
+    int vertexIndex {};
+
+    if (widget.findVertexSelectionAt(node, contentBounds, position, vertexIndex)) {
+        return MouseCursor::PointingHandCursor;
+    }
+
+    return MouseCursor::NormalCursor;
+}
+
+void TrimeshControlsComponent::beginPointerInteraction(
+        Point<float> position,
+        Rectangle<int> screenArea) {
+    const auto* region = findControlRegion(position);
+
+    if (region != nullptr) {
+        beginControlDrag(*region, position, screenArea);
+        return;
+    }
+
+    int vertexIndex {};
+
+    if (widget.findVertexSelectionAt(node, contentBounds, position, vertexIndex)
+            && delegate != nullptr) {
+        delegate->selectTrimeshVertex(vertexIndex);
+    }
+}
+
+void TrimeshControlsComponent::continuePointerInteraction(Point<float> position) {
+    dragControl(position);
+}
+
+void TrimeshControlsComponent::endPointerInteraction() {
+    endControlDrag();
+}
+
 void TrimeshControlsComponent::updateHitRegions() {
     const Rectangle<int> nextContentBounds = contentBounds.toNearestInt();
 
@@ -180,13 +228,16 @@ void TrimeshControlsComponent::updateHitRegions() {
     }
 
     controlRegions.clear();
+    controlHitRegions.clear();
     lastHitRegionContentBounds = nextContentBounds;
 
     if (node.kind != NodeKind::TrilinearMesh || contentBounds.isEmpty()) {
         return;
     }
 
-    for (const auto& region : widget.expandedControlHitRegions(contentBounds)) {
+    controlHitRegions = widget.expandedControlHitRegions(contentBounds);
+
+    for (const auto& region : controlHitRegions) {
         std::unique_ptr<Component> component;
 
         if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
@@ -201,6 +252,21 @@ void TrimeshControlsComponent::updateHitRegions() {
         addAndMakeVisible(component.get());
         controlRegions.push_back(std::move(component));
     }
+}
+
+const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Point<float> position) const {
+    const auto found = std::find_if(
+            controlHitRegions.begin(),
+            controlHitRegions.end(),
+            [position](const TrimeshExpandedHitRegion& region) {
+                return region.bounds.contains(position);
+            });
+
+    if (found == controlHitRegions.end()) {
+        return nullptr;
+    }
+
+    return &*found;
 }
 
 void TrimeshControlsComponent::beginControlDrag(
@@ -250,9 +316,7 @@ void TrimeshControlsComponent::beginControlDrag(
     }
 }
 
-void TrimeshControlsComponent::dragControl(
-        const TrimeshExpandedHitRegion&,
-        Point<float> position) {
+void TrimeshControlsComponent::dragControl(Point<float> position) {
     float value {};
 
     switch (dragTarget) {

@@ -25,6 +25,52 @@
 
 using namespace CycleV2;
 
+namespace {
+
+class RecordingTrimeshControlsDelegate final : public TrimeshControlsDelegate {
+public:
+    void setTrimeshPrimaryAxis(const String& axis) override { primaryAxis = axis; }
+    void toggleTrimeshLinkAxis(const String& axis) override { linkedAxis = axis; }
+
+    void beginTrimeshMorphControlEdit(const String& id, float value) override {
+        activeParameter = id;
+        beginValue = value;
+        ++morphBeginCount;
+    }
+
+    void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
+    void endTrimeshMorphControlEdit() override { ++morphEndCount; }
+
+    void beginTrimeshVertexControlEdit(const String& id, float value) override {
+        activeParameter = id;
+        beginValue = value;
+        ++vertexBeginCount;
+    }
+
+    void updateTrimeshVertexControlEdit(float value) override { updateValue = value; }
+    void endTrimeshVertexControlEdit() override { ++vertexEndCount; }
+
+    void showTrimeshVertexGuideMenu(const String& id, Rectangle<int>) override {
+        guideParameter = id;
+    }
+
+    void selectTrimeshVertex(int index) override { selectedVertex = index; }
+
+    int morphBeginCount {};
+    int morphEndCount {};
+    int vertexBeginCount {};
+    int vertexEndCount {};
+    int selectedVertex { -1 };
+    float beginValue {};
+    float updateValue {};
+    String activeParameter;
+    String primaryAxis;
+    String linkedAxis;
+    String guideParameter;
+};
+
+}
+
 TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
         "[cycle-v2][nodes][trimesh][topology]") {
     auto source = TrimeshMeshFactory::createDefaultMesh("AuthoredTrimesh");
@@ -711,6 +757,55 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
     REQUIRE(controls.getNumChildComponents() == 21);
+}
+
+TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes][trimesh]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshWidget widget;
+    TrimeshControlsComponent controls(widget);
+    RecordingTrimeshControlsDelegate delegate;
+    const Rectangle<float> content { 10.f, 42.f, 880.f, 570.f };
+
+    controls.setBounds(0, 0, 900, 620);
+    controls.setDelegate(&delegate);
+    controls.setNode(node);
+    controls.setContentBounds(content);
+
+    const auto regions = widget.expandedControlHitRegions(content);
+    const auto findRegion = [&regions](TrimeshExpandedHitRegionKind kind) -> const TrimeshExpandedHitRegion& {
+        const auto found = std::find_if(
+                regions.begin(),
+                regions.end(),
+                [kind](const TrimeshExpandedHitRegion& region) {
+                    return region.kind == kind;
+                });
+        REQUIRE(found != regions.end());
+        return *found;
+    };
+
+    const auto& primaryAxis = findRegion(TrimeshExpandedHitRegionKind::PrimaryAxis);
+    controls.beginPointerInteraction(primaryAxis.bounds.getCentre(), {});
+    REQUIRE(delegate.primaryAxis == primaryAxis.axisValue);
+    REQUIRE(controls.cursorFor(primaryAxis.bounds.getCentre()) == MouseCursor::PointingHandCursor);
+
+    const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);
+    controls.beginPointerInteraction(morph.bounds.getCentre(), {});
+    controls.continuePointerInteraction({ morph.bounds.getRight(), morph.bounds.getCentreY() });
+    controls.endPointerInteraction();
+
+    REQUIRE(delegate.morphBeginCount == 1);
+    REQUIRE(delegate.morphEndCount == 1);
+    REQUIRE(delegate.activeParameter == morph.parameterId);
+    REQUIRE(delegate.updateValue > delegate.beginValue);
+    REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
+
+    int expectedSelection {};
+    const Point<float> selectionPoint = TrimeshWidget::expandedWavePanelContentBounds(content).getCentre();
+    REQUIRE(widget.findVertexSelectionAt(node, content, selectionPoint, expectedSelection));
+
+    controls.beginPointerInteraction(selectionPoint, {});
+    REQUIRE(delegate.selectedVertex == expectedSelection);
 }
 
 TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {

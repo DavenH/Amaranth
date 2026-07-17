@@ -24,6 +24,7 @@ public:
     virtual void showTrimeshVertexGuideMenu(
             const juce::String& id,
             juce::Rectangle<int> screenArea) = 0;
+    virtual void selectTrimeshVertex(int index) = 0;
 };
 
 class TrimeshControlsComponent : public juce::Component {
@@ -41,6 +42,13 @@ public:
     int getVertexParameterSliderCount() const;
     int getVertexGuideAttachmentButtonCount() const;
 
+    juce::MouseCursor cursorFor(juce::Point<float> position);
+    void beginPointerInteraction(
+            juce::Point<float> position,
+            juce::Rectangle<int> screenArea);
+    void continuePointerInteraction(juce::Point<float> position);
+    void endPointerInteraction();
+
     void resized() override;
 
 private:
@@ -54,11 +62,12 @@ private:
     };
 
     void updateHitRegions();
+    const TrimeshExpandedHitRegion* findControlRegion(juce::Point<float> position) const;
     void beginControlDrag(
             const TrimeshExpandedHitRegion& region,
             juce::Point<float> position,
             juce::Rectangle<int> screenArea);
-    void dragControl(const TrimeshExpandedHitRegion& region, juce::Point<float> position);
+    void dragControl(juce::Point<float> position);
     void endControlDrag();
 
     TrimeshWidget& widget;
@@ -68,6 +77,7 @@ private:
     juce::String activeParameterId;
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
+    std::vector<TrimeshExpandedHitRegion> controlHitRegions;
     std::vector<std::unique_ptr<juce::Component>> controlRegions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshControlsComponent)

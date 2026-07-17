@@ -147,95 +147,17 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
         return;
     }
 
-    const Rectangle<float> content = contentBounds();
-    String parameterId;
-    String axisValue;
-    float value {};
-    int vertexIndex {};
-
-    if (widget.findPrimaryAxisAt(content, event.position, axisValue)) {
-        if (delegate != nullptr) {
-            delegate->setTrimeshPrimaryAxisValue(axisValue);
-        }
-        return;
-    }
-
-    if (widget.findLinkToggleAt(content, event.position, axisValue)) {
-        if (delegate != nullptr) {
-            delegate->toggleTrimeshLinkAxisValue(axisValue);
-        }
-        return;
-    }
-
-    if (widget.findMorphControlAt(content, event.position, parameterId, value)) {
-        dragTarget = DragTarget::Morph;
-        activeParameterId = parameterId;
-
-        if (delegate != nullptr) {
-            delegate->beginTrimeshMorphEdit(parameterId, value);
-        }
-        return;
-    }
-
-    if (widget.findVertexParameterAt(content, event.position, parameterId, value)) {
-        dragTarget = DragTarget::VertexParameter;
-        activeParameterId = parameterId;
-
-        if (delegate != nullptr) {
-            delegate->beginTrimeshVertexParameterEdit(parameterId, value);
-        }
-        return;
-    }
-
-    if (widget.findVertexGuideAttachmentAt(content, event.position, parameterId)) {
-        if (delegate != nullptr) {
-            delegate->showTrimeshGuideAttachmentMenu(
-                    vertexGuideParameterField(parameterId),
-                    Rectangle<int>(localPointToGlobal(event.position.roundToInt()), { 1, 1 }));
-        }
-        return;
-    }
-
-    if (widget.findVertexSelectionAt(node, content, event.position, vertexIndex)) {
-        if (delegate != nullptr) {
-            delegate->selectTrimeshVertex(vertexIndex);
-        }
-    }
+    controls.beginPointerInteraction(
+            event.position,
+            Rectangle<int>(localPointToGlobal(event.position.roundToInt()), { 1, 1 }));
 }
 
 void TrimeshExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
-    const Rectangle<float> content = contentBounds();
-    float value {};
-
-    switch (dragTarget) {
-        case DragTarget::Morph:
-            if (widget.morphValueForParameterAt(content, activeParameterId, event.position, value)
-                    && delegate != nullptr) {
-                delegate->updateTrimeshMorphEdit(value);
-            }
-            break;
-
-        case DragTarget::VertexParameter:
-            if (widget.vertexParameterValueForParameterAt(content, activeParameterId, event.position, value)
-                    && delegate != nullptr) {
-                delegate->updateTrimeshVertexParameterEdit(value);
-            }
-            break;
-
-        case DragTarget::None:
-            break;
-    }
+    controls.continuePointerInteraction(event.position);
 }
 
 void TrimeshExpandedEditorComponent::mouseUp(const MouseEvent&) {
-    if (dragTarget == DragTarget::Morph && delegate != nullptr) {
-        delegate->endTrimeshMorphEdit();
-    } else if (dragTarget == DragTarget::VertexParameter && delegate != nullptr) {
-        delegate->endTrimeshVertexParameterEdit();
-    }
-
-    dragTarget = DragTarget::None;
-    activeParameterId = {};
+    controls.endPointerInteraction();
 }
 
 void TrimeshExpandedEditorComponent::setTrimeshPrimaryAxis(const String& axis) {
@@ -298,6 +220,12 @@ void TrimeshExpandedEditorComponent::showTrimeshVertexGuideMenu(
     }
 }
 
+void TrimeshExpandedEditorComponent::selectTrimeshVertex(int index) {
+    if (delegate != nullptr) {
+        delegate->selectTrimeshVertex(index);
+    }
+}
+
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
     const Rectangle<float> panel = getLocalBounds().toFloat();
     return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, kHeaderHeight * 0.5f });
@@ -318,25 +246,7 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
         return MouseCursor::PointingHandCursor;
     }
 
-    const Rectangle<float> content = contentBounds();
-    String parameterId;
-    String axisValue;
-    float value {};
-    int vertexIndex {};
-
-    if (widget.findPrimaryAxisAt(content, position, axisValue)
-            || widget.findLinkToggleAt(content, position, axisValue)
-            || widget.findVertexGuideAttachmentAt(content, position, parameterId)
-            || widget.findVertexSelectionAt(node, content, position, vertexIndex)) {
-        return MouseCursor::PointingHandCursor;
-    }
-
-    if (widget.findMorphControlAt(content, position, parameterId, value)
-            || widget.findVertexParameterAt(content, position, parameterId, value)) {
-        return MouseCursor::LeftRightResizeCursor;
-    }
-
-    return MouseCursor::NormalCursor;
+    return controls.cursorFor(position);
 }
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {

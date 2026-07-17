@@ -51,12 +51,6 @@ public:
     void mouseUp(const juce::MouseEvent& event) override;
 
 private:
-    enum class DragTarget {
-        None,
-        Morph,
-        VertexParameter
-    };
-
     juce::Rectangle<float> closeButtonBounds() const;
     juce::Rectangle<float> contentBounds() const;
     juce::String vertexGuideParameterField(const juce::String& parameterId) const;
@@ -75,14 +69,13 @@ private:
     void showTrimeshVertexGuideMenu(
             const juce::String& id,
             juce::Rectangle<int> screenArea) override;
+    void selectTrimeshVertex(int index) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
-    DragTarget dragTarget { DragTarget::None };
-    juce::String activeParameterId;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };
