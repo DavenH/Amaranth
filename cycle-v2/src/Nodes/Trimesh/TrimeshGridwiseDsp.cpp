@@ -15,14 +15,16 @@ void TrimeshGridwiseDsp::prepare(
         size_t maximumColumnCount,
         size_t maximumRowCount) {
     preparationScratch.resize(maximumRowCount);
-    blockwiseDsp.setMesh(&mesh);
-    blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
-    for (size_t i = 0; i < maximumColumnCount; ++i) {
-        blockwiseDsp.setMorphPosition(morphForColumn(
-                center, primaryViewAxis, i, maximumColumnCount));
-        blockwiseDsp.renderCycleInto(Buffer<float>(
-                preparationScratch.data(), (int) preparationScratch.size()));
-    }
+    renderColumnRange(
+            mesh,
+            center,
+            primaryViewAxis,
+            maximumColumnCount,
+            [this](size_t, const MorphPosition&) {
+                blockwiseDsp.renderCycleInto(Buffer<float>(
+                        preparationScratch.data(),
+                        (int) preparationScratch.size()));
+            });
     resetCounters();
 }
 
@@ -37,16 +39,23 @@ std::vector<TrimeshGridColumn> TrimeshGridwiseDsp::renderColumns(
     std::vector<TrimeshGridColumn> columns;
     columns.reserve(columnCount);
 
-    blockwiseDsp.setMesh(&mesh);
-    blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
-
-    for (size_t i = 0; i < columnCount; ++i) {
-        TrimeshGridColumn column;
-        column.morph = morphForColumn(center, primaryViewAxis, i, columnCount);
-        blockwiseDsp.setMorphPosition(column.morph);
-        blockwiseDsp.renderCycle(frameCount, domain, channelLayout, column.signal);
-        columns.push_back(std::move(column));
-    }
+    renderColumnRange(
+            mesh,
+            center,
+            primaryViewAxis,
+            columnCount,
+            [this, &columns, frameCount, domain, channelLayout](
+                    size_t,
+                    const MorphPosition& morph) {
+                TrimeshGridColumn column;
+                column.morph = morph;
+                blockwiseDsp.renderCycle(
+                        frameCount,
+                        domain,
+                        channelLayout,
+                        column.signal);
+                columns.push_back(std::move(column));
+            });
 
     return columns;
 }
@@ -63,15 +72,18 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
     }
 
     const int rowCount = destination.size() / (int) columnCount;
-    blockwiseDsp.setMesh(&mesh);
-    blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
-    for (size_t i = 0; i < columnCount; ++i) {
-        blockwiseDsp.setMorphPosition(morphForColumn(
-                center, primaryViewAxis, i, columnCount));
-        blockwiseDsp.renderCycleInto(destination.section((int) i * rowCount, rowCount));
-        ++renderCounters.sliceCount;
-        ++renderCounters.bakeCount;
-    }
+    renderColumnRange(
+            mesh,
+            center,
+            primaryViewAxis,
+            columnCount,
+            [this, destination, rowCount](size_t index, const MorphPosition&) {
+                blockwiseDsp.renderCycleInto(destination.section(
+                        (int) index * rowCount,
+                        rowCount));
+                ++renderCounters.sliceCount;
+                ++renderCounters.bakeCount;
+            });
 
     return true;
 }
