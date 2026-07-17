@@ -28,14 +28,14 @@ Port output(
     return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
 }
 
-Node node(String id, NodeKind kind, String title, String subtitle, Rectangle<float> bounds,
+Node node(String id, NodeKind kind, String title, String subtitle, Point<float> position,
           std::vector<Port> inputs, std::vector<Port> outputs) {
     Node result {
         std::move(id),
         kind,
         std::move(title),
         std::move(subtitle),
-        bounds,
+        { position.x, position.y, 0.f, 0.f },
         {},
         std::move(inputs),
         std::move(outputs)
@@ -162,7 +162,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::VoiceContext,
             "Voice Context",
             "waveform start / 6 voices",
-            { 320.f, 420.f, 300.f, 138.f },
+            { 320.f, 420.f },
             {},
             {
                     output("context", "Context", PortDomain::DomainContext)
@@ -181,13 +181,13 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "waveform operand",
-            { 650.f, 420.f, 330.f, 250.f },
+            { 650.f, 420.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
+                    input("red", "Red Morph", PortDomain::ControlSignal),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
 
@@ -196,7 +196,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Fft,
             String::fromUTF8("Time → Freq"),
             "cycle chunks",
-            { 1080.f, 420.f, 190.f, 118.f },
+            { 1080.f, 420.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {
                     output("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
@@ -212,13 +212,13 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "layer operand",
-            { 1175.f, 170.f, 320.f, 190.f },
+            { 1175.f, 170.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
+                    input("red", "Red Morph", PortDomain::ControlSignal),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
 
@@ -227,10 +227,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Add,
             "Add",
             "magnitude layer",
-            { 1260.f, 420.f, 150.f, 118.f },
+            { 1260.f, 420.f },
             {
-                    input("signal", "Signal", PortDomain::SpectralMagnitudeSignal),
-                    input("operand", "Mesh", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("left", "A", PortDomain::SpectralMagnitudeSignal),
+                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::SpectralMagnitudeSignal) }));
 
@@ -239,13 +239,13 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::TrilinearMesh,
             "Trilinear Mesh",
             "phase operand",
-            { 1175.f, 760.f, 320.f, 190.f },
+            { 1175.f, 760.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
                     input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal),
+                    input("red", "Red Morph", PortDomain::ControlSignal),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));
 
@@ -254,10 +254,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Add,
             "Add",
             "phase layer",
-            { 1260.f, 454.f, 150.f, 118.f },
+            { 1260.f, 454.f },
             {
-                    input("signal", "Signal", PortDomain::SpectralPhaseSignal),
-                    input("operand", "Mesh", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
+                    input("left", "A", PortDomain::SpectralPhaseSignal),
+                    input("right", "B", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             },
             { output("out", "Out", PortDomain::SpectralPhaseSignal) }));
 
@@ -266,7 +266,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Ifft,
             String::fromUTF8("Freq → Time"),
             "cyclic overlap",
-            { 1600.f, 420.f, 190.f, 118.f },
+            { 1600.f, 420.f },
             {
                     input("mag", "Mag", PortDomain::SpectralMagnitudeSignal),
                     input("phase", "Phase", PortDomain::SpectralPhaseSignal)
@@ -280,12 +280,10 @@ NodeGraph NodeGraph::createDemoGraph() {
     GraphNodeFactory nodeFactory;
     Node volumeEnvelope = nodeFactory.createNode(NodeKind::Envelope, "env", { 1660.f, 610.f });
     volumeEnvelope.subtitle = "volume curve";
-    volumeEnvelope.bounds.setSize(235.f, 155.f);
     graph.addNode(std::move(volumeEnvelope));
 
     Node scratchEnvelope = nodeFactory.createNode(NodeKind::Envelope, "scratchEnv", { 320.f, 204.f });
     scratchEnvelope.subtitle = "scratch attachment";
-    scratchEnvelope.bounds.setSize(235.f, 155.f);
     graph.addNode(std::move(scratchEnvelope));
 
     graph.addNode(node(
@@ -293,19 +291,19 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::Multiply,
             "Multiply",
             "global volume",
-            { 1850.f, 420.f, 150.f, 118.f },
+            { 1850.f, 420.f },
             {
-                    input("audio", "Audio", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
-                    input("factor", "Factor", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
+                    input("left", "A", PortDomain::TimeSignal, ChannelLayout::LinkedStereo),
+                    input("right", "B", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom)
             },
-            { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
+            { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
 
     graph.addNode(node(
             "out",
             NodeKind::Output,
             "Output",
             "sink",
-            { 2100.f, 420.f, 210.f, 145.f },
+            { 2100.f, 420.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
             {}));
 
@@ -314,15 +312,15 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
             { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, false },
-            { "fft", "mag", "addMag", "signal", PortDomain::SpectralMagnitudeSignal, false },
-            { "magMesh", "out", "addMag", "operand", PortDomain::ControlSignal, false },
-            { "fft", "phase", "addPhase", "signal", PortDomain::SpectralPhaseSignal, false },
-            { "phaseMesh", "out", "addPhase", "operand", PortDomain::ControlSignal, false },
+            { "fft", "mag", "addMag", "left", PortDomain::SpectralMagnitudeSignal, false },
+            { "magMesh", "out", "addMag", "right", PortDomain::ControlSignal, false },
+            { "fft", "phase", "addPhase", "left", PortDomain::SpectralPhaseSignal, false },
+            { "phaseMesh", "out", "addPhase", "right", PortDomain::ControlSignal, false },
             { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false },
             { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, false },
-            { "ifft", "time", "multiply", "audio", PortDomain::TimeSignal, false },
-            { "env", "env", "multiply", "factor", PortDomain::EnvelopeSignal, false },
-            { "multiply", "time", "out", "time", PortDomain::TimeSignal, false }
+            { "ifft", "time", "multiply", "left", PortDomain::TimeSignal, false },
+            { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false },
+            { "multiply", "out", "out", "time", PortDomain::TimeSignal, false }
     };
 
     return graph;
@@ -341,6 +339,16 @@ Colour colourForDomain(PortDomain domain) {
         case PortDomain::ControlSignal:           return Colour(0xffc5cad3);
         default:                                  return Colour(0xffc5cad3);
     }
+}
+
+Colour colourForMorphDimension(MorphDimension dimension) {
+    switch (dimension) {
+        case MorphDimension::Yellow: return Colour(0xffd7bf5f);
+        case MorphDimension::Red:    return Colour(0xffd65a5a);
+        case MorphDimension::Blue:   return Colour(0xff5f91e8);
+    }
+
+    return colourForDomain(PortDomain::ControlSignal);
 }
 
 String labelForDomain(PortDomain domain) {

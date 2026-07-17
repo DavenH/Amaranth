@@ -168,6 +168,10 @@ private:
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
+    void paintNodePreview(
+            Graphics& graphics,
+            const Node& node,
+            Rectangle<float> bounds) override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };
 

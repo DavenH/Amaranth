@@ -80,6 +80,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::Ifft, transform);
 
     NodeViewCapabilities spy = preview;
+    spy.hostedEditor = true;
     spy.expandedEditorSize = Point<float>(520.f, 360.f);
     add(NodeKind::Spy, spy);
 

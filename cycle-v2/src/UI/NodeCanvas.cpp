@@ -787,6 +787,23 @@ std::array<String, 6> NodeCanvas::trimeshGuideLabels(const Node& node) {
     return editorCoordinator.trimeshGuideLabelsFor(node);
 }
 
+void NodeCanvas::paintNodePreview(
+        Graphics& graphics,
+        const Node& node,
+        Rectangle<float> bounds) {
+    const NodePreviewResult* result = queries.findPreviewResult(node.id);
+    editorCoordinator.previewRenderer().paint(graphics, {
+            node,
+            result,
+            bounds,
+            result != nullptr
+                    ? TrimeshRenderProfile::fromDomain(result->domain)
+                    : TrimeshRenderProfile::fromDomain(PortDomain::ControlSignal),
+            1.f,
+            true
+    });
+}
+
 void NodeCanvas::requestCanvasRepaint() {
     renderInvalidation.request(NodeCanvasInvalidation::CanvasRepaint);
 }

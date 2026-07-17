@@ -134,6 +134,7 @@ public:
         return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
+    void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
 };
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {

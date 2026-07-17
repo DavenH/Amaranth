@@ -28,6 +28,18 @@ float portScale(float zoom) {
 }
 
 Colour displayColour(const Node& node, const Port& port) {
+    if (port.input && (node.kind == NodeKind::Envelope || node.kind == NodeKind::TrilinearMesh)) {
+        if (port.id == "yellow") {
+            return colourForMorphDimension(MorphDimension::Yellow);
+        }
+        if (port.id == "red") {
+            return colourForMorphDimension(MorphDimension::Red);
+        }
+        if (port.id == "blue") {
+            return colourForMorphDimension(MorphDimension::Blue);
+        }
+    }
+
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {
         return colourForDomain(PortDomain::ControlSignal);
@@ -438,7 +450,7 @@ void NodeCanvasPresentation::paintNode(
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
         graphics.setColour(colour.withAlpha(0.22f));
-        graphics.fillEllipse(location.bounds.expanded(2.4f * scale));
+        graphics.fillEllipse(location.bounds.expanded(1.4f * scale));
 
         if (port.input) {
             graphics.setColour(colour);
@@ -447,7 +459,7 @@ void NodeCanvasPresentation::paintNode(
             graphics.setColour(kCanvasBackground.withAlpha(0.92f));
             graphics.fillEllipse(location.bounds);
             graphics.setColour(colour);
-            graphics.drawEllipse(location.bounds, 2.f * scale);
+            graphics.drawEllipse(location.bounds, 1.2f * scale);
         }
     };
 
@@ -465,7 +477,7 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
         const Node& node,
         const Port& port) {
     const Point<float> centre = viewport.toScreen(NodeCanvasScene::portWorldCentre(node, port));
-    const float radius = 7.f * portScale(viewport.getZoom());
+    const float radius = 4.2f * portScale(viewport.getZoom());
     return {
             Rectangle<float>(centre.x - radius, centre.y - radius, radius * 2.f, radius * 2.f),
             centre

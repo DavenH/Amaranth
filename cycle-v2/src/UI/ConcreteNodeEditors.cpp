@@ -10,6 +10,97 @@ namespace CycleV2 {
 
 namespace {
 
+class PreviewNodeEditorComponent final : public Component {
+public:
+    PreviewNodeEditorComponent(
+            NodeEditorPresentation& presentationToUse,
+            NodeEditorResources& resourcesToUse) :
+            presentation(presentationToUse)
+        ,   resources(resourcesToUse) {
+    }
+
+    void setNode(const Node& nodeToUse) {
+        node = nodeToUse;
+        repaint();
+    }
+
+    void paint(Graphics& graphics) override {
+        const Rectangle<float> panel = getLocalBounds().toFloat();
+        graphics.setColour(Colour(0xff141a21));
+        graphics.fillRoundedRectangle(panel, 8.f);
+
+        auto header = panel;
+        header.setHeight(34.f);
+        graphics.setColour(Colour(0xff202833));
+        graphics.fillRoundedRectangle(header, 8.f);
+        graphics.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+        graphics.setColour(Colour(0xffe2e8ef));
+        graphics.setFont(FontOptions(14.f, Font::bold));
+        graphics.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
+
+        const Rectangle<float> close = closeButtonBounds(panel);
+        graphics.setColour(Colour(0xff0e1318));
+        graphics.fillEllipse(close);
+        graphics.setColour(Colour(0xffe2e8ef));
+        graphics.drawEllipse(close, 1.f);
+        graphics.drawLine(close.getX() + 7.f, close.getY() + 7.f,
+                close.getRight() - 7.f, close.getBottom() - 7.f, 1.4f);
+        graphics.drawLine(close.getRight() - 7.f, close.getY() + 7.f,
+                close.getX() + 7.f, close.getBottom() - 7.f, 1.4f);
+
+        resources.paintNodePreview(
+                graphics,
+                node,
+                panel.withTrimmedTop(header.getHeight()).reduced(18.f, 16.f));
+        graphics.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
+        graphics.drawRoundedRectangle(panel.reduced(0.75f), 8.f, 1.3f);
+    }
+
+    void mouseDown(const MouseEvent& event) override {
+        if (closeButtonBounds(getLocalBounds().toFloat()).contains(event.position)) {
+            presentation.closeNodeEditor();
+        }
+    }
+
+private:
+    static Rectangle<float> closeButtonBounds(Rectangle<float> panel) {
+        return Rectangle<float>(22.f, 22.f).withCentre({
+                panel.getRight() - 22.f,
+                panel.getY() + 17.f
+        });
+    }
+
+    NodeEditorPresentation& presentation;
+    NodeEditorResources& resources;
+    Node node;
+};
+
+class PreviewNodeEditor final : public NodeEditor {
+public:
+    explicit PreviewNodeEditor(const NodeEditorContext& context) :
+            editor(context.presentation, context.resources) {
+    }
+
+    Component& component() override { return editor; }
+    void bind(const Node& node) override { editor.setNode(node); }
+    void renderOpenGL(float) override {}
+    void appendAutomationState(DynamicObject&) const override {}
+    Rectangle<float> panelBoundsForAutomation() const override { return {}; }
+    void releaseOpenGLResources() override {}
+
+private:
+    PreviewNodeEditorComponent editor;
+};
+
+class PreviewNodeEditorFactory final : public NodeEditorFactory {
+public:
+    std::unique_ptr<NodeEditor> create(
+            const Node&,
+            const NodeEditorContext& context) const override {
+        return std::make_unique<PreviewNodeEditor>(context);
+    }
+};
+
 class CurveNodeEditor final : public NodeEditor,
                               private CurveExpandedEditorDelegate {
 public:
@@ -274,6 +365,7 @@ const NodeEditorFactoryRegistry& NodeEditorFactoryRegistry::instance() {
 }
 
 NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
+    factories.emplace_back(NodeKind::Spy, std::make_unique<PreviewNodeEditorFactory>());
     factories.emplace_back(NodeKind::Envelope, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::GuideCurve, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());

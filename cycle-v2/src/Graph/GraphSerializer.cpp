@@ -207,8 +207,6 @@ ValueTree GraphSerializer::toValueTree(const NodeGraph& graph) const {
         nodeTree.setProperty("subtitle", node.subtitle, nullptr);
         nodeTree.setProperty("x", node.bounds.getX(), nullptr);
         nodeTree.setProperty("y", node.bounds.getY(), nullptr);
-        nodeTree.setProperty("w", node.bounds.getWidth(), nullptr);
-        nodeTree.setProperty("h", node.bounds.getHeight(), nullptr);
 
         for (const auto& port : node.inputs) {
             nodeTree.addChild(portToTree(port, inputType), -1, nullptr);
@@ -270,12 +268,7 @@ GraphLoadResult GraphSerializer::loadValueTree(const ValueTree& tree) const {
             node.kind = definition->kind;
             node.title = child["title"].toString();
             node.subtitle = child["subtitle"].toString();
-            node.bounds = {
-                    (float) child["x"],
-                    (float) child["y"],
-                    (float) child["w"],
-                    (float) child["h"]
-            };
+            node.bounds.setPosition((float) child["x"], (float) child["y"]);
 
             for (const auto& portTree : child) {
                 if (portTree.hasType(inputType)) {
@@ -288,6 +281,8 @@ GraphLoadResult GraphSerializer::loadValueTree(const ValueTree& tree) const {
             }
 
             registry.normalize(node);
+            const NodeNaturalSize naturalSize = naturalSizeForNode(node);
+            node.bounds.setSize(naturalSize.width, naturalSize.height);
             result.graph.addNode(std::move(node));
         } else if (child.hasType(edgeType)) {
             result.graph.addEdge({

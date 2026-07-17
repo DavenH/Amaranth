@@ -118,6 +118,8 @@ TEST_CASE("Graph serializer round trips XML", "[cycle-v2][graph]") {
 
     REQUIRE(xml.contains("cycleV2Graph"));
     REQUIRE(xml.contains("formatVersion=\"2\""));
+    REQUIRE_FALSE(xml.contains(" w=\""));
+    REQUIRE_FALSE(xml.contains(" h=\""));
     REQUIRE(restored.getNodes().size() == source.getNodes().size());
     REQUIRE(restored.getEdges().size() == source.getEdges().size());
     REQUIRE(GraphValidator().isValid(restored));

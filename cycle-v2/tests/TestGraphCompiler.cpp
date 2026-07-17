@@ -119,11 +119,11 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE_FALSE(findStep(plan, "out").previewable);
     REQUIRE(findStep(plan, "out").previewRole == PreviewModuleRole::None);
     REQUIRE(findStep(plan, "multiply").inputs.size() == 2);
-    REQUIRE(findStep(plan, "multiply").inputs[0].destPortId == "audio");
+    REQUIRE(findStep(plan, "multiply").inputs[0].destPortId == "left");
     REQUIRE(findStep(plan, "multiply").inputs[0].destPortIndex == 0);
     REQUIRE(findStep(plan, "multiply").inputs[0].domain == PortDomain::TimeSignal);
     REQUIRE(findStep(plan, "multiply").inputs[0].channelLayout == ChannelLayout::LinkedStereo);
-    REQUIRE(findStep(plan, "multiply").inputs[1].destPortId == "factor");
+    REQUIRE(findStep(plan, "multiply").inputs[1].destPortId == "right");
     REQUIRE(findStep(plan, "multiply").inputs[1].destPortIndex == 1);
     REQUIRE(findStep(plan, "multiply").inputs[1].domain == PortDomain::EnvelopeSignal);
     REQUIRE(findSignalEdge(plan, "magMesh", "addMag").domain == PortDomain::SpectralMagnitudeSignal);

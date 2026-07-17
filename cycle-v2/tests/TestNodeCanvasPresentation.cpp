@@ -32,6 +32,8 @@ TEST_CASE("Node canvas presentation scales port hit geometry with canvas zoom",
     viewport.setTransform({}, 0.58f);
     const auto reference = NodeCanvasPresentation::portPresentation(viewport, node, node.outputs.front());
 
+    REQUIRE(reference.bounds.getWidth() == Catch::Approx(8.4f));
+
     viewport.setTransform({}, 1.16f);
     const auto doubled = NodeCanvasPresentation::portPresentation(viewport, node, node.outputs.front());
 

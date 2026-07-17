@@ -6,12 +6,12 @@ using namespace CycleV2;
 
 TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.removeEdgesToInput("multiply", "factor");
+    graph.removeEdgesToInput("multiply", "right");
 
     const auto result = GraphEditor().connect(
             graph,
             { "env", "env", false },
-            { "multiply", "factor", true });
+            { "multiply", "right", true });
 
     REQUIRE(result.succeeded());
     REQUIRE(GraphValidator().isValid(graph));
@@ -19,17 +19,17 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     const auto& edge = graph.getEdges().back();
     REQUIRE(edge.sourceNodeId == "env");
     REQUIRE(edge.destNodeId == "multiply");
-    REQUIRE(edge.destPortId == "factor");
+    REQUIRE(edge.destPortId == "right");
     REQUIRE_FALSE(edge.attachment);
 }
 
 TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.removeEdgesToInput("multiply", "factor");
+    graph.removeEdgesToInput("multiply", "right");
 
     const auto result = GraphEditor().connect(
             graph,
-            { "multiply", "factor", true },
+            { "multiply", "right", true },
             { "env", "env", false });
 
     REQUIRE(result.succeeded());
@@ -284,7 +284,7 @@ TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") 
     const auto result = GraphEditor().connect(
             graph,
             { "pitch", "out", false },
-            { "multiply", "audio", true });
+            { "multiply", "left", true });
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.code == GraphEditCode::ValidationRejected);

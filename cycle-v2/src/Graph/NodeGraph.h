@@ -62,6 +62,12 @@ enum class PortSide {
     Bottom
 };
 
+enum class MorphDimension {
+    Yellow,
+    Red,
+    Blue
+};
+
 struct Port {
     String id;
     String label;
@@ -131,6 +137,7 @@ private:
 };
 
 Colour colourForDomain(PortDomain domain);
+Colour colourForMorphDimension(MorphDimension dimension);
 String labelForDomain(PortDomain domain);
 String labelForChannelLayout(ChannelLayout layout);
 String labelForNodeKind(NodeKind kind);

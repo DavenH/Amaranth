@@ -280,6 +280,8 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
 TEST_CASE("Rich node views are selected through the view module registry", "[cycle-v2][canvas][view]") {
     const auto& registry = NodeViewModuleRegistry::instance();
     REQUIRE(registry.moduleFor(NodeKind::Envelope).capabilities().hostedEditor);
+    REQUIRE(registry.moduleFor(NodeKind::Spy).capabilities().hostedEditor);
+    REQUIRE(registry.moduleFor(NodeKind::Spy).editorFactory() != nullptr);
     REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).capabilities().outputSideControl);
     REQUIRE(registry.moduleFor(NodeKind::Add).capabilities().operationLayoutControl);
     REQUIRE_FALSE(registry.moduleFor(NodeKind::Output).capabilities().hostedEditor);
