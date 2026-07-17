@@ -17,6 +17,7 @@
 #include "../Runtime/GraphPresentationModel.h"
 #include "NodeAutomationFacade.h"
 #include "NodeCanvasAutomationInspector.h"
+#include "NodeCableRenderer.h"
 #include "NodeCanvasGlRenderer.h"
 #include "NodeCanvasScene.h"
 #include "NodeCanvasViewport.h"
@@ -87,12 +88,6 @@ private:
     struct PortLocation {
         Rectangle<float> bounds;
         Point<float> centre;
-    };
-
-    struct CableEndpoint {
-        Point<float> centre;
-        PortSide side { PortSide::Left };
-        bool portLike { true };
     };
 
     OpenGLContext openGLContext;
@@ -183,12 +178,6 @@ private:
     Rectangle<float> snappedNodeBounds(const Node& node, Rectangle<float> proposed);
     PortLocation getPortLocation(const Node& node, const Port& port) const;
     PortLocation getPortLocation(const PortAddress& address) const;
-    bool resolveCableEndpoints(
-            const Edge& edge,
-            CableEndpoint& sourceEndpoint,
-            CableEndpoint& destEndpoint) const;
-    bool isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const;
-    CableEndpoint dynamicTrimeshGuideEndpoint(const Node& node, const String& portId) const;
     bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
     bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
     bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
@@ -259,13 +248,6 @@ private:
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
-    Path createCablePath(
-            Point<float> source,
-            Point<float> dest,
-            PortSide sourceSide,
-            PortSide destSide,
-            bool attachment) const;
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };
 

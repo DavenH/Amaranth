@@ -32,7 +32,6 @@ const Colour kNodeBorder       { 0xff3d4a58 };
 const Colour kText             { 0xffe2e8ef };
 const Colour kMutedText        { 0xff8793a1 };
 constexpr float kCableReferenceZoom = 0.58f;
-constexpr float kCableStrokeScale = 0.70f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
@@ -48,10 +47,6 @@ struct SnapCandidate {
     int matches { 1 };
 };
 
-
-float cableScaleForZoom(float zoom) {
-    return zoom / kCableReferenceZoom * kCableStrokeScale;
-}
 
 float portScaleForZoom(float zoom) {
     return zoom / kCableReferenceZoom;
@@ -455,30 +450,6 @@ bool bestSnapDelta(
     }
 
     return bestMatches > 0;
-}
-
-Rectangle<float> visibleCableBounds(const Path& cable, float zoom) {
-    return cable.getBounds().expanded(jmax(8.f, 14.f * cableScaleForZoom(zoom)));
-}
-
-Point<float> outwardNormalForSide(PortSide side) {
-    switch (side) {
-        case PortSide::Top:       return { 0.f, -1.f };
-        case PortSide::Bottom:    return { 0.f, 1.f };
-        case PortSide::Left:      return { -1.f, 0.f };
-        case PortSide::Right:     return { 1.f, 0.f };
-        default:                  return { 1.f, 0.f };
-    }
-}
-
-Point<float> normalizedOrFallback(Point<float> vector, Point<float> fallback) {
-    const float length = vector.getDistanceFromOrigin();
-
-    if (length <= 0.001f) {
-        return fallback;
-    }
-
-    return { vector.x / length, vector.y / length };
 }
 
 String portDisplayLabel(const Port& port) {
@@ -1246,23 +1217,19 @@ void NodeCanvas::drawGlEdges() {
     const float zoom = viewport.getZoom();
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
 
-    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
-        const auto& edge = edges[(size_t) edgeIndex];
-        CableEndpoint sourceEndpoint;
-        CableEndpoint destEndpoint;
-
-        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
+    for (const auto& sceneEdge : scene.edges) {
+        if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
         }
 
-        const Path cable = createCablePath(
-                sourceEndpoint.centre,
-                destEndpoint.centre,
-                sourceEndpoint.side,
-                destEndpoint.side,
-                edge.attachment);
-        const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
+        const auto& edge = edges[(size_t) sceneEdge.edgeIndex];
+        const Rectangle<float> cableBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom);
 
         if (!cableBounds.intersects(visibleArea)) {
             continue;
@@ -1276,15 +1243,15 @@ void NodeCanvas::drawGlEdges() {
         }
 
         renderer.renderCable(
-                cable,
-                sourceEndpoint.centre,
-                destEndpoint.centre,
+                sceneEdge.cablePath,
+                sceneEdge.source,
+                sceneEdge.destination,
                 colour,
-                cableScaleForZoom(zoom),
-                edgeIndex == selectedEdgeIndex || edgeIndex == spliceTargetEdgeIndex,
+                NodeCableRenderer::scaleForZoom(zoom),
+                sceneEdge.edgeIndex == selectedEdgeIndex || sceneEdge.edgeIndex == spliceTargetEdgeIndex,
                 edge.attachment,
                 invalid,
-                destEndpoint.portLike);
+                sceneEdge.destinationPortLike);
     }
 }
 
@@ -1351,20 +1318,19 @@ void NodeCanvas::drawEdges(Graphics& g) {
 
     const auto& edges = graph.getEdges();
     const auto visibleArea = getLocalBounds().toFloat().expanded(160.f);
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
 
-    for (int edgeIndex = 0; edgeIndex < (int) edges.size(); ++edgeIndex) {
-        const auto& edge = edges[(size_t) edgeIndex];
-        CableEndpoint sourceEndpoint;
-        CableEndpoint destEndpoint;
-
-        if (!resolveCableEndpoints(edge, sourceEndpoint, destEndpoint)) {
+    for (const auto& sceneEdge : scene.edges) {
+        if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
         }
 
-        auto source = sourceEndpoint.centre;
-        auto dest = destEndpoint.centre;
-        Path cable = createCablePath(source, dest, sourceEndpoint.side, destEndpoint.side, edge.attachment);
-        const Rectangle<float> cableBounds = visibleCableBounds(cable, zoom);
+        const auto& edge = edges[(size_t) sceneEdge.edgeIndex];
+        const Rectangle<float> cableBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom);
 
         if (!cableBounds.intersects(visibleArea)) {
             continue;
@@ -1373,109 +1339,17 @@ void NodeCanvas::drawEdges(Graphics& g) {
         Colour colour = colourForDomain(displayDomainForEdge(edge));
         const bool invalid = edgeHasValidationIssue(edge);
 
-        const bool selected = edgeIndex == selectedEdgeIndex;
-        const bool spliceTarget = edgeIndex == spliceTargetEdgeIndex;
-        const float cableScale = cableScaleForZoom(zoom);
-
         if (invalid) {
             colour = Colour(0xffff5a5f);
         }
 
-        if (edge.attachment) {
-            Path dashedCable;
-            PathStrokeType stroke(2.0f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
-            Array<float> dashes { 8.f * cableScale, 7.f * cableScale };
-            stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
-            g.setColour(colour.withAlpha(spliceTarget ? 0.62f : (selected ? 0.46f : 0.32f)));
-            g.strokePath(
-                    dashedCable,
-                    PathStrokeType((spliceTarget ? 13.f : (selected ? 10.f : 7.f)) * cableScale,
-                                   PathStrokeType::curved,
-                                   PathStrokeType::rounded));
-            g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(
-                    dashedCable,
-                    PathStrokeType((spliceTarget ? 4.5f : (selected ? 3.f : 2.f)) * cableScale,
-                                   PathStrokeType::curved,
-                                   PathStrokeType::rounded));
-        } else {
-            g.setColour(colour.withAlpha(spliceTarget ? 0.42f : (selected ? 0.28f : 0.18f)));
-            g.strokePath(
-                    cable,
-                    PathStrokeType((spliceTarget ? 15.f : (selected ? 12.f : 9.f)) * cableScale,
-                                   PathStrokeType::curved,
-                                   PathStrokeType::rounded));
-            g.setColour(colour.withAlpha(0.92f));
-            g.strokePath(
-                    cable,
-                    PathStrokeType((spliceTarget ? 5.2f : (selected ? 4.f : 3.f)) * cableScale,
-                                   PathStrokeType::curved,
-                                   PathStrokeType::rounded));
-
-            if (invalid) {
-                Path dashedCable;
-                PathStrokeType stroke(1.8f * cableScale, PathStrokeType::curved, PathStrokeType::rounded);
-                Array<float> dashes { 5.f * cableScale, 6.f * cableScale };
-                stroke.createDashedStroke(dashedCable, cable, dashes.getRawDataPointer(), dashes.size());
-                g.setColour(Colours::white.withAlpha(0.58f));
-                g.strokePath(dashedCable, PathStrokeType(1.4f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
-            }
-        }
-
-        if (spliceTarget) {
-            const Point<float> midpoint = cable.getPointAlongPath(cable.getLength() * 0.5f);
-            const float markerSize = 17.f * cableScale;
-            Rectangle<float> insertMarker(
-                    midpoint.x - markerSize * 0.5f,
-                    midpoint.y - markerSize * 0.5f,
-                    markerSize,
-                    markerSize);
-
-            g.setColour(kCanvasBackground.withAlpha(0.92f));
-            g.fillEllipse(insertMarker);
-            g.setColour(colour.withAlpha(0.98f));
-            g.drawEllipse(insertMarker, 2.2f * cableScale);
-            g.drawLine(
-                    insertMarker.getX() + markerSize * 0.30f,
-                    midpoint.y,
-                    insertMarker.getRight() - markerSize * 0.30f,
-                    midpoint.y,
-                    1.9f * cableScale);
-            g.drawLine(
-                    midpoint.x,
-                    insertMarker.getY() + markerSize * 0.30f,
-                    midpoint.x,
-                    insertMarker.getBottom() - markerSize * 0.30f,
-                    1.9f * cableScale);
-        }
-
-        const float endpointSize = (spliceTarget ? 15.f : (selected ? 14.f : 11.f)) * cableScale;
-        Rectangle<float> sourceMarker(source.x - endpointSize * 0.5f, source.y - endpointSize * 0.5f,
-                                      endpointSize, endpointSize);
-        Rectangle<float> destMarker(dest.x - endpointSize * 0.5f, dest.y - endpointSize * 0.5f,
-                                    endpointSize, endpointSize);
-
-        g.setColour(kCanvasBackground.withAlpha(0.92f));
-        g.fillEllipse(sourceMarker);
-        g.setColour(colour.withAlpha(0.96f));
-        g.drawEllipse(sourceMarker, (spliceTarget ? 2.8f : (selected ? 2.4f : 1.8f)) * cableScale);
-
-        if (destEndpoint.portLike) {
-            g.fillEllipse(destMarker.reduced((spliceTarget ? 1.2f : (selected ? 1.5f : 2.f)) * cableScale));
-        } else {
-            Path badge;
-            const float radius = (selected ? 7.f : 5.8f) * cableScale;
-            badge.startNewSubPath(dest.x, dest.y - radius);
-            badge.lineTo(dest.x + radius, dest.y);
-            badge.lineTo(dest.x, dest.y + radius);
-            badge.lineTo(dest.x - radius, dest.y);
-            badge.closeSubPath();
-
-            g.setColour(kCanvasBackground.withAlpha(0.92f));
-            g.fillPath(badge);
-            g.setColour(colour.withAlpha(selected ? 0.98f : 0.78f));
-            g.strokePath(badge, PathStrokeType((selected ? 2.2f : 1.6f) * cableScale));
-        }
+        NodeCableRenderer::paint(g, sceneEdge, {
+                colour,
+                edge.attachment,
+                invalid,
+                sceneEdge.edgeIndex == selectedEdgeIndex,
+                sceneEdge.edgeIndex == spliceTargetEdgeIndex
+        }, zoom);
     }
 }
 
@@ -1502,24 +1376,12 @@ void NodeCanvas::drawConnectionPreview(Graphics& g) {
     const auto dest = connectingPort.input ? start : connectingPoint;
     const PortSide sourceSide = connectingPort.input ? PortSide::Right : port->side;
     const PortSide destSide = connectingPort.input ? port->side : PortSide::Left;
-    const Path cable = createCablePath(source, dest, sourceSide, destSide, false);
-
-    const Colour colour = colourForDomain(port->domain);
-    const float cableScale = cableScaleForZoom(zoom);
-
-    g.setColour(colour.withAlpha(0.18f));
-    g.strokePath(cable, PathStrokeType(9.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
-    g.setColour(colour.withAlpha(0.88f));
-    g.strokePath(cable, PathStrokeType(3.f * cableScale, PathStrokeType::curved, PathStrokeType::rounded));
-
-    const float markerSize = 11.f * cableScale;
-    Rectangle<float> startMarker(source.x - markerSize * 0.5f, source.y - markerSize * 0.5f, markerSize, markerSize);
-    Rectangle<float> destMarker(dest.x - markerSize * 0.5f, dest.y - markerSize * 0.5f, markerSize, markerSize);
-    g.setColour(kCanvasBackground.withAlpha(0.92f));
-    g.fillEllipse(startMarker);
-    g.setColour(colour.withAlpha(0.96f));
-    g.drawEllipse(startMarker, 1.8f * cableScale);
-    g.fillEllipse(destMarker.reduced(2.f * cableScale));
+    NodeCableRenderer::paintPending(g, {
+            NodeCanvasScene::cablePath(source, dest, sourceSide, destSide, zoom),
+            source,
+            dest,
+            colourForDomain(port->domain)
+    }, zoom);
 }
 
 void NodeCanvas::drawNodes(Graphics& g) {
@@ -2129,67 +1991,6 @@ NodeCanvas::PortLocation NodeCanvas::getPortLocation(const PortAddress& address)
     return getPortLocation(*node, *port);
 }
 
-bool NodeCanvas::resolveCableEndpoints(
-        const Edge& edge,
-        CableEndpoint& sourceEndpoint,
-        CableEndpoint& destEndpoint) const {
-    const Node* sourceNode = findNode(edge.sourceNodeId);
-    const Node* destNode = findNode(edge.destNodeId);
-
-    if (sourceNode == nullptr || destNode == nullptr) {
-        return false;
-    }
-
-    const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-    const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-    if (sourcePort == nullptr) {
-        return false;
-    }
-
-    const PortLocation sourceLocation = getPortLocation(*sourceNode, *sourcePort);
-    sourceEndpoint = { sourceLocation.centre, sourcePort->side, true };
-
-    if (destPort != nullptr) {
-        const PortLocation destLocation = getPortLocation(*destNode, *destPort);
-        destEndpoint = { destLocation.centre, destPort->side, true };
-        return true;
-    }
-
-    if (edge.attachment && isDynamicTrimeshGuideTarget(*destNode, edge.destPortId)) {
-        destEndpoint = dynamicTrimeshGuideEndpoint(*destNode, edge.destPortId);
-        return true;
-    }
-
-    return false;
-}
-
-bool NodeCanvas::isDynamicTrimeshGuideTarget(const Node& node, const String& portId) const {
-    if (node.kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    return TrimeshGuideAttachmentTarget::parse(portId).isValid();
-}
-
-NodeCanvas::CableEndpoint NodeCanvas::dynamicTrimeshGuideEndpoint(
-        const Node& node,
-        const String& portId) const {
-    const Rectangle<float> bounds = toScreen(node.bounds);
-    const TrimeshGuideAttachmentTarget target = TrimeshGuideAttachmentTarget::parse(portId);
-    const int fieldIndex = jmax(0, target.fieldIndex());
-    const int fieldCount = TrimeshGuideAttachmentTarget::fieldCount;
-
-    return {
-            {
-                    bounds.getX() + bounds.getWidth() * ((float) fieldIndex + 1.f) / ((float) fieldCount + 1.f),
-                    bounds.getY()
-            },
-            PortSide::Top,
-            false
-    };
-}
-
 bool NodeCanvas::findPortAt(Point<float> screenPosition, PortAddress& result) const {
     const auto hit = hitTester.hitTest(sceneBuilder.build(
             graph, viewport, presentation.revision(), document.revision()), screenPosition);
@@ -2318,38 +2119,26 @@ int NodeCanvas::findEdgeAt(Point<float> screenPosition) const {
 int NodeCanvas::findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const {
     const auto& edges = graph.getEdges();
     const Node* node = findNode(nodeId);
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
 
-    for (int edgeIndex = (int) edges.size() - 1; edgeIndex >= 0; --edgeIndex) {
+    for (auto sceneEdge = scene.edges.rbegin(); sceneEdge != scene.edges.rend(); ++sceneEdge) {
+        const int edgeIndex = sceneEdge->edgeIndex;
+
+        if (edgeIndex < 0 || edgeIndex >= (int) edges.size()) {
+            continue;
+        }
+
         const auto& edge = edges[(size_t) edgeIndex];
 
         if (edge.sourceNodeId == nodeId || edge.destNodeId == nodeId) {
             continue;
         }
 
-        const Node* sourceNode = findNode(edge.sourceNodeId);
-        const Node* destNode = findNode(edge.destNodeId);
-
-        if (sourceNode == nullptr || destNode == nullptr) {
-            continue;
-        }
-
-        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
-        const Port* destPort = findPort(*destNode, edge.destPortId, true);
-
-        if (sourcePort == nullptr || destPort == nullptr) {
-            continue;
-        }
-
-        Path hitPath;
-        PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
-                .createStrokedPath(hitPath, createCablePath(
-                        getPortLocation(*sourceNode, *sourcePort).centre,
-                        getPortLocation(*destNode, *destPort).centre,
-                        sourcePort->side,
-                        destPort->side,
-                        edge.attachment));
-
-        if (hitPath.contains(screenPosition)) {
+        if (sceneEdge->hitPath.contains(screenPosition)) {
             NodeGraph candidate = graph;
             const auto result = node != nullptr && node->kind == NodeKind::Spy
                     ? GraphEditor().attachSpyToEdge(candidate, (size_t) edgeIndex, nodeId)
@@ -3471,36 +3260,6 @@ bool NodeCanvas::canConnectPorts(const PortAddress& first, const PortAddress& se
 
     NodeGraph candidate = graph;
     return GraphEditor().connect(candidate, first, second).succeeded();
-}
-
-Path NodeCanvas::createCablePath(
-        Point<float> source,
-        Point<float> dest,
-        PortSide sourceSide,
-        PortSide destSide,
-        bool) const {
-    const float zoom = viewport.getZoom();
-    Path path;
-    path.startNewSubPath(source);
-
-    const Point<float> vector = dest - source;
-    const float distance = vector.getDistanceFromOrigin();
-
-    if (absoluteFloat(vector.x) <= 0.5f || absoluteFloat(vector.y) <= 0.5f) {
-        path.lineTo(dest);
-        return path;
-    }
-
-    const float sourceStrength = jlimit(24.f * zoom, 120.f * zoom, distance * 0.34f);
-    const float destStrength = jlimit(18.f * zoom, 74.f * zoom, distance * 0.18f);
-    const Point<float> sourceDirection = normalizedOrFallback(vector, outwardNormalForSide(sourceSide));
-    const Point<float> destNormal = outwardNormalForSide(destSide);
-    const Point<float> c1 = source + sourceDirection * sourceStrength;
-    const Point<float> c2 = dest + destNormal * destStrength;
-
-    path.cubicTo(c1, c2, dest);
-
-    return path;
 }
 
 void NodeCanvas::requestCanvasRepaint() {

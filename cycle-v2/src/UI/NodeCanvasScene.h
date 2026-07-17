@@ -45,7 +45,9 @@ struct NodeSceneEdge {
     int edgeIndex { -1 };
     juce::Point<float> source;
     juce::Point<float> destination;
+    juce::Path cablePath;
     juce::Path hitPath;
+    bool destinationPortLike { true };
 };
 
 struct NodeCanvasSceneSnapshot {
@@ -66,6 +68,12 @@ public:
     const NodeCanvasSceneSnapshot& snapshot() const { return current; }
 
     static juce::Point<float> portWorldCentre(const Node& node, const Port& port);
+    static juce::Path cablePath(
+            juce::Point<float> source,
+            juce::Point<float> destination,
+            PortSide sourceSide,
+            PortSide destinationSide,
+            float zoom);
 
 private:
     NodeCanvasSceneSnapshot current;

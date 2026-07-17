@@ -7,6 +7,7 @@
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeAutomationFacade.h"
+#include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
 #include "../src/UI/NodeViewModule.h"
@@ -15,6 +16,24 @@
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
+
+namespace {
+
+uint64_t imageChecksum(const Image& image) {
+    const Image::BitmapData pixels(image, Image::BitmapData::readOnly);
+    uint64_t checksum = 1469598103934665603ULL;
+
+    for (int y = 0; y < pixels.height; ++y) {
+        for (int x = 0; x < pixels.width; ++x) {
+            checksum ^= pixels.getPixelColour(x, y).getARGB();
+            checksum *= 1099511628211ULL;
+        }
+    }
+
+    return checksum;
+}
+
+}
 
 TEST_CASE("Node palette resolves every authored node kind from its visible entry",
         "[cycle-v2][canvas][palette]") {
@@ -306,6 +325,50 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     REQUIRE(snapshot.edges.size() == 1);
     REQUIRE(snapshot.edges.front().destination.y
             == Catch::Approx(viewport.toScreen(graph.findNode("mesh")->bounds.getTopLeft()).y));
+    REQUIRE_FALSE(snapshot.edges.front().destinationPortLike);
+    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
+            .contains(snapshot.edges.front().source));
+    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
+            .contains(snapshot.edges.front().destination));
+    REQUIRE(snapshot.edges.front().hitPath.contains(
+            snapshot.edges.front().cablePath.getPointAlongPath(
+                    snapshot.edges.front().cablePath.getLength() * 0.5f)));
+}
+
+TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
+        "[cycle-v2][canvas][cables]") {
+    NodeSceneEdge edge;
+    edge.source = { 30.f, 50.f };
+    edge.destination = { 210.f, 130.f };
+    edge.cablePath = NodeCanvasScene::cablePath(
+            edge.source,
+            edge.destination,
+            PortSide::Right,
+            PortSide::Left,
+            1.f);
+
+    const std::array<NodeCableStyle, 5> styles {
+            NodeCableStyle { Colour(0xff42d3cf), false, false, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), true, false, false, false },
+            NodeCableStyle { Colour(0xffff5a5f), false, true, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, false, true }
+    };
+    std::array<uint64_t, styles.size()> checksums {};
+
+    for (size_t i = 0; i < styles.size(); ++i) {
+        Image image(Image::ARGB, 240, 180, true);
+        Graphics graphics(image);
+        NodeCableRenderer::paint(graphics, edge, styles[i], 1.f);
+        checksums[i] = imageChecksum(image);
+        REQUIRE(checksums[i] != imageChecksum(Image(Image::ARGB, 240, 180, true)));
+    }
+
+    for (size_t i = 0; i < checksums.size(); ++i) {
+        for (size_t j = i + 1; j < checksums.size(); ++j) {
+            REQUIRE(checksums[i] != checksums[j]);
+        }
+    }
 }
 
 TEST_CASE("Voice context editor resolves every authored control from its painted rows",
