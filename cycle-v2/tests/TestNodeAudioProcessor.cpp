@@ -199,7 +199,8 @@ void prepareProcessor(
         NodeAudioProcessor& processor,
         AudioModuleRole role,
         const AudioProcessContext& context,
-        size_t maximumFrameCount = 0) {
+        size_t maximumFrameCount = 0,
+        uint64_t revision = 1) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
     spec.sampleRate = context.timing.sampleRate;
@@ -207,7 +208,7 @@ void prepareProcessor(
     spec.beatsPerMeasure = context.timing.beatsPerMeasure;
     const auto configuration = NodeDspConfigurationFactory().create(role, context.parameters, spec);
     REQUIRE(configuration != nullptr);
-    processor.adoptConfiguration({ 1, "test-configuration", configuration });
+    processor.adoptConfiguration({ revision, "test-configuration", configuration });
     processor.prepareExecution(spec);
 }
 
@@ -285,7 +286,9 @@ TEST_CASE("Audio processors read node parameters from process context", "[cycle-
     envelopeContext.parameters = envelopeParameters();
     envelopeContext.parameters.push_back({ "level", "Level", "0.25" });
     envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
+    auto envelopeProcessor = factory.create(AudioModuleRole::Envelope);
+    prepareProcessor(*envelopeProcessor, AudioModuleRole::Envelope, envelopeContext);
+    envelopeProcessor->process(envelopeContext);
 
     REQUIRE(output(envelopeContext).block.samples.front() < 0.001f);
     REQUIRE(output(envelopeContext).block.samples.back() > output(envelopeContext).block.samples.front());
@@ -304,6 +307,7 @@ TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v
     noteOn.timing.sampleRate = 16.0;
     noteOn.parameters = parameters;
     noteOn.voice.events.push_back({ NoteLifecycleType::NoteOn, 3, 0 });
+    prepareProcessor(*processor, AudioModuleRole::Envelope, noteOn);
     processor->process(noteOn);
 
     REQUIRE(output(noteOn).block.samples[0] == Catch::Approx(0.f));
@@ -354,6 +358,7 @@ TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2
         });
         context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
         auto processor = factory.create(AudioModuleRole::Envelope);
+        prepareProcessor(*processor, AudioModuleRole::Envelope, context);
         processor->process(context);
         return output(context).block.samples;
     };
@@ -377,7 +382,9 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
             { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono }
     };
     envelopeContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    factory.create(AudioModuleRole::Envelope)->process(envelopeContext);
+    auto envelopeProcessor = factory.create(AudioModuleRole::Envelope);
+    prepareProcessor(*envelopeProcessor, AudioModuleRole::Envelope, envelopeContext);
+    envelopeProcessor->process(envelopeContext);
 
     const SignalPayload& envelope = output(envelopeContext);
     REQUIRE(envelope.traversalGrid.columns == 8);
@@ -407,7 +414,9 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
     tallerContext.parameters = parameters;
     tallerContext.outputPorts = envelopeContext.outputPorts;
     tallerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    factory.create(AudioModuleRole::Envelope)->process(tallerContext);
+    auto tallerProcessor = factory.create(AudioModuleRole::Envelope);
+    prepareProcessor(*tallerProcessor, AudioModuleRole::Envelope, tallerContext);
+    tallerProcessor->process(tallerContext);
 
     const SignalTraversalGrid& taller = output(tallerContext).traversalGrid;
     REQUIRE(taller.columns == envelope.traversalGrid.columns);
@@ -423,7 +432,9 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
     widerContext.parameters = parameters;
     widerContext.outputPorts = envelopeContext.outputPorts;
     widerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-    factory.create(AudioModuleRole::Envelope)->process(widerContext);
+    auto widerProcessor = factory.create(AudioModuleRole::Envelope);
+    prepareProcessor(*widerProcessor, AudioModuleRole::Envelope, widerContext);
+    widerProcessor->process(widerContext);
 
     const SignalTraversalGrid& wider = output(widerContext).traversalGrid;
     REQUIRE(wider.columns == 12);
@@ -695,12 +706,14 @@ TEST_CASE("Envelope processor preserves active position across snapshot edits", 
     start.timing.sampleRate = 16.0;
     start.parameters = envelopeParameters(initialSnapshot);
     start.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    prepareProcessor(*activeProcessor, AudioModuleRole::Envelope, start, 8, 1);
     activeProcessor->process(start);
 
     AudioProcessContext edited;
     edited.frameCount = 4;
     edited.timing.sampleRate = 16.0;
     edited.parameters = envelopeParameters(editedSnapshot);
+    prepareProcessor(*activeProcessor, AudioModuleRole::Envelope, edited, 8, 2);
     activeProcessor->process(edited);
 
     auto freshProcessor = factory.create(AudioModuleRole::Envelope);
@@ -709,6 +722,7 @@ TEST_CASE("Envelope processor preserves active position across snapshot edits", 
     fresh.timing.sampleRate = 16.0;
     fresh.parameters = edited.parameters;
     fresh.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    prepareProcessor(*freshProcessor, AudioModuleRole::Envelope, fresh);
     freshProcessor->process(fresh);
 
     REQUIRE(output(edited).block.samples.front() > output(fresh).block.samples.front());

@@ -2,21 +2,12 @@
 
 #include "../Effect2D/CurveNodeModels.h"
 
-#include <Curve/Curve.h>
-
 #include <cmath>
 
 namespace CycleV2 {
 
-EnvelopeSignalProcessor::EnvelopeSignalProcessor() :
-        mesh      ("CycleV2EnvelopeDsp")
-    ,   rasterizer(nullptr, "CycleV2EnvelopeDspRasterizer") {
-    Curve::calcTable();
+EnvelopeSignalProcessor::EnvelopeSignalProcessor() {
     props.active = true;
-}
-
-EnvelopeSignalProcessor::~EnvelopeSignalProcessor() {
-    mesh.destroy();
 }
 
 std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfiguration(
@@ -93,7 +84,6 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     playback.validate(activeConfiguration->rasterizer->preparedPlaybackView());
     props.logarithmic = configuration->logarithmic;
     level = configuration->level;
-    modelReady = true;
     adoptedRevision = pendingRevision;
 }
 
@@ -253,9 +243,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    const bool ready = configuration != nullptr
-            ? preparedConfiguration() != nullptr && modelReady
-            : syncModel(processParameters(context));
+    const bool ready = preparedConfiguration() != nullptr;
     if (ready) {
         size_t rendered = 0;
 
@@ -278,7 +266,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
     }
 
-    outputBuffer.mul(configuration != nullptr ? level : parameterFloat(processParameters(context), "level", 1.f));
+    outputBuffer.mul(level);
     if (context.captureTraversalGrid) {
         publishTraversalGrid(output, context.workArena);
     }
@@ -299,9 +287,12 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     Buffer<float> values = traversalMemory.place((int) columns);
     positions.ramp(0.f, 1.f / (float) columns);
     const EnvelopeConfiguration* current = preparedConfiguration();
-    const auto sampler = current != nullptr
-            ? current->rasterizer->sampler()
-            : rasterizer.sampler();
+    if (current == nullptr) {
+        output.traversalGrid = {};
+        return;
+    }
+
+    const auto sampler = current->rasterizer->sampler();
     sampler.sampleAtIntervals(positions, values);
     values.mul(level);
 
@@ -325,74 +316,26 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     }
 }
 
-bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parameters) {
-    const String nextSnapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
-
-    const bool snapshotChanged = nextSnapshot != snapshotState;
-    if (snapshotChanged) {
-        if (!EnvelopeMeshState::apply(nextSnapshot, mesh)) {
-            modelReady = false;
-            snapshotState = nextSnapshot;
-            return false;
-        }
-
-        snapshotState = nextSnapshot;
-        rasterizer.setMesh(&mesh);
-        modelReady = true;
-    }
-
-    const float nextRed = parameterFloat(parameters, "red", 0.5f);
-    const float nextBlue = parameterFloat(parameters, "blue", 0.5f);
-    const bool geometryChanged = nextRed != redMorph || nextBlue != blueMorph;
-
-    if (modelReady && (geometryChanged || snapshotChanged)) {
-        redMorph = nextRed;
-        blueMorph = nextBlue;
-        rasterizer.setMorphPosition({ 0.f, redMorph, blueMorph });
-        rasterizer.renderWaveformOnly(&mesh, 0.f);
-        rasterizer.validateState();
-    }
-
-    props.logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
-    level = parameterFloat(parameters, "level", 1.f);
-    return modelReady && rasterizer.canRasterizeWaveform();
-}
-
 void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& event) {
-    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
-        const auto prepared = current->rasterizer->preparedPlaybackView();
-        switch (event.type) {
-            case NoteLifecycleType::NoteOn:
-                ++noteSerial;
-                playback.noteOn();
-                active = true;
-                break;
-
-            case NoteLifecycleType::NoteOff:
-                playback.noteOff(prepared);
-                break;
-
-            case NoteLifecycleType::Reset:
-                playback.noteOn();
-                active = false;
-                break;
-        }
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current == nullptr) {
         return;
     }
 
+    const auto prepared = current->rasterizer->preparedPlaybackView();
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
-            rasterizer.setNoteOn();
+            ++noteSerial;
+            playback.noteOn();
             active = true;
             break;
 
         case NoteLifecycleType::NoteOff:
-            rasterizer.setNoteOff();
+            playback.noteOff(prepared);
             break;
 
         case NoteLifecycleType::Reset:
-            rasterizer.reset();
-            rasterizer.renderWaveformOnly(&mesh, 0.f);
+            playback.noteOn();
             active = false;
             break;
     }
@@ -407,26 +350,19 @@ void EnvelopeSignalProcessor::renderSegment(
         return;
     }
 
-    bool stillActive {};
-    Buffer<float> rendered;
-    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
-        stillActive = playback.renderToBuffer(
-                current->rasterizer->preparedPlaybackView(),
-                (int) count,
-                1. / timing.sampleRate,
-                Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
-                props,
-                1.f);
-        rendered = playback.output().withSize((int) count);
-    } else {
-        stillActive = rasterizer.renderToBuffer(
-                (int) count,
-                1. / timing.sampleRate,
-                EnvRasterizer::headUnisonIndex,
-                props,
-                1.f);
-        rendered = rasterizer.getRenderBuffer().withSize((int) count);
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current == nullptr) {
+        return;
     }
+
+    const bool stillActive = playback.renderToBuffer(
+            current->rasterizer->preparedPlaybackView(),
+            (int) count,
+            1. / timing.sampleRate,
+            Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+            props,
+            1.f);
+    Buffer<float> rendered = playback.output().withSize((int) count);
     applyAdoptionTransition(rendered);
     rendered.copyTo(output.section((int) start, (int) count));
     lastOutputSample = rendered.back();
