@@ -9,8 +9,7 @@
 #include "../Nodes/FFT/FftSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../Nodes/Trimesh/PreparedTrimeshTopology.h"
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
 #include <Curve/Mesh/Mesh.h>
@@ -340,14 +339,6 @@ private:
 
 class TrimeshAudioProcessor final : public NodeAudioProcessor {
 public:
-    TrimeshAudioProcessor() : defaultMesh(TrimeshMeshFactory::createDefaultMesh()) {}
-
-    ~TrimeshAudioProcessor() override {
-        if (defaultMesh != nullptr) {
-            defaultMesh->destroy();
-        }
-    }
-
     AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
@@ -458,9 +449,9 @@ private:
                         output);
             }
         } else {
-            syncMeshEdits(processParameters(context));
+            Mesh& mesh = fallbackTopology.mesh(processParameters(context));
             trimeshDsp.prepare(
-                    defaultMesh.get(),
+                    &mesh,
                     morph,
                     primaryAxis,
                     outputPort.domain == PortDomain::TimeSignal);
@@ -472,7 +463,9 @@ private:
         }
 
         if (context.captureTraversalGrid) {
-            Mesh& gridMesh = configuration != nullptr ? *configuration->mesh : *defaultMesh;
+            Mesh& gridMesh = configuration != nullptr
+                    ? *configuration->mesh
+                    : fallbackTopology.mesh(processParameters(context));
             const size_t columnCount = std::max(
                     kDefaultTraversalColumns, context.frameCount / 2);
             const size_t rowCount = traversalRowsForDomain(
@@ -501,31 +494,12 @@ private:
         publishSingleOutput(context, std::move(output));
     }
 
-    void syncMeshEdits(const std::vector<NodeParameter>& parameters) {
-        const String nextState = typedParameterString(
-                parameters,
-                TrimeshMeshState::parameterId(),
-                {});
-
-        if (nextState == meshEditState) {
-            return;
-        }
-
-        defaultMesh->destroy();
-        defaultMesh = TrimeshMeshFactory::createDefaultMesh();
-        if (nextState.isNotEmpty()) {
-            TrimeshMeshState::apply(nextState, *defaultMesh);
-        }
-        meshEditState = nextState;
-    }
-
     bool morphInitialized {};
     PortDomain preparedDomain { PortDomain::ControlSignal };
     SmoothedMorphPosition smoothedMorph;
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
-    std::unique_ptr<Mesh> defaultMesh;
-    String meshEditState;
+    PreparedTrimeshTopology fallbackTopology { "CycleV2AudioMesh" };
     std::shared_ptr<const TrimeshConfiguration> configuration;
 };
 

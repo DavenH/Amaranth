@@ -2,8 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../Nodes/Trimesh/PreparedTrimeshTopology.h"
 
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
@@ -272,12 +271,6 @@ public:
 
 class TrimeshPreviewProcessor final : public NodePreviewProcessor {
 public:
-    ~TrimeshPreviewProcessor() override {
-        if (mesh != nullptr) {
-            mesh->destroy();
-        }
-    }
-
     PreviewModuleRole role() const override { return PreviewModuleRole::MeshSurface; }
 
     void render(PreviewProcessContext& context) override {
@@ -304,10 +297,9 @@ public:
         const auto configuration = context.configuration != nullptr
                 ? std::dynamic_pointer_cast<const TrimeshConfiguration>(context.configuration->value)
                 : nullptr;
-        if (configuration == nullptr) {
-            syncMesh(context.parameters);
-        }
-        Mesh* preparedMesh = configuration != nullptr ? configuration->mesh.get() : mesh.get();
+        Mesh* preparedMesh = configuration != nullptr
+                ? configuration->mesh.get()
+                : &fallbackTopology.mesh(context.parameters);
         const MorphPosition morph = configuration != nullptr
                 ? configuration->morph
                 : meshMorphFromParameters(context.parameters);
@@ -358,26 +350,7 @@ public:
     }
 
 private:
-    void syncMesh(const std::vector<NodeParameter>& parameters) {
-        const String nextState = typedParameterString(
-                parameters,
-                TrimeshMeshState::parameterId(),
-                {});
-        if (mesh != nullptr && nextState == meshEditState) {
-            return;
-        }
-        if (mesh != nullptr) {
-            mesh->destroy();
-        }
-        mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
-        if (nextState.isNotEmpty()) {
-            TrimeshMeshState::apply(nextState, *mesh);
-        }
-        meshEditState = nextState;
-    }
-
-    std::unique_ptr<Mesh> mesh;
-    String meshEditState;
+    PreparedTrimeshTopology fallbackTopology { "CycleV2PreviewMesh" };
 };
 
 }
