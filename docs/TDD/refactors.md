@@ -1,9 +1,5 @@
 # Refactor Notes
 
-## Cycle V2 Style And Reuse Audit
-
-- [`cycle-v2-style-and-reuse-audit.md`](cycle-v2-style-and-reuse-audit.md)
-
 ## Cycle 2 OpenGL Cable Tessellation
 
 The prototype GL cable renderer exposed platform-dependent artifacts with wide

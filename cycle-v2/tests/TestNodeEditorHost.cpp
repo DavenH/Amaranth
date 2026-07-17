@@ -4,7 +4,9 @@
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/NodeEditorHost.h"
+#include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
 
@@ -241,6 +243,90 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     host.bind(nullptr, {});
     REQUIRE_FALSE(host.hasEditor());
     REQUIRE(stats.destructions == 2);
+}
+
+TEST_CASE("Canvas automation inspection is semantic and side effect free",
+        "[cycle-v2][canvas][automation]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    canvas.setBounds(0, 0, 1200, 800);
+
+    NullCommands commands;
+    NullPresentation editorPresentation;
+    NullResources resources;
+    EditorStats editorStats;
+    MockFactories factories(editorStats);
+    NodeEditorHost host(canvas, commands, editorPresentation, resources, factories);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 240.f, 180.f }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            editorPresentation,
+            resources);
+    NodePreviewResources previewResources(editorCommands);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds(canvas.getLocalBounds().toFloat());
+    NodeCanvasAutomationInspector inspector({
+            canvas,
+            document,
+            presentation,
+            viewport,
+            host
+    });
+    const NodeCanvasAutomationPresentation state {
+            "mesh",
+            "mesh",
+            "Opened editor: mesh",
+            -1
+    };
+    const uint64_t documentRevision = document.revision();
+    const uint64_t presentationRevision = presentation.revision();
+    const uint64_t viewportRevision = viewport.getRevision();
+    REQUIRE(previewResources.findTrimeshWidget("mesh") == nullptr);
+
+    const var pointerInspection = inspector.inspectPointerTargets(state);
+    const auto* pointerObject = pointerInspection.getDynamicObject();
+    REQUIRE(pointerObject != nullptr);
+    REQUIRE(pointerObject->getProperty("schema").toString() == "cycle-v2-pointer-targets.v1");
+
+    const Array<var>* targets = pointerObject->getProperty("targets").getArray();
+    REQUIRE(targets != nullptr);
+
+    auto hasTarget = [targets](const String& id) {
+        return std::any_of(targets->begin(), targets->end(), [&](const var& targetValue) {
+            const auto* target = targetValue.getDynamicObject();
+            return target != nullptr && target->getProperty("id").toString() == id;
+        });
+    };
+
+    REQUIRE(hasTarget("node:mesh"));
+    REQUIRE(hasTarget("expanded:mesh.panel3D"));
+    REQUIRE(hasTarget("expanded:mesh.trimeshMorphRail.yellow"));
+    REQUIRE(hasTarget("expanded:mesh.trimeshVertexParameter.vertex.phase"));
+
+    const var snapshot = inspector.exportState(state);
+    const auto* snapshotObject = snapshot.getDynamicObject();
+    REQUIRE(snapshotObject != nullptr);
+    REQUIRE((int) snapshotObject->getProperty("nodeCount") == 1);
+    REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
+    REQUIRE(inspector.exportGraphXml() == document.toXml());
+
+    REQUIRE(editorStats.creations == 0);
+    REQUIRE(previewResources.findTrimeshWidget("mesh") == nullptr);
+    REQUIRE(document.revision() == documentRevision);
+    REQUIRE(presentation.revision() == presentationRevision);
+    REQUIRE(viewport.getRevision() == viewportRevision);
 }
 
 TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {

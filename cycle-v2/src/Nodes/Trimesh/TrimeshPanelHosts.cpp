@@ -244,7 +244,7 @@ Component* TrimeshPanelHosts::getPanel3DHostComponent() {
     return panel3DHost.get();
 }
 
-Component* TrimeshPanelHosts::getPanel3DHostComponentIfCreated() {
+Component* TrimeshPanelHosts::getPanel3DHostComponentIfCreated() const {
     return panel3DHostInitialised ? panel3DHost.get() : nullptr;
 }
 
@@ -253,7 +253,7 @@ Component* TrimeshPanelHosts::getPanel2DHostComponent() {
     return panel2DHost.get();
 }
 
-Component* TrimeshPanelHosts::getPanel2DHostComponentIfCreated() {
+Component* TrimeshPanelHosts::getPanel2DHostComponentIfCreated() const {
     return panel2DHostInitialised ? panel2DHost.get() : nullptr;
 }
 

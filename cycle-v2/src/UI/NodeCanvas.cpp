@@ -1,9 +1,9 @@
 #include "NodeCanvas.h"
 #include "NodeViewModule.h"
+#include "TransformCompactEditor.h"
+#include "VoiceContextCompactEditor.h"
 
 #include "../Runtime/GraphAudioExecutor.h"
-
-#include <Util/Arithmetic.h>
 
 #include <array>
 #include <cmath>
@@ -21,9 +21,6 @@ constexpr uint32_t CanvasRepaint = 1u << 0;
 
 }
 
-Rectangle<float> nodePreviewBounds(Rectangle<float> nodeBounds, NodeKind kind, float zoom);
-Rectangle<float> previewContentArea(Rectangle<float> area);
-
 namespace {
 
 const Colour kCanvasBackground { 0xff101318 };
@@ -39,9 +36,6 @@ constexpr float kCableStrokeScale = 0.70f;
 constexpr float kExpandedEditorScale = 0.90f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 constexpr float kExpandedEditorHeaderHeight = 34.f;
-constexpr float kVoiceEditorLabelWidth = 78.f;
-constexpr float kVoiceEditorRowHeight = 23.f;
-constexpr float kVoiceEditorRowGap = 3.f;
 constexpr float kNodeSnapBaseDistance = 9.f;
 constexpr float kNodeSnapExtraPerMatch = 2.5f;
 constexpr float kNodeSnapMaxDistance = 20.f;
@@ -169,45 +163,6 @@ var rectangleToVar(Rectangle<float> bounds) {
     return object;
 }
 
-var pointToVar(Point<float> point) {
-    auto* object = new DynamicObject();
-    object->setProperty("x", point.x);
-    object->setProperty("y", point.y);
-    return object;
-}
-
-var pointerTargetToVar(
-        const String& id,
-        const String& kind,
-        Rectangle<float> bounds,
-        const String& nodeId = {},
-        const String& portId = {},
-        bool input = false,
-        const String& parameterId = {},
-        const String& axis = {}) {
-    auto* object = new DynamicObject();
-    object->setProperty("id", id);
-    object->setProperty("kind", kind);
-    object->setProperty("bounds", rectangleToVar(bounds));
-    object->setProperty("centre", pointToVar(bounds.getCentre()));
-
-    if (nodeId.isNotEmpty()) {
-        object->setProperty("nodeId", nodeId);
-    }
-    if (portId.isNotEmpty()) {
-        object->setProperty("portId", portId);
-        object->setProperty("input", input);
-    }
-    if (parameterId.isNotEmpty()) {
-        object->setProperty("parameterId", parameterId);
-    }
-    if (axis.isNotEmpty()) {
-        object->setProperty("axis", axis);
-    }
-
-    return object;
-}
-
 var componentDiagnosticsToVar(const String& id, const Component* component) {
     auto* object = new DynamicObject();
     object->setProperty("id", id);
@@ -226,132 +181,6 @@ var componentDiagnosticsToVar(const String& id, const Component* component) {
     object->setProperty("width", component->getWidth());
     object->setProperty("height", component->getHeight());
     object->setProperty("nonEmpty", !component->getLocalBounds().isEmpty());
-    return object;
-}
-
-var audioMetricsToVar(const SignalPayload& payload, double sampleRate) {
-    auto* object = new DynamicObject();
-    const auto& samples = payload.block.samples;
-    double sumSquares = 0.0;
-    float peak = 0.f;
-
-    for (float sample : samples) {
-        const float magnitude = sample >= 0.f ? sample : -sample;
-        peak = jmax(peak, magnitude);
-        sumSquares += (double) sample * (double) sample;
-    }
-
-    const double sampleCount = (double) jmax(1, (int) samples.size());
-    object->setProperty("sampleRate", sampleRate);
-    object->setProperty("channels", 1);
-    object->setProperty("samples", (int) samples.size());
-    object->setProperty("durationMs", sampleRate > 0.0 ? 1000.0 * (double) samples.size() / sampleRate : 0.0);
-    object->setProperty("peak", peak);
-    object->setProperty("rms", std::sqrt(sumSquares / sampleCount));
-    object->setProperty("domain", labelForDomain(payload.domain));
-    object->setProperty("channelLayout", labelForChannelLayout(payload.channelLayout));
-    return object;
-}
-
-String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
-    switch (kind) {
-        case TrimeshExpandedHitRegionKind::MorphControl:
-            return "trimeshMorphRail";
-        case TrimeshExpandedHitRegionKind::PrimaryAxis:
-            return "trimeshPrimaryAxis";
-        case TrimeshExpandedHitRegionKind::LinkToggle:
-            return "trimeshLinkToggle";
-        case TrimeshExpandedHitRegionKind::VertexParameter:
-            return "trimeshVertexParameter";
-        case TrimeshExpandedHitRegionKind::VertexGuideAttachment:
-            return "trimeshVertexGuideAttachment";
-    }
-
-    return "trimeshControl";
-}
-
-var portToVar(const Port& port) {
-    auto* object = new DynamicObject();
-    object->setProperty("id", port.id);
-    object->setProperty("label", port.label);
-    object->setProperty("domain", labelForDomain(port.domain));
-    object->setProperty("channelLayout", labelForChannelLayout(port.channelLayout));
-    object->setProperty("purpose", port.purpose == PortPurpose::ScratchAttachment ? "scratchAttachment" : "signal");
-    object->setProperty("input", port.input);
-    return object;
-}
-
-var parameterToVar(const NodeParameter& parameter) {
-    auto* object = new DynamicObject();
-    object->setProperty("id", parameter.id);
-    object->setProperty("label", parameter.label);
-    object->setProperty("value", parameter.value);
-    return object;
-}
-
-var edgeToVar(const Edge& edge) {
-    auto* object = new DynamicObject();
-    object->setProperty("sourceNodeId", edge.sourceNodeId);
-    object->setProperty("sourcePortId", edge.sourcePortId);
-    object->setProperty("destNodeId", edge.destNodeId);
-    object->setProperty("destPortId", edge.destPortId);
-    object->setProperty("domain", labelForDomain(edge.domain));
-    object->setProperty("attachment", edge.attachment);
-    return object;
-}
-
-String labelForPreviewRole(PreviewModuleRole role) {
-    switch (role) {
-        case PreviewModuleRole::Waveform:           return "Waveform";
-        case PreviewModuleRole::Image:              return "Image";
-        case PreviewModuleRole::MeshSurface:        return "Mesh Surface";
-        case PreviewModuleRole::SpectrumMagnitude:  return "Spectrum Magnitude";
-        case PreviewModuleRole::SpectrumPhase:      return "Spectrum Phase";
-        case PreviewModuleRole::Envelope:           return "Envelope";
-        case PreviewModuleRole::ImpulseResponse:    return "Impulse Response";
-        case PreviewModuleRole::Waveshaper:         return "Waveshaper";
-        case PreviewModuleRole::OutputMeters:       return "Output Meters";
-        case PreviewModuleRole::VoiceContext:       return "Voice Context";
-        case PreviewModuleRole::SignalSpy:          return "Signal Spy";
-        case PreviewModuleRole::Generic:            return "Generic";
-        case PreviewModuleRole::None:
-        default:
-            return "None";
-    }
-}
-
-var previewStatsToVar(const NodePreviewResult& preview) {
-    auto* object = new DynamicObject();
-    const auto& values = preview.primary;
-
-    float minimum = 0.f;
-    float maximum = 0.f;
-    double total = 0.0;
-    double absoluteTotal = 0.0;
-
-    if (!values.empty()) {
-        minimum = values.front();
-        maximum = values.front();
-    }
-
-    for (float value : values) {
-        minimum = jmin(minimum, value);
-        maximum = jmax(maximum, value);
-        total += (double) value;
-        absoluteTotal += (double) (value >= 0.f ? value : -value);
-    }
-
-    const double count = (double) jmax(1, (int) values.size());
-    object->setProperty("nodeId", preview.nodeId);
-    object->setProperty("role", labelForPreviewRole(preview.role));
-    object->setProperty("domain", labelForDomain(preview.domain));
-    object->setProperty("gridColumns", (int) preview.gridColumns);
-    object->setProperty("gridRows", (int) preview.gridRows);
-    object->setProperty("sampleCount", (int) values.size());
-    object->setProperty("minimum", minimum);
-    object->setProperty("maximum", maximum);
-    object->setProperty("mean", total / count);
-    object->setProperty("absoluteSum", absoluteTotal);
     return object;
 }
 
@@ -744,13 +573,6 @@ PortSide nextMeshOutputSide(const Node& node) {
     return PortSide::Right;
 }
 
-Rectangle<float> voiceDomainButtonBounds(const Rectangle<float>& nodeBounds, float zoom) {
-    const Rectangle<float> body = nodeBounds.withTrimmedTop(42.f * zoom);
-    const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
-    return Rectangle<float>(width, 28.f * zoom)
-            .withCentre({ nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
-}
-
 Rectangle<float> expandedEditorBounds(Rectangle<float> componentBounds) {
     const Rectangle<float> available = componentBounds.reduced(kExpandedEditorMinMargin);
     const float width = jmin(available.getWidth(), jmax(420.f, componentBounds.getWidth() * kExpandedEditorScale));
@@ -778,29 +600,6 @@ Rectangle<float> expandedEditorContentBounds(Rectangle<float> componentBounds) {
     return panel.reduced(8.f, 8.f);
 }
 
-Rectangle<float> voiceContextEditorColumnBounds(Rectangle<float> panel) {
-    panel.removeFromTop(30.f);
-    return panel.reduced(26.f, 18.f);
-}
-
-Rectangle<float> transformEditorColumnBounds(Rectangle<float> panel) {
-    panel.removeFromTop(30.f);
-    return panel.reduced(24.f, 18.f);
-}
-
-String voiceDomainForNode(const Node& node) {
-    return parameterValueForNode(node, "domain", "waveform");
-}
-
-String voiceDomainButtonLabel(const Node& node) {
-    const String domain = voiceDomainForNode(node);
-    return domain == "spectral" ? "Spectral" : "Waveform";
-}
-
-String nextVoiceDomain(const Node& node) {
-    return voiceDomainForNode(node) == "spectral" ? "waveform" : "spectral";
-}
-
 bool expandedEditorBlocksCanvas(const Node* node) {
     return node != nullptr
             && NodeViewModuleRegistry::instance().moduleFor(node->kind)
@@ -809,741 +608,6 @@ bool expandedEditorBlocksCanvas(const Node* node) {
 
 bool hasHostedExpandedEditor(const Node& node) {
     return NodeViewModuleRegistry::instance().moduleFor(node.kind).editorFactory() != nullptr;
-}
-
-void drawVoiceContextOctaveSlider(Graphics& g, Rectangle<float> area, const Node& node, float zoom) {
-    const Colour colour = colourForDomain(PortDomain::PitchSignal);
-    const float centreY = area.getCentreY();
-    const float left = area.getX() + 2.f * zoom;
-    const float right = area.getRight() - 2.f * zoom;
-    const float tickHeight = jmax(5.f * zoom, area.getHeight() * 0.20f);
-    const float tickStroke = jmax(1.f, 1.15f * zoom);
-    const float thumbSize = jmax(11.f * zoom, area.getHeight() * 0.44f);
-    const int octave = jlimit(-2, 2, parameterValueForNode(node, "octave", "0").getIntValue());
-    const float thumbX = jmap((float) (octave + 2), 0.f, 4.f, left, right);
-
-    g.setColour(kMutedText.withAlpha(0.28f));
-    g.drawLine(Line<float>({ left, centreY }, { right, centreY }), jmax(1.f, 1.4f * zoom));
-    g.setColour(colour.withAlpha(0.70f));
-    g.drawLine(Line<float>({ left, centreY }, { thumbX, centreY }), jmax(1.f, 2.f * zoom));
-
-    for (int i = -2; i <= 2; ++i) {
-        const float x = jmap((float) (i + 2), 0.f, 4.f, left, right);
-        const bool active = i == octave;
-
-        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.55f));
-        g.drawLine(Line<float>({ x, centreY - tickHeight * 0.5f }, { x, centreY + tickHeight * 0.5f }), tickStroke);
-    }
-
-    g.setColour(Colour(0xff071015).withAlpha(0.72f));
-    g.fillEllipse(Rectangle<float>(thumbSize + 4.f * zoom, thumbSize + 4.f * zoom).withCentre({ thumbX, centreY }));
-    g.setColour(colour.withAlpha(0.98f));
-    g.fillEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }));
-    g.setColour(Colours::white.withAlpha(0.22f));
-    g.drawEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }), jmax(1.f, 1.f * zoom));
-}
-
-void drawVoiceContextSourceSelector(Graphics& g, Rectangle<float> area, const Node& node) {
-    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
-    Rectangle<float> control = area.reduced(0.f, 2.f);
-    const bool spectral = voiceDomainForNode(node) == "spectral";
-    const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
-    const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
-    const Colour activeColour = spectral ? spectralColour : waveformColour;
-
-    g.setFont(FontOptions(10.8f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText("Source", labelArea, Justification::centredLeft);
-
-    Rectangle<float> waveformLabel = control.removeFromLeft(62.f);
-    control.removeFromLeft(8.f);
-    Rectangle<float> switchArea = control.removeFromLeft(42.f).reduced(1.f, 2.f);
-    control.removeFromLeft(8.f);
-    Rectangle<float> spectralLabel = control.removeFromLeft(56.f);
-    const float knobSize = switchArea.getHeight() - 4.f;
-    const Point<float> knobCentre(
-            spectral ? switchArea.getRight() - switchArea.getHeight() * 0.5f : switchArea.getX() + switchArea.getHeight() * 0.5f,
-            switchArea.getCentreY());
-
-    g.setColour(spectral ? kMutedText.withAlpha(0.62f) : kText.withAlpha(0.92f));
-    g.drawText("Waveform", waveformLabel, Justification::centredRight);
-    g.setColour(spectral ? kText.withAlpha(0.92f) : kMutedText.withAlpha(0.62f));
-    g.drawText("Spectral", spectralLabel, Justification::centredLeft);
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f);
-    g.setColour(activeColour.withAlpha(0.62f));
-    g.drawRoundedRectangle(switchArea, switchArea.getHeight() * 0.5f, 1.1f);
-    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre(knobCentre));
-}
-
-void drawVoiceContextSlider(
-        Graphics& g,
-        Rectangle<float> area,
-        const String& label,
-        float normalized,
-        Colour colour) {
-    const float trackY = area.getCentreY();
-    const float labelWidth = kVoiceEditorLabelWidth;
-    Rectangle<float> labelArea = area.removeFromLeft(labelWidth);
-    Rectangle<float> valueArea = area.reduced(2.f, 0.f);
-    const float left = valueArea.getX();
-    const float right = valueArea.getRight();
-    const float knobX = jmap(jlimit(0.f, 1.f, normalized), 0.f, 1.f, left, right);
-    const float knobSize = jmax(8.f, area.getHeight() * 0.35f);
-
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText(label, labelArea, Justification::centredLeft);
-    g.setColour(kMutedText.withAlpha(0.30f));
-    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
-    g.setColour(colour.withAlpha(0.76f));
-    g.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
-    g.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
-}
-
-void drawVoiceContextCheckbox(Graphics& g, Rectangle<float> area, const String& label, bool checked) {
-    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
-    const float box = 15.f;
-    const Rectangle<float> checkBox(box, box);
-    const Rectangle<float> placed = checkBox.withCentre({ area.getX() + box * 0.5f, area.getCentreY() });
-    const Colour colour = colourForDomain(PortDomain::PitchSignal);
-
-    g.setColour(checked ? colour.withAlpha(0.18f) : Colour(0xff0e1318));
-    g.fillRoundedRectangle(placed, 3.f);
-    g.setColour(checked ? colour.withAlpha(0.86f) : kMutedText.withAlpha(0.70f));
-    g.drawRoundedRectangle(placed, 3.f, 1.3f);
-
-    if (checked) {
-        Path tick;
-        tick.startNewSubPath(placed.getX() + 4.f, placed.getCentreY());
-        tick.lineTo(placed.getCentreX() - 1.f, placed.getBottom() - 4.f);
-        tick.lineTo(placed.getRight() - 3.5f, placed.getY() + 4.f);
-        g.strokePath(tick, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText(label, labelArea, Justification::centredLeft);
-}
-
-void drawVoiceContextStopSlider(
-        Graphics& g,
-        Rectangle<float> area,
-        const String& label,
-        const std::vector<String>& values,
-        const String& value,
-        Colour colour) {
-    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
-    Rectangle<float> control = area.reduced(2.f, 0.f);
-    const float trackY = control.getCentreY() - 2.f;
-    const float left = control.getX();
-    const float right = control.getRight();
-    int activeIndex {};
-
-    for (int i = 0; i < (int) values.size(); ++i) {
-        if (values[(size_t) i] == value) {
-            activeIndex = i;
-            break;
-        }
-    }
-
-    const float activeX = values.size() <= 1
-            ? left
-            : jmap((float) activeIndex, 0.f, (float) values.size() - 1.f, left, right);
-
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText(label, labelArea, Justification::centredLeft);
-    g.setColour(kMutedText.withAlpha(0.28f));
-    g.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
-    g.setColour(colour.withAlpha(0.70f));
-    g.drawLine(Line<float>({ left, trackY }, { activeX, trackY }), 2.f);
-
-    for (int i = 0; i < (int) values.size(); ++i) {
-        const float x = values.size() <= 1
-                ? left
-                : jmap((float) i, 0.f, (float) values.size() - 1.f, left, right);
-        const bool active = i == activeIndex;
-
-        g.setColour(active ? colour.withAlpha(0.92f) : kMutedText.withAlpha(0.52f));
-        g.fillEllipse(Rectangle<float>(active ? 9.f : 5.f, active ? 9.f : 5.f).withCentre({ x, trackY }));
-        g.setFont(FontOptions(8.5f, Font::bold));
-        g.setColour(active ? kText.withAlpha(0.90f) : kMutedText.withAlpha(0.66f));
-        g.drawText(values[(size_t) i], Rectangle<float>(x - 14.f, trackY + 5.f, 28.f, 12.f), Justification::centred);
-    }
-}
-
-void drawVoiceContextEditor(Graphics& g, Rectangle<float> content, const Node& node) {
-    const Colour colour = colourForDomain(PortDomain::PitchSignal);
-    Rectangle<float> column = content;
-    const float pitch = parameterValueForNode(node, "pitch", "0").getFloatValue();
-    const bool portamento = parameterValueForNode(node, "portamento", "0") == "1"
-            || parameterValueForNode(node, "portamento", "false") == "true";
-
-    drawVoiceContextSourceSelector(g, column.removeFromTop(kVoiceEditorRowHeight), node);
-    column.removeFromTop(kVoiceEditorRowGap);
-
-    Rectangle<float> octaveRow = column.removeFromTop(kVoiceEditorRowHeight);
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText("Octave", octaveRow.removeFromLeft(kVoiceEditorLabelWidth), Justification::centredLeft);
-    drawVoiceContextOctaveSlider(g, octaveRow.reduced(2.f, 0.f), node, 1.f);
-    column.removeFromTop(kVoiceEditorRowGap);
-
-    drawVoiceContextSlider(g, column.removeFromTop(kVoiceEditorRowHeight), "Pitch", (pitch + 12.f) / 24.f, colour);
-    column.removeFromTop(kVoiceEditorRowGap);
-    drawVoiceContextCheckbox(g, column.removeFromTop(kVoiceEditorRowHeight), "Portamento", portamento);
-    column.removeFromTop(kVoiceEditorRowGap);
-    drawVoiceContextStopSlider(
-            g,
-            column.removeFromTop(kVoiceEditorRowHeight),
-            "Oversampling",
-            { "1x", "2x", "4x" },
-            parameterValueForNode(node, "oversampling", "1x"),
-            colour);
-}
-
-String transformModeForNode(const Node& node) {
-    if (node.kind == NodeKind::Fft) {
-        return parameterValueForNode(node, "mode", "cycle");
-    }
-
-    if (node.kind == NodeKind::Ifft) {
-        return parameterValueForNode(node, "mode", "cyclic");
-    }
-
-    return {};
-}
-
-String transformSubtitleForMode(const Node& node, const String& mode) {
-    if (node.kind == NodeKind::Fft) {
-        return mode == "fixedWindow" ? "fixed window" : "cycle chunks";
-    }
-
-    if (node.kind == NodeKind::Ifft) {
-        return mode == "acyclicCarry" ? "carry overlap" : "cyclic overlap";
-    }
-
-    return {};
-}
-
-String transformModeStatus(const Node& node, const String& mode) {
-    if (node.kind == NodeKind::Fft) {
-        return mode == "fixedWindow" ? "Time to freq: fixed time-window" : "Time to freq: chunked by cycle";
-    }
-
-    if (node.kind == NodeKind::Ifft) {
-        return mode == "acyclicCarry" ? "Freq to time: acyclic carry-buffer overlap" : "Freq to time: cyclic overlap";
-    }
-
-    return {};
-}
-
-void drawTransformModeChoice(
-        Graphics& g,
-        Rectangle<float> area,
-        const String& label,
-        const String& leftText,
-        const String& rightText,
-        bool rightActive,
-        Colour colour) {
-    Rectangle<float> labelArea = area.removeFromLeft(kVoiceEditorLabelWidth);
-    Rectangle<float> control = area.reduced(2.f, 0.f);
-    const float corner = 6.f;
-    const Rectangle<float> left = control.removeFromLeft((control.getWidth() - 5.f) * 0.5f);
-    control.removeFromLeft(5.f);
-    const Rectangle<float> right = control;
-    const Rectangle<float> active = rightActive ? right : left;
-
-    g.setFont(FontOptions(11.f, Font::bold));
-    g.setColour(kMutedText.withAlpha(0.76f));
-    g.drawText(label, labelArea, Justification::centredLeft);
-    g.setColour(Colour(0xff0e1318));
-    g.fillRoundedRectangle(left, corner);
-    g.fillRoundedRectangle(right, corner);
-    g.setColour(kMutedText.withAlpha(0.32f));
-    g.drawRoundedRectangle(left, corner, 1.f);
-    g.drawRoundedRectangle(right, corner, 1.f);
-    g.setColour(colour.withAlpha(0.18f));
-    g.fillRoundedRectangle(active, corner);
-    g.setColour(colour.withAlpha(0.82f));
-    g.drawRoundedRectangle(active, corner, 1.2f);
-
-    g.setFont(FontOptions(10.6f, Font::bold));
-    g.setColour(rightActive ? kMutedText.withAlpha(0.62f) : kText.withAlpha(0.92f));
-    g.drawText(leftText, left.reduced(5.f, 0.f), Justification::centred);
-    g.setColour(rightActive ? kText.withAlpha(0.92f) : kMutedText.withAlpha(0.62f));
-    g.drawText(rightText, right.reduced(5.f, 0.f), Justification::centred);
-}
-
-void drawTransformEditor(Graphics& g, Rectangle<float> content, const Node& node) {
-    Rectangle<float> column = content;
-    const String mode = transformModeForNode(node);
-    const Colour colour = colourForDomain(node.kind == NodeKind::Fft
-            ? PortDomain::SpectralMagnitudeSignal
-            : PortDomain::TimeSignal);
-
-    if (node.kind == NodeKind::Fft) {
-        drawTransformModeChoice(
-                g,
-                column.removeFromTop(26.f),
-                "Window",
-                "Cycle chunks",
-                "Fixed time",
-                mode == "fixedWindow",
-                colour);
-        return;
-    }
-
-    if (node.kind == NodeKind::Ifft) {
-        drawTransformModeChoice(
-                g,
-                column.removeFromTop(26.f),
-                "Overlap",
-                "Cyclic",
-                "Acyclic carry",
-                mode == "acyclicCarry",
-                colour);
-    }
-}
-
-Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
-    switch (role) {
-        case PreviewModuleRole::SpectrumMagnitude: return colourForDomain(PortDomain::SpectralMagnitudeSignal);
-        case PreviewModuleRole::SpectrumPhase:     return colourForDomain(PortDomain::SpectralPhaseSignal);
-        case PreviewModuleRole::Envelope:          return colourForDomain(PortDomain::EnvelopeSignal);
-        case PreviewModuleRole::OutputMeters:
-        case PreviewModuleRole::Waveform:
-        case PreviewModuleRole::Waveshaper:        return colourForDomain(PortDomain::TimeSignal);
-        case PreviewModuleRole::SignalSpy:         return Colour(0xffd2d9e2);
-        case PreviewModuleRole::MeshSurface:       return colourForDomain(PortDomain::MeshField);
-        default:                                   break;
-    }
-
-    return node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
-}
-
-String previewCacheSignature(const Node& node, PortDomain domain) {
-    String signature = String((int) node.kind) + ":" + String((int) domain);
-
-    for (const auto& parameter : node.parameters) {
-        signature += "|" + parameter.id + "=" + parameter.value;
-    }
-
-    for (const auto& output : node.outputs) {
-        signature += "|out:" + output.id + ":" + String((int) output.domain);
-    }
-
-    return signature;
-}
-
-void drawPreviewTrace(
-        Graphics& g,
-        Rectangle<float> area,
-        const std::vector<float>& values,
-        Colour colour,
-        float zoom,
-        bool fillBackground = true) {
-    if (values.empty()) {
-        return;
-    }
-
-    Path trace;
-
-    for (size_t i = 0; i < values.size(); ++i) {
-        const float t = values.size() > 1 ? (float) i / (float) (values.size() - 1) : 0.f;
-        const float y = jlimit(0.f, 1.f, values[i]);
-        const Point<float> point(
-                area.getX() + t * area.getWidth(),
-                area.getBottom() - y * area.getHeight());
-
-        if (i == 0) {
-            trace.startNewSubPath(point);
-        } else {
-            trace.lineTo(point);
-        }
-    }
-
-    if (fillBackground) {
-        g.setColour(colour.withAlpha(0.12f));
-        g.fillRect(area);
-    }
-
-    g.setColour(colour.withAlpha(0.92f));
-    g.strokePath(trace, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-}
-
-void drawPreviewMeters(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview,
-        Colour colour) {
-    const float left = preview.primary.empty() ? 0.f : jlimit(0.f, 1.f, preview.primary.front());
-    const float right = preview.secondary.empty() ? left : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.08f);
-    const float width = meterArea.getWidth() * 0.28f;
-    auto leftMeter = meterArea.removeFromLeft(width);
-    auto rightMeter = meterArea.removeFromRight(width);
-
-    auto drawMeter = [&](Rectangle<float> bounds, float level) {
-        constexpr int segments = 12;
-        const float gap = jmax(1.f, bounds.getHeight() * 0.015f);
-        const float segmentHeight = (bounds.getHeight() - gap * (float) (segments - 1)) / (float) segments;
-        const int litSegments = jlimit(0, segments, roundToInt(level * (float) segments));
-
-        for (int i = 0; i < segments; ++i) {
-            const int levelIndex = segments - 1 - i;
-            const Rectangle<float> segment(
-                    bounds.getX(),
-                    bounds.getY() + (float) i * (segmentHeight + gap),
-                    bounds.getWidth(),
-                    segmentHeight);
-            const bool lit = levelIndex < litSegments;
-            const float normalized = (float) levelIndex / (float) (segments - 1);
-            Colour segmentColour = colour;
-
-            if (normalized > 0.78f) {
-                segmentColour = Colour(0xffff705f);
-            } else if (normalized > 0.58f) {
-                segmentColour = Colour(0xfff4d35e);
-            }
-
-            g.setColour(segmentColour.withAlpha(lit ? 0.82f : 0.14f));
-            g.fillRoundedRectangle(segment, 1.4f);
-        }
-    };
-
-    drawMeter(leftMeter, left);
-    drawMeter(rightMeter, right);
-}
-
-uint64_t previewContentHash(const NodePreviewResult& preview) {
-    uint64_t hash = 1469598103934665603ull;
-    const auto mix = [&hash](uint64_t value) {
-        hash ^= value;
-        hash *= 1099511628211ull;
-    };
-
-    mix((uint64_t) preview.primary.size());
-    for (const float value : preview.primary) {
-        uint32_t bits {};
-        std::memcpy(&bits, &value, sizeof(bits));
-        mix(bits);
-    }
-
-    return hash;
-}
-
-void remapSpectralRows(std::vector<float>& surface, size_t columns, size_t rows) {
-    if (columns == 0 || rows < 2 || surface.size() < columns * rows) {
-        return;
-    }
-
-    std::vector<float> source = surface;
-    std::vector<float> rowMap(rows);
-    Buffer<float> mappedRows(rowMap.data(), (int) rowMap.size());
-    mappedRows.ramp(0.f, 1.f / (float) (rowMap.size() - 1));
-    Arithmetic::applyLogMapping(mappedRows, 500.f);
-
-    for (size_t column = 0; column < columns; ++column) {
-        const size_t columnOffset = column * rows;
-
-        for (size_t row = 0; row < rows; ++row) {
-            const float sourcePosition = jlimit(0.f, (float) (rows - 1), rowMap[row] * (float) (rows - 1));
-            const size_t rowA = (size_t) sourcePosition;
-            const size_t rowB = std::min(rowA + 1, rows - 1);
-            const float amount = sourcePosition - (float) rowA;
-            const float valueA = source[columnOffset + rowA];
-            const float valueB = source[columnOffset + rowB];
-            surface[columnOffset + row] = valueA + amount * (valueB - valueA);
-        }
-    }
-}
-
-void unwrapPhaseRowsAcrossColumns(std::vector<float>& surface, size_t columns, size_t rows) {
-    if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
-        return;
-    }
-
-    const float wrap = MathConstants<float>::twoPi;
-
-    for (size_t row = 0; row < rows; ++row) {
-        float offset = 0.f;
-        float previous = surface[row];
-
-        for (size_t column = 1; column < columns; ++column) {
-            const size_t index = column * rows + row;
-            const float current = surface[index];
-            const float delta = current + offset - previous;
-
-            if (delta > MathConstants<float>::pi) {
-                offset -= wrap;
-            } else if (delta < -MathConstants<float>::pi) {
-                offset += wrap;
-            }
-
-            surface[index] = current + offset;
-            previous = surface[index];
-        }
-    }
-}
-
-void mapMagnitudeForPreview(std::vector<float>& surface) {
-    if (surface.empty()) {
-        return;
-    }
-
-    Buffer<float> buffer(surface.data(), (int) surface.size());
-    constexpr float kMagnitudeDisplayGain = 16.f;
-    constexpr float kInverseLogDisplayGain = 1.f / 2.833213344f; // 1 / ln(1 + 16)
-
-    buffer.abs()
-            .mul(kMagnitudeDisplayGain)
-            .add(1.f)
-            .ln()
-            .mul(kInverseLogDisplayGain)
-            .clip(0.f, 1.f);
-}
-
-void mapUnwrappedPhaseForPreview(std::vector<float>& surface) {
-    if (surface.empty()) {
-        return;
-    }
-
-    float minimum = std::numeric_limits<float>::max();
-    float maximum = std::numeric_limits<float>::lowest();
-
-    for (float value : surface) {
-        minimum = jmin(minimum, value);
-        maximum = jmax(maximum, value);
-    }
-
-    const float realMaximum = jmax(std::abs(minimum), std::abs(maximum));
-    if (realMaximum <= 0.f) {
-        Buffer<float>(surface.data(), (int) surface.size()).set(0.5f);
-        return;
-    }
-
-    const float scaleExponent = std::ceil(std::log2(realMaximum) + 0.5f);
-    const float phaseScale = std::pow(2.f, -scaleExponent);
-
-    Buffer<float>(surface.data(), (int) surface.size()).mul(phaseScale).add(0.5f).clip(0.f, 1.f);
-}
-
-std::vector<float> rawMappedPreviewSurface(const NodePreviewResult& preview) {
-    std::vector<float> surface = preview.primary;
-
-    if (surface.empty()) {
-        return surface;
-    }
-
-    if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
-        mapMagnitudeForPreview(surface);
-
-        return surface;
-    }
-
-    if (preview.domain == PortDomain::SpectralPhaseSignal) {
-        unwrapPhaseRowsAcrossColumns(surface, preview.gridColumns, preview.gridRows);
-        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
-        mapUnwrappedPhaseForPreview(surface);
-
-        return surface;
-    }
-
-    if (preview.domain == PortDomain::TimeSignal) {
-        Buffer<float> buffer(surface.data(), (int) surface.size());
-        buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
-
-        return surface;
-    }
-
-    Buffer<float>(surface.data(), (int) surface.size()).clip(0.f, 1.f);
-
-    return surface;
-}
-
-bool drawPreviewHeatmapSurface(
-        Graphics& g,
-        Rectangle<float> area,
-        const NodePreviewResult& preview) {
-    TrimeshRenderData renderData;
-    renderData.surface = rawMappedPreviewSurface(preview);
-    renderData.domain = preview.domain;
-    renderData.columns = (int) preview.gridColumns;
-    renderData.rows = (int) preview.gridRows;
-    renderData.cyclic = preview.domain == PortDomain::TimeSignal;
-
-    if (!renderData.canDrawSurface()) {
-        return false;
-    }
-
-    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
-    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
-    if (!image.isValid()) {
-        return false;
-    }
-
-    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
-    const Rectangle<float> content = area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
-    g.setColour(Colour(0xff07090d));
-    g.fillRect(content);
-    g.drawImage(image, content);
-    return true;
-}
-
-Rectangle<float> fitAspect(Rectangle<float> area, float aspectRatio) {
-    if (area.getWidth() <= 0.f || area.getHeight() <= 0.f || aspectRatio <= 0.f) {
-        return area;
-    }
-
-    if (area.getWidth() / area.getHeight() > aspectRatio) {
-        return area.withSizeKeepingCentre(area.getHeight() * aspectRatio, area.getHeight());
-    }
-
-    return area.withSizeKeepingCentre(area.getWidth(), area.getWidth() / aspectRatio);
-}
-
-float previewStrokeScale(Rectangle<float> icon) {
-    return jmax(0.72f, jmin(icon.getWidth() / 150.f, icon.getHeight() / 82.f));
-}
-
-Rectangle<float> fftPreviewIconArea(Rectangle<float> area) {
-    Rectangle<float> icon = area.reduced(area.getWidth() * 0.04f, area.getHeight() * 0.09f);
-
-    if (icon.getWidth() / icon.getHeight() < 1.65f) {
-        return fitAspect(icon, 1.65f);
-    }
-
-    return icon;
-}
-
-void drawFftSquareCycle(Graphics& g, Rectangle<float> area, float strokeScale) {
-    Path path;
-    const float left = area.getX() + area.getWidth() * 0.10f;
-    const float mid = area.getCentreX();
-    const float right = area.getRight() - area.getWidth() * 0.10f;
-    const float top = area.getY() + area.getHeight() * 0.20f;
-    const float bottom = area.getY() + area.getHeight() * 0.80f;
-
-    path.startNewSubPath(left, bottom);
-    path.lineTo(left, top);
-    path.lineTo(mid, top);
-    path.lineTo(mid, bottom);
-    path.lineTo(right, bottom);
-    path.lineTo(right, top);
-
-    g.setColour(Colour(0xff58d4e8));
-    g.strokePath(path, PathStrokeType(2.55f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftHarmonicStack(Graphics& g, Rectangle<float> area, float strokeScale) {
-    const struct {
-        int harmonic;
-        float minimumWidth;
-        Colour colour;
-    } partials[] = {
-            { 7, 116.f, Colour(0xff9b6dff) },
-            { 5, 0.f, Colour(0xff6f8cff) },
-            { 3, 0.f, Colour(0xff49bde2) },
-            { 1, 0.f, Colour(0xff58d4e8) }
-    };
-
-    Rectangle<float> waveArea = area.reduced(area.getWidth() * 0.08f, area.getHeight() * 0.10f);
-    constexpr float sineControl = 0.3642f;
-
-    for (const auto& partial : partials) {
-        if (area.getWidth() < partial.minimumWidth) {
-            continue;
-        }
-
-        const int halfCycles = partial.harmonic * 2;
-        const float halfWidth = waveArea.getWidth() / (float) halfCycles;
-        const float amplitude = waveArea.getHeight() * 0.44f / (float) partial.harmonic;
-        Path path;
-
-        path.startNewSubPath(waveArea.getX(), waveArea.getCentreY());
-
-        for (int i = 0; i < halfCycles; ++i) {
-            const float x0 = waveArea.getX() + (float) i * halfWidth;
-            const float x1 = x0 + halfWidth;
-            const float controlY = waveArea.getCentreY() + (i % 2 == 0 ? -amplitude : amplitude);
-
-            path.cubicTo(
-                    x0 + halfWidth * sineControl, controlY,
-                    x1 - halfWidth * sineControl, controlY,
-                    x1, waveArea.getCentreY());
-        }
-
-        g.setColour(partial.colour.withAlpha(0.90f));
-        g.strokePath(path, PathStrokeType(1.45f * strokeScale, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-}
-
-void drawFftChevron(Graphics& g, Rectangle<float> icon, float strokeScale) {
-    Path path;
-    const Point<float> top(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.39f);
-    const Point<float> middle(icon.getX() + icon.getWidth() * 0.512f, icon.getY() + icon.getHeight() * 0.50f);
-    const Point<float> bottom(icon.getX() + icon.getWidth() * 0.476f, icon.getY() + icon.getHeight() * 0.61f);
-
-    path.startNewSubPath(top);
-    path.lineTo(middle);
-    path.lineTo(bottom);
-
-    g.setColour(Colour(0xff596a78));
-    g.strokePath(path, PathStrokeType(2.f * strokeScale, PathStrokeType::mitered, PathStrokeType::rounded));
-}
-
-void drawFftTransformPreview(Graphics& g, Rectangle<float> area, bool inverse) {
-    const Rectangle<float> icon = fftPreviewIconArea(area);
-    const float strokeScale = previewStrokeScale(icon);
-    const Rectangle<float> left(
-            icon.getX() + icon.getWidth() * 0.045f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-    const Rectangle<float> right(
-            icon.getX() + icon.getWidth() * 0.55f,
-            icon.getY() + icon.getHeight() * 0.14f,
-            icon.getWidth() * 0.405f,
-            icon.getHeight() * 0.72f);
-
-    if (inverse) {
-        drawFftHarmonicStack(g, left, strokeScale);
-        drawFftChevron(g, icon, strokeScale);
-        drawFftSquareCycle(g, right, strokeScale);
-    } else {
-        drawFftSquareCycle(g, left, strokeScale);
-        drawFftChevron(g, icon, strokeScale);
-        drawFftHarmonicStack(g, right, strokeScale);
-    }
-}
-
-void drawMathOperationPreview(Graphics& g, Rectangle<float> area, bool multiply, float zoom) {
-    const Colour colour = colourForDomain(PortDomain::ControlSignal);
-    const Rectangle<float> icon = fitAspect(area.reduced(area.getWidth() * 0.20f, area.getHeight() * 0.12f), 1.f);
-    const Point<float> centre = icon.getCentre();
-    const float radius = jmin(icon.getWidth(), icon.getHeight()) * 0.32f;
-    const float stroke = jmax(2.3f * zoom, radius * 0.18f);
-
-    Path mark;
-    if (multiply) {
-        mark.startNewSubPath(centre.x - radius, centre.y - radius);
-        mark.lineTo(centre.x + radius, centre.y + radius);
-        mark.startNewSubPath(centre.x + radius, centre.y - radius);
-        mark.lineTo(centre.x - radius, centre.y + radius);
-    } else {
-        mark.startNewSubPath(centre.x - radius, centre.y);
-        mark.lineTo(centre.x + radius, centre.y);
-        mark.startNewSubPath(centre.x, centre.y - radius);
-        mark.lineTo(centre.x, centre.y + radius);
-    }
-
-    g.setColour(Colour(0xff071015).withAlpha(0.46f));
-    g.strokePath(mark, PathStrokeType(stroke + 2.f * zoom, PathStrokeType::mitered, PathStrokeType::rounded));
-    g.setColour(colour.withAlpha(0.94f));
-    g.strokePath(mark, PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 
 void drawOperationLayoutIcon(Graphics& g, Rectangle<float> button, OperationPortLayout layout, Colour colour) {
@@ -1654,7 +718,10 @@ NodeCanvas::NodeCanvas() :
     ,   runtimeTrace(presentation.runtimeTrace())
     ,   previewResult(presentation.previewResult())
     ,   editorCommands(*this, document, commands, *this, *this)
+    ,   previewResources(editorCommands)
+    ,   previewRenderer(previewResources)
     ,   editorHost(*this, editorCommands, *this, *this)
+    ,   automationInspector({ *this, document, presentation, viewport, editorHost })
     ,   renderInvalidation(*this) {
     refreshCompiledState();
 
@@ -1764,14 +831,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (expandedNode != nullptr
                 && expandedNode->kind == NodeKind::VoiceContext
                 && panel.contains(event.position)
-                && handleVoiceContextEditorClick(event.position)) {
+                && handleVoiceContextEditorClick(*expandedNode, panel, event.position)) {
             return;
         }
 
         if (expandedNode != nullptr
                 && (expandedNode->kind == NodeKind::Fft || expandedNode->kind == NodeKind::Ifft)
                 && panel.contains(event.position)
-                && handleTransformEditorClick(event.position)) {
+                && handleTransformEditorClick(*expandedNode, panel, event.position)) {
             return;
         }
 
@@ -2096,13 +1163,7 @@ void NodeCanvas::renderOpenGL() {
 }
 
 void NodeCanvas::openGLContextClosing() {
-    for (auto& entry : trimeshWidgets) {
-        entry.second->releaseSharedGlResources();
-    }
-
-    for (auto& entry : effect2DWidgets) {
-        entry.second->releaseSharedGlResources();
-    }
+    previewResources.releaseOpenGLResources();
 
     renderer.shutdown();
 }
@@ -2267,10 +1328,6 @@ void NodeCanvas::drawGlEffect2DPreviews() {
     const float scaleFactor = (float) openGLContext.getRenderingScale();
 
     for (const auto& node : graph.getNodes()) {
-        if (!isEffect2DNode(node.kind)) {
-            continue;
-        }
-
         const Rectangle<float> nodeBounds = toScreen(node.bounds);
 
         if (!nodeBounds.intersects(visibleArea)) {
@@ -2281,8 +1338,8 @@ void NodeCanvas::drawGlEffect2DPreviews() {
             continue;
         }
 
-        const Rectangle<float> preview = nodePreviewBounds(nodeBounds, node.kind, zoom);
-        effect2DWidgetFor(node).renderPreviewSnapshotOpenGL(node, preview, scaleFactor);
+        const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
+        previewRenderer.renderOpenGL(node, preview, scaleFactor);
     }
 }
 
@@ -2549,42 +1606,14 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
     }
 
     auto nodeBounds = toScreen(node.bounds);
-    auto preview = nodePreviewBounds(nodeBounds, node.kind, zoom);
+    auto preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
 
     if (node.kind != NodeKind::VoiceContext) {
         drawPreview(g, node, preview);
     }
 
     if (node.kind == NodeKind::VoiceContext) {
-        auto pill = voiceDomainButtonBounds(nodeBounds, zoom);
-        const bool spectral = voiceDomainForNode(node) == "spectral";
-        const float labelWidth = 82.f * zoom;
-        const Rectangle<float> waveformLabel(pill.getX() - labelWidth - 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
-        const Rectangle<float> spectralLabel(pill.getRight() + 9.f * zoom, pill.getY(), labelWidth, pill.getHeight());
-        const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
-        const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
-        const Colour activeColour = spectral ? spectralColour : waveformColour;
-        const float knobSize = pill.getHeight() - 6.f * zoom;
-        const Rectangle<float> knob(knobSize, knobSize);
-        const Point<float> knobCentre(
-                spectral ? pill.getRight() - pill.getHeight() * 0.5f : pill.getX() + pill.getHeight() * 0.5f,
-                pill.getCentreY());
-
-        g.setFont(FontOptions(15.1f * zoom, Font::bold));
-        g.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
-        g.drawText("Waveform", waveformLabel, Justification::centredRight);
-        g.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
-        g.drawText("Spectral", spectralLabel, Justification::centredLeft);
-        g.setColour(Colour(0xff091015).withAlpha(0.96f));
-        g.fillRoundedRectangle(pill, pill.getHeight() * 0.5f);
-        g.setColour(activeColour.withAlpha(0.22f));
-        g.fillRoundedRectangle(pill.reduced(2.f * zoom), pill.getHeight() * 0.5f);
-        g.setColour(activeColour.withAlpha(0.82f));
-        g.drawRoundedRectangle(pill, pill.getHeight() * 0.5f, 1.2f * uiScale);
-        g.setColour(activeColour);
-        g.fillEllipse(knob.withCentre(knobCentre));
-        g.setColour(Colours::white.withAlpha(0.30f));
-        g.drawEllipse(knob.withCentre(knobCentre), 1.f * uiScale);
+        VoiceContextCompactEditor::paintNodeSelector(g, nodeBounds, zoom, node);
     }
 
     auto drawPort = [&](const Node& portNode, const Port& port) {
@@ -2616,468 +1645,22 @@ void NodeCanvas::drawNode(Graphics& g, const Node& node) {
 }
 
 void NodeCanvas::drawPreview(Graphics& g, const Node& node, Rectangle<float> area) {
-    const float zoom = viewport.getZoom();
-    const int width = roundToInt(area.getWidth());
-    const int height = roundToInt(area.getHeight());
-    const PortDomain previewDomain = displayDomainForNodeOutput(node, "out");
-    const TrimeshRenderProfile previewProfile = renderProfileForNodeOutput(node, "out");
-    const String signature = previewCacheSignature(node, previewDomain);
-
-    if (width <= 0 || height <= 0) {
-        return;
-    }
-
-    if (node.kind == NodeKind::TrilinearMesh) {
-        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewProfile);
-        return;
-    }
-
-    if (node.kind == NodeKind::Envelope
-            || node.kind == NodeKind::GuideCurve
-            || node.kind == NodeKind::ImpulseResponse
-            || node.kind == NodeKind::Waveshaper) {
-        if (effect2DWidgetFor(node).paintPreviewSnapshot(g, area)) {
-            return;
-        }
-
-        drawPreviewUncached(g, node, area, previewDomain);
-        return;
-    }
-
-    if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
-        if (preview->role == PreviewModuleRole::SignalSpy) {
-            drawCachedPreviewHeatmapSurface(g, node.id, area, *preview);
-            return;
-        }
-    }
-
-    CachedPreviewSprite& cached = cachedPreviewSpriteFor(node.id);
-
-    if (!cached.image.isValid()
-            || cached.width != width
-            || cached.height != height
-            || cached.domain != previewDomain
-            || cached.signature != signature) {
-        cached.image = Image(Image::ARGB, width, height, true);
-        cached.width = width;
-        cached.height = height;
-        cached.domain = previewDomain;
-        cached.signature = signature;
-
-        Graphics spriteGraphics(cached.image);
-        drawPreviewUncached(spriteGraphics, node, { 0.f, 0.f, (float) width, (float) height }, previewDomain);
-    }
-
-    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
-    g.drawImage(cached.image, area);
-}
-
-bool NodeCanvas::drawCachedPreviewHeatmapSurface(
-        Graphics& g,
-        const String& cacheKey,
-        Rectangle<float> area,
-        const NodePreviewResult& preview) {
-    const int width = roundToInt(area.getWidth());
-    const int height = roundToInt(area.getHeight());
-
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
-
-    CachedPreviewSprite& cached = cachedPreviewSpriteFor(cacheKey);
-    const String signature = String((int) preview.role)
-            + ":" + String((int) preview.domain)
-            + ":" + String((int) preview.gridColumns)
-            + "x" + String((int) preview.gridRows)
-            + ":" + String((int) preview.primary.size())
-            + ":" + String::toHexString((int64) previewContentHash(preview));
-
-    if (!cached.image.isValid()
-            || cached.width != width
-            || cached.height != height
-            || cached.domain != preview.domain
-            || cached.signature != signature) {
-        cached.image = Image(Image::ARGB, width, height, true);
-        cached.width = width;
-        cached.height = height;
-        cached.domain = preview.domain;
-        cached.signature = signature;
-
-        Graphics spriteGraphics(cached.image);
-        if (!drawPreviewHeatmapSurface(spriteGraphics, { 0.f, 0.f, (float) width, (float) height }, preview)) {
-            cached.image = {};
-            return false;
-        }
-    }
-
-    g.setImageResamplingQuality(Graphics::mediumResamplingQuality);
-    g.drawImage(cached.image, area);
-    return true;
-}
-
-Rectangle<float> previewContentArea(Rectangle<float> area) {
-    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
-}
-
-Rectangle<float> nodePreviewBounds(Rectangle<float> nodeBounds, NodeKind kind, float zoom) {
-    Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
-
-    if (kind == NodeKind::Fft || kind == NodeKind::Ifft) {
-        preview = nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
-    } else if (kind == NodeKind::Waveshaper) {
-        const float size = jmin(preview.getWidth(), preview.getHeight());
-        preview = Rectangle<float>(size, size).withCentre(preview.getCentre());
-    }
-
-    return preview;
-}
-
-void drawEffect2DPreview(
-        Graphics& g,
-        Rectangle<float> area,
-        NodeKind kind,
-        const std::vector<CurvePreviewVertex>& vertices,
-        float zoom) {
-    const Colour line = Colour(0xffe2e8ef);
-    const Colour dim = Colour(0xff8b95a3);
-    Rectangle<float> graph = area.reduced(8.f, 7.f);
-
-    if (kind == NodeKind::Waveshaper) {
-        const float size = jmin(graph.getWidth(), graph.getHeight());
-        graph = Rectangle<float>(size, size).withCentre(graph.getCentre());
-    }
-
-    g.setColour(Colour(0xff0d1117).withAlpha(0.34f));
-    g.fillRect(graph);
-
-    float xMaximum = 1.f;
-
-    if (kind == NodeKind::Envelope) {
-        for (const auto& vertex : vertices) {
-            xMaximum = jmax(xMaximum, vertex.x);
-        }
-    }
-
-    auto mapPoint = [xMaximum](Rectangle<float> bounds, float x, float y) {
-        const float normalizedX = xMaximum > 0.f ? x / xMaximum : x;
-        return Point<float>(
-                bounds.getX() + bounds.getWidth() * normalizedX,
-                bounds.getBottom() - bounds.getHeight() * y);
-    };
-
-    auto drawVertexPath = [&](Rectangle<float> inner) {
-        if (vertices.empty()) {
-            return;
-        }
-
-        g.saveState();
-        g.reduceClipRegion(inner.toNearestInt());
-
-        Path curve;
-        bool started {};
-
-        for (const auto& vertex : vertices) {
-            const Point<float> point = mapPoint(inner, vertex.x, vertex.y);
-
-            if (!started) {
-                curve.startNewSubPath(point);
-                started = true;
-            } else {
-                curve.lineTo(point);
-            }
-        }
-
-        g.setColour(line.withAlpha(0.88f));
-        g.strokePath(curve, PathStrokeType(jmax(1.4f, 2.f * zoom), PathStrokeType::curved, PathStrokeType::rounded));
-        g.restoreState();
-    };
-
-    if (kind == NodeKind::Waveshaper) {
-        const Rectangle<float> inner = graph.reduced(graph.getWidth() * 0.125f, graph.getHeight() * 0.125f);
-        g.setColour(dim.withAlpha(0.44f));
-        g.drawRect(inner, jmax(1.f, zoom));
-        drawVertexPath(graph);
-        return;
-    }
-
-    if (kind == NodeKind::Envelope) {
-        g.setColour(dim.withAlpha(0.44f));
-        g.drawRect(graph, jmax(1.f, zoom));
-        drawVertexPath(graph);
-        return;
-    }
-
-    if (kind == NodeKind::GuideCurve) {
-        const Rectangle<float> inner = graph.withTrimmedLeft(graph.getWidth() * 0.05f)
-                .withTrimmedRight(graph.getWidth() * 0.05f);
-        g.setColour(dim.withAlpha(0.44f));
-        g.drawRect(inner, jmax(1.f, zoom));
-        drawVertexPath(graph);
-        return;
-    }
-
-    if (kind == NodeKind::ImpulseResponse) {
-        const Rectangle<float> inner = graph.withTrimmedLeft(graph.getWidth() * 0.0625f);
-        g.setColour(dim.withAlpha(0.44f));
-        g.drawRect(inner, jmax(1.f, zoom));
-        drawVertexPath(graph);
-    }
-}
-
-void NodeCanvas::drawPreviewUncached(
-        Graphics& g,
-        const Node& node,
-        Rectangle<float> area,
-        PortDomain previewDomain) {
-    const float zoom = viewport.getZoom();
-    if (area.getWidth() < 20.f || area.getHeight() < 20.f) {
-        return;
-    }
-
-    if (node.kind == NodeKind::TrilinearMesh) {
-        trimeshWidgetFor(node.id).paintCompact(g, node, area, zoom, previewDomain);
-        return;
-    }
-
-    if (node.kind == NodeKind::Envelope
-            || node.kind == NodeKind::GuideCurve
-            || node.kind == NodeKind::ImpulseResponse
-            || node.kind == NodeKind::Waveshaper) {
-        drawEffect2DPreview(g, area, node.kind, effect2DWidgetFor(node).previewVertices(), zoom);
-        return;
-    }
-
-    if (const NodePreviewResult* preview = findPreviewResult(node.id)) {
-        const Colour colour = previewColourForRole(preview->role, node);
-
-        if (preview->role == PreviewModuleRole::OutputMeters) {
-            drawPreviewMeters(g, area, *preview, colour);
-            return;
-        }
-
-        if (preview->role == PreviewModuleRole::SignalSpy) {
-            drawPreviewHeatmapSurface(g, area, *preview);
-            return;
-        }
-
-        if (!preview->primary.empty()) {
-            const Rectangle<float> content = previewContentArea(area);
-            drawPreviewTrace(g, content, preview->primary, colour, zoom);
-
-            if (!preview->secondary.empty()) {
-                drawPreviewTrace(g, content, preview->secondary, colour.withAlpha(0.58f), zoom);
-            }
-
-            return;
-        }
-    }
-
-    if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        drawFftTransformPreview(g, area, node.kind == NodeKind::Ifft);
-        return;
-    }
-
-    if (node.kind == NodeKind::StereoSplit || node.kind == NodeKind::StereoJoin) {
-        const bool split = node.kind == NodeKind::StereoSplit;
-        const Colour colour = colourForDomain(PortDomain::TimeSignal);
-        const float y = area.getCentreY();
-        const float left = area.getX() + area.getWidth() * 0.28f;
-        const float right = area.getRight() - area.getWidth() * 0.28f;
-
-        g.setColour(colour.withAlpha(0.85f));
-        g.drawLine(Line<float>({ left, y }, { right, y - area.getHeight() * 0.18f }), 2.f);
-        g.drawLine(Line<float>({ left, y }, { right, y + area.getHeight() * 0.18f }), 2.f);
-        g.setFont(FontOptions(jmin(18.f, area.getHeight() * 0.30f), Font::bold));
-        g.setColour(kMutedText.withAlpha(0.72f));
-        g.drawText(split ? "SPLIT" : "JOIN", area, Justification::centredBottom);
-        return;
-    }
-
-    if (node.kind == NodeKind::Output) {
-        const Colour colour = colourForDomain(PortDomain::TimeSignal);
-        const NodePreviewResult preview {
-                node.id,
-                PreviewModuleRole::OutputMeters,
-                { 0.64f },
-                { 0.58f }
-        };
-        drawPreviewMeters(g, area, preview, colour);
-        return;
-    }
-
-    if (node.kind == NodeKind::Spy) {
-        return;
-    }
-
-    if (node.kind == NodeKind::Add || node.kind == NodeKind::Multiply) {
-        drawMathOperationPreview(g, area, node.kind == NodeKind::Multiply, zoom);
-        return;
-    }
-
-    if (node.kind == NodeKind::ImageSource) {
-        auto imageArea = area.reduced(area.getWidth() * 0.12f, area.getHeight() * 0.16f);
-        g.setColour(colourForDomain(PortDomain::ControlSignal).withAlpha(0.12f));
-        g.fillRect(imageArea);
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.42f));
-        g.fillRect(imageArea.removeFromLeft(imageArea.getWidth() * 0.46f).reduced(1.f));
-        g.setColour(colourForDomain(PortDomain::SpectralMagnitudeSignal).withAlpha(0.36f));
-        g.fillRect(imageArea.removeFromTop(imageArea.getHeight() * 0.48f).reduced(1.f));
-        g.setColour(colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.34f));
-        g.fillRect(imageArea.reduced(1.f));
-        return;
-    }
-
-    if (node.kind == NodeKind::WaveSource) {
-        Path wave;
-        for (int i = 0; i < 42; ++i) {
-            const float t = (float) i / 41.f;
-            const Point<float> p(
-                    area.getX() + t * area.getWidth(),
-                    area.getCentreY() + fastSin(t * MathConstants<float>::twoPi * 1.25f) * area.getHeight() * 0.34f);
-
-            if (i == 0) {
-                wave.startNewSubPath(p);
-            } else {
-                wave.lineTo(p);
-            }
-        }
-
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.12f));
-        g.fillRect(area);
-        g.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.92f));
-        g.strokePath(wave, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
-        return;
-    }
-
-    Path curve;
-    const int steps = 42;
-    for (int i = 0; i < steps; ++i) {
-        float t = (float) i / (float) (steps - 1);
-        float y = 0.5f + 0.28f * fastSin(t * MathConstants<float>::twoPi * 1.35f + node.id.hashCode() * 0.001f);
-        Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
-        if (i == 0) {
-            curve.startNewSubPath(p);
-        } else {
-            curve.lineTo(p);
-        }
-    }
-
-    Colour colour = node.outputs.empty() ? Colour(0xff9aa5b2) : colourForDomain(node.outputs.front().domain);
-
-    g.setColour(colour.withAlpha(0.20f));
-    g.fillPath(curve);
-    g.setColour(colour.withAlpha(0.95f));
-    g.strokePath(curve, PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
+    previewRenderer.paint(g, {
+            node,
+            findPreviewResult(node.id),
+            area,
+            renderProfileForNodeOutput(node, "out"),
+            viewport.getZoom(),
+            true
+    });
 }
 
 TrimeshWidget& NodeCanvas::trimeshWidgetFor(const String& nodeId) {
-    for (auto& entry : trimeshWidgets) {
-        if (entry.first == nodeId) {
-            return *entry.second;
-        }
-    }
-
-    trimeshWidgets.emplace_back(nodeId, std::make_unique<TrimeshWidget>());
-    auto safeThis = Component::SafePointer<NodeCanvas>(this);
-    trimeshWidgets.back().second->setMeshEditedCallback([safeThis, nodeId] {
-        if (safeThis != nullptr) {
-            safeThis->editorCommands.persistTrimeshMeshEdits(nodeId);
-        }
-    });
-    return *trimeshWidgets.back().second;
+    return previewResources.trimeshWidget(nodeId);
 }
 
 Effect2DWidget& NodeCanvas::effect2DWidgetFor(const Node& node) {
-    for (auto& entry : effect2DWidgets) {
-        if (entry.first == node.id) {
-            return *entry.second;
-        }
-    }
-
-    effect2DWidgets.emplace_back(node.id, std::make_unique<Effect2DWidget>(node.kind));
-    return *effect2DWidgets.back().second;
-}
-
-NodeCanvas::CachedPreviewSprite& NodeCanvas::cachedPreviewSpriteFor(const String& nodeId) {
-    for (auto& entry : previewSpriteCache) {
-        if (entry.first == nodeId) {
-            return entry.second;
-        }
-    }
-
-    previewSpriteCache.emplace_back(nodeId, CachedPreviewSprite {});
-    return previewSpriteCache.back().second;
-}
-
-void NodeCanvas::drawSpectrumBars(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
-    Random random(seed);
-    const int bars = 34;
-    const float barWidth = area.getWidth() / (float) bars;
-
-    g.setColour(colour.withAlpha(0.08f));
-    g.fillRect(area);
-
-    for (int i = 0; i < bars; ++i) {
-        const float t = (float) i / (float) (bars - 1);
-        const float falloff = 1.f - t * 0.72f;
-        const float jitter = 0.35f + random.nextFloat() * 0.55f;
-        const float height = area.getHeight() * jlimit(0.08f, 0.98f, falloff * jitter);
-        Rectangle<float> bar(
-                area.getX() + (float) i * barWidth,
-                area.getBottom() - height,
-                jmax(1.f, barWidth - 1.f),
-                height);
-
-        g.setColour(colour.withAlpha(0.28f));
-        g.fillRect(bar);
-        g.setColour(colour.withAlpha(0.82f));
-        g.drawVerticalLine(roundToInt(bar.getCentreX()), bar.getY(), bar.getBottom());
-    }
-}
-
-void NodeCanvas::drawPhaseTrace(Graphics& g, Rectangle<float> area, Colour colour, int seed) {
-    Random random(seed ^ 0x4f3759df);
-    Path trace;
-    const int steps = 48;
-
-    for (int i = 0; i < steps; ++i) {
-        const float t = (float) i / (float) (steps - 1);
-        const float y = 0.5f + (random.nextFloat() - 0.5f) * 0.72f;
-        Point<float> p(area.getX() + t * area.getWidth(), area.getY() + y * area.getHeight());
-
-        if (i == 0) {
-            trace.startNewSubPath(p);
-        } else {
-            trace.lineTo(p);
-        }
-    }
-
-    g.setColour(colour.withAlpha(0.10f));
-    g.fillRect(area);
-    g.setColour(colour.withAlpha(0.38f));
-    g.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
-    g.setColour(colour.withAlpha(0.90f));
-    g.strokePath(trace, PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
-}
-
-void NodeCanvas::drawEnvelopeCurve(Graphics& g, Rectangle<float> area) {
-    const float zoom = viewport.getZoom();
-    Path envelope;
-    envelope.startNewSubPath(area.getX(), area.getBottom());
-    envelope.lineTo(area.getX() + area.getWidth() * 0.16f, area.getY() + area.getHeight() * 0.12f);
-    envelope.lineTo(area.getX() + area.getWidth() * 0.46f, area.getY() + area.getHeight() * 0.12f);
-    envelope.cubicTo(
-            area.getX() + area.getWidth() * 0.58f,
-            area.getY() + area.getHeight() * 0.36f,
-            area.getX() + area.getWidth() * 0.70f,
-            area.getY() + area.getHeight() * 0.82f,
-            area.getRight(),
-            area.getBottom());
-
-    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.10f));
-    g.fillRect(area);
-    g.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.92f));
-    g.strokePath(envelope, PathStrokeType(2.f, PathStrokeType::curved, PathStrokeType::rounded));
+    return previewResources.effect2DWidget(node);
 }
 
 void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
@@ -3155,12 +1738,12 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
     }
 
     if (node.kind == NodeKind::VoiceContext) {
-        drawVoiceContextEditor(g, voiceContextEditorColumnBounds(outerPanel), node);
+        VoiceContextCompactEditor::paintExpanded(g, outerPanel, node);
         return;
     }
 
     if (isTransformEditor) {
-        drawTransformEditor(g, transformEditorColumnBounds(outerPanel), node);
+        TransformCompactEditor::paint(g, outerPanel, node);
         return;
     }
 
@@ -3168,9 +1751,15 @@ void NodeCanvas::drawExpandedEditor(Graphics& g, const Node& node) {
         const Rectangle<float> preview = content.reduced(2.f);
 
         if (const NodePreviewResult* result = findPreviewResult(node.id)) {
-            if (drawPreviewHeatmapSurface(g, preview, *result)) {
-                return;
-            }
+            previewRenderer.paint(g, {
+                    node,
+                    result,
+                    preview,
+                    TrimeshRenderProfile::fromDomain(result->domain),
+                    viewport.getZoom(),
+                    true
+            });
+            return;
         }
 
         g.setColour(Colours::black.withAlpha(0.40f));
@@ -3235,49 +1824,11 @@ void NodeCanvas::hideExpandedEditorHosts() {
 }
 
 void NodeCanvas::hideExpandedEditorHostsExcept(const String& nodeId) {
-    for (auto& entry : trimeshWidgets) {
-        if (entry.first == nodeId) {
-            continue;
-        }
-
-        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
-        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
-
-        if (component != nullptr && component->getParentComponent() == this && component->isVisible()) {
-            component->setVisible(false);
-        }
-
-        if (waveComponent != nullptr && waveComponent->getParentComponent() == this && waveComponent->isVisible()) {
-            waveComponent->setVisible(false);
-        }
-    }
-
-    for (auto& entry : effect2DWidgets) {
-        if (entry.first == nodeId) {
-            continue;
-        }
-
-        Component* component = entry.second->getExpandedPanelComponentIfCreated();
-
-        if (component != nullptr && component->isVisible()) {
-            component->setVisible(false);
-        }
-    }
+    previewResources.hideExpandedHostsExcept(nodeId);
 }
 
 void NodeCanvas::detachExpandedEditorHosts() {
-    for (auto& entry : trimeshWidgets) {
-        Component* component = entry.second->getExpandedPanel3DComponentIfCreated();
-        Component* waveComponent = entry.second->getExpandedPanel2DComponentIfCreated();
-
-        if (component != nullptr && component->getParentComponent() == this) {
-            removeChildComponent(component);
-        }
-
-        if (waveComponent != nullptr && waveComponent->getParentComponent() == this) {
-            removeChildComponent(waveComponent);
-        }
-    }
+    previewResources.detachTrimeshHosts(*this);
 
     editorHost.detach();
 }
@@ -3449,7 +2000,14 @@ void NodeCanvas::drawNodePalette(Graphics& g) {
         const PortDomain domain = previewNode.outputs.empty()
                 ? (previewNode.inputs.empty() ? PortDomain::ControlSignal : previewNode.inputs.front().domain)
                 : previewNode.outputs.front().domain;
-        drawPreviewUncached(g, previewNode, area, domain);
+        previewRenderer.paint(g, {
+                previewNode,
+                nullptr,
+                area,
+                TrimeshRenderProfile::fromDomain(domain),
+                viewport.getZoom(),
+                false
+        });
     };
 
     for (int sectionIndex = 0; sectionIndex < palette.sectionCount(); ++sectionIndex) {
@@ -3737,7 +2295,10 @@ bool NodeCanvas::findVoiceDomainButtonAt(Point<float> screenPosition, String& no
             continue;
         }
 
-        if (voiceDomainButtonBounds(toScreen(node.bounds), zoom).expanded(4.f * zoom).contains(screenPosition)) {
+        if (VoiceContextCompactEditor::hitNodeSelector(
+                toScreen(node.bounds),
+                zoom,
+                screenPosition)) {
             nodeId = node.id;
             return true;
         }
@@ -3971,7 +2532,7 @@ String NodeCanvas::hoverTextFor(Point<float> screenPosition) const {
         const Node* node = findNode(voiceNodeId);
 
         if (node != nullptr) {
-            return "Voice start domain  /  " + voiceDomainButtonLabel(*node)
+            return "Voice start domain  /  " + VoiceContextCompactEditor::domainLabel(*node)
                     + "  /  click to switch";
         }
     }
@@ -4084,8 +2645,17 @@ Point<float> NodeCanvas::paletteCreationWorldPosition(NodeKind kind, Point<float
 
 void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
-    previewSpriteCache.clear();
+    previewResources.clearCachedSprites();
     presentation.refresh(graph, document.revision(), document.lastChange());
+}
+
+NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
+    return {
+            selectedNodeId,
+            expandedNodeId,
+            editStatusMessage,
+            selectedEdgeIndex
+    };
 }
 
 void NodeCanvas::scheduleCompiledStateRefresh() {
@@ -4110,102 +2680,11 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
 }
 
 var NodeCanvas::exportAutomationState() const {
-    auto* root = new DynamicObject();
-    root->setProperty("schema", "cycle-v2-automation-state.v1");
-    root->setProperty("width", getWidth());
-    root->setProperty("height", getHeight());
-    root->setProperty("zoom", viewport.getZoom());
-    root->setProperty("panX", viewport.getPan().x);
-    root->setProperty("panY", viewport.getPan().y);
-    root->setProperty("selectedNodeId", selectedNodeId);
-    root->setProperty("expandedNodeId", expandedNodeId);
-    root->setProperty("selectedEdgeIndex", selectedEdgeIndex);
-    root->setProperty("editStatusMessage", editStatusMessage);
-    root->setProperty("nodeCount", (int) graph.getNodes().size());
-    root->setProperty("edgeCount", (int) graph.getEdges().size());
-    root->setProperty("compileSucceeded", compileResult.succeeded());
-    root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
-    root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
-    root->setProperty("runtimeTraceNodeCount", (int) runtimeTrace.nodes.size());
-    root->setProperty("previewNodeCount", (int) previewResult.nodes.size());
-
-    Array<var> nodes;
-    for (const auto& node : graph.getNodes()) {
-        auto* nodeObject = new DynamicObject();
-        nodeObject->setProperty("id", node.id);
-        nodeObject->setProperty("kind", labelForNodeKind(node.kind));
-        nodeObject->setProperty("title", node.title);
-        nodeObject->setProperty("subtitle", node.subtitle);
-        nodeObject->setProperty("bounds", rectangleToVar(node.bounds));
-
-        Array<var> inputs;
-        for (const auto& port : node.inputs) {
-            inputs.add(portToVar(port));
-        }
-
-        Array<var> outputs;
-        for (const auto& port : node.outputs) {
-            outputs.add(portToVar(port));
-        }
-
-        Array<var> parameters;
-        for (const auto& parameter : node.parameters) {
-            parameters.add(parameterToVar(parameter));
-        }
-
-        nodeObject->setProperty("inputs", inputs);
-        nodeObject->setProperty("outputs", outputs);
-        nodeObject->setProperty("parameters", parameters);
-        nodes.add(nodeObject);
-    }
-
-    Array<var> edges;
-    for (const auto& edge : graph.getEdges()) {
-        edges.add(edgeToVar(edge));
-    }
-
-    Array<var> validationIssues;
-    for (const auto& issue : compileResult.validationIssues) {
-        auto* issueObject = new DynamicObject();
-        issueObject->setProperty("message", issue.message);
-        issueObject->setProperty("sourceNodeId", issue.sourceNodeId);
-        issueObject->setProperty("sourcePortId", issue.sourcePortId);
-        issueObject->setProperty("destNodeId", issue.destNodeId);
-        issueObject->setProperty("destPortId", issue.destPortId);
-        validationIssues.add(issueObject);
-    }
-
-    Array<var> compileIssues;
-    for (const auto& issue : compileResult.compileIssues) {
-        auto* issueObject = new DynamicObject();
-        issueObject->setProperty("message", issue.message);
-        compileIssues.add(issueObject);
-    }
-
-    Array<var> nodeOrder;
-    for (const auto& nodeId : compileResult.plan.nodeOrder) {
-        nodeOrder.add(nodeId);
-    }
-
-    Array<var> previewStats;
-    for (const auto& preview : previewResult.nodes) {
-        previewStats.add(previewStatsToVar(preview));
-    }
-
-    root->setProperty("nodes", nodes);
-    root->setProperty("edges", edges);
-    root->setProperty("validationIssues", validationIssues);
-    root->setProperty("compileIssues", compileIssues);
-    root->setProperty("nodeOrder", nodeOrder);
-    root->setProperty("previewStats", previewStats);
-    if (expandedNodeId.isNotEmpty()) {
-        root->setProperty("expandedNodeControls", inspectNodeControlsForAutomation(expandedNodeId));
-    }
-    return root;
+    return automationInspector.exportState(automationPresentationState());
 }
 
 String NodeCanvas::exportGraphXml() const {
-    return document.toXml();
+    return automationInspector.exportGraphXml();
 }
 
 bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
@@ -4420,150 +2899,11 @@ bool NodeCanvas::getNodeParameterForAutomation(
 }
 
 var NodeCanvas::inspectNodeControlsForAutomation(const String& nodeId) const {
-    auto* root = new DynamicObject();
-    const Node* node = findNode(nodeId);
-    root->setProperty("nodeId", nodeId);
-    root->setProperty("resolved", node != nullptr);
-
-    if (node == nullptr) {
-        return root;
-    }
-
-    root->setProperty("kind", labelForNodeKind(node->kind));
-    root->setProperty("expanded", expandedNodeId == nodeId);
-
-    Array<var> parameters;
-    for (const auto& parameter : node->parameters) {
-        parameters.add(parameterToVar(parameter));
-    }
-    root->setProperty("parameters", parameters);
-
-    if (editorHost.isEditing(nodeId)) {
-        editorHost.appendAutomationState(*root);
-    }
-
-    return root;
+    return automationInspector.inspectNodeControls(nodeId, automationPresentationState());
 }
 
 var NodeCanvas::inspectPointerTargetsForAutomation() const {
-    auto* root = new DynamicObject();
-    Array<var> targets;
-
-    targets.add(pointerTargetToVar(
-            "canvas",
-            "canvas",
-            getLocalBounds().toFloat()));
-
-    viewport.setBounds(getLocalBounds().toFloat());
-    const auto& scene = sceneBuilder.build(
-            graph, viewport, presentation.revision(), document.revision());
-    for (const auto& sceneTarget : scene.targets) {
-        if (sceneTarget.kind != NodeSceneTargetKind::Node && !sceneTarget.isPort()) {
-            continue;
-        }
-        targets.add(pointerTargetToVar(
-                sceneTarget.semanticId,
-                sceneTarget.kind == NodeSceneTargetKind::Node
-                        ? "node"
-                        : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
-                sceneTarget.bounds,
-                sceneTarget.nodeId,
-                sceneTarget.portId,
-                sceneTarget.kind == NodeSceneTargetKind::InputPort));
-    }
-
-    for (const auto& sceneEdge : scene.edges) {
-        const auto& edge = graph.getEdges()[(size_t) sceneEdge.edgeIndex];
-        auto* target = new DynamicObject();
-        target->setProperty("id", "edge:" + String(sceneEdge.edgeIndex));
-        target->setProperty("kind", edge.attachment ? "attachmentEdge" : "edge");
-        target->setProperty("edgeIndex", sceneEdge.edgeIndex);
-        target->setProperty("bounds", rectangleToVar(sceneEdge.hitPath.getBounds()));
-        target->setProperty("sourceNodeId", edge.sourceNodeId);
-        target->setProperty("sourcePortId", edge.sourcePortId);
-        target->setProperty("destNodeId", edge.destNodeId);
-        target->setProperty("destPortId", edge.destPortId);
-        targets.add(target);
-    }
-
-    const Node* expandedNode = findNode(expandedNodeId);
-    if (expandedNode != nullptr) {
-        Rectangle<float> panel = expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode);
-        targets.add(pointerTargetToVar(
-                "expanded:" + expandedNode->id,
-                "expandedEditor",
-                panel,
-                expandedNode->id));
-        targets.add(pointerTargetToVar(
-                "expanded:" + expandedNode->id + ".close",
-                "expandedCloseButton",
-                expandedEditorCloseButton(panel),
-                expandedNode->id));
-
-        if (expandedNode->kind == NodeKind::TrilinearMesh) {
-            Rectangle<float> content = panel;
-            content.removeFromTop(kExpandedEditorHeaderHeight);
-            content = content.reduced(10.f, 8.f);
-
-            targets.add(pointerTargetToVar(
-                    "expanded:" + expandedNode->id + ".panel3D",
-                    "trimeshPanel3D",
-                    TrimeshWidget::expandedGridPanelContentBounds(content),
-                    expandedNode->id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + expandedNode->id + ".panel2D",
-                    "trimeshPanel2D",
-                    TrimeshWidget::expandedWavePanelContentBounds(content),
-                    expandedNode->id));
-
-            const auto& widget = const_cast<NodeCanvas*>(this)->trimeshWidgetFor(expandedNode->id);
-            for (const auto& region : widget.expandedControlHitRegions(content)) {
-                const String kind = trimeshHitRegionKind(region.kind);
-                const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
-                targets.add(pointerTargetToVar(
-                        "expanded:" + expandedNode->id + "." + kind + "." + suffix,
-                        kind,
-                        region.bounds,
-                        expandedNode->id,
-                        {},
-                        false,
-                        region.parameterId,
-                        region.axisValue));
-            }
-        } else if (!editorHost.panelBoundsForAutomation().isEmpty()) {
-            const Rectangle<float> panelHost = editorHost
-                    .panelBoundsForAutomation()
-                    .translated(panel.getX(), panel.getY());
-            targets.add(pointerTargetToVar(
-                    "expanded:" + expandedNode->id + ".panel2D",
-                    "effect2DPanel",
-                    panelHost,
-                    expandedNode->id));
-        }
-    }
-
-    for (auto& targetValue : targets) {
-        auto* target = targetValue.getDynamicObject();
-        auto* bounds = target != nullptr
-                ? target->getProperty("bounds").getDynamicObject()
-                : nullptr;
-        if (bounds == nullptr) {
-            continue;
-        }
-        const Rectangle<float> localBounds(
-                (float) bounds->getProperty("x"),
-                (float) bounds->getProperty("y"),
-                (float) bounds->getProperty("width"),
-                (float) bounds->getProperty("height"));
-        const Point<float> screenOrigin = localPointToGlobal(localBounds.getPosition());
-        target->setProperty("screenBounds", rectangleToVar(localBounds.withPosition(screenOrigin)));
-    }
-
-    root->setProperty("schema", "cycle-v2-pointer-targets.v1");
-    root->setProperty("coordinateSpace", "canvasLocalAndScreen");
-    root->setProperty("targetCount", targets.size());
-    root->setProperty("targets", targets);
-    return root;
+    return automationInspector.inspectPointerTargets(automationPresentationState());
 }
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
@@ -4590,14 +2930,7 @@ var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
 
     Array<var> panels;
     if (expandedNode != nullptr && expandedNode->kind == NodeKind::TrilinearMesh) {
-        TrimeshWidget* widget = nullptr;
-
-        for (const auto& entry : trimeshWidgets) {
-            if (entry.first == expandedNode->id) {
-                widget = entry.second.get();
-                break;
-            }
-        }
+        const TrimeshWidget* widget = previewResources.findTrimeshWidget(expandedNode->id);
 
         if (widget != nullptr) {
             panels.add(componentDiagnosticsToVar("trimeshPanel3D", widget->getExpandedPanel3DComponentIfCreated()));
@@ -4614,47 +2947,7 @@ var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
 }
 
 var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
-    auto* root = new DynamicObject();
-    root->setProperty("schema", "cycle-v2-audio-capture.v1");
-    root->setProperty("compileSucceeded", compileResult.succeeded());
-    root->setProperty("requestedFrames", (int) frameCount);
-
-    if (!compileResult.succeeded()) {
-        Array<var> issues;
-
-        for (const auto& issue : compileResult.validationIssues) {
-            auto* object = new DynamicObject();
-            object->setProperty("message", issue.message);
-            object->setProperty("sourceNodeId", issue.sourceNodeId);
-            object->setProperty("destNodeId", issue.destNodeId);
-            issues.add(object);
-        }
-
-        root->setProperty("validationIssues", issues);
-        return root;
-    }
-
-    const GraphAudioResult result = presentation.captureAudio(graph, frameCount);
-    root->setProperty("metrics", audioMetricsToVar(result.output, 44100.0));
-
-    Array<var> samples;
-    for (float sample : result.output.block.samples) {
-        samples.add(sample);
-    }
-    root->setProperty("samples", samples);
-
-    Array<var> nodes;
-    for (const auto& node : result.nodes) {
-        auto* object = new DynamicObject();
-        object->setProperty("nodeId", node.nodeId);
-        object->setProperty("metrics", audioMetricsToVar(node.output, 44100.0));
-        object->setProperty("outputCount", (int) node.outputs.size());
-        nodes.add(object);
-    }
-
-    root->setProperty("nodeCount", nodes.size());
-    root->setProperty("nodes", nodes);
-    return root;
+    return automationInspector.captureAudio(frameCount);
 }
 
 File NodeCanvas::snapshotFile() const {
@@ -4933,7 +3226,7 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
         return false;
     }
 
-    const String domain = nextVoiceDomain(*node);
+    const String domain = VoiceContextCompactEditor::nextDomain(*node);
     commands.beginCompoundEdit();
     auto result = commands.setNodeParameter(nodeId, "domain", "Start Domain", domain);
 
@@ -4996,151 +3289,90 @@ bool NodeCanvas::setVoiceContextParameter(
     return true;
 }
 
-bool NodeCanvas::handleVoiceContextEditorClick(Point<float> screenPosition) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || node->kind != NodeKind::VoiceContext) {
+bool NodeCanvas::handleVoiceContextEditorClick(
+        const Node& node,
+        Rectangle<float> panel,
+        Point<float> screenPosition) {
+    const auto edit = VoiceContextCompactEditor::editAt(node, panel, screenPosition);
+    if (!edit.has_value()) {
         return false;
     }
 
-    Rectangle<float> column = voiceContextEditorColumnBounds(expandedEditorBoundsForNode(getLocalBounds().toFloat(), node));
+    switch (edit->control) {
+        case VoiceContextEdit::Control::Domain:
+            return setVoiceContextParameter(
+                    "domain",
+                    "Start Domain",
+                    edit->value,
+                    "Voice start domain: " + edit->value);
 
-    auto nextRow = [&]() {
-        Rectangle<float> row = column.removeFromTop(kVoiceEditorRowHeight);
-        column.removeFromTop(kVoiceEditorRowGap);
-        return row;
-    };
+        case VoiceContextEdit::Control::Octave:
+            return setVoiceContextParameter(
+                    "octave",
+                    "Octave",
+                    edit->value,
+                    "Octave: " + edit->value);
 
-    Rectangle<float> sourceRow = nextRow();
-    Rectangle<float> sourceControl = sourceRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(0.f, 2.f);
-    const Rectangle<float> waveformLabel = sourceControl.removeFromLeft(62.f);
-    sourceControl.removeFromLeft(8.f);
-    const Rectangle<float> switchArea = sourceControl.removeFromLeft(42.f);
-    sourceControl.removeFromLeft(8.f);
-    const Rectangle<float> spectralLabel = sourceControl.removeFromLeft(56.f);
+        case VoiceContextEdit::Control::Pitch:
+            return setVoiceContextParameter(
+                    "pitch",
+                    "Pitch",
+                    edit->value,
+                    "Pitch: " + edit->value);
 
-    if (waveformLabel.expanded(4.f, 2.f).contains(screenPosition)
-            || switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
-        if (switchArea.expanded(4.f, 2.f).contains(screenPosition)) {
-            return setVoiceContextParameter("domain", "Start Domain", nextVoiceDomain(*node),
-                                            "Voice start domain: " + nextVoiceDomain(*node));
-        }
+        case VoiceContextEdit::Control::Portamento:
+            return setVoiceContextParameter(
+                    "portamento",
+                    "Portamento",
+                    edit->value,
+                    edit->value == "1" ? "Portamento on" : "Portamento off");
 
-        return setVoiceContextParameter("domain", "Start Domain", "waveform", "Voice start domain: waveform");
-    }
-
-    if (spectralLabel.expanded(4.f, 2.f).contains(screenPosition)) {
-        return setVoiceContextParameter("domain", "Start Domain", "spectral", "Voice start domain: spectral");
-    }
-
-    Rectangle<float> octaveRow = nextRow();
-    Rectangle<float> octaveControl = octaveRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
-    if (octaveControl.expanded(8.f, 4.f).contains(screenPosition)) {
-        const float left = octaveControl.getX() + 2.f;
-        const float right = octaveControl.getRight() - 2.f;
-        const float normalized = jlimit(0.f, 1.f, (screenPosition.x - left) / jmax(1.f, right - left));
-        const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
-        return setVoiceContextParameter("octave", "Octave", String(octave), "Octave: " + String(octave));
-    }
-
-    Rectangle<float> pitchRow = nextRow();
-    Rectangle<float> pitchControl = pitchRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
-    if (pitchControl.expanded(8.f, 4.f).contains(screenPosition)) {
-        const float normalized = jlimit(0.f, 1.f,
-                                        (screenPosition.x - pitchControl.getX()) / jmax(1.f, pitchControl.getWidth()));
-        const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
-        return setVoiceContextParameter("pitch", "Pitch", String(pitch), "Pitch: " + String(pitch));
-    }
-
-    Rectangle<float> portamentoRow = nextRow();
-    Rectangle<float> portamentoControl = portamentoRow.withTrimmedLeft(kVoiceEditorLabelWidth);
-    if (portamentoControl.expanded(6.f, 4.f).contains(screenPosition)) {
-        const bool enabled = parameterValueForNode(*node, "portamento", "0") == "1"
-                || parameterValueForNode(*node, "portamento", "false") == "true";
-        return setVoiceContextParameter("portamento", "Portamento", enabled ? "0" : "1",
-                                        enabled ? "Portamento off" : "Portamento on");
-    }
-
-    Rectangle<float> oversamplingRow = nextRow();
-    Rectangle<float> oversamplingControl = oversamplingRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
-    if (oversamplingControl.expanded(8.f, 6.f).contains(screenPosition)) {
-        const float normalized = jlimit(0.f, 1.f,
-                                        (screenPosition.x - oversamplingControl.getX())
-                                                / jmax(1.f, oversamplingControl.getWidth()));
-        const int stop = jlimit(0, 2, roundToInt(normalized * 2.f));
-        const String next = stop == 0 ? "1x" : (stop == 1 ? "2x" : "4x");
-        return setVoiceContextParameter("oversampling", "Oversampling", next, "Oversampling: " + next);
+        case VoiceContextEdit::Control::Oversampling:
+            return setVoiceContextParameter(
+                    "oversampling",
+                    "Oversampling",
+                    edit->value,
+                    "Oversampling: " + edit->value);
     }
 
     return false;
 }
 
-bool NodeCanvas::setTransformParameter(
-        const String& parameterId,
-        const String& label,
-        const String& value,
-        const String& statusMessage) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || (node->kind != NodeKind::Fft && node->kind != NodeKind::Ifft)) {
-        return false;
-    }
-
-    if (parameterValueForNode(*node, parameterId) == value) {
+bool NodeCanvas::setTransformMode(const Node& node, TransformMode mode) {
+    const String value = TransformCompactEditor::parameterValue(mode);
+    if (parameterValueForNode(node, "mode") == value) {
         return true;
     }
 
     commands.beginCompoundEdit();
-    auto result = commands.setNodeParameter(node->id, parameterId, label, value);
-
+    auto result = commands.setNodeParameter(node.id, "mode", "Mode", value);
     if (!result.succeeded()) {
         commands.cancelCompoundEdit();
         return false;
     }
 
-    if (parameterId == "mode") {
-        const String nodeId = node->id;
-        commands.editNodePresentation(nodeId, [&](Node& edited) {
-            edited.subtitle = transformSubtitleForMode(edited, value);
-        });
-    }
+    commands.editNodePresentation(node.id, [&](Node& edited) {
+        edited.subtitle = TransformCompactEditor::subtitle(edited.kind, mode);
+    });
     commands.commitCompoundEdit();
-    selectedNodeId = node->id;
+
+    selectedNodeId = node.id;
     selectedEdgeIndex = -1;
     draggingNode = false;
     connectingCable = false;
     nodeDragUndoPushed = false;
     refreshCompiledState();
-    editStatusMessage = statusMessage;
+    editStatusMessage = TransformCompactEditor::status(node.kind, mode);
     requestCanvasRepaint();
     return true;
 }
 
-bool NodeCanvas::handleTransformEditorClick(Point<float> screenPosition) {
-    const Node* node = findNode(expandedNodeId);
-
-    if (node == nullptr || (node->kind != NodeKind::Fft && node->kind != NodeKind::Ifft)) {
-        return false;
-    }
-
-    Rectangle<float> column = transformEditorColumnBounds(expandedEditorBoundsForNode(getLocalBounds().toFloat(), node));
-    Rectangle<float> modeRow = column.removeFromTop(26.f);
-    Rectangle<float> control = modeRow.withTrimmedLeft(kVoiceEditorLabelWidth).reduced(2.f, 0.f);
-    Rectangle<float> left = control.removeFromLeft((control.getWidth() - 5.f) * 0.5f);
-    control.removeFromLeft(5.f);
-    Rectangle<float> right = control;
-
-    if (left.expanded(4.f, 4.f).contains(screenPosition)) {
-        const String mode = node->kind == NodeKind::Fft ? "cycle" : "cyclic";
-        return setTransformParameter("mode", "Mode", mode, transformModeStatus(*node, mode));
-    }
-
-    if (right.expanded(4.f, 4.f).contains(screenPosition)) {
-        const String mode = node->kind == NodeKind::Fft ? "fixedWindow" : "acyclicCarry";
-        return setTransformParameter("mode", "Mode", mode, transformModeStatus(*node, mode));
-    }
-
-    return false;
+bool NodeCanvas::handleTransformEditorClick(
+        const Node& node,
+        Rectangle<float> panel,
+        Point<float> screenPosition) {
+    const auto mode = TransformCompactEditor::modeAt(node, panel, screenPosition);
+    return mode.has_value() && setTransformMode(node, *mode);
 }
 
 std::array<String, 6> NodeCanvas::trimeshGuideAttachmentLabelsForNode(const Node& meshNode) {

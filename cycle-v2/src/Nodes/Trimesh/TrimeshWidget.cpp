@@ -209,7 +209,7 @@ Component* TrimeshWidget::prepareExpandedPanel3DComponent(
     return bridge.getPanel3DHostComponent();
 }
 
-Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() {
+Component* TrimeshWidget::getExpandedPanel3DComponentIfCreated() const {
     return bridge.getPanel3DHostComponentIfCreated();
 }
 
@@ -221,7 +221,7 @@ Component* TrimeshWidget::prepareExpandedPanel2DComponent(
     return bridge.getPanel2DHostComponent();
 }
 
-Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() {
+Component* TrimeshWidget::getExpandedPanel2DComponentIfCreated() const {
     return bridge.getPanel2DHostComponentIfCreated();
 }
 
@@ -443,7 +443,7 @@ bool TrimeshWidget::findVertexSelectionAt(
     return vertexIndex >= 0;
 }
 
-std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) const {
+std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) {
     std::vector<TrimeshExpandedHitRegion> regions;
     const Rectangle<float> morphArea = morphPanelBounds(content);
     const std::array<String, 3> parameterIds {

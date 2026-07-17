@@ -35,9 +35,9 @@ public:
     TrimeshNodeModel& getModel() { return model; }
     bool rasterizerWrapsVertices() { return panelRasterizer.wrapsVertices(); }
     Component* getPanel3DHostComponent();
-    Component* getPanel3DHostComponentIfCreated();
+    Component* getPanel3DHostComponentIfCreated() const;
     Component* getPanel2DHostComponent();
-    Component* getPanel2DHostComponentIfCreated();
+    Component* getPanel2DHostComponentIfCreated() const;
     void setPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void clearPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void setMeshEditedCallback(std::function<void()> callback);

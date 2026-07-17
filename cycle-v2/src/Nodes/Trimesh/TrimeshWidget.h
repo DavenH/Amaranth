@@ -62,11 +62,11 @@ public:
     juce::Component* prepareExpandedPanel3DComponent(
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* getExpandedPanel3DComponentIfCreated();
+    juce::Component* getExpandedPanel3DComponentIfCreated() const;
     juce::Component* prepareExpandedPanel2DComponent(
             const Node& node,
             juce::Rectangle<float> content);
-    juce::Component* getExpandedPanel2DComponentIfCreated();
+    juce::Component* getExpandedPanel2DComponentIfCreated() const;
     void releaseSharedGlResources();
     int resolvedSelectedVertexIndexForNode(const Node& node);
     void setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
@@ -119,7 +119,7 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             int& vertexIndex);
-    std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content) const;
+    static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content);
 
 private:
     struct CachedHeatmap {

@@ -10,6 +10,8 @@
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
 #include "../src/UI/NodeViewModule.h"
+#include "../src/UI/TransformCompactEditor.h"
+#include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
@@ -278,23 +280,16 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
 }
 
-TEST_CASE("Automation facade mutates through commands and inspects the shared scene", "[cycle-v2][canvas][automation]") {
+TEST_CASE("Automation facade mutates exclusively through graph commands", "[cycle-v2][canvas][automation]") {
     GraphDocument document(NodeGraph::createDemoGraph());
     GraphCommandDispatcher commands(document);
     NodeAutomationFacade automation(document, commands);
     REQUIRE(automation.setParameter("voice", "voices", "Voices", "6").succeeded());
     REQUIRE(document.canUndo());
 
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(document.graph(), viewport);
-    const auto voice = std::find_if(snapshot.targets.begin(), snapshot.targets.end(), [](const auto& target) {
-        return target.semanticId == "node:voice";
-    });
-    REQUIRE(voice != snapshot.targets.end());
-    const auto hit = automation.inspectPointer(snapshot, voice->bounds.getCentre());
-    REQUIRE(hit.has_value());
-    REQUIRE(hit->semanticId == "node:voice");
+    String voices;
+    REQUIRE(automation.getParameter("voice", "voices", voices));
+    REQUIRE(voices == "6");
 }
 
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
@@ -311,4 +306,78 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     REQUIRE(snapshot.edges.size() == 1);
     REQUIRE(snapshot.edges.front().destination.y
             == Catch::Approx(viewport.toScreen(graph.findNode("mesh")->bounds.getTopLeft()).y));
+}
+
+TEST_CASE("Voice context editor resolves every authored control from its painted rows",
+        "[cycle-v2][canvas][compact-editor]") {
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
+
+    auto editAt = [&](Point<float> point) {
+        const auto edit = VoiceContextCompactEditor::editAt(voice, panel, point);
+        REQUIRE(edit.has_value());
+        return *edit;
+    };
+
+    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
+    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
+
+    auto edit = editAt({ 252.f, 59.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
+    REQUIRE(edit.value == "spectral");
+
+    edit = editAt({ 108.f, 85.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
+    REQUIRE(edit.value == "-2");
+    REQUIRE(editAt({ 389.f, 85.5f }).value == "0");
+    REQUIRE(editAt({ 670.f, 85.5f }).value == "2");
+
+    edit = editAt({ 106.f, 111.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
+    REQUIRE(edit.value == "-12");
+    REQUIRE(editAt({ 389.f, 111.5f }).value == "0");
+    REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
+
+    edit = editAt({ 112.f, 137.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
+    REQUIRE(edit.value == "1");
+
+    edit = editAt({ 106.f, 163.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
+    REQUIRE(edit.value == "1x");
+    REQUIRE(editAt({ 389.f, 163.5f }).value == "2x");
+    REQUIRE(editAt({ 672.f, 163.5f }).value == "4x");
+
+    const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
+            voice.bounds,
+            1.f);
+    REQUIRE(VoiceContextCompactEditor::hitNodeSelector(
+            voice.bounds,
+            1.f,
+            selector.getCentre()));
+}
+
+TEST_CASE("Transform editor exposes FFT and IFFT mode semantics through one geometry contract",
+        "[cycle-v2][canvas][compact-editor]") {
+    GraphNodeFactory factory;
+    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
+    const Point<float> left { 245.f, 61.f };
+    const Point<float> right { 535.f, 61.f };
+    Node fft = factory.createNode(NodeKind::Fft, "fft", {});
+    Node ifft = factory.createNode(NodeKind::Ifft, "ifft", {});
+
+    REQUIRE(TransformCompactEditor::modeAt(fft, panel, left) == TransformMode::Cycle);
+    REQUIRE(TransformCompactEditor::modeAt(fft, panel, right) == TransformMode::FixedWindow);
+    REQUIRE(TransformCompactEditor::parameterValue(TransformMode::FixedWindow) == "fixedWindow");
+    REQUIRE(TransformCompactEditor::subtitle(NodeKind::Fft, TransformMode::FixedWindow) == "fixed window");
+    REQUIRE(TransformCompactEditor::status(NodeKind::Fft, TransformMode::Cycle)
+            == "Time to freq: chunked by cycle");
+
+    REQUIRE(TransformCompactEditor::modeAt(ifft, panel, left) == TransformMode::Cyclic);
+    REQUIRE(TransformCompactEditor::modeAt(ifft, panel, right) == TransformMode::AcyclicCarry);
+    REQUIRE(TransformCompactEditor::parameterValue(TransformMode::AcyclicCarry) == "acyclicCarry");
+    REQUIRE(TransformCompactEditor::subtitle(NodeKind::Ifft, TransformMode::AcyclicCarry)
+            == "carry overlap");
+    REQUIRE(TransformCompactEditor::status(NodeKind::Ifft, TransformMode::Cyclic)
+            == "Freq to time: cyclic overlap");
 }

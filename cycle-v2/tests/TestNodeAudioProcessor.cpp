@@ -217,9 +217,34 @@ void prepareProcessor(
 TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
-    auto processor = factory.create(AudioModuleRole::Multiply);
-    REQUIRE(processor != nullptr);
-    REQUIRE(processor->role() == AudioModuleRole::Multiply);
+    const AudioModuleRole roles[] {
+            AudioModuleRole::VoiceContext,
+            AudioModuleRole::WaveSource,
+            AudioModuleRole::ImageSource,
+            AudioModuleRole::MeshSource,
+            AudioModuleRole::Fft,
+            AudioModuleRole::Ifft,
+            AudioModuleRole::Add,
+            AudioModuleRole::Multiply,
+            AudioModuleRole::Envelope,
+            AudioModuleRole::GuideCurve,
+            AudioModuleRole::ImpulseResponse,
+            AudioModuleRole::Waveshaper,
+            AudioModuleRole::Reverb,
+            AudioModuleRole::Delay,
+            AudioModuleRole::Spy,
+            AudioModuleRole::StereoSplit,
+            AudioModuleRole::StereoJoin,
+            AudioModuleRole::Output,
+            AudioModuleRole::GenericProcessor
+    };
+
+    for (const AudioModuleRole role : roles) {
+        CAPTURE(role);
+        auto processor = factory.create(role);
+        REQUIRE(processor != nullptr);
+        REQUIRE(processor->role() == role);
+    }
 
     REQUIRE(factory.create(AudioModuleRole::None) == nullptr);
 }

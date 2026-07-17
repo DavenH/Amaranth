@@ -33,6 +33,9 @@ set(GRAPH_SOURCES
 )
 
 set(RUNTIME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
@@ -40,17 +43,28 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessorSupport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeDspConfiguration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TransformNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodeAudioProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodePreviewProcessor.cpp"
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeAutomationFacade.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAutomationInspector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "NodeCanvasScene.h"
 #include "../Graph/GraphCommandDispatcher.h"
 
 namespace CycleV2 {
@@ -17,13 +16,9 @@ public:
             const juce::String& label, const juce::String& value);
     bool getParameter(const juce::String& nodeId, const juce::String& parameterId,
             juce::String& value) const;
-    std::optional<NodeSceneTarget> inspectPointer(
-            const NodeCanvasSceneSnapshot& scene, juce::Point<float> position) const;
-
 private:
     GraphDocument& document;
     GraphCommandDispatcher& commands;
-    NodeCanvasHitTester hitTester;
 };
 
 }

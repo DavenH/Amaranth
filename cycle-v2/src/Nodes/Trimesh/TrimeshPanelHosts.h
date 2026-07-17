@@ -30,9 +30,9 @@ public:
     ~TrimeshPanelHosts();
 
     Component* getPanel3DHostComponent();
-    Component* getPanel3DHostComponentIfCreated();
+    Component* getPanel3DHostComponentIfCreated() const;
     Component* getPanel2DHostComponent();
-    Component* getPanel2DHostComponentIfCreated();
+    Component* getPanel2DHostComponentIfCreated() const;
 
     void setDelegate(TrimeshPanelHostDelegate* delegate);
     void clearDelegate(TrimeshPanelHostDelegate* delegate);

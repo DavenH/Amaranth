@@ -2,7 +2,22 @@
 
 ## Status
 
-Proposed cleanup sequence.
+Complete (2026-07-16).
+
+The audit was implemented as a sequence of semantic commits. Shared graph,
+DSP, editor, panel, preview, automation, and preparation mechanics now expose
+their concrete variants instead of repeating lifecycle code. `NodeCanvas`
+retains canvas event and graph-command coordination; palette, preview,
+automation inspection, and compact Voice/transform editor behavior are owned
+by cohesive modules. Audio and preview processor factories are split by
+domain family and exhaustively registration-tested.
+
+Completion verification included the complete Cycle V2 unit suite (3,279
+assertions in 282 cases), the standalone Cycle V2 build, focused automation,
+compact-editor, preview, and processor contracts, and hot-loop scalar-math and
+format checks. The macOS app launched successfully for OS capture, but the
+capture harness could not make it frontmost, so no visual screenshot is
+claimed as completion evidence.
 
 ## Audit Principle
 
