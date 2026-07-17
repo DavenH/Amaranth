@@ -39,6 +39,12 @@ public:
     PortDomain resolvedDomainForEdge(const NodeGraph& graph, const Edge& edge) const;
 
 private:
+    class EdgeIssueReporter;
+
+    void validateEdge(
+            const NodeGraph& graph,
+            const Edge& edge,
+            EdgeIssueReporter& reporter) const;
     bool isVoiceAwareDestination(const Port& port) const;
     void validateOperationInputs(const NodeGraph& graph, std::vector<GraphValidationIssue>& issues) const;
     bool domainsCompatible(const Port& source, const Port& dest) const;
