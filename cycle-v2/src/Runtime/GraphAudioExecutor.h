@@ -4,6 +4,7 @@
 #include "GraphRuntime.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace CycleV2 {
 
@@ -60,20 +61,51 @@ public:
             GraphProcessObserver* observer = nullptr) const;
 
 private:
-    struct CachedProcessor {
+    struct ProcessorKey {
         String nodeId;
         int voiceIndex {};
+
+        bool operator==(const ProcessorKey& other) const {
+            return nodeId == other.nodeId && voiceIndex == other.voiceIndex;
+        }
+    };
+
+    struct ProcessorKeyHash {
+        size_t operator()(const ProcessorKey& key) const {
+            const size_t nodeHash = (size_t) key.nodeId.hashCode64();
+            const size_t voiceHash = std::hash<int> {}(key.voiceIndex);
+            return nodeHash ^ (voiceHash + 0x9e3779b9 + (nodeHash << 6) + (nodeHash >> 2));
+        }
+    };
+
+    struct PreparationSignature {
+        uint64_t revision {};
+        String configurationKey;
+        size_t maximumFrameCount {};
+        double sampleRate {};
+        PortDomain domain { PortDomain::ControlSignal };
+        ChannelLayout channelLayout { ChannelLayout::Mono };
+        double bpm {};
+        int beatsPerMeasure {};
+
+        bool operator==(const PreparationSignature& other) const {
+            return revision == other.revision
+                    && configurationKey == other.configurationKey
+                    && maximumFrameCount == other.maximumFrameCount
+                    && sampleRate == other.sampleRate
+                    && domain == other.domain
+                    && channelLayout == other.channelLayout
+                    && bpm == other.bpm
+                    && beatsPerMeasure == other.beatsPerMeasure;
+        }
+    };
+
+    struct CachedProcessor {
         AudioModuleRole role { AudioModuleRole::None };
         std::unique_ptr<NodeAudioProcessor> processor;
-        uint64_t preparedRevision {};
-        String preparedKey;
-        size_t preparedFrameCount {};
-        double preparedSampleRate {};
-        PortDomain preparedDomain { PortDomain::ControlSignal };
-        ChannelLayout preparedChannelLayout { ChannelLayout::Mono };
-        double preparedBpm {};
-        int preparedBeatsPerMeasure {};
+        PreparationSignature preparation;
         size_t preparationCount {};
+        bool prepared {};
     };
 
     struct PreparedVoice {
@@ -82,7 +114,7 @@ private:
         std::vector<NodeAudioProcessor*> processors;
     };
 
-    NodeAudioProcessor* processorFor(
+    CachedProcessor& processorFor(
             const String& nodeId,
             int voiceIndex,
             AudioModuleRole role,
@@ -101,8 +133,8 @@ private:
     mutable AudioProcessContext processContext;
     mutable std::vector<SignalPayload> bufferSlots;
     mutable const SignalPayload* realtimeOutput {};
-    mutable std::vector<CachedProcessor> processors;
-    mutable std::vector<PreparedVoice> preparedVoices;
+    mutable std::unordered_map<ProcessorKey, CachedProcessor, ProcessorKeyHash> processors;
+    mutable std::unordered_map<int, PreparedVoice> preparedVoices;
 };
 
 }
