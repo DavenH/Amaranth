@@ -2,7 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 
 #include <Array/Buffer.h>
@@ -21,18 +21,18 @@ void ensurePreview(PreviewProcessContext& context) {
     context.secondary.resize(context.pointCount);
 }
 
-float averageSummary(const std::vector<float>& summary) {
-    if (summary.empty()) {
+float averageSummary(const std::vector<float>* summary) {
+    if (summary == nullptr || summary->empty()) {
         return 0.f;
     }
 
     float total = 0.f;
 
-    for (const float value : summary) {
+    for (const float value : *summary) {
         total += value;
     }
 
-    return total / (float) summary.size();
+    return total / (float) summary->size();
 }
 
 int primaryAxisFromParameter(const String& axisName) {
@@ -69,6 +69,17 @@ void normalizeBipolarBlock(SignalPayload& payload) {
     }
 
     Buffer<float>(payload.block.samples.data(), (int) payload.block.samples.size())
+            .mul(0.5f)
+            .add(0.5f)
+            .clip(0.f, 1.f);
+}
+
+void normalizeBipolarBlockValues(std::vector<float>& values) {
+    if (values.empty()) {
+        return;
+    }
+
+    Buffer<float>(values.data(), (int) values.size())
             .mul(0.5f)
             .add(0.5f)
             .clip(0.f, 1.f);
@@ -170,8 +181,9 @@ protected:
 
     void renderMeters(PreviewProcessContext& context) const {
         ensurePreview(context);
-        const bool hasInput = !context.inputSummary.empty();
-        const float level = hasInput ? averageSummary(context.inputSummary) : 0.65f;
+        const bool hasInput = context.input.summary != nullptr
+                && !context.input.summary->empty();
+        const float level = hasInput ? averageSummary(context.input.summary) : 0.65f;
         const float secondaryLevel = hasInput ? level * 0.95f : 0.62f;
 
         for (size_t i = 0; i < context.pointCount; ++i) {
@@ -181,7 +193,7 @@ protected:
     }
 
     void renderSignalSpy(PreviewProcessContext& context) const {
-        if (context.inputGrid.empty()) {
+        if (context.input.grid == nullptr || context.input.grid->empty()) {
             context.primary.clear();
             context.secondary.clear();
             context.gridColumns = 0;
@@ -189,10 +201,10 @@ protected:
             return;
         }
 
-        context.primary = context.inputGrid;
+        context.primary.assign(context.input.grid->begin(), context.input.grid->end());
         context.secondary.clear();
-        context.gridColumns = context.inputGridColumns;
-        context.gridRows = context.inputGridRows;
+        context.gridColumns = context.input.gridColumns;
+        context.gridRows = context.input.gridRows;
     }
 
 private:
@@ -275,6 +287,20 @@ public:
             return;
         }
 
+        if (context.capturedOutput != nullptr
+                && context.capturedOutput->traversalGrid.isValid()
+                && context.capturedOutput->traversalGrid.rows == context.pointCount) {
+            context.primary = context.capturedOutput->traversalGrid.values;
+            context.secondary = context.capturedOutput->block.samples;
+            normalizeBipolarBlockValues(context.primary);
+            normalizeBipolarBlockValues(context.secondary);
+            context.gridColumns = context.capturedOutput->traversalGrid.columns;
+            context.gridRows = context.capturedOutput->traversalGrid.rows;
+            context.domain = context.capturedOutput->traversalGrid.metadata.valueDomain;
+            context.reusedCapturedTraversal = true;
+            return;
+        }
+
         const auto configuration = context.configuration != nullptr
                 ? std::dynamic_pointer_cast<const TrimeshConfiguration>(context.configuration->value)
                 : nullptr;
@@ -333,7 +359,10 @@ public:
 
 private:
     void syncMesh(const std::vector<NodeParameter>& parameters) {
-        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+        const String nextState = typedParameterString(
+                parameters,
+                TrimeshMeshState::parameterId(),
+                {});
         if (mesh != nullptr && nextState == meshEditState) {
             return;
         }
@@ -341,12 +370,14 @@ private:
             mesh->destroy();
         }
         mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2PreviewMesh");
-        nextState.applyTo(*mesh);
+        if (nextState.isNotEmpty()) {
+            TrimeshMeshState::apply(nextState, *mesh);
+        }
         meshEditState = nextState;
     }
 
     std::unique_ptr<Mesh> mesh;
-    TrimeshMeshEditState meshEditState;
+    String meshEditState;
 };
 
 }

@@ -14,7 +14,6 @@ public:
     };
 
     struct RenderState {
-        bool batchMode {};
         bool lowResCurves {};
         bool calcDepthDims {};
         bool restoreMesh {};
@@ -25,7 +24,6 @@ public:
 
         RenderState() = default;
         RenderState(
-                bool batch,
                 bool lowres,
                 bool calcDepth,
                 int scaling,
@@ -59,13 +57,11 @@ public:
 
     RenderState createRenderState();
 
-    static RenderState createBatchRenderState(
+    static RenderState createAnalysisRenderState(
             Scaling scaling,
             const MorphPosition& morphPosition,
             bool lowResCurves = true,
             bool calcDepthDimensions = false);
-
-    void setBatchMode(bool batch) { getRequest().batchMode = batch; }
 
 private:
     static PointScalingMode scalingModeFromRenderState(int scalingType);

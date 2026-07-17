@@ -387,6 +387,7 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
     const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
     const bool loaded = loadSnapshot(typed);
     logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
+    dynamicWhileLive = parameterValueForNode(node, "dynamic", "0").getIntValue() != 0;
     red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
     blue = jlimit(0.f, 1.f, parameterValueForNode(node, "blue", "0.5").getFloatValue());
     return loaded;

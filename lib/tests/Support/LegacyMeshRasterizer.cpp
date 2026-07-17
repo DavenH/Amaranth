@@ -100,20 +100,16 @@ Rasterization::RasterizationRequest MeshRasterizer::createRasterizationRequest()
     request.dims                      = dims;
     request.morph                     = morph;
     request.scalingMode               = Rasterization::pointScalingModeFromLegacy(scalingType);
-    request.batchMode                 = batchMode;
     request.calcDepthDimensions       = calcDepthDims;
-    request.calcInterceptsOnly        = calcInterceptsOnly;
     request.cyclic                    = cyclic;
     request.decoupleComponentDeforms  = decoupleComponentDfrms;
     request.integralSampling          = integralSampling;
     request.interpolateCurves         = interpolateCurves;
     request.lowResCurves              = lowResCurves;
     request.overrideDimension         = overrideDim;
-    request.publishSnapshot           = !batchMode;
     request.noiseSeed                 = noiseSeed;
     request.overridingDimension       = overridingDim;
     request.primaryViewDimension      = overrideDim ? overridingDim : getPrimaryViewDimension();
-    request.paddingSize               = paddingSize;
     request.interceptPadding          = interceptPadding;
     request.xMinimum                  = xMinimum;
     request.xMaximum                  = xMaximum;
@@ -526,6 +522,7 @@ void MeshRasterizer::makeCopy() {
     source.waveform = waveform;
     source.paddingSize = paddingSize;
     source.wrapsVertices = cyclic;
+    source.sampleable = !unsampleable;
 
     Rasterization::RasterizerSnapshotBuilder().publish(rastArrays, source);
 }
@@ -553,13 +550,4 @@ void MeshRasterizer::updateValue(int dim, float value) {
         case CommonEnums::BlueDim:         morph.blue     = value;    break;
         default: break;
     }
-}
-
-void MeshRasterizer::updateOffsetSeeds(int layerSize, int tableSize) {
-    randomizeGuideCurveOffsetSeeds(layerSize, tableSize);
-}
-
-void MeshRasterizer::randomizeGuideCurveOffsetSeeds(int layerSize, int tableSize) {
-    Random rand(Time::currentTimeMillis());
-    guideCurveOffsetSeeds.randomize(layerSize, tableSize, rand);
 }

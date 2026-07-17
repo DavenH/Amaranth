@@ -1005,7 +1005,8 @@ void Interactor::doBoxSelect(const MouseEvent& e) {
                 }
             }
         } else {
-            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+            auto snapshot = rasterizerSnapshot();
+            const vector<Intercept>& icpts = snapshot.intercepts();
 
             for (const auto& icpt : icpts) {
                 int xx = roundToInt(panel->sx(icpt.x));
@@ -2076,7 +2077,8 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     if (is3DInteractor()) {
         if (Interactor * itr2D = getOppositeInteractor()) {
-            icpts3D = itr2D->rasterizerSnapshot().intercepts();
+            auto oppositeSnapshot = itr2D->rasterizerSnapshot();
+            icpts3D = oppositeSnapshot.intercepts();
             is3D = true;
         }
     }
@@ -2104,7 +2106,8 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
 
     auto* addedLine = new VertCube(mesh);
 
-    const vector<Intercept>& icpts = is3D ? icpts3D : rasterizerSnapshot().intercepts();
+    auto snapshot = rasterizerSnapshot();
+    const vector<Intercept>& icpts = is3D ? icpts3D : snapshot.intercepts();
 
     DBG(getName() + "::addNewCube begin"
         + " mesh=" + String::toHexString((int64) mesh)
@@ -2230,7 +2233,8 @@ void Interactor::addNewCubeForMultipleIntercepts(
         float startTime,
         float phase,
         float amp) {
-    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+    auto snapshot = rasterizerSnapshot();
+    const vector<Intercept>& icpts = snapshot.intercepts();
 
     VertCube* rightLine = nullptr;
     VertCube* leftLine = nullptr;

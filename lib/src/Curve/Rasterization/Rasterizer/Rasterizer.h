@@ -9,7 +9,7 @@ namespace Rasterization {
         virtual ~Rasterizer() = default;
 
         virtual SamplerView sampler() const = 0;
-        virtual SnapshotView snapshotView() = 0;
+        virtual SnapshotView snapshotView() const = 0;
 
         virtual void updateGeometry() = 0;
         virtual void updateWaveform() = 0;

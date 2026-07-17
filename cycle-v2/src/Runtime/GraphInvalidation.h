@@ -10,6 +10,8 @@ struct GraphInvalidationResult {
     std::vector<String> audioNodes;
     std::vector<String> previewNodes;
     bool requiresRecompile {};
+    size_t visitedNodeCount {};
+    size_t inspectedDependencyCount {};
 };
 
 class GraphInvalidation {
@@ -20,11 +22,10 @@ public:
             ParameterImpact impacts) const;
 
 private:
-    void appendDependents(
-            const GraphExecutionPlan& plan,
+    std::vector<String> dependentsFrom(
+            const GraphDependencyIndex& index,
             const String& nodeId,
-            std::vector<String>& nodes) const;
-    bool contains(const std::vector<String>& nodes, const String& nodeId) const;
+            GraphInvalidationResult& diagnostics) const;
 };
 
 }

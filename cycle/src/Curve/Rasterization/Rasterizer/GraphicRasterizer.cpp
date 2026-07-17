@@ -62,6 +62,6 @@ void GraphicRasterizer::updateWaveform(Mesh* mesh, float oscPhase) {
 
 void GraphicRasterizer::prepareRequestForRender() {
     int currentMorphAxis = repo->get<Settings>("Settings").getGlobalSetting(AppSettings::CurrentMorphAxis);
-    getRequest().primaryViewDimension =
-            Cycle::Rasterization::GraphicAxisPolicy().primaryViewDimension(currentMorphAxis);
+    setPrimaryViewDimension(
+            Cycle::Rasterization::GraphicAxisPolicy().primaryViewDimension(currentMorphAxis));
 }

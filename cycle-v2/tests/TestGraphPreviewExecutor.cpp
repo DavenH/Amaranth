@@ -7,6 +7,11 @@
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 #include "../src/Runtime/NodePreviewProcessor.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
 #include <cmath>
@@ -141,6 +146,26 @@ Node previewNode(String id, NodeKind kind, std::vector<Port> inputs, std::vector
     };
 }
 
+NodeGraph previewlessChain(size_t processorCount) {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+
+    String sourceId = "wave";
+    String sourcePort = "out";
+    for (size_t i = 0; i < processorCount; ++i) {
+        const String nodeId = "reverb" + String((int) i);
+        graph.addNode(factory.createNode(NodeKind::Reverb, nodeId, { (float) i * 100.f, 0.f }));
+        graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, false });
+        sourceId = nodeId;
+        sourcePort = "time";
+    }
+
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 500.f, 0.f }));
+    graph.addEdge({ sourceId, sourcePort, "shape", "time", PortDomain::TimeSignal, false });
+    return graph;
+}
+
 TEST_CASE("Graph preview executor can render spy nodes from audio traversal grids", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -167,6 +192,26 @@ TEST_CASE("Graph preview executor can render spy nodes from audio traversal grid
     REQUIRE(spy.gridRows == meshAudio.output.traversalGrid.rows);
     REQUIRE(spy.domain == meshAudio.output.traversalGrid.metadata.valueDomain);
     REQUIRE(spy.primary == meshAudio.output.traversalGrid.values);
+}
+
+TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][runtime][complexity]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 0.f }));
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 16);
+
+    const auto reused = GraphPreviewExecutor().render(compileResult.plan, audio, 16);
+    REQUIRE(reused.reusedCapturedTraversalCount == 1);
+    REQUIRE(findPreview(reused, "mesh").gridRows == 16);
+    REQUIRE(findPreview(reused, "mesh").gridColumns == 8);
+
+    const auto distinctResolution = GraphPreviewExecutor().render(
+            compileResult.plan, audio, 12);
+    REQUIRE(distinctResolution.reusedCapturedTraversalCount == 0);
+    REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 12);
 }
 
 TEST_CASE("Graph preview executor does not invent spy traversal grids without audio data", "[cycle-v2][runtime]") {
@@ -206,13 +251,20 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from serializ
     };
 
     addGraph(baselineGraph, {});
+    auto editedMesh = TrimeshMeshFactory::createDefaultMesh("PreviewTopology");
+    editedMesh->getVerts()[0]->values[Vertex::Amp] = 0.05f;
+    editedMesh->getVerts()[1]->values[Vertex::Amp] = 0.95f;
+    editedMesh->getVerts()[2]->values[Vertex::Phase] = 0.44f;
     addGraph(
             editedGraph,
             {
-                    { "mesh.vertex.0.amp", "Amplitude", "0.05" },
-                    { "mesh.vertex.1.amp", "Amplitude", "0.95" },
-                    { "mesh.vertex.2.phase", "Phase", "0.44" }
+                    {
+                            TrimeshMeshState::parameterId(),
+                            "Mesh Topology",
+                            TrimeshMeshState::serialize(*editedMesh)
+                    }
             });
+    editedMesh->destroy();
 
     const auto baselineCompile = GraphCompiler().compile(baselineGraph);
     const auto editedCompile = GraphCompiler().compile(editedGraph);
@@ -313,6 +365,21 @@ TEST_CASE("Graph preview executor renders every spy in the bundled spy graph", "
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE(
+        "Graph preview address lookup scales with compiled inputs",
+        "[cycle-v2][runtime][complexity]") {
+    for (const size_t processorCount : { 8u, 16u, 32u }) {
+        const auto compileResult = GraphCompiler().compile(previewlessChain(processorCount));
+        REQUIRE(compileResult.succeeded());
+
+        const auto result = GraphPreviewExecutor().render(compileResult.plan, 16);
+        INFO("processor count: " << processorCount);
+        REQUIRE(findPreview(result, "shape").primary.size() == 16);
+        REQUIRE(result.addressLookupCount == processorCount + 1);
+        REQUIRE(result.aliasedInputCount == processorCount);
+    }
 }
 
 }

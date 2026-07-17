@@ -268,6 +268,21 @@ TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
             != restoredCubes.end());
 }
 
+TEST_CASE("Envelope model reads the node-owned dynamic playback policy",
+        "[cycle-v2][curve-model][envelope]") {
+    GraphNodeFactory factory;
+    Node envelope = factory.createNode(NodeKind::Envelope, "env", {});
+    for (auto& parameter : envelope.parameters) {
+        if (parameter.id == "dynamic") {
+            parameter.value = "1";
+        }
+    }
+
+    EnvelopeNodeModel model;
+    REQUIRE(model.syncFromNode(envelope));
+    REQUIRE(model.dynamicWhileLive);
+}
+
 TEST_CASE("Envelope mesh adapter preserves cube identities across insertion deletion and reorder",
         "[cycle-v2][curve-model][envelope][identity]") {
     EnvelopeNodeModel model;

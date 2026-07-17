@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <App/MeshLibrary.h>
-#include <Array/ScopedAlloc.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/GuideCurveOffsetSeeds.h>
+#include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h>
 #include <Curve/Rasterization/Policies/Mesh/GuideCurvePolicy.h>
 #include <Curve/Rasterization/RasterizationRequest.h>
@@ -34,27 +34,6 @@ public:
 
     enum { loopMinSizeIcpts = 1, graphicIndex = 0, headUnisonIndex };
     enum { NormalState, Looping, Releasing };
-
-    // one per unison voice
-    class EnvParams {
-    public:
-        EnvParams() : sustainLevel(1.f),
-                      samplePosition(0.),
-                      sampleIndex(0) {
-        }
-
-        void reset() {
-            samplePosition = 0;
-            sampleIndex = 0;
-            guideCurveContext.currentIndex = 0;
-        }
-
-        int sampleIndex;
-        float sustainLevel;
-        double samplePosition;
-
-        GuideCurveContext guideCurveContext;
-    };
 
     /* ----------------------------------------------------------------------------- */
 
@@ -96,6 +75,9 @@ public:
 
     void calcIntercepts();
     void cleanUp();
+    void renderGeometryOnly(Mesh* mesh, float oscPhase = 0.f);
+    void renderWaveformOnly(Mesh* mesh, float oscPhase = 0.f);
+    void publishCurrentResult();
     void updateGeometry() override;
     void updateGeometry(Mesh* mesh, float oscPhase = 0.f);
     void updateWaveform() override;
@@ -105,7 +87,8 @@ public:
     bool canRasterizeWaveform();
 
     Rasterization::SamplerView sampler() const override {
-        return Rasterization::SamplerView(result.waveform, !unsampleable);
+        const auto& active = samplingResult();
+        return Rasterization::SamplerView(active.waveform, active.sampleable);
     }
 
     void setMesh(Mesh* mesh);
@@ -123,77 +106,70 @@ public:
     void setToOverrideDim(bool does) { request.overrideDimension = does; }
     void setWrapsEnds(bool wraps) {
         request.cyclic = wraps;
-        rasterizerData.wrapsVertices = wraps;
     }
     void update(UpdateType updateType) { Updateable::update(updateType); }
-    void updateOffsetSeeds(int layerSize, int tableSize);
+    void updateOffsetSeeds(
+            int layerSize,
+            int tableSize,
+            Rasterization::GuideCurveSeed seed);
     void updateValue(int dim, float value);
 
     const EnvelopeMesh* getEnvMesh() const      { return envMesh;                           }
-    float getSustainLevel(int paramIndex) const { return params[paramIndex].sustainLevel;   }
-    int getMode() const                         { return state;                             }
-    void setMode(int mode)                      { this->state = mode;                       }
-    bool wantsOneSamplePerCycle() const         { return oneSamplePerCycle;                 }
-    Buffer<float> getRenderBuffer()             { return renderBuffer;                  }
+    const Rasterization::RenderResult& preparedResult() const { return result; }
+    float getSustainLevel(int paramIndex) const { return playback.sustainLevel(paramIndex); }
+    int getMode() const {
+        return playback.mode() == Rasterization::EnvelopePlaybackMode::Looping
+                ? Looping
+                : playback.mode() == Rasterization::EnvelopePlaybackMode::Releasing
+                        ? Releasing
+                        : NormalState;
+    }
+    void setMode(int mode) {
+        playback.setMode(mode == Looping
+                ? Rasterization::EnvelopePlaybackMode::Looping
+                : mode == Releasing
+                        ? Rasterization::EnvelopePlaybackMode::Releasing
+                        : Rasterization::EnvelopePlaybackMode::Normal);
+    }
+    bool wantsOneSamplePerCycle() const { return playback.oneSamplePerCycle(); }
+    Buffer<float> getRenderBuffer() { return playback.output(); }
+    Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
 
 
 private:
-    void changedToRelease();
+    void clearOutput();
     void clearRasterizationResult(bool clearCurves);
     Rasterization::EnvelopePaddingContext createPaddingContext() const;
     void installEnvelopeProviders();
-    void padIcptsForRender(vector<Intercept>& icpts, vector<Curve>& curves);
+    void preparePlaybackResults();
+    void renderEnvelope(Mesh* mesh, float oscPhase, bool buildWaveform);
     void renderEnvelopeCrossPoints();
     void processEnvelopeIntercepts(vector<Intercept>& intercepts);
     void rebuildCurvesFromIntercepts();
-    void bakeWaveform();
-    void copyWaveformForRelease();
-    void publishSnapshot();
-    void updateBuffers(int size);
+    void bakeWaveform(Rasterization::RenderResult& target);
     Rasterization::GuideCurveApplier createGuideCurveApplier();
 
     bool canLoop() const;
-    bool isSampleable() const;
-    bool isSampleableAt(float x) const;
+    const Rasterization::RenderResult& samplingResult() const;
     void markWaveformUnsampleable();
-    float sampleAt(double angle);
-    float sampleAt(double angle, int& currentIndex);
-    float sampleAtDecoupled(double angle, GuideCurveContext& context);
-    template<typename T>
-    T sampleWithInterval(Buffer<float> buffer, T delta, T phase) {
-        return Rasterization::WaveformSampler::sampleWithInterval(
-                result.waveform,
-                buffer,
-                delta,
-                phase);
-    }
-
-    int vectorizedRenderToBuffer(Buffer<float> buffer, int numSamples, double deltaX, int unisonIdx);
     float getLoopLength() const;
 
     /* ----------------------------------------------------------------------------- */
 
-    bool sampleReleaseNextCall, oneSamplePerCycle;
-    int loopIndex, sustainIndex, state;
-    double releaseScale;
+    int loopIndex, sustainIndex;
 
     MeshLibrary::EnvProps defaultProps;
     EnvelopeMesh* envMesh;
 
-    vector<EnvParams> params;
-
-    ScopedAlloc<float> preallocated;
-    ScopedAlloc<float> waveformMemory;
-    Buffer<float> waveXCopy, waveYCopy, slopeCopy, renderBuffer;
+    Rasterization::EnvelopePlaybackEngine playback;
 
     GuideCurveProvider* guideCurveProvider;
     Rasterization::RasterizationRequest request;
     Rasterization::RenderResult result;
+    Rasterization::RenderResult loopResult;
     Rasterization::GuideCurveOffsetSeeds guideCurveOffsetSeeds;
     VertCube::ReductionData reduction;
 
-    int paddingSize;
-    bool unsampleable, needsResorting;
     String name;
 
     JUCE_LEAK_DETECTOR(EnvRasterizer)

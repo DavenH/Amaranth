@@ -24,7 +24,7 @@ FXRasterizer::FXRasterizer(SingletonRepo* repo, const String& name) :
 
 void FXRasterizer::cleanUp() {
     pointListRasterizer.cleanUp();
-    publishSnapshot();
+    publishCurrentResult();
 
     DBG(getName() + "::cleanUp");
 }
@@ -32,22 +32,28 @@ void FXRasterizer::cleanUp() {
 void FXRasterizer::updateGeometry() {
     DBG(getName() + "::updateGeometry begin " + describeFxSource(mesh, vertexCount()));
 
-    updateFxGeometry(createFxRequest());
-    publishSnapshot();
+    renderGeometryOnly();
+    publishCurrentResult();
 }
 
 void FXRasterizer::updateWaveform() {
     DBG(getName() + "::updateWaveform begin " + describeFxSource(mesh, vertexCount()));
 
-    auto request = createFxRequest();
-    vector<Intercept> intercepts;
-    copyVertexInterceptsTo(intercepts);
+    renderWaveformOnly();
+    publishCurrentResult();
+}
+
+void FXRasterizer::renderGeometryOnly() {
+    updateFxGeometry(createFxRequest());
+}
+
+void FXRasterizer::renderWaveformOnly() {
+    const auto request = createFxRequest();
+    copyVertexInterceptsTo(scratchIntercepts);
     pointListRasterizer.renderWaveform(
-            intercepts,
+            scratchIntercepts,
             request,
             Rasterization::PointListPaddingMode::Fx);
-
-    publishSnapshot();
 }
 
 void FXRasterizer::reset() {
@@ -100,10 +106,9 @@ Intercept FXRasterizer::interceptAt(Vertex* vertex) const {
 }
 
 bool FXRasterizer::updateFxGeometry(const Rasterization::RasterizationRequest& request) {
-    vector<Intercept> intercepts;
-    copyVertexInterceptsTo(intercepts);
+    copyVertexInterceptsTo(scratchIntercepts);
     pointListRasterizer.renderGeometry(
-            intercepts,
+            scratchIntercepts,
             request,
             Rasterization::PointListPaddingMode::Fx);
 
@@ -130,7 +135,7 @@ int FXRasterizer::vertexCount() const {
     return vertices == nullptr ? 0 : (int) vertices->size();
 }
 
-void FXRasterizer::publishSnapshot() {
+void FXRasterizer::publishCurrentResult() {
     const auto& renderResult = result();
 
     Rasterization::RasterizerSnapshotSource snapshot;
@@ -140,6 +145,7 @@ void FXRasterizer::publishSnapshot() {
     snapshot.waveform = renderResult.waveform;
     snapshot.paddingSize = renderResult.paddingSize;
     snapshot.wrapsVertices = false;
+    snapshot.sampleable = renderResult.sampleable;
 
     Rasterization::BaseRasterizer::publishSnapshot(snapshot);
 }

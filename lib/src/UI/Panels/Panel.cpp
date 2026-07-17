@@ -613,7 +613,6 @@ void Panel::drawInterceptsAndHighlightClosest() {
 
     // it's a bigger circle, so do it first
     highlightCurrentIntercept(); {
-        ScopedLock dataLock(snapshot.lock());
         size = intercepts.size();
 
         //  && getSetting(DrawWave) == false

@@ -7,7 +7,7 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
 #include "../src/Nodes/Trimesh/TrimeshPanelBridge.h"
@@ -24,6 +24,40 @@
 #include <algorithm>
 
 using namespace CycleV2;
+
+TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
+        "[cycle-v2][nodes][trimesh][topology]") {
+    auto source = TrimeshMeshFactory::createDefaultMesh("AuthoredTrimesh");
+    REQUIRE(source != nullptr);
+    source->getVerts()[3]->values[Vertex::Amp] = 0.137f;
+    source->getCubes()[1]->guideCurveChans[Vertex::Amp] = 7;
+    source->getCubes()[1]->guideCurveGains[Vertex::Amp] = 0.73f;
+    const String snapshot = TrimeshMeshState::serialize(*source);
+
+    Mesh restored("RestoredTrimesh");
+    REQUIRE(TrimeshMeshState::apply(snapshot, restored));
+    REQUIRE(restored.getNumVerts() == source->getNumVerts());
+    REQUIRE(restored.getNumCubes() == source->getNumCubes());
+    REQUIRE(restored.getVerts()[3]->values[Vertex::Amp] == Catch::Approx(0.137f));
+    REQUIRE(restored.getCubes()[1]->guideCurveChans[Vertex::Amp] == 7);
+    REQUIRE(restored.getCubes()[1]->guideCurveGains[Vertex::Amp] == Catch::Approx(0.73f));
+    REQUIRE(TrimeshMeshState::serialize(restored) == snapshot);
+
+    restored.destroy();
+    source->destroy();
+}
+
+TEST_CASE("Invalid Trimesh topology snapshots do not partially mutate the mesh",
+        "[cycle-v2][nodes][trimesh][topology]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("StableTrimesh");
+    REQUIRE(mesh != nullptr);
+    const String before = TrimeshMeshState::serialize(*mesh);
+    const String invalid = R"({"name":"invalid","version":2,"vertices":[],"cubes":[{"vertexIds":[99]}]})";
+
+    REQUIRE_FALSE(TrimeshMeshState::apply(invalid, *mesh));
+    REQUIRE(TrimeshMeshState::serialize(*mesh) == before);
+    mesh->destroy();
+}
 
 TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly", "[cycle-v2][nodes][trimesh]") {
     const TrimeshRenderProfile timeProfile =
@@ -272,45 +306,6 @@ TEST_CASE("Trimesh node model exposes selected cube vertices for the side panel 
     REQUIRE(hasHighBlue);
 }
 
-TEST_CASE("Trimesh node model applies legacy selected vertex parameter overrides", "[cycle-v2][nodes][trimesh]") {
-    Node node {
-            "mesh",
-            NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
-            {},
-            {},
-            {
-                    { "vertex.time", "time", "0.10" },
-                    { "vertex.red", "red", "0.20" },
-                    { "vertex.blue", "blue", "0.30" },
-                    { "vertex.phase", "phase", "0.40" },
-                    { "vertex.amp", "amp", "0.50" },
-                    { "vertex.curve", "curve", "0.60" },
-                    { "vertexOverrideIndex", "Vertex Override Index", "-1" }
-            },
-            {},
-            {}
-    };
-    TrimeshNodeModel model;
-
-    model.syncFromNode(node);
-    const auto vertexParameters = model.getSelectedVertexParameters();
-
-    REQUIRE(vertexParameters.size() == 6);
-    REQUIRE(vertexParameters[0].value == Catch::Approx(0.10f));
-    REQUIRE(vertexParameters[1].value == Catch::Approx(0.20f));
-    REQUIRE(vertexParameters[2].value == Catch::Approx(0.30f));
-    REQUIRE(vertexParameters[3].value == Catch::Approx(0.40f));
-    REQUIRE(vertexParameters[4].value == Catch::Approx(0.50f));
-    REQUIRE(vertexParameters[5].value == Catch::Approx(0.60f));
-
-    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", "2" });
-    model.syncFromNode(node);
-    const auto changedSelectionParameters = model.getSelectedVertexParameters();
-
-    REQUIRE(changedSelectionParameters[1].value != Catch::Approx(0.20f));
-}
-
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -353,7 +348,14 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     REQUIRE(morphed.compactPreview > selected.compactPreview);
     REQUIRE(morphed.dspPrep > selected.dspPrep);
 
-    node.parameters.push_back({ "mesh.vertex.2.amp", "Amplitude", "0.17" });
+    auto editedMesh = TrimeshMeshFactory::createDefaultMesh("RevisionMesh");
+    editedMesh->getVerts()[2]->values[Vertex::Amp] = 0.17f;
+    node.parameters.push_back({
+            TrimeshMeshState::parameterId(),
+            "Mesh Topology",
+            TrimeshMeshState::serialize(*editedMesh)
+    });
+    editedMesh->destroy();
     model.syncFromNode(node);
     const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
 
@@ -367,7 +369,17 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     REQUIRE(edited.dspPrep > morphed.dspPrep);
 }
 
-TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertices", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v2][nodes][trimesh]") {
+    auto authored = TrimeshMeshFactory::createDefaultMesh("AuthoredNodeMesh");
+    authored->getVerts()[0]->values[Vertex::Time] = 0.03f;
+    authored->getVerts()[0]->values[Vertex::Red] = 0.04f;
+    authored->getVerts()[0]->values[Vertex::Blue] = 0.05f;
+    authored->getVerts()[0]->values[Vertex::Amp] = 0.11f;
+    authored->getVerts()[0]->values[Vertex::Phase] = 0.22f;
+    authored->getVerts()[2]->values[Vertex::Amp] = 0.77f;
+    authored->getVerts()[2]->values[Vertex::Curve] = 0.88f;
+    const String topology = TrimeshMeshState::serialize(*authored);
+    authored->destroy();
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
@@ -376,13 +388,7 @@ TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertice
             {},
             {
                     { "selectedVertexIndex", "Selected Vertex", "0" },
-                    { "mesh.vertex.0.time", "time", "0.03" },
-                    { "mesh.vertex.0.red", "red", "0.04" },
-                    { "mesh.vertex.0.blue", "blue", "0.05" },
-                    { "mesh.vertex.0.amp", "Amplitude", "0.11" },
-                    { "mesh.vertex.0.phase", "Phase", "0.22" },
-                    { "mesh.vertex.2.amp", "Amplitude", "0.77" },
-                    { "mesh.vertex.2.curve", "Sharpness", "0.88" }
+                    { TrimeshMeshState::parameterId(), "Mesh Topology", topology }
             },
             {},
             {}
@@ -413,59 +419,6 @@ TEST_CASE("Trimesh node model applies serialized mesh edits for multiple vertice
     REQUIRE(secondVertexParameters.size() == 6);
     REQUIRE(secondVertexParameters[4].value == Catch::Approx(0.77f));
     REQUIRE(secondVertexParameters[5].value == Catch::Approx(0.88f));
-}
-
-TEST_CASE("Trimesh node model still reads legacy indexed vertex edit parameters", "[cycle-v2][nodes][trimesh]") {
-    Node node {
-            "mesh",
-            NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
-            {},
-            {},
-            {
-                    { "selectedVertexIndex", "Selected Vertex", "1" },
-                    { "vertex.1.amp", "Amplitude", "0.31" },
-                    { "vertex.1.phase", "Phase", "0.41" }
-            },
-            {},
-            {}
-    };
-    TrimeshNodeModel model;
-
-    model.syncFromNode(node);
-    const auto vertexParameters = model.getSelectedVertexParameters();
-
-    REQUIRE(vertexParameters.size() == 6);
-    REQUIRE(vertexParameters[3].value == Catch::Approx(0.41f));
-    REQUIRE(vertexParameters[4].value == Catch::Approx(0.31f));
-}
-
-TEST_CASE("Trimesh mesh edit state formats canonical vertex edit parameters", "[cycle-v2][nodes][trimesh]") {
-    Node node {
-            "mesh",
-            NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
-            {},
-            {},
-            {
-                    { "mesh.vertex.4.amp", "Amplitude", "0.61" },
-                    { "vertex.3.phase", "Phase", "0.42" },
-                    { "vertex.phase", "Legacy Selected Phase", "0.99" },
-                    { "mesh.vertex.x.amp", "Invalid", "0.2" }
-            },
-            {},
-            {}
-    };
-
-    const TrimeshMeshEditState state = TrimeshMeshEditState::fromNode(node);
-    const auto& edits = state.getVertexEdits();
-
-    REQUIRE(TrimeshMeshEditState::canonicalVertexParameterId(4, "amp") == "mesh.vertex.4.amp");
-    REQUIRE(edits.size() == 2);
-    REQUIRE(edits[0].sourceId == "mesh.vertex.4.amp");
-    REQUIRE(edits[0].vertexIndex == 4);
-    REQUIRE(edits[1].sourceId == "vertex.3.phase");
-    REQUIRE(edits[1].vertexIndex == 3);
 }
 
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
@@ -586,6 +539,48 @@ TEST_CASE("Trimesh gridwise DSP renders independent morph columns", "[cycle-v2][
     REQUIRE(columns.back().morph.time.getCurrentValue() == Catch::Approx(1.f));
     REQUIRE(columns.front().signal.block.samples != columns.back().signal.block.samples);
 
+    mesh->destroy();
+}
+
+TEST_CASE(
+        "Trimesh gridwise DSP renders directly into prepared traversal storage",
+        "[cycle-v2][nodes][trimesh][complexity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    const MorphPosition center(0.5f, 0.5f, 0.5f);
+    TrimeshGridwiseDsp owningDsp;
+    TrimeshGridwiseDsp directDsp;
+    owningDsp.setCyclic(false);
+    directDsp.setCyclic(false);
+
+    const auto columns = owningDsp.renderColumns(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            8,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono);
+    std::vector<float> directValues(32);
+    directDsp.prepare(*mesh, center, Vertex::Time, 4, 8);
+    REQUIRE(directDsp.counters().sliceCount == 0);
+    REQUIRE(directDsp.renderColumnsInto(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            Buffer<float>(directValues.data(), (int) directValues.size())));
+
+    std::vector<float> owningValues;
+    for (const auto& column : columns) {
+        owningValues.insert(
+                owningValues.end(),
+                column.signal.block.samples.begin(),
+                column.signal.block.samples.end());
+    }
+
+    REQUIRE(directValues == owningValues);
+    REQUIRE(directDsp.counters().sliceCount == 4);
+    REQUIRE(directDsp.counters().bakeCount == 4);
     mesh->destroy();
 }
 
@@ -716,34 +711,6 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
     REQUIRE(controls.getNumChildComponents() == 21);
-}
-
-TEST_CASE("Trimesh panel bridge publishes rasterizer intercepts from the shared rasterizer", "[cycle-v2][nodes][trimesh]") {
-    ScopedJuceInitialiser_GUI juce;
-    Node node {
-            "mesh",
-            NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
-            {},
-            {},
-            {
-                    { "yellow", "Yellow", "0.5" },
-                    { "red", "Red", "0.5" },
-                    { "blue", "Blue", "0.5" },
-                    { "primaryAxis", "Primary Axis", "yellow" }
-            },
-            {},
-            {}
-    };
-    TrimeshPanelBridge bridge;
-
-    bridge.syncFromNode(node, 12, 4);
-
-    const auto& intercepts = bridge.getRasterizerIntercepts();
-    REQUIRE_FALSE(intercepts.empty());
-    REQUIRE(std::any_of(intercepts.begin(), intercepts.end(), [](const Intercept& intercept) {
-        return intercept.cube != nullptr;
-    }));
 }
 
 TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {

@@ -77,7 +77,6 @@ void Panel2D::initWithExternalComponent(Component* hostComponent) {
 
 void Panel2D::contractToRange(bool includeX) {
     auto snapshot = interactor->rasterizerSnapshot();
-    ScopedLock dataLock(snapshot.lock());
 
     zoomPanel->contractToRange(snapshot.waveY());
 }
@@ -100,7 +99,6 @@ void Panel2D::drawCurvesAndSurfaces() {
     {
         Buffer<float> waveY;
         Buffer<float> waveX;
-        ScopedLock sl(snapshot.lock());
 
         waveX = snapshot.waveX();
         waveY = snapshot.waveY();
@@ -227,7 +225,6 @@ void Panel2D::drawCurvesFrom(BufferXY& xy, Buffer<float> alpha,
 void Panel2D::drawInterceptLines() {
     {
         auto snapshot = interactor->rasterizerSnapshot();
-        ScopedLock sl(snapshot.lock());
         const vector<Intercept>& intercepts = snapshot.intercepts();
 
         if(intercepts.empty()) {
@@ -287,7 +284,6 @@ void Panel2D::highlightCurrentIntercept()
         point.y = verts[freeIdx].y;
     } else {
         auto snapshot = interactor->rasterizerSnapshot();
-        ScopedLock dataLock(snapshot.lock());
 
         const vector<Intercept>& icpts = snapshot.intercepts();
 
@@ -332,7 +328,6 @@ void Panel2D::drawDepthLinesAndVerts() {
     vector<ColorPoint> points;
 
     {
-        ScopedLock sl(snapshot.lock());
         points = snapshot.colorPoints();
     }
 
@@ -403,7 +398,7 @@ void Panel2D::drawDepthLinesAndVerts() {
 
 void Panel2D::drawGuideCurveTags() {
     auto snapshot         = interactor->rasterizerSnapshot();
-    vector<Curve>& curves = snapshot.curves();
+    const vector<Curve>& curves = snapshot.curves();
 
     Color colors[Vertex::numElements];
     colors[Vertex::Time]  = Color(0.6f, 0.6f, 0.6f, 1.f);
@@ -413,7 +408,6 @@ void Panel2D::drawGuideCurveTags() {
     colors[Vertex::Blue]  = Color(0.3f, 0.4f, 0.65f, 1.f);
     colors[Vertex::Curve] = Color(0.7f, 0.5f, 0.8f, 1.f);
 
-    ScopedLock sl2(snapshot.lock());
 
     PanelRenderer* renderer = getRenderer(this);
     jassert(renderer != nullptr);
@@ -426,7 +420,7 @@ void Panel2D::drawGuideCurveTags() {
     float h = guideCurveTags.front().getHeight();
 
     for (auto& curve : curves) {
-        Intercept& icpt = curve.b;
+        const Intercept& icpt = curve.b;
 
         if (VertCube* cube = icpt.cube) {
             if (!cube->isDeformed()) {

@@ -39,10 +39,12 @@ public:
             PortDomain domain,
             ChannelLayout channelLayout,
             SignalPayload& output);
+    void renderCycleInto(Buffer<float> output);
+    void renderPreparedInto(Buffer<float> output);
 
 private:
-    void prepareRequest();
-    void sampleOutput(SignalPayload& output);
+    Rasterization::RasterizationRequest createRequest() const;
+    void sampleOutput(Buffer<float> output);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 
     bool cyclic { true };

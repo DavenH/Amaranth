@@ -52,6 +52,45 @@
 - When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
 - Do not mark a TDD implemented while its principal architecture, deletion targets, negative boundaries, or completion criteria remain unfinished. Use a partial/in-progress status and state the remaining work explicitly.
 
+## Engineering Loop
+
+For every nontrivial implementation, execute these stages in order. Treat each
+stage as an active task with evidence; do not assume passive awareness of an
+instruction is sufficient.
+
+1. **Technical design**: identify the authoritative implementation, ownership,
+   thread/lifecycle boundaries, semantic contracts, expected complexity, and
+   deletion targets. Create or update a TDD when the change crosses subsystem
+   boundaries or contains multiple coherent slices.
+2. **Technical implementation**: implement the smallest complete slice against
+   the design. Reuse mature code and keep domain logic below orchestration
+   layers.
+3. **Refactor pass**: after behavior works, reread the production diff. Extract
+   leaked low-level mechanics, remove duplication and scaffolding, split mixed
+   abstraction levels, and verify high-level classes read as orchestration.
+   Passing tests do not make this stage optional.
+4. **Style check**: reread every changed production file against
+   `docs/style-guide.md`, run `git diff --check`, inspect hot loops, and run
+   applicable clang-tidy checks where available. Correct compressed formatting,
+   oversized functions, mixed declarations, and misleading names before
+   final verification.
+5. **Commit**: run proportionate semantic tests and commit the coherent slice
+   with an imperative subject. For an explicitly requested implementation train,
+   continue through this stage without waiting for a separate commit prompt
+   unless the user asked to leave changes uncommitted.
+6. **Continue to completion**: reread the active TDD and return to step 2 for
+   the next incomplete slice. Repeat implementation, refactor, style, testing,
+   and commit until every completion criterion and deletion target is satisfied.
+   Stop only for a genuine unresolved design ambiguity, an external blocker, or
+   explicit user direction. A passing slice, a clean commit, limited remaining
+   time, or the availability of further useful work is not a stopping point.
+
+Before committing, report internally against this checklist in sequence. If a
+stage uncovers an architectural defect that cannot be corrected within scope,
+record it in the active TDD/refactor document rather than silently proceeding.
+After committing, actively inspect the TDD for remaining work; do not wait for
+the user to prompt the next slice or to act as the implementation scheduler.
+
 ## Reuse Before Reimplementation
 - If you are about to write interpolation, rasterization, curve evaluation, oversampling, convolution, envelope/loop semantics, mesh traversal, or DSP transfer logic, stop and locate the existing implementation first. Reuse it or create a narrow adapter. Do not reimplement it in place.
 

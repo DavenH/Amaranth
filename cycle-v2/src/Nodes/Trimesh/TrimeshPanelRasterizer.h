@@ -18,7 +18,6 @@ class TrimeshPanelHosts;
 class TrimeshPanelRasterizer {
 public:
     Rasterization::TrilinearMeshRasterizer& getRasterizer() { return rasterizer; }
-    const std::vector<Intercept>& getIntercepts() const { return rasterizer.getIntercepts(); }
     bool wrapsVertices() { return rasterizer.snapshotView().wrapsVertices(); }
 
     void update(

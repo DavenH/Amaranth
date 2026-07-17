@@ -163,7 +163,8 @@ void EnvelopeInter2D::doExtraMouseUp() {
 
     if (isSingleVertex) {
         Vertex* vert = selected.front();
-        const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+        auto snapshot = rasterizerSnapshot();
+        const vector<Intercept>& icpts = snapshot.intercepts();
 
         if (!icpts.empty()) {
             int icptIndex = -1;
@@ -354,7 +355,8 @@ bool EnvelopeInter2D::synchronizeEnvPoints(Vertex* vertex, bool vertexIsLoopVert
     bool didAnything = false;
 
     if (EnvRasterizer* rast = getEnvRasterizer()) {
-        const vector <Intercept> &icpts = rast->snapshotView().intercepts();
+        auto snapshot = rast->snapshotView();
+        const vector <Intercept> &icpts = snapshot.intercepts();
 
         int loopIdx, sustIdx;
         rast->getIndices(loopIdx, sustIdx);
@@ -572,7 +574,8 @@ void EnvelopeInter2D::toggleEnvelopePoint(Button* button) {
             Vertex* vert = selected.front();
             VertCube* cube = nullptr;
 
-            const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+            auto snapshot = rasterizerSnapshot();
+            const vector<Intercept>& icpts = snapshot.intercepts();
             for (const auto& icpt : icpts) {
                 for (int j = 0; j < vert->getNumOwners(); ++j) {
                     VertCube* vertCube = vert->owners[j];
@@ -821,7 +824,8 @@ void EnvelopeInter2D::validateMesh() {
     envRast->getIndices(loopIdx, sustIdx);
 
     if (sustIdx >= 0) {
-        const vector<Intercept>& icpts = envRast->snapshotView().intercepts();
+        auto snapshot = envRast->snapshotView();
+        const vector<Intercept>& icpts = snapshot.intercepts();
         for (int i = 0; i < (int) icpts.size(); ++i) {
             VertCube* cube = icpts[i].cube;
             if (cube != nullptr
@@ -860,7 +864,8 @@ Range<float> EnvelopeInter2D::getVertexPhaseLimits(Vertex* vert) {
     Range<float> minRange = Interactor2D::getVertexPhaseLimits(vert);
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
-        const vector <Intercept>& icpts = envRast->snapshotView().intercepts();
+        auto snapshot = envRast->snapshotView();
+        const vector <Intercept>& icpts = snapshot.intercepts();
 
         if (icpts.empty() || vert == nullptr) {
             return Interactor2D::getVertexPhaseLimits(vert);
@@ -956,7 +961,8 @@ void EnvelopeInter2D::transferLineProperties(VertCube* from, VertCube* to1, Vert
 }
 
 void EnvelopeInter2D::removeCurrentEnvLine(bool isLoop) {
-    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+    auto snapshot = rasterizerSnapshot();
+    const vector<Intercept>& icpts = snapshot.intercepts();
     EnvelopeMesh* envMesh = getCurrentMesh();
 
     if (envMesh == nullptr) {
@@ -1217,7 +1223,8 @@ bool EnvelopeInter2D::addNewCube(float startTime, float x, float y, float curve)
 
 vector<VertCube*> EnvelopeInter2D::getLinesToSlideOnSingleSelect() {
     vector <VertCube*> cubes;
-    const vector<Intercept>& icpts = rasterizerSnapshot().intercepts();
+    auto snapshot = rasterizerSnapshot();
+    const vector<Intercept>& icpts = snapshot.intercepts();
 
     if (EnvRasterizer* envRast = getEnvRasterizer()) {
         if (!icpts.empty()) {

@@ -15,6 +15,12 @@
 
 namespace CycleV2 {
 
+namespace NodeCanvasInvalidation {
+
+constexpr uint32_t CanvasRepaint = 1u << 0;
+
+}
+
 Rectangle<float> nodePreviewBounds(Rectangle<float> nodeBounds, NodeKind kind, float zoom);
 Rectangle<float> previewContentArea(Rectangle<float> area);
 
@@ -1779,7 +1785,8 @@ NodeCanvas::NodeCanvas() :
     ,   runtimeTrace(presentation.runtimeTrace())
     ,   previewResult(presentation.previewResult())
     ,   editorCommands(*this, document, commands, *this, *this)
-    ,   editorHost(*this, editorCommands, *this, *this) {
+    ,   editorHost(*this, editorCommands, *this, *this)
+    ,   renderInvalidation(*this) {
     refreshCompiledState();
 
     setOpaque(true);
@@ -1829,14 +1836,18 @@ void NodeCanvas::paint(Graphics& g) {
 void NodeCanvas::resized() {
     viewport.setBounds(getLocalBounds().toFloat());
     updateExpandedEditorHost(findNode(expandedNodeId));
-    repaint();
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::visibilityChanged() {
+    renderInvalidation.notifyAvailabilityChanged();
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
     updatePaletteHover(event.position);
     setMouseCursor(MouseCursor::NormalCursor);
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
@@ -1871,13 +1882,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
 
         if (expandedNode != nullptr && hasHostedExpandedEditor(*expandedNode)) {
-            repaint();
+            requestCanvasRepaint();
             return;
         }
 
         if (closeButton.contains(event.position)) {
             expandedNodeId = {};
-            repaint();
+            requestCanvasRepaint();
             return;
         }
 
@@ -1897,7 +1908,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         expandedEditorDragCaptured = panel.contains(event.position);
 
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
@@ -1929,7 +1940,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             refreshCompiledState();
             editStatusMessage = "Node added";
             activePaletteSectionIndex = -1;
-            repaint();
+            requestCanvasRepaint();
         }
 
         return;
@@ -1939,7 +1950,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (findOperationLayoutButtonAt(event.position, layoutNodeId)) {
         if (cycleOperationPortLayout(layoutNodeId)) {
             editStatusMessage = "Port layout cycled";
-            repaint();
+            requestCanvasRepaint();
         }
 
         return;
@@ -1949,7 +1960,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     if (findMeshOutputSideButtonAt(event.position, outputSideNodeId)) {
         if (cycleMeshOutputSide(outputSideNodeId)) {
             editStatusMessage = "Output side cycled";
-            repaint();
+            requestCanvasRepaint();
         }
 
         return;
@@ -1958,7 +1969,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     String voiceNodeId;
     if (findVoiceDomainButtonAt(event.position, voiceNodeId)) {
         if (cycleVoiceDomain(voiceNodeId)) {
-            repaint();
+            requestCanvasRepaint();
         }
 
         return;
@@ -1972,7 +1983,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         draggingNode = false;
         selectedNodeId = hitPort.nodeId;
         selectedEdgeIndex = -1;
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
@@ -1989,7 +2000,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
         }
 
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
@@ -2005,13 +2016,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 editStatusMessage = "Edge cut";
             }
 
-            repaint();
+            requestCanvasRepaint();
             return;
         }
 
         selectedNodeId = {};
         draggingNode = false;
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
@@ -2020,7 +2031,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingNode = false;
     expandedNodeId = {};
 
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
@@ -2059,7 +2070,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 viewport.getZoom());
     }
 
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
@@ -2077,7 +2088,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
             editorCommands.endTrimeshMorphEdit();
             editorCommands.endTrimeshVertexParameterEdit();
             expandedEditorDragCaptured = false;
-            repaint();
+            requestCanvasRepaint();
             return;
         }
 
@@ -2091,7 +2102,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         editorCommands.endTrimeshMorphEdit();
         editorCommands.endTrimeshVertexParameterEdit();
         expandedEditorDragCaptured = false;
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
@@ -2120,24 +2131,24 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         }
     }
 
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     const Node* expandedNode = findNode(expandedNodeId);
     if (expandedNode != nullptr && expandedEditorBoundsForNode(getLocalBounds().toFloat(), expandedNode).contains(event.position)) {
-        repaint();
+        requestCanvasRepaint();
         return;
     }
 
     constexpr float panScale = 720.f;
     viewport.panBy(Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale));
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     viewport.zoomAround(event.position, scaleFactor);
-    repaint();
+    requestCanvasRepaint();
 }
 
 bool NodeCanvas::keyPressed(const KeyPress& key) {
@@ -2168,7 +2179,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
             selectedEdgeIndex = -1;
             refreshCompiledState();
             editStatusMessage = "Edge deleted";
-            repaint();
+            requestCanvasRepaint();
             return true;
         }
 
@@ -2186,7 +2197,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         selectedNodeId = {};
         refreshCompiledState();
         editStatusMessage = "Node deleted";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
 
@@ -2251,7 +2262,7 @@ void NodeCanvas::timerCallback() {
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != activePaletteSectionIndex)) {
         lastMousePosition = mouse;
-        repaint();
+        requestCanvasRepaint();
     }
 }
 
@@ -4256,7 +4267,7 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
 
     refreshCompiledState();
     openGLContext.triggerRepaint();
-    repaint();
+    requestCanvasRepaint();
 }
 
 var NodeCanvas::exportAutomationState() const {
@@ -4370,7 +4381,7 @@ bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
     expandedNodeId = node->id;
     updateExpandedEditorHost(node);
     editStatusMessage = "Opened editor: " + node->id;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4393,7 +4404,7 @@ bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> positio
     expandedNodeId = {};
     nodeId = result.nodeId;
     editStatusMessage = "Node added: " + nodeId;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4410,7 +4421,7 @@ bool NodeCanvas::moveNodeForAutomation(const String& nodeId, Point<float> positi
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
     editStatusMessage = "Node moved: " + nodeId;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4432,7 +4443,7 @@ bool NodeCanvas::connectPortsForAutomation(
     selectedEdgeIndex = -1;
     editStatusMessage = "Connected " + sourceNodeId + "." + sourcePortId
             + " -> " + destNodeId + "." + destPortId;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4448,7 +4459,7 @@ bool NodeCanvas::deleteNodeForAutomation(const String& nodeId) {
     selectedEdgeIndex = -1;
     expandedNodeId = expandedNodeId == nodeId ? String() : expandedNodeId;
     editStatusMessage = "Node deleted: " + nodeId;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4466,7 +4477,7 @@ bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
     refreshCompiledState();
     selectedEdgeIndex = -1;
     editStatusMessage = "Edge deleted: " + String(edgeIndex);
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4493,7 +4504,7 @@ bool NodeCanvas::setNodeParameterForAutomation(
     selectedNodeId = nodeId;
     selectedEdgeIndex = -1;
     editStatusMessage = "Parameter set: " + nodeId + "." + parameterId;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4558,7 +4569,7 @@ bool NodeCanvas::setVertexParameterForAutomation(
     }
 
     editorCommands.endTrimeshVertexParameterEdit();
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4816,19 +4827,19 @@ File NodeCanvas::snapshotFile() const {
 bool NodeCanvas::saveGraphToFile(const File& file) {
     if (!document.save(file)) {
         editStatusMessage = "Save failed";
-        repaint();
+        requestCanvasRepaint();
         return false;
     }
 
     editStatusMessage = "Saved " + file.getFileName();
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     if (!document.load(file)) {
         editStatusMessage = "Open failed";
-        repaint();
+        requestCanvasRepaint();
         return false;
     }
     selectedNodeId = {};
@@ -4837,7 +4848,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
     spliceTargetEdgeIndex = -1;
     refreshCompiledState();
     editStatusMessage = "Opened " + file.getFileName();
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4845,12 +4856,12 @@ bool NodeCanvas::saveSnapshot() {
     const File file = snapshotFile();
     if (!document.save(file)) {
         editStatusMessage = "Save failed";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
 
     editStatusMessage = "Saved snapshot";
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -4859,13 +4870,13 @@ bool NodeCanvas::loadSnapshot() {
 
     if (!file.existsAsFile()) {
         editStatusMessage = "No snapshot";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
 
     if (!document.load(file)) {
         editStatusMessage = "Load failed";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
     selectedNodeId = {};
@@ -4874,14 +4885,14 @@ bool NodeCanvas::loadSnapshot() {
     spliceTargetEdgeIndex = -1;
     refreshCompiledState();
     editStatusMessage = "Loaded snapshot";
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
 bool NodeCanvas::undo() {
     if (!document.undo()) {
         editStatusMessage = "Nothing to undo";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
     return restoreGraphXml({}, "Undo");
@@ -4890,7 +4901,7 @@ bool NodeCanvas::undo() {
 bool NodeCanvas::redo() {
     if (!document.redo()) {
         editStatusMessage = "Nothing to redo";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
     return restoreGraphXml({}, "Redo");
@@ -4899,7 +4910,7 @@ bool NodeCanvas::redo() {
 bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage) {
     if (xml.isNotEmpty() && !document.loadXml(xml, false)) {
         editStatusMessage = "Restore failed";
-        repaint();
+        requestCanvasRepaint();
         return true;
     }
     selectedNodeId = {};
@@ -4908,7 +4919,7 @@ bool NodeCanvas::restoreGraphXml(const String& xml, const String& statusMessage)
     spliceTargetEdgeIndex = -1;
     refreshCompiledState();
     editStatusMessage = statusMessage;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -5009,7 +5020,7 @@ bool NodeCanvas::clearSelection() {
     selectedNodeId = {};
     expandedNodeId = {};
     selectedEdgeIndex = -1;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -5142,7 +5153,7 @@ bool NodeCanvas::setVoiceContextParameter(
     nodeDragUndoPushed = false;
     refreshCompiledState();
     editStatusMessage = statusMessage;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -5262,7 +5273,7 @@ bool NodeCanvas::setTransformParameter(
     nodeDragUndoPushed = false;
     refreshCompiledState();
     editStatusMessage = statusMessage;
-    repaint();
+    requestCanvasRepaint();
     return true;
 }
 
@@ -5334,7 +5345,7 @@ void NodeCanvas::repaintNodeEditor(bool openGl) {
     if (openGl) {
         openGLContext.triggerRepaint();
     }
-    repaint();
+    requestCanvasRepaint();
 }
 
 void NodeCanvas::selectEditedNode(const String& nodeId) {
@@ -5443,6 +5454,20 @@ Path NodeCanvas::createCablePath(
     path.cubicTo(c1, c2, dest);
 
     return path;
+}
+
+void NodeCanvas::requestCanvasRepaint() {
+    renderInvalidation.request(NodeCanvasInvalidation::CanvasRepaint);
+}
+
+uint32_t NodeCanvas::availableRenderInvalidations() const {
+    return isShowing() ? NodeCanvasInvalidation::CanvasRepaint : 0;
+}
+
+void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
+    if ((categories & NodeCanvasInvalidation::CanvasRepaint) != 0) {
+        Component::repaint();
+    }
 }
 
 }

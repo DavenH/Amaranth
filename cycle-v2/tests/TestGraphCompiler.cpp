@@ -351,6 +351,9 @@ TEST_CASE("Compiler assigns output slots and source lifetimes before processing"
     const auto& add = findStep(result.plan, "add");
     REQUIRE(wave.outputs.front().bufferIndex >= 0);
     REQUIRE(add.inputs.front().sourceBufferIndex == wave.outputs.front().bufferIndex);
+    REQUIRE(add.inputs.front().sourceStepIndex >= 0);
+    REQUIRE(result.plan.steps[(size_t) add.inputs.front().sourceStepIndex].nodeId == "wave");
+    REQUIRE(add.inputs.front().sourceOutputIndex == 0);
     const auto& buffer = result.plan.buffers[(size_t) wave.outputs.front().bufferIndex];
     REQUIRE(buffer.firstProducerStep >= 0);
     REQUIRE(buffer.lastConsumerStep > buffer.firstProducerStep);

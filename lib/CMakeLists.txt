@@ -3,7 +3,7 @@ project(AmaranthLib VERSION 1.0.0)
 
 set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode")
 
-file(GLOB_RECURSE LIB_SOURCES
+file(GLOB_RECURSE LIB_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
         "${JUCE_DIR}/*.cpp"
         "${JUCE_DIR}/*.c"

@@ -7,16 +7,22 @@ namespace Rasterization {
     class WaveformSampler {
     public:
         static bool isSampleable(const WaveformBuffers& waveform) {
-            return !waveform.waveX.empty();
+            return waveform.waveX.size() >= 2
+                && waveform.waveY.size() == waveform.waveX.size()
+                && waveform.slope.size() >= waveform.waveX.size() - 1;
         }
 
         static bool isSampleableAt(const WaveformBuffers& waveform, float x) {
-            return !waveform.waveX.empty()
+            return isSampleable(waveform)
                 && waveform.waveX.front() <= x
                 && waveform.waveX.back() > x;
         }
 
         static float sampleAt(const WaveformBuffers& waveform, bool unsampleable, double angle) {
+            if (unsampleable || !isSampleableAt(waveform, (float) angle)) {
+                return 0.f;
+            }
+
             int currentIndex = Arithmetic::binarySearch(angle, waveform.waveX);
             return sampleAt(waveform, unsampleable, angle, currentIndex);
         }
@@ -26,30 +32,24 @@ namespace Rasterization {
                 bool unsampleable,
                 double angle,
                 int& currentIndex) {
-            if (unsampleable || (float) angle >= waveform.waveX.back() || (float) angle < waveform.waveX.front()) {
-                jassertfalse;
-                return angle;
+            if (unsampleable || !isSampleableAt(waveform, (float) angle)) {
+                currentIndex = 0;
+                return 0.f;
             }
 
-            if (currentIndex >= (int) waveform.waveX.size()) {
+            if (currentIndex < 0 || currentIndex >= (int) waveform.waveX.size()) {
                 currentIndex = 0;
             }
 
             if (currentIndex > 0) {
-                while (angle < waveform.waveX[currentIndex - 1]) {
+                while (currentIndex > 0 && angle < waveform.waveX[currentIndex - 1]) {
                     --currentIndex;
-                    if (currentIndex == 0) {
-                        currentIndex = waveform.waveX.size() - 1;
-                    }
                 }
             }
 
-            while (angle >= waveform.waveX[currentIndex]) {
+            while (currentIndex < (int) waveform.waveX.size()
+                    && angle >= waveform.waveX[currentIndex]) {
                 ++currentIndex;
-
-                if (currentIndex >= (int) waveform.waveX.size()) {
-                    currentIndex = 0;
-                }
             }
 
             if (currentIndex == 0) {
@@ -66,22 +66,34 @@ namespace Rasterization {
                 Buffer<float> dest) {
             jassert(intervals.size() >= dest.size());
 
-            if (waveform.waveX.empty()) {
-                dest.set(0.5f);
-
+            if (dest.empty()) {
                 return;
+            }
+
+            if (intervals.size() < dest.size() || !isSampleable(waveform)) {
+                dest.zero();
+                return;
+            }
+
+            for (int i = 0; i < dest.size(); ++i) {
+                if (!isSampleableAt(waveform, intervals[i])
+                        || (i > 0 && intervals[i] < intervals[i - 1])) {
+                    dest.zero();
+                    return;
+                }
             }
 
             float* destPtr = dest.get();
             const float* intervalsPtr = intervals.get();
 
-            jassert(waveform.waveX.front() < intervals.front()
-                    && waveform.waveX.back() > intervals[dest.size() - 1]);
-
-            int currentIndex = waveform.zeroIndex;
+            int currentIndex = jlimit(1, waveform.waveX.size() - 1, waveform.zeroIndex);
 
             for (int i = 0; i < (int) dest.size(); ++i) {
-                while (intervalsPtr[i] >= waveform.waveX[currentIndex]) {
+                while (currentIndex > 1 && intervalsPtr[i] < waveform.waveX[currentIndex - 1]) {
+                    --currentIndex;
+                }
+                while (currentIndex < waveform.waveX.size()
+                        && intervalsPtr[i] >= waveform.waveX[currentIndex]) {
                     currentIndex++;
                 }
 
@@ -99,23 +111,36 @@ namespace Rasterization {
             float* dest = buffer.get();
             int size = buffer.size();
 
+            if (size == 0) {
+                return (float) phase;
+            }
+
+            if (delta <= 0.
+                    || !isSampleable(waveform)
+                    || waveform.area.size() < waveform.waveX.size() - 1) {
+                buffer.zero();
+                return (float) phase;
+            }
+
             double areaScale = 1. / delta;
             double halfDiff = 0.5 * delta;
             double accum = phase - halfDiff;
 
-            jassert(waveform.waveX.front() <= accum);
-            jassert(accum + (size + 0.5) * delta <= waveform.waveX.back());
+            const double finalBoundary = phase + (size - 0.5) * delta;
+            if (accum < waveform.waveX.front() || finalBoundary > waveform.waveX.back()) {
+                buffer.zero();
+                return (float) phase;
+            }
 
-            int currentIndex = waveform.zeroIndex;
+            int currentIndex = jlimit(0, waveform.waveX.size() - 2, waveform.zeroIndex);
 
             while (accum < waveform.waveX[currentIndex] && currentIndex > 0) {
                 --currentIndex;
             }
-            while (accum >= waveform.waveX[currentIndex + 1] && currentIndex < waveform.waveX.size()) {
+            while (currentIndex + 1 < waveform.waveX.size() - 1
+                    && accum >= waveform.waveX[currentIndex + 1]) {
                 ++currentIndex;
             }
-
-            jassert(waveform.waveX[currentIndex] <= accum && waveform.waveX[currentIndex + 1] >= accum);
 
             if (accum < waveform.waveX.front()) {
                 accum = waveform.waveX.front();
@@ -131,11 +156,13 @@ namespace Rasterization {
                 prevIdx = currentIndex;
                 accum += delta;
 
-                while (accum >= waveform.waveX[currentIndex]) {
+                while (currentIndex < waveform.waveX.size()
+                        && accum >= waveform.waveX[currentIndex]) {
                     ++currentIndex;
                 }
 
                 --currentIndex;
+                currentIndex = jlimit(0, waveform.waveX.size() - 2, currentIndex);
                 diffIdx = currentIndex - prevIdx;
 
                 if (diffIdx == 0) {
@@ -163,7 +190,7 @@ namespace Rasterization {
 
             phase = accum + halfDiff;
 
-            if (phase > 0.5) {
+            while (phase > 0.5) {
                 phase -= 1;
             }
 
@@ -179,41 +206,42 @@ namespace Rasterization {
             float* dest = buffer.get();
             int size = buffer.size();
 
-            if (waveform.waveX.empty()) {
-                buffer.set(0.5f);
-                return 0;
+            if (size == 0) {
+                return phase;
             }
 
-            auto lastAngle = (float) (size * delta + phase);
-
-            jassert(waveform.waveX.front() < phase && waveform.waveX.back() > lastAngle);
-
-            if (waveform.waveX.front() > phase || waveform.waveX.back() < lastAngle) {
+            const T lastAngle = phase + (size - 1) * delta;
+            if (delta <= 0
+                    || !isSampleable(waveform)
+                    || phase < waveform.waveX.front()
+                    || lastAngle >= waveform.waveX.back()) {
                 buffer.zero();
-                phase += delta * size;
-            } else {
-                int currentIndex = jmax(0, waveform.zeroIndex - 1);
-
-                while (phase < waveform.waveX[currentIndex] && currentIndex > 0) {
-                    currentIndex--;
-                }
-
-                jassert(phase > waveform.waveX[currentIndex]);
-
-                for (int i = 0; i < size; ++i) {
-                    while (phase >= waveform.waveX[currentIndex + 1]) {
-                        currentIndex++;
-                    }
-
-                    dest[i] = ((float) phase - waveform.waveX[currentIndex])
-                            * waveform.slope[currentIndex]
-                            + waveform.waveY[currentIndex];
-
-                    phase += delta;
-                }
+                return phase;
             }
 
-            if (phase > 0.5) {
+            int currentIndex = jlimit(0, waveform.waveX.size() - 2, waveform.zeroIndex);
+            while (currentIndex > 0 && phase < waveform.waveX[currentIndex]) {
+                --currentIndex;
+            }
+            while (currentIndex + 1 < waveform.waveX.size() - 1
+                    && phase >= waveform.waveX[currentIndex + 1]) {
+                ++currentIndex;
+            }
+
+            for (int i = 0; i < size; ++i) {
+                while (currentIndex + 1 < waveform.waveX.size() - 1
+                        && phase >= waveform.waveX[currentIndex + 1]) {
+                    ++currentIndex;
+                }
+
+                dest[i] = ((float) phase - waveform.waveX[currentIndex])
+                        * waveform.slope[currentIndex]
+                        + waveform.waveY[currentIndex];
+
+                phase += delta;
+            }
+
+            while (phase > 0.5) {
                 phase -= 1;
             }
 

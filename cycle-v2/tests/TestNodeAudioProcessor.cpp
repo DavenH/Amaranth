@@ -3,17 +3,124 @@
 
 #include "../src/Runtime/AudioProcessContextUtils.h"
 #include "../src/Runtime/NodeAudioProcessor.h"
+#include "../src/Runtime/SmoothedMorphPosition.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
+#include "../src/Nodes/Envelope/EnvelopePreparationExchange.h"
+#include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <numeric>
+#include <thread>
 
 using namespace CycleV2;
+
+TEST_CASE("Morph controls smooth monotonically and independently of block partitioning",
+        "[cycle-v2][runtime][morph][smoothing]") {
+    SmoothedMorphPosition whole;
+    SmoothedMorphPosition partitioned;
+    const MorphPosition initial(0.f, 0.f, 0.75f);
+    const MorphPosition target(1.f, 1.f, 0.25f);
+    whole.reset(initial);
+    partitioned.reset(initial);
+    whole.setTargets(target);
+    partitioned.setTargets(target);
+
+    REQUIRE(whole.advance(64, 44100.0) == 64);
+    REQUIRE(partitioned.advance(32, 44100.0) == 32);
+    const float halfway = partitioned.current().red.getCurrentValue();
+    REQUIRE(partitioned.advance(32, 44100.0) == 32);
+
+    REQUIRE(halfway > 0.f);
+    REQUIRE(halfway < whole.current().red.getCurrentValue());
+    REQUIRE(whole.current().red.getCurrentValue() < 1.f);
+    REQUIRE(partitioned.current().red.getCurrentValue()
+            == Catch::Approx(whole.current().red.getCurrentValue()));
+    REQUIRE(partitioned.current().blue.getCurrentValue()
+            == Catch::Approx(whole.current().blue.getCurrentValue()));
+}
+
+TEST_CASE("Envelope preparation request exchange publishes coherent newest values",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    LatestEnvelopePreparationRequest requests;
+    requests.publish(0.2f, 0.8f, 11);
+    requests.publish(0.7f, 0.3f, 12);
+
+    EnvelopePreparationRequest request;
+    REQUIRE(requests.latest(request));
+    REQUIRE(request.red == 0.7f);
+    REQUIRE(request.blue == 0.3f);
+    REQUIRE(request.noteSerial == 12);
+    REQUIRE(requests.isCurrent(request.generation));
+    requests.markPrepared(request.generation);
+    REQUIRE_FALSE(requests.latest(request));
+}
+
+TEST_CASE("Envelope preparation request exchange never mixes concurrent fields",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    LatestEnvelopePreparationRequest requests;
+    std::atomic<bool> writerFinished {};
+    std::atomic<bool> coherent { true };
+    std::thread writer([&] {
+        for (uint64_t i = 1; i <= 10000; ++i) {
+            const float red = (float) i / 10000.f;
+            requests.publish(red, 1.f - red, i);
+        }
+        writerFinished = true;
+    });
+
+    uint64_t observedGeneration = 0;
+    while (!writerFinished.load() || requests.publicationCount() < 10000) {
+        EnvelopePreparationRequest request;
+        if (!requests.latest(request)) {
+            continue;
+        }
+        observedGeneration = request.generation;
+        requests.markPrepared(observedGeneration);
+        const float expectedRed = (float) request.noteSerial / 10000.f;
+        if (request.red != expectedRed || request.blue != 1.f - expectedRed) {
+            coherent = false;
+        }
+    }
+    writer.join();
+
+    REQUIRE(coherent.load());
+    REQUIRE(requests.publicationCount() == 10000);
+}
+
+TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot ownership",
+        "[cycle-v2][runtime][envelope][exchange]") {
+    const std::vector<NodeParameter> parameters {
+            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
+                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Envelope) },
+            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", "1" }
+    };
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+    PreparedEnvelopeExchange exchange;
+
+    REQUIRE(exchange.publish(configuration, 2, 1));
+    const auto stale = exchange.adoptNewest(2, false);
+    REQUIRE(stale.stale);
+    REQUIRE_FALSE(stale.adopted);
+
+    REQUIRE(exchange.publish(configuration, 4, 2));
+    const auto adopted = exchange.adoptNewest(2, false);
+    REQUIRE(adopted.adopted);
+    REQUIRE(adopted.configuration == configuration.get());
+    REQUIRE(exchange.active(nullptr) == configuration.get());
+
+    REQUIRE(exchange.publish(configuration, 6, 2));
+    REQUIRE(exchange.adoptNewest(2, true).adopted);
+    REQUIRE(exchange.preparationCount() == 3);
+    REQUIRE(exchange.adoptionCount() == 2);
+    REQUIRE(exchange.staleResultCount() == 1);
+}
 
 namespace {
 
@@ -245,10 +352,11 @@ TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2
 
 TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][runtime][envelope][grid]") {
     NodeAudioProcessorFactory factory;
+    const auto parameters = envelopeParameters();
     AudioProcessContext envelopeContext;
     envelopeContext.frameCount = 4;
     envelopeContext.timing.sampleRate = 16.0;
-    envelopeContext.parameters = envelopeParameters();
+    envelopeContext.parameters = parameters;
     envelopeContext.outputPorts = {
             { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono }
     };
@@ -261,12 +369,51 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
     REQUIRE(envelope.traversalGrid.metadata.columnAxis == TraversalGridAxis::Time);
     REQUIRE(envelope.traversalGrid.metadata.rowAxis == TraversalGridAxis::Repeated);
 
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+    auto sampler = configuration->rasterizer->sampler();
+    REQUIRE(sampler.isSampleable());
+
     for (size_t column = 0; column < envelope.traversalGrid.columns; ++column) {
         const float columnValue = envelope.traversalGrid.values[column * envelope.traversalGrid.rows];
+        const float expected = sampler.sampleAt(
+                (double) column / (double) envelope.traversalGrid.columns);
+        REQUIRE(columnValue == Catch::Approx(expected));
         for (size_t row = 1; row < envelope.traversalGrid.rows; ++row) {
             REQUIRE(envelope.traversalGrid.values[column * envelope.traversalGrid.rows + row]
                     == Catch::Approx(columnValue));
         }
+    }
+
+    AudioProcessContext tallerContext;
+    tallerContext.frameCount = 6;
+    tallerContext.timing.sampleRate = 16.0;
+    tallerContext.parameters = parameters;
+    tallerContext.outputPorts = envelopeContext.outputPorts;
+    tallerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    factory.create(AudioModuleRole::Envelope)->process(tallerContext);
+
+    const SignalTraversalGrid& taller = output(tallerContext).traversalGrid;
+    REQUIRE(taller.columns == envelope.traversalGrid.columns);
+    REQUIRE(taller.rows == 6);
+    for (size_t column = 0; column < taller.columns; ++column) {
+        REQUIRE(taller.values[column * taller.rows]
+                == Catch::Approx(envelope.traversalGrid.values[column * envelope.traversalGrid.rows]));
+    }
+
+    AudioProcessContext widerContext;
+    widerContext.frameCount = 12;
+    widerContext.timing.sampleRate = 16.0;
+    widerContext.parameters = parameters;
+    widerContext.outputPorts = envelopeContext.outputPorts;
+    widerContext.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    factory.create(AudioModuleRole::Envelope)->process(widerContext);
+
+    const SignalTraversalGrid& wider = output(widerContext).traversalGrid;
+    REQUIRE(wider.columns == 12);
+    for (size_t column = 0; column < wider.columns; ++column) {
+        REQUIRE(wider.values[column * wider.rows] == Catch::Approx(sampler.sampleAt(
+                (double) column / (double) wider.columns)));
     }
 
     REQUIRE(envelope.traversalGrid.values[0]
@@ -285,6 +432,231 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
     REQUIRE(multiplied.columns == 4);
     REQUIRE(multiplied.values[2 * multiplied.rows]
             == Catch::Approx(envelope.traversalGrid.values[4 * envelope.traversalGrid.rows]));
+}
+
+TEST_CASE("Dynamic Envelope morph preparation is coalesced off the process path",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "dynamic-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 32.0;
+    processor.prepareExecution(spec);
+
+    const auto processAt = [&](float red, float blue, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 32.0;
+        context.inputs = { payload({ red }), payload({ blue }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    const auto base = processAt(0.1f, 0.2f, true);
+    const double positionBeforeAdoption = processor.playbackPosition();
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    REQUIRE(processor.dynamicDiagnostics().preparations == 0);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto firstDynamic = processAt(0.1f, 0.2f, false);
+    REQUIRE(firstDynamic != base);
+    REQUIRE(processor.playbackPosition() > positionBeforeAdoption);
+    REQUIRE(processor.playbackMode() == Rasterization::EnvelopePlaybackMode::Normal);
+    REQUIRE(processor.dynamicDiagnostics().adoptions == 1);
+
+    processAt(0.3f, 0.4f, false);
+    processAt(0.7f, 0.8f, false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 3);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    REQUIRE(processor.dynamicDiagnostics().preparations == 2);
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+    const auto newestDynamic = processAt(0.7f, 0.8f, false);
+    REQUIRE(newestDynamic != firstDynamic);
+    REQUIRE(processor.dynamicDiagnostics().adoptions == 2);
+}
+
+TEST_CASE("Smoothed Envelope morph requests have bounded cadence at audio rate",
+        "[cycle-v2][runtime][envelope][modulation][smoothing]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "smoothed-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 44100.0;
+    processor.prepareExecution(spec);
+
+    const auto processTarget = [&](bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 16;
+        context.timing.sampleRate = 44100.0;
+        context.inputs = { payload({ 1.f }), payload({ 0.5f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+    };
+
+    processTarget(true);
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    processTarget(false);
+    processTarget(false);
+    processTarget(false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 1);
+    processTarget(false);
+    REQUIRE(processor.dynamicDiagnostics().requests == 2);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+}
+
+TEST_CASE("Prepared Envelope adoption preserves sample continuity",
+        "[cycle-v2][runtime][envelope][modulation][smoothing]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "continuous-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    spec.sampleRate = 44100.0;
+    processor.prepareExecution(spec);
+
+    AudioProcessContext first;
+    first.frameCount = 64;
+    first.timing.sampleRate = 44100.0;
+    first.inputs = { payload({ 1.f }), payload({ 0.5f }) };
+    first.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    first.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    processor.process(first);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+
+    AudioProcessContext adopted = first;
+    adopted.outputs.clear();
+    adopted.voice.events.clear();
+    processor.process(adopted);
+
+    REQUIRE(output(adopted).block.samples.front()
+            == Catch::Approx(output(first).block.samples.back()).margin(1.0e-6f));
+}
+
+TEST_CASE("Disabled dynamic Envelope latches absolute morph inputs per note",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto parameters = envelopeParameters();
+    parameters.push_back({ "red", "Red", "0.5" });
+    parameters.push_back({ "blue", "Blue", "0.5" });
+    parameters.push_back({ "dynamic", "Dynamic While Live", "0" });
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "latched-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    spec.sampleRate = 32.0;
+    processor.prepareExecution(spec);
+
+    const auto processAt = [&](float red, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 32.0;
+        context.inputs = { payload({ red }), payload({ 0.25f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    processAt(0.1f, true);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto firstNote = processAt(0.1f, false);
+    const uint64_t requestsAfterLatch = processor.dynamicDiagnostics().requests;
+
+    const auto unchangedActiveNote = processAt(0.9f, false);
+    REQUIRE(unchangedActiveNote == firstNote);
+    REQUIRE(processor.dynamicDiagnostics().requests == requestsAfterLatch);
+    REQUIRE_FALSE(processor.serviceNonRealtimePreparation());
+
+    processAt(0.9f, true);
+    REQUIRE(processor.dynamicDiagnostics().requests == requestsAfterLatch + 1);
+    REQUIRE(processor.serviceNonRealtimePreparation());
+    const auto secondNote = processAt(0.9f, false);
+    REQUIRE(secondNote != firstNote);
+}
+
+TEST_CASE("Disabling live Envelope morph freezes each voice's adopted position",
+        "[cycle-v2][runtime][envelope][modulation]") {
+    auto liveParameters = envelopeParameters();
+    liveParameters.push_back({ "red", "Red", "0.5" });
+    liveParameters.push_back({ "blue", "Blue", "0.5" });
+    liveParameters.push_back({ "dynamic", "Dynamic While Live", "1" });
+    auto latchedParameters = liveParameters;
+    for (auto& parameter : latchedParameters) {
+        if (parameter.id == "dynamic") {
+            parameter.value = "0";
+        }
+    }
+    const auto live = EnvelopeSignalProcessor::buildConfiguration(liveParameters);
+    const auto latched = EnvelopeSignalProcessor::buildConfiguration(latchedParameters);
+    REQUIRE(live != nullptr);
+    REQUIRE(latched != nullptr);
+
+    EnvelopeSignalProcessor first;
+    EnvelopeSignalProcessor second;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    spec.sampleRate = 64.0;
+    for (auto* processor : { &first, &second }) {
+        processor->adoptConfiguration({ 1, "live-envelope", live });
+        processor->prepareExecution(spec);
+    }
+    const auto processAt = [](EnvelopeSignalProcessor& processor, float red, bool noteOn) {
+        AudioProcessContext context;
+        context.frameCount = 8;
+        context.timing.sampleRate = 64.0;
+        context.inputs = { payload({ red }), payload({ 0.5f }) };
+        context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+        if (noteOn) {
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        }
+        processor.process(context);
+        return output(context).traversalGrid.values;
+    };
+
+    processAt(first, 0.1f, true);
+    processAt(second, 0.9f, true);
+    REQUIRE(first.serviceNonRealtimePreparation());
+    REQUIRE(second.serviceNonRealtimePreparation());
+    const auto firstAdopted = processAt(first, 0.1f, false);
+    const auto secondAdopted = processAt(second, 0.9f, false);
+    REQUIRE(firstAdopted != secondAdopted);
+
+    first.adoptConfiguration({ 2, "latched-envelope", latched });
+    first.prepareExecution(spec);
+    const auto frozen = processAt(first, 0.9f, false);
+    REQUIRE(frozen == firstAdopted);
+    REQUIRE_FALSE(first.serviceNonRealtimePreparation());
 }
 
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {
@@ -1059,6 +1431,49 @@ TEST_CASE("Mesh source processor uses non-cyclic rendering for spectral outputs"
     REQUIRE(output(timeContext).domain == PortDomain::TimeSignal);
     REQUIRE(output(spectralContext).domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(output(timeContext).block.samples != output(spectralContext).block.samples);
+}
+
+TEST_CASE("Mesh source morph inputs are absolute and override persisted positions",
+        "[cycle-v2][runtime][modulation]") {
+    NodeAudioProcessorFactory factory;
+    auto baseProcessor = factory.create(AudioModuleRole::MeshSource);
+    auto modulatedProcessor = factory.create(AudioModuleRole::MeshSource);
+
+    AudioProcessContext base;
+    base.frameCount = 16;
+    base.parameters = {
+            { "yellow", "Yellow", "0.5" },
+            { "red", "Red", "0.5" },
+            { "blue", "Blue", "0.5" }
+    };
+    base.outputPorts = { { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo } };
+    baseProcessor->process(base);
+
+    AudioProcessContext modulated;
+    modulated.frameCount = 16;
+    modulated.parameters = base.parameters;
+    modulated.inputs.resize(5);
+    modulated.inputs[2] = payload({ 0.1f });
+    modulated.inputs[3] = payload({ 0.9f });
+    modulated.inputs[4] = payload({ 0.2f });
+    modulated.outputPorts = base.outputPorts;
+    modulatedProcessor->process(modulated);
+    const auto firstSmoothedBlock = output(modulated).block.samples;
+
+    REQUIRE(firstSmoothedBlock != output(base).block.samples);
+
+    AudioProcessContext continued = modulated;
+    continued.outputs.clear();
+    modulatedProcessor->process(continued);
+    REQUIRE(output(continued).block.samples != firstSmoothedBlock);
+
+    AudioProcessContext clamped = modulated;
+    clamped.outputs.clear();
+    clamped.inputs[2] = payload({ -1.f });
+    clamped.inputs[3] = payload({ 2.f });
+    clamped.inputs[4] = payload({ 0.2f });
+    modulatedProcessor->process(clamped);
+    REQUIRE(output(clamped).block.samples != output(modulated).block.samples);
 }
 
 TEST_CASE("Mesh source processor defensively ignores unexpected signal inputs", "[cycle-v2][runtime]") {

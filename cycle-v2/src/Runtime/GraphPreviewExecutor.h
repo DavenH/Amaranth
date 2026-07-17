@@ -18,6 +18,10 @@ struct NodePreviewResult {
 
 struct GraphPreviewResult {
     std::vector<NodePreviewResult> nodes;
+    size_t indexedNodeCount {};
+    size_t addressLookupCount {};
+    size_t aliasedInputCount {};
+    size_t reusedCapturedTraversalCount {};
 };
 
 class GraphPreviewExecutor {

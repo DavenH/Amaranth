@@ -166,6 +166,7 @@ private:
     String activeMorphParameterId;
     String activeVertexNodeId;
     String activeVertexParameterId;
+    TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
     bool curveTransactionActive {};
     bool curvePublicationPending {};

@@ -336,7 +336,7 @@ Current status:
   layer/column noise seeds, scratch-time application, waveform sampling, layer
   panning, and summation. Cycle 1 translates `MeshLibrary` records and its view
   stage into explicit shared layer values and a scratch-time resolver.
-- `Rasterization::EnvelopeGridRasterizer` owns the E3 half-bipolar request,
+- `Rasterization::EnvelopeMorphSurfaceRasterizer` owns the E3 half-bipolar request,
   morph-axis grid traversal, mesh rasterization, and perfect column sampling.
   Cycle 1 retains window/detail sizing, array allocation and locking, current
   mesh/axis lookup, and updater scheduling.

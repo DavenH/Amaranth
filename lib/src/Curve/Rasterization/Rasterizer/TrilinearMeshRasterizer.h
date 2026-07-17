@@ -14,11 +14,33 @@
 namespace Rasterization {
     class TrilinearMeshRasterizer : public BaseRasterizer {
     public:
-        RasterizationRequest& getRequest() { return request; }
         const RasterizationRequest& getRequest() const { return request; }
 
+        RenderResult& renderGeometry(const GeometryRenderCommand& command) {
+            renderTrilinearGeometry(
+                    command.mesh,
+                    command.request,
+                    command.oscillatorPhase);
+            return output;
+        }
+
+        RenderResult& renderWaveform(const WaveformRenderCommand& command) {
+            renderTrilinearWaveform(
+                    command.mesh,
+                    command.request,
+                    command.oscillatorPhase);
+            return output;
+        }
+
+        void publish(
+                const RenderResult& result,
+                const PublicationMetadata& metadata) {
+            RasterizerSnapshotSource source = createSnapshotSource(result, metadata);
+            publishSnapshot(source);
+        }
+
         SamplerView sampler() const override {
-            return SamplerView(waveform(), isSampleable());
+            return SamplerView(output.waveform, output.sampleable);
         }
 
         void updateGeometry() override {
@@ -39,8 +61,24 @@ namespace Rasterization {
             updateTrilinearWaveform(oscPhase);
         }
 
-        void render(Mesh* mesh, float oscPhase = 0.f) {
-            updateWaveform(mesh, oscPhase);
+        // Cycle v1 compatibility facade. These methods use stored request state;
+        // update* renders and publishes, while render*Only never publishes.
+        void renderGeometryOnly(float oscPhase = 0.f) {
+            renderTrilinearGeometry(oscPhase);
+        }
+
+        void renderGeometryOnly(Mesh* mesh, float oscPhase = 0.f) {
+            setMesh(mesh);
+            renderTrilinearGeometry(oscPhase);
+        }
+
+        void renderWaveformOnly(float oscPhase = 0.f) {
+            renderTrilinearWaveform(oscPhase);
+        }
+
+        void renderWaveformOnly(Mesh* mesh, float oscPhase = 0.f) {
+            setMesh(mesh);
+            renderTrilinearWaveform(oscPhase);
         }
 
         void setMesh(Mesh* mesh) {
@@ -60,7 +98,7 @@ namespace Rasterization {
         }
 
         bool isSampleable() const {
-            return waveformOutput != nullptr && waveformOutput->sampleable;
+            return output.sampleable;
         }
 
         MorphPosition& getMorphPosition() {
@@ -72,49 +110,50 @@ namespace Rasterization {
         }
 
         int getPaddingSize() const {
-            return waveformOutput != nullptr ? waveformOutput->paddingSize : request.paddingSize;
+            return output.paddingSize;
         }
 
         WaveformBuffers waveform() const {
-            return waveformOutput != nullptr ? waveformOutput->waveform : WaveformBuffers();
+            return output.waveform;
+        }
+
+        const RenderResult& result() const {
+            return output;
         }
 
         RasterizerSnapshotSource createSnapshotSource() const {
-            RasterizerSnapshotSource source;
-            source.intercepts = &meshIntercepts;
-            source.colorPoints = &meshColorPoints;
-            source.paddingSize = getPaddingSize();
-            source.wrapsVertices = request.cyclic;
+            return createSnapshotSource(output, PublicationMetadata { request.cyclic });
+        }
 
-            if (waveformOutput != nullptr) {
-                source.curves = &waveformOutput->curves;
-                source.waveform = waveformOutput->waveform;
-            }
+        RasterizerSnapshotSource createSnapshotSource(
+                const RenderResult& result,
+                const PublicationMetadata& metadata) const {
+            RasterizerSnapshotSource source;
+            source.intercepts = &result.intercepts;
+            source.colorPoints = &result.colorPoints;
+            source.curves = &result.curves;
+            source.waveform = result.waveform;
+            source.paddingSize = result.paddingSize;
+            source.wrapsVertices = metadata.wrapsVertices;
+            source.sampleable = result.sampleable;
 
             return source;
         }
 
         GuideCurveApplier createGuideCurveApplier(
                 VertCube::ReductionData& reductionData,
-                bool* needsResorting) const {
+                bool* needsResorting,
+                const RasterizationRequest& renderRequest) const {
             GuideCurvePolicyContext context;
             context.guideCurveProvider = guideCurveProvider;
             context.reduction = &reductionData;
-            context.scalingMode = request.scalingMode;
-            context.cyclic = request.cyclic;
+            context.scalingMode = renderRequest.scalingMode;
+            context.cyclic = renderRequest.cyclic;
             context.needsResorting = needsResorting;
-            context.noiseSeed = request.noiseSeed;
+            context.noiseSeed = renderRequest.noiseSeed;
             context.offsetSeeds = &guideCurveOffsetSeeds;
 
             return GuideCurveApplier(context);
-        }
-
-        const RenderResult* getWaveformOutput() const {
-            return waveformOutput;
-        }
-
-        const std::vector<Intercept>& getIntercepts() const {
-            return meshIntercepts;
         }
 
         void setBlue(float blue) {
@@ -129,12 +168,33 @@ namespace Rasterization {
             request.dims = dims;
         }
 
+        void setLowResCurves(bool lowResolution) {
+            request.lowResCurves = lowResolution;
+        }
+
+        void setPrimaryViewDimension(int dimension) {
+            request.primaryViewDimension = dimension;
+        }
+
+        void setScalingMode(PointScalingMode mode) {
+            request.scalingMode = mode;
+        }
+
+        void setXLimits(float minimum, float maximum) {
+            request.xMinimum = minimum;
+            request.xMaximum = maximum;
+        }
+
         void setGuideCurveProvider(GuideCurveProvider* provider) {
             guideCurveProvider = provider;
         }
 
         void setIntegralSampling(bool does) {
             request.integralSampling = does;
+        }
+
+        void setInterpolateCurves(bool interpolate) {
+            request.interpolateCurves = interpolate;
         }
 
         void setInterceptPadding(float value) {
@@ -155,19 +215,38 @@ namespace Rasterization {
 
         void setWrapsEnds(bool wraps) {
             request.cyclic = wraps;
-            rasterizerData.wrapsVertices = wraps;
         }
 
         void setYellow(float yellow) {
             request.morph.time.setValueDirect(yellow);
         }
 
-        void updateOffsetSeeds(int layerSize, int tableSize) {
-            Random random(Time::currentTimeMillis());
-            guideCurveOffsetSeeds.randomize(layerSize, tableSize, random);
+        void updateOffsetSeeds(
+                int layerSize,
+                int tableSize,
+                GuideCurveSeed seed) {
+            guideCurveOffsetSeeds.derive(layerSize, tableSize, seed);
         }
 
     protected:
+        void reserveTrilinearStorage(
+                size_t interceptCapacity,
+                size_t curveCapacity,
+                int waveformCapacity) {
+            output.intercepts.reserve(interceptCapacity);
+            output.frontPadding.reserve(curveCapacity);
+            output.backPadding.reserve(curveCapacity);
+            output.curves.reserve(curveCapacity);
+            output.guideCurveRegions.reserve(curveCapacity);
+            output.colorPoints.reserve(interceptCapacity);
+            output.waveformMemory.ensureSize(waveformCapacity * 5);
+            output.fixedWaveformCapacity = true;
+        }
+
+        RasterizationRequest& compatibilityRequest() {
+            return request;
+        }
+
         void cleanTrilinearRasterization() {
             clearTrilinearOutput();
             publishTrilinearSnapshot();
@@ -190,9 +269,7 @@ namespace Rasterization {
         Mesh* mesh {};
 
         void clearTrilinearOutput() {
-            meshIntercepts.clear();
-            meshColorPoints.clear();
-            waveformOutput = nullptr;
+            output.clear();
         }
 
         void renderTrilinearGeometry(float oscPhase) {
@@ -201,33 +278,55 @@ namespace Rasterization {
                 return;
             }
 
-            waveformOutput = nullptr;
-            bool needsResorting = false;
-
-            GuideCurveApplier guideApplier = createGuideCurveApplier(reduction, &needsResorting);
-            const RenderResult& meshOutput = meshSlicer.sliceMesh(
-                    mesh,
-                    request,
-                    oscPhase,
-                    guideApplier,
-                    meshSliceResult,
-                    reduction);
-
-            meshIntercepts = meshOutput.intercepts;
-            meshColorPoints = meshOutput.colorPoints;
+            renderTrilinearGeometry(*mesh, request, oscPhase);
         }
 
-        void renderTrilinearWaveform(float oscPhase) {
-            renderTrilinearGeometry(oscPhase);
-
-            if (meshIntercepts.empty()) {
+        void renderTrilinearGeometry(
+                Mesh& renderMesh,
+                const RasterizationRequest& renderRequest,
+                float oscPhase) {
+            if (renderMesh.getNumCubes() == 0) {
+                clearTrilinearOutput();
                 return;
             }
 
-            waveformOutput = &waveformBuilder.renderIntercepts(
-                    meshIntercepts,
-                    waveformResult,
-                    request,
+            bool needsResorting = false;
+
+            GuideCurveApplier guideApplier = createGuideCurveApplier(
+                    reduction,
+                    &needsResorting,
+                    renderRequest);
+            meshSlicer.sliceMesh(
+                    &renderMesh,
+                    renderRequest,
+                    oscPhase,
+                    guideApplier,
+                    output,
+                    reduction);
+        }
+
+        void renderTrilinearWaveform(float oscPhase) {
+            if (mesh == nullptr) {
+                clearTrilinearOutput();
+                return;
+            }
+
+            renderTrilinearWaveform(*mesh, request, oscPhase);
+        }
+
+        void renderTrilinearWaveform(
+                Mesh& renderMesh,
+                const RasterizationRequest& renderRequest,
+                float oscPhase) {
+            renderTrilinearGeometry(renderMesh, renderRequest, oscPhase);
+
+            if (output.intercepts.empty()) {
+                return;
+            }
+
+            waveformBuilder.renderResult(
+                    output,
+                    renderRequest,
                     guideCurveProvider,
                     &guideCurveOffsetSeeds);
         }
@@ -238,13 +337,8 @@ namespace Rasterization {
         RasterizationRequest request;
         GuideCurveOffsetSeeds guideCurveOffsetSeeds;
         TrilinearMeshSlicer meshSlicer;
-        RenderResult meshSliceResult;
         CurveWaveformBuilder waveformBuilder;
-        RenderResult waveformResult;
-        RenderResult const* waveformOutput {};
-
-        std::vector<Intercept> meshIntercepts;
-        std::vector<ColorPoint> meshColorPoints;
+        RenderResult output;
         VertCube::ReductionData reduction;
     };
 }

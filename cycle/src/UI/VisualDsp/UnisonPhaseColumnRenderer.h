@@ -64,7 +64,10 @@ namespace Cycle::Rasterization {
 
             // Calculates the curve for deferred sampleAt calls in processing.
             // Do this second to preserve guide curve contexts.
-            pitch.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+            pitch.updateOffsetSeeds(
+                    1,
+                    GuideCurvePanel::tableSize,
+                    ::Rasterization::GuideCurveSeed::visualization(0x554e4953u));
             pitch.ensureParamSize(unisonOrder);
             pitch.setCalcDepthDimensions(false);
             pitch.setWantOneSamplePerCycle(true);

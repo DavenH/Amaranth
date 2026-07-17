@@ -30,8 +30,12 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
     interactor3D.stopTimer();
     interactor2D.setRasterizer(&panelRasterizer.getRasterizer());
     interactor3D.setRasterizer(&panelRasterizer.getRasterizer());
-    interactor2D.setMeshEditedCallback([this](bool sourceIs3D) { refreshAfterMeshEdit(sourceIs3D); });
-    interactor3D.setMeshEditedCallback([this](bool sourceIs3D) { refreshAfterMeshEdit(sourceIs3D); });
+    interactor2D.setMeshEditedCallback([this](TrimeshMeshEditEvent event) {
+        refreshAfterMeshEdit(event);
+    });
+    interactor3D.setMeshEditedCallback([this](TrimeshMeshEditEvent event) {
+        refreshAfterMeshEdit(event);
+    });
     panel2D.setInteractor(&interactor2D);
     panel3D.setInteractor(&interactor3D);
 }
@@ -99,17 +103,17 @@ void TrimeshPanelBridge::syncFromNode(
     lastColumns = columns;
 }
 
-void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
+void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     const TrimeshInvalidationResult invalidated = invalidation.invalidate({
             TrimeshChangeKind::MeshEdit,
             false,
             false,
             false,
-            sourceIs3D,
+            event.sourceIs3D,
             model.getPrimaryViewAxis()
     });
 
-    vector<Vertex*>& selected = sourceIs3D
+    vector<Vertex*>& selected = event.sourceIs3D
             ? interactor3D.getSelected()
             : interactor2D.getSelected();
     if (!selected.empty()) {
@@ -121,7 +125,7 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(bool sourceIs3D) {
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = panelRevisionFor(model);
 
-    if (meshEditedCallback != nullptr) {
+    if (event.gestureComplete && meshEditedCallback != nullptr) {
         meshEditedCallback();
     }
 }

@@ -33,7 +33,8 @@ TrimeshInteractor3D::TrimeshInteractor3D(SingletonRepo* repo, const String& name
         SingletonAccessor(repo, name)
     ,   Interactor3D(repo, name) {}
 
-void TrimeshInteractor3D::setMeshEditedCallback(std::function<void(bool)> callback) {
+void TrimeshInteractor3D::setMeshEditedCallback(
+        std::function<void(TrimeshMeshEditEvent)> callback) {
     meshEditedCallback = std::move(callback);
 }
 
@@ -169,7 +170,7 @@ void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
     Interactor3D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
-        meshEditedCallback(true);
+        meshEditedCallback({ true, false });
     }
 }
 
@@ -205,7 +206,7 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
     flag(SimpleRepaint) = false;
 
     if (meshChanged && meshEditedCallback != nullptr) {
-        meshEditedCallback(true);
+        meshEditedCallback({ true, true });
     }
 }
 
@@ -216,7 +217,7 @@ void TrimeshInteractor3D::deleteSelected() {
     eraseSelected();
     performUpdate(Update);
     if (meshEditedCallback != nullptr) {
-        meshEditedCallback(true);
+        meshEditedCallback({ true, true });
     }
 }
 

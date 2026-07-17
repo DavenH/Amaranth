@@ -5,7 +5,7 @@
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 
 namespace CycleV2 {
@@ -150,11 +150,7 @@ public:
         state.setProperty("linkToggles", linkToggles);
 
         auto* meshState = new DynamicObject();
-        const TrimeshMeshEditState edits = boundWidget->currentMeshEditState();
-        int vertexCount = 0;
-        for (const auto& edit : edits.getVertexEdits()) {
-            vertexCount = jmax(vertexCount, edit.vertexIndex + 1);
-        }
+        const int vertexCount = static_cast<int>(boundWidget->vertexMarkers().size());
         const int selectedVertexIndex = boundWidget->selectedVertexIndexForPanel();
         meshState->setProperty("vertexCount", vertexCount);
         meshState->setProperty("selectedVertexIndex", selectedVertexIndex);
@@ -441,6 +437,7 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
     }
     activeVertexNodeId = nodeId;
     activeVertexParameterId = parameterId;
+    activeVertexWidget = widget;
     activeVertexIndex = vertexIndex;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshVertexParameterEditValue(value);
@@ -448,31 +445,46 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
 
 bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value) {
     const Node* node = findNode(activeVertexNodeId);
-    if (node == nullptr || activeVertexParameterId.isEmpty() || activeVertexIndex < 0) {
+    if (node == nullptr || activeVertexWidget == nullptr
+            || activeVertexParameterId.isEmpty() || activeVertexIndex < 0) {
         return false;
     }
     String label = activeVertexParameterId.fromFirstOccurrenceOf(".", false, false);
     if (label.isEmpty()) {
         label = activeVertexParameterId;
     }
-    const String persistentId = TrimeshMeshEditState::canonicalVertexParameterId(
-            activeVertexIndex, label);
-    const auto result = commands.setNodeParameter(
-            activeVertexNodeId, persistentId, label, String(value, 3));
-    if (!result.succeeded()) {
+    if (!activeVertexWidget->setVertexParameter(
+            activeVertexIndex,
+            activeVertexParameterId,
+            value)) {
         return false;
     }
-    presentation.scheduleNodeEditorRefresh();
     presentation.setNodeEditorStatus(
             "Vertex #" + String(activeVertexIndex) + " " + label + " = " + String(value, 2));
+    presentation.repaintNodeEditor(false);
     return true;
 }
 
 void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
-    commands.commitCompoundEdit();
+    const Node* node = findNode(activeVertexNodeId);
+    bool published {};
+    if (node != nullptr && activeVertexWidget != nullptr) {
+        const auto result = commands.setNodeParameter(
+                activeVertexNodeId,
+                TrimeshMeshState::parameterId(),
+                "Mesh Topology",
+                activeVertexWidget->currentMeshState());
+        published = result.succeeded();
+    }
+    if (published) {
+        commands.commitCompoundEdit();
+    } else {
+        commands.cancelCompoundEdit();
+    }
     presentation.flushNodeEditorRefresh();
     activeVertexNodeId = {};
     activeVertexParameterId = {};
+    activeVertexWidget = nullptr;
     activeVertexIndex = -1;
 }
 
@@ -483,18 +495,11 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(const String& nodeId) {
         return;
     }
     commands.beginCompoundEdit();
-    const TrimeshMeshEditState editState = widget->currentMeshEditState();
-    for (const TrimeshVertexEdit& edit : editState.getVertexEdits()) {
-        const String field = TrimeshMeshEditState::fieldForVertexValueIndex(edit.valueIndex);
-        if (field.isEmpty()) {
-            continue;
-        }
-        commands.setNodeParameter(
-                nodeId,
-                TrimeshMeshEditState::canonicalVertexParameterId(edit.vertexIndex, field),
-                field,
-                String(edit.value, 6));
-    }
+    commands.setNodeParameter(
+            nodeId,
+            TrimeshMeshState::parameterId(),
+            "Mesh Topology",
+            widget->currentMeshState());
     commands.setNodeParameter(
             nodeId,
             "selectedVertexIndex",

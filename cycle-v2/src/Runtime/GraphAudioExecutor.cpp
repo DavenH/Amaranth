@@ -312,6 +312,17 @@ size_t GraphAudioExecutor::preparationCount(const String& nodeId, int voiceIndex
     return found == processors.end() ? 0 : found->preparationCount;
 }
 
+size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
+    size_t preparedCount = 0;
+    for (const auto& entry : processors) {
+        if (entry.processor != nullptr
+                && entry.processor->serviceNonRealtimePreparation()) {
+            ++preparedCount;
+        }
+    }
+    return preparedCount;
+}
+
 NodeAudioProcessor* GraphAudioExecutor::processorFor(
         const String& nodeId,
         int voiceIndex,

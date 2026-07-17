@@ -187,7 +187,10 @@ void IrModeller::rasterizeImpulse(
             return;
         }
 
-        waveform.updateWaveform();
+        waveform.renderWaveformOnly();
+        if (!isAudioThread) {
+            waveform.publishCurrentResult();
+        }
 
         double delta = (1.f - getRealConstant(IrModellerPadding)) / double(impulse.size() - 1);
         double phase = getRealConstant(IrModellerPadding);
@@ -280,7 +283,7 @@ void IrModeller::checkForPendingUpdates() {
                     break;
 
                 case rasterize: {
-                    audioThdRasterizer.updateWaveform();
+                    audioThdRasterizer.renderWaveformOnly();
                     rasterizeImpulseDirect();
                     break;
                 }

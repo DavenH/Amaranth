@@ -184,7 +184,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 650.f, 420.f, 330.f, 250.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }));
 
@@ -212,7 +215,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1175.f, 170.f, 320.f, 190.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Bottom) }));
 
@@ -236,7 +242,10 @@ NodeGraph NodeGraph::createDemoGraph() {
             { 1175.f, 760.f, 320.f, 190.f },
             {
                     input("context", "Context", PortDomain::DomainContext),
-                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment)
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
+                    input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
+                    input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top)
             },
             { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo, PortSide::Top) }));
 

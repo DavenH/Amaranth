@@ -8,7 +8,7 @@
 namespace Rasterization {
     class BaseRasterizer : public Rasterizer {
     public:
-        SnapshotView snapshotView() override {
+        SnapshotView snapshotView() const override {
             return SnapshotView(rasterizerData);
         }
 
@@ -17,6 +17,6 @@ namespace Rasterization {
             RasterizerSnapshotBuilder().publish(rasterizerData, source);
         }
 
-        RasterizerData rasterizerData;
+        mutable RasterizerData rasterizerData;
     };
 }

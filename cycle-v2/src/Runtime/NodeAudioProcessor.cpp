@@ -3,12 +3,13 @@
 #include "AudioProcessContextUtils.h"
 #include "BinarySignalProcessor.h"
 #include "NodeAudioProcessor.h"
+#include "SmoothedMorphPosition.h"
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/FFT/FftSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshMeshEditState.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
@@ -29,38 +30,6 @@ size_t traversalRowsForDomain(PortDomain domain, size_t frameCount) {
     }
 
     return frameCount;
-}
-
-void publishGridColumns(
-        SignalPayload& payload,
-        const std::vector<TrimeshGridColumn>& columns,
-        const AudioProcessWorkArena* arena) {
-    if (columns.empty() || columns.front().signal.block.samples.empty()) {
-        payload.traversalGrid = {};
-        return;
-    }
-
-    const size_t rows = columns.front().signal.block.samples.size();
-    configureTraversalGrid(
-            payload.traversalGrid,
-            columns.size(),
-            rows,
-            makeTraversalGridMetadata(
-                    payload.domain,
-                    columns.size(),
-                    rows,
-                    TraversalGridAxis::Time,
-                    defaultTraversalRowAxisForDomain(payload.domain)),
-            arena);
-
-    for (size_t column = 0; column < columns.size(); ++column) {
-        const auto& samples = columns[column].signal.block.samples;
-        const size_t count = std::min(rows, samples.size());
-        std::copy(
-                samples.begin(),
-                samples.begin() + (ptrdiff_t) count,
-                payload.traversalGrid.values.begin() + (ptrdiff_t) (column * rows));
-    }
 }
 
 int primaryAxisFromParameter(const String& axisName) {
@@ -276,6 +245,9 @@ public:
     void adoptConfiguration(const PublishedNodeConfiguration& configuration) override {
         processor.adoptConfiguration(configuration);
     }
+    bool serviceNonRealtimePreparation() override {
+        return processor.serviceNonRealtimePreparation();
+    }
     void process(AudioProcessContext& context) override { processor.process(context); }
 
 private:
@@ -393,11 +365,20 @@ public:
             return;
         }
         preparedDomain = spec.domain;
+        smoothedMorph.reset(configuration->morph);
+        morphInitialized = true;
         trimeshDsp.prepare(
                 configuration->mesh.get(),
                 configuration->morph,
                 configuration->primaryViewAxis,
                 preparedDomain == PortDomain::TimeSignal);
+        trimeshGridDsp.setCyclic(preparedDomain == PortDomain::TimeSignal);
+        trimeshGridDsp.prepare(
+                *configuration->mesh,
+                configuration->morph,
+                configuration->primaryViewAxis,
+                std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
+                traversalRowsForDomain(preparedDomain, spec.maximumFrameCount));
     }
 
     void process(AudioProcessContext& context) override {
@@ -405,7 +386,38 @@ public:
     }
 
 private:
-    void processMeshSource(AudioProcessContext& context) const {
+    static float absoluteMorphValue(
+            AudioProcessContext& context,
+            size_t inputIndex,
+            float fallback) {
+        const SignalPayload* input = inputAt(context, inputIndex);
+        if (input == nullptr || input->block.samples.empty()) {
+            return fallback;
+        }
+        return jlimit(0.f, 1.f, input->block.samples.front());
+    }
+
+    static MorphPosition morphTargets(
+            AudioProcessContext& context,
+            const MorphPosition& fallback) {
+        return {
+                absoluteMorphValue(context, 2, fallback.time.getCurrentValue()),
+                absoluteMorphValue(context, 3, fallback.red.getCurrentValue()),
+                absoluteMorphValue(context, 4, fallback.blue.getCurrentValue())
+        };
+    }
+
+    static bool hasConnectedMorphInput(AudioProcessContext& context) {
+        for (size_t inputIndex = 2; inputIndex < 5; ++inputIndex) {
+            const SignalPayload* input = inputAt(context, inputIndex);
+            if (input != nullptr && !input->block.samples.empty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void processMeshSource(AudioProcessContext& context) {
         AudioOutputPort outputPort;
         if (!context.outputPorts.empty()) {
             outputPort = context.outputPorts.front();
@@ -422,19 +434,35 @@ private:
             return;
         }
 
-        const auto morph = configuration != nullptr
+        const auto baseMorph = configuration != nullptr
                 ? configuration->morph
                 : meshMorphFromParameters(processParameters(context));
+        if (!morphInitialized) {
+            smoothedMorph.reset(baseMorph);
+            morphInitialized = true;
+        }
+        smoothedMorph.setTargets(morphTargets(context, baseMorph));
+        smoothedMorph.advance(context.frameCount, context.timing.sampleRate);
+        const MorphPosition& morph = smoothedMorph.current();
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : primaryAxisFromParameter(typedParameterString(
                         processParameters(context), "primaryAxis", "yellow"));
         if (configuration != nullptr) {
-            trimeshDsp.renderPrepared(
-                    context.frameCount,
-                    outputPort.domain,
-                    outputPort.channelLayout,
-                    output);
+            if (hasConnectedMorphInput(context)) {
+                trimeshDsp.setMorphPosition(morph);
+                trimeshDsp.renderCycle(
+                        context.frameCount,
+                        outputPort.domain,
+                        outputPort.channelLayout,
+                        output);
+            } else {
+                trimeshDsp.renderPrepared(
+                        context.frameCount,
+                        outputPort.domain,
+                        outputPort.channelLayout,
+                        output);
+            }
         } else {
             syncMeshEdits(processParameters(context));
             trimeshDsp.prepare(
@@ -451,43 +479,39 @@ private:
 
         if (context.captureTraversalGrid) {
             Mesh& gridMesh = configuration != nullptr ? *configuration->mesh : *defaultMesh;
-            publishGridColumns(
-                output,
-                renderMeshColumns(
-                        gridMesh,
-                        morph,
-                        primaryAxis,
-                        std::max(kDefaultTraversalColumns, context.frameCount / 2),
-                        traversalRowsForDomain(outputPort.domain, context.frameCount),
-                        outputPort.domain,
-                        outputPort.channelLayout),
-                context.workArena);
+            const size_t columnCount = std::max(
+                    kDefaultTraversalColumns, context.frameCount / 2);
+            const size_t rowCount = traversalRowsForDomain(
+                    outputPort.domain, context.frameCount);
+            configureTraversalGrid(
+                    output.traversalGrid,
+                    columnCount,
+                    rowCount,
+                    makeTraversalGridMetadata(
+                            output.domain,
+                            columnCount,
+                            rowCount,
+                            TraversalGridAxis::Time,
+                            defaultTraversalRowAxisForDomain(output.domain)),
+                    context.workArena);
+            trimeshGridDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
+            trimeshGridDsp.renderColumnsInto(
+                    gridMesh,
+                    morph,
+                    primaryAxis,
+                    columnCount,
+                    Buffer<float>(
+                            output.traversalGrid.values.data(),
+                            (int) (columnCount * rowCount)));
         }
         publishSingleOutput(context, std::move(output));
     }
 
-    std::vector<TrimeshGridColumn> renderMeshColumns(
-            Mesh& mesh,
-            const MorphPosition& morph,
-            int primaryAxis,
-            size_t columnCount,
-            size_t frameCount,
-            PortDomain domain,
-            ChannelLayout channelLayout) const {
-        TrimeshGridwiseDsp gridwiseDsp;
-        gridwiseDsp.setCyclic(domain == PortDomain::TimeSignal);
-        return gridwiseDsp.renderColumns(
-                mesh,
-                morph,
-                primaryAxis,
-                columnCount,
-                frameCount,
-                domain,
-                channelLayout);
-    }
-
-    void syncMeshEdits(const std::vector<NodeParameter>& parameters) const {
-        const TrimeshMeshEditState nextState = TrimeshMeshEditState::fromParameters(parameters);
+    void syncMeshEdits(const std::vector<NodeParameter>& parameters) {
+        const String nextState = typedParameterString(
+                parameters,
+                TrimeshMeshState::parameterId(),
+                {});
 
         if (nextState == meshEditState) {
             return;
@@ -495,20 +519,27 @@ private:
 
         defaultMesh->destroy();
         defaultMesh = TrimeshMeshFactory::createDefaultMesh();
-        nextState.applyTo(*defaultMesh);
+        if (nextState.isNotEmpty()) {
+            TrimeshMeshState::apply(nextState, *defaultMesh);
+        }
         meshEditState = nextState;
     }
 
-    mutable TrimeshBlockwiseDsp trimeshDsp;
-    mutable std::unique_ptr<Mesh> defaultMesh;
-    mutable TrimeshMeshEditState meshEditState;
+    bool morphInitialized {};
     PortDomain preparedDomain { PortDomain::ControlSignal };
+    SmoothedMorphPosition smoothedMorph;
+    TrimeshBlockwiseDsp trimeshDsp;
+    TrimeshGridwiseDsp trimeshGridDsp;
+    std::unique_ptr<Mesh> defaultMesh;
+    String meshEditState;
     std::shared_ptr<const TrimeshConfiguration> configuration;
 };
 
 void NodeAudioProcessor::prepareExecution(const AudioExecutionSpec&) {}
 
 void NodeAudioProcessor::adoptConfiguration(const PublishedNodeConfiguration&) {}
+
+bool NodeAudioProcessor::serviceNonRealtimePreparation() { return false; }
 
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     using Factory = std::unique_ptr<NodeAudioProcessor> (*)();

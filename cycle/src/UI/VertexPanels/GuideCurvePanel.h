@@ -131,7 +131,6 @@ private:
 
     float samplingInterval;
 
-    Random random;
     Ref<MeshLibrary> meshLib;
 
     ScopedAlloc<Float32> constMemory;

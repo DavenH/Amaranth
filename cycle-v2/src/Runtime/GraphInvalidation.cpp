@@ -1,5 +1,7 @@
 #include "GraphInvalidation.h"
 
+#include <cstdint>
+
 namespace CycleV2 {
 
 GraphInvalidationResult GraphInvalidation::invalidateFrom(
@@ -16,46 +18,59 @@ GraphInvalidationResult GraphInvalidation::invalidateFrom(
             || hasImpact(impacts, ParameterImpact::Preview);
 
     if (dirtiesAudio) {
-        appendDependents(plan, nodeId, result.audioNodes);
-    }
-    if (dirtiesPreview) {
-        appendDependents(plan, nodeId, result.previewNodes);
+        result.audioNodes = dependentsFrom(plan.dependencyIndex, nodeId, result);
+        if (dirtiesPreview) {
+            result.previewNodes = result.audioNodes;
+        }
+    } else if (dirtiesPreview) {
+        result.previewNodes = dependentsFrom(plan.dependencyIndex, nodeId, result);
     }
 
     return result;
 }
 
-void GraphInvalidation::appendDependents(
-        const GraphExecutionPlan& plan,
+std::vector<String> GraphInvalidation::dependentsFrom(
+        const GraphDependencyIndex& index,
         const String& nodeId,
-        std::vector<String>& nodes) const {
-    if (contains(nodes, nodeId)) {
-        return;
-    }
-
-    nodes.push_back(nodeId);
-
-    for (const auto& edge : plan.signalEdges) {
-        if (edge.sourceNodeId == nodeId) {
-            appendDependents(plan, edge.destNodeId, nodes);
+        GraphInvalidationResult& diagnostics) const {
+    int root = -1;
+    for (int i = 0; i < (int) index.nodeIds.size(); ++i) {
+        if (index.nodeIds[(size_t) i] == nodeId) {
+            root = i;
+            break;
         }
     }
 
-    for (const auto& attachment : plan.attachments) {
-        if (attachment.sourceNodeId == nodeId) {
-            appendDependents(plan, attachment.destNodeId, nodes);
-        }
-    }
-}
-
-bool GraphInvalidation::contains(const std::vector<String>& nodes, const String& nodeId) const {
-    for (const auto& node : nodes) {
-        if (node == nodeId) {
-            return true;
-        }
+    if (root < 0) {
+        return {};
     }
 
-    return false;
+    std::vector<uint8_t> visited(index.nodeIds.size());
+    std::vector<int> pending { root };
+    visited[(size_t) root] = 1;
+    while (!pending.empty()) {
+        const int current = pending.back();
+        pending.pop_back();
+        ++diagnostics.visitedNodeCount;
+
+        for (const int destination : index.dependents[(size_t) current]) {
+            ++diagnostics.inspectedDependencyCount;
+            if (visited[(size_t) destination] == 0) {
+                visited[(size_t) destination] = 1;
+                pending.push_back(destination);
+            }
+        }
+    }
+
+    std::vector<String> nodes;
+    nodes.reserve(diagnostics.visitedNodeCount);
+    for (int i = 0; i < (int) index.nodeIds.size(); ++i) {
+        if (visited[(size_t) i] != 0) {
+            nodes.push_back(index.nodeIds[(size_t) i]);
+        }
+    }
+
+    return nodes;
 }
 
 }

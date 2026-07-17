@@ -195,6 +195,8 @@ void Waveform3D::buttonClicked(Button* button) {
                     getObj(ModMatrixPanel).layerRemoved(interactor->layerType, layerIdx);
                 }
             }
+
+            getObj(SynthAudioSource).prepareVoiceRasterizersAtSafeBoundary();
         }
 
         panelControls->refreshSelector(forceUpdate);

@@ -13,10 +13,43 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.kind == NodeKind::Envelope);
     REQUIRE(node.bounds.getX() == 10.f);
     REQUIRE(node.bounds.getY() == 20.f);
+    REQUIRE(node.inputs.size() == 2);
+    REQUIRE(node.inputs[0].id == "red");
+    REQUIRE(node.inputs[1].id == "blue");
+    REQUIRE(node.inputs[0].side == PortSide::Top);
+    REQUIRE(node.inputs[1].side == PortSide::Top);
     REQUIRE(node.outputs.size() == 1);
     REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
     REQUIRE(parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId()).isNotEmpty());
     REQUIRE(parameterValueForNode(node, "envelope.snapshot").isEmpty());
+    REQUIRE(parameterValueForNode(node, "dynamic") == "0");
+}
+
+TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
+        "[cycle-v2][graph][morph]") {
+    Node envelope;
+    envelope.kind = NodeKind::Envelope;
+    envelope.id = "saved-envelope";
+    Node mesh;
+    mesh.kind = NodeKind::TrilinearMesh;
+    mesh.id = "saved-mesh";
+    mesh.inputs = {
+            { "context", "Context", PortDomain::DomainContext },
+            { "scratch", "Scratch", PortDomain::ControlSignal,
+                    ChannelLayout::Mono, PortPurpose::ScratchAttachment }
+    };
+
+    NodeDefinitionRegistry::instance().normalize(envelope);
+    NodeDefinitionRegistry::instance().normalize(mesh);
+
+    REQUIRE(envelope.inputs.size() == 2);
+    REQUIRE(envelope.inputs[0].id == "red");
+    REQUIRE(envelope.inputs[1].id == "blue");
+    REQUIRE(parameterValueForNode(envelope, "dynamic") == "0");
+    REQUIRE(mesh.inputs.size() == 5);
+    REQUIRE(mesh.inputs[2].id == "yellow");
+    REQUIRE(mesh.inputs[3].id == "red");
+    REQUIRE(mesh.inputs[4].id == "blue");
 }
 
 TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]") {
@@ -44,10 +77,16 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
 
     REQUIRE(mesh.title == "Trilinear Mesh");
     REQUIRE(mesh.outputs.size() == 1);
-    REQUIRE(mesh.inputs.size() == 2);
+    REQUIRE(mesh.inputs.size() == 5);
     REQUIRE(mesh.inputs[0].domain == PortDomain::DomainContext);
     REQUIRE(mesh.inputs[1].id == "scratch");
     REQUIRE(mesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(mesh.inputs[2].id == "yellow");
+    REQUIRE(mesh.inputs[3].id == "red");
+    REQUIRE(mesh.inputs[4].id == "blue");
+    REQUIRE(mesh.inputs[2].domain == PortDomain::ControlSignal);
+    REQUIRE(mesh.inputs[2].side == PortSide::Top);
+
     REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
 
     REQUIRE(add.title == "Add");

@@ -60,6 +60,7 @@ public:
     void controlFreqChanged();
     void enablementChanged();
     void prepNewVoice();
+    void prepareVoiceRasterizersAtSafeBoundary();
     void qualityChanged();
     void releaseResources() override;
     void paramChanged(int controller, float value);

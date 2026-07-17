@@ -94,8 +94,7 @@ VisualDsp::VisualDsp(SingletonRepo* repo) :
     ,	envProcessor 	(this, repo, EnvStage)
     ,	fftProcessor 	(this, repo, FFTStage)
     ,	fxProcessor	 	(this, repo, FXStage)
-    ,	scratchEnvPanel	(Panel::linestripRes)
-    ,	random			(Time::currentTimeMillis()) {
+    ,	scratchEnvPanel	(Panel::linestripRes) {
 
     for (int fftOrderIdx = 0; fftOrderIdx < numFFTOrders; ++fftOrderIdx) {
         int size = 8 << fftOrderIdx;
@@ -140,8 +139,12 @@ void VisualDsp::rasterizeEnv(Buffer<Float32> env,
     if (dim == Vertex::Time) {
         if (props->active) {
             // degrade curve for surface rendering (accuracy not important)
-            rasterizer.updateOffsetSeeds(getObj(MeshLibrary).getLayerGroup(layerGroup).size(), GuideCurvePanel::tableSize);
-            rasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
+            const uint32_t stableSeed = 0x454e5600u + (uint32_t) layerGroup;
+            rasterizer.updateOffsetSeeds(
+                    getObj(MeshLibrary).getLayerGroup(layerGroup).size(),
+                    GuideCurvePanel::tableSize,
+                    Rasterization::GuideCurveSeed::visualization(stableSeed));
+            rasterizer.setNoiseSeed((int) (stableSeed % GuideCurvePanel::tableSize));
             rasterizer.setLowresCurves(!isScratchGroup);
             rasterizer.setCalcDepthDimensions(false);
             rasterizer.setMode(EnvRasterizer::NormalState);
@@ -233,7 +236,8 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
     }
 
     auto logRasterizerState = [envEnum](const char* context, EnvRasterizer& rast) {
-        const auto& icpts = rast.snapshotView().intercepts();
+        auto snapshot = rast.snapshotView();
+        const auto& icpts = snapshot.intercepts();
         Mesh* mesh = rast.getCurrentMesh();
         DBG(String::formatted("VisualDsp::rasterizeEnv %s env=%s(%d) rast=%p mesh=%p cubesEnough=%d icpts=%d sampleable=%d",
                               context,
@@ -275,7 +279,10 @@ void VisualDsp::rasterizeEnv(int envEnum, int numColumns) {
 
         // calculates graphic curve (update() makes a copy)
         rast->setNoteOn();
-        rast->updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+        rast->updateOffsetSeeds(
+                1,
+                GuideCurvePanel::tableSize,
+                Rasterization::GuideCurveSeed::visualization(0x50495443u));
         rast->setWantOneSamplePerCycle(false);
         rast->setCalcDepthDimensions(true);
         rast->setDecoupleComponentDfrm(false);
@@ -416,13 +423,16 @@ void VisualDsp::calcTimeDomain(int numColumns) {
     GraphicRasterizer::RenderState timeState;
     auto scopedState = timeRasterizer->preserveState(timeState);
 
-    auto batchState = GraphicRasterizer::createBatchRenderState(
+    auto batchState = GraphicRasterizer::createAnalysisRenderState(
             GraphicRasterizer::Scaling::HalfBipolar,
             timeState.pos);
     batchState.pos.time = 0;
 
     timeRasterizer->restoreStateFrom(batchState);
-    timeRasterizer->updateOffsetSeeds(timeGroup.size(), GuideCurvePanel::tableSize);
+    timeRasterizer->updateOffsetSeeds(
+            timeGroup.size(),
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::visualization(0x54494d45u));
 
     int numActiveLayers = surface->getNumActiveLayers();
 
@@ -537,7 +547,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
     GraphicRasterizer::RenderState freqState, phaseState;
     auto freqStateScoped = spectRasterizer->preserveState(freqState);
     auto phaseStateScoped = phaseRasterizer->preserveState(phaseState);
-    auto batchState = GraphicRasterizer::createBatchRenderState(
+    auto batchState = GraphicRasterizer::createAnalysisRenderState(
             GraphicRasterizer::Scaling::Bipolar,
             freqState.pos);
 
@@ -549,8 +559,14 @@ void VisualDsp::calcSpectrogram(int numColumns) {
 
     int numPhaseLayers = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupPhase).size();
     int numSpectLayers = getObj(MeshLibrary).getLayerGroup(LayerGroups::GroupSpect).size();
-    phaseRasterizer->updateOffsetSeeds(numPhaseLayers, GuideCurvePanel::tableSize);
-    spectRasterizer->updateOffsetSeeds(numSpectLayers, GuideCurvePanel::tableSize);
+    phaseRasterizer->updateOffsetSeeds(
+            numPhaseLayers,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::visualization(0x50484153u));
+    spectRasterizer->updateOffsetSeeds(
+            numSpectLayers,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::visualization(0x53504543u));
 
     Buffer magBuf(fft.getMagnitudes(), numHarmonics);
     Buffer phaseBuf(fft.getPhases(), numHarmonics);
@@ -619,7 +635,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if (colIdx % colMagRatio == 0) {
                     spectRasterizer->setNoiseSeed(colIdx * 1997);
                     spectRasterizer->setYellow(scratchTime);
-                    spectRasterizer->updateWaveform(spectLayer.mesh, 0.f);
+                    spectRasterizer->renderWaveformOnly(spectLayer.mesh, 0.f);
 
                     auto sampler = spectRasterizer->sampler();
                     if (!sampler.isSampleable()) {
@@ -685,7 +701,7 @@ void VisualDsp::calcSpectrogram(int numColumns) {
                 if(colIdx % colPhaseRatio == 0) {
                     phaseRasterizer->setNoiseSeed(colIdx * 671);
                     phaseRasterizer->setYellow(scratchTime);
-                    phaseRasterizer->updateWaveform(layer.mesh, 0.f);
+                    phaseRasterizer->renderWaveformOnly(layer.mesh, 0.f);
 
                     auto sampler = phaseRasterizer->sampler();
                     if(sampler.isSampleable()) {

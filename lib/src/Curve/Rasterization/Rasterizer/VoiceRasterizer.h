@@ -13,8 +13,30 @@
 
 namespace Rasterization {
 
+struct VoiceRasterizerPreparation {
+    size_t interceptCapacity {};
+    size_t curveCapacity {};
+    int waveformCapacity {};
+
+    static VoiceRasterizerPreparation forMesh(const Mesh& mesh);
+    void include(const Mesh& mesh);
+};
+
+struct VoiceRasterizerDiagnostics {
+    size_t sliceCount {};
+    size_t sortCount {};
+    size_t bakeCount {};
+    size_t publicationCount {};
+    size_t capacityFailureCount {};
+};
+
 class VoiceRasterizer : public TrilinearMeshRasterizer {
 private:
+    enum class ActiveOutput {
+        Ordinary,
+        Chained
+    };
+
     JUCE_LEAK_DETECTOR(VoiceRasterizer)
 
 public:
@@ -26,12 +48,25 @@ public:
      * Chains the minimum necessary number of points from the previous call to
      * the head of the subsequent call, preserving continuity between cycles.
      */
-    void updateChainedWaveform(float phase);
+    const RenderResult& renderOrdinary(Mesh* mesh, float phase);
+    const RenderResult& renderChained(float phase);
+    void prepare(
+            const VoiceRasterizerPreparation& preparation,
+            const std::vector<VoiceCycleState*>& states = {});
+    bool isPreparedFor(const Mesh& mesh) const;
+    const VoiceRasterizerPreparation& preparedCapacity() const { return preparation; }
+    const VoiceRasterizerDiagnostics& diagnostics() const { return renderDiagnostics; }
+    void resetDiagnostics() { renderDiagnostics = {}; }
     void orphanOldVerts();
     void setState(VoiceCycleState* state) { this->state = state; }
 
     void cleanUp();
     void reset() { cleanUp(); }
+    void publishCurrentResult();
+
+    static SamplerView sampler(const RenderResult& result) {
+        return SamplerView(result.waveform, result.sampleable);
+    }
 
     Rasterization::SamplerView sampler() const override {
         return SamplerView(currentWaveform(), currentWaveformIsSampleable());
@@ -40,9 +75,9 @@ public:
 private:
     WaveformBuffers currentWaveform() const;
     bool currentWaveformIsSampleable() const;
-    void bakeChainedWaveform();
+    bool bakeChainedWaveform();
     void cleanChainedOutput();
-    RenderResult renderVoiceSlice(float oscPhase);
+    const RenderResult& renderVoiceSlice(float oscPhase);
     void appendVoiceCubeIntercept(
             VertCube* cube,
             float voiceTime,
@@ -50,21 +85,20 @@ private:
             GuideCurveApplier& applyGuide,
             std::vector<Intercept>& intercepts);
     void markChainedWaveformUnsampleable();
-    void publishSnapshot();
-    void updateChainBuffers(int size);
     void restrictIntercepts(std::vector<Intercept>& intercepts);
+    bool hasPreparedCapacity(const Mesh* candidate) const;
 
     VoiceCycleState* state {};
     RenderResult chainResult;
+    RenderResult sliceResult;
     VertCube::ReductionData chainReduction;
     TrilinearMeshSlicer voiceSlicer;
     VoicePointPositionPolicy voicePointPositionPolicy;
+    VoiceRasterizerPreparation preparation;
+    VoiceRasterizerDiagnostics renderDiagnostics;
 
     float initialAdvancement;
-    int chainPaddingSize { 2 };
-    bool chainUnsampleable { true };
-    bool chainNeedsResorting {};
-    bool chainedOutputActive {};
+    ActiveOutput activeOutput { ActiveOutput::Ordinary };
 };
 
 }

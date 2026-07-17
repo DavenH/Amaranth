@@ -61,8 +61,7 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     }
 
     ensureCurveTable();
-    preparedRasterizer.updateGeometry();
-    preparedRasterizer.updateWaveform();
+    preparedRasterizer.renderWaveformOnly();
     preparedTransfer->rasterizeFrom(preparedRasterizer.sampler(), kWaveshaperPadding);
     preparedMesh.destroy();
 
@@ -160,8 +159,7 @@ void WaveshaperSignalProcessor::syncTransferTable(const std::vector<NodeParamete
     rebuildMesh(serializedVertices);
     lastVertexState = serializedVertices;
     ensureCurveTable();
-    rasterizer.updateGeometry();
-    rasterizer.updateWaveform();
+    rasterizer.renderWaveformOnly();
     transfer.rasterizeFrom(rasterizer.sampler(), kWaveshaperPadding);
 }
 

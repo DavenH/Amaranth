@@ -274,7 +274,7 @@ float Curve::getCentreX() {
     return 0.33333f * (a.x + b.x + c.x);
 }
 
-bool Curve::operator==(const Curve& other) {
+bool Curve::operator==(const Curve& other) const {
     return a == other.a && b == other.b && c == other.c;
 }
 

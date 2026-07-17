@@ -25,9 +25,8 @@ void TrimeshBlockwiseDsp::prepare(
     setPrimaryViewAxis(axis);
     setCyclic(shouldWrap);
     ensureCurveTable();
-    prepareRequest();
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.updateWaveform(mesh, 0.f);
+        rasterizer.renderWaveform({ *mesh, createRequest(), 0.f });
     }
 }
 
@@ -75,11 +74,25 @@ void TrimeshBlockwiseDsp::renderPrepared(
         return;
     }
 
+    sampleOutput(outputBuffer(output));
+}
+
+void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output) {
+    prepare(mesh, morph, primaryViewAxis, cyclic);
+    renderPreparedInto(output);
+}
+
+void TrimeshBlockwiseDsp::renderPreparedInto(Buffer<float> output) {
+    output.zero();
+    if (output.empty() || mesh == nullptr || !mesh->hasEnoughCubesForCrossSection()) {
+        return;
+    }
+
     sampleOutput(output);
 }
 
-void TrimeshBlockwiseDsp::prepareRequest() {
-    auto& request = rasterizer.getRequest();
+Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest() const {
+    Rasterization::RasterizationRequest request;
     request.cyclic = cyclic;
     request.xMinimum = cyclic ? -0.05f : 0.f;
     request.xMaximum = cyclic ? 1.05f : 1.f;
@@ -88,21 +101,18 @@ void TrimeshBlockwiseDsp::prepareRequest() {
     request.scalingMode = Rasterization::PointScalingMode::Bipolar;
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
-    request.batchMode = true;
-
-    rasterizer.setWrapsEnds(cyclic);
+    return request;
 }
 
-void TrimeshBlockwiseDsp::sampleOutput(SignalPayload& output) {
+void TrimeshBlockwiseDsp::sampleOutput(Buffer<float> dest) {
     auto sampler = rasterizer.sampler();
 
     if (!sampler.isSampleable()) {
         return;
     }
 
-    Buffer<float> dest = outputBuffer(output);
-    const float delta = output.block.samples.size() > 0 ? 1.f / (float) output.block.samples.size() : 0.f;
-    int currentIndex = rasterizer.snapshotView().zeroIndex();
+    const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
+    int currentIndex = sampler.initialIndex();
 
     for (int i = 0; i < dest.size(); ++i) {
         const float phase = (float) i * delta;

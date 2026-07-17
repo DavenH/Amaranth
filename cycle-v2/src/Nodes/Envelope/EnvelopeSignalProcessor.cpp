@@ -4,6 +4,8 @@
 
 #include <Curve/Curve.h>
 
+#include <cmath>
+
 namespace CycleV2 {
 
 EnvelopeSignalProcessor::EnvelopeSignalProcessor() :
@@ -39,12 +41,14 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
 
     result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, "CycleV2EnvelopeConfigurationRasterizer");
     result->rasterizer->setMesh(result->mesh.get());
+    result->redMorph = parameterFloat(parameters, "red", 0.5f);
+    result->blueMorph = parameterFloat(parameters, "blue", 0.5f);
     result->rasterizer->setMorphPosition({
             0.f,
-            parameterFloat(parameters, "red", 0.f),
-            parameterFloat(parameters, "blue", 0.f)
+            result->redMorph,
+            result->blueMorph
     });
-    result->rasterizer->updateWaveform(result->mesh.get(), 0.f);
+    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
     result->rasterizer->validateState();
     if (!result->rasterizer->canRasterizeWaveform()) {
         return {};
@@ -52,18 +56,41 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
 
     result->level = parameterFloat(parameters, "level", 1.f);
     result->logarithmic = parameterFloat(parameters, "logarithmic", 0.f) != 0.f;
+    result->dynamicWhileLive = typedParameterBool(parameters, "dynamic", false);
+    result->meshSnapshot = snapshot;
     return result;
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     const size_t maximumColumns = std::max(defaultTraversalColumns, spec.maximumFrameCount);
     traversalMemory.ensureSize((int) (2 * maximumColumns));
+    transitionMemory.ensureSize((int) spec.maximumFrameCount);
 
     if (configuration == nullptr || pendingRevision == adoptedRevision) {
         return;
     }
 
-    rasterizer.adoptPreparedData(*configuration->rasterizer);
+    const EnvelopeConfiguration* previous = preparedConfiguration();
+    const bool freezeCurrentMorph = active
+            && previous != nullptr
+            && previous->dynamicWhileLive
+            && !configuration->dynamicWhileLive;
+    if (freezeCurrentMorph) {
+        activeConfiguration = preparedEnvelopes.activeOwnership(activeConfiguration);
+    } else {
+        activeConfiguration = configuration;
+    }
+    preparationRequests.reset();
+    preparedEnvelopes.reset();
+    hasRequestedMorph = false;
+    const MorphPosition baseMorph(0.f, configuration->redMorph, configuration->blueMorph);
+    if (!morphInitialized) {
+        smoothedMorph.reset(baseMorph);
+        morphInitialized = true;
+    } else {
+        smoothedMorph.setTargets(baseMorph);
+    }
+    playback.validate(activeConfiguration->rasterizer->preparedPlaybackView());
     props.logarithmic = configuration->logarithmic;
     level = configuration->level;
     modelReady = true;
@@ -80,12 +107,155 @@ void EnvelopeSignalProcessor::adoptConfiguration(const PublishedNodeConfiguratio
     pendingRevision = published.revision;
 }
 
+std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDynamicConfiguration(
+        const EnvelopeConfiguration& base,
+        float red,
+        float blue) {
+    auto result = std::make_shared<EnvelopeConfiguration>();
+    result->mesh = std::shared_ptr<EnvelopeMesh>(
+            new EnvelopeMesh("CycleV2DynamicEnvelope"),
+            [](EnvelopeMesh* meshToDelete) {
+                meshToDelete->destroy();
+                delete meshToDelete;
+            });
+    if (!EnvelopeMeshState::apply(base.meshSnapshot, *result->mesh)) {
+        return {};
+    }
+
+    result->rasterizer = std::make_shared<EnvRasterizer>(
+            nullptr, "CycleV2DynamicEnvelopeRasterizer");
+    result->rasterizer->setMesh(result->mesh.get());
+    result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
+    result->rasterizer->validateState();
+    if (!result->rasterizer->canRasterizeWaveform()) {
+        return {};
+    }
+
+    result->level = base.level;
+    result->redMorph = red;
+    result->blueMorph = blue;
+    result->logarithmic = base.logarithmic;
+    result->dynamicWhileLive = base.dynamicWhileLive;
+    result->meshSnapshot = base.meshSnapshot;
+    return result;
+}
+
+bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
+    EnvelopePreparationRequest request;
+    if (configuration == nullptr
+            || !preparationRequests.latest(request)) {
+        return false;
+    }
+
+    auto prepared = prepareDynamicConfiguration(
+            *configuration, request.red, request.blue);
+    if (prepared == nullptr) {
+        return false;
+    }
+    if (!preparationRequests.isCurrent(request.generation)) {
+        preparationRequests.recordStaleResult();
+        return false;
+    }
+    if (!preparedEnvelopes.publish(
+            std::move(prepared), request.generation, request.noteSerial)) {
+        return false;
+    }
+    preparationRequests.markPrepared(request.generation);
+    return true;
+}
+
+EnvelopeSignalProcessor::DynamicDiagnostics EnvelopeSignalProcessor::dynamicDiagnostics() const {
+    return {
+            preparationRequests.publicationCount(),
+            preparedEnvelopes.preparationCount(),
+            preparedEnvelopes.adoptionCount(),
+            preparationRequests.staleResultCount() + preparedEnvelopes.staleResultCount()
+    };
+}
+
+const EnvelopeConfiguration* EnvelopeSignalProcessor::preparedConfiguration() const {
+    return preparedEnvelopes.active(activeConfiguration.get());
+}
+
+void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context) {
+    const SignalPayload* redInput = inputAt(context, 0);
+    const SignalPayload* blueInput = inputAt(context, 1);
+    const bool hasRedInput = redInput != nullptr && !redInput->block.samples.empty();
+    const bool hasBlueInput = blueInput != nullptr && !blueInput->block.samples.empty();
+    if (!hasRedInput && !hasBlueInput) {
+        return;
+    }
+
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current == nullptr || configuration == nullptr) {
+        return;
+    }
+    const bool noteStarts = std::any_of(
+            processVoice(context).events.begin(),
+            processVoice(context).events.end(),
+            [&](const auto& event) {
+                return event.voiceIndex == processVoice(context).voiceIndex
+                        && event.type == NoteLifecycleType::NoteOn;
+            });
+    const float redTarget = hasRedInput
+            ? jlimit(0.f, 1.f, redInput->block.samples.front())
+            : configuration->redMorph;
+    const float blueTarget = hasBlueInput
+            ? jlimit(0.f, 1.f, blueInput->block.samples.front())
+            : configuration->blueMorph;
+    smoothedMorph.setTargets({ 0.f, redTarget, blueTarget });
+    samplesSinceMorphRequest += smoothedMorph.advance(
+            context.frameCount,
+            context.timing.sampleRate);
+
+    if (!configuration->dynamicWhileLive && active && !noteStarts) {
+        return;
+    }
+
+    const float red = smoothedMorph.current().red.getCurrentValue();
+    const float blue = smoothedMorph.current().blue.getCurrentValue();
+    const bool reachedTarget = red == smoothedMorph.current().red.getTargetValue()
+            && blue == smoothedMorph.current().blue.getTargetValue();
+    const bool changedMeaningfully = !hasRequestedMorph
+            || std::abs(red - lastRequestedRed) >= morphRequestThreshold
+            || std::abs(blue - lastRequestedBlue) >= morphRequestThreshold
+            || (reachedTarget && (red != lastRequestedRed || blue != lastRequestedBlue));
+    if (!changedMeaningfully
+            || (!noteStarts && samplesSinceMorphRequest < morphRequestInterval44k)) {
+        return;
+    }
+
+    lastRequestedRed = red;
+    lastRequestedBlue = blue;
+    hasRequestedMorph = true;
+    samplesSinceMorphRequest = 0;
+    preparationRequests.publish(
+            red,
+            blue,
+            noteStarts ? noteSerial + 1 : noteSerial);
+}
+
+void EnvelopeSignalProcessor::adoptPreparedDynamicEnvelope() {
+    const bool dynamic = configuration != nullptr && configuration->dynamicWhileLive;
+    const auto adoption = preparedEnvelopes.adoptNewest(noteSerial, dynamic);
+    if (!adoption.adopted || adoption.configuration == nullptr) {
+        return;
+    }
+    playback.validate(adoption.configuration->rasterizer->preparedPlaybackView());
+    adoptionTransitionPending = active;
+}
+
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
+    adoptPreparedDynamicEnvelope();
+    requestEffectiveMorph(context);
     auto output = makeOutputPayload(context, 0);
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    const bool ready = configuration != nullptr ? modelReady : syncModel(processParameters(context));
+    const bool ready = configuration != nullptr
+            ? preparedConfiguration() != nullptr && modelReady
+            : syncModel(processParameters(context));
     if (ready) {
         size_t rendered = 0;
 
@@ -128,7 +298,11 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     Buffer<float> positions = traversalMemory.place((int) columns);
     Buffer<float> values = traversalMemory.place((int) columns);
     positions.ramp(0.f, 1.f / (float) columns);
-    rasterizer.sampler().sampleAtIntervals(positions, values);
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    const auto sampler = current != nullptr
+            ? current->rasterizer->sampler()
+            : rasterizer.sampler();
+    sampler.sampleAtIntervals(positions, values);
     values.mul(level);
 
     configureTraversalGrid(
@@ -167,15 +341,15 @@ bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parame
         modelReady = true;
     }
 
-    const float nextRed = parameterFloat(parameters, "red", 0.f);
-    const float nextBlue = parameterFloat(parameters, "blue", 0.f);
+    const float nextRed = parameterFloat(parameters, "red", 0.5f);
+    const float nextBlue = parameterFloat(parameters, "blue", 0.5f);
     const bool geometryChanged = nextRed != redMorph || nextBlue != blueMorph;
 
     if (modelReady && (geometryChanged || snapshotChanged)) {
         redMorph = nextRed;
         blueMorph = nextBlue;
         rasterizer.setMorphPosition({ 0.f, redMorph, blueMorph });
-        rasterizer.updateWaveform(&mesh, 0.f);
+        rasterizer.renderWaveformOnly(&mesh, 0.f);
         rasterizer.validateState();
     }
 
@@ -185,6 +359,27 @@ bool EnvelopeSignalProcessor::syncModel(const std::vector<NodeParameter>& parame
 }
 
 void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& event) {
+    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
+        const auto prepared = current->rasterizer->preparedPlaybackView();
+        switch (event.type) {
+            case NoteLifecycleType::NoteOn:
+                ++noteSerial;
+                playback.noteOn();
+                active = true;
+                break;
+
+            case NoteLifecycleType::NoteOff:
+                playback.noteOff(prepared);
+                break;
+
+            case NoteLifecycleType::Reset:
+                playback.noteOn();
+                active = false;
+                break;
+        }
+        return;
+    }
+
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
             rasterizer.setNoteOn();
@@ -197,7 +392,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
 
         case NoteLifecycleType::Reset:
             rasterizer.reset();
-            rasterizer.updateWaveform(&mesh, 0.f);
+            rasterizer.renderWaveformOnly(&mesh, 0.f);
             active = false;
             break;
     }
@@ -212,15 +407,52 @@ void EnvelopeSignalProcessor::renderSegment(
         return;
     }
 
-    const bool stillActive = rasterizer.renderToBuffer(
-            (int) count,
-            1. / timing.sampleRate,
-            EnvRasterizer::headUnisonIndex,
-            props,
-            1.f);
-    rasterizer.getRenderBuffer().withSize((int) count).copyTo(
-            output.section((int) start, (int) count));
+    bool stillActive {};
+    Buffer<float> rendered;
+    if (const EnvelopeConfiguration* current = preparedConfiguration()) {
+        stillActive = playback.renderToBuffer(
+                current->rasterizer->preparedPlaybackView(),
+                (int) count,
+                1. / timing.sampleRate,
+                Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+                props,
+                1.f);
+        rendered = playback.output().withSize((int) count);
+    } else {
+        stillActive = rasterizer.renderToBuffer(
+                (int) count,
+                1. / timing.sampleRate,
+                EnvRasterizer::headUnisonIndex,
+                props,
+                1.f);
+        rendered = rasterizer.getRenderBuffer().withSize((int) count);
+    }
+    applyAdoptionTransition(rendered);
+    rendered.copyTo(output.section((int) start, (int) count));
+    lastOutputSample = rendered.back();
     active = stillActive;
+}
+
+void EnvelopeSignalProcessor::applyAdoptionTransition(Buffer<float> rendered) {
+    if (rendered.empty()) {
+        return;
+    }
+    if (adoptionTransitionPending) {
+        transitionOffset = lastOutputSample - rendered.front();
+        transitionSamplesRemaining = 128;
+        adoptionTransitionPending = false;
+    }
+    if (transitionSamplesRemaining <= 0) {
+        return;
+    }
+
+    const int count = std::min(rendered.size(), transitionSamplesRemaining);
+    const float decrement = transitionOffset / 128.f;
+    const float start = decrement * (float) transitionSamplesRemaining;
+    Buffer<float> correction = transitionMemory.withSize(count);
+    correction.ramp(start, -decrement);
+    rendered.withSize(count).add(correction);
+    transitionSamplesRemaining -= count;
 }
 
 }

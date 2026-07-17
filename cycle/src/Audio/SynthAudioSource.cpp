@@ -113,6 +113,7 @@ void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleR
 
     for (auto voice: voices) {
         voice->initCycleBuffers();
+        voice->prepareVoiceRasterizer();
     }
 
     updateTempoScale();
@@ -284,6 +285,13 @@ void SynthAudioSource::prepNewVoice() {
 
     for (auto voice : voices) {
         voice->prepNewVoice();
+        voice->prepareVoiceRasterizer();
+    }
+}
+
+void SynthAudioSource::prepareVoiceRasterizersAtSafeBoundary() {
+    for (auto* voice : voices) {
+        voice->prepareVoiceRasterizer();
     }
 }
 
@@ -509,7 +517,7 @@ void SynthAudioSource::modulationChanged(float value, int voiceIndex, int output
                     rast.updateValue(dim, value);
 
                     if (props->dynamic) {
-                        rast.updateWaveform();
+                        rast.renderWaveformOnly(rast.getCurrentMesh());
                         rast.validateState();
 
                         scratchRast.sampleable = rast.sampler().isSampleable();
@@ -580,7 +588,7 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
         rast.updateValue(Vertex::Red, 0);
         rast.setWantOneSamplePerCycle(false);
         rast.setLowresCurves(true);
-        rast.updateWaveform();
+        rast.renderWaveformOnly(rast.getCurrentMesh());
         rast.validateState();
 
         scratchRast.sampleable = rast.sampler().isSampleable();

@@ -353,7 +353,8 @@ void PlaybackPanel::setProgress(float unitX, bool updateMorphPanel) {
 								  getSetting(CurrentEnvGroup)));
 			jassertfalse;
 		} else if (props->active) {
-			const auto& icpts = envRast->snapshotView().intercepts();
+			auto snapshot = envRast->snapshotView();
+			const auto& icpts = snapshot.intercepts();
 			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {
@@ -534,7 +535,8 @@ void PlaybackPanel::timerCallback(int id) {
 		bool isAlive = props->active;
 
 		if(isAlive) {
-			const auto& icpts = envRast->snapshotView().intercepts();
+			auto snapshot = envRast->snapshotView();
+			const auto& icpts = snapshot.intercepts();
 			bool canSimulate = envRast->canRasterizeWaveform();
 
 			if (canSimulate && icpts.empty()) {

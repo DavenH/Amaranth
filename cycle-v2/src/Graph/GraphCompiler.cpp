@@ -213,6 +213,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                     edge.destPortId,
                     inputPortIndex(node, edge.destPortId),
                     -1,
+                    -1,
+                    -1,
                     edge.domain,
                     domainResolver.resolvedChannelLayoutForEdge(graph, edge)
             });
@@ -262,6 +264,26 @@ int bufferIndexFor(
     return -1;
 }
 
+int stepIndexFor(const GraphExecutionPlan& plan, const String& nodeId) {
+    for (int i = 0; i < (int) plan.steps.size(); ++i) {
+        if (plan.steps[(size_t) i].nodeId == nodeId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+int outputIndexFor(const GraphExecutionStep& step, const String& portId) {
+    for (int i = 0; i < (int) step.outputs.size(); ++i) {
+        if (step.outputs[(size_t) i].portId == portId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 void compileRouting(GraphExecutionPlan& plan) {
     for (int stepIndex = 0; stepIndex < (int) plan.steps.size(); ++stepIndex) {
         auto& step = plan.steps[(size_t) stepIndex];
@@ -277,6 +299,12 @@ void compileRouting(GraphExecutionPlan& plan) {
                     plan.buffers,
                     input.sourceNodeId,
                     input.sourcePortId);
+            input.sourceStepIndex = stepIndexFor(plan, input.sourceNodeId);
+            if (input.sourceStepIndex >= 0) {
+                input.sourceOutputIndex = outputIndexFor(
+                        plan.steps[(size_t) input.sourceStepIndex],
+                        input.sourcePortId);
+            }
             if (input.sourceBufferIndex >= 0) {
                 plan.buffers[(size_t) input.sourceBufferIndex].lastConsumerStep = stepIndex;
             }
@@ -315,6 +343,42 @@ void compileRouting(GraphExecutionPlan& plan) {
                 plan.maximumAttachmentCount,
                 step.attachments.size());
     }
+}
+
+int dependencyNodeIndex(const GraphDependencyIndex& index, const String& nodeId) {
+    for (int i = 0; i < (int) index.nodeIds.size(); ++i) {
+        if (index.nodeIds[(size_t) i] == nodeId) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void compileDependencyIndex(GraphExecutionPlan& plan) {
+    auto& index = plan.dependencyIndex;
+    index.nodeIds = plan.nodeOrder;
+    index.dependents.clear();
+    index.dependents.resize(index.nodeIds.size());
+
+    const auto appendEdges = [&](const std::vector<Edge>& edges) {
+        for (const auto& edge : edges) {
+            const int source = dependencyNodeIndex(index, edge.sourceNodeId);
+            const int destination = dependencyNodeIndex(index, edge.destNodeId);
+            if (source < 0 || destination < 0) {
+                continue;
+            }
+
+            auto& destinations = index.dependents[(size_t) source];
+            if (std::find(destinations.begin(), destinations.end(), destination)
+                    == destinations.end()) {
+                destinations.push_back(destination);
+            }
+        }
+    };
+
+    appendEdges(plan.signalEdges);
+    appendEdges(plan.attachments);
 }
 
 std::vector<GraphBufferPlan> buildBufferPlan(
@@ -376,6 +440,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolver,
                 moduleRegistry);
         compileRouting(result.plan);
+        compileDependencyIndex(result.plan);
         publishConfigurations(result.plan.steps);
     }
 

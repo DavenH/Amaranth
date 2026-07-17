@@ -40,11 +40,21 @@ namespace Rasterization {
 
         void place(ScopedAlloc<float>& memory, int size) {
             memory.ensureSize(size * 5);
+            placeInPreparedMemory(memory, size);
+        }
+
+        bool placeInPreparedMemory(ScopedAlloc<float>& memory, int size) {
+            memory.resetPlacement();
+            if (memory.size() < size * 5) {
+                return false;
+            }
+
             waveX = memory.place(size);
             waveY = memory.place(size);
             diffX = memory.place(size);
             slope = memory.place(size);
             area = memory.place(size);
+            return true;
         }
 
         void nullify() {

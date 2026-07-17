@@ -32,16 +32,32 @@ namespace Rasterization {
         }
 
         void sampleAtIntervals(Buffer<float> intervals, Buffer<float> dest) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return;
+            }
             WaveformSampler::sampleAtIntervals(buffers(), intervals, dest);
         }
 
         template<typename T>
         T sampleWithInterval(Buffer<float> dest, T delta, T phase) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return phase;
+            }
             return WaveformSampler::sampleWithInterval(buffers(), dest, delta, phase);
         }
 
         float samplePerfectly(double delta, Buffer<float> dest, double phase) const {
+            if (!isSampleable()) {
+                dest.zero();
+                return (float) phase;
+            }
             return WaveformSampler::samplePerfectly(buffers(), delta, dest, phase);
+        }
+
+        int initialIndex() const {
+            return waveform.zeroIndex;
         }
 
     private:
@@ -55,35 +71,41 @@ namespace Rasterization {
 
     class SnapshotView {
     public:
-        SnapshotView() = default;
+        SnapshotView() : data(std::make_shared<const RasterizerSnapshotData>()) {}
 
-        explicit SnapshotView(RasterizerData& data) :
-                data(&data) {
+        explicit SnapshotView(const RasterizerData& data) :
+                data(data.snapshot()) {
         }
 
-        std::vector<Intercept>& intercepts() const {
+        SnapshotView(const SnapshotView&) = default;
+        SnapshotView& operator =(const SnapshotView&) = default;
+        SnapshotView(SnapshotView&&) noexcept = default;
+        SnapshotView& operator =(SnapshotView&&) noexcept = default;
+
+        const std::vector<Intercept>& intercepts() const & {
             return dataRef().intercepts;
         }
+        const std::vector<Intercept>& intercepts() const && = delete;
 
-        std::vector<Curve>& curves() const {
+        const std::vector<Curve>& curves() const & {
             return dataRef().curves;
         }
+        const std::vector<Curve>& curves() const && = delete;
 
-        std::vector<ColorPoint>& colorPoints() const {
+        const std::vector<ColorPoint>& colorPoints() const & {
             return dataRef().colorPoints;
         }
+        const std::vector<ColorPoint>& colorPoints() const && = delete;
 
-        CriticalSection& lock() const {
-            return dataRef().lock;
-        }
-
-        Buffer<float> waveX() const {
+        Buffer<float> waveX() const & {
             return dataRef().waveX;
         }
+        Buffer<float> waveX() const && = delete;
 
-        Buffer<float> waveY() const {
+        Buffer<float> waveY() const & {
             return dataRef().waveY;
         }
+        Buffer<float> waveY() const && = delete;
 
         int zeroIndex() const {
             return dataRef().zeroIndex;
@@ -101,12 +123,15 @@ namespace Rasterization {
             return dataRef().wrapsVertices;
         }
 
+        bool isSampleable() const {
+            return dataRef().sampleable;
+        }
+
     private:
-        RasterizerData& dataRef() const {
-            jassert(data != nullptr);
+        const RasterizerSnapshotData& dataRef() const {
             return *data;
         }
 
-        RasterizerData* data {};
+        std::shared_ptr<const RasterizerSnapshotData> data;
     };
 }

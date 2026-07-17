@@ -41,17 +41,28 @@ namespace Rasterization {
                 std::vector<Intercept>& intercepts,
                 RenderResult& output,
                 const RasterizationRequest& request,
+            GuideCurveProvider* guideCurveProvider = nullptr,
+            GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            output.clear();
+            std::sort(intercepts.begin(), intercepts.end());
+            output.intercepts = intercepts;
+            return renderResult(output, request, guideCurveProvider, offsetSeeds);
+        }
+
+        const RenderResult& renderResult(
+                RenderResult& output,
+                const RasterizationRequest& request,
                 GuideCurveProvider* guideCurveProvider = nullptr,
                 GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
-            output.clear();
+            output.clearDerivedOutput();
             output.paddingSize = 2;
 
-            if (intercepts.empty()) {
+            if (output.intercepts.empty()) {
                 return output;
             }
 
-            std::sort(intercepts.begin(), intercepts.end());
-            buildCurves(intercepts, output, request);
+            std::sort(output.intercepts.begin(), output.intercepts.end());
+            buildCurves(output.intercepts, output, request);
 
             if (output.curves.size() < 2) {
                 return output;
@@ -68,11 +79,38 @@ namespace Rasterization {
                     output.curves,
                     context,
                     [&output](int totalRes) {
-                        output.waveform.place(output.waveformMemory, totalRes);
+                        if (!output.placeWaveform(totalRes)) {
+                            return WaveformBufferRefs();
+                        }
                         return WaveformBufferRefs(output.waveform);
                     });
 
             return output;
+        }
+
+        void rebakeAffectedRange(
+                RenderResult& output,
+                const RasterizationRequest& request,
+                int firstCurve,
+                int endCurve,
+                GuideCurveProvider* guideCurveProvider = nullptr,
+                GuideCurveOffsetSeeds* offsetSeeds = nullptr) {
+            GuideCurveOffsetSeeds* resolvedOffsetSeeds = offsetSeeds != nullptr
+                    ? offsetSeeds
+                    : &fallbackOffsetSeeds;
+
+            WaveformBakePolicy::Context bakeContext;
+            bakeContext.lowResCurves = request.lowResCurves;
+            bakeContext.morph = request.morph;
+            bakeContext.decoupleComponentDfrms = request.decoupleComponentDeforms;
+            bakeContext.noiseSeed = request.noiseSeed;
+            bakeContext.guideCurveProvider = guideCurveProvider;
+            bakeContext.guideCurveRegions = &output.guideCurveRegions;
+            bakeContext.offsetSeeds = resolvedOffsetSeeds;
+            bakeContext.waveform = WaveformBufferRefs(output.waveform);
+
+            waveformBuilder.rebakeRange(output.curves, bakeContext, firstCurve, endCurve);
+            output.sampleable = bakeContext.waveform.isSampleable();
         }
 
     private:

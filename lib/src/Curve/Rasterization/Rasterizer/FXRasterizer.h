@@ -24,6 +24,9 @@ public:
     explicit FXRasterizer(SingletonRepo* repo, const String& name = String());
 
     void cleanUp();
+    void renderGeometryOnly();
+    void renderWaveformOnly();
+    void publishCurrentResult();
     void updateGeometry() override;
     void updateWaveform() override;
     void reset() override;
@@ -49,12 +52,12 @@ private:
     Intercept interceptAt(Vertex* vertex) const;
     bool updateFxGeometry(const Rasterization::RasterizationRequest& request);
     void copyVertexInterceptsTo(vector<Intercept>& intercepts) const;
-    void publishSnapshot();
     int vertexCount() const;
 
     Mesh* mesh {};
     Dimensions dims { Vertex::Phase, Vertex::Amp };
     vector<Vertex*>* vertices {};
+    vector<Intercept> scratchIntercepts;
     Rasterization::PointListWaveformRasterizer pointListRasterizer;
 
     int scalingType { Unipolar };

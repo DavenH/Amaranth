@@ -24,6 +24,8 @@ struct GraphStepInput {
     String destPortId;
     int destPortIndex {};
     int sourceBufferIndex { -1 };
+    int sourceStepIndex { -1 };
+    int sourceOutputIndex { -1 };
     PortDomain domain {};
     ChannelLayout channelLayout { ChannelLayout::Mono };
 };
@@ -51,6 +53,11 @@ struct GraphBufferPlan {
     ChannelLayout channelLayout { ChannelLayout::Mono };
     int firstProducerStep { -1 };
     int lastConsumerStep { -1 };
+};
+
+struct GraphDependencyIndex {
+    std::vector<String> nodeIds;
+    std::vector<std::vector<int>> dependents;
 };
 
 struct GraphExecutionStep {
@@ -83,6 +90,7 @@ struct GraphExecutionPlan {
     std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
+    GraphDependencyIndex dependencyIndex;
 };
 
 struct GraphCompileResult {

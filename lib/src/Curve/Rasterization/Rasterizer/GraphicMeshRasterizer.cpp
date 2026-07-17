@@ -3,13 +3,11 @@
 namespace Rasterization {
 
 GraphicRasterizer::RenderState::RenderState(
-        bool batch,
         bool lowres,
         bool calcDepth,
         int scaling,
         const MorphPosition& pos) :
-        batchMode(batch)
-    ,   lowResCurves(lowres)
+        lowResCurves(lowres)
     ,   calcDepthDims(calcDepth)
     ,   scalingType(scaling)
     ,   pos(pos) {
@@ -28,9 +26,10 @@ GraphicRasterizer::ScopedRenderState::~ScopedRenderState() {
 }
 
 GraphicRasterizer::GraphicRasterizer(bool cyclic, float margin) {
-    getRequest().cyclic = cyclic;
-    getRequest().xMinimum = -margin;
-    getRequest().xMaximum = 1.f + margin;
+    auto& request = compatibilityRequest();
+    request.cyclic = cyclic;
+    request.xMinimum = -margin;
+    request.xMaximum = 1.f + margin;
     rasterizerData.paddingSize = getPaddingSize();
     rasterizerData.wrapsVertices = cyclic;
 }
@@ -40,13 +39,12 @@ void GraphicRasterizer::restoreStateFrom(RenderState& state) {
         mesh = state.mesh;
     }
 
-    auto& request = getRequest();
+    auto& request = compatibilityRequest();
     request.lowResCurves = state.lowResCurves;
     request.calcDepthDimensions = state.calcDepthDims;
     request.noiseSeed = state.noiseSeed;
     request.morph = state.pos;
     request.scalingMode = scalingModeFromRenderState(state.scalingType);
-    request.batchMode = state.batchMode;
 }
 
 void GraphicRasterizer::saveStateTo(RenderState& state) {
@@ -58,7 +56,6 @@ void GraphicRasterizer::saveStateTo(RenderState& state) {
     state.mesh = mesh;
     state.pos = request.morph;
     state.scalingType = renderStateScalingType(request.scalingMode);
-    state.batchMode = request.batchMode;
 }
 
 void GraphicRasterizer::updateGeometry() {
@@ -78,9 +75,7 @@ void GraphicRasterizer::updateGeometryAtPhase(float oscPhase) {
 
     renderTrilinearGeometry(oscPhase);
 
-    if (!getRequest().batchMode) {
-        publishTrilinearSnapshot();
-    }
+    publishTrilinearSnapshot();
 }
 
 void GraphicRasterizer::updateWaveform() {
@@ -100,17 +95,10 @@ void GraphicRasterizer::updateWaveformAtPhase(float oscPhase) {
 
     renderTrilinearWaveform(oscPhase);
 
-    if (!getRequest().batchMode) {
-        publishTrilinearSnapshot();
-    }
+    publishTrilinearSnapshot();
 }
 
 void GraphicRasterizer::cleanUp() {
-    if (getRequest().batchMode) {
-        clearTrilinearOutput();
-        return;
-    }
-
     cleanTrilinearRasterization();
 }
 
@@ -120,13 +108,12 @@ GraphicRasterizer::RenderState GraphicRasterizer::createRenderState() {
     return state;
 }
 
-GraphicRasterizer::RenderState GraphicRasterizer::createBatchRenderState(
+GraphicRasterizer::RenderState GraphicRasterizer::createAnalysisRenderState(
         Scaling scaling,
         const MorphPosition& morphPosition,
         bool lowResCurves,
         bool calcDepthDimensions) {
     return RenderState(
-            true,
             lowResCurves,
             calcDepthDimensions,
             static_cast<int>(scaling),

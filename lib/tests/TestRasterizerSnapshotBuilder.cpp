@@ -1,7 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
+#include <future>
+#include <memory>
+
 #include "../src/Curve/Curve.h"
 #include "../src/Curve/Rasterization/Builders/RasterizerSnapshotBuilder.h"
+#include "../src/Curve/Rasterization/Rasterizer/RasterizerViews.h"
 #include "../src/Obj/ColorPoint.h"
 
 namespace {
@@ -59,26 +64,84 @@ TEST_CASE("RasterizerSnapshotBuilder publishes RasterizerData contents", "[raste
             3);
     source.paddingSize = 4;
     source.wrapsVertices = true;
+    source.sampleable = true;
 
     RasterizerData data;
     Rasterization::RasterizerSnapshotBuilder().publish(data, source);
+    Rasterization::SnapshotView snapshot(data);
 
-    REQUIRE(data.intercepts.size() == intercepts.size());
-    REQUIRE(data.colorPoints.size() == colorPoints.size());
-    REQUIRE(data.curves.size() == curves.size());
-    REQUIRE(data.waveX.size() == waveX.size());
-    REQUIRE(data.waveY.size() == waveY.size());
-    REQUIRE(data.zeroIndex == source.waveform.zeroIndex);
-    REQUIRE(data.oneIndex == source.waveform.oneIndex);
-    REQUIRE(data.paddingSize == source.paddingSize);
-    REQUIRE(data.wrapsVertices == source.wrapsVertices);
+    REQUIRE(snapshot.intercepts().size() == intercepts.size());
+    REQUIRE(snapshot.colorPoints().size() == colorPoints.size());
+    REQUIRE(snapshot.curves().size() == curves.size());
+    REQUIRE(snapshot.waveX().size() == waveX.size());
+    REQUIRE(snapshot.waveY().size() == waveY.size());
+    REQUIRE(snapshot.zeroIndex() == source.waveform.zeroIndex);
+    REQUIRE(snapshot.oneIndex() == source.waveform.oneIndex);
+    REQUIRE(snapshot.paddingSize() == source.paddingSize);
+    REQUIRE(snapshot.wrapsVertices() == source.wrapsVertices);
+    REQUIRE(snapshot.isSampleable() == source.sampleable);
 
-    REQUIRE(copyBuffer(data.waveX) == copyBuffer(waveX));
-    REQUIRE(copyBuffer(data.waveY) == copyBuffer(waveY));
+    REQUIRE(copyBuffer(snapshot.waveX()) == copyBuffer(waveX));
+    REQUIRE(copyBuffer(snapshot.waveY()) == copyBuffer(waveY));
 
     waveX[0] = 99.f;
     waveY[0] = 88.f;
 
-    REQUIRE(data.waveX[0] == 0.f);
-    REQUIRE(data.waveY[0] == 1.f);
+    REQUIRE(snapshot.waveX()[0] == 0.f);
+    REQUIRE(snapshot.waveY()[0] == 1.f);
+}
+
+TEST_CASE("Retained rasterizer snapshots survive publication and producer destruction", "[rasterization][snapshot]") {
+    Rasterization::SnapshotView retained;
+    {
+        RasterizerData data;
+        ScopedAlloc<float> memory(4);
+        Buffer<float> waveX = memory.place(2);
+        Buffer<float> waveY = memory.place(2);
+        waveX[0] = 0.f;
+        waveX[1] = 1.f;
+        waveY[0] = 0.25f;
+        waveY[1] = 0.75f;
+
+        Rasterization::RasterizerSnapshotSource first;
+        first.waveform = { waveX, waveY, {}, {}, {}, 0, 1 };
+        first.paddingSize = 2;
+        first.sampleable = true;
+        Rasterization::RasterizerSnapshotBuilder().publish(data, first);
+        retained = Rasterization::SnapshotView(data);
+
+        waveY[0] = 0.5f;
+        Rasterization::RasterizerSnapshotSource second = first;
+        second.paddingSize = 4;
+        Rasterization::RasterizerSnapshotBuilder().publish(data, second);
+        Rasterization::SnapshotView current(data);
+
+        REQUIRE(retained.paddingSize() == 2);
+        REQUIRE(retained.waveY()[0] == 0.25f);
+        REQUIRE(current.paddingSize() == 4);
+        REQUIRE(current.waveY()[0] == 0.5f);
+    }
+
+    REQUIRE(retained.paddingSize() == 2);
+    REQUIRE(retained.waveY()[0] == 0.25f);
+}
+
+TEST_CASE("A retained rasterizer reader does not block publication", "[rasterization][snapshot]") {
+    RasterizerData data;
+    Rasterization::RasterizerSnapshotSource source;
+    source.paddingSize = 1;
+    Rasterization::RasterizerSnapshotBuilder builder;
+    builder.publish(data, source);
+    Rasterization::SnapshotView retained(data);
+
+    source.paddingSize = 2;
+    auto publication = std::async(std::launch::async, [&] {
+        builder.publish(data, source);
+    });
+    const auto status = publication.wait_for(std::chrono::milliseconds(100));
+
+    retained = Rasterization::SnapshotView();
+    publication.get();
+    REQUIRE(status == std::future_status::ready);
+    REQUIRE(Rasterization::SnapshotView(data).paddingSize() == 2);
 }

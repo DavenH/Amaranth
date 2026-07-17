@@ -89,7 +89,10 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
     }
 
     const int timeLayerSize = getTimeLayerGroup().size();
-    timeRasterizer.updateOffsetSeeds(timeLayerSize, GuideCurvePanel::tableSize);
+    timeRasterizer.updateOffsetSeeds(
+            timeLayerSize,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) random.nextInt()));
 
     EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
     float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampler().sampleAt(0) : 0.5;
@@ -210,6 +213,27 @@ void CycleBasedVoice::initCycleBuffers() {
             offset += cycleBuffSize;
         }
     }
+}
+
+void CycleBasedVoice::prepareVoiceRasterizer() {
+    testNumLayersChanged();
+    Rasterization::VoiceRasterizerPreparation preparation;
+    auto& timeLayers = getTimeLayerGroup();
+    for (auto& layer : timeLayers.layers) {
+        if (layer.mesh != nullptr) {
+            preparation.include(*layer.mesh);
+        }
+    }
+
+    std::vector<Rasterization::VoiceCycleState*> states;
+    states.reserve(groups.size() * (size_t) timeLayers.size());
+    for (auto& group : groups) {
+        for (auto& state : group.layerStates) {
+            states.push_back(&state);
+        }
+    }
+
+    timeRasterizer.prepare(preparation, states);
 }
 
 void CycleBasedVoice::render(StereoBuffer& channelPair) {
@@ -933,7 +957,7 @@ void CycleBasedVoice::updateValue(int outputId, int dim, float value) {
             envRast.updateValue(dim, value);
 
             if (props.dynamic) {
-                envRast.updateWaveform();
+                envRast.renderWaveformOnly(envRast.getCurrentMesh());
                 envRast.validateState();
 
                 renderRast.sampleable = envRast.sampler().isSampleable();

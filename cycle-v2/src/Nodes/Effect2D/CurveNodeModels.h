@@ -114,6 +114,7 @@ public:
     void setPublicationRevision(uint64_t revisionToUse) { modelRevision = juce::jmax<uint64_t>(1, revisionToUse); }
 
     bool logarithmic {};
+    bool dynamicWhileLive {};
     float red { 0.5f };
     float blue { 0.5f };
     bool redLinked { true };

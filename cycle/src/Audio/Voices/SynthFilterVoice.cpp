@@ -46,20 +46,16 @@ SynthFilterVoice::SynthFilterVoice(SynthesizerVoice* parent, SingletonRepo* repo
     auto& guideCurvePanel = getObj(GuideCurvePanel);
 
     freqRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    auto& freqRequest = freqRasterizer.getRequest();
-    freqRequest.cyclic = false;
-    freqRequest.calcDepthDimensions = false;
-    freqRequest.xMinimum = -(float) spectMargin;
-    freqRequest.xMaximum = 1.f + (float) spectMargin;
+    freqRasterizer.setWrapsEnds(false);
+    freqRasterizer.setCalcDepthDimensions(false);
+    freqRasterizer.setXLimits(-(float) spectMargin, 1.f + (float) spectMargin);
 
     phaseRasterizer.setGuideCurveProvider(&guideCurvePanel);
-    auto& phaseRequest = phaseRasterizer.getRequest();
-    phaseRequest.cyclic = false;
-    phaseRequest.calcDepthDimensions = false;
-    phaseRequest.xMinimum = -(float) spectMargin;
-    phaseRequest.xMaximum = 1.f + (float) spectMargin;
-    phaseRequest.scalingMode = ::Rasterization::PointScalingMode::Bipolar;
-    phaseRequest.interpolateCurves = true;
+    phaseRasterizer.setWrapsEnds(false);
+    phaseRasterizer.setCalcDepthDimensions(false);
+    phaseRasterizer.setXLimits(-(float) spectMargin, 1.f + (float) spectMargin);
+    phaseRasterizer.setScalingMode(::Rasterization::PointScalingMode::Bipolar);
+    phaseRasterizer.setInterpolateCurves(true);
 
     cycleCompositeAlgo = Interpolate;
 }
@@ -75,8 +71,14 @@ void SynthFilterVoice::initialiseNoteExtra(const int midiNoteNumber, const float
         }
     }
 
-    freqRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
-    phaseRasterizer.updateOffsetSeeds(1, GuideCurvePanel::tableSize);
+    freqRasterizer.updateOffsetSeeds(
+            1,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) parent->random.nextInt()));
+    phaseRasterizer.updateOffsetSeeds(
+            1,
+            GuideCurvePanel::tableSize,
+            Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) parent->random.nextInt()));
 
     if(parent->flags.haveFFTPhase) {
         phaseScaleRamp.withSize(noteState.numHarmonics).ramp(1.f, 1.f).sqrt();
@@ -184,7 +186,7 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
         timeRasterizer.setMorphPosition(position);
         timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
         timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
-        timeRasterizer.updateWaveform(layer.mesh, 0.f);
+        timeRasterizer.renderOrdinary(layer.mesh, 0.f);
 
         auto sampler = timeRasterizer.sampler();
         if (sampler.isSampleable()) {
@@ -225,7 +227,7 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
 
         freqRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
         freqRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        freqRasterizer.updateWaveform(layer.mesh);
+        freqRasterizer.renderWaveformOnly(layer.mesh);
 
         auto sampler = freqRasterizer.sampler();
         if (sampler.isSampleable()) {
@@ -357,7 +359,7 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
 
             phaseRasterizer.setMorphPosition(props.pos[parent->voiceIndex].withTime(progress));
             phaseRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-            phaseRasterizer.updateWaveform(layer.mesh);
+            phaseRasterizer.renderWaveformOnly(layer.mesh);
 
             auto sampler = phaseRasterizer.sampler();
             if (sampler.isSampleable()) {
