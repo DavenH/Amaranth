@@ -43,7 +43,6 @@ void TrimeshPanelRasterizer::update(
     }
 
     if (refresh2DPanel && panelHosts.isPanel2DHostInitialised()) {
-        interactor2D.performUpdate(Update);
         panel2D.requestRepaint();
     }
 }

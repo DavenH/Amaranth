@@ -6,7 +6,6 @@
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/UI/NodeCanvasScene.h"
-#include "../src/UI/NodeAutomationFacade.h"
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
@@ -297,18 +296,6 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
     REQUIRE(meshBounds.getWidth() == Catch::Approx(1080.f));
     REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
-}
-
-TEST_CASE("Automation facade mutates exclusively through graph commands", "[cycle-v2][canvas][automation]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
-    GraphCommandDispatcher commands(document);
-    NodeAutomationFacade automation(document, commands);
-    REQUIRE(automation.setParameter("voice", "voices", "Voices", "6").succeeded());
-    REQUIRE(document.canUndo());
-
-    String voices;
-    REQUIRE(automation.getParameter("voice", "voices", voices));
-    REQUIRE(voices == "6");
 }
 
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {

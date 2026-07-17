@@ -160,6 +160,38 @@ public:
             vertexMarkers.add(encoded);
         }
         meshState->setProperty("vertexMarkers", vertexMarkers);
+        const auto& slice = boundWidget->renderDataForAutomation().slice;
+        float sliceMinimum {};
+        float sliceMaximum {};
+        double sliceAbsoluteSum {};
+        if (!slice.empty()) {
+            sliceMinimum = slice.front();
+            sliceMaximum = slice.front();
+            for (float sample : slice) {
+                sliceMinimum = jmin(sliceMinimum, sample);
+                sliceMaximum = jmax(sliceMaximum, sample);
+                sliceAbsoluteSum += sample < 0.f ? -sample : sample;
+            }
+        }
+        meshState->setProperty("sliceSampleCount", (int) slice.size());
+        meshState->setProperty("sliceMinimum", sliceMinimum);
+        meshState->setProperty("sliceMaximum", sliceMaximum);
+        meshState->setProperty("sliceAbsoluteSum", sliceAbsoluteSum);
+        const auto panelStats = boundWidget->panelRenderStatsForAutomation();
+        meshState->setProperty("panelSampleCount", panelStats.sampleCount);
+        meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
+        meshState->setProperty("panelMinimum", panelStats.minimum);
+        meshState->setProperty("panelMaximum", panelStats.maximum);
+        meshState->setProperty("panelCentreSample", panelStats.centreSample);
+        meshState->setProperty("panelAbsoluteSum", panelStats.absoluteSum);
+        Array<var> panelIntercepts;
+        for (const auto& intercept : panelStats.intercepts) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("x", intercept.x);
+            encoded->setProperty("y", intercept.y);
+            panelIntercepts.add(encoded);
+        }
+        meshState->setProperty("panelIntercepts", panelIntercepts);
         state.setProperty("trimesh", var(meshState));
     }
     Rectangle<float> panelBoundsForAutomation() const override { return {}; }

@@ -8,17 +8,21 @@
 #include "../Graph/GraphEditor.h"
 #include "../Graph/GraphCommandDispatcher.h"
 #include "../Graph/GraphDocument.h"
-#include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/NodeGraph.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "../Runtime/GraphPresentationModel.h"
-#include "NodeAutomationFacade.h"
-#include "NodeCanvasAutomationInspector.h"
+#include "NodeCanvasAutomationController.h"
+#include "NodeCanvasAuthoring.h"
+#include "NodeCanvasEditorCoordinator.h"
+#include "NodeCanvasPresentation.h"
+#include "NodeCanvasQueryModel.h"
 #include "NodeCableRenderer.h"
 #include "NodeCanvasGlRenderer.h"
+#include "NodeCanvasHitRouter.h"
+#include "NodeCanvasInteraction.h"
 #include "NodeCanvasScene.h"
 #include "NodeCanvasViewport.h"
 #include "NodeEditorHost.h"
@@ -85,56 +89,39 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
-    struct PortLocation {
-        Rectangle<float> bounds;
-        Point<float> centre;
-    };
-
     OpenGLContext openGLContext;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     mutable NodeCanvasScene sceneBuilder;
-    NodeCanvasHitTester hitTester;
     GraphDocument document;
     GraphCommandDispatcher commands;
-    NodeAutomationFacade automation;
     const NodeGraph& graph;
     GraphPresentationModel presentation;
     const GraphCompileResult& compileResult;
     const RuntimeProcessTrace& runtimeTrace;
     const GraphPreviewResult& previewResult;
+    NodeCanvasQueryModel queries;
     NodeEditorCommandService editorCommands;
-    NodePreviewResources previewResources;
-    NodePreviewRenderer previewRenderer;
-    NodeEditorHost editorHost;
-    NodeCanvasAutomationInspector automationInspector;
+    NodeCanvasAuthoring authoring;
+    NodeCanvasInteraction interaction;
+    String& selectedNodeId;
+    String& expandedNodeId;
+    String& editStatusMessage;
+    int& selectedEdgeIndex;
+    int& spliceTargetEdgeIndex;
+    NodeCanvasEditorCoordinator editorCoordinator;
+    NodeCanvasPresentation canvasPresentation;
+    NodeCanvasAutomationController automation;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
+    NodeCanvasHitRouter hitRouter;
 
-    Point<float> dragStartPan;
-    Rectangle<float> dragStartNodeBounds;
-    String selectedNodeId;
-    String expandedNodeId;
-    String editStatusMessage;
     int activeTrimeshVertexIndex { -1 };
-    int selectedEdgeIndex { -1 };
-    int spliceTargetEdgeIndex { -1 };
-    PortAddress connectingPort;
-    Point<float> connectingPoint;
     Point<float> lastMousePosition;
-    float activeSnapWorldX {};
-    float activeSnapWorldY {};
-    bool draggingNode {};
-    bool connectingCable {};
-    bool nodeDragUndoPushed {};
-    bool nodeDragMoved {};
-    bool activeSnapHasX {};
-    bool activeSnapHasY {};
     bool draggingTrimeshMorph {};
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
     bool trimeshVertexParameterUndoPushed {};
-    bool expandedEditorDragCaptured {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     uint32 compiledStateRefreshDueMs {};
@@ -144,65 +131,15 @@ private:
     void openGLContextClosing() override;
     void timerCallback() override;
 
-    void drawGrid(Graphics& g);
-    void drawGlEdges();
-    void drawGlNodeShells();
-    void drawGlEffect2DPreviews();
-    void drawGlExpandedEditor();
-    void drawEdges(Graphics& g);
-    void drawConnectionPreview(Graphics& g);
-    void drawNodes(Graphics& g);
-    void drawSnapGuides(Graphics& g);
-    void drawNode(Graphics& g, const Node& node);
-    void drawPreview(Graphics& g, const Node& node, Rectangle<float> area);
-    TrimeshWidget& trimeshWidgetFor(const String& nodeId);
-    Effect2DWidget& effect2DWidgetFor(const Node& node);
-    void drawExpandedEditor(Graphics& g, const Node& node);
     void setCanvasOpenGlAttached(bool shouldAttach);
-    void updateExpandedEditorHost(const Node* node);
-    void hideExpandedEditorHosts();
-    void hideExpandedEditorHostsExcept(const String& nodeId);
-    void detachExpandedEditorHosts();
-    void drawMiniMap(Graphics& g);
-    void drawGraphStatus(Graphics& g);
-    void drawEdgeLegend(Graphics& g);
-    void drawNodePalette(Graphics& g);
-    void drawHoverConsole(Graphics& g);
+    NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;
 
-    Point<float> toScreen(Point<float> p) const;
-    Point<float> toWorld(Point<float> p) const;
-    Rectangle<float> toScreen(Rectangle<float> r) const;
-    Rectangle<float> snappedNodeBounds(const Node& node, Rectangle<float> proposed);
-    PortLocation getPortLocation(const Node& node, const Port& port) const;
-    PortLocation getPortLocation(const PortAddress& address) const;
-    bool findPortAt(Point<float> screenPosition, PortAddress& result) const;
-    bool findConnectablePortAt(Point<float> screenPosition, const PortAddress& source, PortAddress& result) const;
-    bool findOperationLayoutButtonAt(Point<float> screenPosition, String& nodeId) const;
-    bool findMeshOutputSideButtonAt(Point<float> screenPosition, String& nodeId) const;
-    bool findVoiceDomainButtonAt(Point<float> screenPosition, String& nodeId) const;
-    int findEdgeAt(Point<float> screenPosition) const;
-    int findSpliceTargetEdgeAt(Point<float> screenPosition, const String& nodeId) const;
-    const Node* findNode(const String& id) const;
-    const Node* findNodeAt(Point<float> worldPosition) const;
-    const Port* findPort(const Node& node, const String& portId, bool input) const;
-    const RuntimeNodeTrace* findRuntimeTrace(const String& nodeId) const;
-    const NodePreviewResult* findPreviewResult(const String& nodeId) const;
-    PortDomain displayDomainForEdge(const Edge& edge) const;
-    PortDomain displayDomainForNodeOutput(const Node& node, const String& portId) const;
-    TrimeshRenderProfile renderProfileForNodeOutput(const Node& node, const String& portId) const;
-    bool edgeHasValidationIssue(const Edge& edge) const;
-    GraphValidationIssue validationIssueForEdge(const Edge& edge) const;
-    int executionIndexForNode(const String& nodeId) const;
-    int attachmentCount() const;
-    String hoverTextFor(Point<float> screenPosition) const;
-    String textForPort(const PortAddress& address) const;
-    String textForNode(const Node& node) const;
     Point<float> viewportCentreWorld() const;
-    Point<float> paletteCreationWorldPosition(NodeKind kind, Point<float> paletteClickPosition) const;
     void refreshCompiledState();
+    bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
     void flushScheduledCompiledStateRefresh();
@@ -211,27 +148,11 @@ private:
     bool loadSnapshot();
     bool undo();
     bool redo();
-    bool restoreGraphXml(const String& xml, const String& statusMessage);
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
-    void spaceNodesAfterSplice(
-            const String& upstreamNodeId,
-            const String& insertedNodeId,
-            const String& downstreamNodeId);
     bool clearSelection();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
-    bool handleVoiceContextEditorClick(
-            const Node& node,
-            Rectangle<float> panel,
-            Point<float> screenPosition);
-    bool handleTransformEditorClick(
-            const Node& node,
-            Rectangle<float> panel,
-            Point<float> screenPosition);
-    bool setVoiceContextParameter(const String& parameterId, const String& label, const String& value, const String& statusMessage);
-    bool setTransformMode(const Node& node, TransformMode mode);
-    std::array<String, 6> trimeshGuideAttachmentLabelsForNode(const Node& meshNode);
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;
@@ -247,7 +168,6 @@ private:
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
-    bool canConnectPorts(const PortAddress& first, const PortAddress& second) const;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };
 

@@ -269,6 +269,36 @@ std::vector<TrimeshVertexMarker> TrimeshWidget::vertexMarkers() {
     return bridge.getModel().getVertexMarkers();
 }
 
+const TrimeshRenderData& TrimeshWidget::renderDataForAutomation() const {
+    return bridge.getRenderData();
+}
+
+TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
+    const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
+    const auto samples = snapshot.waveY();
+    TrimeshPanelRenderStats stats;
+    stats.sampleCount = samples.size();
+    stats.interceptCount = (int) snapshot.intercepts().size();
+    stats.intercepts.reserve(snapshot.intercepts().size());
+    for (const auto& intercept : snapshot.intercepts()) {
+        stats.intercepts.emplace_back(intercept.x, intercept.y);
+    }
+    if (samples.empty()) {
+        return stats;
+    }
+
+    stats.minimum = samples[0];
+    stats.maximum = samples[0];
+    stats.centreSample = samples[samples.size() / 2];
+    for (int i = 0; i < samples.size(); ++i) {
+        const float sample = samples[i];
+        stats.minimum = jmin(stats.minimum, sample);
+        stats.maximum = jmax(stats.maximum, sample);
+        stats.absoluteSum += sample < 0.f ? -sample : sample;
+    }
+    return stats;
+}
+
 bool TrimeshWidget::findMorphControlAt(
         Rectangle<float> content,
         Point<float> position,

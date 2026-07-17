@@ -30,6 +30,8 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
     interactor3D.stopTimer();
     interactor2D.setRasterizer(&panelRasterizer.getRasterizer());
     interactor3D.setRasterizer(&panelRasterizer.getRasterizer());
+    interactor2D.setRasterizerUpdatesEnabled(false);
+    interactor3D.setRasterizerUpdatesEnabled(false);
     interactor2D.setMeshEditedCallback([this](TrimeshMeshEditEvent event) {
         refreshAfterMeshEdit(event);
     });
@@ -121,13 +123,14 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     }
     model.markMeshEdited();
     syncPrimaryAxisContext();
-    dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
-    updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
-    lastSyncedRevision = panelRevisionFor(model);
 
     if (event.gestureComplete && meshEditedCallback != nullptr) {
         meshEditedCallback();
     }
+
+    dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
+    updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
+    lastSyncedRevision = panelRevisionFor(model);
 }
 
 void TrimeshPanelBridge::setMeshEditedCallback(std::function<void()> callback) {

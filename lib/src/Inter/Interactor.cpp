@@ -1222,7 +1222,7 @@ void Interactor::setMouseDownStateSelectorTool(const MouseEvent& e) {
     }
 }
 
-bool Interactor::isCurrentVertexHit(Point<int> mousePosition) const {
+bool Interactor::isCurrentVertexHit(Point<int> mousePosition) {
     if (panel == nullptr || state.currentVertex == nullptr) {
         return false;
     }
@@ -1464,7 +1464,7 @@ GuideCurveProvider* Interactor::getGuideCurveProvider() const {
 }
 
 void Interactor::performRasterizerUpdate(UpdateType updateType) {
-    if (rasterizer != nullptr) {
+    if (rasterizer != nullptr && rasterizerUpdatesEnabled) {
         rasterizer->performUpdate(updateType);
     }
 }
@@ -1934,7 +1934,22 @@ bool Interactor::commitCubeAdditionIfValid(VertCube*& addedCube,
     vector<VertCube*>& afterCubes = mesh->getCubes();
     vector<Vertex*>& afterVerts = mesh->getVerts();
 
-    afterCubes.push_back(addedCube);
+    const MorphPosition morph = getMorphPosition();
+    VertCube::ReductionData addedIntercept;
+    addedCube->getFinalIntercept(addedIntercept, morph);
+    auto insertion = afterCubes.end();
+    if (addedIntercept.pointOverlaps) {
+        insertion = std::find_if(
+                afterCubes.begin(),
+                afterCubes.end(),
+                [&](VertCube* cube) {
+                    VertCube::ReductionData intercept;
+                    cube->getFinalIntercept(intercept, morph);
+                    return intercept.pointOverlaps && intercept.v.values[dims.x]
+                            > addedIntercept.v.values[dims.x];
+                });
+    }
+    afterCubes.insert(insertion, addedCube);
 
     bool passed = true;
 
@@ -2138,20 +2153,19 @@ bool Interactor::addNewCube(float startTime, float phase, float amp, float curve
         for (float time : times) {
             for (float red : reds) {
                 for (float blue : blues) {
-                    addedLine->getFinalIntercept(reduceData, MorphPosition(time, red, blue));
-
                     Vertex* vertex = addedLine->getVertex(vertexIdx);
 
                     vertex->values[Vertex::Time] = time;
                     vertex->values[Vertex::Red]  = red;
                     vertex->values[Vertex::Blue] = blue;
 
-                    // voodoo warning: final is updated on getLineIntercept()
-                    if(! is3D) {
-                        vertex->values[dims.x] = reduceData.v.values[dims.x];
+                    if (is3D) {
+                        reduceData = {};
+                        addedLine->getFinalIntercept(reduceData, MorphPosition(time, red, blue));
                     }
-
-                    vertex->values[dims.y] = reduceData.v.values[dims.y];
+                    if (is3D && reduceData.pointOverlaps) {
+                        vertex->values[dims.y] = reduceData.v.values[dims.y];
+                    }
 
                     ++vertexIdx;
                 }
@@ -2357,9 +2371,9 @@ MorphPosition Interactor::getCube() {
 
     const float minLength = getRealConstant(MinLineLength);
 
-    pos.time.setValueDirect(jlimit(pos.time.getTargetValue(), 0.f, 1.f - minLength));
-    pos.red .setValueDirect(jlimit(pos.red .getTargetValue(), 0.f, 1.f - minLength));
-    pos.blue.setValueDirect(jlimit(pos.blue.getTargetValue(), 0.f, 1.f - minLength));
+    pos.time.setValueDirect(jlimit(0.f, 1.f - minLength, pos.time.getTargetValue()));
+    pos.red .setValueDirect(jlimit(0.f, 1.f - minLength, pos.red .getTargetValue()));
+    pos.blue.setValueDirect(jlimit(0.f, 1.f - minLength, pos.blue.getTargetValue()));
     NumberUtils::constrain(pos.timeDepth,   minLength, 1.f - pos.time);
     NumberUtils::constrain(pos.redDepth,    minLength, 1.f - pos.red);
     NumberUtils::constrain(pos.blueDepth,   minLength, 1.f - pos.blue);
