@@ -4,6 +4,7 @@
 #include <App/Settings.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Definitions.h>
+#include <UI/Panels/Panel.h>
 
 namespace CycleV2 {
 
@@ -49,6 +50,23 @@ void TrimeshInteractor2D::setExtraElements(float) {
     }
 }
 
+bool TrimeshInteractor2D::isCurrentVertexHit(Point<int> mousePosition) {
+    if (panel == nullptr || state.currentCube == nullptr) {
+        return false;
+    }
+
+    VertCube::ReductionData intercept;
+    state.currentCube->getFinalIntercept(intercept, getMorphPosition());
+    if (!intercept.pointOverlaps) {
+        return false;
+    }
+
+    const Vertex2 pixelPosition(
+            panel->sx(intercept.v.values[dims.x]),
+            panel->sy(intercept.v.values[dims.y]));
+    return pixelPosition.dist2(Vertex2(mousePosition.x, mousePosition.y)) <= 64.f;
+}
+
 bool TrimeshInteractor2D::doCreateVertex() {
     const bool created = Interactor2D::doCreateVertex();
     if (created && meshEditedCallback != nullptr) {
@@ -67,6 +85,7 @@ void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
 
 void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     const bool meshChanged = flag(DidMeshChange);
+    const bool createdVertex = actionIs(CreatingVertex);
 
     if (actionIs(BoxSelecting) || actionIs(ClickSelecting) || actionIs(DraggingCorner)) {
         vector<Vertex*>& selected = getSelected();
@@ -96,7 +115,7 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     flag(LoweredRes) = false;
     flag(SimpleRepaint) = false;
 
-    if (meshChanged && meshEditedCallback != nullptr) {
+    if ((meshChanged || createdVertex) && meshEditedCallback != nullptr) {
         meshEditedCallback({ false, true });
     }
 }

@@ -108,7 +108,7 @@ public:
     void setAxeSize(float size);
     void setHighlitCorner(const MouseEvent& e, bool& wroteMessage);
     void setMouseDownStateSelectorTool(const MouseEvent& e);
-    bool isCurrentVertexHit(Point<int> mousePosition) const;
+    virtual bool isCurrentVertexHit(Point<int> mousePosition);
     void updateCurrentMouseFromLocalPosition(Point<int> localPos);
     void updateCurrentMouseFromPointerEvent(const PanelPointerEvent& event);
     void setRasterizer(Rasterization::Rasterizer* rasterizer);
@@ -138,6 +138,7 @@ public:
     int                 getRasterizerPaddingSize() const;
     GuideCurveProvider* getGuideCurveProvider() const;
     void                performRasterizerUpdate(UpdateType updateType);
+    void                setRasterizerUpdatesEnabled(bool enabled) { rasterizerUpdatesEnabled = enabled; }
     bool                isRasterizerSampleableAt(float x) const;
     float               sampleRasterizerAt(double angle) const;
     Rasterization::SnapshotView rasterizerSnapshot() const;
@@ -261,6 +262,7 @@ protected:
 
     MorphPositioner*    positioner;
     Rasterization::Rasterizer* rasterizer {};
+    bool rasterizerUpdatesEnabled { true };
 
     CriticalSection     vertexLock;
     CollisionDetector   collisionDetector;

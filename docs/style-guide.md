@@ -250,6 +250,25 @@ Mirror this order in constructor initializer lists.
   refactor signal even when each method is individually short. Split concrete
   components into their own files and extract only genuinely shared primitives;
   do not use file-local helpers as a substitute for cohesive ownership.
+
+## Source File Size
+
+- Treat a production translation unit approaching 800 lines as an explicit
+  architectural review point. Files substantially beyond that size require a
+  documented reason or decomposition before adding more behavior. Do not evade
+  the review by moving the same unrelated free functions into a generic
+  `Helpers.cpp`, `Utils.cpp`, anonymous namespace, or partial-class dump.
+- UI roots, application services, and other orchestration classes should target
+  roughly 800 lines or fewer. Their job is composition, lifecycle, and routing.
+  Rendering algorithms, gesture state machines, persistence workflows,
+  automation protocols, geometry, domain commands, and concrete control
+  presentation belong in cohesive collaborators. An orchestrator should read
+  primarily as named delegation between those collaborators.
+- When a file crosses the review threshold, measure its responsibilities by
+  line range before refactoring. Extract complete ownership boundaries with
+  semantic tests, and require the original file to become materially smaller
+  after every slice. A refactor that only redistributes identical switchboards
+  or callback bundles has not satisfied this rule.
 - Look for repeatable contracts before adding another node-specific or feature-specific class. If several implementations need the same lifecycle and data movement shape, model that shape explicitly and leave only the domain operation in the specialization.
   - Example: signal processors that all expose a method like:
 

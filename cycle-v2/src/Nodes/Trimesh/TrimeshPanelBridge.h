@@ -30,7 +30,9 @@ public:
     TrimeshPanel3D& getPanel3D() { return panel3D; }
     TrimeshPanel2D& getPanel2D() { return panel2D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
+    const TrimeshRenderData& getRenderData() const { return dataSource.getRenderData(); }
     Interactor2D& getInteractor2D() { return interactor2D; }
+    const Interactor2D& getInteractor2D() const { return interactor2D; }
     Interactor3D& getInteractor3D() { return interactor3D; }
     TrimeshNodeModel& getModel() { return model; }
     bool rasterizerWrapsVertices() { return panelRasterizer.wrapsVertices(); }

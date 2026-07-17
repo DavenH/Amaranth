@@ -289,9 +289,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
                     { input("context", "Context", PortDomain::DomainContext),
                       input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                      input("yellow", "Yellow Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                      input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                      input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top) },
+                      input("yellow", "Yellow Morph", PortDomain::ControlSignal),
+                      input("red", "Red Morph", PortDomain::ControlSignal),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -300,7 +300,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }, true))
                     .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
                             "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
-                    .presentation({ 260.f, 130.f })
+                    .presentation({ 260.f, 130.f }, { 286.f, 269.f })
                     .finish(),
             buildDefinition(definition("fft", NodeKind::Fft, String::fromUTF8("Time → Freq"), "cycle chunks", "fft",
                     { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -321,8 +321,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({}, { 278.f, 178.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
-                    { input("red", "Red Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top),
-                      input("blue", "Blue Morph", PortDomain::ControlSignal, ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top) },
+                    { input("red", "Red Morph", PortDomain::ControlSignal),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal) },
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
@@ -335,7 +335,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }, true))
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
                             "cycle/src/Inter/EnvelopeInter2D.cpp")
-                    .presentation({ 220.f, 92.f })
+                    .presentation({ 269.2f, 92.f })
                     .finish(),
             buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
@@ -361,7 +361,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }, true))
                     .runtime(AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope,
                             "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp")
-                    .presentation({ 220.f, 100.f })
+                    .presentation({ 269.2f, 100.f })
                     .finish(),
             buildDefinition(definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -495,11 +495,14 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
         node.subtitle = definitionToUse->subtitle;
     }
     for (const auto& canonicalInput : definitionToUse->inputs) {
-        const auto existing = std::find_if(node.inputs.begin(), node.inputs.end(), [&](const auto& input) {
+        auto existing = std::find_if(node.inputs.begin(), node.inputs.end(), [&](const auto& input) {
             return input.id == canonicalInput.id;
         });
         if (existing == node.inputs.end()) {
             node.inputs.push_back(canonicalInput);
+        } else if ((node.kind == NodeKind::Envelope || node.kind == NodeKind::TrilinearMesh)
+                && (canonicalInput.id == "yellow" || canonicalInput.id == "red" || canonicalInput.id == "blue")) {
+            existing->side = canonicalInput.side;
         }
     }
     if (node.outputs.empty() && !definitionToUse->outputs.empty()) {

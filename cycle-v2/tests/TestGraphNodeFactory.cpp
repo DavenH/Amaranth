@@ -16,10 +16,11 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.inputs.size() == 2);
     REQUIRE(node.inputs[0].id == "red");
     REQUIRE(node.inputs[1].id == "blue");
-    REQUIRE(node.inputs[0].side == PortSide::Top);
-    REQUIRE(node.inputs[1].side == PortSide::Top);
+    REQUIRE(node.inputs[0].side == PortSide::Left);
+    REQUIRE(node.inputs[1].side == PortSide::Left);
     REQUIRE(node.outputs.size() == 1);
     REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(node.bounds.getWidth() == 295.2f);
     REQUIRE(parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId()).isNotEmpty());
     REQUIRE(parameterValueForNode(node, "envelope.snapshot").isEmpty());
     REQUIRE(parameterValueForNode(node, "dynamic") == "0");
@@ -85,7 +86,10 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(mesh.inputs[3].id == "red");
     REQUIRE(mesh.inputs[4].id == "blue");
     REQUIRE(mesh.inputs[2].domain == PortDomain::ControlSignal);
-    REQUIRE(mesh.inputs[2].side == PortSide::Top);
+    REQUIRE(mesh.inputs[2].side == PortSide::Left);
+    REQUIRE(mesh.inputs[3].side == PortSide::Left);
+    REQUIRE(mesh.inputs[4].side == PortSide::Left);
+    REQUIRE(mesh.bounds.getHeight() == 269.f);
 
     REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
 
@@ -129,6 +133,7 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     REQUIRE(wave.outputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(image.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(guide.bounds.getWidth() == 295.2f);
     REQUIRE(ir.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(ir.outputs.front().domain == PortDomain::TimeSignal);
 }

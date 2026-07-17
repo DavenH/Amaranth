@@ -198,6 +198,14 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
             value)) {
         return false;
     }
+    const auto publishResult = commands.setNodeParameter(
+            activeVertexNodeId,
+            TrimeshMeshState::parameterId(),
+            "Mesh Topology",
+            activeVertexWidget->currentMeshState());
+    if (!publishResult.succeeded()) {
+        return false;
+    }
     presentation.setNodeEditorStatus(
             "Vertex #" + String(activeVertexIndex) + " " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);

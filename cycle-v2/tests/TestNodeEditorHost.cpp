@@ -4,6 +4,7 @@
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/NodeEditorHost.h"
 #include "../src/UI/NodePreviewResources.h"
@@ -133,6 +134,7 @@ public:
         return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
+    void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
 };
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
@@ -189,6 +191,69 @@ Node node(String id, NodeKind kind) {
     result.id = std::move(id);
     result.kind = kind;
     return result;
+}
+
+TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics",
+        "[cycle-v2][canvas][automation]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    canvas.setBounds(0, 0, 800, 600);
+
+    NodeGraph graph;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    GraphPresentationModel graphPresentation;
+    REQUIRE(graphPresentation.refresh(document.graph(), document.revision()));
+
+    NullPresentation editorPresentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            editorPresentation,
+            editorResources);
+    NodePreviewResources previewResources(editorCommands);
+    EditorStats editorStats;
+    MockFactories factories(editorStats);
+    NodeEditorHost host(
+            canvas,
+            editorCommands,
+            editorPresentation,
+            editorResources,
+            factories);
+    NodeCanvasAuthoring authoring(
+            document,
+            graphCommands,
+            graphPresentation,
+            editorCommands);
+    NodeCanvasViewport viewport;
+    viewport.setBounds(canvas.getLocalBounds().toFloat());
+    NodeCanvasAutomationController automation({
+            canvas,
+            document,
+            graphPresentation,
+            viewport,
+            authoring,
+            host,
+            previewResources
+        });
+
+    REQUIRE(NodeCanvasAutomationController::parseNodeKind("mesh") == NodeKind::TrilinearMesh);
+    REQUIRE_FALSE(NodeCanvasAutomationController::parseNodeKind("unknown").has_value());
+
+    const auto added = automation.addNode("wave", { 50.f, 70.f });
+    REQUIRE(added.succeeded);
+    REQUIRE(added.nodeId.isNotEmpty());
+    REQUIRE(document.graph().findNode(added.nodeId)->kind == NodeKind::WaveSource);
+    REQUIRE_FALSE(automation.addNode("unknown", {}).handled);
+
+    const var diagnostics = automation.inspectOpenGLDiagnostics({ true, {} });
+    const auto* object = diagnostics.getDynamicObject();
+    REQUIRE(object != nullptr);
+    REQUIRE(object->getProperty("schema").toString() == "cycle-v2-opengl-diagnostics.v1");
+    REQUIRE((bool) object->getProperty("canvasOpenGlAttached"));
+    REQUIRE((int) object->getProperty("panelCount") == 0);
 }
 
 std::vector<NodeParameter> curveControls(const Node& node) {

@@ -71,6 +71,10 @@ public:
     virtual TrimeshWidget* trimeshWidget(const Node& node) = 0;
     virtual TrimeshRenderProfile trimeshRenderProfile(const Node& node) const = 0;
     virtual std::array<String, 6> trimeshGuideLabels(const Node& node) = 0;
+    virtual void paintNodePreview(
+            Graphics& graphics,
+            const Node& node,
+            Rectangle<float> bounds) = 0;
 };
 
 struct NodeEditorContext {

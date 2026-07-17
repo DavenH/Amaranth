@@ -31,6 +31,16 @@ struct TrimeshExpandedHitRegion {
     juce::String axisValue;
 };
 
+struct TrimeshPanelRenderStats {
+    int sampleCount {};
+    int interceptCount {};
+    float minimum {};
+    float maximum {};
+    float centreSample {};
+    double absoluteSum {};
+    std::vector<juce::Point<float>> intercepts;
+};
+
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
@@ -77,6 +87,8 @@ public:
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
     int selectedVertexIndexForPanel();
     std::vector<TrimeshVertexMarker> vertexMarkers();
+    const TrimeshRenderData& renderDataForAutomation() const;
+    TrimeshPanelRenderStats panelRenderStatsForAutomation() const;
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);

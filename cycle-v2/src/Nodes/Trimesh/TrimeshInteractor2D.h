@@ -22,6 +22,7 @@ public:
     void restoreDetail() override {}
     void doGlobalUIUpdate(bool) override { performUpdate(Update); }
     void setExtraElements(float x) override;
+    bool isCurrentVertexHit(Point<int> mousePosition) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void deleteSelected();

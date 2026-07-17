@@ -1,5 +1,7 @@
 #include "EnvelopeMorphControls.h"
 
+#include "../../Graph/NodeGraph.h"
+
 using namespace juce;
 
 namespace CycleV2 {
@@ -52,12 +54,12 @@ Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) 
 }
 
 Colour EnvelopeMorphControls::axisColour(int axis) const {
-    static const Colour colours[] {
-        Colour(0xffd7bf5f),
-        Colour(0xffd65a5a),
-        Colour(0xff5f91e8)
+    static const MorphDimension dimensions[] {
+        MorphDimension::Yellow,
+        MorphDimension::Red,
+        MorphDimension::Blue
     };
-    return colours[jlimit(0, 2, axis)];
+    return colourForMorphDimension(dimensions[jlimit(0, 2, axis)]);
 }
 
 void EnvelopeMorphControls::drawPlane(

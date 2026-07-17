@@ -31,7 +31,7 @@ private:
         void setPosition(const MorphPosition& position, int primaryAxis);
 
         MorphPosition getMorphPosition() override { return morph; }
-        MorphPosition getOffsetPosition(bool) override { return morph; }
+        MorphPosition getOffsetPosition(bool) override { return { 0.f, 0.f, 0.f }; }
         int getPrimaryDimension() override { return primaryDimension; }
         float getYellow() override { return morph.time.getCurrentValue(); }
         float getRed() override { return morph.red.getCurrentValue(); }

@@ -56,9 +56,17 @@ set(RUNTIME_SOURCES
 
 set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeAutomationFacade.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAuthoring.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAutomationController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCableRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAutomationInspector.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasInteraction.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasChromePresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasEditorCoordinator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasHitRouter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasPresentation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasQueryModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
