@@ -1462,15 +1462,32 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
 
 TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
+    const std::vector<float> timeColumns {
+            -0.5f, -0.25f, 0.25f, 0.5f,
+            0.75f, -0.75f, -0.25f, 0.25f
+    };
 
     AudioProcessContext fftContext;
     fftContext.frameCount = 4;
-    fftContext.inputs = { gridPayload({ -0.5f, -0.25f, 0.25f, 0.5f }, 1, 4) };
+    fftContext.inputs = { gridPayload(timeColumns, 2, 4) };
+    fftContext.inputs.front().traversalGrid.metadata.columnResolution = {
+            0.25,
+            0.125,
+            "seconds"
+    };
     fftContext.outputPorts = {
             { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
             { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
     };
     factory.create(AudioModuleRole::Fft)->process(fftContext);
+
+    REQUIRE(fftContext.outputs[0].traversalGrid.columns == 2);
+    REQUIRE(fftContext.outputs[0].traversalGrid.rows == 3);
+    REQUIRE(fftContext.outputs[0].traversalGrid.metadata.columnResolution.origin == 0.25);
+    REQUIRE(fftContext.outputs[0].traversalGrid.metadata.columnResolution.step == 0.125);
+    REQUIRE(fftContext.outputs[0].traversalGrid.metadata.columnResolution.unit == "seconds");
+    REQUIRE(fftContext.outputs[1].traversalGrid.columns == 2);
+    REQUIRE(fftContext.outputs[1].traversalGrid.rows == 3);
 
     AudioProcessContext ifftContext;
     ifftContext.frameCount = 4;
@@ -1482,10 +1499,48 @@ TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[
 
     REQUIRE(output(ifftContext).traversalGrid.metadata.valueDomain == PortDomain::TimeSignal);
     REQUIRE(output(ifftContext).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
-    REQUIRE(output(ifftContext).block.samples[0] == Catch::Approx(-0.5f).margin(1.0e-5f));
-    REQUIRE(output(ifftContext).block.samples[1] == Catch::Approx(-0.25f).margin(1.0e-5f));
-    REQUIRE(output(ifftContext).block.samples[2] == Catch::Approx(0.25f).margin(1.0e-5f));
-    REQUIRE(output(ifftContext).block.samples[3] == Catch::Approx(0.5f).margin(1.0e-5f));
+    REQUIRE(output(ifftContext).traversalGrid.columns == 2);
+    REQUIRE(output(ifftContext).traversalGrid.rows == 4);
+    REQUIRE(output(ifftContext).traversalGrid.metadata.columnResolution.origin == 0.25);
+    REQUIRE(output(ifftContext).traversalGrid.metadata.columnResolution.step == 0.125);
+    REQUIRE(output(ifftContext).traversalGrid.metadata.columnResolution.unit == "seconds");
+    for (size_t sample = 0; sample < timeColumns.size(); ++sample) {
+        REQUIRE(output(ifftContext).traversalGrid.values[sample]
+                == Catch::Approx(timeColumns[sample]).margin(1.0e-5f));
+    }
+}
+
+TEST_CASE("IFFT rejects incompatible phase traversal columns", "[cycle-v2][runtime][fft]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext fftContext;
+    fftContext.frameCount = 4;
+    fftContext.inputs = {
+            gridPayload({
+                    -0.5f, -0.25f, 0.25f, 0.5f,
+                    0.75f, -0.75f, -0.25f, 0.25f
+            }, 2, 4)
+    };
+    fftContext.outputPorts = {
+            { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo },
+            { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::LinkedStereo }
+    };
+    factory.create(AudioModuleRole::Fft)->process(fftContext);
+
+    AudioProcessContext magnitudeOnly;
+    magnitudeOnly.frameCount = 4;
+    magnitudeOnly.inputs = { fftContext.outputs[0] };
+    factory.create(AudioModuleRole::Ifft)->process(magnitudeOnly);
+
+    auto incompatiblePhase = fftContext.outputs[1];
+    incompatiblePhase.traversalGrid.metadata.rowAxis = TraversalGridAxis::Time;
+    AudioProcessContext incompatible;
+    incompatible.frameCount = 4;
+    incompatible.inputs = { fftContext.outputs[0], incompatiblePhase };
+    factory.create(AudioModuleRole::Ifft)->process(incompatible);
+
+    REQUIRE(output(incompatible).traversalGrid.values
+            == output(magnitudeOnly).traversalGrid.values);
 }
 
 TEST_CASE("Mesh source processor generates a deterministic operand when unconnected", "[cycle-v2][runtime]") {
