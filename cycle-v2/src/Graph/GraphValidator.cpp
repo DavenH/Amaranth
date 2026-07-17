@@ -97,12 +97,17 @@ private:
 std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& graph) const {
     std::vector<GraphValidationIssue> issues;
     EdgeIssueReporter reporter(issues);
+    const GraphDomainResolution resolution = domainResolver.resolve(graph);
 
-    for (const auto& edge : graph.getEdges()) {
-        validateEdge(graph, edge, reporter);
+    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+        validateEdge(
+                graph,
+                graph.getEdges()[edgeIndex],
+                resolution.domains[edgeIndex],
+                reporter);
     }
 
-    validateOperationInputs(graph, issues);
+    validateOperationInputs(graph, resolution, issues);
 
     return issues;
 }
@@ -117,13 +122,18 @@ bool GraphValidator::edgeHasValidationIssue(const NodeGraph& graph, const Edge& 
 
 GraphValidationIssue GraphValidator::validationIssueForEdge(const NodeGraph& graph, const Edge& edge) const {
     EdgeIssueReporter reporter;
-    validateEdge(graph, edge, reporter);
+    validateEdge(
+            graph,
+            edge,
+            domainResolver.resolvedDomainForEdge(graph, edge),
+            reporter);
     return reporter.getFirstIssue();
 }
 
 void GraphValidator::validateEdge(
         const NodeGraph& graph,
         const Edge& edge,
+        PortDomain resolvedDomain,
         EdgeIssueReporter& reporter) const {
     auto report = [&edge, &reporter](GraphValidationCode code, String message) {
         return reporter.report({
@@ -213,7 +223,7 @@ void GraphValidator::validateEdge(
     }
 
     Port resolvedSource = *source;
-    resolvedSource.domain = resolvedDomainForEdge(graph, edge);
+    resolvedSource.domain = resolvedDomain;
 
     if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
         if (!report(
@@ -263,6 +273,7 @@ bool GraphValidator::isVoiceAwareDestination(const Port& port) const {
 
 void GraphValidator::validateOperationInputs(
         const NodeGraph& graph,
+        const GraphDomainResolution& resolution,
         std::vector<GraphValidationIssue>& issues) const {
     for (const auto& node : graph.getNodes()) {
         if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
@@ -272,12 +283,13 @@ void GraphValidator::validateOperationInputs(
         PortDomain firstConcreteDomain {};
         bool hasConcreteDomain = false;
 
-        for (const auto& edge : graph.getEdges()) {
+        for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+            const Edge& edge = graph.getEdges()[edgeIndex];
             if (edge.attachment || edge.destNodeId != node.id) {
                 continue;
             }
 
-            const PortDomain domain = domainResolver.resolvedDomainForEdge(graph, edge);
+            const PortDomain domain = resolution.domains[edgeIndex];
 
             if (!GraphDomainResolver::isConcreteOperationDomain(domain)) {
                 continue;

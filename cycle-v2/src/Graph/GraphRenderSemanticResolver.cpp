@@ -35,13 +35,15 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
         const String& portId) const {
     NodeRenderSemantic semantic;
     bool foundSignalEdge {};
+    const GraphDomainResolution resolution = domainResolver.resolve(graph);
 
-    for (const auto& edge : graph.getEdges()) {
+    for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
+        const Edge& edge = graph.getEdges()[edgeIndex];
         if (edge.attachment || edge.sourceNodeId != nodeId || edge.sourcePortId != portId) {
             continue;
         }
 
-        const PortDomain domain = domainResolver.resolvedDomainForEdge(graph, edge);
+        const PortDomain domain = resolution.domains[edgeIndex];
         const NodeRenderSemantic edgeSemantic = semanticForEdge(graph, edge, domain);
 
         if (!foundSignalEdge || edgeSemantic.role != RenderSemanticRole::Generic) {
