@@ -50,6 +50,13 @@ inline size_t payloadChannelCount(const SignalPayload& payload) {
     return payload.isStereo() ? 2u : 1u;
 }
 
+inline void clearTraversalGrid(SignalTraversalGrid& grid) {
+    grid.values.clear();
+    grid.metadata = {};
+    grid.columns = 0;
+    grid.rows = 0;
+}
+
 inline void copyBlockExpandingScalars(Buffer<float> dest, const SignalBlock& source, size_t frameCount) {
     if (source.samples.empty()) {
         dest.zero();
@@ -308,7 +315,7 @@ inline void publishVectorAsTraversalGrid(
         size_t columns,
         const AudioProcessWorkArena* arena = nullptr) {
     if (payload.block.samples.empty()) {
-        payload.traversalGrid = {};
+        clearTraversalGrid(payload.traversalGrid);
         return;
     }
 

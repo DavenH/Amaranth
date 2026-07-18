@@ -275,7 +275,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         SignalPayload& output,
         const AudioProcessWorkArena* arena) {
     if (output.block.samples.empty()) {
-        output.traversalGrid = {};
+        clearTraversalGrid(output.traversalGrid);
         return;
     }
 
@@ -286,7 +286,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
     positions.ramp(0.f, 1.f / (float) columns);
     const EnvelopeConfiguration* current = preparedConfiguration();
     if (current == nullptr) {
-        output.traversalGrid = {};
+        clearTraversalGrid(output.traversalGrid);
         return;
     }
 

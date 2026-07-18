@@ -61,7 +61,7 @@ private:
             const SignalPayload& input,
             const AudioProcessWorkArena* arena) {
         if (!input.traversalGrid.isValid()) {
-            output.traversalGrid = {};
+            clearTraversalGrid(output.traversalGrid);
             output.secondaryTraversalGrid.values.clear();
             output.secondaryTraversalGrid.metadata = {};
             output.secondaryTraversalGrid.columns = 0;

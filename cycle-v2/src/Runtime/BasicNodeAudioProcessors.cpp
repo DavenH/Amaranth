@@ -20,7 +20,7 @@ void publishSourceTraversalGrid(
         bool image,
         const AudioProcessWorkArena* arena) {
     if (payload.block.samples.empty()) {
-        payload.traversalGrid = {};
+        clearTraversalGrid(payload.traversalGrid);
         return;
     }
 

@@ -62,7 +62,7 @@ private:
             const AudioProcessWorkArena* arena) {
         const SignalTraversalGrid* grid = outputGridFor(output.domain, left, right);
         if (grid == nullptr) {
-            output.traversalGrid = {};
+            clearTraversalGrid(output.traversalGrid);
             return;
         }
 
@@ -70,7 +70,7 @@ private:
         const BinaryGridOperandMode rightMode = gridOperandModeFor(right, *grid);
         if (leftMode == BinaryGridOperandMode::Incompatible
                 || rightMode == BinaryGridOperandMode::Incompatible) {
-            output.traversalGrid = {};
+            clearTraversalGrid(output.traversalGrid);
             return;
         }
 
