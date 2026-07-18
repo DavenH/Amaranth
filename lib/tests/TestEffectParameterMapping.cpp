@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
@@ -24,4 +25,9 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
     REQUIRE(CycleDsp::delayBeats(0.f, 4) == Approx(0.09));
     REQUIRE(CycleDsp::delayBeats(0.5f, 4) == Approx(1.0));
     REQUIRE(CycleDsp::delayBeats(1.f, 4) == Approx(4.0));
+    REQUIRE(CycleDsp::delayUnitValueForBeats(1.0, 4) == Approx(0.5));
+    REQUIRE(CycleDsp::delayUnitValueForBeats(2.0, 4) == Approx(std::sqrt(0.5)));
+    REQUIRE(CycleDsp::delayUnitValueForBeats(4.0, 4) == Approx(1.0));
+    REQUIRE(CycleDsp::delaySnappedUnitValue(0.6f, 4) == Approx(0.5));
+    REQUIRE(CycleDsp::delaySnappedUnitValue(0.7f, 4) == Approx(std::sqrt(0.5)));
 }

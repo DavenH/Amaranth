@@ -136,7 +136,15 @@ private:
                     node.id, raw->id, raw->name, (float) raw->slider.getValue());
         };
         control->slider.onValueChange = [this, raw] {
+            if (kind == NodeKind::Delay && raw->id == "time") {
+                raw->slider.setValue(
+                        CycleDsp::delaySnappedUnitValue((float) raw->slider.getValue(), 4),
+                        dontSendNotification);
+            }
             updateReadout(*raw);
+            if (kind == NodeKind::Delay && raw->id == "time" && controls.size() > 3) {
+                updateReadout(*controls[3]);
+            }
             const float value = (float) raw->slider.getValue();
             if (raw->editing) {
                 commands.updateNodeParameterEditValue(value);
@@ -198,7 +206,13 @@ private:
             text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
         } else if (kind == NodeKind::Delay && control.id == "spinIters") {
             const int iterations = CycleDsp::delaySpinIterations(value);
-            text = String(iterations) + (iterations == 1 ? " tap" : " taps");
+            const float timeValue = controls.empty()
+                    ? 0.5f
+                    : (float) controls.front()->slider.getValue();
+            const double cycleBeats = CycleDsp::delayBeats(timeValue, 4) * (double) iterations;
+            text = (cycleBeats < 10.0
+                    ? String(cycleBeats, 1)
+                    : String(roundToInt(cycleBeats))) + " beats";
         } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
             const float gain = CycleDsp::equalizerGainDecibels(value);
             text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";

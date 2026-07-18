@@ -17,5 +17,7 @@ float reverbDamping(float unitValue);
 float reverbWetLevel(float unitValue);
 
 double delayBeats(float unitValue, int beatsPerMeasure);
+float delayUnitValueForBeats(double beats, int beatsPerMeasure);
+float delaySnappedUnitValue(float unitValue, int beatsPerMeasure);
 
 }

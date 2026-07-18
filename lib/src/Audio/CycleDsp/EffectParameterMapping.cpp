@@ -67,4 +67,18 @@ double delayBeats(float value, int beatsPerMeasure) {
             * normalizedValue;
 }
 
+float delayUnitValueForBeats(double beats, int beatsPerMeasure) {
+    const double normalizedBeats = std::max(0.0, beats);
+    const double normalizedMeasure = (double) std::max(1, beatsPerMeasure);
+    return unitValue((float) std::sqrt(normalizedBeats / normalizedMeasure));
+}
+
+float delaySnappedUnitValue(float value, int beatsPerMeasure) {
+    const int normalizedMeasure = std::max(1, beatsPerMeasure);
+    const double beats = std::round(delayBeats(value, normalizedMeasure));
+    return delayUnitValueForBeats(
+            std::clamp(beats, 1.0, (double) normalizedMeasure),
+            normalizedMeasure);
+}
+
 }

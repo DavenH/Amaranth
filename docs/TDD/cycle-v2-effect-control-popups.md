@@ -125,6 +125,11 @@ Preview-quality follow-up evidence:
 - `/private/tmp/cycle-v2-delay-stereo-time.png` verifies the compact and
   expanded Delay views share a left/right stereo axis, horizontal time axis,
   parameterized ping spacing, pan position, and feedback decay.
+- `/private/tmp/cycle-v2-delay-dsp-accurate-final.png` verifies beat-grid
+  alignment, a full sine-pan revolution, wet-scaled ping radii, feedback decay,
+  and unclamped viewport clipping. Delay time dragging snaps through the shared
+  inverse mapping to exact integer beats, while Spin Length reports the full
+  pan-LFO cycle duration in beats.
 - The follow-up discovery run passed 496 of 499 tests. The concurrent Envelope
   exchange failure passed immediately on isolated rerun; the two repeatable
   unrelated failures remain the seed-array and mesh-scale expectations above.

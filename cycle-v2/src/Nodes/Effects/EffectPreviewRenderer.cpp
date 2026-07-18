@@ -3,6 +3,7 @@
 #include "../../UI/NodeParameterValue.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 
 namespace CycleV2 {
 
@@ -64,6 +65,16 @@ void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) 
             Justification::centredRight);
 }
 
+void paintBeatGrid(Graphics& graphics, Rectangle<float> plot, int beatCount) {
+    for (int beat = 0; beat <= beatCount; ++beat) {
+        const float unit = (float) beat / (float) beatCount;
+        const float x = plot.getX() + unit * plot.getWidth();
+        const bool measure = beat % 4 == 0;
+        graphics.setColour(Colour(0xff53616d).withAlpha(measure ? 0.38f : 0.20f));
+        graphics.drawVerticalLine(roundToInt(x), plot.getY(), plot.getBottom());
+    }
+}
+
 }
 
 void paintDelayPingPreview(
@@ -79,25 +90,36 @@ void paintDelayPingPreview(
     const float time = parameterValue(node, "time", 0.5f);
     const float feedback = parameterValue(node, "feedback", 0.5f);
     const float spin = parameterValue(node, "spin", 0.5f);
-    const int tapCount = CycleDsp::delaySpinIterations(
+    const float wet = parameterValue(node, "wet", 0.5f);
+    const int spinLength = CycleDsp::delaySpinIterations(
             parameterValue(node, "spinIters", 0.2f));
-    const int visibleTaps = jlimit(2, 9, tapCount + 2);
-    float amplitude = 0.9f;
-    const float spacing = content.getWidth() * (0.09f + time * 0.075f);
+    constexpr int visibleBeatCount = 16;
+    const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
+    float amplitude = feedback;
 
     graphics.setColour(Colour(0xff11262a));
     graphics.fillRoundedRectangle(contentArea(area), 4.f);
+    paintBeatGrid(graphics, content, visibleBeatCount);
     paintDelayAxes(graphics, content, showLabels);
-    for (int index = 0; index < visibleTaps; ++index) {
-        const float x = jmin(
-                content.getRight() - 3.f,
-                content.getX() + content.getWidth() * 0.08f + (float) index * spacing);
-        const float pan = ((index & 1) == 0 ? -1.f : 1.f) * spin;
-        const float y = content.getCentreY() + pan * content.getHeight() * 0.38f;
-        const float radius = jmax(1.8f, amplitude * content.getHeight() * 0.11f);
+    for (int ping = 1; ; ++ping) {
+        const float beat = (float) ping * delayBeats;
+        if (beat > (float) visibleBeatCount) {
+            break;
+        }
+
+        const float phase = (float) ((ping - 1) % spinLength)
+                / (float) spinLength
+                * MathConstants<float>::twoPi;
+        const float pan = spin * (float) dsp::FastMathApproximations::sin((double) phase);
+        const float x = content.getX() + beat / (float) visibleBeatCount * content.getWidth();
+        const float y = content.getCentreY() + pan * content.getHeight() * 0.46f;
+        const float radius = wet * amplitude * content.getHeight() * 0.17f;
+        if (radius < 0.75f) {
+            break;
+        }
         graphics.setColour(Colour(0xff43c7d0).withAlpha(0.30f + amplitude * 0.62f));
         graphics.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre({ x, y }));
-        amplitude *= 0.28f + feedback * 0.66f;
+        amplitude *= feedback;
     }
 }
 
