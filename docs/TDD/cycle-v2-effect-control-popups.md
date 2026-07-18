@@ -84,3 +84,10 @@ Remaining verification defect:
   demo render and one in the dynamic Envelope graph after introducing explicit
   stereo payload storage. The effect-specific DSP and popup tests pass, but the
   no-allocation completion criterion is not yet satisfied.
+
+Crash regression evidence:
+
+- EQ response previews use the generic runtime trace path, not the Effect2D
+  mesh-model renderer. The focused add/open fixture completes without an
+  assertion or crash; report:
+  `/private/tmp/cycle-v2-eq-crash-regression-report.json`.

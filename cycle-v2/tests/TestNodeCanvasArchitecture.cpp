@@ -10,6 +10,7 @@
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
+#include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeRail.h"
 #include "../src/UI/TransformCompactEditor.h"
@@ -17,6 +18,13 @@
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
+
+TEST_CASE("EQ response preview does not require an Effect2D model",
+        "[cycle-v2][canvas][equalizer][regression]") {
+    REQUIRE_FALSE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Equalizer));
+    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Envelope));
+    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Waveshaper));
+}
 
 namespace {
 

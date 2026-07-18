@@ -16,14 +16,6 @@ namespace {
 
 const Colour kMutedText { 0xff8793a1 };
 
-bool isEffect2D(NodeKind kind) {
-    return kind == NodeKind::Envelope
-            || kind == NodeKind::GuideCurve
-            || kind == NodeKind::ImpulseResponse
-            || kind == NodeKind::Waveshaper
-            || kind == NodeKind::Equalizer;
-}
-
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
 }
@@ -547,6 +539,13 @@ NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
         resources(resourcesToUse) {
 }
 
+bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
+    return kind == NodeKind::Envelope
+            || kind == NodeKind::GuideCurve
+            || kind == NodeKind::ImpulseResponse
+            || kind == NodeKind::Waveshaper;
+}
+
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
@@ -619,7 +618,7 @@ bool NodePreviewRenderer::renderOpenGL(
         const Node& node,
         Rectangle<float> area,
         float scaleFactor) {
-    if (!isEffect2D(node.kind)) {
+    if (!requiresEffect2DModel(node.kind)) {
         return false;
     }
 
@@ -640,7 +639,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return true;
     }
 
-    if (!isEffect2D(request.node.kind)) {
+    if (!requiresEffect2DModel(request.node.kind)) {
         return false;
     }
 

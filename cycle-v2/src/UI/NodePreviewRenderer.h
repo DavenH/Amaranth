@@ -20,6 +20,8 @@ class NodePreviewRenderer {
 public:
     explicit NodePreviewRenderer(NodePreviewResources& resources);
 
+    static bool requiresEffect2DModel(NodeKind kind);
+
     Rectangle<float> boundsFor(
             const Node& node,
             Rectangle<float> nodeBounds,
