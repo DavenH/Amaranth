@@ -9,7 +9,8 @@
     { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "label": "High Pass", "value": "1" },
     { "command": "waitForIdle", "delayMs": 700 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "100%" },
-    { "command": "assertState", "path": "previewStats.8.absoluteSum", "op": "lessThan", "value": 9200 }
+    { "command": "assertState", "path": "previewStats.8.absoluteSum", "op": "lessThan", "value": 9200 },
+    { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false
 }

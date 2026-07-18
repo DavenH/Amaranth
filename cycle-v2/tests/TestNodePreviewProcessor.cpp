@@ -125,7 +125,7 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
                     defaultHighPassed.primary.begin(),
                     defaultHighPassed.primary.end(),
                     0.f)
-            < 0.92f * std::accumulate(
+            < 0.78f * std::accumulate(
                     defaultUnfiltered.primary.begin(),
                     defaultUnfiltered.primary.end(),
                     0.f));

@@ -17,6 +17,15 @@ namespace {
 
 const Colour kMutedText { 0xff8793a1 };
 
+float nodeParameter(const Node& node, const String& parameterId, float fallback) {
+    for (const auto& parameter : node.parameters) {
+        if (parameter.id == parameterId) {
+            return parameter.value.getFloatValue();
+        }
+    }
+    return fallback;
+}
+
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
 }
@@ -296,6 +305,36 @@ bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewRes
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
+}
+
+void drawReverbHighPassOverlay(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node) {
+    const float highPass = jlimit(0.f, 1.f, nodeParameter(node, "highPass", 0.05f));
+    if (highPass <= 0.f) {
+        return;
+    }
+
+    const Rectangle<float> content = area.reduced(
+            jmin(area.getWidth(), area.getHeight()) * 0.024f);
+    const Rectangle<float> lowBand = content.withTop(
+            content.getBottom() - content.getHeight() * 0.3f);
+    graphics.setColour(Colour(0xff07151d).withAlpha(0.72f * highPass));
+    graphics.fillRect(lowBand);
+    graphics.setColour(Colour(0xff47c7d8).withAlpha(0.75f * highPass));
+    graphics.drawHorizontalLine(
+            roundToInt(lowBand.getY()),
+            lowBand.getX(),
+            lowBand.getRight());
+    if (area.getHeight() >= 90.f && highPass >= 0.15f) {
+        graphics.setFont(FontOptions(10.f));
+        graphics.drawText(
+                "HP",
+                lowBand.reduced(5.f, 2.f),
+                Justification::bottomLeft,
+                false);
+    }
 }
 
 void drawEffect2DFallback(
@@ -678,7 +717,11 @@ bool NodePreviewRenderer::paintRuntimeResult(
     }
 
     if (result.role == PreviewModuleRole::ReverbSpectrogram) {
-        return drawHeatmap(graphics, request.area, result);
+        if (!drawHeatmap(graphics, request.area, result)) {
+            return false;
+        }
+        drawReverbHighPassOverlay(graphics, request.area, request.node);
+        return true;
     }
 
     if (result.primary.empty()) {

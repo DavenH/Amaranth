@@ -121,6 +121,11 @@ Delay spin panning operate on real stereo payloads.
   complete open → 0% response → publish 100% → rebound readout and reduced
   preview-energy sequence in one running application. Passing report:
   `/private/tmp/reverb-high-pass-live-report-final.json`.
+- Reverb heatmaps add a parameter-driven low-frequency attenuation curtain,
+  boundary, and expanded-view `HP` marker over the measured DSP response. This
+  makes the affected region explicit while retaining the real convolved
+  spectrogram underneath. OS-rendered evidence:
+  `/private/tmp/reverb-hp-overlay-final.png`.
 
 Crash regression evidence:
 

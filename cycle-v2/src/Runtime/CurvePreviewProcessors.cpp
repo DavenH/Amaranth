@@ -66,7 +66,14 @@ public:
             Buffer<float> unfilteredBuffer(
                     unfilteredSurface.data(), (int) unfilteredSurface.size());
             unfilteredBuffer.add(1.e-9f);
-            attenuationBuffer.div(unfilteredBuffer).clip(0.f, 1.f).sqr().sqr().sqr();
+            attenuationBuffer.div(unfilteredBuffer)
+                    .clip(0.f, 1.f)
+                    .sqr()
+                    .sqr()
+                    .sqr()
+                    .sqr()
+                    .sqr()
+                    .sqr();
         }
 
         Buffer<float> surface(context.primary.data(), (int) context.primary.size());
