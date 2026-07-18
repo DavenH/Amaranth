@@ -32,6 +32,7 @@ struct GraphChangeSet {
     std::vector<String> nodeIds;
     bool topologyChanged {};
     bool layoutChanged {};
+    bool probesChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
 };
 
@@ -61,7 +62,13 @@ public:
             int vertexIndex,
             const String& parameterField,
             Point<float> guidePosition) const;
-    GraphEditResult attachSpyToEdge(NodeGraph& graph, size_t edgeIndex, const String& spyNodeId) const;
+    GraphEditResult toggleSignalProbe(NodeGraph& graph, size_t edgeIndex, float tapPosition) const;
+    GraphEditResult removeSignalProbe(NodeGraph& graph, const String& probeId) const;
+    GraphEditResult reattachSignalProbe(
+            NodeGraph& graph,
+            const String& probeId,
+            size_t edgeIndex,
+            float tapPosition) const;
     GraphEditResult spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const;
     GraphEditResult removeEdgeAt(NodeGraph& graph, size_t index) const;
     GraphEditResult removeNode(NodeGraph& graph, const String& nodeId) const;
@@ -82,6 +89,7 @@ private:
     const Port* findPort(const Node& node, const String& portId, bool input) const;
     String guideVertexTargetPortId(int vertexIndex, const String& parameterField) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
+    String createUniqueProbeId(const NodeGraph& graph) const;
     String baseIdForKind(NodeKind kind) const;
 };
 

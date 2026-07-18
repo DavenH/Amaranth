@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-with-probes.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probeCount",
+      "equals": 8
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

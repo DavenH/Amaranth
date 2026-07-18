@@ -232,7 +232,6 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::Waveshaper,
             AudioModuleRole::Reverb,
             AudioModuleRole::Delay,
-            AudioModuleRole::Spy,
             AudioModuleRole::StereoSplit,
             AudioModuleRole::StereoJoin,
             AudioModuleRole::Output,
@@ -1435,21 +1434,6 @@ TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v
     blockOnlyProcessor->process(blockOnlySecond);
 
     REQUIRE(output(withGridSecond).block.samples == output(blockOnlySecond).block.samples);
-}
-
-TEST_CASE("Spy audio processor passes through first input", "[cycle-v2][runtime]") {
-    NodeAudioProcessorFactory factory;
-    auto processor = factory.create(AudioModuleRole::Spy);
-    REQUIRE(processor != nullptr);
-
-    AudioProcessContext context;
-    context.frameCount = 3;
-    context.inputs = { payload({ 0.1f, 0.4f, 0.9f }) };
-    processor->process(context);
-
-    REQUIRE(output(context).block.samples == std::vector<float> { 0.1f, 0.4f, 0.9f });
-    REQUIRE(output(context).domain == PortDomain::TimeSignal);
-    REQUIRE(output(context).channelLayout == ChannelLayout::LinkedStereo);
 }
 
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {

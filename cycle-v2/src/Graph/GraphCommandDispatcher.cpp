@@ -102,13 +102,38 @@ GraphEditResult GraphCommandDispatcher::connect(const PortAddress& first, const 
     });
 }
 
-GraphEditResult GraphCommandDispatcher::attachSpyToEdge(
+GraphEditResult GraphCommandDispatcher::toggleSignalProbe(
         size_t edgeIndex,
-        const juce::String& spyNodeId) {
+        float tapPosition) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().attachSpyToEdge(graph, edgeIndex, spyNodeId),
-                { { spyNodeId }, true, false });
+        auto result = annotateSuccessful(
+                GraphEditor().toggleSignalProbe(graph, edgeIndex, tapPosition),
+                { {}, false, false });
+        result.changes.probesChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::removeSignalProbe(const juce::String& probeId) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().removeSignalProbe(graph, probeId),
+                { {}, false, false });
+        result.changes.probesChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::reattachSignalProbe(
+        const juce::String& probeId,
+        size_t edgeIndex,
+        float tapPosition) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().reattachSignalProbe(graph, probeId, edgeIndex, tapPosition),
+                { {}, false, false });
+        result.changes.probesChanged = result.succeeded();
+        return result;
     });
 }
 

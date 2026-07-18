@@ -53,7 +53,9 @@ public:
         GLint viewport[4] {};
         glGetIntegerv(GL_VIEWPORT, viewport);
         const int x = jmax(0, roundToInt(bounds.getX() * scaleFactor));
-        const int y = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
+        const int y = jmax(
+                0,
+                viewport[1] + viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
         const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
         const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
         glEnable(GL_SCISSOR_TEST);
@@ -384,7 +386,9 @@ void CurvePanelHost::captureRenderedPanelImage(
     const int sourceX = roundToInt(bounds.getX() * scaleFactor);
     GLint viewport[4] {};
     glGetIntegerv(GL_VIEWPORT, viewport);
-    const int sourceY = jmax(0, viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
+    const int sourceY = jmax(
+            0,
+            viewport[1] + viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
     HeapBlock<uint8> pixels(width * height * 4);
     glFlush();
     glReadBuffer(GL_BACK);

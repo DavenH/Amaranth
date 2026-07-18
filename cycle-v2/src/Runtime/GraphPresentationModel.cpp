@@ -35,7 +35,11 @@ bool GraphPresentationModel::refresh(
                     graph,
                     next.compileResult.plan,
                     previewFrameCount);
-            next.previewResult = GraphPreviewExecutor().render(next.compileResult.plan, audio, 40);
+            next.previewResult = GraphPreviewExecutor().render(
+                    next.compileResult.plan,
+                    audio,
+                    graph.getSignalProbes(),
+                    40);
             ++previewRenders;
         }
     }
@@ -75,7 +79,8 @@ bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) c
 }
 
 bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const {
-    return hasImpact(change.parameterImpacts, ParameterImpact::Preview)
+    return change.probesChanged
+            || hasImpact(change.parameterImpacts, ParameterImpact::Preview)
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
 }
 

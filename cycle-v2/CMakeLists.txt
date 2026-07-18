@@ -78,6 +78,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
 )
 
 set(NODE_SOURCES

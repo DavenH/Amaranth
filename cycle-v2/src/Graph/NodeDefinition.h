@@ -22,7 +22,6 @@ enum class AudioModuleRole {
     Waveshaper,
     Reverb,
     Delay,
-    Spy,
     StereoSplit,
     StereoJoin,
     Output,

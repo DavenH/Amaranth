@@ -6,10 +6,12 @@
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/UI/NodeCanvasScene.h"
+#include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
 #include "../src/UI/NodeViewModule.h"
+#include "../src/UI/SignalProbeRail.h"
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
@@ -30,6 +32,33 @@ uint64_t imageChecksum(const Image& image) {
     }
 
     return checksum;
+}
+
+TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2][canvas][probe]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1200.f, 800.f };
+    SignalProbeRailState expanded;
+    expanded.expandedHeight = 190.f;
+
+    const Rectangle<float> content = SignalProbeRail::contentBoundsFor(workspace, expanded);
+    REQUIRE(content == Rectangle<float>(0.f, 0.f, 1200.f, 610.f));
+    REQUIRE(SignalProbeRail::boundsFor(workspace, expanded).getY() == content.getBottom());
+    REQUIRE(SignalProbeRail::collapseHandleFor(workspace, expanded).getY()
+            < SignalProbeRail::boundsFor(workspace, expanded).getY());
+    REQUIRE(SignalProbeRail::collapseHandleFor(workspace, expanded).getBottom()
+            < SignalProbeRail::boundsFor(workspace, expanded).getY() + 24.f);
+    REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
+            < SignalProbeRail::boundsFor(workspace, expanded).getY() + 20.f);
+
+    GraphNodeFactory factory;
+    const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const Rectangle<float> editor = NodeCanvasEditorCoordinator::boundsFor(&trimesh, content);
+    REQUIRE(content.contains(editor));
+    REQUIRE(editor.getBottom() <= content.getBottom());
+    REQUIRE(editor.getWidth() == Catch::Approx(content.getWidth() * 0.81f));
+    REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
+
+    expanded.expanded = false;
+    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
 }
 
 }
@@ -280,8 +309,6 @@ TEST_CASE("Graph presentation preserves configuration revision history across re
 TEST_CASE("Rich node views are selected through the view module registry", "[cycle-v2][canvas][view]") {
     const auto& registry = NodeViewModuleRegistry::instance();
     REQUIRE(registry.moduleFor(NodeKind::Envelope).capabilities().hostedEditor);
-    REQUIRE(registry.moduleFor(NodeKind::Spy).capabilities().hostedEditor);
-    REQUIRE(registry.moduleFor(NodeKind::Spy).editorFactory() != nullptr);
     REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).capabilities().outputSideControl);
     REQUIRE(registry.moduleFor(NodeKind::Add).capabilities().operationLayoutControl);
     REQUIRE_FALSE(registry.moduleFor(NodeKind::Output).capabilities().hostedEditor);

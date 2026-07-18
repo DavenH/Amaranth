@@ -74,6 +74,12 @@ public:
             const PortAddress& destination);
     NodeCanvasAuthoringResult deleteNode(const String& nodeId);
     NodeCanvasAuthoringResult deleteEdge(int edgeIndex);
+    NodeCanvasAuthoringResult toggleSignalProbe(int edgeIndex, float tapPosition);
+    NodeCanvasAuthoringResult removeSignalProbe(const String& probeId);
+    NodeCanvasAuthoringResult reattachSignalProbe(
+            const String& probeId,
+            int edgeIndex,
+            float tapPosition);
     NodeCanvasAuthoringResult setNodeParameter(
             const String& nodeId,
             const String& parameterId,

@@ -47,10 +47,6 @@ TEST_CASE("Node module registry separates audio and previewless utility nodes", 
     REQUIRE(output.previewRole == PreviewModuleRole::None);
     REQUIRE_FALSE(output.previewable);
 
-    const auto spy = registry.descriptorFor(NodeKind::Spy);
-    REQUIRE(spy.audioRole == AudioModuleRole::Spy);
-    REQUIRE(spy.previewRole == PreviewModuleRole::SignalSpy);
-    REQUIRE(spy.previewable);
 }
 
 TEST_CASE("Node module registry marks Cycle 1 adapter-backed modules", "[cycle-v2][runtime]") {
@@ -76,8 +72,6 @@ TEST_CASE("Node module registry declares preview authority explicitly", "[cycle-
 
     REQUIRE(registry.descriptorFor(NodeKind::TrilinearMesh).previewContract
             == PreviewContract::AuthoritativeModel);
-    REQUIRE(registry.descriptorFor(NodeKind::Spy).previewContract
-            == PreviewContract::RuntimeTap);
     REQUIRE(registry.descriptorFor(NodeKind::WaveSource).previewContract
             == PreviewContract::Qualitative);
     REQUIRE(registry.descriptorFor(NodeKind::Fft).previewContract

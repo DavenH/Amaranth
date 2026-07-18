@@ -128,8 +128,6 @@ int NodeCanvasHitRouter::spliceTargetEdgeAt(
         Point<float> screenPosition,
         const String& nodeId) const {
     const auto& edges = graph.getEdges();
-    const Node* node = queries.findNode(nodeId);
-
     for (auto sceneEdge = scene.edges.rbegin(); sceneEdge != scene.edges.rend(); ++sceneEdge) {
         const int edgeIndex = sceneEdge->edgeIndex;
 
@@ -145,9 +143,7 @@ int NodeCanvasHitRouter::spliceTargetEdgeAt(
         }
 
         NodeGraph candidate = graph;
-        const auto result = node != nullptr && node->kind == NodeKind::Spy
-                ? GraphEditor().attachSpyToEdge(candidate, (size_t) edgeIndex, nodeId)
-                : GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId);
+        const auto result = GraphEditor().spliceNodeIntoEdge(candidate, (size_t) edgeIndex, nodeId);
 
         if (result.succeeded()) {
             return edgeIndex;

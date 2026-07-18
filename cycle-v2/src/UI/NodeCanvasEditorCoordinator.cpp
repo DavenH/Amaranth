@@ -111,10 +111,12 @@ ExpandedEditorClick NodeCanvasEditorCoordinator::routeClick(
     return { ExpandedEditorClickKind::Captured };
 }
 
-void NodeCanvasEditorCoordinator::updateHost(const Node* node) {
+void NodeCanvasEditorCoordinator::updateHost(
+        const Node* node,
+        Rectangle<float> availableBounds) {
     resources.hideExpandedHostsExcept(node != nullptr ? node->id : String());
     const Rectangle<int> bounds = node != nullptr
-            ? boundsFor(node, owner.getLocalBounds().toFloat()).toNearestInt()
+            ? boundsFor(node, availableBounds).toNearestInt()
             : Rectangle<int>();
     editorHost.bind(node, bounds, document.revision());
 }

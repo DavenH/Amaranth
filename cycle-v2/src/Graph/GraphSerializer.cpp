@@ -15,6 +15,7 @@ Identifier nodeType("node");
 Identifier inputType("input");
 Identifier outputType("output");
 Identifier edgeType("edge");
+Identifier probeType("probe");
 Identifier parameterType("parameter");
 
 String idForDomain(PortDomain domain) {
@@ -234,6 +235,19 @@ ValueTree GraphSerializer::toValueTree(const NodeGraph& graph) const {
         root.addChild(edgeTree, -1, nullptr);
     }
 
+    for (const auto& probe : graph.getSignalProbes()) {
+        ValueTree probeTree(probeType);
+        probeTree.setProperty("id", probe.id, nullptr);
+        probeTree.setProperty("sourceNodeId", probe.sourceNodeId, nullptr);
+        probeTree.setProperty("sourcePortId", probe.sourcePortId, nullptr);
+        probeTree.setProperty("anchorDestNodeId", probe.anchorDestNodeId, nullptr);
+        probeTree.setProperty("anchorDestPortId", probe.anchorDestPortId, nullptr);
+        probeTree.setProperty("label", probe.label, nullptr);
+        probeTree.setProperty("tapPosition", probe.tapPosition, nullptr);
+        probeTree.setProperty("railOrder", probe.railOrder, nullptr);
+        root.addChild(probeTree, -1, nullptr);
+    }
+
     return root;
 }
 
@@ -292,6 +306,17 @@ GraphLoadResult GraphSerializer::loadValueTree(const ValueTree& tree) const {
                     child["destPortId"].toString(),
                     domainForId(child["domain"].toString()),
                     (bool) child["attachment"]
+            });
+        } else if (child.hasType(probeType)) {
+            result.graph.addSignalProbe({
+                    child["id"].toString(),
+                    child["sourceNodeId"].toString(),
+                    child["sourcePortId"].toString(),
+                    child["anchorDestNodeId"].toString(),
+                    child["anchorDestPortId"].toString(),
+                    child["label"].toString(),
+                    jlimit(0.f, 1.f, (float) child["tapPosition"]),
+                    (int) child["railOrder"]
             });
         }
     }

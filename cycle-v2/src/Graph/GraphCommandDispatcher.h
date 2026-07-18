@@ -22,7 +22,12 @@ public:
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult connect(const PortAddress& first, const PortAddress& second);
-    GraphEditResult attachSpyToEdge(size_t edgeIndex, const juce::String& spyNodeId);
+    GraphEditResult toggleSignalProbe(size_t edgeIndex, float tapPosition = 0.5f);
+    GraphEditResult removeSignalProbe(const juce::String& probeId);
+    GraphEditResult reattachSignalProbe(
+            const juce::String& probeId,
+            size_t edgeIndex,
+            float tapPosition);
     GraphEditResult spliceNodeIntoEdge(size_t edgeIndex, const juce::String& nodeId);
     GraphEditResult attachGuideCurve(
             const juce::String& guideNodeId,

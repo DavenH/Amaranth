@@ -40,6 +40,12 @@ public:
             jmax(420.f, componentBounds.getWidth() * 0.90f),
             jmax(300.f, componentBounds.getHeight() * 0.90f)
         };
+        if (viewCapabilities.expandedEditorScale.has_value()) {
+            size = {
+                    componentBounds.getWidth() * viewCapabilities.expandedEditorScale->x,
+                    componentBounds.getHeight() * viewCapabilities.expandedEditorScale->y
+            };
+        }
         if (viewCapabilities.expandedEditorSize.has_value()) {
             size = *viewCapabilities.expandedEditorSize;
         }
@@ -79,14 +85,10 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::Fft, transform);
     add(NodeKind::Ifft, transform);
 
-    NodeViewCapabilities spy = preview;
-    spy.hostedEditor = true;
-    spy.expandedEditorSize = Point<float>(520.f, 360.f);
-    add(NodeKind::Spy, spy);
-
     NodeViewCapabilities mesh = preview;
     mesh.hostedEditor = true;
     mesh.outputSideControl = true;
+    mesh.expandedEditorScale = Point<float>(0.81f, 1.f);
     add(NodeKind::TrilinearMesh, mesh, [](const Node& node, const String& portId) {
         const auto target = TrimeshGuideAttachmentTarget::parse(portId);
         if (!target.isValid()) {

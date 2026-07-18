@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
@@ -29,6 +30,20 @@ const NodePreviewResult& findPreview(const GraphPreviewResult& result, const Str
             });
 
     REQUIRE(found != result.nodes.end());
+    return *found;
+}
+
+const GraphPreviewResult::SignalProbePreview& findProbePreview(
+        const GraphPreviewResult& result,
+        const String& probeId) {
+    const auto found = std::find_if(
+            result.probes.begin(),
+            result.probes.end(),
+            [&](const auto& preview) {
+                return preview.probeId == probeId;
+            });
+
+    REQUIRE(found != result.probes.end());
     return *found;
 }
 
@@ -166,32 +181,32 @@ NodeGraph previewlessChain(size_t processorCount) {
     return graph;
 }
 
-TEST_CASE("Graph preview executor can render spy nodes from audio traversal grids", "[cycle-v2][runtime]") {
+TEST_CASE("Graph preview executor renders probes from audio traversal grids", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 520.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 760.f, 0.f }));
     graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "spy", "in", PortDomain::ControlSignal, false });
     graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+    graph.addSignalProbe({ "probe", "mesh", "out", "fft", "time", "Mesh", 0.5f, 0 });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
     const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 6);
-    const auto result = GraphPreviewExecutor().render(compileResult.plan, audio, 6);
+    const auto result = GraphPreviewExecutor().render(
+            compileResult.plan, audio, graph.getSignalProbes(), 6);
     const auto& meshAudio = findAudio(audio, "mesh");
-    const auto& spy = findPreview(result, "spy");
+    const auto& spy = findProbePreview(result, "probe");
 
     REQUIRE(meshAudio.output.traversalGrid.isValid());
-    REQUIRE(spy.role == PreviewModuleRole::SignalSpy);
+    REQUIRE(spy.connected);
     REQUIRE(spy.gridColumns == meshAudio.output.traversalGrid.columns);
     REQUIRE(spy.gridRows == meshAudio.output.traversalGrid.rows);
     REQUIRE(spy.domain == meshAudio.output.traversalGrid.metadata.valueDomain);
-    REQUIRE(spy.primary == meshAudio.output.traversalGrid.values);
+    REQUIRE(spy.values == meshAudio.output.traversalGrid.values);
 }
 
 TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][runtime][complexity]") {
@@ -214,28 +229,6 @@ TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][
     REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 12);
 }
 
-TEST_CASE("Graph preview executor does not invent spy traversal grids without audio data", "[cycle-v2][runtime]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-
-    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 520.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "spy", "in", PortDomain::TimeSignal, false });
-
-    const auto compileResult = GraphCompiler().compile(graph);
-    REQUIRE(compileResult.succeeded());
-
-    const auto result = GraphPreviewExecutor().render(compileResult.plan, 6);
-    const auto& spy = findPreview(result, "spy");
-
-    REQUIRE(spy.role == PreviewModuleRole::SignalSpy);
-    REQUIRE(spy.primary.empty());
-    REQUIRE(spy.gridColumns == 0);
-    REQUIRE(spy.gridRows == 0);
-}
-
 TEST_CASE("Graph preview executor updates mesh spy traversal grids from serialized edits", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph baselineGraph;
@@ -246,8 +239,7 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from serializ
         mesh.parameters = std::move(meshParameters);
 
         graph.addNode(mesh);
-        graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 240.f, 0.f }));
-        graph.addEdge({ "mesh", "out", "spy", "in", PortDomain::TimeSignal, false });
+        graph.addSignalProbe({ "probe", "mesh", "out", {}, {}, "Mesh", 0.5f, 0 });
     };
 
     addGraph(baselineGraph, {});
@@ -273,41 +265,42 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from serializ
 
     const auto baselineAudio = GraphAudioExecutor().process(baselineGraph, baselineCompile.plan, 128);
     const auto editedAudio = GraphAudioExecutor().process(editedGraph, editedCompile.plan, 128);
-    const auto baselinePreview = GraphPreviewExecutor().render(baselineCompile.plan, baselineAudio, 40);
-    const auto editedPreview = GraphPreviewExecutor().render(editedCompile.plan, editedAudio, 40);
+    const auto baselinePreview = GraphPreviewExecutor().render(
+            baselineCompile.plan, baselineAudio, baselineGraph.getSignalProbes(), 40);
+    const auto editedPreview = GraphPreviewExecutor().render(
+            editedCompile.plan, editedAudio, editedGraph.getSignalProbes(), 40);
     const auto& baselineMeshPreview = findPreview(baselinePreview, "mesh");
     const auto& editedMeshPreview = findPreview(editedPreview, "mesh");
-    const auto& baselineSpy = findPreview(baselinePreview, "spy");
-    const auto& editedSpy = findPreview(editedPreview, "spy");
+    const auto& baselineSpy = findProbePreview(baselinePreview, "probe");
+    const auto& editedSpy = findProbePreview(editedPreview, "probe");
 
     REQUIRE(absoluteDifferenceSum(editedMeshPreview.primary, baselineMeshPreview.primary) > 0.01f);
-    REQUIRE(baselineSpy.primary == findAudio(baselineAudio, "mesh").output.traversalGrid.values);
-    REQUIRE(editedSpy.primary == findAudio(editedAudio, "mesh").output.traversalGrid.values);
-    REQUIRE(absoluteDifferenceSum(editedSpy.primary, baselineSpy.primary) > 0.01f);
+    REQUIRE(baselineSpy.values == findAudio(baselineAudio, "mesh").output.traversalGrid.values);
+    REQUIRE(editedSpy.values == findAudio(editedAudio, "mesh").output.traversalGrid.values);
+    REQUIRE(absoluteDifferenceSum(editedSpy.values, baselineSpy.values) > 0.01f);
 }
 
-TEST_CASE("Graph preview executor renders FFT spy previews from audio traversal grids", "[cycle-v2][runtime]") {
+TEST_CASE("Graph preview executor renders FFT probe previews from audio traversal grids", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Spy, "magSpy", { 520.f, -120.f }));
-    graph.addNode(factory.createNode(NodeKind::Spy, "phaseSpy", { 520.f, 120.f }));
     graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "fft", "mag", "magSpy", "in", PortDomain::SpectralMagnitudeSignal, false });
-    graph.addEdge({ "fft", "phase", "phaseSpy", "in", PortDomain::SpectralPhaseSignal, false });
+    graph.addSignalProbe({ "magProbe", "fft", "mag", {}, {}, "Magnitude", 0.5f, 0 });
+    graph.addSignalProbe({ "phaseProbe", "fft", "phase", {}, {}, "Phase", 0.5f, 1 });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
     const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
-    const auto result = GraphPreviewExecutor().render(compileResult.plan, audio, 40);
+    const auto result = GraphPreviewExecutor().render(
+            compileResult.plan, audio, graph.getSignalProbes(), 40);
     const auto& fft = findAudio(audio, "fft");
     const auto& magnitude = outputForPort(fft, "mag");
     const auto& phase = outputForPort(fft, "phase");
-    const auto& magSpy = findPreview(result, "magSpy");
-    const auto& phaseSpy = findPreview(result, "phaseSpy");
+    const auto& magSpy = findProbePreview(result, "magProbe");
+    const auto& phaseSpy = findProbePreview(result, "phaseProbe");
 
     REQUIRE(magnitude.traversalGrid.isValid());
     REQUIRE(phase.traversalGrid.isValid());
@@ -319,11 +312,11 @@ TEST_CASE("Graph preview executor renders FFT spy previews from audio traversal 
     REQUIRE(magSpy.gridRows == magnitude.traversalGrid.rows);
     REQUIRE(phaseSpy.gridColumns == phase.traversalGrid.columns);
     REQUIRE(phaseSpy.gridRows == phase.traversalGrid.rows);
-    REQUIRE(magSpy.primary == magnitude.traversalGrid.values);
-    REQUIRE(phaseSpy.primary == phase.traversalGrid.values);
+    REQUIRE(magSpy.values == magnitude.traversalGrid.values);
+    REQUIRE(phaseSpy.values == phase.traversalGrid.values);
 }
 
-TEST_CASE("Graph preview executor renders every spy in the bundled spy graph", "[cycle-v2][runtime]") {
+TEST_CASE("Graph preview executor renders every probe in the bundled spy graph", "[cycle-v2][runtime]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File spyGraph = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("resources")
@@ -336,24 +329,30 @@ TEST_CASE("Graph preview executor renders every spy in the bundled spy graph", "
     REQUIRE(compileResult.succeeded());
 
     const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
-    const auto result = GraphPreviewExecutor().render(compileResult.plan, audio, 96);
+    const auto result = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            96);
     const auto& fftMagnitude = outputForPort(findAudio(audio, "fft"), "mag");
     const auto& magMesh = findAudio(audio, "magMesh").output;
     const auto& addMag = findAudio(audio, "addMag").output;
-    const auto& addSpy = findPreview(result, "spy6");
+    const auto& addSpy = findProbePreview(result, "probe6");
 
-    const StringArray spyIds { "spy", "spy2", "spy3", "spy4", "spy5", "spy6", "spy7", "spy8" };
-    for (const auto& spyId : spyIds) {
-        const auto& spy = findPreview(result, spyId);
-        INFO("spy id: " << spyId);
-        REQUIRE(spy.role == PreviewModuleRole::SignalSpy);
+    const StringArray probeIds { "probe", "probe2", "probe3", "probe4", "probe5", "probe6", "probe7", "probe8" };
+    for (const auto& probeId : probeIds) {
+        const auto& spy = findProbePreview(result, probeId);
+        INFO("probe id: " << probeId);
+        REQUIRE(spy.connected);
         REQUIRE(spy.gridColumns > 0);
         REQUIRE(spy.gridRows > 0);
-        REQUIRE(spy.primary.size() == spy.gridColumns * spy.gridRows);
-        REQUIRE(absoluteSum(spy.primary) > 0.01f);
+        REQUIRE(spy.values.size() == spy.gridColumns * spy.gridRows);
+        REQUIRE(absoluteSum(spy.values) > 0.01f);
     }
 
-    REQUIRE(absoluteDifferenceSum(findPreview(result, "spy2").primary, findPreview(result, "spy6").primary) > 0.01f);
+    REQUIRE(absoluteDifferenceSum(
+            findProbePreview(result, "probe2").values,
+            findProbePreview(result, "probe6").values) > 0.01f);
     REQUIRE(magMesh.traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(magMesh.traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
     REQUIRE(columnDifference(magMesh.traversalGrid, 0, magMesh.traversalGrid.columns - 1) > 0.01f);
@@ -361,10 +360,71 @@ TEST_CASE("Graph preview executor renders every spy in the bundled spy graph", "
     requireMagnitudeGridAddEquals(addMag.traversalGrid, fftMagnitude.traversalGrid, magMesh.traversalGrid);
     REQUIRE(addSpy.gridColumns == addMag.traversalGrid.columns);
     REQUIRE(addSpy.gridRows == addMag.traversalGrid.rows);
-    REQUIRE(absoluteDifferenceSum(addSpy.primary, addMag.traversalGrid.values) < 1.0e-5f);
+    REQUIRE(absoluteDifferenceSum(addSpy.values, addMag.traversalGrid.values) < 1.0e-5f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Graph preview executor captures a probe after Reverb", "[cycle-v2][runtime][probe]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 600.f, 0.f }));
+    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "reverb", "time", "out", "time", PortDomain::TimeSignal, false });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
+    const auto previews = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            96);
+
+    const auto& probe = findProbePreview(previews, graph.getSignalProbes().front().id);
+    REQUIRE(probe.connected);
+    REQUIRE(probe.gridColumns > 0);
+    REQUIRE(probe.gridRows > 0);
+    REQUIRE_FALSE(probe.values.empty());
+}
+
+TEST_CASE("Graph preview executor captures a probe after splicing Reverb into the demo output",
+        "[cycle-v2][runtime][probe]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphNodeFactory factory;
+    graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", { 2900.f, 500.f }));
+
+    const auto outputEdge = std::find_if(graph.getEdges().begin(), graph.getEdges().end(), [](const auto& edge) {
+        return edge.sourceNodeId == "multiply" && edge.destNodeId == "out";
+    });
+    REQUIRE(outputEdge != graph.getEdges().end());
+    const size_t outputEdgeIndex = (size_t) std::distance(graph.getEdges().begin(), outputEdge);
+    REQUIRE(GraphEditor().spliceNodeIntoEdge(graph, outputEdgeIndex, "reverb").succeeded());
+
+    const auto reverbEdge = std::find_if(graph.getEdges().begin(), graph.getEdges().end(), [](const auto& edge) {
+        return edge.sourceNodeId == "reverb" && edge.destNodeId == "out";
+    });
+    REQUIRE(reverbEdge != graph.getEdges().end());
+    const size_t reverbEdgeIndex = (size_t) std::distance(graph.getEdges().begin(), reverbEdge);
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, reverbEdgeIndex, 0.5f).succeeded());
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
+    const auto previews = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            96);
+
+    const auto& probe = findProbePreview(previews, graph.getSignalProbes().back().id);
+    REQUIRE(probe.connected);
+    REQUIRE(probe.gridColumns > 0);
+    REQUIRE(probe.gridRows > 0);
 }
 
 TEST_CASE(
@@ -418,36 +478,6 @@ TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][
             [](const NodePreviewResult& preview) {
                 return preview.nodeId == "fft" || preview.nodeId == "ifft" || preview.nodeId == "multiply";
             }));
-}
-
-TEST_CASE("Graph preview executor gives spy nodes upstream audio traversal grids", "[cycle-v2][runtime]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-
-    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Spy, "spy", { 520.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 760.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "spy", "in", PortDomain::ControlSignal, false });
-    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
-
-    const auto compileResult = GraphCompiler().compile(graph);
-    REQUIRE(compileResult.succeeded());
-
-    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 6);
-    const auto result = GraphPreviewExecutor().render(compileResult.plan, audio, 6);
-    const auto& mesh = findAudio(audio, "mesh").output;
-    const auto& spy = findPreview(result, "spy");
-
-    REQUIRE(mesh.traversalGrid.isValid());
-    REQUIRE(spy.role == PreviewModuleRole::SignalSpy);
-    REQUIRE(mesh.traversalGrid.columns == spy.gridColumns);
-    REQUIRE(mesh.traversalGrid.rows == spy.gridRows);
-    REQUIRE(spy.gridColumns > 1);
-    REQUIRE(spy.gridRows == 6);
-    REQUIRE(spy.domain == mesh.traversalGrid.metadata.valueDomain);
-    REQUIRE(spy.primary == mesh.traversalGrid.values);
 }
 
 TEST_CASE("Graph preview executor passes parameters to preview processors", "[cycle-v2][runtime]") {

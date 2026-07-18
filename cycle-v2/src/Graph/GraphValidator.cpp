@@ -45,12 +45,6 @@ bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, co
         && resolver.domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
 }
 
-bool isSpySignalDomain(PortDomain domain) {
-    return domain == PortDomain::TimeSignal
-        || domain == PortDomain::SpectralMagnitudeSignal
-        || domain == PortDomain::SpectralPhaseSignal;
-}
-
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -224,14 +218,6 @@ void GraphValidator::validateEdge(
 
     Port resolvedSource = *source;
     resolvedSource.domain = resolvedDomain;
-
-    if (destNode->kind == NodeKind::Spy && !isSpySignalDomain(resolvedSource.domain)) {
-        if (!report(
-                    GraphValidationCode::DomainMismatch,
-                    "Spy nodes can only monitor time, magnitude, or phase signals: " + edge.destNodeId)) {
-            return;
-        }
-    }
 
     if (source->domain == PortDomain::ControlSignal
             && dest->domain != PortDomain::ControlSignal

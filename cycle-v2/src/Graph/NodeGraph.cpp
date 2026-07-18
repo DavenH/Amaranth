@@ -70,6 +70,58 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
     ++revision;
 }
 
+void NodeGraph::addSignalProbe(SignalProbe probe) {
+    if (findSignalProbe(probe.id) != nullptr
+            || findSignalProbeForSource(probe.sourceNodeId, probe.sourcePortId) != nullptr) {
+        return;
+    }
+
+    signalProbes.push_back(std::move(probe));
+    ++revision;
+}
+
+bool NodeGraph::removeSignalProbe(const String& probeId) {
+    const size_t previousCount = signalProbes.size();
+    eraseIf(signalProbes, [&](const SignalProbe& probe) {
+        return probe.id == probeId;
+    });
+    if (signalProbes.size() == previousCount) {
+        return false;
+    }
+
+    ++revision;
+    return true;
+}
+
+const SignalProbe* NodeGraph::findSignalProbe(const String& probeId) const {
+    for (const auto& probe : signalProbes) {
+        if (probe.id == probeId) {
+            return &probe;
+        }
+    }
+    return nullptr;
+}
+
+SignalProbe* NodeGraph::findSignalProbeForEditing(const String& probeId) {
+    for (auto& probe : signalProbes) {
+        if (probe.id == probeId) {
+            return &probe;
+        }
+    }
+    return nullptr;
+}
+
+const SignalProbe* NodeGraph::findSignalProbeForSource(
+        const String& sourceNodeId,
+        const String& sourcePortId) const {
+    for (const auto& probe : signalProbes) {
+        if (probe.sourceNodeId == sourceNodeId && probe.sourcePortId == sourcePortId) {
+            return &probe;
+        }
+    }
+    return nullptr;
+}
+
 void NodeGraph::removeNode(const String& nodeId) {
     const size_t previousNodeCount = nodes.size();
     eraseIf(nodes, [&](const Node& node) {
@@ -79,6 +131,16 @@ void NodeGraph::removeNode(const String& nodeId) {
     eraseIf(edges, [&](const Edge& edge) {
         return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
     });
+    for (auto& probe : signalProbes) {
+        if (probe.sourceNodeId == nodeId) {
+            probe.sourceNodeId = {};
+            probe.sourcePortId = {};
+        }
+        if (probe.anchorDestNodeId == nodeId) {
+            probe.anchorDestNodeId = {};
+            probe.anchorDestPortId = {};
+        }
+    }
     if (nodes.size() != previousNodeCount) {
         ++revision;
     }
