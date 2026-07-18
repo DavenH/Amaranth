@@ -108,6 +108,7 @@ private:
         Label label;
         Slider slider;
         Label readout;
+        bool editing {};
     };
 
     void addControl(const String& id, const String& name, float defaultValue) {
@@ -122,19 +123,29 @@ private:
         control->slider.setSliderStyle(Slider::LinearHorizontal);
         control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         control->slider.setRange(0.0, 1.0, 0.0001);
+        control->slider.setDoubleClickReturnValue(true, defaultValue);
         auto* raw = control.get();
         control->slider.onDragStart = [this, raw] {
+            raw->editing = true;
             commands.beginNodeParameterEdit(
                     node.id, raw->id, raw->name, (float) raw->slider.getValue());
         };
         control->slider.onValueChange = [this, raw] {
             updateReadout(*raw);
-            commands.updateNodeParameterEditValue((float) raw->slider.getValue());
+            const float value = (float) raw->slider.getValue();
+            if (raw->editing) {
+                commands.updateNodeParameterEditValue(value);
+            } else {
+                commands.setNodeParameterValue(node.id, raw->id, raw->name, value);
+            }
             if (kind == NodeKind::Equalizer) {
                 repaint();
             }
         };
-        control->slider.onDragEnd = [this] { commands.endNodeParameterEdit(); };
+        control->slider.onDragEnd = [this, raw] {
+            commands.endNodeParameterEdit();
+            raw->editing = false;
+        };
         addAndMakeVisible(control->label);
         addAndMakeVisible(control->slider);
         addAndMakeVisible(control->readout);
@@ -181,7 +192,8 @@ private:
         } else if (kind == NodeKind::Delay && control.id == "time") {
             text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
         } else if (kind == NodeKind::Delay && control.id == "spinIters") {
-            text = String(CycleDsp::delaySpinIterations(value)) + " taps";
+            const int iterations = CycleDsp::delaySpinIterations(value);
+            text = String(iterations) + (iterations == 1 ? " tap" : " taps");
         } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
             const float gain = CycleDsp::equalizerGainDecibels(value);
             text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";

@@ -71,8 +71,18 @@ bool NodeEditorCommandService::setNodeParameterValue(
         const String& parameterId,
         const String& label,
         float value) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr) {
+        return false;
+    }
+    const ParameterDefinition* definition =
+            NodeDefinitionRegistry::instance().findParameter(node->kind, parameterId);
+    const String serializedValue = definition != nullptr
+                    && definition->type == ParameterType::Boolean
+            ? String(value >= 0.5f ? 1 : 0)
+            : String(value, 6);
     const auto result = commands.setNodeParameter(
-            nodeId, parameterId, label, String(value, 6));
+            nodeId, parameterId, label, serializedValue);
     if (!result.succeeded()) {
         return false;
     }

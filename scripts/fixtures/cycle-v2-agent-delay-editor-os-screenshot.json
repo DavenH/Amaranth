@@ -1,0 +1,8 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "delay", "x": 540, "y": 280 },
+    { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

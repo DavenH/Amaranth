@@ -7,6 +7,7 @@
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/NodeEditorHost.h"
+#include "../src/UI/NodeParameterValue.h"
 #include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
@@ -464,4 +465,62 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",
+        "[cycle-v2][editor][effects]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginNodeParameterEdit("reverb", "wet", "Wet", 0.55f));
+    REQUIRE(commands.updateNodeParameterEditValue(0.7f));
+    commands.endNodeParameterEdit();
+
+    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.700000");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(presentation.scheduledRefreshes == 2);
+}
+
+TEST_CASE("Effect discrete parameter changes are independently undoable",
+        "[cycle-v2][editor][effects]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.setNodeParameterValue("delay", "enabled", "Enabled", 0.f));
+    REQUIRE(commands.setNodeParameterValue("delay", "time", "Time", 0.25f));
+    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.250000");
+
+    REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.5");
+    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "0");
+
+    REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "1");
 }

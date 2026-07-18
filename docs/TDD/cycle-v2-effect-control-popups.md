@@ -2,8 +2,7 @@
 
 ## Status
 
-In progress: product behavior is implemented; realtime allocation regression
-verification remains open.
+Implemented.
 
 ## Authoritative Implementations
 
@@ -53,7 +52,7 @@ Delay spin panning operate on real stereo payloads.
   channel planes without an internal legacy compatibility path. Diagnostic
   traversal grids remain preview data and are outside the realtime stereo
   contract.
-- Focused semantic tests and a Cycle 2 automation fixture cover editor
+- Focused semantic tests and Cycle 2 automation fixtures cover editor
   publication, scaled readouts, and downstream audio behavior.
 - Processing performs no allocation, parsing, logging, or locking after
   preparation.
@@ -73,17 +72,19 @@ Delay spin panning operate on real stereo payloads.
   isolation, and configured response.
 - Cycle 2 runtime tests cover EQ processing, Reverb stereo width, and split
   semantics.
-- `cycle-v2-agent-equalizer-editor.json` verifies popup publication and all ten
-  default EQ readouts in the running application.
+- Reverb, Delay, and Equalizer editor fixtures verify scaled readouts,
+  parameter publication, graph save/reload persistence, and crash-free popup
+  hosting in the running application.
+- OS-level screenshots verify all three OpenGL-backed popup layouts. The EQ
+  fixture also verifies its compact and expanded response displays.
 - Standalone Debug builds both Cycle applications, proving Cycle 1 and Cycle 2
   use the extracted Equalizer core.
-
-Remaining verification defect:
-
-- The existing prepared-graph allocation tests report six allocations per
-  demo render and one in the dynamic Envelope graph after introducing explicit
-  stereo payload storage. The effect-specific DSP and popup tests pass, but the
-  no-allocation completion criterion is not yet satisfied.
+- Prepared-graph and dynamic Envelope allocation guards pass with zero
+  realtime allocations. Payload grid clearing preserves prepared vector
+  capacity for subsequent blocks.
+- Continuous effect gestures produce one undo transaction. Discrete Boolean,
+  keyboard, wheel, and double-click-reset changes publish independently and
+  remain independently undoable.
 
 Crash regression evidence:
 
@@ -91,3 +92,17 @@ Crash regression evidence:
   mesh-model renderer. The focused add/open fixture completes without an
   assertion or crash; report:
   `/private/tmp/cycle-v2-eq-crash-regression-report.json`.
+
+Final runtime artifacts:
+
+- `/private/tmp/cycle-v2-reverb-editor-final-report.json`
+- `/private/tmp/cycle-v2-delay-editor-final-report.json`
+- `/private/tmp/cycle-v2-equalizer-editor-final-report.json`
+- `/private/tmp/cycle-v2-reverb-editor-os.png`
+- `/private/tmp/cycle-v2-delay-editor-os.png`
+- `/private/tmp/cycle-v2-equalizer-editor-os.png`
+
+The full test discovery run passed 496 of 498 tests. The two repeatable failures
+are unrelated existing expectations: `GuideCurveOffsetSeeds` expects vertical
+seed `4` but receives `16`, and the rich mesh-view test expects width `1080`
+while the registered presentation scale produces `972`.

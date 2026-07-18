@@ -25,6 +25,50 @@
     {
       "command": "inspectTargets",
       "area": "canvas"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "eq",
+      "parameterId": "band3Gain",
+      "label": "Band 3 Gain",
+      "value": "0.75"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "eq",
+      "parameterId": "band3Frequency",
+      "label": "Band 3 Frequency",
+      "value": "0.6"
+    },
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+    },
+    {
+      "command": "screenshot",
+      "area": "window",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.png"
+    },
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "eq",
+      "parameterId": "band3Gain",
+      "equals": "0.75"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "eq",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.4.readout",
+      "equals": "+15.0 dB"
     }
   ],
   "quit": true
