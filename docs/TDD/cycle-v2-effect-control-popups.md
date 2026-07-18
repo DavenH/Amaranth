@@ -130,6 +130,9 @@ Preview-quality follow-up evidence:
   and unclamped viewport clipping. Delay time dragging snaps through the shared
   inverse mapping to exact integer beats, while Spin Length reports the full
   pan-LFO cycle duration in beats.
+- `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded
+  Delay layout with a taller plot, centered stereo axis, equal vertical plot
+  margins, and an in-plot time label.
 - The follow-up discovery run passed 496 of 499 tests. The concurrent Envelope
   exchange failure passed immediately on isolated rerun; the two repeatable
   unrelated failures remain the seed-array and mesh-scale expectations above.

@@ -61,7 +61,7 @@ void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) 
             Justification::centredRight);
     graphics.drawText("R", plot.getX() - 18.f, plot.getBottom() - 7.f, 14.f, 12.f,
             Justification::centredRight);
-    graphics.drawText("TIME", plot.getRight() - 44.f, plot.getBottom() + 3.f, 44.f, 13.f,
+    graphics.drawText("TIME", plot.getRight() - 44.f, plot.getBottom() - 14.f, 44.f, 13.f,
             Justification::centredRight);
 }
 
@@ -83,9 +83,10 @@ void paintDelayPingPreview(
         const Node& node,
         float zoom) {
     const bool showLabels = area.getWidth() >= 260.f && area.getHeight() >= 74.f;
-    Rectangle<float> content = contentArea(area);
+    const Rectangle<float> background = contentArea(area);
+    Rectangle<float> content = background;
     if (showLabels) {
-        content = content.withTrimmedLeft(18.f).withTrimmedBottom(15.f);
+        content = content.withTrimmedLeft(18.f).reduced(0.f, 8.f);
     }
     const float time = parameterValue(node, "time", 0.5f);
     const float feedback = parameterValue(node, "feedback", 0.5f);
@@ -98,7 +99,7 @@ void paintDelayPingPreview(
     float amplitude = feedback;
 
     graphics.setColour(Colour(0xff11262a));
-    graphics.fillRoundedRectangle(contentArea(area), 4.f);
+    graphics.fillRoundedRectangle(background, 4.f);
     paintBeatGrid(graphics, content, visibleBeatCount);
     paintDelayAxes(graphics, content, showLabels);
     for (int ping = 1; ; ++ping) {
