@@ -44,8 +44,38 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
     }
 }
 
-void paintDelay(Graphics& graphics, Rectangle<float> area, const Node& node) {
-    const Rectangle<float> content = contentArea(area);
+void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) {
+    const Colour axis { 0xff53616d };
+    graphics.setColour(axis.withAlpha(0.68f));
+    graphics.drawHorizontalLine(roundToInt(plot.getCentreY()), plot.getX(), plot.getRight());
+    graphics.drawVerticalLine(roundToInt(plot.getX()), plot.getY(), plot.getBottom());
+
+    if (!showLabels) {
+        return;
+    }
+
+    graphics.setColour(Colour(0xff8793a1));
+    graphics.setFont(FontOptions(11.f));
+    graphics.drawText("L", plot.getX() - 18.f, plot.getY() - 5.f, 14.f, 12.f,
+            Justification::centredRight);
+    graphics.drawText("R", plot.getX() - 18.f, plot.getBottom() - 7.f, 14.f, 12.f,
+            Justification::centredRight);
+    graphics.drawText("TIME", plot.getRight() - 44.f, plot.getBottom() + 3.f, 44.f, 13.f,
+            Justification::centredRight);
+}
+
+}
+
+void paintDelayPingPreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        float zoom) {
+    const bool showLabels = area.getWidth() >= 260.f && area.getHeight() >= 74.f;
+    Rectangle<float> content = contentArea(area);
+    if (showLabels) {
+        content = content.withTrimmedLeft(18.f).withTrimmedBottom(15.f);
+    }
     const float time = parameterValue(node, "time", 0.5f);
     const float feedback = parameterValue(node, "feedback", 0.5f);
     const float spin = parameterValue(node, "spin", 0.5f);
@@ -53,21 +83,22 @@ void paintDelay(Graphics& graphics, Rectangle<float> area, const Node& node) {
             parameterValue(node, "spinIters", 0.2f));
     const int visibleTaps = jlimit(2, 9, tapCount + 2);
     float amplitude = 0.9f;
+    const float spacing = content.getWidth() * (0.09f + time * 0.075f);
 
     graphics.setColour(Colour(0xff11262a));
-    graphics.fillRoundedRectangle(content, 4.f);
+    graphics.fillRoundedRectangle(contentArea(area), 4.f);
+    paintDelayAxes(graphics, content, showLabels);
     for (int index = 0; index < visibleTaps; ++index) {
-        const float unit = (float) index / (float) jmax(1, visibleTaps - 1);
-        const float x = content.getX() + unit * content.getWidth() * (0.68f + time * 0.32f);
+        const float x = jmin(
+                content.getRight() - 3.f,
+                content.getX() + content.getWidth() * 0.08f + (float) index * spacing);
         const float pan = ((index & 1) == 0 ? -1.f : 1.f) * spin;
-        const float y = content.getCentreY() + pan * content.getHeight() * 0.22f;
+        const float y = content.getCentreY() + pan * content.getHeight() * 0.38f;
         const float radius = jmax(1.8f, amplitude * content.getHeight() * 0.11f);
         graphics.setColour(Colour(0xff43c7d0).withAlpha(0.30f + amplitude * 0.62f));
         graphics.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre({ x, y }));
         amplitude *= 0.28f + feedback * 0.66f;
     }
-}
-
 }
 
 bool paintEffectCompactPreview(
@@ -81,7 +112,7 @@ bool paintEffectCompactPreview(
     }
 
     if (node.kind == NodeKind::Delay) {
-        paintDelay(graphics, area, node);
+        paintDelayPingPreview(graphics, area, node, zoom);
         return true;
     }
 

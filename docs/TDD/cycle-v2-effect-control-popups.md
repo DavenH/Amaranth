@@ -122,6 +122,9 @@ Preview-quality follow-up evidence:
   decay and Delay echo/stereo previews alongside the EQ response preview.
 - `/private/tmp/cycle-v2-equalizer-quality-final.png` verifies the expanded EQ
   response is sampled from the shared filter core at display resolution.
+- `/private/tmp/cycle-v2-delay-stereo-time.png` verifies the compact and
+  expanded Delay views share a left/right stereo axis, horizontal time axis,
+  parameterized ping spacing, pan position, and feedback decay.
 - The follow-up discovery run passed 496 of 499 tests. The concurrent Envelope
   exchange failure passed immediately on isolated rerun; the two repeatable
   unrelated failures remain the seed-array and mesh-scale expectations above.

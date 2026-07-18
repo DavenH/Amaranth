@@ -9,5 +9,10 @@ bool paintEffectCompactPreview(
         Rectangle<float> area,
         const Node& node,
         float zoom);
+void paintDelayPingPreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        float zoom);
 
 }

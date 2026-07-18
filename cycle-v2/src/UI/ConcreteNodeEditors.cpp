@@ -3,6 +3,7 @@
 #include "NodeEditorHost.h"
 
 #include "NodeParameterValue.h"
+#include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Runtime/NodePreviewProcessor.h"
 #include "../Nodes/Effect2D/CurveNodeEditors.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
@@ -59,7 +60,10 @@ public:
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f, Font::bold));
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
-        if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
+        if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
+            const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
+            paintDelayPingPreview(graphics, response, node, 1.f);
+        } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
             graphics.setColour(Colour(0xff0b0f14));
             graphics.fillRoundedRectangle(response, 6.f);
@@ -70,7 +74,7 @@ public:
     void resized() override {
         closeButton.setBounds(getWidth() - 42, 9, 28, 28);
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
-        int y = kind == NodeKind::Equalizer ? 166 : 56;
+        int y = kind == NodeKind::Equalizer || kind == NodeKind::Delay ? 166 : 56;
         if (kind == NodeKind::Equalizer) {
             for (size_t band = 0; band < 5; ++band) {
                 layoutControl(*controls[band * 2], 18, y, (getWidth() - 48) / 2);

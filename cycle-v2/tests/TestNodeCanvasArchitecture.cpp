@@ -344,6 +344,11 @@ TEST_CASE("Every effect view exposes both its compact preview and hosted editor"
         REQUIRE(module.capabilities().hostedEditor);
         REQUIRE(module.editorFactory() != nullptr);
     }
+
+    const auto delayBounds = registry.moduleFor(NodeKind::Delay)
+            .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
+    REQUIRE(delayBounds.getWidth() == Catch::Approx(520.f));
+    REQUIRE(delayBounds.getHeight() == Catch::Approx(460.f));
 }
 
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
