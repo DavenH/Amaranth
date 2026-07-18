@@ -121,10 +121,11 @@ public:
     void flushNodeEditorRefresh() override {}
     void refreshNodeEditorPresentation() override {}
     Point<float> nodeEditorCreationPosition() const override { return {}; }
-    void rebindNodeEditor() override {}
+    void rebindNodeEditor() override { ++rebinds; }
 
     int repaints {};
     int scheduledRefreshes {};
+    int rebinds {};
 };
 
 class NullResources final : public NodeEditorResources {
@@ -494,6 +495,7 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.scheduledRefreshes == 2);
+    REQUIRE(presentation.rebinds == 1);
 }
 
 TEST_CASE("Effect discrete parameter changes are independently undoable",
@@ -516,6 +518,7 @@ TEST_CASE("Effect discrete parameter changes are independently undoable",
     REQUIRE(commands.setNodeParameterValue("delay", "enabled", "Enabled", 0.f));
     REQUIRE(commands.setNodeParameterValue("delay", "time", "Time", 0.25f));
     REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.250000");
+    REQUIRE(presentation.rebinds == 2);
 
     REQUIRE(document.undo());
     REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.5");

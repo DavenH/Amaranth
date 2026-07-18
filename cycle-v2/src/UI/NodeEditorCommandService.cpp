@@ -61,6 +61,7 @@ bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
 void NodeEditorCommandService::endNodeParameterEdit() {
     commands.commitCompoundEdit();
     presentation.flushNodeEditorRefresh();
+    presentation.rebindNodeEditor();
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};
@@ -88,6 +89,7 @@ bool NodeEditorCommandService::setNodeParameterValue(
     }
     presentation.selectEditedNode(nodeId);
     presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
     presentation.repaintNodeEditor(false);
     return true;
 }

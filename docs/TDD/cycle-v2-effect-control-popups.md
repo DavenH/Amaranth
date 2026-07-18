@@ -116,6 +116,11 @@ Delay spin panning operate on real stereo payloads.
   kernel builder with High Pass zeroed. Per-bin attenuation measured against
   that baseline increases display contrast only; both responses use the real
   shared DSP and the audio kernel remains unchanged.
+- Open effect editors rebind after discrete parameter publication and after a
+  continuous gesture flushes. The Reverb High Pass live fixture asserts the
+  complete open → 0% response → publish 100% → rebound readout and reduced
+  preview-energy sequence in one running application. Passing report:
+  `/private/tmp/reverb-high-pass-live-report-final.json`.
 
 Crash regression evidence:
 

@@ -270,7 +270,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setNodeParameter(
                     value),
             "Parameter set: " + nodeId + "." + parameterId,
             nodeId,
-            { true });
+            { true, true });
 }
 
 bool NodeCanvasAuthoring::getNodeParameter(

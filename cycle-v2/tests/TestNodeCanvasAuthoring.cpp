@@ -108,6 +108,25 @@ TEST_CASE("Hosted effect editors open without requiring a compact preview",
     REQUIRE(authoring.session().expandedNodeId == "delay");
 }
 
+TEST_CASE("Effect parameter edits request an open-editor rebind",
+        "[cycle-v2][canvas][authoring][effects]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.openEditor("reverb").succeeded);
+    const auto edited = authoring.setNodeParameter(
+            "reverb", "highPass", "High Pass", "1");
+    REQUIRE(edited.succeeded);
+    REQUIRE(edited.graphChanged);
+    REQUIRE(edited.effects.editorBindingChanged);
+    REQUIRE(edited.effects.repaintRequested);
+}
+
 TEST_CASE("Node canvas authoring keeps voice parameter and subtitle atomic",
         "[cycle-v2][canvas][authoring]") {
     NodeGraph graph;
