@@ -1,6 +1,8 @@
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/catch_approx.hpp>
 #include <algorithm>
+#include <numeric>
+
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "../src/Runtime/NodePreviewProcessor.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
@@ -60,11 +62,57 @@ TEST_CASE("Reverb preview spectrogram analyzes a convolved Dirac response",
 
     REQUIRE(context.gridColumns == 24);
     REQUIRE(context.gridRows == 24);
-    REQUIRE(context.primary.size() == 24 * 24);
+    REQUIRE(context.primary.size() == context.gridColumns * context.gridRows);
     REQUIRE(context.secondary.empty());
     REQUIRE(context.domain == PortDomain::SpectralMagnitudeSignal);
-    REQUIRE(*std::max_element(context.primary.begin(), context.primary.end())
-            == Catch::Approx(1.f));
+    REQUIRE(*std::max_element(context.primary.begin(), context.primary.end()) > 0.f);
+}
+
+TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
+        "[cycle-v2][runtime][effects][reverb][preview]") {
+    auto render = [](float size, float damp, float highPass, float wet) {
+        const auto configuration = ReverbSignalProcessor::buildConfiguration({
+                { "enabled", "Enabled", "1" },
+                { "size", "Size", String(size) },
+                { "damp", "Damp", String(damp) },
+                { "width", "Width", "1" },
+                { "wet", "Wet", String(wet) },
+                { "highPass", "High Pass", String(highPass) }
+        });
+        const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
+        PreviewProcessContext context;
+        context.pointCount = 24;
+        context.configuration = &published;
+        auto processor = NodePreviewProcessorFactory().create(
+                PreviewModuleRole::ReverbSpectrogram);
+        processor->render(context);
+        return context;
+    };
+
+    const auto dry = render(0.f, 1.f, 0.f, 0.f);
+    const auto lowWet = render(0.f, 1.f, 0.f, 0.2f);
+    const auto highWet = render(0.f, 1.f, 0.f, 1.f);
+    REQUIRE(std::accumulate(dry.primary.begin(), dry.primary.end(), 0.f) == 0.f);
+    REQUIRE(std::accumulate(highWet.primary.begin(), highWet.primary.end(), 0.f)
+            > std::accumulate(lowWet.primary.begin(), lowWet.primary.end(), 0.f));
+
+    const auto highPassed = render(0.f, 1.f, 1.f, 1.f);
+    auto lowBandEnergy = [](const PreviewProcessContext& context) {
+        constexpr size_t lowBandRows = 4;
+        float energy {};
+        for (size_t column = 0; column < context.gridColumns; ++column) {
+            const auto first = context.primary.begin()
+                    + (std::vector<float>::difference_type) (column * context.gridRows);
+            energy += std::accumulate(first, first + lowBandRows, 0.f);
+        }
+        return energy;
+    };
+    const float unfilteredLowEnergy = lowBandEnergy(highWet);
+    const float highPassedLowEnergy = lowBandEnergy(highPassed);
+    REQUIRE(highPassedLowEnergy < unfilteredLowEnergy);
+
+    const auto largeRoom = render(1.f, 1.f, 0.f, 1.f);
+    REQUIRE(largeRoom.gridColumns > highWet.gridColumns);
 }
 
 TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime]") {

@@ -5,6 +5,7 @@
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
+#include <Util/NumberUtils.h>
 
 #include <cmath>
 
@@ -48,12 +49,15 @@ public:
         const float direct = configuration->wetLevel * jmax(0.5f, configuration->width);
         const float cross = configuration->wetLevel * jmin(0.5f, 1.f - configuration->width);
         response.mul(configuration->enabled ? 0.5f * (direct + cross) : 0.f);
-        if (!response.empty()) {
-            response.front() += configuration->enabled ? 1.f - 0.24f * configuration->wetLevel : 1.f;
-        }
 
         constexpr int fftSize = 2048;
-        const size_t columnCount = std::max<size_t>(16, std::min<size_t>(64, context.pointCount));
+        constexpr unsigned minimumKernelLog2 = 12;
+        const unsigned kernelLog2 = NumberUtils::log2i(
+                (unsigned) configuration->kernels[0].size());
+        const size_t sizeDetail = 8 * (size_t) (kernelLog2 > minimumKernelLog2
+                ? kernelLog2 - minimumKernelLog2
+                : 0);
+        const size_t columnCount = std::max<size_t>(16, context.pointCount + sizeDetail);
         const size_t rowCount = context.pointCount;
         context.primary.assign(columnCount * rowCount, 0.f);
         context.secondary.clear();
@@ -91,12 +95,7 @@ public:
         }
 
         Buffer<float> surface(context.primary.data(), (int) context.primary.size());
-        float maximum {};
-        int maximumIndex {};
-        surface.getMax(maximum, maximumIndex);
-        if (maximum > 0.f) {
-            surface.mul(1.f / maximum).sqrt().sqrt();
-        }
+        surface.mul(16.f).sqrt().sqrt().clip(0.f, 1.f);
     }
 };
 

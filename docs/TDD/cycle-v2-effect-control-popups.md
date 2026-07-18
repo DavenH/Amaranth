@@ -102,6 +102,11 @@ Delay spin panning operate on real stereo payloads.
   compilation, and crash-free rendering. Final screenshot and report:
   `/private/tmp/cycle-v2-reverb-spectrogram-2.png` and
   `/private/tmp/reverb-spectrogram-report-2.json`.
+- Reverb spectrogram magnitudes retain a fixed reference scale so Wet changes
+  visible energy and the kernel's high-pass attenuation remains comparable
+  between edits. Room Size increases cached time-column density from 40 to 88
+  columns across the Cycle 1 kernel-length range instead of stretching one
+  fixed-resolution surface.
 
 Crash regression evidence:
 
