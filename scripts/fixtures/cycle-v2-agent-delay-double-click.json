@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "delay",
+      "x": 500,
+      "y": 600
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "doubleClick",
+      "x": 387,
+      "y": 442,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "delay"
+    }
+  ],
+  "quit": true
+}

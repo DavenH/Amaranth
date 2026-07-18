@@ -335,6 +335,17 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
 }
 
+TEST_CASE("Every effect view exposes both its compact preview and hosted editor",
+        "[cycle-v2][canvas][view][effects]") {
+    const auto& registry = NodeViewModuleRegistry::instance();
+    for (const NodeKind kind : { NodeKind::Reverb, NodeKind::Delay, NodeKind::Equalizer }) {
+        const auto& module = registry.moduleFor(kind);
+        REQUIRE(module.capabilities().previewable);
+        REQUIRE(module.capabilities().hostedEditor);
+        REQUIRE(module.editorFactory() != nullptr);
+    }
+}
+
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
     GraphNodeFactory factory;
     NodeGraph graph;

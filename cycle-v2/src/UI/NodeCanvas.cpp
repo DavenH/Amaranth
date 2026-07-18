@@ -27,8 +27,8 @@ const Colour kCanvasGridMajor  { 0x2f5b6370 };
 const Colour kCanvasGridMinor  { 0x182f363f };
 constexpr bool kUseGlCanvasUnderlay = true;
 
-bool isPreviewableNode(NodeKind kind) {
-    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().previewable;
+bool hasHostedEditor(NodeKind kind) {
+    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().hostedEditor;
 }
 
 GraphDocument createStartupDocument() {
@@ -300,7 +300,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         selectedEdgeIndex = -1;
         interaction.beginNodeDrag(hitNode->id, hitNode->bounds);
 
-        if (event.getNumberOfClicks() >= 2 && isPreviewableNode(hitNode->kind)) {
+        if (event.getNumberOfClicks() >= 2 && hasHostedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
         }
 

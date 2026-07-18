@@ -39,13 +39,14 @@ public:
         const double denominator = context.pointCount > 1
                 ? (double) context.pointCount - 1.0
                 : 1.0;
+        double frequency = 40.0;
+        const double frequencyRatio = std::pow(400.0, 1.0 / denominator);
         for (size_t index = 0; index < context.pointCount; ++index) {
-            const double unit = (double) index / denominator;
-            const double frequency = 40.0 * std::pow(400.0, unit);
             context.primary[index] = jlimit(
                     0.f,
                     1.f,
                     core.responseDecibels(frequency) / 60.f + 0.5f);
+            frequency *= frequencyRatio;
         }
         context.domain = PortDomain::TimeSignal;
     }

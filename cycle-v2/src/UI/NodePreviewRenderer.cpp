@@ -1,6 +1,7 @@
 #include "NodePreviewRenderer.h"
 
 #include "../Graph/GraphRenderSemanticResolver.h"
+#include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 #include <Util/Arithmetic.h>
@@ -128,6 +129,7 @@ void drawTrace(
             trace,
             PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
 }
+
 
 void drawMeters(
         Graphics& graphics,
@@ -737,6 +739,10 @@ void NodePreviewRenderer::paintQualitative(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     const NodeKind kind = request.node.kind;
+    if (paintEffectCompactPreview(graphics, request.area, request.node, request.zoom)) {
+        return;
+    }
+
     if (kind == NodeKind::Fft || kind == NodeKind::Ifft) {
         drawFftTransformPreview(graphics, request.area, kind == NodeKind::Ifft);
         return;

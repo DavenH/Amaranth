@@ -100,6 +100,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DMeshState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurvePanelController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/Effect2DWidget.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectPreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectSignalProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeSignalProcessor.cpp"

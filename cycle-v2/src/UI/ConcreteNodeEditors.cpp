@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "NodeEditorHost.h"
 
 #include "NodeParameterValue.h"
@@ -8,6 +10,7 @@
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 namespace CycleV2 {
@@ -19,12 +22,10 @@ public:
     EffectParameterEditorComponent(
             NodeKind kindToUse,
             NodeEditorCommands& commandsToUse,
-            NodeEditorPresentation& presentationToUse,
-            NodeEditorResources& resourcesToUse) :
+            NodeEditorPresentation& presentationToUse) :
             kind         (kindToUse)
         ,   commands     (commandsToUse)
-        ,   presentation (presentationToUse)
-        ,   resources    (resourcesToUse) {
+        ,   presentation (presentationToUse) {
         closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
         closeButton.onClick = [this] { presentation.closeNodeEditor(); };
         addAndMakeVisible(closeButton);
@@ -62,7 +63,7 @@ public:
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
             graphics.setColour(Colour(0xff0b0f14));
             graphics.fillRoundedRectangle(response, 6.f);
-            resources.paintNodePreview(graphics, node, response.reduced(5.f));
+            paintEqualizerResponse(graphics, response.reduced(12.f, 9.f));
         }
     }
 
@@ -208,6 +209,42 @@ private:
         control.readout.setText(text, dontSendNotification);
     }
 
+    void paintEqualizerResponse(Graphics& graphics, Rectangle<float> area) const {
+        CycleDsp::EqualizerCore core(1);
+        for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
+            const auto& gain = controls[(size_t) band * 2];
+            const auto& frequency = controls[(size_t) band * 2 + 1];
+            core.configureBand(
+                    band,
+                    44100.0,
+                    CycleDsp::equalizerFrequency((float) frequency->slider.getValue()),
+                    CycleDsp::equalizerGainDecibels((float) gain->slider.getValue()));
+        }
+
+        Path response;
+        const int pointCount = jmax(2, roundToInt(area.getWidth()));
+        double frequency = 40.0;
+        const double frequencyRatio = std::pow(400.0, 1.0 / (double) (pointCount - 1));
+        for (int index = 0; index < pointCount; ++index) {
+            const double unit = (double) index / (double) (pointCount - 1);
+            const float decibels = core.responseDecibels(frequency);
+            const Point<float> point(
+                    area.getX() + (float) unit * area.getWidth(),
+                    area.getCentreY() - jlimit(-30.f, 30.f, decibels) * area.getHeight() / 60.f);
+            if (index == 0) {
+                response.startNewSubPath(point);
+            } else {
+                response.lineTo(point);
+            }
+            frequency *= frequencyRatio;
+        }
+
+        graphics.setColour(Colour(0xff26333b));
+        graphics.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
+        graphics.setColour(Colour(0xff38d1d1));
+        graphics.strokePath(response, PathStrokeType(2.f, PathStrokeType::curved));
+    }
+
     String title() const {
         if (kind == NodeKind::Reverb) {
             return "REVERB";
@@ -221,7 +258,6 @@ private:
     NodeKind kind;
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
-    NodeEditorResources& resources;
     Node node;
     TextButton closeButton;
     ToggleButton enabledButton;
@@ -231,7 +267,7 @@ private:
 class EffectNodeEditor final : public NodeEditor {
 public:
     EffectNodeEditor(const Node& node, const NodeEditorContext& context) :
-            editor(node.kind, context.commands, context.presentation, context.resources) {}
+            editor(node.kind, context.commands, context.presentation) {}
     Component& component() override { return editor; }
     void bind(const Node& node) override { editor.setNode(node); }
     void renderOpenGL(float) override {}

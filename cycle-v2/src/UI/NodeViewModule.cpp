@@ -119,12 +119,12 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     addCurve(NodeKind::Waveshaper, { 540.f, 360.f });
 
     NodeViewCapabilities effect;
+    effect.previewable = true;
     effect.hostedEditor = true;
     effect.expandedEditorSize = Point<float>(440.f, 360.f);
     add(NodeKind::Reverb, effect);
     add(NodeKind::Delay, effect);
 
-    effect.previewable = true;
     effect.expandedEditorSize = Point<float>(620.f, 460.f);
     add(NodeKind::Equalizer, effect);
 }

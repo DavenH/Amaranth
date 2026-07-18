@@ -56,6 +56,12 @@ Delay spin panning operate on real stereo payloads.
   publication, scaled readouts, and downstream audio behavior.
 - Processing performs no allocation, parsing, logging, or locking after
   preparation.
+- Double-click opens every hosted effect editor regardless of whether its
+  compact preview is runtime-backed or qualitative.
+- Expanded EQ response rendering samples the shared filter response at display
+  resolution rather than enlarging the compact preview trace.
+- Reverb and Delay compact previews communicate their parameterized decay,
+  feedback, timing, and stereo character and update with parameter edits.
 
 ## Deletion Targets And Negative Boundaries
 
@@ -106,3 +112,16 @@ The full test discovery run passed 496 of 498 tests. The two repeatable failures
 are unrelated existing expectations: `GuideCurveOffsetSeeds` expects vertical
 seed `4` but receives `16`, and the rich mesh-view test expects width `1080`
 while the registered presentation scale produces `972`.
+
+Preview-quality follow-up evidence:
+
+- Fresh-process pointer fixtures double-click the compact Reverb and Delay
+  nodes and assert their expanded editor IDs. Both complete without failed
+  commands or filtered-log errors.
+- `/private/tmp/cycle-v2-effect-previews-final.png` shows parameterized Reverb
+  decay and Delay echo/stereo previews alongside the EQ response preview.
+- `/private/tmp/cycle-v2-equalizer-quality-final.png` verifies the expanded EQ
+  response is sampled from the shared filter core at display resolution.
+- The follow-up discovery run passed 496 of 499 tests. The concurrent Envelope
+  exchange failure passed immediately on isolated rerun; the two repeatable
+  unrelated failures remain the seed-array and mesh-scale expectations above.
