@@ -111,6 +111,11 @@ Delay spin panning operate on real stereo payloads.
   until image rasterization. A linear display-only gain makes the Dirac
   response legible without changing audio DSP or compressing away the
   high-pass-induced spectral-centroid shift.
+- To keep Cycle's damping-coupled High Pass perceptible at ordinary settings,
+  the preview also analyzes a second Dirac response through the authoritative
+  kernel builder with High Pass zeroed. Per-bin attenuation measured against
+  that baseline increases display contrast only; both responses use the real
+  shared DSP and the audio kernel remains unchanged.
 
 Crash regression evidence:
 

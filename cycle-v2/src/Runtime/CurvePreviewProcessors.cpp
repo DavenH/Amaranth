@@ -30,26 +30,6 @@ public:
             return;
         }
 
-        std::vector<float> dirac(1, 1.f);
-        std::vector<float> left(configuration->kernels[0].size());
-        std::vector<float> right(configuration->kernels[1].size());
-        ConvReverb::basicConvolve(
-                { dirac.data(), (int) dirac.size() },
-                { const_cast<float*>(configuration->kernels[0].data()),
-                        (int) configuration->kernels[0].size() },
-                { left.data(), (int) left.size() });
-        ConvReverb::basicConvolve(
-                { dirac.data(), (int) dirac.size() },
-                { const_cast<float*>(configuration->kernels[1].data()),
-                        (int) configuration->kernels[1].size() },
-                { right.data(), (int) right.size() });
-
-        Buffer<float> response(left.data(), (int) left.size());
-        response.add({ right.data(), (int) right.size() });
-        const float direct = jmax(0.5f, configuration->width);
-        const float cross = jmin(0.5f, 1.f - configuration->width);
-        response.mul(configuration->enabled ? 0.5f * (direct + cross) : 0.f);
-
         constexpr int fftSize = 2048;
         constexpr size_t spectralRowCount = fftSize / 2 + 1;
         constexpr unsigned minimumKernelLog2 = 12;
@@ -60,12 +40,85 @@ public:
                 : 0);
         const size_t columnCount = std::max<size_t>(16, context.pointCount + sizeDetail);
         const size_t rowCount = spectralRowCount;
-        context.primary.assign(columnCount * rowCount, 0.f);
+        const std::vector<float> response = convolveDirac(*configuration);
+        analyzeResponse(response, columnCount, rowCount, context.primary);
         context.secondary.clear();
         context.gridColumns = columnCount;
         context.gridRows = rowCount;
         context.domain = PortDomain::SpectralMagnitudeSignal;
 
+        std::vector<float> attenuation;
+        if (parameterFloat(context.parameters, "highPass", 0.05f) > 0.f) {
+            auto unfilteredParameters = context.parameters;
+            for (auto& parameter : unfilteredParameters) {
+                if (parameter.id == "highPass") {
+                    parameter.value = "0";
+                    break;
+                }
+            }
+            const auto unfiltered = ReverbSignalProcessor::buildConfiguration(
+                    unfilteredParameters);
+            const std::vector<float> unfilteredResponse = convolveDirac(*unfiltered);
+            std::vector<float> unfilteredSurface;
+            analyzeResponse(unfilteredResponse, columnCount, rowCount, unfilteredSurface);
+            attenuation = context.primary;
+            Buffer<float> attenuationBuffer(attenuation.data(), (int) attenuation.size());
+            Buffer<float> unfilteredBuffer(
+                    unfilteredSurface.data(), (int) unfilteredSurface.size());
+            unfilteredBuffer.add(1.e-9f);
+            attenuationBuffer.div(unfilteredBuffer).clip(0.f, 1.f).sqr().sqr().sqr();
+        }
+
+        Buffer<float> surface(context.primary.data(), (int) context.primary.size());
+        float maximum {};
+        int maximumIndex {};
+        surface.getMax(maximum, maximumIndex);
+        if (maximum > 0.f) {
+            constexpr float maximumWetLevel = 0.25f;
+            constexpr float visualizationGain = 36.f;
+            surface.mul(visualizationGain * configuration->wetLevel
+                            / (maximumWetLevel * maximum))
+                    .clip(0.f, 1.f);
+            if (!attenuation.empty()) {
+                surface.mul({ attenuation.data(), (int) attenuation.size() });
+            }
+        }
+    }
+
+private:
+    static std::vector<float> convolveDirac(const ReverbConfiguration& configuration) {
+        std::vector<float> dirac(1, 1.f);
+        std::vector<float> left(configuration.kernels[0].size());
+        std::vector<float> right(configuration.kernels[1].size());
+        ConvReverb::basicConvolve(
+                { dirac.data(), (int) dirac.size() },
+                { const_cast<float*>(configuration.kernels[0].data()),
+                        (int) configuration.kernels[0].size() },
+                { left.data(), (int) left.size() });
+        ConvReverb::basicConvolve(
+                { dirac.data(), (int) dirac.size() },
+                { const_cast<float*>(configuration.kernels[1].data()),
+                        (int) configuration.kernels[1].size() },
+                { right.data(), (int) right.size() });
+
+        Buffer<float> response(left.data(), (int) left.size());
+        response.add({ right.data(), (int) right.size() });
+        const float direct = jmax(0.5f, configuration.width);
+        const float cross = jmin(0.5f, 1.f - configuration.width);
+        response.mul(configuration.enabled ? 0.5f * (direct + cross) : 0.f);
+        return left;
+    }
+
+    static void analyzeResponse(
+            const std::vector<float>& responseStorage,
+            size_t columnCount,
+            size_t rowCount,
+            std::vector<float>& surface) {
+        constexpr int fftSize = 2048;
+        surface.assign(columnCount * rowCount, 0.f);
+        Buffer<float> response(
+                const_cast<float*>(responseStorage.data()),
+                (int) responseStorage.size());
         std::vector<float> windowStorage(fftSize);
         Buffer<float> window(windowStorage.data(), fftSize);
         window.ramp(0.f, MathConstants<float>::pi / (float) (fftSize - 1)).sin().sqr();
@@ -82,29 +135,17 @@ public:
                     ? column * maximumStart / (columnCount - 1)
                     : 0;
             frame.zero();
-            const size_t available = std::min<size_t>(fftSize, (size_t) response.size() - start);
-            response.section((int) start, (int) available).copyTo(frame.withSize((int) available));
+            const size_t available = std::min<size_t>(
+                    fftSize,
+                    (size_t) response.size() - start);
+            response.section((int) start, (int) available)
+                    .copyTo(frame.withSize((int) available));
             frame.mul(window);
             fft.forward(frame);
-            const Buffer<float> magnitudes = fft.getMagnitudes();
-            for (size_t row = 0; row < rowCount; ++row) {
-                const size_t bin = rowCount > 1
-                        ? row * (size_t) (magnitudes.size() - 1) / (rowCount - 1)
-                        : 0;
-                context.primary[column * rowCount + row] = magnitudes[(int) bin];
-            }
-        }
-
-        Buffer<float> surface(context.primary.data(), (int) context.primary.size());
-        float maximum {};
-        int maximumIndex {};
-        surface.getMax(maximum, maximumIndex);
-        if (maximum > 0.f) {
-            constexpr float maximumWetLevel = 0.25f;
-            constexpr float visualizationGain = 36.f;
-            surface.mul(visualizationGain * configuration->wetLevel
-                            / (maximumWetLevel * maximum))
-                    .clip(0.f, 1.f);
+            fft.getMagnitudes().copyTo({
+                    surface.data() + column * rowCount,
+                    (int) rowCount
+            });
         }
     }
 };

@@ -45,17 +45,19 @@ TEST_CASE("Reverb preview spectrogram analyzes a convolved Dirac response",
     auto processor = factory.create(PreviewModuleRole::ReverbSpectrogram);
     REQUIRE(processor != nullptr);
 
-    const auto configuration = ReverbSignalProcessor::buildConfiguration({
+    const std::vector<NodeParameter> parameters {
             { "enabled", "Enabled", "1" },
             { "size", "Size", "0" },
             { "damp", "Damp", "0.2" },
             { "width", "Width", "1" },
             { "wet", "Wet", "0.8" },
             { "highPass", "High Pass", "0.05" }
-    });
+    };
+    const auto configuration = ReverbSignalProcessor::buildConfiguration(parameters);
     const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
     PreviewProcessContext context;
     context.pointCount = 24;
+    context.parameters = parameters;
     context.configuration = &published;
 
     processor->render(context);
@@ -71,17 +73,19 @@ TEST_CASE("Reverb preview spectrogram analyzes a convolved Dirac response",
 TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
         "[cycle-v2][runtime][effects][reverb][preview]") {
     auto render = [](float size, float damp, float highPass, float wet) {
-        const auto configuration = ReverbSignalProcessor::buildConfiguration({
+        const std::vector<NodeParameter> parameters {
                 { "enabled", "Enabled", "1" },
                 { "size", "Size", String(size) },
                 { "damp", "Damp", String(damp) },
                 { "width", "Width", "1" },
                 { "wet", "Wet", String(wet) },
                 { "highPass", "High Pass", String(highPass) }
-        });
+        };
+        const auto configuration = ReverbSignalProcessor::buildConfiguration(parameters);
         const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
         PreviewProcessContext context;
         context.pointCount = 24;
+        context.parameters = parameters;
         context.configuration = &published;
         auto processor = NodePreviewProcessorFactory().create(
                 PreviewModuleRole::ReverbSpectrogram);
@@ -112,6 +116,19 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
         return weightedEnergy / energy;
     };
     REQUIRE(spectralCentroid(highPassed) > spectralCentroid(highWet));
+    REQUIRE(std::accumulate(highPassed.primary.begin(), highPassed.primary.end(), 0.f)
+            < 0.95f * std::accumulate(highWet.primary.begin(), highWet.primary.end(), 0.f));
+
+    const auto defaultUnfiltered = render(0.5f, 0.2f, 0.f, 1.f);
+    const auto defaultHighPassed = render(0.5f, 0.2f, 1.f, 1.f);
+    REQUIRE(std::accumulate(
+                    defaultHighPassed.primary.begin(),
+                    defaultHighPassed.primary.end(),
+                    0.f)
+            < 0.92f * std::accumulate(
+                    defaultUnfiltered.primary.begin(),
+                    defaultUnfiltered.primary.end(),
+                    0.f));
 
     const auto largeRoom = render(1.f, 1.f, 0.f, 1.f);
     REQUIRE(largeRoom.gridColumns > highWet.gridColumns);
