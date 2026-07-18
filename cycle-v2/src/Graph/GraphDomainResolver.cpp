@@ -14,10 +14,6 @@ struct StringHash {
     }
 };
 
-bool isInputResolvedPassthrough(const Node& node) {
-    return node.kind == NodeKind::Spy;
-}
-
 PortDomain voiceContextDomain(const Node& voiceNode) {
     const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
 
@@ -166,10 +162,6 @@ private:
                         || sourceNode->kind == NodeKind::Multiply)) {
             sourceDomain = firstInputDomain(*sourceNode, true);
         }
-        if (sourceDomain == PortDomain::ControlSignal
-                && isInputResolvedPassthrough(*sourceNode)) {
-            sourceDomain = firstInputDomain(*sourceNode, false);
-        }
         if (sourceDomain != PortDomain::ControlSignal) {
             return sourceDomain;
         }
@@ -183,13 +175,6 @@ private:
                 return operationDomain;
             }
         }
-        if (isInputResolvedPassthrough(*destNode)) {
-            const PortDomain passthroughDomain = firstInputDomain(*destNode, false);
-            if (passthroughDomain != PortDomain::ControlSignal) {
-                return passthroughDomain;
-            }
-        }
-
         return edge.domain;
     }
 
@@ -209,14 +194,6 @@ private:
         const Port* dest = findPort(*destNode, edge.destPortId, true);
         if (source == nullptr || dest == nullptr) {
             return ChannelLayout::Mono;
-        }
-
-        if (isInputResolvedPassthrough(*sourceNode)
-                && source->domain == PortDomain::ControlSignal) {
-            const size_t index = nodeIndex(sourceNode->id);
-            if (index < incoming.size() && !incoming[index].empty()) {
-                return resolution.channelLayouts[incoming[index].front()];
-            }
         }
 
         if (dest->domain != PortDomain::ControlSignal) {

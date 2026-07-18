@@ -761,10 +761,6 @@ void NodePreviewRenderer::paintQualitative(
         return;
     }
 
-    if (kind == NodeKind::Spy) {
-        return;
-    }
-
     if (kind == NodeKind::StereoSplit || kind == NodeKind::StereoJoin) {
         const bool split = kind == NodeKind::StereoSplit;
         const float y = request.area.getCentreY();

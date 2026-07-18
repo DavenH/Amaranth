@@ -219,7 +219,8 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasScene& sceneToUse,
         NodePreviewRenderer& previewRendererToUse) :
         scene(sceneToUse)
-    ,   previewRenderer(previewRendererToUse) {
+    ,   previewRenderer(previewRendererToUse)
+    ,   signalProbeRail(previewRendererToUse) {
 }
 
 void NodeCanvasPresentation::paint(
@@ -227,12 +228,22 @@ void NodeCanvasPresentation::paint(
         const NodeCanvasPresentationFrame& frame) {
     paintGrid(graphics, frame);
 
-    Graphics::ScopedSaveState contentClip(graphics);
-    if (!frame.canvasOcclusion.isEmpty()) {
-        graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
+    {
+        Graphics::ScopedSaveState contentClip(graphics);
+        graphics.reduceClipRegion(frame.canvasBounds.toNearestInt());
+        if (!frame.canvasOcclusion.isEmpty()) {
+            graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
+        }
+
+        paintContent(graphics, frame);
     }
 
-    paintContent(graphics, frame);
+    signalProbeRail.paintRail(
+            graphics,
+            frame.graph,
+            frame.previewResult,
+            frame.workspaceBounds,
+            frame.probeRailState);
 }
 
 void NodeCanvasPresentation::paintContent(
@@ -240,6 +251,12 @@ void NodeCanvasPresentation::paintContent(
         const NodeCanvasPresentationFrame& frame) {
     paintSnapGuides(graphics, frame);
     paintEdges(graphics, frame);
+    signalProbeRail.paintCableAnnotations(
+            graphics,
+            frame.graph,
+            scene.snapshot(),
+            frame.workspaceBounds,
+            frame.probeRailState);
     paintPendingConnection(graphics, frame);
     paintNodes(graphics, frame);
     paintMiniMap(graphics, frame);
@@ -253,8 +270,8 @@ void NodeCanvasPresentation::renderOpenGL(
         const NodeCanvasPresentationFrame& frame,
         float scaleFactor) {
     renderer.renderBackground(
-            roundToInt(frame.canvasBounds.getWidth()),
-            roundToInt(frame.canvasBounds.getHeight()),
+            frame.canvasBounds,
+            frame.workspaceBounds.getHeight(),
             scaleFactor,
             frame.viewport.getZoom(),
             frame.viewport.getPan());

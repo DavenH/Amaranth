@@ -78,6 +78,7 @@ NodeCanvas::NodeCanvas() :
         })
     ,   renderInvalidation(*this)
     ,   hitRouter(graph, palette, queries) {
+    probeRailState.expanded = !graph.getSignalProbes().empty();
     refreshCompiledState();
 
     setOpaque(true);
@@ -102,8 +103,8 @@ void NodeCanvas::paint(Graphics& g) {
 }
 
 void NodeCanvas::resized() {
-    viewport.setBounds(getLocalBounds().toFloat());
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId));
+    viewport.setBounds(canvasContentBounds());
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
     requestCanvasRepaint();
 }
 
@@ -111,9 +112,28 @@ void NodeCanvas::visibilityChanged() {
     renderInvalidation.notifyAvailabilityChanged();
 }
 
+void NodeCanvas::focusLost(FocusChangeType) {
+    probeRailState.selectedProbeId = {};
+    requestCanvasRepaint();
+}
+
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     lastMousePosition = event.position;
     palette.updateHover(event.position);
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
+    String hovered = canvasPresentation.probeRail().probeAt(
+            event.position,
+            getLocalBounds().toFloat(),
+            graph,
+            probeRailState);
+    if (hovered.isEmpty()) {
+        hovered = canvasPresentation.probeRail().markerProbeAt(event.position, graph, scene);
+    }
+    probeRailState.hoveredProbeId = std::move(hovered);
     setMouseCursor(MouseCursor::NormalCursor);
     requestCanvasRepaint();
 }
@@ -131,11 +151,46 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
 
+    const Rectangle<float> workspace = getLocalBounds().toFloat();
+    SignalProbeRail& probeRail = canvasPresentation.probeRail();
+    if (probeRail.collapseHandleFor(workspace, probeRailState).contains(event.position)) {
+        probeRailState.expanded = !probeRailState.expanded;
+        resized();
+        return;
+    }
+    if (probeRail.resizeHandleFor(workspace, probeRailState).contains(event.position)) {
+        resizingProbeRail = true;
+        probeRailResizeStartHeight = probeRailState.expandedHeight;
+        probeRailResizeStartY = event.position.y;
+        return;
+    }
+    const String closeProbe = probeRail.closeProbeAt(
+            event.position, workspace, graph, probeRailState);
+    if (closeProbe.isNotEmpty()) {
+        applyAuthoringResult(authoring.removeSignalProbe(closeProbe));
+        if (probeRailState.selectedProbeId == closeProbe) {
+            probeRailState.selectedProbeId = {};
+        }
+        return;
+    }
+    const String railProbe = probeRail.probeAt(
+            event.position, workspace, graph, probeRailState);
+    if (railProbe.isNotEmpty()) {
+        probeRailState.selectedProbeId = railProbe;
+        requestCanvasRepaint();
+        return;
+    }
+    probeRailState.selectedProbeId = {};
+    if (probeRail.boundsFor(workspace, probeRailState).contains(event.position)) {
+        requestCanvasRepaint();
+        return;
+    }
+
     if (expandedNodeId.isNotEmpty()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
         const ExpandedEditorClick click = editorCoordinator.routeClick(
                 expandedNode,
-                getLocalBounds().toFloat(),
+                canvasContentBounds(),
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
@@ -215,6 +270,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             viewport,
             presentation.revision(),
             document.revision());
+    const String markerProbe = probeRail.markerProbeAt(event.position, graph, scene);
+    if (markerProbe.isNotEmpty()) {
+        if (event.mods.isPopupMenu()) {
+            const int edgeIndex = hitRouter.edgeAt(scene, event.position);
+            if (edgeIndex >= 0) {
+                showEdgeMenu(edgeIndex, event.position);
+            }
+            return;
+        }
+
+        probeRailState.selectedProbeId = markerProbe;
+        draggingProbeId = markerProbe;
+        requestCanvasRepaint();
+        return;
+    }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         interaction.beginConnection(*hitPort, event.position);
         selectedNodeId = hitPort->nodeId;
@@ -241,12 +311,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     selectedEdgeIndex = hitRouter.edgeAt(scene, event.position);
 
     if (selectedEdgeIndex >= 0) {
-        if (event.mods.isCtrlDown()) {
-            if (applyAuthoringResult(authoring.deleteEdge(selectedEdgeIndex))) {
-                editStatusMessage = "Edge cut";
-            }
-
-            requestCanvasRepaint();
+        if (event.mods.isPopupMenu()) {
+            showEdgeMenu(selectedEdgeIndex, event.position);
+            return;
+        }
+        if (event.mods.isAltDown()) {
+            applyAuthoringResult(authoring.toggleSignalProbe(
+                    selectedEdgeIndex,
+                    tapPositionForEdge(selectedEdgeIndex, event.position)));
             return;
         }
 
@@ -266,6 +338,20 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
+
+    if (resizingProbeRail) {
+        const float maximumHeight = getHeight() * 0.4f;
+        probeRailState.expandedHeight = jlimit(
+                SignalProbeRail::minimumExpandedHeight,
+                maximumHeight,
+                probeRailResizeStartHeight + probeRailResizeStartY - event.position.y);
+        resized();
+        return;
+    }
+    if (draggingProbeId.isNotEmpty()) {
+        requestCanvasRepaint();
+        return;
+    }
 
     const auto& scene = sceneBuilder.build(
             graph,
@@ -297,11 +383,28 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
+    if (resizingProbeRail) {
+        resizingProbeRail = false;
+        return;
+    }
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
             presentation.revision(),
             document.revision());
+    if (draggingProbeId.isNotEmpty()) {
+        const String probeId = std::move(draggingProbeId);
+        draggingProbeId = {};
+        const int edgeIndex = hitRouter.edgeAt(scene, event.position);
+        if (edgeIndex >= 0) {
+            applyAuthoringResult(authoring.reattachSignalProbe(
+                    probeId,
+                    edgeIndex,
+                    tapPositionForEdge(edgeIndex, event.position)));
+        }
+        requestCanvasRepaint();
+        return;
+    }
     const auto completion = interaction.finish(graph, scene, event.position);
 
     editorCommands.endTrimeshMorphEdit();
@@ -332,9 +435,25 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
+    const Rectangle<float> workspace = getLocalBounds().toFloat();
+    if (probeRailState.expanded
+            && SignalProbeRail::boundsFor(workspace, probeRailState).contains(event.position)) {
+        const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
+                ? wheel.deltaX
+                : wheel.deltaY;
+        probeRailState.horizontalOffset = jlimit(
+                0.f,
+                SignalProbeRail::maximumHorizontalOffset(
+                        workspace,
+                        (int) graph.getSignalProbes().size()),
+                probeRailState.horizontalOffset - wheelDelta * 420.f);
+        requestCanvasRepaint();
+        return;
+    }
+
     const Node* expandedNode = queries.findNode(expandedNodeId);
     if (expandedNode != nullptr
-            && editorCoordinator.boundsFor(expandedNode, getLocalBounds().toFloat())
+            && editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
                     .contains(event.position)) {
         requestCanvasRepaint();
         return;
@@ -398,6 +517,8 @@ void NodeCanvas::newOpenGLContextCreated() {
 
 void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
+        gl::glDisable(gl::GL_SCISSOR_TEST);
+        OpenGLHelpers::clear(kCanvasBackground);
         canvasPresentation.renderOpenGL(
                 renderer,
                 presentationFrame(),
@@ -421,7 +542,7 @@ void NodeCanvas::timerCallback() {
     }
 
     editorCoordinator.syncEffectNodes(graph);
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId));
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
 
     const auto mouse = getMouseXYRelative().toFloat();
     const int previousPaletteSectionIndex = palette.activeSection();
@@ -452,9 +573,11 @@ void NodeCanvas::setCanvasOpenGlAttached(bool shouldAttach) {
 }
 
 NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
+    const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const Rectangle<float> content = canvasContentBounds();
     const Node* expandedNode = queries.findNode(expandedNodeId);
     const Rectangle<float> occlusion = editorCoordinator.blocksCanvas(expandedNode)
-            ? editorCoordinator.boundsFor(expandedNode, getLocalBounds().toFloat())
+            ? editorCoordinator.boundsFor(expandedNode, content)
             : Rectangle<float> {};
     std::optional<PendingConnectionPresentation> pending;
     if (const auto* connection = std::get_if<PortConnectionGesture>(&interaction.gesture())) {
@@ -482,7 +605,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             previewResult,
             viewport,
             palette,
-            getLocalBounds().toFloat(),
+            content,
             occlusion,
             lastMousePosition,
             selectedNodeId,
@@ -494,13 +617,80 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             document.revision(),
             selectedEdgeIndex,
             spliceTargetEdgeIndex,
-            kUseGlCanvasUnderlay
+            kUseGlCanvasUnderlay,
+            workspace,
+            probeRailState
     };
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {
-    viewport.setBounds(getLocalBounds().toFloat());
+    viewport.setBounds(canvasContentBounds());
     return viewport.centreWorld();
+}
+
+Rectangle<float> NodeCanvas::canvasContentBounds() const {
+    return SignalProbeRail::contentBoundsFor(getLocalBounds().toFloat(), probeRailState);
+}
+
+float NodeCanvas::tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const {
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
+    for (const auto& edge : scene.edges) {
+        if (edge.edgeIndex != edgeIndex) {
+            continue;
+        }
+
+        Point<float> nearest;
+        const float distance = edge.cablePath.getNearestPoint(screenPosition, nearest);
+        const float length = edge.cablePath.getLength();
+        return length > 0.f ? jlimit(0.f, 1.f, distance / length) : 0.5f;
+    }
+    return 0.5f;
+}
+
+void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
+    if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
+        return;
+    }
+    const Edge edge = graph.getEdges()[(size_t) edgeIndex];
+    const bool spying = graph.findSignalProbeForSource(edge.sourceNodeId, edge.sourcePortId) != nullptr;
+    const float tapPosition = tapPositionForEdge(edgeIndex, screenPosition);
+
+    PopupMenu menu;
+    menu.addItem(1, spying ? "Stop Spying" : "Spy on Signal");
+    menu.addSeparator();
+    menu.addItem(2, "Delete Cable");
+    menu.showMenuAsync(
+            PopupMenu::Options()
+                    .withTargetComponent(this)
+                    .withMousePosition(),
+            [safeThis = SafePointer<NodeCanvas>(this), edge, tapPosition](int result) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+
+                const auto& edges = safeThis->graph.getEdges();
+                const auto found = std::find_if(edges.begin(), edges.end(), [&](const auto& candidate) {
+                    return candidate.sourceNodeId == edge.sourceNodeId
+                            && candidate.sourcePortId == edge.sourcePortId
+                            && candidate.destNodeId == edge.destNodeId
+                            && candidate.destPortId == edge.destPortId;
+                });
+                if (found == edges.end()) {
+                    return;
+                }
+                const int currentEdgeIndex = (int) std::distance(edges.begin(), found);
+
+                if (result == 1) {
+                    safeThis->applyAuthoringResult(
+                            safeThis->authoring.toggleSignalProbe(currentEdgeIndex, tapPosition));
+                } else if (result == 2) {
+                    safeThis->applyAuthoringResult(safeThis->authoring.deleteEdge(currentEdgeIndex));
+                }
+            });
 }
 
 void NodeCanvas::refreshCompiledState() {
@@ -517,13 +707,23 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.graphChanged) {
         compiledStateRefreshPending = false;
         editorCoordinator.clearPreviewCache();
+
+        if (document.lastChange().probesChanged) {
+            probeRailState.expanded = !graph.getSignalProbes().empty();
+            probeRailState.horizontalOffset = jmin(
+                    probeRailState.horizontalOffset,
+                    SignalProbeRail::maximumHorizontalOffset(
+                            getLocalBounds().toFloat(),
+                            (int) graph.getSignalProbes().size()));
+            resized();
+        }
     }
     if (result.effects.resetInteraction) {
         interaction.reset();
         spliceTargetEdgeIndex = -1;
     }
     if (result.effects.editorBindingChanged) {
-        editorCoordinator.updateHost(queries.findNode(expandedNodeId));
+        editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
     }
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
@@ -673,7 +873,13 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
-    return applyAuthoringResult(authoring.loadGraph(file));
+    const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
+    if (loaded) {
+        probeRailState.expanded = !graph.getSignalProbes().empty();
+        probeRailState.horizontalOffset = 0.f;
+        resized();
+    }
+    return loaded;
 }
 
 bool NodeCanvas::saveSnapshot() {
@@ -713,7 +919,7 @@ bool NodeCanvas::spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition) {
 bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
-        editorCoordinator.updateHost(nullptr);
+        editorCoordinator.updateHost(nullptr, canvasContentBounds());
         requestCanvasRepaint();
     }
     return cleared;
@@ -768,7 +974,7 @@ Point<float> NodeCanvas::nodeEditorCreationPosition() const {
 }
 
 void NodeCanvas::rebindNodeEditor() {
-    editorCoordinator.updateHost(queries.findNode(expandedNodeId));
+    editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
 }
 
 Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {

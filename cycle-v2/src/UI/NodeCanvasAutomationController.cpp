@@ -240,7 +240,6 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "waveshaper", NodeKind::Waveshaper },
         { "reverb", NodeKind::Reverb },
         { "delay", NodeKind::Delay },
-        { "spy", NodeKind::Spy },
         { "stereoSplit", NodeKind::StereoSplit },
         { "split", NodeKind::StereoSplit },
         { "stereoJoin", NodeKind::StereoJoin },

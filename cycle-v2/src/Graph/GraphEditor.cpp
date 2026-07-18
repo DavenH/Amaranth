@@ -22,6 +22,12 @@ struct StringHash {
     }
 };
 
+bool isProbeDomain(PortDomain domain) {
+    return domain == PortDomain::TimeSignal
+            || domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
+}
+
 }
 
 GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const {
@@ -145,40 +151,79 @@ GraphEditResult GraphEditor::createAndAttachGuideCurveToTrimeshVertexParameter(
     return { GraphEditCode::Connected, addResult.nodeId, {} };
 }
 
-GraphEditResult GraphEditor::attachSpyToEdge(NodeGraph& graph, size_t edgeIndex, const String& spyNodeId) const {
+GraphEditResult GraphEditor::toggleSignalProbe(
+        NodeGraph& graph,
+        size_t edgeIndex,
+        float tapPosition) const {
     if (edgeIndex >= graph.getEdges().size()) {
         return { GraphEditCode::MissingEdge, {}, {} };
     }
 
-    const Edge edge = graph.getEdges()[edgeIndex];
-    const Node* spyNode = findNode(graph, spyNodeId);
-
-    if (spyNode == nullptr) {
-        return { GraphEditCode::MissingNode, {}, {} };
-    }
-
-    if (spyNode->kind != NodeKind::Spy) {
+    const Edge& edge = graph.getEdges()[edgeIndex];
+    if (edge.attachment
+            || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
 
-    const Port* spyInput = findPort(*spyNode, "in", true);
-
-    if (spyInput == nullptr) {
-        return { GraphEditCode::MissingPort, {}, {} };
+    if (const auto* existing = graph.findSignalProbeForSource(
+                edge.sourceNodeId, edge.sourcePortId)) {
+        const String probeId = existing->id;
+        graph.removeSignalProbe(probeId);
+        return { GraphEditCode::Connected, probeId, {} };
     }
 
-    NodeGraph candidate = graph;
-    GraphEditResult result = connect(
-            candidate,
-            { edge.sourceNodeId, edge.sourcePortId, false },
-            { spyNodeId, spyInput->id, true });
+    const String probeId = createUniqueProbeId(graph);
+    graph.addSignalProbe({
+            probeId,
+            edge.sourceNodeId,
+            edge.sourcePortId,
+            edge.destNodeId,
+            edge.destPortId,
+            "Spy " + String((int) graph.getSignalProbes().size() + 1),
+            jlimit(0.f, 1.f, tapPosition),
+            (int) graph.getSignalProbes().size()
+    });
+    return { GraphEditCode::Connected, probeId, {} };
+}
 
-    if (!result.succeeded()) {
-        return result;
+GraphEditResult GraphEditor::removeSignalProbe(NodeGraph& graph, const String& probeId) const {
+    if (!graph.removeSignalProbe(probeId)) {
+        return { GraphEditCode::MissingNode, probeId, {} };
+    }
+    return { GraphEditCode::Connected, probeId, {} };
+}
+
+GraphEditResult GraphEditor::reattachSignalProbe(
+        NodeGraph& graph,
+        const String& probeId,
+        size_t edgeIndex,
+        float tapPosition) const {
+    if (edgeIndex >= graph.getEdges().size()) {
+        return { GraphEditCode::MissingEdge, probeId, {} };
+    }
+    SignalProbe* probe = graph.findSignalProbeForEditing(probeId);
+    if (probe == nullptr) {
+        return { GraphEditCode::MissingNode, probeId, {} };
     }
 
-    graph = std::move(candidate);
-    return { GraphEditCode::Connected, spyNodeId, {} };
+    const Edge& edge = graph.getEdges()[edgeIndex];
+    if (edge.attachment
+            || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
+        return { GraphEditCode::ValidationRejected, probeId, {} };
+    }
+    const SignalProbe* existing = graph.findSignalProbeForSource(
+            edge.sourceNodeId, edge.sourcePortId);
+    if (existing != nullptr && existing->id != probeId) {
+        return { GraphEditCode::ValidationRejected, probeId, {} };
+    }
+
+    probe->sourceNodeId = edge.sourceNodeId;
+    probe->sourcePortId = edge.sourcePortId;
+    probe->anchorDestNodeId = edge.destNodeId;
+    probe->anchorDestPortId = edge.destPortId;
+    probe->tapPosition = jlimit(0.f, 1.f, tapPosition);
+    graph.markChanged();
+    return { GraphEditCode::Connected, probeId, {} };
 }
 
 GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeIndex, const String& nodeId) const {
@@ -196,10 +241,6 @@ GraphEditResult GraphEditor::spliceNodeIntoEdge(NodeGraph& graph, size_t edgeInd
 
     if (spliceNode == nullptr) {
         return { GraphEditCode::MissingNode, {}, {} };
-    }
-
-    if (spliceNode->kind == NodeKind::Spy) {
-        return { GraphEditCode::ValidationRejected, {}, {} };
     }
 
     const PortAddress source { edge.sourceNodeId, edge.sourcePortId, false };
@@ -410,6 +451,18 @@ String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) co
 
     while (findNode(graph, candidate) != nullptr) {
         candidate = baseId + String(suffix);
+        ++suffix;
+    }
+
+    return candidate;
+}
+
+String GraphEditor::createUniqueProbeId(const NodeGraph& graph) const {
+    String candidate = "probe";
+    int suffix = 2;
+
+    while (graph.findSignalProbe(candidate) != nullptr) {
+        candidate = "probe" + String(suffix);
         ++suffix;
     }
 

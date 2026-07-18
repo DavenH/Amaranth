@@ -31,7 +31,6 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::StereoJoin, createStereoJoinAudioProcessor },
             { AudioModuleRole::StereoSplit, createStereoSplitAudioProcessor },
             { AudioModuleRole::Output, createOutputAudioProcessor },
-            { AudioModuleRole::Spy, createSpyAudioProcessor },
             { AudioModuleRole::GenericProcessor, createGenericAudioProcessor },
             { AudioModuleRole::VoiceContext, createVoiceContextAudioProcessor },
             { AudioModuleRole::GuideCurve, createGuideCurveAudioProcessor },

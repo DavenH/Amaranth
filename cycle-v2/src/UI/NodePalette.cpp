@@ -47,7 +47,6 @@ const NodePalette::Entry kFxEntries[] = {
 };
 
 const NodePalette::Entry kChannelEntries[] = {
-        { NodeKind::Spy, "Spy" },
         { NodeKind::StereoSplit, "Split" },
         { NodeKind::StereoJoin, "Join" },
         { NodeKind::Output, "Output" }

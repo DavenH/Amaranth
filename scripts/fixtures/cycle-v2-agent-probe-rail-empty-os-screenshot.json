@@ -1,0 +1,22 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "probeCount",
+      "equals": 0
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

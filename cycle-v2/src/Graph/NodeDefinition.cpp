@@ -419,11 +419,6 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Delay.cpp")
                     .finish(),
-            buildDefinition(definition("spy", NodeKind::Spy, "Spy", "signal monitor", "spy",
-                    { input("in", "In", PortDomain::ControlSignal) }, {}))
-                    .runtime(AudioModuleRole::Spy, PreviewModuleRole::SignalSpy)
-                    .presentation({ 170.f, 76.f })
-                    .finish(),
             buildDefinition(definition("stereoSplit", NodeKind::StereoSplit, "Stereo Split", "L/R breakout", "split",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }))

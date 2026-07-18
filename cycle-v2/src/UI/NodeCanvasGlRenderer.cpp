@@ -38,31 +38,39 @@ void NodeCanvasGlRenderer::shutdown() {
 }
 
 void NodeCanvasGlRenderer::renderBackground(
-        int width,
-        int height,
+        Rectangle<float> bounds,
+        float framebufferHeight,
         float renderingScale,
         float zoom,
         Point<float> pan) {
-    if (width <= 0 || height <= 0) {
+    if (bounds.isEmpty() || framebufferHeight <= 0.f) {
         return;
     }
 
-    const int viewportWidth = roundToInt((float) width * renderingScale);
-    const int viewportHeight = roundToInt((float) height * renderingScale);
+    const int viewportX = roundToInt(bounds.getX() * renderingScale);
+    const int viewportY = roundToInt(
+            (framebufferHeight - bounds.getBottom()) * renderingScale);
+    const int viewportWidth = roundToInt(bounds.getWidth() * renderingScale);
+    const int viewportHeight = roundToInt(bounds.getHeight() * renderingScale);
 
     gl::glDisable(gl::GL_DEPTH_TEST);
     gl::glEnable(gl::GL_BLEND);
     gl::glBlendFunc(gl::GL_SRC_ALPHA, gl::GL_ONE_MINUS_SRC_ALPHA);
     gl::glDisable(gl::GL_LINE_SMOOTH);
 
-    gl::glViewport(0, 0, viewportWidth, viewportHeight);
+    gl::glViewport(viewportX, viewportY, viewportWidth, viewportHeight);
     gl::glMatrixMode(gl::GL_PROJECTION);
     gl::glLoadIdentity();
-    gl::glOrtho(0.0, (double) width, (double) height, 0.0, -1.0, 1.0);
+    gl::glOrtho(
+            bounds.getX(),
+            bounds.getRight(),
+            bounds.getBottom(),
+            bounds.getY(),
+            -1.0,
+            1.0);
     gl::glMatrixMode(gl::GL_MODELVIEW);
     gl::glLoadIdentity();
 
-    const Rectangle<float> bounds(0.f, 0.f, (float) width, (float) height);
     const float minorStep = 32.f * zoom;
     const float majorStep = minorStep * 4.f;
 
@@ -73,11 +81,11 @@ void NodeCanvasGlRenderer::renderBackground(
 
     gl::glBegin(gl::GL_QUADS);
     setColour(kTopGlow);
-    gl::glVertex2f(0.f, 0.f);
-    gl::glVertex2f((float) width, 0.f);
+    gl::glVertex2f(bounds.getX(), bounds.getY());
+    gl::glVertex2f(bounds.getRight(), bounds.getY());
     setColour(kBottomGlow);
-    gl::glVertex2f((float) width, (float) height);
-    gl::glVertex2f(0.f, (float) height);
+    gl::glVertex2f(bounds.getRight(), bounds.getBottom());
+    gl::glVertex2f(bounds.getX(), bounds.getBottom());
     gl::glEnd();
 }
 

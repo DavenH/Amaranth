@@ -1,5 +1,7 @@
 #include "GraphPreviewExecutor.h"
 
+#include <unordered_map>
+
 namespace CycleV2 {
 
 namespace {
@@ -198,6 +200,42 @@ GraphPreviewResult renderPreview(
     return result;
 }
 
+struct StringHash {
+    size_t operator()(const String& value) const {
+        return (size_t) value.hashCode64();
+    }
+};
+
+void appendProbePreviews(
+        GraphPreviewResult& result,
+        const GraphAudioResult& audioResult,
+        const std::vector<SignalProbe>& probes) {
+    std::unordered_map<String, const SignalPayload*, StringHash> outputs;
+    for (const auto& node : audioResult.nodes) {
+        for (const auto& output : node.outputs) {
+            outputs.emplace(node.nodeId + "\n" + output.first, &output.second);
+        }
+    }
+
+    result.probes.reserve(probes.size());
+    for (const auto& probe : probes) {
+        const auto found = outputs.find(probe.sourceNodeId + "\n" + probe.sourcePortId);
+        const SignalPayload* payload = found != outputs.end() ? found->second : nullptr;
+        const bool connected = payload != nullptr && payload->traversalGrid.isValid();
+        GraphPreviewResult::SignalProbePreview preview;
+        preview.probeId = probe.id;
+        preview.connected = connected;
+        if (connected) {
+            preview.values = payload->traversalGrid.values;
+            preview.gridColumns = payload->traversalGrid.columns;
+            preview.gridRows = payload->traversalGrid.rows;
+            preview.domain = payload->traversalGrid.metadata.valueDomain;
+            preview.channelLayout = payload->channelLayout;
+        }
+        result.probes.push_back(std::move(preview));
+    }
+}
+
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
@@ -209,6 +247,16 @@ GraphPreviewResult GraphPreviewExecutor::render(
         const GraphAudioResult& audioResult,
         size_t pointCount) const {
     return renderPreview(plan, &audioResult, pointCount);
+}
+
+GraphPreviewResult GraphPreviewExecutor::render(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResult& audioResult,
+        const std::vector<SignalProbe>& probes,
+        size_t pointCount) const {
+    GraphPreviewResult result = renderPreview(plan, &audioResult, pointCount);
+    appendProbePreviews(result, audioResult, probes);
+    return result;
 }
 
 }

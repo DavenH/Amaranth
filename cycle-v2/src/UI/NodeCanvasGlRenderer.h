@@ -11,8 +11,8 @@ public:
     void initialize();
     void shutdown();
     void renderBackground(
-            int width,
-            int height,
+            juce::Rectangle<float> bounds,
+            float framebufferHeight,
             float renderingScale,
             float zoom,
             juce::Point<float> pan);

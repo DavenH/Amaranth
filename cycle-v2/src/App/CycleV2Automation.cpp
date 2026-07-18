@@ -933,7 +933,6 @@ var CycleV2Automation::listPaletteItems() const {
     items.add(paletteItemToVar("waveshaper", "FX", "Waveshaper"));
     items.add(paletteItemToVar("reverb", "FX", "Reverb"));
     items.add(paletteItemToVar("delay", "FX", "Delay"));
-    items.add(paletteItemToVar("spy", "Channel", "Spy"));
     items.add(paletteItemToVar("stereoSplit", "Channel", "Split"));
     items.add(paletteItemToVar("stereoJoin", "Channel", "Join"));
     items.add(paletteItemToVar("output", "Channel", "Output"));

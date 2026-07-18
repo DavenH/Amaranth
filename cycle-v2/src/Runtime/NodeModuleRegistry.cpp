@@ -61,7 +61,6 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::Waveshaper:        return "Waveshaper";
         case AudioModuleRole::Reverb:            return "Reverb";
         case AudioModuleRole::Delay:             return "Delay";
-        case AudioModuleRole::Spy:               return "Spy";
         case AudioModuleRole::StereoSplit:       return "Stereo Split";
         case AudioModuleRole::StereoJoin:        return "Stereo Join";
         case AudioModuleRole::Output:            return "Output";

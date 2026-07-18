@@ -1,5 +1,10 @@
 # Cycle 2 Spy Node
 
+> **Superseded presentation:** `cycle-v2-spy-rail.md` replaces the ordinary
+> Spy-node and node-drop workflow with passive signal probes in a bottom rail.
+> This document remains authoritative for signal compatibility and traversal
+> preview fidelity.
+
 ## Purpose
 
 The Spy node is a passive graph inspection node. It lets a user attach a

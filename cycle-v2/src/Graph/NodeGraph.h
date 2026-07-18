@@ -36,7 +36,6 @@ enum class NodeKind {
     Waveshaper,
     Reverb,
     Delay,
-    Spy,
     StereoSplit,
     StereoJoin,
     Output
@@ -104,6 +103,17 @@ struct Edge {
     bool attachment {};
 };
 
+struct SignalProbe {
+    String id;
+    String sourceNodeId;
+    String sourcePortId;
+    String anchorDestNodeId;
+    String anchorDestPortId;
+    String label;
+    float tapPosition { 0.5f };
+    int railOrder {};
+};
+
 struct NodeNaturalSize {
     float width {};
     float height {};
@@ -113,6 +123,7 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
+    const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
@@ -120,6 +131,13 @@ public:
 
     void addNode(Node node);
     void addEdge(Edge edge);
+    void addSignalProbe(SignalProbe probe);
+    bool removeSignalProbe(const String& probeId);
+    SignalProbe* findSignalProbeForEditing(const String& probeId);
+    const SignalProbe* findSignalProbe(const String& probeId) const;
+    const SignalProbe* findSignalProbeForSource(
+            const String& sourceNodeId,
+            const String& sourcePortId) const;
     void removeNode(const String& nodeId);
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
@@ -133,6 +151,7 @@ public:
 private:
     std::vector<Node> nodes;
     std::vector<Edge> edges;
+    std::vector<SignalProbe> signalProbes;
     uint64_t revision {};
 };
 

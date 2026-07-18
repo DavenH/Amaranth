@@ -14,7 +14,6 @@ std::unique_ptr<NodeAudioProcessor> createMultiplyAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createStereoJoinAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createStereoSplitAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createOutputAudioProcessor();
-std::unique_ptr<NodeAudioProcessor> createSpyAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createVoiceContextAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createGuideCurveAudioProcessor();

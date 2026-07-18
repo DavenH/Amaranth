@@ -215,10 +215,6 @@ std::unique_ptr<NodeAudioProcessor> createOutputAudioProcessor() {
     return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Output);
 }
 
-std::unique_ptr<NodeAudioProcessor> createSpyAudioProcessor() {
-    return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Spy);
-}
-
 std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor() {
     return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::GenericProcessor);
 }

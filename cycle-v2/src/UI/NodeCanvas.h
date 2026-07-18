@@ -80,6 +80,7 @@ public:
     void paint(Graphics& g) override;
     void resized() override;
     void visibilityChanged() override;
+    void focusLost(FocusChangeType cause) override;
     void mouseDown(const MouseEvent& event) override;
     void mouseMove(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
@@ -124,6 +125,11 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
+    SignalProbeRailState probeRailState;
+    String draggingProbeId;
+    bool resizingProbeRail {};
+    float probeRailResizeStartHeight {};
+    float probeRailResizeStartY {};
     uint32 compiledStateRefreshDueMs {};
 
     void newOpenGLContextCreated() override;
@@ -153,6 +159,9 @@ private:
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
+    Rectangle<float> canvasContentBounds() const;
+    float tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const;
+    void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;

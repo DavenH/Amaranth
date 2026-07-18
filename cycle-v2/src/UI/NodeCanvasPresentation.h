@@ -7,6 +7,7 @@
 #include "NodeCanvasViewport.h"
 #include "NodePalette.h"
 #include "NodePreviewRenderer.h"
+#include "SignalProbeRail.h"
 #include "../Graph/GraphCompiler.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 
@@ -43,6 +44,8 @@ struct NodeCanvasPresentationFrame {
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
     bool openGLUnderlay { true };
+    Rectangle<float> workspaceBounds;
+    SignalProbeRailState probeRailState;
 };
 
 struct NodePortPresentation {
@@ -66,6 +69,7 @@ public:
             const NodeCanvasViewport& viewport,
             const Node& node,
             const Port& port);
+    SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:
     void paintGrid(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
@@ -94,6 +98,7 @@ private:
 
     NodeCanvasScene& scene;
     NodePreviewRenderer& previewRenderer;
+    SignalProbeRail signalProbeRail;
 };
 
 }

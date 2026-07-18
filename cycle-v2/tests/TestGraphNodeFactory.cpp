@@ -108,11 +108,6 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(multiply.bounds.getWidth() == add.bounds.getWidth());
     REQUIRE(multiply.bounds.getHeight() == add.bounds.getHeight());
 
-    const Node spy = GraphNodeFactory().createNode(NodeKind::Spy, "spy", {});
-    REQUIRE(spy.title == "Spy");
-    REQUIRE(spy.inputs.size() == 1);
-    REQUIRE(spy.outputs.empty());
-    REQUIRE(spy.inputs.front().domain == PortDomain::ControlSignal);
 }
 
 TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") {

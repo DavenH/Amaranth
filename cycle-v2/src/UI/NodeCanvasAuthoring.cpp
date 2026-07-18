@@ -171,6 +171,41 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::moveNode(
             { true });
 }
 
+NodeCanvasAuthoringResult NodeCanvasAuthoring::toggleSignalProbe(
+        int edgeIndex,
+        float tapPosition) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
+        return {};
+    }
+    return graphEditResult(
+            commands.toggleSignalProbe((size_t) edgeIndex, tapPosition),
+            "Signal probe toggled",
+            {},
+            { true, false, true });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::removeSignalProbe(const String& probeId) {
+    return graphEditResult(
+            commands.removeSignalProbe(probeId),
+            "Signal probe removed",
+            {},
+            { true, false, true });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::reattachSignalProbe(
+        const String& probeId,
+        int edgeIndex,
+        float tapPosition) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
+        return {};
+    }
+    return graphEditResult(
+            commands.reattachSignalProbe(probeId, (size_t) edgeIndex, tapPosition),
+            "Signal probe reattached",
+            {},
+            { true, false, true });
+}
+
 void NodeCanvasAuthoring::beginNodeMoveGesture() {
     commands.beginCompoundEdit();
 }
@@ -342,11 +377,8 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::spliceSelectedNodeIntoEdge(int ed
 
     const String selectedNodeId = node->id;
     const Edge originalEdge = edges[(size_t) edgeIndex];
-    const bool attachingSpy = node->kind == NodeKind::Spy;
     commands.beginCompoundEdit();
-    const auto edit = attachingSpy
-            ? commands.attachSpyToEdge((size_t) edgeIndex, selectedNodeId)
-            : commands.spliceNodeIntoEdge((size_t) edgeIndex, selectedNodeId);
+    const auto edit = commands.spliceNodeIntoEdge((size_t) edgeIndex, selectedNodeId);
 
     if (!edit.succeeded()) {
         commands.cancelCompoundEdit();
@@ -356,15 +388,13 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::spliceSelectedNodeIntoEdge(int ed
         return graphEditResult(edit, status, selectedNodeId);
     }
 
-    if (!attachingSpy) {
-        spaceNodesAfterSplice(originalEdge.sourceNodeId, edit.nodeId, originalEdge.destNodeId);
-    }
+    spaceNodesAfterSplice(originalEdge.sourceNodeId, edit.nodeId, originalEdge.destNodeId);
     commands.commitCompoundEdit();
 
     authoringSession.expandedNodeId = {};
     return graphEditResult(
             edit,
-            attachingSpy ? "Attached spy to cable" : "Inserted node into cable",
+            "Inserted node into cable",
             edit.nodeId,
             { true, true, false });
 }

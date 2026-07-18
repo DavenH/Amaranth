@@ -86,6 +86,31 @@ public:
         return object;
     }
 
+    static var probeToVar(const SignalProbe& probe) {
+        auto* object = new DynamicObject();
+        object->setProperty("id", probe.id);
+        object->setProperty("sourceNodeId", probe.sourceNodeId);
+        object->setProperty("sourcePortId", probe.sourcePortId);
+        object->setProperty("anchorDestNodeId", probe.anchorDestNodeId);
+        object->setProperty("anchorDestPortId", probe.anchorDestPortId);
+        object->setProperty("label", probe.label);
+        object->setProperty("tapPosition", probe.tapPosition);
+        object->setProperty("railOrder", probe.railOrder);
+        object->setProperty("connected", probe.sourceNodeId.isNotEmpty());
+        return object;
+    }
+
+    static var probePreviewStatsToVar(const GraphPreviewResult::SignalProbePreview& preview) {
+        auto* object = new DynamicObject();
+        object->setProperty("probeId", preview.probeId);
+        object->setProperty("connected", preview.connected);
+        object->setProperty("domain", labelForDomain(preview.domain));
+        object->setProperty("gridColumns", (int) preview.gridColumns);
+        object->setProperty("gridRows", (int) preview.gridRows);
+        object->setProperty("sampleCount", (int) preview.values.size());
+        return object;
+    }
+
     static String labelForPreviewRole(PreviewModuleRole role) {
         switch (role) {
         case PreviewModuleRole::Waveform:
@@ -256,6 +281,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
+    root->setProperty("probeCount", (int) graph.getSignalProbes().size());
     root->setProperty("compileSucceeded", compileResult.succeeded());
     root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
     root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
@@ -297,6 +323,11 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         edges.add(AutomationValueEncoder::edgeToVar(edge));
     }
 
+    Array<var> probes;
+    for (const auto& probe : graph.getSignalProbes()) {
+        probes.add(AutomationValueEncoder::probeToVar(probe));
+    }
+
     Array<var> validationIssues;
     for (const auto& issue : compileResult.validationIssues) {
         auto* issueObject = new DynamicObject();
@@ -325,12 +356,19 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         previewStats.add(AutomationValueEncoder::previewStatsToVar(preview));
     }
 
+    Array<var> probePreviewStats;
+    for (const auto& preview : previewResult.probes) {
+        probePreviewStats.add(AutomationValueEncoder::probePreviewStatsToVar(preview));
+    }
+
     root->setProperty("nodes", nodes);
     root->setProperty("edges", edges);
+    root->setProperty("probes", probes);
     root->setProperty("validationIssues", validationIssues);
     root->setProperty("compileIssues", compileIssues);
     root->setProperty("nodeOrder", nodeOrder);
     root->setProperty("previewStats", previewStats);
+    root->setProperty("probePreviewStats", probePreviewStats);
 
     if (state.expandedNodeId.isNotEmpty()) {
         root->setProperty("expandedNodeControls", inspectNodeControls(state.expandedNodeId, state));
