@@ -61,7 +61,7 @@ TEST_CASE("Reverb preview spectrogram analyzes a convolved Dirac response",
     processor->render(context);
 
     REQUIRE(context.gridColumns == 24);
-    REQUIRE(context.gridRows == 24);
+    REQUIRE(context.gridRows == 1025);
     REQUIRE(context.primary.size() == context.gridColumns * context.gridRows);
     REQUIRE(context.secondary.empty());
     REQUIRE(context.domain == PortDomain::SpectralMagnitudeSignal);
@@ -97,19 +97,21 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
             > std::accumulate(lowWet.primary.begin(), lowWet.primary.end(), 0.f));
 
     const auto highPassed = render(0.f, 1.f, 1.f, 1.f);
-    auto lowBandEnergy = [](const PreviewProcessContext& context) {
-        constexpr size_t lowBandRows = 4;
-        float energy {};
+    auto spectralCentroid = [](const PreviewProcessContext& context) {
+        double energy {};
+        double weightedEnergy {};
         for (size_t column = 0; column < context.gridColumns; ++column) {
             const auto first = context.primary.begin()
                     + (std::vector<float>::difference_type) (column * context.gridRows);
-            energy += std::accumulate(first, first + lowBandRows, 0.f);
+            for (size_t row = 0; row < context.gridRows; ++row) {
+                energy += first[(std::vector<float>::difference_type) row];
+                weightedEnergy += (double) row
+                        * first[(std::vector<float>::difference_type) row];
+            }
         }
-        return energy;
+        return weightedEnergy / energy;
     };
-    const float unfilteredLowEnergy = lowBandEnergy(highWet);
-    const float highPassedLowEnergy = lowBandEnergy(highPassed);
-    REQUIRE(highPassedLowEnergy < unfilteredLowEnergy);
+    REQUIRE(spectralCentroid(highPassed) > spectralCentroid(highWet));
 
     const auto largeRoom = render(1.f, 1.f, 0.f, 1.f);
     REQUIRE(largeRoom.gridColumns > highWet.gridColumns);

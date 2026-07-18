@@ -46,11 +46,12 @@ public:
 
         Buffer<float> response(left.data(), (int) left.size());
         response.add({ right.data(), (int) right.size() });
-        const float direct = configuration->wetLevel * jmax(0.5f, configuration->width);
-        const float cross = configuration->wetLevel * jmin(0.5f, 1.f - configuration->width);
+        const float direct = jmax(0.5f, configuration->width);
+        const float cross = jmin(0.5f, 1.f - configuration->width);
         response.mul(configuration->enabled ? 0.5f * (direct + cross) : 0.f);
 
         constexpr int fftSize = 2048;
+        constexpr size_t spectralRowCount = fftSize / 2 + 1;
         constexpr unsigned minimumKernelLog2 = 12;
         const unsigned kernelLog2 = NumberUtils::log2i(
                 (unsigned) configuration->kernels[0].size());
@@ -58,7 +59,7 @@ public:
                 ? kernelLog2 - minimumKernelLog2
                 : 0);
         const size_t columnCount = std::max<size_t>(16, context.pointCount + sizeDetail);
-        const size_t rowCount = context.pointCount;
+        const size_t rowCount = spectralRowCount;
         context.primary.assign(columnCount * rowCount, 0.f);
         context.secondary.clear();
         context.gridColumns = columnCount;
@@ -95,7 +96,16 @@ public:
         }
 
         Buffer<float> surface(context.primary.data(), (int) context.primary.size());
-        surface.mul(16.f).sqrt().sqrt().clip(0.f, 1.f);
+        float maximum {};
+        int maximumIndex {};
+        surface.getMax(maximum, maximumIndex);
+        if (maximum > 0.f) {
+            constexpr float maximumWetLevel = 0.25f;
+            constexpr float visualizationGain = 36.f;
+            surface.mul(visualizationGain * configuration->wetLevel
+                            / (maximumWetLevel * maximum))
+                    .clip(0.f, 1.f);
+        }
     }
 };
 

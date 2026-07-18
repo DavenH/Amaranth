@@ -102,11 +102,15 @@ Delay spin panning operate on real stereo payloads.
   compilation, and crash-free rendering. Final screenshot and report:
   `/private/tmp/cycle-v2-reverb-spectrogram-2.png` and
   `/private/tmp/reverb-spectrogram-report-2.json`.
-- Reverb spectrogram magnitudes retain a fixed reference scale so Wet changes
-  visible energy and the kernel's high-pass attenuation remains comparable
-  between edits. Room Size increases cached time-column density from 40 to 88
-  columns across the Cycle 1 kernel-length range instead of stretching one
-  fixed-resolution surface.
+- Reverb spectrogram analysis normalizes kernel shape before independently
+  reapplying the mapped Wet level, so Wet changes visible energy without
+  concealing the kernel's high-pass attenuation. Room Size increases cached
+  time-column density from 40 to 88 columns across the Cycle 1 kernel-length
+  range instead of stretching one fixed-resolution surface.
+- Reverb analysis retains all 1025 half-spectrum bins from its 2048-point FFT
+  until image rasterization. A linear display-only gain makes the Dirac
+  response legible without changing audio DSP or compressing away the
+  high-pass-induced spectral-centroid shift.
 
 Crash regression evidence:
 
