@@ -1,9 +1,8 @@
 #include "NodePreviewRenderer.h"
+#include "SpectralPreviewMapping.h"
 
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
-
-#include <Util/Arithmetic.h>
 
 #include <array>
 #include <cmath>
@@ -185,33 +184,6 @@ void drawMeters(
     }
 }
 
-void remapSpectralRows(std::vector<float>& surface, size_t columns, size_t rows) {
-    if (columns == 0 || rows < 2 || surface.size() < columns * rows) {
-        return;
-    }
-
-    const std::vector<float> source = surface;
-    std::vector<float> rowMap(rows);
-    Buffer<float> mappedRows(rowMap.data(), (int) rowMap.size());
-    mappedRows.ramp(0.f, 1.f / (float) (rowMap.size() - 1));
-    Arithmetic::applyLogMapping(mappedRows, 500.f);
-
-    for (size_t column = 0; column < columns; ++column) {
-        const size_t columnOffset = column * rows;
-        for (size_t row = 0; row < rows; ++row) {
-            const float position = jlimit(
-                    0.f,
-                    (float) (rows - 1),
-                    rowMap[row] * (float) (rows - 1));
-            const size_t rowA = (size_t) position;
-            const size_t rowB = std::min(rowA + 1, rows - 1);
-            const float amount = position - (float) rowA;
-            surface[columnOffset + row] = source[columnOffset + rowA]
-                    + amount * (source[columnOffset + rowB] - source[columnOffset + rowA]);
-        }
-    }
-}
-
 void unwrapPhase(std::vector<float>& surface, size_t columns, size_t rows) {
     if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
         return;
@@ -243,28 +215,21 @@ std::vector<float> mappedSurface(const NodePreviewResult& preview) {
         return surface;
     }
 
-    Buffer<float> buffer(surface.data(), (int) surface.size());
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
-        buffer.abs().mul(16.f).add(1.f).ln().mul(1.f / 2.833213344f).clip(0.f, 1.f);
+        return SpectralPreviewMapping::magnitudeSurface(
+                surface,
+                preview.gridColumns,
+                preview.gridRows);
     } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
         unwrapPhase(surface, preview.gridColumns, preview.gridRows);
-        remapSpectralRows(surface, preview.gridColumns, preview.gridRows);
-        float minimum = std::numeric_limits<float>::max();
-        float maximum = std::numeric_limits<float>::lowest();
-        int minimumIndex {};
-        int maximumIndex {};
-        buffer.getMin(minimum, minimumIndex);
-        buffer.getMax(maximum, maximumIndex);
-        const float realMaximum = jmax(std::abs(minimum), std::abs(maximum));
+        return SpectralPreviewMapping::phaseSurface(
+                surface,
+                preview.gridColumns,
+                preview.gridRows);
+    }
 
-        if (realMaximum <= 0.f) {
-            buffer.set(0.5f);
-        } else {
-            const float exponent = std::ceil(std::log2(realMaximum) + 0.5f);
-            buffer.mul(std::pow(2.f, -exponent)).add(0.5f).clip(0.f, 1.f);
-        }
-    } else if (preview.domain == PortDomain::TimeSignal) {
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    if (preview.domain == PortDomain::TimeSignal) {
         buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
     } else {
         buffer.clip(0.f, 1.f);

@@ -1,0 +1,27 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/fft-sawtooth.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probeCount",
+      "equals": 3
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 250
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}
