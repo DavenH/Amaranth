@@ -40,7 +40,8 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::ImpulseResponse, createImpulseResponseAudioProcessor },
             { AudioModuleRole::Waveshaper, createWaveshaperAudioProcessor },
             { AudioModuleRole::Reverb, createReverbAudioProcessor },
-            { AudioModuleRole::Delay, createDelayAudioProcessor }
+            { AudioModuleRole::Delay, createDelayAudioProcessor },
+            { AudioModuleRole::Equalizer, createEqualizerAudioProcessor }
     };
 
     for (const auto& registration : registrations) {

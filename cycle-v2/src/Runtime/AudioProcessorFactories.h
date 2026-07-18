@@ -24,5 +24,6 @@ std::unique_ptr<NodeAudioProcessor> createImpulseResponseAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createWaveshaperAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createReverbAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createDelayAudioProcessor();
+std::unique_ptr<NodeAudioProcessor> createEqualizerAudioProcessor();
 
 }

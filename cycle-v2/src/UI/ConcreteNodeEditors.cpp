@@ -1,14 +1,245 @@
 #include "NodeEditorHost.h"
 
 #include "NodeParameterValue.h"
+#include "../Runtime/NodePreviewProcessor.h"
 #include "../Nodes/Effect2D/CurveNodeEditors.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 #include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 
+#include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 namespace CycleV2 {
 
 namespace {
+
+class EffectParameterEditorComponent final : public Component {
+public:
+    EffectParameterEditorComponent(
+            NodeKind kindToUse,
+            NodeEditorCommands& commandsToUse,
+            NodeEditorPresentation& presentationToUse,
+            NodeEditorResources& resourcesToUse) :
+            kind         (kindToUse)
+        ,   commands     (commandsToUse)
+        ,   presentation (presentationToUse)
+        ,   resources    (resourcesToUse) {
+        closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
+        closeButton.onClick = [this] { presentation.closeNodeEditor(); };
+        addAndMakeVisible(closeButton);
+        enabledButton.setButtonText("Enabled");
+        enabledButton.onClick = [this] {
+            commands.setNodeParameterValue(
+                    node.id, "enabled", "Enabled", enabledButton.getToggleState() ? 1.f : 0.f);
+        };
+        addAndMakeVisible(enabledButton);
+        createControls();
+    }
+
+    void setNode(const Node& nodeToUse) {
+        node = nodeToUse;
+        enabledButton.setToggleState(
+                nodeParameterValue(node, "enabled", "1").getIntValue() != 0,
+                dontSendNotification);
+        for (auto& control : controls) {
+            control->slider.setValue(
+                    nodeParameterValue(node, control->id, String(control->defaultValue)).getDoubleValue(),
+                    dontSendNotification);
+            updateReadout(*control);
+        }
+        repaint();
+    }
+
+    void paint(Graphics& graphics) override {
+        graphics.fillAll(Colour(0xff11151b));
+        graphics.setColour(Colour(0xff2b3340));
+        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
+        graphics.setColour(Colour(0xffeef2f6));
+        graphics.setFont(FontOptions(18.f, Font::bold));
+        graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
+        if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
+            auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
+            graphics.setColour(Colour(0xff0b0f14));
+            graphics.fillRoundedRectangle(response, 6.f);
+            resources.paintNodePreview(graphics, node, response.reduced(5.f));
+        }
+    }
+
+    void resized() override {
+        closeButton.setBounds(getWidth() - 42, 9, 28, 28);
+        enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
+        int y = kind == NodeKind::Equalizer ? 166 : 56;
+        if (kind == NodeKind::Equalizer) {
+            for (size_t band = 0; band < 5; ++band) {
+                layoutControl(*controls[band * 2], 18, y, (getWidth() - 48) / 2);
+                layoutControl(*controls[band * 2 + 1], getWidth() / 2 + 6, y, (getWidth() - 48) / 2);
+                y += 54;
+            }
+            return;
+        }
+        for (auto& control : controls) {
+            layoutControl(*control, 18, y, getWidth() - 36);
+            y += 58;
+        }
+    }
+
+    var automationState() const {
+        auto* state = new DynamicObject();
+        state->setProperty("kind", title());
+        state->setProperty("enabled", enabledButton.getToggleState());
+        Array<var> values;
+        for (const auto& control : controls) {
+            auto* value = new DynamicObject();
+            value->setProperty("id", control->id);
+            value->setProperty("value", control->slider.getValue());
+            value->setProperty("readout", control->readout.getText());
+            values.add(value);
+        }
+        state->setProperty("controls", values);
+        return state;
+    }
+
+private:
+    struct Control {
+        String id;
+        String name;
+        float defaultValue {};
+        Label label;
+        Slider slider;
+        Label readout;
+    };
+
+    void addControl(const String& id, const String& name, float defaultValue) {
+        auto control = std::make_unique<Control>();
+        control->id = id;
+        control->name = name;
+        control->defaultValue = defaultValue;
+        control->label.setText(name, dontSendNotification);
+        control->label.setColour(Label::textColourId, Colour(0xffaab4c0));
+        control->readout.setJustificationType(Justification::centredRight);
+        control->readout.setColour(Label::textColourId, Colour(0xffeef2f6));
+        control->slider.setSliderStyle(Slider::LinearHorizontal);
+        control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
+        control->slider.setRange(0.0, 1.0, 0.0001);
+        auto* raw = control.get();
+        control->slider.onDragStart = [this, raw] {
+            commands.beginNodeParameterEdit(
+                    node.id, raw->id, raw->name, (float) raw->slider.getValue());
+        };
+        control->slider.onValueChange = [this, raw] {
+            updateReadout(*raw);
+            commands.updateNodeParameterEditValue((float) raw->slider.getValue());
+            if (kind == NodeKind::Equalizer) {
+                repaint();
+            }
+        };
+        control->slider.onDragEnd = [this] { commands.endNodeParameterEdit(); };
+        addAndMakeVisible(control->label);
+        addAndMakeVisible(control->slider);
+        addAndMakeVisible(control->readout);
+        controls.push_back(std::move(control));
+    }
+
+    void createControls() {
+        if (kind == NodeKind::Reverb) {
+            addControl("size", "Size", 0.5f);
+            addControl("damp", "Damping", 0.2f);
+            addControl("width", "Width", 1.f);
+            addControl("highPass", "High Pass", 0.05f);
+            addControl("wet", "Wet", 0.4f);
+        } else if (kind == NodeKind::Delay) {
+            addControl("time", "Time", 0.5f);
+            addControl("feedback", "Feedback", 0.5f);
+            addControl("spin", "Spin", 0.5f);
+            addControl("spinIters", "Spin Length", 0.2f);
+            addControl("wet", "Wet", 0.5f);
+        } else {
+            const float frequencies[] { 60.f, 250.f, 1200.f, 4000.f, 8000.f };
+            for (int band = 0; band < 5; ++band) {
+                const String prefix = "band" + String(band + 1);
+                addControl(prefix + "Gain", "Band " + String(band + 1) + " Gain", 0.5f);
+                addControl(
+                        prefix + "Frequency",
+                        "Frequency",
+                        CycleDsp::equalizerFrequencyUnitValue(frequencies[band]));
+            }
+        }
+    }
+
+    void layoutControl(Control& control, int x, int y, int width) {
+        control.label.setBounds(x, y, width - 76, 18);
+        control.readout.setBounds(x + width - 92, y, 92, 18);
+        control.slider.setBounds(x, y + 20, width, 28);
+    }
+
+    void updateReadout(Control& control) {
+        const float value = (float) control.slider.getValue();
+        String text;
+        if (kind == NodeKind::Reverb && control.id == "size") {
+            text = String(CycleDsp::reverbKernelSeconds(value, 44100.0), 2) + " s";
+        } else if (kind == NodeKind::Delay && control.id == "time") {
+            text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
+        } else if (kind == NodeKind::Delay && control.id == "spinIters") {
+            text = String(CycleDsp::delaySpinIterations(value)) + " taps";
+        } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
+            const float gain = CycleDsp::equalizerGainDecibels(value);
+            text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";
+        } else if (kind == NodeKind::Equalizer) {
+            const float frequency = CycleDsp::equalizerFrequency(value);
+            text = frequency >= 1000.f
+                    ? String(frequency / 1000.f, 2) + " kHz"
+                    : String(roundToInt(frequency)) + " Hz";
+        } else {
+            text = String(roundToInt(value * 100.f)) + "%";
+        }
+        control.readout.setText(text, dontSendNotification);
+    }
+
+    String title() const {
+        if (kind == NodeKind::Reverb) {
+            return "REVERB";
+        }
+        if (kind == NodeKind::Delay) {
+            return "DELAY";
+        }
+        return "EQUALIZER";
+    }
+
+    NodeKind kind;
+    NodeEditorCommands& commands;
+    NodeEditorPresentation& presentation;
+    NodeEditorResources& resources;
+    Node node;
+    TextButton closeButton;
+    ToggleButton enabledButton;
+    std::vector<std::unique_ptr<Control>> controls;
+};
+
+class EffectNodeEditor final : public NodeEditor {
+public:
+    EffectNodeEditor(const Node& node, const NodeEditorContext& context) :
+            editor(node.kind, context.commands, context.presentation, context.resources) {}
+    Component& component() override { return editor; }
+    void bind(const Node& node) override { editor.setNode(node); }
+    void renderOpenGL(float) override {}
+    void appendAutomationState(DynamicObject& state) const override {
+        state.setProperty("effectParameters", editor.automationState());
+    }
+    Rectangle<float> panelBoundsForAutomation() const override { return editor.getBounds().toFloat(); }
+    void releaseOpenGLResources() override {}
+private:
+    EffectParameterEditorComponent editor;
+};
+
+class EffectNodeEditorFactory final : public NodeEditorFactory {
+public:
+    std::unique_ptr<NodeEditor> create(
+            const Node& node,
+            const NodeEditorContext& context) const override {
+        return std::make_unique<EffectNodeEditor>(node, context);
+    }
+};
 
 class CurveNodeEditor final : public NodeEditor,
                               private CurveExpandedEditorDelegate {
@@ -279,6 +510,9 @@ NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::Waveshaper, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::TrilinearMesh, std::make_unique<TrimeshNodeEditorFactory>());
+    factories.emplace_back(NodeKind::Reverb, std::make_unique<EffectNodeEditorFactory>());
+    factories.emplace_back(NodeKind::Delay, std::make_unique<EffectNodeEditorFactory>());
+    factories.emplace_back(NodeKind::Equalizer, std::make_unique<EffectNodeEditorFactory>());
 }
 
 const NodeEditorFactory* NodeEditorFactoryRegistry::find(NodeKind kind) const {

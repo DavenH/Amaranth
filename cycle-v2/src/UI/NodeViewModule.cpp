@@ -117,6 +117,16 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     addCurve(NodeKind::GuideCurve, { 700.f, 380.f });
     addCurve(NodeKind::ImpulseResponse, { 1050.f, 470.f });
     addCurve(NodeKind::Waveshaper, { 540.f, 360.f });
+
+    NodeViewCapabilities effect;
+    effect.hostedEditor = true;
+    effect.expandedEditorSize = Point<float>(440.f, 360.f);
+    add(NodeKind::Reverb, effect);
+    add(NodeKind::Delay, effect);
+
+    effect.previewable = true;
+    effect.expandedEditorSize = Point<float>(620.f, 460.f);
+    add(NodeKind::Equalizer, effect);
 }
 
 const NodeViewModuleRegistry& NodeViewModuleRegistry::instance() {

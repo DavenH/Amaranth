@@ -1,8 +1,55 @@
 #include "PreviewProcessorFactories.h"
 
+#include "../Nodes/Effects/EffectSignalProcessors.h"
+
+#include <Audio/CycleDsp/EqualizerCore.h>
+
+#include <cmath>
+
 namespace CycleV2 {
 
 namespace {
+
+class EqualizerPreviewProcessor final : public NodePreviewProcessor {
+public:
+    PreviewModuleRole role() const override { return PreviewModuleRole::EqualizerResponse; }
+
+    void render(PreviewProcessContext& context) override {
+        const auto configuration = context.configuration != nullptr
+                ? std::dynamic_pointer_cast<const EqualizerConfiguration>(
+                        context.configuration->value)
+                : nullptr;
+        if (configuration == nullptr || context.pointCount == 0) {
+            context.primary.clear();
+            context.secondary.clear();
+            return;
+        }
+
+        CycleDsp::EqualizerCore core(1);
+        for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
+            core.configureBand(
+                    band,
+                    44100.0,
+                    configuration->frequencies[(size_t) band],
+                    configuration->gains[(size_t) band]);
+        }
+
+        context.primary.resize(context.pointCount);
+        context.secondary.assign(context.pointCount, 0.5f);
+        const double denominator = context.pointCount > 1
+                ? (double) context.pointCount - 1.0
+                : 1.0;
+        for (size_t index = 0; index < context.pointCount; ++index) {
+            const double unit = (double) index / denominator;
+            const double frequency = 40.0 * std::pow(400.0, unit);
+            context.primary[index] = jlimit(
+                    0.f,
+                    1.f,
+                    core.responseDecibels(frequency) / 60.f + 0.5f);
+        }
+        context.domain = PortDomain::TimeSignal;
+    }
+};
 
 void ensurePreview(PreviewProcessContext& context) {
     context.primary.resize(context.pointCount);
@@ -73,6 +120,10 @@ std::unique_ptr<NodePreviewProcessor> createImpulseResponsePreviewProcessor() {
 
 std::unique_ptr<NodePreviewProcessor> createWaveshaperPreviewProcessor() {
     return std::make_unique<TransferPreviewProcessor>();
+}
+
+std::unique_ptr<NodePreviewProcessor> createEqualizerPreviewProcessor() {
+    return std::make_unique<EqualizerPreviewProcessor>();
 }
 
 }

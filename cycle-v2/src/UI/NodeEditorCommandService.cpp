@@ -25,6 +25,63 @@ const Node* NodeEditorCommandService::findNode(const String& nodeId) const {
     return document.graph().findNode(nodeId);
 }
 
+bool NodeEditorCommandService::beginNodeParameterEdit(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        float value) {
+    if (findNode(nodeId) == nullptr) {
+        return false;
+    }
+    activeParameterNodeId = nodeId;
+    activeParameterId = parameterId;
+    activeParameterLabel = label;
+    presentation.selectEditedNode(nodeId);
+    commands.beginCompoundEdit();
+    return updateNodeParameterEditValue(value);
+}
+
+bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
+    if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()) {
+        return false;
+    }
+    const auto result = commands.setNodeParameter(
+            activeParameterNodeId,
+            activeParameterId,
+            activeParameterLabel,
+            String(value, 6));
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.scheduleNodeEditorRefresh();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
+void NodeEditorCommandService::endNodeParameterEdit() {
+    commands.commitCompoundEdit();
+    presentation.flushNodeEditorRefresh();
+    activeParameterNodeId = {};
+    activeParameterId = {};
+    activeParameterLabel = {};
+}
+
+bool NodeEditorCommandService::setNodeParameterValue(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        float value) {
+    const auto result = commands.setNodeParameter(
+            nodeId, parameterId, label, String(value, 6));
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
 bool NodeEditorCommandService::publishCurveState(
         const String& nodeId,
         const String& snapshot,

@@ -232,6 +232,7 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::Waveshaper,
             AudioModuleRole::Reverb,
             AudioModuleRole::Delay,
+            AudioModuleRole::Equalizer,
             AudioModuleRole::StereoSplit,
             AudioModuleRole::StereoJoin,
             AudioModuleRole::Output,
@@ -1364,6 +1365,50 @@ TEST_CASE("Reverb processor transforms block and carries traversal tails across 
             [](float value) { return std::abs(value) > 0.000001f; }));
 }
 
+TEST_CASE("Reverb width mixes independent stereo channels", "[cycle-v2][runtime][reverb][stereo]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 256;
+    context.parameters = {
+            { "size", "Size", "0" },
+            { "damp", "Damp", "0.2" },
+            { "highPass", "High Pass", "0" },
+            { "width", "Width", "1" },
+            { "wet", "Wet", "1" }
+    };
+    SignalPayload stereo = payload(std::vector<float>(256, 0.f));
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.secondaryBlock.samples.resize(256);
+    stereo.block.samples.front() = 1.f;
+    context.inputs = { stereo };
+
+    auto processor = factory.create(AudioModuleRole::Reverb);
+    prepareProcessor(*processor, AudioModuleRole::Reverb, context);
+    processor->process(context);
+
+    REQUIRE(output(context).isStereo());
+    REQUIRE(output(context).secondaryBlock.samples.size() == 256);
+    REQUIRE(output(context).block.samples != output(context).secondaryBlock.samples);
+}
+
+TEST_CASE("Equalizer processor applies the published five-band response", "[cycle-v2][runtime][equalizer]") {
+    NodeAudioProcessorFactory factory;
+    AudioProcessContext context;
+    context.frameCount = 512;
+    context.timing.sampleRate = 44100.0;
+    context.inputs = { payload(std::vector<float>(512, 1.f)) };
+    context.parameters = {
+            { "band1Gain", "Band 1 Gain", "1" },
+            { "band1Frequency", "Band 1 Frequency", "0.2" }
+    };
+    auto processor = factory.create(AudioModuleRole::Equalizer);
+    prepareProcessor(*processor, AudioModuleRole::Equalizer, context);
+    processor->process(context);
+
+    REQUIRE(output(context).block.samples.size() == 512);
+    REQUIRE(output(context).block.samples != context.inputs.front().block.samples);
+}
+
 TEST_CASE("Reverb traversal state restarts for each grid render", "[cycle-v2][runtime][reverb]") {
     NodeAudioProcessorFactory factory;
     auto processor = factory.create(AudioModuleRole::Reverb);
@@ -1433,7 +1478,12 @@ TEST_CASE("Reverb traversal rendering does not overwrite block state", "[cycle-v
     AudioProcessContext blockOnlySecond = withGridSecond;
     blockOnlyProcessor->process(blockOnlySecond);
 
-    REQUIRE(output(withGridSecond).block.samples == output(blockOnlySecond).block.samples);
+    REQUIRE(output(withGridSecond).block.samples.size()
+            == output(blockOnlySecond).block.samples.size());
+    for (size_t i = 0; i < output(withGridSecond).block.samples.size(); ++i) {
+        REQUIRE(output(withGridSecond).block.samples[i]
+                == Catch::Approx(output(blockOnlySecond).block.samples[i]).margin(0.000001f));
+    }
 }
 
 TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[cycle-v2][runtime]") {

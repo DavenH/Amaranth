@@ -117,6 +117,10 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             configuration->spinIterations = typedParameterFloat(values, "spinIters", 0.f);
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
+        { AudioModuleRole::Equalizer, [](AudioModuleRole, const auto& values) {
+            return std::shared_ptr<const INodeDspConfiguration>(
+                    EqualizerSignalProcessor::buildConfiguration(values));
+        } },
         { AudioModuleRole::Envelope, [](AudioModuleRole, const auto& values) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     EnvelopeSignalProcessor::buildConfiguration(values));

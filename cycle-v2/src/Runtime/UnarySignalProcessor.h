@@ -7,6 +7,7 @@
 namespace CycleV2 {
 
 struct SignalProcessPosition {
+    size_t channel {};
     size_t column {};
 };
 
@@ -15,7 +16,15 @@ public:
     virtual ~IUnarySignalOperation() = default;
 
     virtual void beginBlock(size_t frameCount) {}
+    virtual void beginChannelBlock(size_t channelCount, size_t frameCount) {
+        ignoreUnused(channelCount);
+        beginBlock(frameCount);
+    }
     virtual void beginTraversalGrid(size_t columns, size_t rows) {}
+    virtual void beginChannelTraversalGrid(size_t channelCount, size_t columns, size_t rows) {
+        ignoreUnused(channelCount);
+        beginTraversalGrid(columns, rows);
+    }
     virtual void beginTraversalColumn(size_t column, size_t rows) {}
     virtual void endTraversalGrid() {}
     virtual void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) = 0;
@@ -33,10 +42,14 @@ public:
         output.channelLayout = input.channelLayout;
 
         copyPayloadBlockExpandingScalars(output, input, frameCount);
-        operation.beginBlock(output.block.samples.size());
-        operation.processBuffer(
-                { output.block.samples.data(), (int) output.block.samples.size() },
-                {});
+        const size_t channelCount = payloadChannelCount(output);
+        operation.beginChannelBlock(channelCount, frameCount);
+        for (size_t channel = 0; channel < channelCount; ++channel) {
+            auto& block = channel == 0 ? output.block : output.secondaryBlock;
+            operation.processBuffer(
+                    { block.samples.data(), (int) block.samples.size() },
+                    { channel, 0 });
+        }
 
         processTraversalGrid(operation, output, input, arena);
     }
@@ -49,31 +62,53 @@ private:
             const AudioProcessWorkArena* arena) {
         if (!input.traversalGrid.isValid()) {
             output.traversalGrid = {};
+            output.secondaryTraversalGrid.values.clear();
+            output.secondaryTraversalGrid.metadata = {};
+            output.secondaryTraversalGrid.columns = 0;
+            output.secondaryTraversalGrid.rows = 0;
             return;
         }
 
-        auto metadata = input.traversalGrid.metadata;
-        metadata.valueDomain = output.domain;
-        configureTraversalGrid(
-                output.traversalGrid,
+        const size_t channelCount = payloadChannelCount(output);
+        operation.beginChannelTraversalGrid(
+                channelCount,
                 input.traversalGrid.columns,
-                input.traversalGrid.rows,
-                metadata,
-                arena);
-        output.traversalGrid.values.assign(
-                input.traversalGrid.values.begin(),
-                input.traversalGrid.values.end());
+                input.traversalGrid.rows);
+        for (size_t channel = 0; channel < channelCount; ++channel) {
+            const auto& inputGrid = payloadTraversalGrid(input, channel);
+            auto& outputGrid = payloadTraversalGrid(output, channel);
+            if (!inputGrid.isValid()) {
+                outputGrid = {};
+                continue;
+            }
 
-        operation.beginTraversalGrid(output.traversalGrid.columns, output.traversalGrid.rows);
-        for (size_t column = 0; column < output.traversalGrid.columns; ++column) {
-            const size_t offset = column * output.traversalGrid.rows;
-            operation.beginTraversalColumn(column, output.traversalGrid.rows);
-            operation.processBuffer(
-                    {
-                            output.traversalGrid.values.data() + offset,
-                            (int) output.traversalGrid.rows
-                    },
-                    { column });
+            auto metadata = inputGrid.metadata;
+            metadata.valueDomain = output.domain;
+            configureTraversalGrid(
+                    outputGrid,
+                    inputGrid.columns,
+                    inputGrid.rows,
+                    metadata,
+                    arena);
+            outputGrid.values.assign(inputGrid.values.begin(), inputGrid.values.end());
+
+        }
+
+        for (size_t column = 0; column < input.traversalGrid.columns; ++column) {
+            operation.beginTraversalColumn(column, input.traversalGrid.rows);
+            for (size_t channel = 0; channel < channelCount; ++channel) {
+                auto& outputGrid = payloadTraversalGrid(output, channel);
+                if (!outputGrid.isValid()) {
+                    continue;
+                }
+                const size_t offset = column * outputGrid.rows;
+                operation.processBuffer(
+                        {
+                                outputGrid.values.data() + offset,
+                                (int) outputGrid.rows
+                        },
+                        { channel, column });
+            }
         }
         operation.endTraversalGrid();
     }

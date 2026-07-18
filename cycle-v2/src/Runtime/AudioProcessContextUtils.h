@@ -26,6 +26,30 @@ inline Buffer<float> payloadBuffer(SignalPayload& payload, size_t frameCount) {
     return blockBuffer(payload.block, frameCount);
 }
 
+inline Buffer<float> payloadBuffer(SignalPayload& payload, size_t channel, size_t frameCount) {
+    return blockBuffer(channel == 0 ? payload.block : payload.secondaryBlock, frameCount);
+}
+
+inline const SignalBlock& payloadBlock(const SignalPayload& payload, size_t channel) {
+    return channel == 0 ? payload.block : payload.secondaryBlock;
+}
+
+inline SignalBlock& payloadBlock(SignalPayload& payload, size_t channel) {
+    return channel == 0 ? payload.block : payload.secondaryBlock;
+}
+
+inline SignalTraversalGrid& payloadTraversalGrid(SignalPayload& payload, size_t channel) {
+    return channel == 0 ? payload.traversalGrid : payload.secondaryTraversalGrid;
+}
+
+inline const SignalTraversalGrid& payloadTraversalGrid(const SignalPayload& payload, size_t channel) {
+    return channel == 0 ? payload.traversalGrid : payload.secondaryTraversalGrid;
+}
+
+inline size_t payloadChannelCount(const SignalPayload& payload) {
+    return payload.isStereo() ? 2u : 1u;
+}
+
 inline void copyBlockExpandingScalars(Buffer<float> dest, const SignalBlock& source, size_t frameCount) {
     if (source.samples.empty()) {
         dest.zero();
@@ -58,6 +82,14 @@ inline void copyPayloadBlockExpandingScalars(
         const SignalPayload& source,
         size_t frameCount) {
     copyBlockExpandingScalars(dest.block.samples, source.block, frameCount);
+    if (dest.isStereo()) {
+        const SignalBlock& secondarySource = source.isStereo()
+                ? source.secondaryBlock
+                : source.block;
+        copyBlockExpandingScalars(dest.secondaryBlock.samples, secondarySource, frameCount);
+    } else {
+        dest.secondaryBlock.samples.clear();
+    }
 }
 
 inline void copyTraversalGridColumn(Buffer<float> dest, const SignalTraversalGrid& grid, size_t column) {
@@ -76,6 +108,20 @@ inline void copyTraversalGridColumn(Buffer<float> dest, const SignalTraversalGri
 
 inline void copyTraversalGrid(SignalPayload& dest, const SignalTraversalGrid& source) {
     dest.traversalGrid = source;
+}
+
+inline void copyPayloadTraversalGrids(SignalPayload& dest, const SignalPayload& source) {
+    dest.traversalGrid = source.traversalGrid;
+    if (dest.isStereo()) {
+        dest.secondaryTraversalGrid = source.isStereo()
+                ? source.secondaryTraversalGrid
+                : source.traversalGrid;
+    } else {
+        dest.secondaryTraversalGrid.values.clear();
+        dest.secondaryTraversalGrid.metadata = {};
+        dest.secondaryTraversalGrid.columns = 0;
+        dest.secondaryTraversalGrid.rows = 0;
+    }
 }
 
 inline TraversalGridArity traversalGridArity(size_t columns, size_t rows) {
@@ -146,6 +192,9 @@ inline SignalPayload makeOutputPayload(const AudioOutputPort& port, size_t frame
     payload.domain = port.domain;
     payload.channelLayout = port.channelLayout;
     payload.block.samples.resize(frameCount);
+    if (payload.isStereo()) {
+        payload.secondaryBlock.samples.resize(frameCount);
+    }
     return payload;
 }
 
@@ -157,11 +206,20 @@ inline SignalPayload makeOutputPayload(AudioProcessContext& context, size_t inde
         payload.traversalGrid.metadata = {};
         payload.traversalGrid.columns = 0;
         payload.traversalGrid.rows = 0;
+        payload.secondaryTraversalGrid.values.clear();
+        payload.secondaryTraversalGrid.metadata = {};
+        payload.secondaryTraversalGrid.columns = 0;
+        payload.secondaryTraversalGrid.rows = 0;
     }
     if (index < context.outputPorts.size()) {
         payload.domain = context.outputPorts[index].domain;
         payload.channelLayout = context.outputPorts[index].channelLayout;
         payload.block.samples.resize(context.frameCount);
+        if (payload.isStereo()) {
+            payload.secondaryBlock.samples.resize(context.frameCount);
+        } else {
+            payload.secondaryBlock.samples.clear();
+        }
     } else {
         payload.block.samples.resize(context.frameCount);
     }
@@ -212,6 +270,9 @@ inline void configureTraversalGrid(
 inline void clearOutput(AudioProcessContext& context) {
     auto output = makeOutputPayload(context, 0);
     payloadBuffer(output, context.frameCount).zero();
+    if (output.isStereo()) {
+        payloadBuffer(output, 1, context.frameCount).zero();
+    }
     publishSingleOutput(context, std::move(output));
 }
 

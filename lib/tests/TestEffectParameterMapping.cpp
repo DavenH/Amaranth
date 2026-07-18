@@ -1,0 +1,27 @@
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
+using Catch::Approx;
+
+TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effects][mapping]") {
+    REQUIRE(CycleDsp::equalizerGainDecibels(0.f) == Approx(-30.f));
+    REQUIRE(CycleDsp::equalizerGainDecibels(0.5f) == Approx(0.f));
+    REQUIRE(CycleDsp::equalizerGainDecibels(1.f) == Approx(30.f));
+
+    for (float frequency : { 60.f, 250.f, 1200.f, 4000.f, 8000.f }) {
+        REQUIRE(CycleDsp::equalizerFrequency(
+                CycleDsp::equalizerFrequencyUnitValue(frequency)) == Approx(frequency));
+    }
+
+    REQUIRE(CycleDsp::reverbKernelLength(0.f) == 4096);
+    REQUIRE(CycleDsp::reverbKernelLength(1.f) == 262144);
+    REQUIRE(CycleDsp::reverbKernelSeconds(0.5f, 44100.0) == Approx(32768.0 / 44100.0));
+    REQUIRE(CycleDsp::reverbDamping(1.f) == Approx(0.7f));
+    REQUIRE(CycleDsp::reverbWetLevel(1.f) == Approx(0.25f));
+
+    REQUIRE(CycleDsp::delayBeats(0.f, 4) == Approx(0.09));
+    REQUIRE(CycleDsp::delayBeats(0.5f, 4) == Approx(1.0));
+    REQUIRE(CycleDsp::delayBeats(1.f, 4) == Approx(4.0));
+}

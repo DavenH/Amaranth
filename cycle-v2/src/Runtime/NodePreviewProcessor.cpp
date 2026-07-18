@@ -22,6 +22,7 @@ std::unique_ptr<NodePreviewProcessor> NodePreviewProcessorFactory::create(
             { PreviewModuleRole::Envelope, createEnvelopePreviewProcessor },
             { PreviewModuleRole::ImpulseResponse, createImpulseResponsePreviewProcessor },
             { PreviewModuleRole::Waveshaper, createWaveshaperPreviewProcessor },
+            { PreviewModuleRole::EqualizerResponse, createEqualizerPreviewProcessor },
             { PreviewModuleRole::OutputMeters, createOutputMetersPreviewProcessor },
             { PreviewModuleRole::SignalSpy, createSignalSpyPreviewProcessor },
             { PreviewModuleRole::VoiceContext, createVoiceContextPreviewProcessor },

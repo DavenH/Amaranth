@@ -1,10 +1,9 @@
 #pragma once
 #include "JuceHeader.h"
 
-#include <Algo/IIR.h>
 #include <Array/ScopedAlloc.h>
-#include <Audio/Filters/Butterworth.h>
-#include <Audio/Filters/Filter.h>
+#include <Audio/CycleDsp/EqualizerCore.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/SmoothedParameter.h>
 #include <Obj/Ref.h>
 #include "AudioEffect.h"
@@ -36,12 +35,9 @@ private:
 		EqPartition() :
 			gainDB(0.)
 		,	centreFreq(100.)
-		,	iir(numEqChannels)
 		{
 		}
 
-		Dsp::Cascade* cascade{};
-		IIR iir;
 		SmoothedParameter gainDB;
 		SmoothedParameter centreFreq;
 	};
@@ -71,8 +67,8 @@ public:
 	void updateParametersToTarget();
 
 	/* Arithmetic */
-	static double calcGain(double value)		{ return 60. * (value - 0.5); }
-	static double calcGainKnobValue(double gainDb) { return jlimit(0., 1., gainDb / 60. + 0.5); }
+	static double calcGain(double value) { return CycleDsp::equalizerGainDecibels((float) value); }
+	static double calcGainKnobValue(double gainDb) { return CycleDsp::equalizerGainUnitValue((float) gainDb); }
 	static double calcFreq(double value, double logTension);
 	static double calcKnobValue(double value, double logTension);
 
@@ -90,10 +86,7 @@ private:
 	bool isButterworth;
 
 	EqPartition partitions[numPartitions];
-
-	Dsp::SimpleFilter <Dsp::Butterworth::LowShelf<2>> lsFilter;
-	Dsp::SimpleFilter <Dsp::Butterworth::BandShelf<2>> bsFilter[numPartitions - 2];
-	Dsp::SimpleFilter <Dsp::Butterworth::HighShelf<2>> hsFilter;
+	CycleDsp::EqualizerCore core;
 
 	ScopedAlloc<Float32> overflowBuffer;
 };

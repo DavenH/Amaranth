@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "equalizer",
+      "x": 540,
+      "y": 280
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "eq",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.kind",
+      "equals": "EQUALIZER"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls",
+      "exists": true
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

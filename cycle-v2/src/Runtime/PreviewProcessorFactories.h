@@ -14,6 +14,7 @@ std::unique_ptr<NodePreviewProcessor> createSpectrumPhasePreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createEnvelopePreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createImpulseResponsePreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createWaveshaperPreviewProcessor();
+std::unique_ptr<NodePreviewProcessor> createEqualizerPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createOutputMetersPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createSignalSpyPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createVoiceContextPreviewProcessor();

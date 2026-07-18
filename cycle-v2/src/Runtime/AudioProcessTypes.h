@@ -68,7 +68,13 @@ struct SignalPayload {
     PortDomain domain { PortDomain::ControlSignal };
     ChannelLayout channelLayout { ChannelLayout::Mono };
     SignalBlock block;
+    SignalBlock secondaryBlock;
     SignalTraversalGrid traversalGrid;
+    SignalTraversalGrid secondaryTraversalGrid;
+
+    bool isStereo() const {
+        return channelLayout == ChannelLayout::StereoPair;
+    }
 };
 
 struct AudioOutputPort {
@@ -127,6 +133,11 @@ struct AudioProcessWorkArena {
 
     void reserve(SignalPayload& payload) const {
         payload.block.samples.reserve(frameCapacity);
+        payload.traversalGrid.values.reserve(gridValueCapacity);
+        if (payload.isStereo()) {
+            payload.secondaryBlock.samples.reserve(frameCapacity);
+            payload.secondaryTraversalGrid.values.reserve(gridValueCapacity);
+        }
     }
 
     void reserve(SignalTraversalGrid& grid) const {

@@ -20,7 +20,8 @@ bool isEffect2D(NodeKind kind) {
     return kind == NodeKind::Envelope
             || kind == NodeKind::GuideCurve
             || kind == NodeKind::ImpulseResponse
-            || kind == NodeKind::Waveshaper;
+            || kind == NodeKind::Waveshaper
+            || kind == NodeKind::Equalizer;
 }
 
 float fastSin(float value) {
@@ -42,6 +43,7 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
         case PreviewModuleRole::OutputMeters:
         case PreviewModuleRole::Waveform:
         case PreviewModuleRole::Waveshaper:
+        case PreviewModuleRole::EqualizerResponse:
             return colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
             return Colour(0xffd2d9e2);

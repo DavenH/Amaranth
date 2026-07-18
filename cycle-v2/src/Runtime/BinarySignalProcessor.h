@@ -42,13 +42,16 @@ private:
             const SignalPayload* right,
             BinarySignalOperation operation,
             size_t frameCount) {
-        output.block.samples.resize(frameCount);
-        rightOperand.resize(frameCount);
-
-        prepareOperand(output.block.samples, left, frameCount, 0, false);
-        prepareOperand(rightOperand, right, frameCount, 0, false);
-        applyOperation(output.block.samples, rightOperand, operation);
-        clampOutputDomain({ output.block.samples.data(), (int) output.block.samples.size() }, output.domain);
+        const size_t channelCount = payloadChannelCount(output);
+        for (size_t channel = 0; channel < channelCount; ++channel) {
+            auto& outputSamples = payloadBlock(output, channel).samples;
+            outputSamples.resize(frameCount);
+            rightOperand.resize(frameCount);
+            prepareOperand(outputSamples, left, frameCount, channel, 0, false);
+            prepareOperand(rightOperand, right, frameCount, channel, 0, false);
+            applyOperation(outputSamples, rightOperand, operation);
+            clampOutputDomain({ outputSamples.data(), (int) outputSamples.size() }, output.domain);
+        }
     }
 
     void processTraversalGrid(
@@ -100,16 +103,24 @@ private:
             std::vector<float>& dest,
             const SignalPayload* payload,
             size_t frameCount,
+            size_t channel,
             size_t gridColumn = 0,
             bool useTraversalGrid = true) {
         dest.resize(frameCount);
-        prepareOperand({ dest.data(), (int) dest.size() }, payload, frameCount, gridColumn, useTraversalGrid);
+        prepareOperand(
+                { dest.data(), (int) dest.size() },
+                payload,
+                frameCount,
+                channel,
+                gridColumn,
+                useTraversalGrid);
     }
 
     static void prepareOperand(
             Buffer<float> dest,
             const SignalPayload* payload,
             size_t frameCount,
+            size_t channel,
             size_t gridColumn = 0,
             bool useTraversalGrid = true) {
         if (payload == nullptr) {
@@ -117,12 +128,14 @@ private:
             return;
         }
 
-        if (useTraversalGrid && payload->traversalGrid.isValid()) {
-            copyTraversalGridColumn(dest, payload->traversalGrid, gridColumn);
+        const size_t sourceChannel = payload->isStereo() ? channel : 0;
+        const auto& grid = payloadTraversalGrid(*payload, sourceChannel);
+        if (useTraversalGrid && grid.isValid()) {
+            copyTraversalGridColumn(dest, grid, gridColumn);
             return;
         }
 
-        copyBlockExpandingScalars(dest, payload->block, frameCount);
+        copyBlockExpandingScalars(dest, payloadBlock(*payload, sourceChannel), frameCount);
     }
 
     static void prepareGridColumnOperand(
