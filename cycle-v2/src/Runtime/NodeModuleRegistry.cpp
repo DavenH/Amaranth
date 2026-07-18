@@ -82,6 +82,7 @@ String labelForPreviewModuleRole(PreviewModuleRole role) {
         case PreviewModuleRole::Envelope:          return "Envelope";
         case PreviewModuleRole::ImpulseResponse:   return "Impulse Response";
         case PreviewModuleRole::Waveshaper:        return "Waveshaper";
+        case PreviewModuleRole::ReverbSpectrogram: return "Reverb Spectrogram";
         case PreviewModuleRole::EqualizerResponse: return "Equalizer Response";
         case PreviewModuleRole::SignalSpy:         return "Signal Spy";
         case PreviewModuleRole::OutputMeters:      return "Output Meters";

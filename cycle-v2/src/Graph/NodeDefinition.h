@@ -40,6 +40,7 @@ enum class PreviewModuleRole {
     Envelope,
     ImpulseResponse,
     Waveshaper,
+    ReverbSpectrogram,
     EqualizerResponse,
     SignalSpy,
     OutputMeters,

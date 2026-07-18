@@ -129,6 +129,8 @@ public:
             return "Impulse Response";
         case PreviewModuleRole::Waveshaper:
             return "Waveshaper";
+        case PreviewModuleRole::ReverbSpectrogram:
+            return "Reverb Spectrogram";
         case PreviewModuleRole::EqualizerResponse:
             return "Equalizer Response";
         case PreviewModuleRole::OutputMeters:

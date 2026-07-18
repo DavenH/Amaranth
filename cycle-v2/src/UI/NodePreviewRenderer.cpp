@@ -36,6 +36,7 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
         case PreviewModuleRole::OutputMeters:
         case PreviewModuleRole::Waveform:
         case PreviewModuleRole::Waveshaper:
+        case PreviewModuleRole::ReverbSpectrogram:
         case PreviewModuleRole::EqualizerResponse:
             return colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
@@ -673,6 +674,10 @@ bool NodePreviewRenderer::paintRuntimeResult(
     }
 
     if (result.role == PreviewModuleRole::SignalSpy) {
+        return drawHeatmap(graphics, request.area, result);
+    }
+
+    if (result.role == PreviewModuleRole::ReverbSpectrogram) {
         return drawHeatmap(graphics, request.area, result);
     }
 

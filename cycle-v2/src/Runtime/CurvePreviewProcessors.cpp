@@ -2,6 +2,8 @@
 
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 
+#include <Algo/ConvReverb.h>
+#include <Algo/FFT.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
 
 #include <cmath>
@@ -9,6 +11,94 @@
 namespace CycleV2 {
 
 namespace {
+
+class ReverbSpectrogramPreviewProcessor final : public NodePreviewProcessor {
+public:
+    PreviewModuleRole role() const override { return PreviewModuleRole::ReverbSpectrogram; }
+
+    void render(PreviewProcessContext& context) override {
+        const auto configuration = context.configuration != nullptr
+                ? std::dynamic_pointer_cast<const ReverbConfiguration>(
+                        context.configuration->value)
+                : nullptr;
+        if (configuration == nullptr || context.pointCount == 0
+                || configuration->kernels[0].empty()
+                || configuration->kernels[1].empty()) {
+            context.primary.clear();
+            context.secondary.clear();
+            return;
+        }
+
+        std::vector<float> dirac(1, 1.f);
+        std::vector<float> left(configuration->kernels[0].size());
+        std::vector<float> right(configuration->kernels[1].size());
+        ConvReverb::basicConvolve(
+                { dirac.data(), (int) dirac.size() },
+                { const_cast<float*>(configuration->kernels[0].data()),
+                        (int) configuration->kernels[0].size() },
+                { left.data(), (int) left.size() });
+        ConvReverb::basicConvolve(
+                { dirac.data(), (int) dirac.size() },
+                { const_cast<float*>(configuration->kernels[1].data()),
+                        (int) configuration->kernels[1].size() },
+                { right.data(), (int) right.size() });
+
+        Buffer<float> response(left.data(), (int) left.size());
+        response.add({ right.data(), (int) right.size() });
+        const float direct = configuration->wetLevel * jmax(0.5f, configuration->width);
+        const float cross = configuration->wetLevel * jmin(0.5f, 1.f - configuration->width);
+        response.mul(configuration->enabled ? 0.5f * (direct + cross) : 0.f);
+        if (!response.empty()) {
+            response.front() += configuration->enabled ? 1.f - 0.24f * configuration->wetLevel : 1.f;
+        }
+
+        constexpr int fftSize = 2048;
+        const size_t columnCount = std::max<size_t>(16, std::min<size_t>(64, context.pointCount));
+        const size_t rowCount = context.pointCount;
+        context.primary.assign(columnCount * rowCount, 0.f);
+        context.secondary.clear();
+        context.gridColumns = columnCount;
+        context.gridRows = rowCount;
+        context.domain = PortDomain::SpectralMagnitudeSignal;
+
+        std::vector<float> windowStorage(fftSize);
+        Buffer<float> window(windowStorage.data(), fftSize);
+        window.ramp(0.f, MathConstants<float>::pi / (float) (fftSize - 1)).sin().sqr();
+        std::vector<float> frameStorage(fftSize);
+        Buffer<float> frame(frameStorage.data(), fftSize);
+        Transform fft;
+        fft.allocate(fftSize, Transform::DivFwdByN, true);
+        const size_t maximumStart = response.size() > fftSize
+                ? (size_t) response.size() - fftSize
+                : 0;
+
+        for (size_t column = 0; column < columnCount; ++column) {
+            const size_t start = columnCount > 1
+                    ? column * maximumStart / (columnCount - 1)
+                    : 0;
+            frame.zero();
+            const size_t available = std::min<size_t>(fftSize, (size_t) response.size() - start);
+            response.section((int) start, (int) available).copyTo(frame.withSize((int) available));
+            frame.mul(window);
+            fft.forward(frame);
+            const Buffer<float> magnitudes = fft.getMagnitudes();
+            for (size_t row = 0; row < rowCount; ++row) {
+                const size_t bin = rowCount > 1
+                        ? row * (size_t) (magnitudes.size() - 1) / (rowCount - 1)
+                        : 0;
+                context.primary[column * rowCount + row] = magnitudes[(int) bin];
+            }
+        }
+
+        Buffer<float> surface(context.primary.data(), (int) context.primary.size());
+        float maximum {};
+        int maximumIndex {};
+        surface.getMax(maximum, maximumIndex);
+        if (maximum > 0.f) {
+            surface.mul(1.f / maximum).sqrt().sqrt();
+        }
+    }
+};
 
 class EqualizerPreviewProcessor final : public NodePreviewProcessor {
 public:
@@ -125,6 +215,10 @@ std::unique_ptr<NodePreviewProcessor> createWaveshaperPreviewProcessor() {
 
 std::unique_ptr<NodePreviewProcessor> createEqualizerPreviewProcessor() {
     return std::make_unique<EqualizerPreviewProcessor>();
+}
+
+std::unique_ptr<NodePreviewProcessor> createReverbSpectrogramPreviewProcessor() {
+    return std::make_unique<ReverbSpectrogramPreviewProcessor>();
 }
 
 }

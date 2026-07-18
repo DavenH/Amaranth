@@ -403,7 +403,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("wet", "Wet", 0.4f, 0.f, 1.f, dsp | presentation),
                             number("highPass", "High Pass", 0.05f, 0.f, 1.f, dsp | presentation)
                     }))
-                    .runtime(AudioModuleRole::Reverb, PreviewModuleRole::None,
+                    .runtime(AudioModuleRole::Reverb, PreviewModuleRole::ReverbSpectrogram,
                             "cycle/src/Audio/Effects/Reverb.cpp")
                     .finish(),
             buildDefinition(definition("delay", NodeKind::Delay, "Delay", "echo", "delay",

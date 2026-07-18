@@ -121,7 +121,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     NodeViewCapabilities effect;
     effect.previewable = true;
     effect.hostedEditor = true;
-    effect.expandedEditorSize = Point<float>(440.f, 360.f);
+    effect.expandedEditorSize = Point<float>(520.f, 520.f);
     add(NodeKind::Reverb, effect);
 
     effect.expandedEditorSize = Point<float>(520.f, 520.f);

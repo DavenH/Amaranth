@@ -62,6 +62,10 @@ Delay spin panning operate on real stereo payloads.
   resolution rather than enlarging the compact preview trace.
 - Reverb and Delay compact previews communicate their parameterized decay,
   feedback, timing, and stereo character and update with parameter edits.
+- Reverb compact and expanded previews display a cached spectrogram produced
+  from an actual Dirac convolution through the prepared stereo kernel and wet,
+  width, damping, high-pass, and size configuration. Analysis must remain off
+  the audio and paint paths.
 
 ## Deletion Targets And Negative Boundaries
 
@@ -91,6 +95,13 @@ Delay spin panning operate on real stereo payloads.
 - Continuous effect gestures produce one undo transaction. Discrete Boolean,
   keyboard, wheel, and double-click-reset changes publish independently and
   remain independently undoable.
+- Reverb preview analysis convolves a one-sample Dirac through the prepared
+  stereo kernels with `ConvReverb`, then caches a windowed FFT magnitude grid
+  for compact and expanded rendering. The focused runtime test verifies the
+  spectral grid contract; the standalone fixture verifies editor opening,
+  compilation, and crash-free rendering. Final screenshot and report:
+  `/private/tmp/cycle-v2-reverb-spectrogram-2.png` and
+  `/private/tmp/reverb-spectrogram-report-2.json`.
 
 Crash regression evidence:
 

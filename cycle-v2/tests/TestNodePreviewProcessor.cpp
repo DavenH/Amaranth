@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <algorithm>
 
 #include "../src/Runtime/NodePreviewProcessor.h"
+#include "../src/Nodes/Effects/EffectSignalProcessors.h"
 
 using namespace CycleV2;
 
@@ -18,6 +20,8 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
             PreviewModuleRole::Envelope,
             PreviewModuleRole::ImpulseResponse,
             PreviewModuleRole::Waveshaper,
+            PreviewModuleRole::ReverbSpectrogram,
+            PreviewModuleRole::EqualizerResponse,
             PreviewModuleRole::SignalSpy,
             PreviewModuleRole::OutputMeters,
             PreviewModuleRole::Generic
@@ -31,6 +35,36 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
     }
 
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
+}
+
+TEST_CASE("Reverb preview spectrogram analyzes a convolved Dirac response",
+        "[cycle-v2][runtime][effects][reverb][preview]") {
+    NodePreviewProcessorFactory factory;
+    auto processor = factory.create(PreviewModuleRole::ReverbSpectrogram);
+    REQUIRE(processor != nullptr);
+
+    const auto configuration = ReverbSignalProcessor::buildConfiguration({
+            { "enabled", "Enabled", "1" },
+            { "size", "Size", "0" },
+            { "damp", "Damp", "0.2" },
+            { "width", "Width", "1" },
+            { "wet", "Wet", "0.8" },
+            { "highPass", "High Pass", "0.05" }
+    });
+    const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
+    PreviewProcessContext context;
+    context.pointCount = 24;
+    context.configuration = &published;
+
+    processor->render(context);
+
+    REQUIRE(context.gridColumns == 24);
+    REQUIRE(context.gridRows == 24);
+    REQUIRE(context.primary.size() == 24 * 24);
+    REQUIRE(context.secondary.empty());
+    REQUIRE(context.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(*std::max_element(context.primary.begin(), context.primary.end())
+            == Catch::Approx(1.f));
 }
 
 TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime]") {

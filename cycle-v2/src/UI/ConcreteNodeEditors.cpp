@@ -23,10 +23,12 @@ public:
     EffectParameterEditorComponent(
             NodeKind kindToUse,
             NodeEditorCommands& commandsToUse,
-            NodeEditorPresentation& presentationToUse) :
+            NodeEditorPresentation& presentationToUse,
+            NodeEditorResources& resourcesToUse) :
             kind         (kindToUse)
         ,   commands     (commandsToUse)
-        ,   presentation (presentationToUse) {
+        ,   presentation (presentationToUse)
+        ,   resources    (resourcesToUse) {
         closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
         closeButton.onClick = [this] { presentation.closeNodeEditor(); };
         addAndMakeVisible(closeButton);
@@ -60,7 +62,12 @@ public:
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f, Font::bold));
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
-        if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
+        if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
+            const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
+            graphics.setColour(Colour(0xff0b0f14));
+            graphics.fillRoundedRectangle(response, 6.f);
+            resources.paintNodePreview(graphics, node, response.reduced(5.f));
+        } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             paintDelayPingPreview(graphics, response, node, 1.f);
         } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
@@ -74,7 +81,9 @@ public:
     void resized() override {
         closeButton.setBounds(getWidth() - 42, 9, 28, 28);
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
-        int y = kind == NodeKind::Equalizer ? 166 : (kind == NodeKind::Delay ? 216 : 56);
+        int y = kind == NodeKind::Equalizer
+                ? 166
+                : (kind == NodeKind::Reverb || kind == NodeKind::Delay ? 216 : 56);
         if (kind == NodeKind::Equalizer) {
             for (size_t band = 0; band < 5; ++band) {
                 layoutControl(*controls[band * 2], 18, y, (getWidth() - 48) / 2);
@@ -276,6 +285,7 @@ private:
     NodeKind kind;
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
+    NodeEditorResources& resources;
     Node node;
     TextButton closeButton;
     ToggleButton enabledButton;
@@ -285,7 +295,7 @@ private:
 class EffectNodeEditor final : public NodeEditor {
 public:
     EffectNodeEditor(const Node& node, const NodeEditorContext& context) :
-            editor(node.kind, context.commands, context.presentation) {}
+            editor(node.kind, context.commands, context.presentation, context.resources) {}
     Component& component() override { return editor; }
     void bind(const Node& node) override { editor.setNode(node); }
     void renderOpenGL(float) override {}
