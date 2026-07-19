@@ -5,10 +5,28 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Runtime/NodePreviewProcessor.h"
+#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
 #include "../src/UI/NodePreviewRenderer.h"
 
 using namespace CycleV2;
+
+namespace {
+
+bool hasColouredPixel(const Image& image) {
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            const Colour colour = image.getPixelAt(x, y);
+            if (colour.getRed() != colour.getGreen()
+                    || colour.getGreen() != colour.getBlue()) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+}
 
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
@@ -38,6 +56,36 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
     }
 
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
+}
+
+TEST_CASE("Disabled compact effect previews are greyscale",
+        "[cycle-v2][effects][preview]") {
+    for (const NodeKind kind : { NodeKind::Delay, NodeKind::Reverb }) {
+        Node enabled;
+        enabled.kind = kind;
+        enabled.parameters.push_back({ "enabled", "Enabled", "1" });
+        Node disabled = enabled;
+        disabled.parameters.front().value = "0";
+
+        Image enabledImage(Image::RGB, 200, 60, true);
+        Graphics enabledGraphics(enabledImage);
+        REQUIRE(paintEffectCompactPreview(
+                enabledGraphics,
+                enabledImage.getBounds().toFloat(),
+                enabled,
+                1.f));
+
+        Image disabledImage(Image::RGB, 200, 60, true);
+        Graphics disabledGraphics(disabledImage);
+        REQUIRE(paintEffectCompactPreview(
+                disabledGraphics,
+                disabledImage.getBounds().toFloat(),
+                disabled,
+                1.f));
+
+        REQUIRE(hasColouredPixel(enabledImage));
+        REQUIRE_FALSE(hasColouredPixel(disabledImage));
+    }
 }
 
 TEST_CASE("Reverb preview spectrogram analyzes the generated kernel",

@@ -134,9 +134,7 @@ public:
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            graphics.setColour(Colour(0xff0b0f14));
-            graphics.fillRoundedRectangle(response, 6.f);
-            resources.paintNodePreview(graphics, node, response.reduced(5.f));
+            paintReverbResponse(graphics, response);
         } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             paintDelayPingPreview(graphics, response, node, 1.f);
@@ -288,15 +286,7 @@ private:
             text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
         } else if (kind == NodeKind::Delay && control.id == "spinIters") {
             const int iterations = CycleDsp::delaySpinIterations(value);
-            const float timeValue = controls.empty()
-                    ? 0.5f
-                    : (float) controls.front()->slider.getValue();
-            const double cycleBeats = CycleDsp::delayBeats(timeValue, 4) * (double) iterations;
-            const String beatText = cycleBeats < 10.0
-                    ? String(cycleBeats, 1)
-                    : String(roundToInt(cycleBeats));
-            text = String(iterations) + String::fromUTF8("\xc3\x97 \xc2\xb7 ")
-                    + beatText + " beats";
+            text = String(iterations) + String::fromUTF8("\xc3\x97");
         } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
             const float gain = CycleDsp::equalizerGainDecibels(value);
             text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";
@@ -309,6 +299,30 @@ private:
             text = String(roundToInt(value * 100.f)) + "%";
         }
         control.readout.setText(text, dontSendNotification);
+    }
+
+    void paintReverbResponse(Graphics& graphics, Rectangle<float> response) const {
+        const bool enabled = nodeParameterValue(node, "enabled", "1").getIntValue() != 0;
+        if (enabled) {
+            graphics.setColour(Colour(0xff0b0f14));
+            graphics.fillRoundedRectangle(response, 6.f);
+            resources.paintNodePreview(graphics, node, response.reduced(5.f));
+            return;
+        }
+
+        const Rectangle<int> imageBounds = response.getSmallestIntegerContainer();
+        Image image(Image::ARGB, imageBounds.getWidth(), imageBounds.getHeight(), true);
+        Graphics imageGraphics(image);
+        const Rectangle<float> localResponse(
+                0.f,
+                0.f,
+                (float) imageBounds.getWidth(),
+                (float) imageBounds.getHeight());
+        imageGraphics.setColour(Colour(0xff0b0f14));
+        imageGraphics.fillRoundedRectangle(localResponse, 6.f);
+        resources.paintNodePreview(imageGraphics, node, localResponse.reduced(5.f));
+        image.desaturate();
+        graphics.drawImageAt(image, imageBounds.getX(), imageBounds.getY());
     }
 
     void paintEqualizerResponse(Graphics& graphics, Rectangle<float> area) const {

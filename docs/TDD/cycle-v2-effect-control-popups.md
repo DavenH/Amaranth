@@ -182,10 +182,10 @@ Preview-quality follow-up evidence:
   Wet-scaled, with Feedback beginning at the second tap. The UI presents
   `spin` as Pan Amount and `spinIters` as Pan Cycle. Pan Cycle is a strict,
   evenly distributed 1–12 interval control with every integer stop marked on
-  its track. It reports both the delay-interval multiplier and the resulting
-  full stereo pan-LFO cycle duration in beats. The stereo centreline is painted
+  its track and a concise multiplier readout. The stereo centreline is painted
   beneath the taps and is centred on the same floating-point coordinate as
-  their zero-pan position.
+  their zero-pan position. Disabled Delay and Reverb displays are desaturated
+  to communicate their bypassed state without changing the represented data.
 - `/private/tmp/cycle-v2-delay-snap-ticks.png` verifies the nonlinear Time tick
   positions and the canvas-family Delay preview background.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded

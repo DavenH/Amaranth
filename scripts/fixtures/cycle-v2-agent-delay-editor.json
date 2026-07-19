@@ -6,7 +6,7 @@
     { "command": "assertState", "path": "expandedNodeControls.parameters.4.label", "equals": "Pan Amount" },
     { "command": "assertState", "path": "expandedNodeControls.parameters.5.label", "equals": "Pan Cycle" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1.00 beats" },
-    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "1× · 1.0 beats" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "1×" },
     { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "time", "label": "Time", "value": "0.8" },
     { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "spinIters", "label": "Pan Cycle", "value": "0.75" },
     { "command": "saveGraph", "path": "/private/tmp/cycle-v2-delay-editor.xml" },
@@ -15,7 +15,7 @@
     { "command": "assertNodeParameter", "nodeId": "delay", "parameterId": "time", "equals": "0.8" },
     { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 250 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "2.56 beats" },
-    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "9× · 23 beats" }
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "9×" }
   ],
   "quit": true
 }

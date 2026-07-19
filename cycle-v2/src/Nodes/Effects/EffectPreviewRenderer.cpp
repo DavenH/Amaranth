@@ -13,6 +13,10 @@ float parameterValue(const Node& node, const String& id, float fallback) {
     return nodeParameterValue(node, id, String(fallback)).getFloatValue();
 }
 
+Colour previewColour(bool enabled, Colour colour) {
+    return enabled ? colour : colour.withSaturation(0.f);
+}
+
 Rectangle<float> contentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.12f);
 }
@@ -23,18 +27,21 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
     const float damping = parameterValue(node, "damp", 0.2f);
     const float width = parameterValue(node, "width", 1.f);
     const float wet = parameterValue(node, "wet", 0.4f);
+    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
     const int reflectionCount = 5 + roundToInt(size * 6.f);
     float amplitude = 0.88f;
     const float decay = 0.48f + size * 0.36f - damping * 0.12f;
 
-    graphics.setColour(Colour(0xff11262a));
+    graphics.setColour(previewColour(enabled, Colour(0xff11262a)));
     graphics.fillRoundedRectangle(content, 4.f);
     for (int index = 0; index < reflectionCount; ++index) {
         const float unit = (float) index / (float) jmax(1, reflectionCount - 1);
         const float x = content.getX() + unit * content.getWidth();
         const float height = content.getHeight() * amplitude * (0.36f + wet * 0.5f);
         const float spread = height * (0.35f + width * 0.65f);
-        graphics.setColour(Colour(0xff43c7d0).withAlpha(0.28f + amplitude * 0.62f));
+        graphics.setColour(previewColour(
+                enabled,
+                Colour(0xff43c7d0).withAlpha(0.28f + amplitude * 0.62f)));
         graphics.drawLine(
                 x,
                 content.getCentreY() - spread,
@@ -45,9 +52,13 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
     }
 }
 
-void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) {
+void paintDelayAxes(
+        Graphics& graphics,
+        Rectangle<float> plot,
+        bool showLabels,
+        bool enabled) {
     const Colour axis { 0xff53616d };
-    graphics.setColour(axis.withAlpha(0.68f));
+    graphics.setColour(previewColour(enabled, axis.withAlpha(0.68f)));
     graphics.fillRect(plot.getX(), plot.getCentreY() - 0.5f, plot.getWidth(), 1.f);
     graphics.drawVerticalLine(roundToInt(plot.getX()), plot.getY(), plot.getBottom());
 
@@ -55,7 +66,7 @@ void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) 
         return;
     }
 
-    graphics.setColour(Colour(0xff8793a1));
+    graphics.setColour(previewColour(enabled, Colour(0xff8793a1)));
     graphics.setFont(FontOptions(11.f));
     graphics.drawText("L", plot.getX() - 18.f, plot.getY() - 5.f, 14.f, 12.f,
             Justification::centredRight);
@@ -65,12 +76,18 @@ void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) 
             Justification::centredRight);
 }
 
-void paintBeatGrid(Graphics& graphics, Rectangle<float> plot, int beatCount) {
+void paintBeatGrid(
+        Graphics& graphics,
+        Rectangle<float> plot,
+        int beatCount,
+        bool enabled) {
     for (int beat = 0; beat <= beatCount; ++beat) {
         const float unit = (float) beat / (float) beatCount;
         const float x = plot.getX() + unit * plot.getWidth();
         const bool measure = beat % 4 == 0;
-        graphics.setColour(Colour(0xff53616d).withAlpha(measure ? 0.38f : 0.20f));
+        graphics.setColour(previewColour(
+                enabled,
+                Colour(0xff53616d).withAlpha(measure ? 0.38f : 0.20f)));
         graphics.drawVerticalLine(roundToInt(x), plot.getY(), plot.getBottom());
     }
 }
@@ -92,16 +109,17 @@ void paintDelayPingPreview(
     const float feedback = parameterValue(node, "feedback", 0.5f);
     const float spin = parameterValue(node, "spin", 0.5f);
     const float wet = parameterValue(node, "wet", 0.5f);
+    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
     const int spinLength = CycleDsp::delaySpinIterations(
             parameterValue(node, "spinIters", 0.f));
     constexpr int visibleBeatCount = 16;
     const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
     float amplitude = 1.f;
 
-    graphics.setColour(Colour(0xff111923));
+    graphics.setColour(previewColour(enabled, Colour(0xff111923)));
     graphics.fillRoundedRectangle(background, 4.f);
-    paintBeatGrid(graphics, content, visibleBeatCount);
-    paintDelayAxes(graphics, content, showLabels);
+    paintBeatGrid(graphics, content, visibleBeatCount, enabled);
+    paintDelayAxes(graphics, content, showLabels, enabled);
     for (int ping = 1; ; ++ping) {
         const float beat = (float) ping * delayBeats;
         if (beat > (float) visibleBeatCount) {
@@ -118,7 +136,9 @@ void paintDelayPingPreview(
         if (radius < 0.75f) {
             break;
         }
-        graphics.setColour(Colour(0xff43c7d0).withAlpha(0.30f + amplitude * 0.62f));
+        graphics.setColour(previewColour(
+                enabled,
+                Colour(0xff43c7d0).withAlpha(0.30f + amplitude * 0.62f)));
         graphics.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre({ x, y }));
         amplitude *= feedback;
     }
