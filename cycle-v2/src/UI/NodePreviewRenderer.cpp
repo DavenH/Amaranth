@@ -16,6 +16,7 @@ namespace CycleV2 {
 namespace {
 
 const Colour kMutedText { 0xff8793a1 };
+constexpr float kSpectralFrequencyTension = 50.f;
 
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
@@ -191,7 +192,7 @@ void remapSpectralRows(std::vector<float>& surface, size_t columns, size_t rows)
     std::vector<float> rowMap(rows);
     Buffer<float> mappedRows(rowMap.data(), (int) rowMap.size());
     mappedRows.ramp(0.f, 1.f / (float) (rowMap.size() - 1));
-    Arithmetic::applyInvLogMapping(mappedRows, 500.f);
+    Arithmetic::applyInvLogMapping(mappedRows, kSpectralFrequencyTension);
 
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;

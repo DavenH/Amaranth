@@ -108,7 +108,7 @@ Delay spin panning operate on real stereo payloads.
   level. Room Size increases cached time-column density from 256 to 448 columns
   across the Cycle 1 kernel-length range.
 - Reverb analysis retains all 1025 half-spectrum bins from its 2048-point FFT
-  until image rasterization. A linear display-only gain makes the Dirac
+  until image rasterization. A display-only gain of 18 makes the kernel
   response legible without changing audio DSP or compressing away the
   high-pass-induced spectral-centroid shift.
 - Shared Reverb DSP keeps Damping's cumulative rolloff separate from a static
@@ -119,7 +119,9 @@ Delay spin panning operate on real stereo payloads.
   attenuation.
 - Spectral heatmaps use the inverse logarithmic mapping when converting display
   rows back to FFT-bin positions. The previous forward mapping compressed most
-  low-frequency bins into a few pixels. The final-raster regression passes both
+  low-frequency bins into a few pixels. The mapping uses Cycle 1's frequency
+  tension of 50 so the lowest partials do not dominate the display height. The
+  final-raster regression passes both
   responses through the production row mapping, logarithmic magnitude mapping,
   colour profile, and heatmap rasterizer. It checks both 0% and 100% Damping so
   High Pass cannot regress to being coupled to Damping. Final-pixel lower-band
@@ -127,6 +129,10 @@ Delay spin panning operate on real stereo payloads.
   retention remains 0.993 and 0.984 respectively. Live evidence:
   `/private/tmp/reverb-hp-fixed-damp-0.png` and
   `/private/tmp/reverb-hp-fixed-damp-100.png`.
+- The live High Pass fixture asserts the default 352-column preview resolution
+  rather than aggregate energy, which changes with raster dimensions. Final
+  gain and frequency-scale evidence:
+  `/private/tmp/reverb-gain-scale-final.png`.
 - Open effect editors rebind after discrete parameter publication and after a
   continuous gesture flushes. The Reverb High Pass live fixture asserts the
   complete open → 0% response → publish 100% → rebound readout and reduced
