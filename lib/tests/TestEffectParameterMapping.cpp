@@ -18,6 +18,10 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
 
     REQUIRE(CycleDsp::reverbKernelLength(0.f) == 4096);
     REQUIRE(CycleDsp::reverbKernelLength(1.f) == 262144);
+    for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
+        const float unitValue = CycleDsp::reverbSizeUnitValueForStep(step);
+        REQUIRE(CycleDsp::reverbKernelLength(unitValue) == (size_t) (4096 << step));
+    }
     REQUIRE(CycleDsp::reverbKernelSeconds(0.5f, 44100.0) == Approx(32768.0 / 44100.0));
     REQUIRE(CycleDsp::reverbDamping(1.f) == Approx(0.7f));
     REQUIRE(CycleDsp::reverbWetLevel(1.f) == Approx(0.25f));

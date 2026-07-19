@@ -5,7 +5,7 @@
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.kind", "equals": "REVERB" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "0.74 s" },
     { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "wet", "label": "Wet", "value": "0.73" },
-    { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "width", "label": "Width", "value": "0.18" },
+    { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "width", "label": "Width", "value": "1" },
     { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "wet", "equals": "0.73" },
     { "command": "saveGraph", "path": "/private/tmp/cycle-v2-reverb-editor.xml" },
     { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-reverb-editor.png" },

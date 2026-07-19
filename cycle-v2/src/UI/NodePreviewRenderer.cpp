@@ -241,8 +241,10 @@ void unwrapPhase(std::vector<float>& surface, size_t columns, size_t rows) {
     }
 }
 
-std::vector<float> mappedSurface(const NodePreviewResult& preview) {
-    std::vector<float> surface = preview.primary;
+std::vector<float> mappedSurface(
+        const NodePreviewResult& preview,
+        const std::vector<float>& values) {
+    std::vector<float> surface = values;
     if (surface.empty()) {
         return surface;
     }
@@ -552,16 +554,32 @@ bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         bool desaturated) {
-    TrimeshRenderData data;
-    data.surface = mappedSurface(preview);
-    data.domain = preview.domain;
-    data.columns = (int) preview.gridColumns;
-    data.rows = (int) preview.gridRows;
-    data.cyclic = preview.domain == PortDomain::TimeSignal;
+    const auto createImage = [&preview](const std::vector<float>& values) {
+        TrimeshRenderData data;
+        data.surface = mappedSurface(preview, values);
+        data.domain = preview.domain;
+        data.columns = (int) preview.gridColumns;
+        data.rows = (int) preview.gridRows;
+        data.cyclic = preview.domain == PortDomain::TimeSignal;
+        return TrimeshSurfaceRenderer::createHeatmapImage(
+                data,
+                TrimeshRenderProfile::fromDomain(preview.domain));
+    };
 
-    Image image = TrimeshSurfaceRenderer::createHeatmapImage(
-            data,
-            TrimeshRenderProfile::fromDomain(preview.domain));
+    Image image = createImage(preview.primary);
+    if (preview.role == PreviewModuleRole::ReverbSpectrogram
+            && preview.secondary.size() == preview.primary.size()) {
+        const Image right = createImage(preview.secondary);
+        if (image.isValid() && right.isValid()) {
+            Image stereo(Image::RGB, image.getWidth() * 2 + 1, image.getHeight(), true);
+            Graphics stereoGraphics(stereo);
+            stereoGraphics.drawImageAt(image, 0, 0);
+            stereoGraphics.setColour(EffectPlotPalette::grid.withAlpha(0.72f));
+            stereoGraphics.fillRect(image.getWidth(), 0, 1, image.getHeight());
+            stereoGraphics.drawImageAt(right, image.getWidth() + 1, 0);
+            image = stereo;
+        }
+    }
     if (desaturated) {
         image.desaturate();
     }
@@ -738,7 +756,19 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
         cached.runtimeHeatmapSignature = signature;
     }
 
-    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
+    const bool painted = drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
+    if (painted
+            && request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
+            && !request.runtimeResult->secondary.empty()) {
+        Rectangle<float> content = request.area.reduced(
+                jmin(request.area.getWidth(), request.area.getHeight()) * 0.024f);
+        graphics.setColour(EffectPlotPalette::label.withAlpha(0.88f));
+        graphics.setFont(FontOptions(10.f, Font::bold));
+        graphics.drawText("L", content.removeFromLeft(content.getWidth() * 0.5f).reduced(5.f, 2.f),
+                Justification::topLeft);
+        graphics.drawText("R", content.reduced(5.f, 2.f), Justification::topLeft);
+    }
+    return painted;
 }
 
 void NodePreviewRenderer::paintUncached(

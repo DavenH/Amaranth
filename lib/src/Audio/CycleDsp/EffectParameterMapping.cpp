@@ -48,6 +48,11 @@ size_t reverbKernelLength(float value) {
     return static_cast<size_t>(NumberUtils::nextPower2(requested));
 }
 
+float reverbSizeUnitValueForStep(int step) {
+    return (float) std::clamp(step, 0, reverbSizeStepCount - 1)
+            / (float) (reverbSizeStepCount - 1);
+}
+
 double reverbKernelSeconds(float value, double sampleRate) {
     return static_cast<double>(reverbKernelLength(value)) / std::max(1.0, sampleRate);
 }

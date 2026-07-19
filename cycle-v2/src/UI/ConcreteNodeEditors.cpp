@@ -29,10 +29,21 @@ public:
         panCycle = shouldUsePanCycle;
     }
 
+    void setReverbSize(bool shouldUseReverbSize) {
+        reverbSize = shouldUseReverbSize;
+    }
+
     double snapValue(double attemptedValue, DragMode dragMode) override {
         if (panCycle) {
             return CycleDsp::delaySpinUnitValueForIterations(
                     CycleDsp::delaySpinIterations(attemptedValue));
+        }
+        if (reverbSize) {
+            const int step = jlimit(
+                    0,
+                    CycleDsp::reverbSizeStepCount - 1,
+                    roundToInt(attemptedValue * (CycleDsp::reverbSizeStepCount - 1)));
+            return CycleDsp::reverbSizeUnitValueForStep(step);
         }
         if (!delayTime || dragMode == notDragging) {
             return attemptedValue;
@@ -54,6 +65,16 @@ public:
                         graphics,
                         CycleDsp::delaySpinUnitValueForIterations(iterations),
                         String(iterations));
+            }
+            return;
+        }
+        if (reverbSize) {
+            graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+            graphics.setFont(FontOptions(8.f));
+            for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
+                const float value = CycleDsp::reverbSizeUnitValueForStep(step);
+                const double seconds = CycleDsp::reverbKernelSeconds(value, 44100.0);
+                paintStopTick(graphics, value, String(seconds, seconds < 1.0 ? 2 : 1));
             }
             return;
         }
@@ -87,6 +108,7 @@ private:
 
     bool delayTime {};
     bool panCycle {};
+    bool reverbSize {};
 };
 
 class EffectParameterEditorComponent final : public Component {
@@ -213,6 +235,7 @@ private:
         control->slider.setDoubleClickReturnValue(true, defaultValue);
         control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
         control->slider.setPanCycle(kind == NodeKind::Delay && id == "spinIters");
+        control->slider.setReverbSize(kind == NodeKind::Reverb && id == "size");
         if (kind == NodeKind::Delay && id == "spinIters") {
             const String explanation =
                     "One complete stereo pan cycle spans this many delay intervals";

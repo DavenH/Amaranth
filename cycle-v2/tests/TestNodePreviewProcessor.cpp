@@ -114,7 +114,7 @@ TEST_CASE("Reverb preview spectrogram analyzes the generated kernel",
     REQUIRE(context.gridColumns == 256);
     REQUIRE(context.gridRows == 1025);
     REQUIRE(context.primary.size() == context.gridColumns * context.gridRows);
-    REQUIRE(context.secondary.empty());
+    REQUIRE(context.secondary.size() == context.primary.size());
     REQUIRE(context.domain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(*std::max_element(context.primary.begin(), context.primary.end()) > 0.f);
 }
@@ -207,6 +207,7 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     NodePreviewResult result;
     result.role = PreviewModuleRole::ReverbSpectrogram;
     result.primary = std::move(context.primary);
+    result.secondary = std::move(context.secondary);
     result.gridColumns = context.gridColumns;
     result.gridRows = context.gridRows;
     result.domain = context.domain;
@@ -225,6 +226,44 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     }
     REQUIRE(greyscale);
     REQUIRE(maximumBrightness > 0.25f);
+}
+
+TEST_CASE("Reverb Width preview follows production stereo mixing",
+        "[cycle-v2][runtime][effects][reverb][preview]") {
+    const auto render = [](float width) {
+        const std::vector<NodeParameter> parameters {
+                { "enabled", "Enabled", "1" },
+                { "size", "Size", "0" },
+                { "damp", "Damp", "0.2" },
+                { "width", "Width", String(width) },
+                { "wet", "Wet", "0.4" },
+                { "highPass", "High Pass", "0.05" }
+        };
+        const auto configuration = ReverbSignalProcessor::buildConfiguration(parameters);
+        const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
+        PreviewProcessContext context;
+        context.pointCount = 24;
+        context.parameters = parameters;
+        context.configuration = &published;
+        auto processor = NodePreviewProcessorFactory().create(
+                PreviewModuleRole::ReverbSpectrogram);
+        processor->render(context);
+        return context;
+    };
+    const auto difference = [](const PreviewProcessContext& context) {
+        double total {};
+        for (size_t index = 0; index < context.primary.size(); ++index) {
+            total += std::abs(
+                    context.primary[index]
+                    - context.secondary[index]);
+        }
+        return total;
+    };
+
+    const auto mono = render(0.5f);
+    const auto stereo = render(1.f);
+    REQUIRE(difference(mono) == Catch::Approx(0.0).margin(1.0e-6));
+    REQUIRE(difference(stereo) > 1.0);
 }
 
 TEST_CASE("Reverb high pass visibly attenuates lower spectrogram partials",
@@ -251,6 +290,7 @@ TEST_CASE("Reverb high pass visibly attenuates lower spectrogram partials",
         NodePreviewResult result;
         result.role = PreviewModuleRole::ReverbSpectrogram;
         result.primary = std::move(context.primary);
+        result.secondary = std::move(context.secondary);
         result.gridColumns = context.gridColumns;
         result.gridRows = context.gridRows;
         result.domain = context.domain;

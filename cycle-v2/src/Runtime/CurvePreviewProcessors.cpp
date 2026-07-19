@@ -43,19 +43,61 @@ public:
         const size_t columnCount = std::max(minimumColumnCount, context.pointCount)
                 + sizeDetail;
         const size_t rowCount = spectralRowCount;
+        const float directLevel = jmax(0.5f, configuration->width);
+        const float crossLevel = jmin(0.5f, 1.f - configuration->width);
+        std::vector<float> leftResponse = configuration->kernels[0];
+        std::vector<float> rightResponse = configuration->kernels[1];
+        Buffer<float> left(leftResponse.data(), (int) leftResponse.size());
+        Buffer<float> right(rightResponse.data(), (int) rightResponse.size());
+        Buffer<float> leftKernel(
+                const_cast<float*>(configuration->kernels[0].data()),
+                (int) configuration->kernels[0].size());
+        Buffer<float> rightKernel(
+                const_cast<float*>(configuration->kernels[1].data()),
+                (int) configuration->kernels[1].size());
+        left.mul(directLevel).addProduct(
+                rightKernel,
+                crossLevel);
+        right.mul(directLevel).addProduct(
+                leftKernel,
+                crossLevel);
         analyzeResponse(
-                configuration->kernels[0],
+                leftResponse,
                 columnCount,
                 rowCount,
                 context.primary);
+        analyzeResponse(
+                rightResponse,
+                columnCount,
+                rowCount,
+                context.secondary);
 
-        context.secondary.clear();
         context.gridColumns = columnCount;
         context.gridRows = rowCount;
         context.domain = PortDomain::SpectralMagnitudeSignal;
 
-        Buffer<float> surface(context.primary.data(), (int) context.primary.size());
-        float normalizationMaximum {};
+        Buffer<float> primary(context.primary.data(), (int) context.primary.size());
+        Buffer<float> secondary(context.secondary.data(), (int) context.secondary.size());
+        const float normalizationMaximum = jmax(
+                upperBandMaximum(primary, columnCount, rowCount),
+                upperBandMaximum(secondary, columnCount, rowCount));
+
+        if (normalizationMaximum > 0.f) {
+            constexpr float visualizationGain = 18.f;
+            const float gain = visualizationGain
+                    * configuration->wetLevel
+                    / normalizationMaximum;
+            primary.mul(gain).clip(0.f, 1.f);
+            secondary.mul(gain).clip(0.f, 1.f);
+        }
+    }
+
+private:
+    static float upperBandMaximum(
+            Buffer<float> surface,
+            size_t columnCount,
+            size_t rowCount) {
+        float maximum {};
         const size_t referenceRow = rowCount / 8;
         for (size_t column = 0; column < columnCount; ++column) {
             Buffer<float> upperBand = surface.section(
@@ -64,17 +106,11 @@ public:
             float columnMaximum {};
             int columnMaximumIndex {};
             upperBand.getMax(columnMaximum, columnMaximumIndex);
-            normalizationMaximum = jmax(normalizationMaximum, columnMaximum);
+            maximum = jmax(maximum, columnMaximum);
         }
-
-        if (normalizationMaximum > 0.f) {
-            constexpr float visualizationGain = 18.f;
-            surface.mul(visualizationGain * configuration->wetLevel / normalizationMaximum)
-                    .clip(0.f, 1.f);
-        }
+        return maximum;
     }
 
-private:
     static void analyzeResponse(
             const std::vector<float>& responseStorage,
             size_t columnCount,
