@@ -4,6 +4,9 @@
 
 Implemented.
 
+Further cross-effect interaction, palette, and visualization refinements are
+specified in `cycle-v2-effect-ui-refinement.md`.
+
 ## Authoritative Implementations
 
 - Reverb parameter and stereo mixing semantics: `cycle/src/Audio/Effects/Reverb.cpp`.
