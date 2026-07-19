@@ -48,7 +48,7 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
 void paintDelayAxes(Graphics& graphics, Rectangle<float> plot, bool showLabels) {
     const Colour axis { 0xff53616d };
     graphics.setColour(axis.withAlpha(0.68f));
-    graphics.drawHorizontalLine(roundToInt(plot.getCentreY()), plot.getX(), plot.getRight());
+    graphics.fillRect(plot.getX(), plot.getCentreY() - 0.5f, plot.getWidth(), 1.f);
     graphics.drawVerticalLine(roundToInt(plot.getX()), plot.getY(), plot.getBottom());
 
     if (!showLabels) {

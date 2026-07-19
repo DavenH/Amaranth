@@ -234,7 +234,7 @@ private:
         } else if (kind == NodeKind::Delay) {
             addControl("time", "Time", 0.5f);
             addControl("feedback", "Feedback", 0.5f);
-            addControl("spin", "Spin", 0.5f);
+            addControl("spin", "Pan Amount", 0.5f);
             addControl("spinIters", "Pan Cycle", 0.2f);
             addControl("wet", "Wet", 0.5f);
         } else {

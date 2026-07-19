@@ -180,8 +180,10 @@ Preview-quality follow-up evidence:
   native JUCE `Slider::snapValue` hook owns the interaction, and the Time track
   labels its 0.5- and 1–4-beat stops. The first delayed tap is exactly
   Wet-scaled, with Feedback beginning at the second tap. The UI presents
-  `spinIters` as Pan Cycle and reports both the delay-interval multiplier and
-  the resulting full stereo pan-LFO cycle duration in beats.
+  `spin` as Pan Amount and `spinIters` as Pan Cycle. Pan Cycle reports both the
+  delay-interval multiplier and the resulting full stereo pan-LFO cycle
+  duration in beats. The stereo centreline is painted beneath the taps and is
+  centred on the same floating-point coordinate as their zero-pan position.
 - `/private/tmp/cycle-v2-delay-snap-ticks.png` verifies the nonlinear Time tick
   positions and the canvas-family Delay preview background.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded
