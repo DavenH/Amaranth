@@ -6,6 +6,7 @@
 
 #include "../src/Runtime/NodePreviewProcessor.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
+#include "../src/UI/NodePreviewRenderer.h"
 
 using namespace CycleV2;
 
@@ -132,6 +133,73 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
 
     const auto largeRoom = render(1.f, 1.f, 0.f, 1.f);
     REQUIRE(largeRoom.gridColumns > highWet.gridColumns);
+}
+
+TEST_CASE("Reverb high pass visibly attenuates lower spectrogram partials",
+        "[cycle-v2][runtime][effects][reverb][preview][ui]") {
+    auto renderImage = [](float highPass) {
+        const std::vector<NodeParameter> parameters {
+                { "enabled", "Enabled", "1" },
+                { "size", "Size", "0.5" },
+                { "damp", "Damp", "0.2" },
+                { "width", "Width", "1" },
+                { "wet", "Wet", "1" },
+                { "highPass", "High Pass", String(highPass) }
+        };
+        const auto configuration = ReverbSignalProcessor::buildConfiguration(parameters);
+        const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
+        PreviewProcessContext context;
+        context.pointCount = 40;
+        context.parameters = parameters;
+        context.configuration = &published;
+        auto processor = NodePreviewProcessorFactory().create(
+                PreviewModuleRole::ReverbSpectrogram);
+        processor->render(context);
+
+        NodePreviewResult result;
+        result.role = PreviewModuleRole::ReverbSpectrogram;
+        result.primary = std::move(context.primary);
+        result.gridColumns = context.gridColumns;
+        result.gridRows = context.gridRows;
+        result.domain = context.domain;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    };
+
+    auto bandBrightness = [](const Image& image, int firstRow, int rowCount) {
+        double brightness {};
+        for (int y = firstRow; y < firstRow + rowCount; ++y) {
+            for (int x = 0; x < image.getWidth(); ++x) {
+                brightness += image.getPixelAt(x, y).getPerceivedBrightness();
+            }
+        }
+        return brightness / (double) (image.getWidth() * rowCount);
+    };
+
+    const Image unfiltered = renderImage(0.f);
+    const Image highPassed = renderImage(1.f);
+    REQUIRE(unfiltered.isValid());
+    REQUIRE(highPassed.isValid());
+    REQUIRE(highPassed.getBounds() == unfiltered.getBounds());
+
+    const int bandHeight = unfiltered.getHeight() / 3;
+    const double unfilteredHigh = bandBrightness(unfiltered, 0, bandHeight);
+    const double highPassedHigh = bandBrightness(highPassed, 0, bandHeight);
+    const double unfilteredLow = bandBrightness(
+            unfiltered,
+            unfiltered.getHeight() - bandHeight,
+            bandHeight);
+    const double highPassedLow = bandBrightness(
+            highPassed,
+            highPassed.getHeight() - bandHeight,
+            bandHeight);
+    const double highRetention = highPassedHigh / unfilteredHigh;
+    const double lowRetention = highPassedLow / unfilteredLow;
+    INFO("high-band retention: " << highRetention);
+    INFO("low-band retention: " << lowRetention);
+    REQUIRE(highRetention > 0.9);
+    REQUIRE(highRetention < 1.15);
+    REQUIRE(lowRetention < 0.85);
+    REQUIRE(lowRetention < highRetention - 0.2);
 }
 
 TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime]") {

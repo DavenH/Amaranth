@@ -21,6 +21,7 @@ public:
     explicit NodePreviewRenderer(NodePreviewResources& resources);
 
     static bool requiresEffect2DModel(NodeKind kind);
+    static Image createRuntimeHeatmapImage(const NodePreviewResult& preview);
 
     Rectangle<float> boundsFor(
             const Node& node,

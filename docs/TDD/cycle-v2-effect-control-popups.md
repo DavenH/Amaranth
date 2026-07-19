@@ -115,17 +115,22 @@ Delay spin panning operate on real stereo payloads.
   the preview also analyzes a second Dirac response through the authoritative
   kernel builder with High Pass zeroed. Per-bin attenuation measured against
   that baseline increases display contrast only; both responses use the real
-  shared DSP and the audio kernel remains unchanged.
+  shared DSP and the audio kernel remains unchanged. The renderer adds no
+  cutoff marker, boundary, or parameter-shaped mask: attenuation appears only
+  in the affected lower spectral partials. OS-rendered 0% and 100% evidence:
+  `/private/tmp/reverb-hp-final-0.png` and
+  `/private/tmp/reverb-hp-final-100.png`.
+- Spectral heatmaps use the inverse logarithmic mapping when converting display
+  rows back to FFT-bin positions. The previous forward mapping compressed most
+  low-frequency bins into a few pixels. The final-raster regression passes both
+  responses through the production row mapping, logarithmic magnitude mapping,
+  colour profile, and heatmap rasterizer; at the default Reverb settings its
+  measured lower-band retention is 0.804 versus 1.064 in the upper band.
 - Open effect editors rebind after discrete parameter publication and after a
   continuous gesture flushes. The Reverb High Pass live fixture asserts the
   complete open → 0% response → publish 100% → rebound readout and reduced
   preview-energy sequence in one running application. Passing report:
   `/private/tmp/reverb-high-pass-live-report-final.json`.
-- Reverb heatmaps add a parameter-driven low-frequency attenuation curtain,
-  boundary, and expanded-view `HP` marker over the measured DSP response. This
-  makes the affected region explicit while retaining the real convolved
-  spectrogram underneath. OS-rendered evidence:
-  `/private/tmp/reverb-hp-overlay-final.png`.
 
 Crash regression evidence:
 

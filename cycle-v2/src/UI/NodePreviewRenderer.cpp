@@ -17,15 +17,6 @@ namespace {
 
 const Colour kMutedText { 0xff8793a1 };
 
-float nodeParameter(const Node& node, const String& parameterId, float fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == parameterId) {
-            return parameter.value.getFloatValue();
-        }
-    }
-    return fallback;
-}
-
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
 }
@@ -200,7 +191,7 @@ void remapSpectralRows(std::vector<float>& surface, size_t columns, size_t rows)
     std::vector<float> rowMap(rows);
     Buffer<float> mappedRows(rowMap.data(), (int) rowMap.size());
     mappedRows.ramp(0.f, 1.f / (float) (rowMap.size() - 1));
-    Arithmetic::applyLogMapping(mappedRows, 500.f);
+    Arithmetic::applyInvLogMapping(mappedRows, 500.f);
 
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
@@ -280,20 +271,7 @@ std::vector<float> mappedSurface(const NodePreviewResult& preview) {
 }
 
 bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewResult& preview) {
-    TrimeshRenderData data;
-    data.surface = mappedSurface(preview);
-    data.domain = preview.domain;
-    data.columns = (int) preview.gridColumns;
-    data.rows = (int) preview.gridRows;
-    data.cyclic = preview.domain == PortDomain::TimeSignal;
-
-    if (!data.canDrawSurface()) {
-        return false;
-    }
-
-    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(
-            data,
-            TrimeshRenderProfile::fromDomain(preview.domain));
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(preview);
     if (!image.isValid()) {
         return false;
     }
@@ -305,36 +283,6 @@ bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewRes
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
-}
-
-void drawReverbHighPassOverlay(
-        Graphics& graphics,
-        Rectangle<float> area,
-        const Node& node) {
-    const float highPass = jlimit(0.f, 1.f, nodeParameter(node, "highPass", 0.05f));
-    if (highPass <= 0.f) {
-        return;
-    }
-
-    const Rectangle<float> content = area.reduced(
-            jmin(area.getWidth(), area.getHeight()) * 0.024f);
-    const Rectangle<float> lowBand = content.withTop(
-            content.getBottom() - content.getHeight() * 0.3f);
-    graphics.setColour(Colour(0xff07151d).withAlpha(0.72f * highPass));
-    graphics.fillRect(lowBand);
-    graphics.setColour(Colour(0xff47c7d8).withAlpha(0.75f * highPass));
-    graphics.drawHorizontalLine(
-            roundToInt(lowBand.getY()),
-            lowBand.getX(),
-            lowBand.getRight());
-    if (area.getHeight() >= 90.f && highPass >= 0.15f) {
-        graphics.setFont(FontOptions(10.f));
-        graphics.drawText(
-                "HP",
-                lowBand.reduced(5.f, 2.f),
-                Justification::bottomLeft,
-                false);
-    }
 }
 
 void drawEffect2DFallback(
@@ -588,6 +536,19 @@ bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
             || kind == NodeKind::Waveshaper;
 }
 
+Image NodePreviewRenderer::createRuntimeHeatmapImage(const NodePreviewResult& preview) {
+    TrimeshRenderData data;
+    data.surface = mappedSurface(preview);
+    data.domain = preview.domain;
+    data.columns = (int) preview.gridColumns;
+    data.rows = (int) preview.gridRows;
+    data.cyclic = preview.domain == PortDomain::TimeSignal;
+
+    return TrimeshSurfaceRenderer::createHeatmapImage(
+            data,
+            TrimeshRenderProfile::fromDomain(preview.domain));
+}
+
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
@@ -717,11 +678,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
     }
 
     if (result.role == PreviewModuleRole::ReverbSpectrogram) {
-        if (!drawHeatmap(graphics, request.area, result)) {
-            return false;
-        }
-        drawReverbHighPassOverlay(graphics, request.area, request.node);
-        return true;
+        return drawHeatmap(graphics, request.area, result);
     }
 
     if (result.primary.empty()) {
