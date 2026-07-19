@@ -127,7 +127,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     effect.expandedEditorSize = Point<float>(520.f, 520.f);
     add(NodeKind::Delay, effect);
 
-    effect.expandedEditorSize = Point<float>(620.f, 460.f);
+    effect.expandedEditorSize = Point<float>(620.f, 550.f);
     add(NodeKind::Equalizer, effect);
 }
 

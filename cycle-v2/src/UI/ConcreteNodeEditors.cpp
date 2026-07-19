@@ -168,6 +168,12 @@ public:
                     node.id, "enabled", "Enabled", enabledButton.getToggleState() ? 1.f : 0.f);
         };
         addAndMakeVisible(enabledButton);
+        gainHeader.setText("GAIN", dontSendNotification);
+        frequencyHeader.setText("FREQUENCY", dontSendNotification);
+        gainHeader.setColour(Label::textColourId, Colour(0xffaab4c0));
+        frequencyHeader.setColour(Label::textColourId, Colour(0xffaab4c0));
+        addAndMakeVisible(gainHeader);
+        addAndMakeVisible(frequencyHeader);
         createControls();
     }
 
@@ -201,7 +207,7 @@ public:
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             paintDelayPingPreview(graphics, response, node, 1.f);
         } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
-            auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
+            auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             graphics.setColour(EffectPlotPalette::forEnabledState(
                     EffectPlotPalette::insetBackground,
                     enabledButton.getToggleState()));
@@ -217,14 +223,18 @@ public:
     void resized() override {
         closeButton.setBounds(getWidth() - 42, 9, 28, 28);
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
-        int y = kind == NodeKind::Equalizer
-                ? 166
-                : (kind == NodeKind::Reverb || kind == NodeKind::Delay ? 216 : 56);
+        int y = kind == NodeKind::Reverb || kind == NodeKind::Delay
+                || kind == NodeKind::Equalizer ? 216 : 56;
         if (kind == NodeKind::Equalizer) {
+            gainHeader.setBounds(38, y - 18, (getWidth() - 76) / 2, 18);
+            frequencyHeader.setBounds(
+                    getWidth() / 2 + 32,
+                    y - 18,
+                    (getWidth() - 76) / 2,
+                    18);
             for (size_t band = 0; band < 5; ++band) {
-                layoutControl(*controls[band * 2], 18, y, (getWidth() - 48) / 2);
-                layoutControl(*controls[band * 2 + 1], getWidth() / 2 + 6, y, (getWidth() - 48) / 2);
-                y += 54;
+                layoutEqualizerRow(band, y);
+                y += 62;
             }
             return;
         }
@@ -350,6 +360,9 @@ private:
                         prefix + "Frequency",
                         "Band " + String(band + 1) + " Frequency",
                         CycleDsp::equalizerFrequencyUnitValue(frequencies[band]));
+                controls[controls.size() - 2]->label.setText(
+                        String(band + 1),
+                        dontSendNotification);
             }
         }
     }
@@ -358,6 +371,20 @@ private:
         control.label.setBounds(x, y, width - 76, 18);
         control.readout.setBounds(x + width - 92, y, 92, 18);
         control.slider.setBounds(x, y + 20, width, 28);
+    }
+
+    void layoutEqualizerRow(size_t band, int y) {
+        Control& gain = *controls[band * 2];
+        Control& frequency = *controls[band * 2 + 1];
+        const int columnWidth = (getWidth() - 76) / 2;
+        const int frequencyX = getWidth() / 2 + 20;
+
+        gain.label.setBounds(18, y, 20, 18);
+        gain.readout.setBounds(38 + columnWidth - 92, y, 92, 18);
+        gain.slider.setBounds(38, y + 20, columnWidth, 28);
+        frequency.label.setBounds(0, 0, 0, 0);
+        frequency.readout.setBounds(frequencyX + columnWidth - 92, y, 92, 18);
+        frequency.slider.setBounds(frequencyX, y + 20, columnWidth, 28);
     }
 
     void updateReadout(Control& control) {
@@ -401,6 +428,8 @@ private:
     Node node;
     TextButton closeButton;
     ToggleButton enabledButton;
+    Label gainHeader;
+    Label frequencyHeader;
     std::vector<std::unique_ptr<Control>> controls;
 };
 

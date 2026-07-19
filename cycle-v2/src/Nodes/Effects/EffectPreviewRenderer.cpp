@@ -166,61 +166,74 @@ void paintEqualizerResponsePreview(
                         node, prefix + "Gain", 0.5f)));
     }
 
+    const int pointCount = jmax(2, roundToInt(area.getWidth()));
+    std::vector<float> response((size_t) pointCount);
+    double frequency = 40.0;
+    const double frequencyRatio = std::pow(400.0, 1.0 / (double) (pointCount - 1));
+    for (int index = 0; index < pointCount; ++index) {
+        response[(size_t) index] = jlimit(
+                0.f,
+                1.f,
+                core.responseDecibels(frequency) / 60.f + 0.5f);
+        frequency *= frequencyRatio;
+    }
+    paintEqualizerResponseData(graphics, area, node, response, showDetails);
+}
+
+void paintEqualizerResponseData(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        const std::vector<float>& response,
+        bool showDetails) {
+    if (response.size() < 2) {
+        return;
+    }
+
     const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
     const auto stateColour = [enabled](Colour colour) {
         return EffectPlotPalette::forEnabledState(colour, enabled);
     };
-    const auto frequencyX = [&area](double frequency) {
-        const double unit = std::log(frequency / 40.0) / std::log(400.0);
-        return area.getX() + (float) unit * area.getWidth();
+    const auto frequencyUnit = [](double frequency) {
+        return std::log(frequency / 40.0) / std::log(400.0);
     };
-    const auto decibelY = [&area](float decibels) {
-        return area.getCentreY()
-                - jlimit(-30.f, 30.f, decibels) * area.getHeight() / 60.f;
+    const auto frequencyX = [&area, &frequencyUnit](double frequency) {
+        return area.getX() + (float) frequencyUnit(frequency) * area.getWidth();
     };
 
+    graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.68f)));
+    graphics.fillRect(area.getX(), area.getCentreY() - 0.5f, area.getWidth(), 1.f);
     if (showDetails) {
-        static constexpr float frequencyLandmarks[] {
-                60.f, 120.f, 250.f, 500.f, 1000.f, 2000.f, 4000.f, 8000.f, 16000.f
-        };
-        for (const float landmark : frequencyLandmarks) {
+        for (const float landmark : { 60.f, 120.f, 250.f, 500.f, 1000.f,
+                2000.f, 4000.f, 8000.f, 16000.f }) {
             graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.18f)));
-            graphics.drawVerticalLine(
-                    roundToInt(frequencyX(landmark)),
-                    area.getY(),
-                    area.getBottom());
+            graphics.drawVerticalLine(roundToInt(frequencyX(landmark)), area.getY(), area.getBottom());
         }
-
-        for (const float decibels : { -24.f, -12.f, 0.f, 12.f, 24.f }) {
-            const bool zero = decibels == 0.f;
-            graphics.setColour(stateColour(
-                    EffectPlotPalette::grid.withAlpha(zero ? 0.72f : 0.22f)));
+        for (const float unit : { 0.1f, 0.3f, 0.7f, 0.9f }) {
+            graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.20f)));
             graphics.fillRect(
                     area.getX(),
-                    decibelY(decibels) - 0.5f,
+                    area.getY() + unit * area.getHeight() - 0.5f,
                     area.getWidth(),
                     1.f);
         }
     }
 
-    Path response;
-    const int pointCount = jmax(2, roundToInt(area.getWidth()));
-    double frequency = 40.0;
-    const double frequencyRatio = std::pow(400.0, 1.0 / (double) (pointCount - 1));
-    for (int index = 0; index < pointCount; ++index) {
-        const double unit = (double) index / (double) (pointCount - 1);
-        const Point<float> point(
-                area.getX() + (float) unit * area.getWidth(),
-                decibelY(core.responseDecibels(frequency)));
+    Path path;
+    const float denominator = (float) (response.size() - 1);
+    for (size_t index = 0; index < response.size(); ++index) {
+        const Point<float> point {
+                area.getX() + (float) index / denominator * area.getWidth(),
+                area.getBottom() - response[index] * area.getHeight()
+        };
         if (index == 0) {
-            response.startNewSubPath(point);
+            path.startNewSubPath(point);
         } else {
-            response.lineTo(point);
+            path.lineTo(point);
         }
-        frequency *= frequencyRatio;
     }
     graphics.setColour(stateColour(EffectPlotPalette::accent));
-    graphics.strokePath(response, PathStrokeType(2.f, PathStrokeType::curved));
+    graphics.strokePath(path, PathStrokeType(showDetails ? 2.f : 1.6f, PathStrokeType::curved));
 
     if (!showDetails) {
         return;
@@ -228,17 +241,21 @@ void paintEqualizerResponsePreview(
     graphics.setFont(FontOptions(8.f, Font::bold));
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
         const String prefix = "band" + String(band + 1);
-        const float bandFrequency = CycleDsp::equalizerFrequency(parameterValue(
-                node, prefix + "Frequency", 0.5f));
-        const Point<float> marker(
-                frequencyX(bandFrequency),
-                decibelY(core.responseDecibels(bandFrequency)));
-        const Rectangle<float> markerBounds = Rectangle<float>(12.f, 12.f).withCentre(marker);
+        const float unit = (float) frequencyUnit(CycleDsp::equalizerFrequency(
+                parameterValue(node, prefix + "Frequency", 0.5f)));
+        const size_t index = (size_t) jlimit(
+                0,
+                (int) response.size() - 1,
+                roundToInt(unit * denominator));
+        const Rectangle<float> marker = Rectangle<float>(12.f, 12.f).withCentre({
+                area.getX() + unit * area.getWidth(),
+                area.getBottom() - response[index] * area.getHeight()
+        });
         graphics.setColour(stateColour(EffectPlotPalette::background.withAlpha(0.92f)));
-        graphics.fillEllipse(markerBounds);
+        graphics.fillEllipse(marker);
         graphics.setColour(stateColour(EffectPlotPalette::accent.withAlpha(0.92f)));
-        graphics.drawEllipse(markerBounds, 1.f);
-        graphics.drawText(String(band + 1), markerBounds, Justification::centred);
+        graphics.drawEllipse(marker, 1.f);
+        graphics.drawText(String(band + 1), marker, Justification::centred);
     }
 }
 

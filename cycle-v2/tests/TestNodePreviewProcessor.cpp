@@ -146,7 +146,7 @@ TEST_CASE("Reverb preview spectrogram analyzes the generated kernel",
 
     processor->render(context);
 
-    REQUIRE(context.gridColumns == 256);
+    REQUIRE(context.gridColumns == 512);
     REQUIRE(context.gridRows == 1025);
     REQUIRE(context.primary.size() == context.gridColumns * context.gridRows);
     REQUIRE(context.secondary.size() == context.primary.size());
@@ -212,8 +212,22 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
                     defaultUnfiltered.primary.end(),
                     0.f));
 
-    const auto largeRoom = render(1.f, 1.f, 0.f, 1.f);
-    REQUIRE(largeRoom.gridColumns > highWet.gridColumns);
+    const auto responseExtent = [](const PreviewProcessContext& context) {
+        size_t activeColumns {};
+        for (size_t column = 0; column < context.gridColumns; ++column) {
+            const auto first = context.primary.begin()
+                    + (std::vector<float>::difference_type) (column * context.gridRows);
+            const auto last = first
+                    + (std::vector<float>::difference_type) context.gridRows;
+            if (std::accumulate(first, last, 0.f) > 0.f) {
+                activeColumns = column + 1;
+            }
+        }
+        return activeColumns;
+    };
+    const auto oneAndHalfSeconds = render(4.f / 6.f, 1.f, 0.f, 1.f);
+    const auto threeSeconds = render(5.f / 6.f, 1.f, 0.f, 1.f);
+    REQUIRE(responseExtent(threeSeconds) > 1.8 * responseExtent(oneAndHalfSeconds));
 }
 
 TEST_CASE("Bypassed Reverb spectrogram retains its configured response",

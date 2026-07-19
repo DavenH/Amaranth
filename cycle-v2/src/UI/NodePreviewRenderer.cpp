@@ -567,19 +567,6 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
     };
 
     Image image = createImage(preview.primary);
-    if (preview.role == PreviewModuleRole::ReverbSpectrogram
-            && preview.secondary.size() == preview.primary.size()) {
-        const Image right = createImage(preview.secondary);
-        if (image.isValid() && right.isValid()) {
-            Image stereo(Image::RGB, image.getWidth() * 2 + 1, image.getHeight(), true);
-            Graphics stereoGraphics(stereo);
-            stereoGraphics.drawImageAt(image, 0, 0);
-            stereoGraphics.setColour(EffectPlotPalette::grid.withAlpha(0.72f));
-            stereoGraphics.fillRect(image.getWidth(), 0, 1, image.getHeight());
-            stereoGraphics.drawImageAt(right, image.getWidth() + 1, 0);
-            image = stereo;
-        }
-    }
     if (desaturated) {
         image.desaturate();
     }
@@ -718,6 +705,22 @@ bool NodePreviewRenderer::paintRuntimeResult(
         return paintRuntimeHeatmap(graphics, request);
     }
 
+    if (result.role == PreviewModuleRole::EqualizerResponse) {
+        const Rectangle<float> background = request.area.reduced(
+                jmin(request.area.getWidth(), request.area.getHeight()) * 0.04f);
+        graphics.setColour(EffectPlotPalette::forEnabledState(
+                EffectPlotPalette::background,
+                nodeParameterValue(request.node, "enabled", "1").getIntValue() != 0));
+        graphics.fillRoundedRectangle(background, 4.f);
+        paintEqualizerResponseData(
+                graphics,
+                background.reduced(8.f, 6.f),
+                request.node,
+                result.primary,
+                request.area.getWidth() >= 300.f && request.area.getHeight() >= 100.f);
+        return true;
+    }
+
     if (result.primary.empty()) {
         return false;
     }
@@ -757,19 +760,21 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
     }
 
     const bool painted = drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
-    if (painted
-            && request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
-            && !request.runtimeResult->secondary.empty()) {
-        Rectangle<float> content = request.area.reduced(
+    if (painted && request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram) {
+        const float width = jlimit(
+                0.f,
+                1.f,
+                nodeParameterValue(request.node, "width", "1").getFloatValue());
+        const Rectangle<float> content = request.area.reduced(
                 jmin(request.area.getWidth(), request.area.getHeight()) * 0.024f);
-        graphics.setColour(EffectPlotPalette::label.withAlpha(0.88f));
-        graphics.setFont(FontOptions(10.f, Font::bold));
-        graphics.drawText("L", content.removeFromLeft(content.getWidth() * 0.5f).reduced(5.f, 2.f),
-                Justification::topLeft);
-        graphics.drawText("R", content.reduced(5.f, 2.f), Justification::topLeft);
-        graphics.setFont(FontOptions(9.f));
-        graphics.drawText("FREQ", content.reduced(5.f, 2.f), Justification::topRight);
-        graphics.drawText("TIME", content.reduced(5.f, 2.f), Justification::bottomRight);
+        const float halfSpan = content.getWidth() * 0.46f * width;
+        graphics.setColour(EffectPlotPalette::accent.withAlpha(0.82f));
+        graphics.fillRoundedRectangle(
+                content.getCentreX() - halfSpan,
+                content.getBottom() - 3.f,
+                halfSpan * 2.f,
+                2.f,
+                1.f);
     }
     return painted;
 }

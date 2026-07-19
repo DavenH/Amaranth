@@ -4,8 +4,6 @@
 
 #include <Algo/FFT.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
-#include <Util/NumberUtils.h>
-
 #include <cmath>
 
 namespace CycleV2 {
@@ -31,17 +29,8 @@ public:
 
         constexpr int fftSize = 2048;
         constexpr size_t spectralRowCount = fftSize / 2 + 1;
-        constexpr unsigned minimumKernelLog2 = 12;
-        constexpr size_t minimumColumnCount = 256;
-        constexpr size_t columnsPerSizeStep = 32;
-
-        const unsigned kernelLog2 = NumberUtils::log2i(
-                (unsigned) configuration->kernels[0].size());
-        const size_t sizeDetail = columnsPerSizeStep * (size_t) (kernelLog2 > minimumKernelLog2
-                ? kernelLog2 - minimumKernelLog2
-                : 0);
-        const size_t columnCount = std::max(minimumColumnCount, context.pointCount)
-                + sizeDetail;
+        constexpr size_t maximumKernelSize = 262144;
+        constexpr size_t columnCount = 512;
         const size_t rowCount = spectralRowCount;
         const float directLevel = jmax(0.5f, configuration->width);
         const float crossLevel = jmin(0.5f, 1.f - configuration->width);
@@ -65,11 +54,13 @@ public:
                 leftResponse,
                 columnCount,
                 rowCount,
+                maximumKernelSize,
                 context.primary);
         analyzeResponse(
                 rightResponse,
                 columnCount,
                 rowCount,
+                maximumKernelSize,
                 context.secondary);
 
         context.gridColumns = columnCount;
@@ -115,6 +106,7 @@ private:
             const std::vector<float>& responseStorage,
             size_t columnCount,
             size_t rowCount,
+            size_t maximumResponseSize,
             std::vector<float>& surface) {
         constexpr int fftSize = 2048;
 
@@ -134,8 +126,8 @@ private:
         Transform fft;
         fft.allocate(fftSize, Transform::DivFwdByN, true);
 
-        const size_t maximumStart = response.size() > fftSize
-                ? (size_t) response.size() - fftSize
+        const size_t maximumStart = maximumResponseSize > fftSize
+                ? maximumResponseSize - fftSize
                 : 0;
 
         for (size_t column = 0; column < columnCount; ++column) {
@@ -143,6 +135,10 @@ private:
                     ? column * maximumStart / (columnCount - 1)
                     : 0;
             frame.zero();
+
+            if (start >= (size_t) response.size()) {
+                continue;
+            }
 
             const size_t available = std::min<size_t>(
                     fftSize,

@@ -247,3 +247,15 @@ Automation screenshots were produced by the fixtures but are not cited as
 visual proof because macOS focus/capture reliability is environment-dependent.
 Numerical response assertions, final-raster pixel tests, runtime state
 assertions, and clean filtered logs are the authoritative evidence.
+
+Follow-up refinement replaced the split Reverb spectrogram with one readable
+response and a compact, production-width-derived spread indicator. Its time
+axis now uses the maximum kernel duration as a stable reference, so adjacent
+1.49 s and 2.97 s kernel stops occupy measurably different extents. Reverb plot
+labels that did not aid operation were removed.
+
+The Equalizer compact preview now uses the same response painter, palette,
+scale, and centre reference as the expanded graph. The expanded editor has a
+taller graph and panel, shared Gain/Frequency headers, and ordinal band rows.
+Moving expensive analysis to coalesced asynchronous edit updates is explicitly
+deferred to a separate TDD and implementation branch.

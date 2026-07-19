@@ -19,5 +19,11 @@ void paintEqualizerResponsePreview(
         Rectangle<float> area,
         const Node& node,
         bool showDetails);
+void paintEqualizerResponseData(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        const std::vector<float>& response,
+        bool showDetails);
 
 }
