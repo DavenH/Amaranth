@@ -14,5 +14,10 @@ void paintDelayPingPreview(
         Rectangle<float> area,
         const Node& node,
         float zoom);
+void paintEqualizerResponsePreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        bool showDetails);
 
 }

@@ -10,6 +10,8 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
     REQUIRE(CycleDsp::equalizerGainDecibels(0.f) == Approx(-30.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(0.5f) == Approx(0.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(1.f) == Approx(30.f));
+    REQUIRE(CycleDsp::equalizerGainSnappedUnitValue(0.51f, 500.f) == Approx(0.5f));
+    REQUIRE(CycleDsp::equalizerGainSnappedUnitValue(0.52f, 500.f) == Approx(0.52f));
 
     for (float frequency : { 60.f, 250.f, 1200.f, 4000.f, 8000.f }) {
         REQUIRE(CycleDsp::equalizerFrequency(

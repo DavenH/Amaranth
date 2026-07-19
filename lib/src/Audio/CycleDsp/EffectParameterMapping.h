@@ -9,6 +9,10 @@ constexpr int reverbSizeStepCount = 7;
 
 float equalizerGainDecibels(float unitValue);
 float equalizerGainUnitValue(float decibels);
+float equalizerGainSnappedUnitValue(
+        float unitValue,
+        float sliderWidthPixels,
+        float snapDistancePixels = 8.f);
 float equalizerFrequency(float unitValue);
 float equalizerFrequencyUnitValue(float frequency);
 

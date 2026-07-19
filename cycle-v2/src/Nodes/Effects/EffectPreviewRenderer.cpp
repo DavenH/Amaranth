@@ -5,7 +5,10 @@
 #include "../../UI/NodeParameterValue.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+
+#include <cmath>
 
 namespace CycleV2 {
 
@@ -143,6 +146,99 @@ void paintDelayPingPreview(
                 EffectPlotPalette::accent.withAlpha(0.30f + amplitude * 0.62f)));
         graphics.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre({ x, y }));
         amplitude *= feedback;
+    }
+}
+
+void paintEqualizerResponsePreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        bool showDetails) {
+    CycleDsp::EqualizerCore core(1);
+    for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
+        const String prefix = "band" + String(band + 1);
+        core.configureBand(
+                band,
+                44100.0,
+                CycleDsp::equalizerFrequency(parameterValue(
+                        node, prefix + "Frequency", 0.5f)),
+                CycleDsp::equalizerGainDecibels(parameterValue(
+                        node, prefix + "Gain", 0.5f)));
+    }
+
+    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const auto stateColour = [enabled](Colour colour) {
+        return EffectPlotPalette::forEnabledState(colour, enabled);
+    };
+    const auto frequencyX = [&area](double frequency) {
+        const double unit = std::log(frequency / 40.0) / std::log(400.0);
+        return area.getX() + (float) unit * area.getWidth();
+    };
+    const auto decibelY = [&area](float decibels) {
+        return area.getCentreY()
+                - jlimit(-30.f, 30.f, decibels) * area.getHeight() / 60.f;
+    };
+
+    if (showDetails) {
+        static constexpr float frequencyLandmarks[] {
+                60.f, 120.f, 250.f, 500.f, 1000.f, 2000.f, 4000.f, 8000.f, 16000.f
+        };
+        for (const float landmark : frequencyLandmarks) {
+            graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.18f)));
+            graphics.drawVerticalLine(
+                    roundToInt(frequencyX(landmark)),
+                    area.getY(),
+                    area.getBottom());
+        }
+
+        for (const float decibels : { -24.f, -12.f, 0.f, 12.f, 24.f }) {
+            const bool zero = decibels == 0.f;
+            graphics.setColour(stateColour(
+                    EffectPlotPalette::grid.withAlpha(zero ? 0.72f : 0.22f)));
+            graphics.fillRect(
+                    area.getX(),
+                    decibelY(decibels) - 0.5f,
+                    area.getWidth(),
+                    1.f);
+        }
+    }
+
+    Path response;
+    const int pointCount = jmax(2, roundToInt(area.getWidth()));
+    double frequency = 40.0;
+    const double frequencyRatio = std::pow(400.0, 1.0 / (double) (pointCount - 1));
+    for (int index = 0; index < pointCount; ++index) {
+        const double unit = (double) index / (double) (pointCount - 1);
+        const Point<float> point(
+                area.getX() + (float) unit * area.getWidth(),
+                decibelY(core.responseDecibels(frequency)));
+        if (index == 0) {
+            response.startNewSubPath(point);
+        } else {
+            response.lineTo(point);
+        }
+        frequency *= frequencyRatio;
+    }
+    graphics.setColour(stateColour(EffectPlotPalette::accent));
+    graphics.strokePath(response, PathStrokeType(2.f, PathStrokeType::curved));
+
+    if (!showDetails) {
+        return;
+    }
+    graphics.setFont(FontOptions(8.f, Font::bold));
+    for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
+        const String prefix = "band" + String(band + 1);
+        const float bandFrequency = CycleDsp::equalizerFrequency(parameterValue(
+                node, prefix + "Frequency", 0.5f));
+        const Point<float> marker(
+                frequencyX(bandFrequency),
+                decibelY(core.responseDecibels(bandFrequency)));
+        const Rectangle<float> markerBounds = Rectangle<float>(12.f, 12.f).withCentre(marker);
+        graphics.setColour(stateColour(EffectPlotPalette::background.withAlpha(0.92f)));
+        graphics.fillEllipse(markerBounds);
+        graphics.setColour(stateColour(EffectPlotPalette::accent.withAlpha(0.92f)));
+        graphics.drawEllipse(markerBounds, 1.f);
+        graphics.drawText(String(band + 1), markerBounds, Justification::centred);
     }
 }
 

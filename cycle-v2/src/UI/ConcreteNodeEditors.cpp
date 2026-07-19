@@ -1,4 +1,4 @@
-#include <cmath>
+#include <iterator>
 
 #include "NodeEditorHost.h"
 
@@ -12,7 +12,6 @@
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
-#include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 namespace CycleV2 {
@@ -33,6 +32,14 @@ public:
         reverbSize = shouldUseReverbSize;
     }
 
+    void setEqualizerGain(bool shouldUseEqualizerGain) {
+        equalizerGain = shouldUseEqualizerGain;
+    }
+
+    void setEqualizerFrequency(bool shouldUseEqualizerFrequency) {
+        equalizerFrequency = shouldUseEqualizerFrequency;
+    }
+
     double snapValue(double attemptedValue, DragMode dragMode) override {
         if (panCycle) {
             return CycleDsp::delaySpinUnitValueForIterations(
@@ -44,6 +51,11 @@ public:
                     CycleDsp::reverbSizeStepCount - 1,
                     roundToInt(attemptedValue * (CycleDsp::reverbSizeStepCount - 1)));
             return CycleDsp::reverbSizeUnitValueForStep(step);
+        }
+        if (equalizerGain) {
+            return CycleDsp::equalizerGainSnappedUnitValue(
+                    (float) attemptedValue,
+                    (float) getWidth());
         }
         if (!delayTime || dragMode == notDragging) {
             return attemptedValue;
@@ -78,6 +90,29 @@ public:
             }
             return;
         }
+        if (equalizerGain) {
+            graphics.setColour(Colour(0xff72808f).withAlpha(0.82f));
+            graphics.setFont(FontOptions(8.f));
+            paintStopTick(graphics, 0.5, "0");
+            return;
+        }
+        if (equalizerFrequency) {
+            static constexpr float landmarks[] {
+                    60.f, 120.f, 250.f, 500.f, 1000.f, 2000.f, 4000.f, 8000.f, 16000.f
+            };
+            static constexpr const char* labels[] {
+                    "60", "120", "250", "500", "1k", "2k", "4k", "8k", "16k"
+            };
+            graphics.setColour(Colour(0xff72808f).withAlpha(0.64f));
+            graphics.setFont(FontOptions(7.f));
+            for (size_t index = 0; index < std::size(landmarks); ++index) {
+                paintStopTick(
+                        graphics,
+                        CycleDsp::equalizerFrequencyUnitValue(landmarks[index]),
+                        labels[index]);
+            }
+            return;
+        }
         if (!delayTime) {
             return;
         }
@@ -109,6 +144,8 @@ private:
     bool delayTime {};
     bool panCycle {};
     bool reverbSize {};
+    bool equalizerGain {};
+    bool equalizerFrequency {};
 };
 
 class EffectParameterEditorComponent final : public Component {
@@ -169,7 +206,11 @@ public:
                     EffectPlotPalette::insetBackground,
                     enabledButton.getToggleState()));
             graphics.fillRoundedRectangle(response, 6.f);
-            paintEqualizerResponse(graphics, response.reduced(12.f, 9.f));
+            paintEqualizerResponsePreview(
+                    graphics,
+                    response.reduced(12.f, 9.f),
+                    node,
+                    true);
         }
     }
 
@@ -236,9 +277,23 @@ private:
         control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
         control->slider.setPanCycle(kind == NodeKind::Delay && id == "spinIters");
         control->slider.setReverbSize(kind == NodeKind::Reverb && id == "size");
+        control->slider.setEqualizerGain(
+                kind == NodeKind::Equalizer && id.endsWith("Gain"));
+        control->slider.setEqualizerFrequency(
+                kind == NodeKind::Equalizer && id.endsWith("Frequency"));
         if (kind == NodeKind::Delay && id == "spinIters") {
             const String explanation =
                     "One complete stereo pan cycle spans this many delay intervals";
+            control->label.setTooltip(explanation);
+            control->slider.setTooltip(explanation);
+        }
+        if (kind == NodeKind::Equalizer && id.endsWith("Frequency")) {
+            String explanation = "Fixed-bandwidth centre frequency";
+            if (id.startsWith("band1")) {
+                explanation = "Low-shelf corner frequency";
+            } else if (id.startsWith("band5")) {
+                explanation = "High-shelf corner frequency";
+            }
             control->label.setTooltip(explanation);
             control->slider.setTooltip(explanation);
         }
@@ -293,7 +348,7 @@ private:
                 addControl(prefix + "Gain", "Band " + String(band + 1) + " Gain", 0.5f);
                 addControl(
                         prefix + "Frequency",
-                        "Frequency",
+                        "Band " + String(band + 1) + " Frequency",
                         CycleDsp::equalizerFrequencyUnitValue(frequencies[band]));
             }
         }
@@ -327,47 +382,6 @@ private:
             text = String(roundToInt(value * 100.f)) + "%";
         }
         control.readout.setText(text, dontSendNotification);
-    }
-
-    void paintEqualizerResponse(Graphics& graphics, Rectangle<float> area) const {
-        CycleDsp::EqualizerCore core(1);
-        for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
-            const auto& gain = controls[(size_t) band * 2];
-            const auto& frequency = controls[(size_t) band * 2 + 1];
-            core.configureBand(
-                    band,
-                    44100.0,
-                    CycleDsp::equalizerFrequency((float) frequency->slider.getValue()),
-                    CycleDsp::equalizerGainDecibels((float) gain->slider.getValue()));
-        }
-
-        Path response;
-        const int pointCount = jmax(2, roundToInt(area.getWidth()));
-        double frequency = 40.0;
-        const double frequencyRatio = std::pow(400.0, 1.0 / (double) (pointCount - 1));
-        for (int index = 0; index < pointCount; ++index) {
-            const double unit = (double) index / (double) (pointCount - 1);
-            const float decibels = core.responseDecibels(frequency);
-            const Point<float> point(
-                    area.getX() + (float) unit * area.getWidth(),
-                    area.getCentreY() - jlimit(-30.f, 30.f, decibels) * area.getHeight() / 60.f);
-            if (index == 0) {
-                response.startNewSubPath(point);
-            } else {
-                response.lineTo(point);
-            }
-            frequency *= frequencyRatio;
-        }
-
-        const bool enabled = enabledButton.getToggleState();
-        graphics.setColour(EffectPlotPalette::forEnabledState(
-                EffectPlotPalette::grid.withAlpha(0.52f),
-                enabled));
-        graphics.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
-        graphics.setColour(EffectPlotPalette::forEnabledState(
-                EffectPlotPalette::accent,
-                enabled));
-        graphics.strokePath(response, PathStrokeType(2.f, PathStrokeType::curved));
     }
 
     String title() const {

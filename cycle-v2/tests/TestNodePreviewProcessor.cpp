@@ -88,6 +88,41 @@ TEST_CASE("Disabled compact effect previews are greyscale",
     }
 }
 
+TEST_CASE("Disabled Equalizer response retains a greyscale configured curve",
+        "[cycle-v2][effects][preview][equalizer]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node enabled;
+    enabled.kind = NodeKind::Equalizer;
+    enabled.parameters = {
+            { "enabled", "Enabled", "1" },
+            { "band1Gain", "Band 1 Gain", "0.7" },
+            { "band1Frequency", "Band 1 Frequency", "0.2" },
+            { "band3Gain", "Band 3 Gain", "0.3" },
+            { "band3Frequency", "Band 3 Frequency", "0.55" }
+    };
+    Node disabled = enabled;
+    disabled.parameters.front().value = "0";
+
+    Image enabledImage(Image::RGB, 500, 120, true);
+    Graphics enabledGraphics(enabledImage);
+    paintEqualizerResponsePreview(
+            enabledGraphics,
+            enabledImage.getBounds().toFloat(),
+            enabled,
+            true);
+
+    Image disabledImage(Image::RGB, 500, 120, true);
+    Graphics disabledGraphics(disabledImage);
+    paintEqualizerResponsePreview(
+            disabledGraphics,
+            disabledImage.getBounds().toFloat(),
+            disabled,
+            true);
+
+    REQUIRE(hasColouredPixel(enabledImage));
+    REQUIRE_FALSE(hasColouredPixel(disabledImage));
+}
+
 TEST_CASE("Reverb preview spectrogram analyzes the generated kernel",
         "[cycle-v2][runtime][effects][reverb][preview]") {
     NodePreviewProcessorFactory factory;

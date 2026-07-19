@@ -27,6 +27,15 @@ float equalizerGainUnitValue(float decibels) {
     return unitValue(decibels / 60.f + 0.5f);
 }
 
+float equalizerGainSnappedUnitValue(
+        float value,
+        float sliderWidthPixels,
+        float snapDistancePixels) {
+    const float normalized = unitValue(value);
+    const float distance = std::abs(normalized - 0.5f) * std::max(1.f, sliderWidthPixels);
+    return distance <= std::max(0.f, snapDistancePixels) ? 0.5f : normalized;
+}
+
 float equalizerFrequency(float value) {
     const float exponent = unitValue(value) * std::log(kEqualizerFrequencyTension + 1.f);
     const float frequency = kEqualizerMaximumFrequency

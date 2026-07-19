@@ -6,6 +6,10 @@
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 500 },
     { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "enabled", "label": "Enabled", "value": "0", "waitForIdle": true, "idleDelayMs": 500 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.enabled", "equals": false },
+    { "command": "addNode", "kind": "equalizer", "x": 1040, "y": 300 },
+    { "command": "openNodeEditor", "nodeId": "eq", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "setNodeParameter", "nodeId": "eq", "parameterId": "enabled", "label": "Enabled", "value": "0", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.enabled", "equals": false },
     { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-disabled-effect-displays.png" }
   ],
   "quit": true
