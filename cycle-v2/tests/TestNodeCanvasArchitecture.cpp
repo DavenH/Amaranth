@@ -13,6 +13,7 @@
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeRail.h"
+#include "../src/UI/SpectralPreviewMapping.h"
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
@@ -69,6 +70,38 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
 }
 
+}
+
+TEST_CASE("Spectral preview excludes DC and preserves low harmonic detail",
+        "[cycle-v2][canvas][preview][spectral]") {
+    constexpr size_t columns = 2;
+    constexpr size_t rows = 65;
+    std::vector<float> withDc(columns * rows);
+    std::vector<float> withoutDc(columns * rows);
+
+    for (size_t column = 0; column < columns; ++column) {
+        withDc[column * rows] = 1000.f;
+
+        for (size_t harmonic = 1; harmonic < rows; ++harmonic) {
+            const float magnitude = 1.f / (float) harmonic;
+            withDc[column * rows + harmonic] = magnitude;
+            withoutDc[column * rows + harmonic] = magnitude;
+        }
+    }
+
+    const auto mappedWithDc = SpectralPreviewMapping::magnitudeSurface(
+            withDc,
+            columns,
+            rows);
+    const auto mappedWithoutDc = SpectralPreviewMapping::magnitudeSurface(
+            withoutDc,
+            columns,
+            rows);
+
+    REQUIRE(mappedWithDc == mappedWithoutDc);
+    REQUIRE(mappedWithDc[0] > mappedWithDc[rows / 2]);
+    REQUIRE(mappedWithDc[rows / 2] > mappedWithDc[rows - 1]);
+    REQUIRE(mappedWithDc[rows / 8] > 0.1f);
 }
 
 TEST_CASE("Node palette resolves every authored node kind from its visible entry",
