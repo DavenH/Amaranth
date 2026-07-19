@@ -73,14 +73,28 @@ float delayUnitValueForBeats(double beats, int beatsPerMeasure) {
     return unitValue((float) std::sqrt(normalizedBeats / normalizedMeasure));
 }
 
-float delaySnappedUnitValue(float value, int beatsPerMeasure) {
+float delaySnappedUnitValue(
+        float value,
+        int beatsPerMeasure,
+        float sliderWidthPixels,
+        float snapDistancePixels) {
     const int normalizedMeasure = std::max(1, beatsPerMeasure);
-    const double beats = delayBeats(value, normalizedMeasure);
-    const double nearestBeat = std::round(beats);
-    constexpr double snapDistanceBeats = 0.1;
-    return std::abs(beats - nearestBeat) <= snapDistanceBeats
-            ? delayUnitValueForBeats(nearestBeat, normalizedMeasure)
-            : unitValue(value);
+    const float normalizedValue = unitValue(value);
+    const float normalizedWidth = std::max(1.f, sliderWidthPixels);
+    const float normalizedSnapDistance = std::max(0.f, snapDistancePixels);
+    float closestValue = normalizedValue;
+    float closestDistance = normalizedSnapDistance + 1.f;
+
+    for (int beat = 0; beat <= normalizedMeasure; ++beat) {
+        const float beatValue = delayUnitValueForBeats((double) beat, normalizedMeasure);
+        const float distance = std::abs(beatValue - normalizedValue) * normalizedWidth;
+        if (distance < closestDistance) {
+            closestValue = beatValue;
+            closestDistance = distance;
+        }
+    }
+
+    return closestDistance <= normalizedSnapDistance ? closestValue : normalizedValue;
 }
 
 }

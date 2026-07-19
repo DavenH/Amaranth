@@ -18,6 +18,49 @@ namespace CycleV2 {
 
 namespace {
 
+class EffectParameterSlider final : public Slider {
+public:
+    void setDelayTime(bool shouldUseDelayTime) {
+        delayTime = shouldUseDelayTime;
+    }
+
+    double snapValue(double attemptedValue, DragMode dragMode) override {
+        if (!delayTime || dragMode == notDragging) {
+            return attemptedValue;
+        }
+
+        return CycleDsp::delaySnappedUnitValue(
+                (float) attemptedValue,
+                4,
+                (float) getWidth());
+    }
+
+    void paint(Graphics& graphics) override {
+        Slider::paint(graphics);
+        if (!delayTime) {
+            return;
+        }
+
+        graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+        graphics.setFont(FontOptions(8.f));
+        for (int beat = 1; beat <= 4; ++beat) {
+            const float value = CycleDsp::delayUnitValueForBeats((double) beat, 4);
+            const float x = getPositionOfValue(value);
+            graphics.drawVerticalLine(roundToInt(x), 10.f, 18.f);
+            graphics.drawText(
+                    String(beat),
+                    roundToInt(x) - 6,
+                    0,
+                    12,
+                    9,
+                    Justification::centred);
+        }
+    }
+
+private:
+    bool delayTime {};
+};
+
 class EffectParameterEditorComponent final : public Component {
 public:
     EffectParameterEditorComponent(
@@ -120,7 +163,7 @@ private:
         String name;
         float defaultValue {};
         Label label;
-        Slider slider;
+        EffectParameterSlider slider;
         Label readout;
         bool editing {};
     };
@@ -138,6 +181,7 @@ private:
         control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         control->slider.setRange(0.0, 1.0, 0.0001);
         control->slider.setDoubleClickReturnValue(true, defaultValue);
+        control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
         auto* raw = control.get();
         control->slider.onDragStart = [this, raw] {
             raw->editing = true;
@@ -145,11 +189,6 @@ private:
                     node.id, raw->id, raw->name, (float) raw->slider.getValue());
         };
         control->slider.onValueChange = [this, raw] {
-            if (kind == NodeKind::Delay && raw->id == "time") {
-                raw->slider.setValue(
-                        CycleDsp::delaySnappedUnitValue((float) raw->slider.getValue(), 4),
-                        dontSendNotification);
-            }
             updateReadout(*raw);
             if (kind == NodeKind::Delay && raw->id == "time" && controls.size() > 3) {
                 updateReadout(*controls[3]);
