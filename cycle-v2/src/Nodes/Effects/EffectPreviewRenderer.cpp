@@ -240,23 +240,30 @@ void paintEqualizerResponseData(
     }
     graphics.setFont(FontOptions(8.f, Font::bold));
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
-        const String prefix = "band" + String(band + 1);
-        const float unit = (float) frequencyUnit(CycleDsp::equalizerFrequency(
-                parameterValue(node, prefix + "Frequency", 0.5f)));
-        const size_t index = (size_t) jlimit(
-                0,
-                (int) response.size() - 1,
-                roundToInt(unit * denominator));
-        const Rectangle<float> marker = Rectangle<float>(12.f, 12.f).withCentre({
-                area.getX() + unit * area.getWidth(),
-                area.getBottom() - response[index] * area.getHeight()
-        });
+        const Rectangle<float> marker = Rectangle<float>(12.f, 12.f).withCentre(
+                equalizerBandControlPoint(area, node, band));
         graphics.setColour(stateColour(EffectPlotPalette::background.withAlpha(0.92f)));
         graphics.fillEllipse(marker);
         graphics.setColour(stateColour(EffectPlotPalette::accent.withAlpha(0.92f)));
         graphics.drawEllipse(marker, 1.f);
         graphics.drawText(String(band + 1), marker, Justification::centred);
     }
+}
+
+Point<float> equalizerBandControlPoint(
+        Rectangle<float> area,
+        const Node& node,
+        int band) {
+    const String prefix = "band" + String(band + 1);
+    const float frequency = CycleDsp::equalizerFrequency(parameterValue(
+            node, prefix + "Frequency", 0.5f));
+    const float frequencyUnit = (float) (
+            std::log((double) frequency / 40.0) / std::log(400.0));
+    const float gainUnit = parameterValue(node, prefix + "Gain", 0.5f);
+    return {
+            area.getX() + frequencyUnit * area.getWidth(),
+            area.getBottom() - gainUnit * area.getHeight()
+    };
 }
 
 bool paintEffectCompactPreview(

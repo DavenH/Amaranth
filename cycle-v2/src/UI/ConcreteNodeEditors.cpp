@@ -14,6 +14,8 @@
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
+#include <cmath>
+
 namespace CycleV2 {
 
 namespace {
@@ -223,8 +225,9 @@ public:
     void resized() override {
         closeButton.setBounds(getWidth() - 42, 9, 28, 28);
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
-        int y = kind == NodeKind::Reverb || kind == NodeKind::Delay
-                || kind == NodeKind::Equalizer ? 216 : 56;
+        int y = kind == NodeKind::Equalizer
+                ? 242
+                : (kind == NodeKind::Reverb || kind == NodeKind::Delay ? 216 : 56);
         if (kind == NodeKind::Equalizer) {
             gainHeader.setBounds(38, y - 18, (getWidth() - 76) / 2, 18);
             frequencyHeader.setBounds(
@@ -242,6 +245,72 @@ public:
             layoutControl(*control, 18, y, getWidth() - 36);
             y += 58;
         }
+    }
+
+    void mouseDown(const MouseEvent& event) override {
+        if (kind != NodeKind::Equalizer || !equalizerGraphArea().contains(event.position)) {
+            return;
+        }
+
+        float nearestDistance = 15.f;
+        for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
+            const float distance = equalizerBandControlPoint(equalizerGraphArea(), node, band)
+                    .getDistanceFrom(event.position);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                draggedEqualizerBand = band;
+            }
+        }
+        if (draggedEqualizerBand < 0) {
+            return;
+        }
+
+        Control& gain = *controls[(size_t) draggedEqualizerBand * 2];
+        Control& frequency = *controls[(size_t) draggedEqualizerBand * 2 + 1];
+        commands.beginNodeParameterPairEdit(
+                node.id,
+                gain.id,
+                gain.name,
+                (float) gain.slider.getValue(),
+                frequency.id,
+                frequency.name,
+                (float) frequency.slider.getValue());
+    }
+
+    void mouseDrag(const MouseEvent& event) override {
+        if (draggedEqualizerBand < 0) {
+            return;
+        }
+
+        const Rectangle<float> graph = equalizerGraphArea();
+        const float frequencyPosition = jlimit(
+                0.f,
+                1.f,
+                (event.position.x - graph.getX()) / graph.getWidth());
+        const float gainValue = jlimit(
+                0.f,
+                1.f,
+                (graph.getBottom() - event.position.y) / graph.getHeight());
+        const float frequency = 40.f * std::pow(400.f, frequencyPosition);
+        const float frequencyValue = CycleDsp::equalizerFrequencyUnitValue(frequency);
+        Control& gain = *controls[(size_t) draggedEqualizerBand * 2];
+        Control& frequencyControl = *controls[(size_t) draggedEqualizerBand * 2 + 1];
+        gain.slider.setValue(gainValue, dontSendNotification);
+        frequencyControl.slider.setValue(frequencyValue, dontSendNotification);
+        updateReadout(gain);
+        updateReadout(frequencyControl);
+        setLocalNodeParameter(gain.id, gainValue);
+        setLocalNodeParameter(frequencyControl.id, frequencyValue);
+        commands.updateNodeParameterPairEditValues(gainValue, frequencyValue);
+        repaint();
+    }
+
+    void mouseUp(const MouseEvent&) override {
+        if (draggedEqualizerBand < 0) {
+            return;
+        }
+        commands.endNodeParameterEdit();
+        draggedEqualizerBand = -1;
     }
 
     var automationState() const {
@@ -379,12 +448,26 @@ private:
         const int columnWidth = (getWidth() - 76) / 2;
         const int frequencyX = getWidth() / 2 + 20;
 
-        gain.label.setBounds(18, y, 20, 18);
+        gain.label.setBounds(18, y + 20, 20, 28);
         gain.readout.setBounds(38 + columnWidth - 92, y, 92, 18);
         gain.slider.setBounds(38, y + 20, columnWidth, 28);
         frequency.label.setBounds(0, 0, 0, 0);
         frequency.readout.setBounds(frequencyX + columnWidth - 92, y, 92, 18);
         frequency.slider.setBounds(frequencyX, y + 20, columnWidth, 28);
+    }
+
+    Rectangle<float> equalizerGraphArea() const {
+        return Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f)
+                .reduced(12.f, 9.f);
+    }
+
+    void setLocalNodeParameter(const String& id, float value) {
+        for (NodeParameter& parameter : node.parameters) {
+            if (parameter.id == id) {
+                parameter.value = String(value, 6);
+                return;
+            }
+        }
     }
 
     void updateReadout(Control& control) {
@@ -430,6 +513,7 @@ private:
     ToggleButton enabledButton;
     Label gainHeader;
     Label frequencyHeader;
+    int draggedEqualizerBand { -1 };
     std::vector<std::unique_ptr<Control>> controls;
 };
 
@@ -443,7 +527,9 @@ public:
     void appendAutomationState(DynamicObject& state) const override {
         state.setProperty("effectParameters", editor.automationState());
     }
-    Rectangle<float> panelBoundsForAutomation() const override { return editor.getBounds().toFloat(); }
+    Rectangle<float> panelBoundsForAutomation() const override {
+        return editor.getLocalBounds().toFloat();
+    }
     void releaseOpenGLResources() override {}
 private:
     EffectParameterEditorComponent editor;

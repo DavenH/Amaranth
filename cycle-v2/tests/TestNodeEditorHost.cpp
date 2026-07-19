@@ -498,6 +498,44 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(presentation.rebinds == 1);
 }
 
+TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",
+        "[cycle-v2][editor][effects][equalizer]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Equalizer, "equalizer", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    const String originalGain = nodeParameterValue(
+            *document.graph().findNode("equalizer"), "band3Gain");
+    const String originalFrequency = nodeParameterValue(
+            *document.graph().findNode("equalizer"), "band3Frequency");
+
+    REQUIRE(commands.beginNodeParameterPairEdit(
+            "equalizer", "band3Gain", "Band 3 Gain", 0.6f,
+            "band3Frequency", "Band 3 Frequency", 0.4f));
+    REQUIRE(commands.updateNodeParameterPairEditValues(0.75f, 0.65f));
+    commands.endNodeParameterEdit();
+
+    const Node* edited = document.graph().findNode("equalizer");
+    REQUIRE(nodeParameterValue(*edited, "band3Gain") == "0.750000");
+    REQUIRE(nodeParameterValue(*edited, "band3Frequency") == "0.650000");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const Node* restored = document.graph().findNode("equalizer");
+    REQUIRE(nodeParameterValue(*restored, "band3Gain") == originalGain);
+    REQUIRE(nodeParameterValue(*restored, "band3Frequency") == originalFrequency);
+    REQUIRE_FALSE(document.canUndo());
+}
+
 TEST_CASE("Effect discrete parameter changes are independently undoable",
         "[cycle-v2][editor][effects]") {
     ScopedJuceInitialiser_GUI juce;

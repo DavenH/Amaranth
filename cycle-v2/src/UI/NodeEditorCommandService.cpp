@@ -58,6 +58,52 @@ bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
     return true;
 }
 
+bool NodeEditorCommandService::beginNodeParameterPairEdit(
+        const String& nodeId,
+        const String& firstParameterId,
+        const String& firstLabel,
+        float firstValue,
+        const String& secondParameterId,
+        const String& secondLabel,
+        float secondValue) {
+    if (findNode(nodeId) == nullptr) {
+        return false;
+    }
+    activeParameterNodeId = nodeId;
+    activeParameterId = firstParameterId;
+    activeParameterLabel = firstLabel;
+    secondaryParameterId = secondParameterId;
+    secondaryParameterLabel = secondLabel;
+    presentation.selectEditedNode(nodeId);
+    commands.beginCompoundEdit();
+    return updateNodeParameterPairEditValues(firstValue, secondValue);
+}
+
+bool NodeEditorCommandService::updateNodeParameterPairEditValues(
+        float firstValue,
+        float secondValue) {
+    if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()
+            || secondaryParameterId.isEmpty()) {
+        return false;
+    }
+    const auto first = commands.setNodeParameter(
+            activeParameterNodeId,
+            activeParameterId,
+            activeParameterLabel,
+            String(firstValue, 6));
+    const auto second = commands.setNodeParameter(
+            activeParameterNodeId,
+            secondaryParameterId,
+            secondaryParameterLabel,
+            String(secondValue, 6));
+    if (!first.succeeded() || !second.succeeded()) {
+        return false;
+    }
+    presentation.scheduleNodeEditorRefresh();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
 void NodeEditorCommandService::endNodeParameterEdit() {
     commands.commitCompoundEdit();
     presentation.flushNodeEditorRefresh();
@@ -65,6 +111,8 @@ void NodeEditorCommandService::endNodeParameterEdit() {
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};
+    secondaryParameterId = {};
+    secondaryParameterLabel = {};
 }
 
 bool NodeEditorCommandService::setNodeParameterValue(

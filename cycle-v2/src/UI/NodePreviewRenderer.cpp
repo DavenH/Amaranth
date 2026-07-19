@@ -607,6 +607,12 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.runtimeResult != nullptr
+            && request.runtimeResult->role == PreviewModuleRole::EqualizerResponse) {
+        paintUncached(graphics, request);
+        return;
+    }
+
     if (!request.cache) {
         paintUncached(graphics, request);
         return;
@@ -709,7 +715,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
         const Rectangle<float> background = request.area.reduced(
                 jmin(request.area.getWidth(), request.area.getHeight()) * 0.04f);
         graphics.setColour(EffectPlotPalette::forEnabledState(
-                EffectPlotPalette::background,
+                EffectPlotPalette::insetBackground,
                 nodeParameterValue(request.node, "enabled", "1").getIntValue() != 0));
         graphics.fillRoundedRectangle(background, 4.f);
         paintEqualizerResponseData(
@@ -717,7 +723,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 background.reduced(8.f, 6.f),
                 request.node,
                 result.primary,
-                request.area.getWidth() >= 300.f && request.area.getHeight() >= 100.f);
+                true);
         return true;
     }
 

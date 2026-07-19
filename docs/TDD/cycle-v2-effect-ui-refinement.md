@@ -260,3 +260,11 @@ scale, and centre reference as the expanded graph. The expanded editor has a
 taller graph and panel, shared Gain/Frequency headers, and ordinal band rows.
 Moving expensive analysis to coalesced asynchronous edit updates is explicitly
 deferred to a separate TDD and implementation branch.
+
+The Equalizer response painter also owns shared band-control geometry. Compact
+rendering bypasses sprite resampling and uses the detailed grid, reference,
+stroke, markers, and inset palette directly. In the expanded editor those
+markers are drag handles: horizontal movement edits logarithmic frequency,
+vertical movement edits gain, and both parameters commit as one undoable edit.
+Column headings are separated from the graph, while ordinal row labels align
+with their sliders.

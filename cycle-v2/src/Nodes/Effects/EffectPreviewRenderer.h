@@ -25,5 +25,9 @@ void paintEqualizerResponseData(
         const Node& node,
         const std::vector<float>& response,
         bool showDetails);
+Point<float> equalizerBandControlPoint(
+        Rectangle<float> area,
+        const Node& node,
+        int band);
 
 }

@@ -41,6 +41,51 @@
       "value": "0.6"
     },
     {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:eq.panel2D",
+      "targetX": 0.702,
+      "targetY": 0.171
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:eq.panel2D",
+      "downTargetId": "expanded:eq.panel2D",
+      "targetX": 0.78,
+      "targetY": 0.12,
+      "downTargetX": 0.702,
+      "downTargetY": 0.171
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:eq.panel2D",
+      "downTargetId": "expanded:eq.panel2D",
+      "targetX": 0.78,
+      "targetY": 0.12,
+      "downTargetX": 0.702,
+      "downTargetY": 0.171,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "eq"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.4.value",
+      "op": "greaterThan",
+      "value": 0.8
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.5.value",
+      "op": "greaterThan",
+      "value": 0.6
+    },
+    {
       "command": "saveGraph",
       "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
     },
@@ -54,12 +99,6 @@
       "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
     },
     {
-      "command": "assertNodeParameter",
-      "nodeId": "eq",
-      "parameterId": "band3Gain",
-      "equals": "0.75"
-    },
-    {
       "command": "openNodeEditor",
       "nodeId": "eq",
       "waitForIdle": true,
@@ -67,8 +106,9 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.4.readout",
-      "equals": "+15.0 dB"
+      "path": "expandedNodeControls.effectParameters.controls.4.value",
+      "op": "greaterThan",
+      "value": 0.8
     }
   ],
   "quit": true
