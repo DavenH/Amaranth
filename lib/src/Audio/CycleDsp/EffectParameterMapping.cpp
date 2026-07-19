@@ -58,8 +58,12 @@ size_t reverbKernelLength(float value) {
 }
 
 float reverbSizeUnitValueForStep(int step) {
-    return (float) std::clamp(step, 0, reverbSizeStepCount - 1)
-            / (float) (reverbSizeStepCount - 1);
+    const int clampedStep = std::clamp(step, 0, reverbSizeStepCount - 1);
+    if (clampedStep == 0 || clampedStep == reverbSizeStepCount - 1) {
+        return (float) clampedStep / (float) (reverbSizeStepCount - 1);
+    }
+    const float boundary = (float) clampedStep / (float) (reverbSizeStepCount - 1);
+    return std::nextafter(boundary, 0.f);
 }
 
 double reverbKernelSeconds(float value, double sampleRate) {

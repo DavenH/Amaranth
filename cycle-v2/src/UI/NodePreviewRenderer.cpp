@@ -759,24 +759,7 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
         cached.runtimeHeatmapSignature = signature;
     }
 
-    const bool painted = drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
-    if (painted && request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram) {
-        const float width = jlimit(
-                0.f,
-                1.f,
-                nodeParameterValue(request.node, "width", "1").getFloatValue());
-        const Rectangle<float> content = request.area.reduced(
-                jmin(request.area.getWidth(), request.area.getHeight()) * 0.024f);
-        const float halfSpan = content.getWidth() * 0.46f * width;
-        graphics.setColour(EffectPlotPalette::accent.withAlpha(0.82f));
-        graphics.fillRoundedRectangle(
-                content.getCentreX() - halfSpan,
-                content.getBottom() - 3.f,
-                halfSpan * 2.f,
-                2.f,
-                1.f);
-    }
-    return painted;
+    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
 }
 
 void NodePreviewRenderer::paintUncached(
