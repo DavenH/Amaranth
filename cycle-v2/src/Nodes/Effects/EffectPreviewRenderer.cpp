@@ -238,7 +238,6 @@ void paintEqualizerResponseData(
     if (!showDetails) {
         return;
     }
-    graphics.setFont(FontOptions(8.f, Font::bold));
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
         const Rectangle<float> marker = Rectangle<float>(12.f, 12.f).withCentre(
                 equalizerBandControlPoint(area, node, band));
@@ -246,7 +245,6 @@ void paintEqualizerResponseData(
         graphics.fillEllipse(marker);
         graphics.setColour(stateColour(EffectPlotPalette::accent.withAlpha(0.92f)));
         graphics.drawEllipse(marker, 1.f);
-        graphics.drawText(String(band + 1), marker, Justification::centred);
     }
 }
 

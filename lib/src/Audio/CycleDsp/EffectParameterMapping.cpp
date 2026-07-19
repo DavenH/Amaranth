@@ -63,7 +63,8 @@ float reverbSizeUnitValueForStep(int step) {
         return (float) clampedStep / (float) (reverbSizeStepCount - 1);
     }
     const float boundary = (float) clampedStep / (float) (reverbSizeStepCount - 1);
-    return std::nextafter(boundary, 0.f);
+    constexpr float sliderInterval = 0.0001f;
+    return (std::ceil(boundary / sliderInterval) - 1.f) * sliderInterval;
 }
 
 double reverbKernelSeconds(float value, double sampleRate) {
