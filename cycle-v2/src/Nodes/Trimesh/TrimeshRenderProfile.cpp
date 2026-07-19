@@ -97,7 +97,7 @@ Colour TrimeshSurfaceStyle::colourForValue(float value) const {
     }
 
     if (spectral) {
-        const float alpha = v <= 0.f ? 0.f : jlimit(0.12f, 0.92f, v * 0.92f);
+        const float alpha = jmin(1.f, 25.f * v * v);
         return sampleGradient(burntalumGradientImage(), v).withAlpha(alpha);
     }
 

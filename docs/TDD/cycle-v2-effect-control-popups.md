@@ -102,30 +102,31 @@ Delay spin panning operate on real stereo payloads.
   compilation, and crash-free rendering. Final screenshot and report:
   `/private/tmp/cycle-v2-reverb-spectrogram-2.png` and
   `/private/tmp/reverb-spectrogram-report-2.json`.
-- Reverb spectrogram analysis normalizes kernel shape before independently
-  reapplying the mapped Wet level, so Wet changes visible energy without
-  concealing the kernel's high-pass attenuation. Room Size increases cached
-  time-column density from 40 to 88 columns across the Cycle 1 kernel-length
-  range instead of stretching one fixed-resolution surface.
+- Reverb spectrogram analysis reads the generated kernel directly; it does not
+  convolve a Dirac pulse merely to copy the kernel. Brightness is referenced to
+  the unaffected upper FFT band before independently applying the mapped Wet
+  level. Room Size increases cached time-column density from 256 to 448 columns
+  across the Cycle 1 kernel-length range.
 - Reverb analysis retains all 1025 half-spectrum bins from its 2048-point FFT
   until image rasterization. A linear display-only gain makes the Dirac
   response legible without changing audio DSP or compressing away the
   high-pass-induced spectral-centroid shift.
-- To keep Cycle's damping-coupled High Pass perceptible at ordinary settings,
-  the preview also analyzes a second Dirac response through the authoritative
-  kernel builder with High Pass zeroed. Per-bin attenuation measured against
-  that baseline increases display contrast only; both responses use the real
-  shared DSP and the audio kernel remains unchanged. The renderer adds no
-  cutoff marker, boundary, or parameter-shaped mask: attenuation appears only
-  in the affected lower spectral partials. OS-rendered 0% and 100% evidence:
-  `/private/tmp/reverb-hp-final-0.png` and
-  `/private/tmp/reverb-hp-final-100.png`.
+- Shared Reverb DSP keeps Damping's cumulative rolloff separate from a static
+  High Pass response applied to the existing block FFT magnitudes. High Pass
+  removes DC through the transform's offset control and applies once per block,
+  rather than bypassing the first spectrum and compounding through the decay.
+  The preview adds no cutoff marker, mask, secondary convolution, or synthetic
+  attenuation.
 - Spectral heatmaps use the inverse logarithmic mapping when converting display
   rows back to FFT-bin positions. The previous forward mapping compressed most
   low-frequency bins into a few pixels. The final-raster regression passes both
   responses through the production row mapping, logarithmic magnitude mapping,
-  colour profile, and heatmap rasterizer; at the default Reverb settings its
-  measured lower-band retention is 0.804 versus 1.064 in the upper band.
+  colour profile, and heatmap rasterizer. It checks both 0% and 100% Damping so
+  High Pass cannot regress to being coupled to Damping. Final-pixel lower-band
+  retention is 0.421 at 0% Damping and 0.412 at 100% Damping while upper-band
+  retention remains 0.993 and 0.984 respectively. Live evidence:
+  `/private/tmp/reverb-hp-fixed-damp-0.png` and
+  `/private/tmp/reverb-hp-fixed-damp-100.png`.
 - Open effect editors rebind after discrete parameter publication and after a
   continuous gesture flushes. The Reverb High Pass live fixture asserts the
   complete open → 0% response → publish 100% → rebound readout and reduced
