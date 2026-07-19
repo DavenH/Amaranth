@@ -173,14 +173,15 @@ Preview-quality follow-up evidence:
   parameterized ping spacing, pan position, and feedback decay.
 - `/private/tmp/cycle-v2-delay-dsp-accurate-final.png` verifies beat-grid
   alignment, a full sine-pan revolution, wet-scaled ping radii, feedback decay,
-  and unclamped viewport clipping. Delay Time and Spin Length retain Cycle 1's
-  quadratic scaling. Time dragging snaps through the shared inverse mapping
-  only within 10 slider pixels of a nonlinearly positioned integer-beat tick;
-  values outside that proximity remain continuous. The native JUCE
-  `Slider::snapValue` hook owns the interaction, and the Time track labels its
-  1–4 beat stops. The first delayed tap is exactly Wet-scaled, with Feedback
-  beginning at the second tap. Spin Length reports the full pan-LFO cycle
-  duration in beats.
+  and unclamped viewport clipping. Delay Time and the internal `spinIters`
+  parameter retain Cycle 1's quadratic scaling. Time dragging snaps through
+  the shared inverse mapping only within 10 slider pixels of a nonlinearly
+  positioned beat tick; values outside that proximity remain continuous. The
+  native JUCE `Slider::snapValue` hook owns the interaction, and the Time track
+  labels its 0.5- and 1–4-beat stops. The first delayed tap is exactly
+  Wet-scaled, with Feedback beginning at the second tap. The UI presents
+  `spinIters` as Pan Cycle and reports both the delay-interval multiplier and
+  the resulting full stereo pan-LFO cycle duration in beats.
 - `/private/tmp/cycle-v2-delay-snap-ticks.png` verifies the nonlinear Time tick
   positions and the canvas-family Delay preview background.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded

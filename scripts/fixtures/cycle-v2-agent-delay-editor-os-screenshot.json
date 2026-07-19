@@ -3,7 +3,7 @@
     { "command": "addNode", "kind": "delay", "x": 540, "y": 280 },
     { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "time", "label": "Time", "value": "0.707107" },
     { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "feedback", "label": "Feedback", "value": "0.8" },
-    { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "spinIters", "label": "Spin Length", "value": "0.8" },
+    { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "spinIters", "label": "Pan Cycle", "value": "0.8" },
     { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "wet", "label": "Wet", "value": "0.8" },
     { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 500 },
     { "command": "inspectTargets", "area": "canvas" }

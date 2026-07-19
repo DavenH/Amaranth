@@ -31,6 +31,9 @@ TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effec
     REQUIRE(CycleDsp::delaySnappedUnitValue(0.519f, 4, 500.f) == Approx(0.5));
     REQUIRE(CycleDsp::delaySnappedUnitValue(0.521f, 4, 500.f) == Approx(0.521f));
     REQUIRE(CycleDsp::delaySnappedUnitValue(0.20f, 4, 500.f) == Approx(0.20f));
+    REQUIRE(CycleDsp::delaySnappedUnitValue(0.36f, 4, 500.f)
+            == Approx(std::sqrt(0.125)));
+    REQUIRE(CycleDsp::delaySnappedUnitValue(0.38f, 4, 500.f) == Approx(0.38f));
     REQUIRE(CycleDsp::delaySnappedUnitValue(0.695f, 4, 500.f)
             == Approx(std::sqrt(0.5)));
 }

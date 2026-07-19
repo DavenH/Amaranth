@@ -85,6 +85,13 @@ float delaySnappedUnitValue(
     float closestValue = normalizedValue;
     float closestDistance = normalizedSnapDistance + 1.f;
 
+    const float halfBeatValue = delayUnitValueForBeats(0.5, normalizedMeasure);
+    const float halfBeatDistance = std::abs(halfBeatValue - normalizedValue) * normalizedWidth;
+    if (halfBeatDistance < closestDistance) {
+        closestValue = halfBeatValue;
+        closestDistance = halfBeatDistance;
+    }
+
     for (int beat = 0; beat <= normalizedMeasure; ++beat) {
         const float beatValue = delayUnitValueForBeats((double) beat, normalizedMeasure);
         const float distance = std::abs(beatValue - normalizedValue) * normalizedWidth;

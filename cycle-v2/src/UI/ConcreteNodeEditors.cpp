@@ -43,21 +43,26 @@ public:
 
         graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
         graphics.setFont(FontOptions(8.f));
+        paintBeatTick(graphics, 0.5, "0.5");
         for (int beat = 1; beat <= 4; ++beat) {
-            const float value = CycleDsp::delayUnitValueForBeats((double) beat, 4);
-            const float x = getPositionOfValue(value);
-            graphics.drawVerticalLine(roundToInt(x), 10.f, 18.f);
-            graphics.drawText(
-                    String(beat),
-                    roundToInt(x) - 6,
-                    0,
-                    12,
-                    9,
-                    Justification::centred);
+            paintBeatTick(graphics, (double) beat, String(beat));
         }
     }
 
 private:
+    void paintBeatTick(Graphics& graphics, double beats, const String& text) {
+        const float value = CycleDsp::delayUnitValueForBeats(beats, 4);
+        const float x = getPositionOfValue(value);
+        graphics.drawVerticalLine(roundToInt(x), 10.f, 18.f);
+        graphics.drawText(
+                text,
+                roundToInt(x) - 8,
+                0,
+                16,
+                9,
+                Justification::centred);
+    }
+
     bool delayTime {};
 };
 
@@ -182,6 +187,12 @@ private:
         control->slider.setRange(0.0, 1.0, 0.0001);
         control->slider.setDoubleClickReturnValue(true, defaultValue);
         control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
+        if (kind == NodeKind::Delay && id == "spinIters") {
+            const String explanation =
+                    "One complete stereo pan cycle spans this many delay intervals";
+            control->label.setTooltip(explanation);
+            control->slider.setTooltip(explanation);
+        }
         auto* raw = control.get();
         control->slider.onDragStart = [this, raw] {
             raw->editing = true;
@@ -224,7 +235,7 @@ private:
             addControl("time", "Time", 0.5f);
             addControl("feedback", "Feedback", 0.5f);
             addControl("spin", "Spin", 0.5f);
-            addControl("spinIters", "Spin Length", 0.2f);
+            addControl("spinIters", "Pan Cycle", 0.2f);
             addControl("wet", "Wet", 0.5f);
         } else {
             const float frequencies[] { 60.f, 250.f, 1200.f, 4000.f, 8000.f };
@@ -258,9 +269,11 @@ private:
                     ? 0.5f
                     : (float) controls.front()->slider.getValue();
             const double cycleBeats = CycleDsp::delayBeats(timeValue, 4) * (double) iterations;
-            text = (cycleBeats < 10.0
+            const String beatText = cycleBeats < 10.0
                     ? String(cycleBeats, 1)
-                    : String(roundToInt(cycleBeats))) + " beats";
+                    : String(roundToInt(cycleBeats));
+            text = String(iterations) + String::fromUTF8("\xc3\x97 \xc2\xb7 ")
+                    + beatText + " beats";
         } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
             const float gain = CycleDsp::equalizerGainDecibels(value);
             text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";
