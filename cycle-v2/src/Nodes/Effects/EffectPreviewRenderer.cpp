@@ -220,31 +220,46 @@ void paintEqualizerResponseData(
     }
 
     Path path;
+    Path fill;
     const float denominator = (float) (response.size() - 1);
+    fill.startNewSubPath(area.getX(), area.getCentreY());
     for (size_t index = 0; index < response.size(); ++index) {
         const Point<float> point {
                 area.getX() + (float) index / denominator * area.getWidth(),
                 area.getBottom() - response[index] * area.getHeight()
         };
+        fill.lineTo(point);
         if (index == 0) {
             path.startNewSubPath(point);
         } else {
             path.lineTo(point);
         }
     }
+    fill.lineTo(area.getRight(), area.getCentreY());
+    fill.closeSubPath();
+    graphics.setColour(stateColour(EffectPlotPalette::label.withAlpha(0.20f)));
+    graphics.fillPath(fill);
     graphics.setColour(stateColour(EffectPlotPalette::accent));
     graphics.strokePath(path, PathStrokeType(showDetails ? 2.f : 1.6f, PathStrokeType::curved));
 
     if (!showDetails) {
         return;
     }
+    const bool expandedMarkers = area.getWidth() >= 300.f;
+    const float markerSize = expandedMarkers ? 12.f : 5.f;
+    if (expandedMarkers) {
+        graphics.setFont(FontOptions(8.f, Font::bold));
+    }
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
-        const Rectangle<float> marker = Rectangle<float>(12.f, 12.f).withCentre(
+        const Rectangle<float> marker = Rectangle<float>(markerSize, markerSize).withCentre(
                 equalizerBandControlPoint(area, node, band));
         graphics.setColour(stateColour(EffectPlotPalette::background.withAlpha(0.92f)));
         graphics.fillEllipse(marker);
         graphics.setColour(stateColour(EffectPlotPalette::accent.withAlpha(0.92f)));
         graphics.drawEllipse(marker, 1.f);
+        if (expandedMarkers) {
+            graphics.drawText(String(band + 1), marker, Justification::centred);
+        }
     }
 }
 

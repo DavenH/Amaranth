@@ -268,3 +268,8 @@ markers are drag handles: horizontal movement edits logarithmic frequency,
 vertical movement edits gain, and both parameters commit as one undoable edit.
 Column headings are separated from the graph, while ordinal row labels align
 with their sliders.
+
+EQ response curves use the application's bipolar visual language: the response
+fills toward the 0 dB centreline and the curve stroke remains above the fill.
+Expanded markers retain numbered, full-size drag handles; compact markers use
+the same positions at reduced size without numbers.
