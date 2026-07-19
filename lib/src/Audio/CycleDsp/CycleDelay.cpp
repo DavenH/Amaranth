@@ -53,7 +53,7 @@ void CycleDelay::configure(const DelayConfiguration& configurationToUse) {
         state.pan = configuration.channel == DelayChannel::Left
                 ? std::min(1.f, 2.f * (1.f - pan))
                 : std::min(1.f, 2.f * pan);
-        state.startingLevel = std::pow(configuration.feedback, spinIndex + 1);
+        state.startingLevel = std::pow(configuration.feedback, spinIndex);
         state.inputDelaySamples = (size_t) std::max(
                 0,
                 (int) ((spinIndex + 1)

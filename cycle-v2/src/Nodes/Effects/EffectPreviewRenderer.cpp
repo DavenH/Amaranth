@@ -96,9 +96,9 @@ void paintDelayPingPreview(
             parameterValue(node, "spinIters", 0.2f));
     constexpr int visibleBeatCount = 16;
     const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
-    float amplitude = feedback;
+    float amplitude = 1.f;
 
-    graphics.setColour(Colour(0xff11262a));
+    graphics.setColour(Colour(0xff111923));
     graphics.fillRoundedRectangle(background, 4.f);
     paintBeatGrid(graphics, content, visibleBeatCount);
     paintDelayAxes(graphics, content, showLabels);

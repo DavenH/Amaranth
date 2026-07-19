@@ -75,10 +75,12 @@ float delayUnitValueForBeats(double beats, int beatsPerMeasure) {
 
 float delaySnappedUnitValue(float value, int beatsPerMeasure) {
     const int normalizedMeasure = std::max(1, beatsPerMeasure);
-    const double beats = std::round(delayBeats(value, normalizedMeasure));
-    return delayUnitValueForBeats(
-            std::clamp(beats, 1.0, (double) normalizedMeasure),
-            normalizedMeasure);
+    const double beats = delayBeats(value, normalizedMeasure);
+    const double nearestBeat = std::round(beats);
+    constexpr double snapDistanceBeats = 0.1;
+    return std::abs(beats - nearestBeat) <= snapDistanceBeats
+            ? delayUnitValueForBeats(nearestBeat, normalizedMeasure)
+            : unitValue(value);
 }
 
 }

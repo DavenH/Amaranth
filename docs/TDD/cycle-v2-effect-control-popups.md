@@ -63,9 +63,8 @@ Delay spin panning operate on real stereo payloads.
 - Reverb and Delay compact previews communicate their parameterized decay,
   feedback, timing, and stereo character and update with parameter edits.
 - Reverb compact and expanded previews display a cached spectrogram produced
-  from an actual Dirac convolution through the prepared stereo kernel and wet,
-  width, damping, high-pass, and size configuration. Analysis must remain off
-  the audio and paint paths.
+  directly from the prepared kernel and its wet, width, damping, high-pass, and
+  size configuration. Analysis must remain off the audio and paint paths.
 
 ## Deletion Targets And Negative Boundaries
 
@@ -174,9 +173,12 @@ Preview-quality follow-up evidence:
   parameterized ping spacing, pan position, and feedback decay.
 - `/private/tmp/cycle-v2-delay-dsp-accurate-final.png` verifies beat-grid
   alignment, a full sine-pan revolution, wet-scaled ping radii, feedback decay,
-  and unclamped viewport clipping. Delay time dragging snaps through the shared
-  inverse mapping to exact integer beats, while Spin Length reports the full
-  pan-LFO cycle duration in beats.
+  and unclamped viewport clipping. Delay Time and Spin Length retain Cycle 1's
+  quadratic scaling. Time dragging snaps through the shared inverse mapping
+  only within 0.1 beat of an integer; values outside that proximity remain
+  continuous. The first delayed tap is exactly Wet-scaled, with Feedback
+  beginning at the second tap. Spin Length reports the full pan-LFO cycle
+  duration in beats.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded
   Delay layout with a taller plot, centered stereo axis, equal vertical plot
   margins, and an in-plot time label.

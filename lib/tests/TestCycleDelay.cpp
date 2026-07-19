@@ -35,7 +35,31 @@ TEST_CASE("CycleDelay preserves delay history across blocks", "[CycleDelay]") {
     delay.process({ second.data(), (int) second.size() });
 
     REQUIRE(first[0] == Catch::Approx(1.f));
-    REQUIRE(second[0] == Catch::Approx(0.5f));
+    REQUIRE(second[0] == Catch::Approx(1.f));
+}
+
+TEST_CASE("CycleDelay applies feedback after the first wet tap", "[CycleDelay]") {
+    auto lowFeedbackConfiguration = testConfiguration();
+    lowFeedbackConfiguration.sampleRate = 10.0;
+    lowFeedbackConfiguration.delaySeconds = 0.1;
+    lowFeedbackConfiguration.feedback = 0.2f;
+    lowFeedbackConfiguration.wet = 0.4f;
+    auto highFeedbackConfiguration = lowFeedbackConfiguration;
+    highFeedbackConfiguration.feedback = 0.8f;
+
+    CycleDelay lowFeedbackDelay;
+    CycleDelay highFeedbackDelay;
+    lowFeedbackDelay.configure(lowFeedbackConfiguration);
+    highFeedbackDelay.configure(highFeedbackConfiguration);
+    std::array<float, 3> lowFeedback { 1.f, 0.f, 0.f };
+    std::array<float, 3> highFeedback = lowFeedback;
+    lowFeedbackDelay.process({ lowFeedback.data(), (int) lowFeedback.size() });
+    highFeedbackDelay.process({ highFeedback.data(), (int) highFeedback.size() });
+
+    REQUIRE(lowFeedback[1] == Catch::Approx(0.4f));
+    REQUIRE(highFeedback[1] == Catch::Approx(0.4f));
+    REQUIRE(lowFeedback[2] == Catch::Approx(0.08f));
+    REQUIRE(highFeedback[2] == Catch::Approx(0.32f));
 }
 
 TEST_CASE("CycleDelay is independent of block partitioning", "[CycleDelay]") {
@@ -79,6 +103,7 @@ TEST_CASE("CycleDelay mapping preserves Cycle tempo and spin semantics", "[Cycle
     REQUIRE(CycleDsp::delayTimeSeconds(0.5, 120.0, 4) == Catch::Approx(0.5));
     REQUIRE(CycleDsp::delayTimeSeconds(0.0, 60.0, 3) == Catch::Approx(0.0675));
     REQUIRE(CycleDsp::delaySpinIterations(0.0) == 1);
+    REQUIRE(CycleDsp::delaySpinIterations(0.5) == 3);
     REQUIRE(CycleDsp::delaySpinIterations(1.0) == 12);
 }
 
@@ -92,10 +117,10 @@ TEST_CASE("CycleDelay does not alias power-of-two delay lengths", "[CycleDelay]"
     delay.process({ samples.data(), (int) samples.size() });
 
     REQUIRE(samples[0] == Catch::Approx(1.f));
-    REQUIRE(samples[1] == Catch::Approx(0.f).margin(1e-17f));
-    REQUIRE(samples[2] == Catch::Approx(0.f).margin(1e-17f));
-    REQUIRE(samples[3] == Catch::Approx(0.f).margin(1e-17f));
-    REQUIRE(samples[4] == Catch::Approx(0.5f));
+    REQUIRE(samples[1] == Catch::Approx(0.f).margin(1e-15f));
+    REQUIRE(samples[2] == Catch::Approx(0.f).margin(1e-15f));
+    REQUIRE(samples[3] == Catch::Approx(0.f).margin(1e-15f));
+    REQUIRE(samples[4] == Catch::Approx(1.f));
 }
 
 TEST_CASE("CycleDelay preserves stereo spin panning", "[CycleDelay]") {
@@ -117,9 +142,9 @@ TEST_CASE("CycleDelay preserves stereo spin panning", "[CycleDelay]") {
     leftDelay.process({ left.data(), (int) left.size() });
     rightDelay.process({ right.data(), (int) right.size() });
 
-    REQUIRE(left[2] == Catch::Approx(0.5f));
-    REQUIRE(right[2] == Catch::Approx(0.5f));
+    REQUIRE(left[2] == Catch::Approx(1.f));
+    REQUIRE(right[2] == Catch::Approx(1.f));
     REQUIRE(left[4] < 0.001f);
-    REQUIRE(right[4] == Catch::Approx(0.25f).margin(0.0001f));
+    REQUIRE(right[4] == Catch::Approx(0.5f).margin(0.0001f));
     REQUIRE(left != right);
 }
