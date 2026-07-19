@@ -44,7 +44,7 @@
       "command": "pointer",
       "event": "down",
       "targetId": "expanded:eq.panel2D",
-      "targetX": 0.702,
+      "targetX": 0.742,
       "targetY": 0.171
     },
     {
@@ -54,7 +54,7 @@
       "downTargetId": "expanded:eq.panel2D",
       "targetX": 0.78,
       "targetY": 0.12,
-      "downTargetX": 0.702,
+      "downTargetX": 0.742,
       "downTargetY": 0.171
     },
     {
@@ -64,7 +64,7 @@
       "downTargetId": "expanded:eq.panel2D",
       "targetX": 0.78,
       "targetY": 0.12,
-      "downTargetX": 0.702,
+      "downTargetX": 0.742,
       "downTargetY": 0.171,
       "waitForIdle": true,
       "idleDelayMs": 150
@@ -75,13 +75,13 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.4.value",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
       "op": "greaterThan",
       "value": 0.8
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.5.value",
+      "path": "expandedNodeControls.effectParameters.controls.7.value",
       "op": "greaterThan",
       "value": 0.6
     },
@@ -106,7 +106,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.4.value",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
       "op": "greaterThan",
       "value": 0.8
     }

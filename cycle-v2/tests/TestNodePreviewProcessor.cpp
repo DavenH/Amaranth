@@ -60,7 +60,7 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
 
 TEST_CASE("Disabled compact effect previews are greyscale",
         "[cycle-v2][effects][preview]") {
-    for (const NodeKind kind : { NodeKind::Delay, NodeKind::Reverb }) {
+    for (const NodeKind kind : { NodeKind::Delay, NodeKind::Reverb, NodeKind::Equalizer }) {
         Node enabled;
         enabled.kind = kind;
         enabled.parameters.push_back({ "enabled", "Enabled", "1" });

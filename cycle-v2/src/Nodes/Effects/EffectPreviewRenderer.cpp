@@ -294,6 +294,25 @@ bool paintEffectCompactPreview(
         return true;
     }
 
+    if (node.kind == NodeKind::Equalizer) {
+        Node displayNode = node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "band1Gain" || parameter.id == "band5Gain") {
+                    parameter.value = "0.68";
+                } else if (parameter.id == "band3Gain") {
+                    parameter.value = "0.32";
+                }
+            }
+        }
+        paintEqualizerResponsePreview(
+                graphics,
+                area.reduced(2.f),
+                displayNode,
+                false);
+        return true;
+    }
+
     return false;
 }
 

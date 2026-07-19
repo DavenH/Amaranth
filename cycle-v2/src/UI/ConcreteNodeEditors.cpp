@@ -252,7 +252,8 @@ public:
             return;
         }
 
-        float nearestDistance = 15.f;
+        constexpr float markerHitRadius = 36.f;
+        float nearestDistance = markerHitRadius;
         for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
             const float distance = equalizerBandControlPoint(equalizerGraphArea(), node, band)
                     .getDistanceFrom(event.position);

@@ -273,3 +273,8 @@ EQ response curves use the application's bipolar visual language: the response
 fills toward the 0 dB centreline and the curve stroke remains above the fill.
 Expanded markers retain numbered, full-size drag handles; compact markers use
 the same positions at reduced size without numbers.
+
+The palette icon uses the same bipolar response renderer with a representative
+EQ contour, without the unrelated generic waveform tile. Expanded marker hit
+targets extend well beyond their painted circles and resolve overlaps to the
+nearest band.
