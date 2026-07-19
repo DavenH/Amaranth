@@ -21,7 +21,9 @@ public:
     explicit NodePreviewRenderer(NodePreviewResources& resources);
 
     static bool requiresEffect2DModel(NodeKind kind);
-    static Image createRuntimeHeatmapImage(const NodePreviewResult& preview);
+    static Image createRuntimeHeatmapImage(
+            const NodePreviewResult& preview,
+            bool desaturated = false);
 
     Rectangle<float> boundsFor(
             const Node& node,
@@ -36,6 +38,7 @@ public:
 private:
     bool paintAuthoritativeModel(Graphics& graphics, const NodePreviewRenderRequest& request);
     bool paintRuntimeResult(Graphics& graphics, const NodePreviewRenderRequest& request);
+    bool paintRuntimeHeatmap(Graphics& graphics, const NodePreviewRenderRequest& request);
     void paintQualitative(Graphics& graphics, const NodePreviewRenderRequest& request);
     void paintUncached(Graphics& graphics, const NodePreviewRenderRequest& request);
     bool paintCachedHeatmap(Graphics& graphics, const NodePreviewRenderRequest& request);

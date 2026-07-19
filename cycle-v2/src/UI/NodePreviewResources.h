@@ -16,6 +16,8 @@ class NodeEditorCommandService;
 struct CachedNodePreviewSprite {
     Image image;
     String signature;
+    Image runtimeHeatmap;
+    String runtimeHeatmapSignature;
     PortDomain domain { PortDomain::ControlSignal };
     int width {};
     int height {};

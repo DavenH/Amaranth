@@ -210,8 +210,7 @@ TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
     result.gridColumns = context.gridColumns;
     result.gridRows = context.gridRows;
     result.domain = context.domain;
-    Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
-    image.desaturate();
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result, true);
 
     float maximumBrightness {};
     bool greyscale = true;

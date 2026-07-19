@@ -191,7 +191,10 @@ Preview-quality follow-up evidence:
   to communicate their bypassed state without changing the represented data.
   Reverb preview analysis retains configured Wet energy while audio is
   bypassed; its final-raster regression requires a greyscale image with visible
-  luminance so desaturation cannot regress to a black display.
+  luminance so desaturation cannot regress to a black display. Compact and
+  expanded Reverb views scale the same size-independent cached runtime heatmap;
+  bypass desaturation is part of that shared cache key and render path rather
+  than an editor-local post-process.
 - `/private/tmp/cycle-v2-delay-snap-ticks.png` verifies the nonlinear Time tick
   positions and the canvas-family Delay preview background.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded
