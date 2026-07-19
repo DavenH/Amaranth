@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress.
+Implemented.
 
 ## Context
 
@@ -209,3 +209,41 @@ Delay is the established reference for these refinements:
   where appropriate.
 - Focused numerical, pixel, interaction, persistence, and crash-regression
   evidence passes.
+
+## Implementation Evidence
+
+- `c6158175` introduced shared canvas-family effect plot tokens and consistent
+  enabled/bypassed rendering for compact and expanded displays.
+- `0a6609bd` exposed every production Reverb Size kernel stop and derived the
+  paired L/R Width display from the production stereo mixing semantics.
+- `1b86af1b` added the EQ 0 dB pixel detent, logarithmic frequency landmarks,
+  response references, numbered band identity, and fixed-bandwidth guidance.
+- The final integration pass moved the remaining tick colours to shared tokens,
+  added lightweight Reverb time/frequency labels, and removed temporary kernel
+  diagnostics from runtime and test output.
+
+The implementation adds no effect branch to `NodeCanvas`, no compatibility
+adapter, and no display-only DSP transfer. Reverb analysis remains in the
+preview processor, EQ response calculation remains in the domain renderer, and
+editor code coordinates controls and paint calls.
+
+Verification on macOS arm64:
+
+- `AmaranthLib_tests '[mapping]'`: 34 assertions passed.
+- `CycleV2_tests '[effects][preview]'`: 41 assertions across seven cases passed.
+- Standalone `CycleV2` and focused `CycleV2_tests` targets built successfully.
+- Reverb, Delay, Equalizer, and disabled-effect automation fixtures completed
+  all 53 commands, including editor publication and persistence checks, with no
+  failed command, assertion, or crash in their filtered final logs.
+- The full CTest run completed 509 tests: 506 passed. The three failures are
+  unrelated existing architecture/performance expectations
+  (`GuideCurveOffsetSeeds`, rich-node view width, and preview alias counting);
+  all effect mapping, DSP, preview, palette, bypass, and editor tests passed.
+- The aggregate tests build remains blocked only while linking the unrelated
+  Oscillo application target, whose bundle currently has no `_main` symbol;
+  the test executables used above build independently.
+
+Automation screenshots were produced by the fixtures but are not cited as
+visual proof because macOS focus/capture reliability is environment-dependent.
+Numerical response assertions, final-raster pixel tests, runtime state
+assertions, and clean filtered logs are the authoritative evidence.

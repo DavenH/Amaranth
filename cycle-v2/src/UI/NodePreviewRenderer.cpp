@@ -767,6 +767,9 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
         graphics.drawText("L", content.removeFromLeft(content.getWidth() * 0.5f).reduced(5.f, 2.f),
                 Justification::topLeft);
         graphics.drawText("R", content.reduced(5.f, 2.f), Justification::topLeft);
+        graphics.setFont(FontOptions(9.f));
+        graphics.drawText("FREQ", content.reduced(5.f, 2.f), Justification::topRight);
+        graphics.drawText("TIME", content.reduced(5.f, 2.f), Justification::bottomRight);
     }
     return painted;
 }

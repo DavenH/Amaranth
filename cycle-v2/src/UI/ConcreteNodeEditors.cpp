@@ -70,7 +70,7 @@ public:
     void paint(Graphics& graphics) override {
         Slider::paint(graphics);
         if (panCycle) {
-            graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+            graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
             graphics.setFont(FontOptions(8.f));
             for (int iterations = 1; iterations <= 12; ++iterations) {
                 paintStopTick(
@@ -81,7 +81,7 @@ public:
             return;
         }
         if (reverbSize) {
-            graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+            graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
             graphics.setFont(FontOptions(8.f));
             for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
                 const float value = CycleDsp::reverbSizeUnitValueForStep(step);
@@ -91,7 +91,7 @@ public:
             return;
         }
         if (equalizerGain) {
-            graphics.setColour(Colour(0xff72808f).withAlpha(0.82f));
+            graphics.setColour(EffectPlotPalette::label.withAlpha(0.82f));
             graphics.setFont(FontOptions(8.f));
             paintStopTick(graphics, 0.5, "0");
             return;
@@ -103,7 +103,7 @@ public:
             static constexpr const char* labels[] {
                     "60", "120", "250", "500", "1k", "2k", "4k", "8k", "16k"
             };
-            graphics.setColour(Colour(0xff72808f).withAlpha(0.64f));
+            graphics.setColour(EffectPlotPalette::label.withAlpha(0.64f));
             graphics.setFont(FontOptions(7.f));
             for (size_t index = 0; index < std::size(landmarks); ++index) {
                 paintStopTick(
@@ -117,7 +117,7 @@ public:
             return;
         }
 
-        graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+        graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
         graphics.setFont(FontOptions(8.f));
         paintStopTick(graphics, CycleDsp::delayUnitValueForBeats(0.5, 4), "0.5");
         for (int beat = 1; beat <= 4; ++beat) {

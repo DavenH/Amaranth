@@ -81,14 +81,6 @@ void buildReverbKernel(
     highPassRolloff.set(1.f);
     highPassRolloff.section(0, highStart).ramp(highLevelA, highLevelRamp);
     highPassRolloff.mul(MathConstants<float>::halfPi).sin();
-  #if JUCE_DEBUG
-    DBG(String::formatted("ReverbKernel highStart=%d", highStart));
-    for (float value : highPassRolloff) {
-        std::cout << value << " ";
-    }
-    std::cout << '\n';
-  #endif
-
     forwardRamp.ramp();
     forwardRamp.copyTo(inverseRamp);
     inverseRamp.subCRev(1.f);
