@@ -414,7 +414,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("feedback", "Feedback", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("wet", "Wet", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("spin", "Pan Amount", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("spinIters", "Pan Cycle", 0.2f, 0.f, 1.f, dsp | presentation)
+                            number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation)
                     }))
                     .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Delay.cpp")

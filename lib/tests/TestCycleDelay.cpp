@@ -103,8 +103,15 @@ TEST_CASE("CycleDelay mapping preserves Cycle tempo and spin semantics", "[Cycle
     REQUIRE(CycleDsp::delayTimeSeconds(0.5, 120.0, 4) == Catch::Approx(0.5));
     REQUIRE(CycleDsp::delayTimeSeconds(0.0, 60.0, 3) == Catch::Approx(0.0675));
     REQUIRE(CycleDsp::delaySpinIterations(0.0) == 1);
-    REQUIRE(CycleDsp::delaySpinIterations(0.5) == 3);
+    REQUIRE(CycleDsp::delaySpinIterations(0.5) == 7);
     REQUIRE(CycleDsp::delaySpinIterations(1.0) == 12);
+    REQUIRE(CycleDsp::delaySpinUnitValueForIterations(1) == Catch::Approx(0.0));
+    REQUIRE(CycleDsp::delaySpinUnitValueForIterations(7) == Catch::Approx(6.0 / 11.0));
+    REQUIRE(CycleDsp::delaySpinUnitValueForIterations(12) == Catch::Approx(1.0));
+    for (int iterations = 1; iterations <= 12; ++iterations) {
+        REQUIRE(CycleDsp::delaySpinIterations(
+                CycleDsp::delaySpinUnitValueForIterations(iterations)) == iterations);
+    }
 }
 
 TEST_CASE("CycleDelay does not alias power-of-two delay lengths", "[CycleDelay]") {

@@ -24,7 +24,15 @@ public:
         delayTime = shouldUseDelayTime;
     }
 
+    void setPanCycle(bool shouldUsePanCycle) {
+        panCycle = shouldUsePanCycle;
+    }
+
     double snapValue(double attemptedValue, DragMode dragMode) override {
+        if (panCycle) {
+            return CycleDsp::delaySpinUnitValueForIterations(
+                    CycleDsp::delaySpinIterations(attemptedValue));
+        }
         if (!delayTime || dragMode == notDragging) {
             return attemptedValue;
         }
@@ -37,21 +45,34 @@ public:
 
     void paint(Graphics& graphics) override {
         Slider::paint(graphics);
+        if (panCycle) {
+            graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
+            graphics.setFont(FontOptions(8.f));
+            for (int iterations = 1; iterations <= 12; ++iterations) {
+                paintStopTick(
+                        graphics,
+                        CycleDsp::delaySpinUnitValueForIterations(iterations),
+                        String(iterations));
+            }
+            return;
+        }
         if (!delayTime) {
             return;
         }
 
         graphics.setColour(Colour(0xff72808f).withAlpha(0.72f));
         graphics.setFont(FontOptions(8.f));
-        paintBeatTick(graphics, 0.5, "0.5");
+        paintStopTick(graphics, CycleDsp::delayUnitValueForBeats(0.5, 4), "0.5");
         for (int beat = 1; beat <= 4; ++beat) {
-            paintBeatTick(graphics, (double) beat, String(beat));
+            paintStopTick(
+                    graphics,
+                    CycleDsp::delayUnitValueForBeats((double) beat, 4),
+                    String(beat));
         }
     }
 
 private:
-    void paintBeatTick(Graphics& graphics, double beats, const String& text) {
-        const float value = CycleDsp::delayUnitValueForBeats(beats, 4);
+    void paintStopTick(Graphics& graphics, double value, const String& text) {
         const float x = getPositionOfValue(value);
         graphics.drawVerticalLine(roundToInt(x), 10.f, 18.f);
         graphics.drawText(
@@ -64,6 +85,7 @@ private:
     }
 
     bool delayTime {};
+    bool panCycle {};
 };
 
 class EffectParameterEditorComponent final : public Component {
@@ -187,6 +209,7 @@ private:
         control->slider.setRange(0.0, 1.0, 0.0001);
         control->slider.setDoubleClickReturnValue(true, defaultValue);
         control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
+        control->slider.setPanCycle(kind == NodeKind::Delay && id == "spinIters");
         if (kind == NodeKind::Delay && id == "spinIters") {
             const String explanation =
                     "One complete stereo pan cycle spans this many delay intervals";
@@ -235,7 +258,7 @@ private:
             addControl("time", "Time", 0.5f);
             addControl("feedback", "Feedback", 0.5f);
             addControl("spin", "Pan Amount", 0.5f);
-            addControl("spinIters", "Pan Cycle", 0.2f);
+            addControl("spinIters", "Pan Cycle", 0.f);
             addControl("wet", "Wet", 0.5f);
         } else {
             const float frequencies[] { 60.f, 250.f, 1200.f, 4000.f, 8000.f };

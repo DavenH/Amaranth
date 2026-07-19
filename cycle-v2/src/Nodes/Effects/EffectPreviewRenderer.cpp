@@ -93,7 +93,7 @@ void paintDelayPingPreview(
     const float spin = parameterValue(node, "spin", 0.5f);
     const float wet = parameterValue(node, "wet", 0.5f);
     const int spinLength = CycleDsp::delaySpinIterations(
-            parameterValue(node, "spinIters", 0.2f));
+            parameterValue(node, "spinIters", 0.f));
     constexpr int visibleBeatCount = 16;
     const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
     float amplitude = 1.f;

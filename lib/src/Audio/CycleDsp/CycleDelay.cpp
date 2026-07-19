@@ -15,7 +15,13 @@ double delayTimeSeconds(double unitValue, double bpm, int beatsPerMeasure) {
 }
 
 int delaySpinIterations(double unitValue) {
-    return std::max(1, (int) (12.0 * unitValue * unitValue));
+    const double normalized = std::clamp(unitValue, 0.0, 1.0);
+    return 1 + (int) std::round(normalized * 11.0);
+}
+
+double delaySpinUnitValueForIterations(int iterations) {
+    const int normalized = std::clamp(iterations, 1, 12);
+    return (double) (normalized - 1) / 11.0;
 }
 
 void CycleDelay::configure(const DelayConfiguration& configurationToUse) {
