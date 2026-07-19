@@ -181,6 +181,53 @@ TEST_CASE("Reverb spectrogram preserves wet high-pass and size semantics",
     REQUIRE(largeRoom.gridColumns > highWet.gridColumns);
 }
 
+TEST_CASE("Bypassed Reverb spectrogram retains its configured response",
+        "[cycle-v2][runtime][effects][reverb][preview]") {
+    const std::vector<NodeParameter> parameters {
+            { "enabled", "Enabled", "0" },
+            { "size", "Size", "0.5" },
+            { "damp", "Damp", "0.2" },
+            { "width", "Width", "1" },
+            { "wet", "Wet", "0.4" },
+            { "highPass", "High Pass", "0.05" }
+    };
+    const auto configuration = ReverbSignalProcessor::buildConfiguration(parameters);
+    const PublishedNodeConfiguration published { 1, "reverb-preview", configuration };
+    PreviewProcessContext context;
+    context.pointCount = 24;
+    context.parameters = parameters;
+    context.configuration = &published;
+    auto processor = NodePreviewProcessorFactory().create(
+            PreviewModuleRole::ReverbSpectrogram);
+
+    processor->render(context);
+
+    REQUIRE(std::accumulate(context.primary.begin(), context.primary.end(), 0.f) > 0.f);
+
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::ReverbSpectrogram;
+    result.primary = std::move(context.primary);
+    result.gridColumns = context.gridColumns;
+    result.gridRows = context.gridRows;
+    result.domain = context.domain;
+    Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    image.desaturate();
+
+    float maximumBrightness {};
+    bool greyscale = true;
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            const Colour colour = image.getPixelAt(x, y);
+            maximumBrightness = jmax(maximumBrightness, colour.getPerceivedBrightness());
+            greyscale = greyscale
+                    && colour.getRed() == colour.getGreen()
+                    && colour.getGreen() == colour.getBlue();
+        }
+    }
+    REQUIRE(greyscale);
+    REQUIRE(maximumBrightness > 0.25f);
+}
+
 TEST_CASE("Reverb high pass visibly attenuates lower spectrogram partials",
         "[cycle-v2][runtime][effects][reverb][preview][ui]") {
     auto renderImage = [](float damping, float highPass) {

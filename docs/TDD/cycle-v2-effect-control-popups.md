@@ -189,6 +189,9 @@ Preview-quality follow-up evidence:
   beneath the taps and is centred on the same floating-point coordinate as
   their zero-pan position. Disabled Delay and Reverb displays are desaturated
   to communicate their bypassed state without changing the represented data.
+  Reverb preview analysis retains configured Wet energy while audio is
+  bypassed; its final-raster regression requires a greyscale image with visible
+  luminance so desaturation cannot regress to a black display.
 - `/private/tmp/cycle-v2-delay-snap-ticks.png` verifies the nonlinear Time tick
   positions and the canvas-family Delay preview background.
 - `/private/tmp/cycle-v2-delay-tall-symmetric.png` verifies the final expanded

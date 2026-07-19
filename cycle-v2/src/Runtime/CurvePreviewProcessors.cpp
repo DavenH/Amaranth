@@ -69,8 +69,7 @@ public:
 
         if (normalizationMaximum > 0.f) {
             constexpr float visualizationGain = 18.f;
-            const float wetLevel = configuration->enabled ? configuration->wetLevel : 0.f;
-            surface.mul(visualizationGain * wetLevel / normalizationMaximum)
+            surface.mul(visualizationGain * configuration->wetLevel / normalizationMaximum)
                     .clip(0.f, 1.f);
         }
     }
