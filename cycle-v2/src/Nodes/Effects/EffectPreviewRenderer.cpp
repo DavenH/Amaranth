@@ -1,5 +1,7 @@
 #include "EffectPreviewRenderer.h"
 
+#include "EffectPlotPalette.h"
+
 #include "../../UI/NodeParameterValue.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
@@ -14,7 +16,7 @@ float parameterValue(const Node& node, const String& id, float fallback) {
 }
 
 Colour previewColour(bool enabled, Colour colour) {
-    return enabled ? colour : colour.withSaturation(0.f);
+    return EffectPlotPalette::forEnabledState(colour, enabled);
 }
 
 Rectangle<float> contentArea(Rectangle<float> area) {
@@ -32,7 +34,7 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
     float amplitude = 0.88f;
     const float decay = 0.48f + size * 0.36f - damping * 0.12f;
 
-    graphics.setColour(previewColour(enabled, Colour(0xff11262a)));
+    graphics.setColour(previewColour(enabled, EffectPlotPalette::background));
     graphics.fillRoundedRectangle(content, 4.f);
     for (int index = 0; index < reflectionCount; ++index) {
         const float unit = (float) index / (float) jmax(1, reflectionCount - 1);
@@ -41,7 +43,7 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
         const float spread = height * (0.35f + width * 0.65f);
         graphics.setColour(previewColour(
                 enabled,
-                Colour(0xff43c7d0).withAlpha(0.28f + amplitude * 0.62f)));
+                EffectPlotPalette::accent.withAlpha(0.28f + amplitude * 0.62f)));
         graphics.drawLine(
                 x,
                 content.getCentreY() - spread,
@@ -57,7 +59,7 @@ void paintDelayAxes(
         Rectangle<float> plot,
         bool showLabels,
         bool enabled) {
-    const Colour axis { 0xff53616d };
+    const Colour axis = EffectPlotPalette::grid;
     graphics.setColour(previewColour(enabled, axis.withAlpha(0.68f)));
     graphics.fillRect(plot.getX(), plot.getCentreY() - 0.5f, plot.getWidth(), 1.f);
     graphics.drawVerticalLine(roundToInt(plot.getX()), plot.getY(), plot.getBottom());
@@ -66,7 +68,7 @@ void paintDelayAxes(
         return;
     }
 
-    graphics.setColour(previewColour(enabled, Colour(0xff8793a1)));
+    graphics.setColour(previewColour(enabled, EffectPlotPalette::label));
     graphics.setFont(FontOptions(11.f));
     graphics.drawText("L", plot.getX() - 18.f, plot.getY() - 5.f, 14.f, 12.f,
             Justification::centredRight);
@@ -87,7 +89,7 @@ void paintBeatGrid(
         const bool measure = beat % 4 == 0;
         graphics.setColour(previewColour(
                 enabled,
-                Colour(0xff53616d).withAlpha(measure ? 0.38f : 0.20f)));
+                EffectPlotPalette::grid.withAlpha(measure ? 0.38f : 0.20f)));
         graphics.drawVerticalLine(roundToInt(x), plot.getY(), plot.getBottom());
     }
 }
@@ -116,7 +118,7 @@ void paintDelayPingPreview(
     const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
     float amplitude = 1.f;
 
-    graphics.setColour(previewColour(enabled, Colour(0xff111923)));
+    graphics.setColour(previewColour(enabled, EffectPlotPalette::background));
     graphics.fillRoundedRectangle(background, 4.f);
     paintBeatGrid(graphics, content, visibleBeatCount, enabled);
     paintDelayAxes(graphics, content, showLabels, enabled);
@@ -138,7 +140,7 @@ void paintDelayPingPreview(
         }
         graphics.setColour(previewColour(
                 enabled,
-                Colour(0xff43c7d0).withAlpha(0.30f + amplitude * 0.62f)));
+                EffectPlotPalette::accent.withAlpha(0.30f + amplitude * 0.62f)));
         graphics.fillEllipse(Rectangle<float>(radius * 2.f, radius * 2.f).withCentre({ x, y }));
         amplitude *= feedback;
     }

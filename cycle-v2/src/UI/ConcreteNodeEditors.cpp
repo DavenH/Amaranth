@@ -4,6 +4,7 @@
 
 #include "NodeParameterValue.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
+#include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Runtime/NodePreviewProcessor.h"
 #include "../Nodes/Effect2D/CurveNodeEditors.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
@@ -134,7 +135,7 @@ public:
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            graphics.setColour(Colour(0xff0b0f14));
+            graphics.setColour(EffectPlotPalette::insetBackground);
             graphics.fillRoundedRectangle(response, 6.f);
             resources.paintNodePreview(graphics, node, response.reduced(5.f));
         } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
@@ -142,7 +143,9 @@ public:
             paintDelayPingPreview(graphics, response, node, 1.f);
         } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 100.f);
-            graphics.setColour(Colour(0xff0b0f14));
+            graphics.setColour(EffectPlotPalette::forEnabledState(
+                    EffectPlotPalette::insetBackground,
+                    enabledButton.getToggleState()));
             graphics.fillRoundedRectangle(response, 6.f);
             paintEqualizerResponse(graphics, response.reduced(12.f, 9.f));
         }
@@ -333,9 +336,14 @@ private:
             frequency *= frequencyRatio;
         }
 
-        graphics.setColour(Colour(0xff26333b));
+        const bool enabled = enabledButton.getToggleState();
+        graphics.setColour(EffectPlotPalette::forEnabledState(
+                EffectPlotPalette::grid.withAlpha(0.52f),
+                enabled));
         graphics.drawHorizontalLine(roundToInt(area.getCentreY()), area.getX(), area.getRight());
-        graphics.setColour(Colour(0xff38d1d1));
+        graphics.setColour(EffectPlotPalette::forEnabledState(
+                EffectPlotPalette::accent,
+                enabled));
         graphics.strokePath(response, PathStrokeType(2.f, PathStrokeType::curved));
     }
 

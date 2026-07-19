@@ -3,6 +3,7 @@
 #include "NodeParameterValue.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
+#include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 #include <Util/Arithmetic.h>
@@ -40,7 +41,11 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
         case PreviewModuleRole::Waveshaper:
         case PreviewModuleRole::ReverbSpectrogram:
         case PreviewModuleRole::EqualizerResponse:
-            return colourForDomain(PortDomain::TimeSignal);
+            return role == PreviewModuleRole::EqualizerResponse
+                    ? EffectPlotPalette::forEnabledState(
+                            colourForDomain(PortDomain::TimeSignal),
+                            nodeParameterValue(node, "enabled", "1").getIntValue() != 0)
+                    : colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
             return Colour(0xffd2d9e2);
         case PreviewModuleRole::MeshSurface:
@@ -280,7 +285,7 @@ bool drawHeatmapImage(Graphics& graphics, Rectangle<float> area, const Image& im
     const Rectangle<float> content = area.reduced(
             jmin(area.getWidth(), area.getHeight()) * 0.024f);
     graphics.setImageResamplingQuality(Graphics::mediumResamplingQuality);
-    graphics.setColour(Colour(0xff07090d));
+    graphics.setColour(EffectPlotPalette::insetBackground);
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
