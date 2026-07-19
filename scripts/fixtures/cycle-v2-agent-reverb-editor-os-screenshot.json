@@ -1,0 +1,8 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "reverb", "x": 540, "y": 280 },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

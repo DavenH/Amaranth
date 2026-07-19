@@ -24,6 +24,29 @@ public:
             const String& snapshot,
             uint64_t revision,
             const std::vector<NodeParameter>& controls) = 0;
+    virtual bool beginNodeParameterEdit(
+            const String& nodeId,
+            const String& parameterId,
+            const String& label,
+            float value) { return false; }
+    virtual bool updateNodeParameterEditValue(float value) { return false; }
+    virtual bool beginNodeParameterPairEdit(
+            const String& nodeId,
+            const String& firstParameterId,
+            const String& firstLabel,
+            float firstValue,
+            const String& secondParameterId,
+            const String& secondLabel,
+            float secondValue) { return false; }
+    virtual bool updateNodeParameterPairEditValues(float firstValue, float secondValue) {
+        return false;
+    }
+    virtual void endNodeParameterEdit() {}
+    virtual bool setNodeParameterValue(
+            const String& nodeId,
+            const String& parameterId,
+            const String& label,
+            float value) { return false; }
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
     virtual bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) = 0;
@@ -135,6 +158,27 @@ public:
             const String& snapshot,
             uint64_t revision,
             const std::vector<NodeParameter>& controls) override;
+    bool beginNodeParameterEdit(
+            const String& nodeId,
+            const String& parameterId,
+            const String& label,
+            float value) override;
+    bool updateNodeParameterEditValue(float value) override;
+    bool beginNodeParameterPairEdit(
+            const String& nodeId,
+            const String& firstParameterId,
+            const String& firstLabel,
+            float firstValue,
+            const String& secondParameterId,
+            const String& secondLabel,
+            float secondValue) override;
+    bool updateNodeParameterPairEditValues(float firstValue, float secondValue) override;
+    void endNodeParameterEdit() override;
+    bool setNodeParameterValue(
+            const String& nodeId,
+            const String& parameterId,
+            const String& label,
+            float value) override;
     void beginCurveTransaction() override;
     void commitCurveTransaction() override;
     bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) override;
@@ -174,6 +218,11 @@ private:
     int activeVertexIndex { -1 };
     bool curveTransactionActive {};
     bool curvePublicationPending {};
+    String activeParameterNodeId;
+    String activeParameterId;
+    String activeParameterLabel;
+    String secondaryParameterId;
+    String secondaryParameterLabel;
 };
 
 class NodeEditorHost {

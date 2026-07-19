@@ -1,0 +1,16 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "reverb", "x": 540, "y": 280 },
+    { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "wet", "label": "Wet", "value": "1" },
+    { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "label": "High Pass", "value": "0" },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "0%" },
+    { "command": "assertState", "path": "previewStats.8.gridColumns", "equals": 352 },
+    { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "label": "High Pass", "value": "1" },
+    { "command": "waitForIdle", "delayMs": 700 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "100%" },
+    { "command": "assertState", "path": "previewStats.8.gridColumns", "equals": 352 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

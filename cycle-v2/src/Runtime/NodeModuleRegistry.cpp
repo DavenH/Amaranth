@@ -61,6 +61,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::Waveshaper:        return "Waveshaper";
         case AudioModuleRole::Reverb:            return "Reverb";
         case AudioModuleRole::Delay:             return "Delay";
+        case AudioModuleRole::Equalizer:         return "Equalizer";
         case AudioModuleRole::StereoSplit:       return "Stereo Split";
         case AudioModuleRole::StereoJoin:        return "Stereo Join";
         case AudioModuleRole::Output:            return "Output";
@@ -81,6 +82,8 @@ String labelForPreviewModuleRole(PreviewModuleRole role) {
         case PreviewModuleRole::Envelope:          return "Envelope";
         case PreviewModuleRole::ImpulseResponse:   return "Impulse Response";
         case PreviewModuleRole::Waveshaper:        return "Waveshaper";
+        case PreviewModuleRole::ReverbSpectrogram: return "Reverb Spectrogram";
+        case PreviewModuleRole::EqualizerResponse: return "Equalizer Response";
         case PreviewModuleRole::SignalSpy:         return "Signal Spy";
         case PreviewModuleRole::OutputMeters:      return "Output Meters";
         case PreviewModuleRole::Generic:           return "Generic";

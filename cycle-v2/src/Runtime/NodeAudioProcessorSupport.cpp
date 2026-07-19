@@ -18,7 +18,7 @@ void processPassthrough(AudioProcessContext& context) {
     }
 
     copyPayloadBlockExpandingScalars(output, *input, context.frameCount);
-    copyTraversalGrid(output, input->traversalGrid);
+    copyPayloadTraversalGrids(output, *input);
     publishSingleOutput(context, std::move(output));
 }
 

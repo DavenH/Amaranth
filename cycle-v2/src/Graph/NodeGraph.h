@@ -36,6 +36,7 @@ enum class NodeKind {
     Waveshaper,
     Reverb,
     Delay,
+    Equalizer,
     StereoSplit,
     StereoJoin,
     Output

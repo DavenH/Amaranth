@@ -258,6 +258,39 @@ Mirror this order in constructor initializer lists.
   documented reason or decomposition before adding more behavior. Do not evade
   the review by moving the same unrelated free functions into a generic
   `Helpers.cpp`, `Utils.cpp`, anonymous namespace, or partial-class dump.
+
+## Interface Design
+
+- Build related presentations from one visual language. Compact, expanded,
+  summary, and detailed views should preserve recognizable geometry, colour,
+  hierarchy, and meaning while changing only the amount of information shown.
+  Review related views together whenever one changes.
+- Every visual element must earn its space. It should communicate state,
+  structure, affordance, or a meaningful distinction. If representative states
+  are perceptually indistinguishable, improve the encoding or remove it; do not
+  compensate for an ineffective visual with explanatory clutter.
+- Establish a clear information hierarchy before arranging controls. State a
+  shared concept once at the highest useful level, then use terse identifiers
+  for repeated rows or items. Avoid repeating the same words in every cell.
+- Prefer direct visual organization over plot furniture and prose. Add labels,
+  legends, axes, borders, and decoration only when they materially improve
+  interpretation or operation. Factual correctness does not make a redundant
+  label useful.
+- Use repetition deliberately. Repeated elements should share alignment,
+  spacing, dimensions, typography, and interaction behavior. Variation should
+  indicate meaning, not accidental implementation differences.
+- Balance density with rhythm and breathing room. Establish minimum dimensions
+  for primary content, hit targets, margins, and repeated rows; a layout that
+  technically fits is not successful if its hierarchy feels compressed.
+- Preserve perceptual continuity during interaction. Feedback should arrive
+  promptly, remain stable while values change, and avoid distracting jumps or
+  unnecessary reconstruction. Measure responsiveness when an update performs
+  nontrivial work.
+- Review the complete presentation, not isolated acceptance checks. Inspect
+  related sizes, important states, representative endpoints and midpoints,
+  disabled states, and combinations of coupled controls. Automated assertions
+  establish correctness; visual review establishes coherence, balance, and
+  usefulness.
 - UI roots, application services, and other orchestration classes should target
   roughly 800 lines or fewer. Their job is composition, lifecycle, and routing.
   Rendering algorithms, gesture state machines, persistence workflows,

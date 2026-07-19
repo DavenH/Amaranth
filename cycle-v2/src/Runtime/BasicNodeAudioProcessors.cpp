@@ -20,7 +20,7 @@ void publishSourceTraversalGrid(
         bool image,
         const AudioProcessWorkArena* arena) {
     if (payload.block.samples.empty()) {
-        payload.traversalGrid = {};
+        clearTraversalGrid(payload.traversalGrid);
         return;
     }
 
@@ -89,6 +89,12 @@ public:
                 ? configuration->level
                 : parameterFloat(processParameters(context), "level", 1.f);
         payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
+        if (output.isStereo()) {
+            VecOps::copy(
+                    output.block.samples.data(),
+                    output.secondaryBlock.samples.data(),
+                    (int) context.frameCount);
+        }
 
         if (context.captureTraversalGrid) {
             publishSourceTraversalGrid(
@@ -98,6 +104,9 @@ public:
                     level,
                     image,
                     context.workArena);
+            if (output.isStereo()) {
+                output.secondaryTraversalGrid = output.traversalGrid;
+            }
         }
 
         publishSingleOutput(context, std::move(output));
@@ -171,11 +180,37 @@ public:
 
         auto left = makeOutputPayload(context, 0);
         auto right = makeOutputPayload(context, 1);
-        copyPayloadBlockExpandingScalars(left, *input, context.frameCount);
-        copyPayloadBlockExpandingScalars(right, *input, context.frameCount);
-        copyTraversalGrid(left, input->traversalGrid);
-        copyTraversalGrid(right, input->traversalGrid);
+        copyBlockExpandingScalars(left.block.samples, input->block, context.frameCount);
+        const SignalBlock& rightInput = input->isStereo()
+                ? input->secondaryBlock
+                : input->block;
+        copyBlockExpandingScalars(right.block.samples, rightInput, context.frameCount);
+        left.traversalGrid = input->traversalGrid;
+        right.traversalGrid = input->isStereo()
+                ? input->secondaryTraversalGrid
+                : input->traversalGrid;
         publishOutputs(context, std::move(left), std::move(right));
+    }
+};
+
+class StereoJoinAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::StereoJoin; }
+
+    void process(AudioProcessContext& context) override {
+        SignalPayload* left = inputAt(context, 0);
+        SignalPayload* right = inputAt(context, 1);
+        if (left == nullptr || right == nullptr) {
+            clearOutput(context);
+            return;
+        }
+
+        auto output = makeOutputPayload(context, 0);
+        copyBlockExpandingScalars(output.block.samples, left->block, context.frameCount);
+        copyBlockExpandingScalars(output.secondaryBlock.samples, right->block, context.frameCount);
+        output.traversalGrid = left->traversalGrid;
+        output.secondaryTraversalGrid = right->traversalGrid;
+        publishSingleOutput(context, std::move(output));
     }
 };
 
@@ -202,9 +237,7 @@ std::unique_ptr<NodeAudioProcessor> createMultiplyAudioProcessor() {
 }
 
 std::unique_ptr<NodeAudioProcessor> createStereoJoinAudioProcessor() {
-    return std::make_unique<BinaryAudioProcessor>(
-            AudioModuleRole::StereoJoin,
-            BinarySignalOperation::Add);
+    return std::make_unique<StereoJoinAudioProcessor>();
 }
 
 std::unique_ptr<NodeAudioProcessor> createStereoSplitAudioProcessor() {

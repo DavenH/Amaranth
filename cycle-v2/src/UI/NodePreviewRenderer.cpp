@@ -1,7 +1,10 @@
 #include "NodePreviewRenderer.h"
 #include "SpectralPreviewMapping.h"
 
+#include "NodeParameterValue.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
+#include "../Nodes/Effects/EffectPreviewRenderer.h"
+#include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 #include <array>
@@ -14,13 +17,6 @@ namespace CycleV2 {
 namespace {
 
 const Colour kMutedText { 0xff8793a1 };
-
-bool isEffect2D(NodeKind kind) {
-    return kind == NodeKind::Envelope
-            || kind == NodeKind::GuideCurve
-            || kind == NodeKind::ImpulseResponse
-            || kind == NodeKind::Waveshaper;
-}
 
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
@@ -41,7 +37,13 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
         case PreviewModuleRole::OutputMeters:
         case PreviewModuleRole::Waveform:
         case PreviewModuleRole::Waveshaper:
-            return colourForDomain(PortDomain::TimeSignal);
+        case PreviewModuleRole::ReverbSpectrogram:
+        case PreviewModuleRole::EqualizerResponse:
+            return role == PreviewModuleRole::EqualizerResponse
+                    ? EffectPlotPalette::forEnabledState(
+                            colourForDomain(PortDomain::TimeSignal),
+                            nodeParameterValue(node, "enabled", "1").getIntValue() != 0)
+                    : colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
             return Colour(0xffd2d9e2);
         case PreviewModuleRole::MeshSurface:
@@ -134,6 +136,7 @@ void drawTrace(
             PathStrokeType(2.f * zoom, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
+
 void drawMeters(
         Graphics& graphics,
         Rectangle<float> area,
@@ -209,8 +212,10 @@ void unwrapPhase(std::vector<float>& surface, size_t columns, size_t rows) {
     }
 }
 
-std::vector<float> mappedSurface(const NodePreviewResult& preview) {
-    std::vector<float> surface = preview.primary;
+std::vector<float> mappedSurface(
+        const NodePreviewResult& preview,
+        const std::vector<float>& values) {
+    std::vector<float> surface = values;
     if (surface.empty()) {
         return surface;
     }
@@ -219,7 +224,8 @@ std::vector<float> mappedSurface(const NodePreviewResult& preview) {
         return SpectralPreviewMapping::magnitudeSurface(
                 surface,
                 preview.gridColumns,
-                preview.gridRows);
+                preview.gridRows,
+                preview.role == PreviewModuleRole::ReverbSpectrogram ? 50.f : 500.f);
     } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
         unwrapPhase(surface, preview.gridColumns, preview.gridRows);
         return SpectralPreviewMapping::phaseSurface(
@@ -238,21 +244,7 @@ std::vector<float> mappedSurface(const NodePreviewResult& preview) {
     return surface;
 }
 
-bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewResult& preview) {
-    TrimeshRenderData data;
-    data.surface = mappedSurface(preview);
-    data.domain = preview.domain;
-    data.columns = (int) preview.gridColumns;
-    data.rows = (int) preview.gridRows;
-    data.cyclic = preview.domain == PortDomain::TimeSignal;
-
-    if (!data.canDrawSurface()) {
-        return false;
-    }
-
-    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(
-            data,
-            TrimeshRenderProfile::fromDomain(preview.domain));
+bool drawHeatmapImage(Graphics& graphics, Rectangle<float> area, const Image& image) {
     if (!image.isValid()) {
         return false;
     }
@@ -260,10 +252,17 @@ bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewRes
     const Rectangle<float> content = area.reduced(
             jmin(area.getWidth(), area.getHeight()) * 0.024f);
     graphics.setImageResamplingQuality(Graphics::mediumResamplingQuality);
-    graphics.setColour(Colour(0xff07090d));
+    graphics.setColour(EffectPlotPalette::insetBackground);
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
+}
+
+bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewResult& preview) {
+    return drawHeatmapImage(
+            graphics,
+            area,
+            NodePreviewRenderer::createRuntimeHeatmapImage(preview));
 }
 
 void drawEffect2DFallback(
@@ -510,6 +509,35 @@ NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
         resources(resourcesToUse) {
 }
 
+bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
+    return kind == NodeKind::Envelope
+            || kind == NodeKind::GuideCurve
+            || kind == NodeKind::ImpulseResponse
+            || kind == NodeKind::Waveshaper;
+}
+
+Image NodePreviewRenderer::createRuntimeHeatmapImage(
+        const NodePreviewResult& preview,
+        bool desaturated) {
+    const auto createImage = [&preview](const std::vector<float>& values) {
+        TrimeshRenderData data;
+        data.surface = mappedSurface(preview, values);
+        data.domain = preview.domain;
+        data.columns = (int) preview.gridColumns;
+        data.rows = (int) preview.gridRows;
+        data.cyclic = preview.domain == PortDomain::TimeSignal;
+        return TrimeshSurfaceRenderer::createHeatmapImage(
+                data,
+                TrimeshRenderProfile::fromDomain(preview.domain));
+    };
+
+    Image image = createImage(preview.primary);
+    if (desaturated) {
+        image.desaturate();
+    }
+    return image;
+}
+
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
@@ -541,6 +569,12 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
             && request.runtimeResult->role == PreviewModuleRole::SignalSpy
             && request.cache
             && paintCachedHeatmap(graphics, request)) {
+        return;
+    }
+
+    if (request.runtimeResult != nullptr
+            && request.runtimeResult->role == PreviewModuleRole::EqualizerResponse) {
+        paintUncached(graphics, request);
         return;
     }
 
@@ -582,7 +616,7 @@ bool NodePreviewRenderer::renderOpenGL(
         const Node& node,
         Rectangle<float> area,
         float scaleFactor) {
-    if (!isEffect2D(node.kind)) {
+    if (!requiresEffect2DModel(node.kind)) {
         return false;
     }
 
@@ -603,7 +637,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return true;
     }
 
-    if (!isEffect2D(request.node.kind)) {
+    if (!requiresEffect2DModel(request.node.kind)) {
         return false;
     }
 
@@ -638,6 +672,26 @@ bool NodePreviewRenderer::paintRuntimeResult(
         return drawHeatmap(graphics, request.area, result);
     }
 
+    if (result.role == PreviewModuleRole::ReverbSpectrogram) {
+        return paintRuntimeHeatmap(graphics, request);
+    }
+
+    if (result.role == PreviewModuleRole::EqualizerResponse) {
+        const Rectangle<float> background = request.area.reduced(
+                jmin(request.area.getWidth(), request.area.getHeight()) * 0.04f);
+        graphics.setColour(EffectPlotPalette::forEnabledState(
+                EffectPlotPalette::insetBackground,
+                nodeParameterValue(request.node, "enabled", "1").getIntValue() != 0));
+        graphics.fillRoundedRectangle(background, 4.f);
+        paintEqualizerResponseData(
+                graphics,
+                background.reduced(8.f, 6.f),
+                request.node,
+                result.primary,
+                true);
+        return true;
+    }
+
     if (result.primary.empty()) {
         return false;
     }
@@ -654,6 +708,29 @@ bool NodePreviewRenderer::paintRuntimeResult(
     }
 
     return true;
+}
+
+bool NodePreviewRenderer::paintRuntimeHeatmap(
+        Graphics& graphics,
+        const NodePreviewRenderRequest& request) {
+    if (request.runtimeResult == nullptr) {
+        return false;
+    }
+
+    const bool desaturated = request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
+            && nodeParameterValue(request.node, "enabled", "1").getIntValue() == 0;
+    const String signature = runtimeSignature(*request.runtimeResult)
+            + "|desaturated:" + String(desaturated ? 1 : 0);
+    CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
+    if (!cached.runtimeHeatmap.isValid()
+            || cached.runtimeHeatmapSignature != signature) {
+        cached.runtimeHeatmap = createRuntimeHeatmapImage(
+                *request.runtimeResult,
+                desaturated);
+        cached.runtimeHeatmapSignature = signature;
+    }
+
+    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
 }
 
 void NodePreviewRenderer::paintUncached(
@@ -701,6 +778,10 @@ void NodePreviewRenderer::paintQualitative(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     const NodeKind kind = request.node.kind;
+    if (paintEffectCompactPreview(graphics, request.area, request.node, request.zoom)) {
+        return;
+    }
+
     if (kind == NodeKind::Fft || kind == NodeKind::Ifft) {
         drawFftTransformPreview(graphics, request.area, kind == NodeKind::Ifft);
         return;

@@ -151,8 +151,8 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(timeMid != magMid);
     REQUIRE(magMid != phaseMid);
     REQUIRE(timeMid.getFloatAlpha() == Catch::Approx(0.82f).margin(0.01f));
-    REQUIRE(magLow.getFloatAlpha() > 0.10f);
-    REQUIRE(magHigh.getFloatAlpha() > 0.80f);
+    REQUIRE(magLow.getFloatAlpha() < 0.01f);
+    REQUIRE(magHigh.getFloatAlpha() == Catch::Approx(1.f));
     REQUIRE_FALSE(timeSurfaceStyle.textureUsesAlpha);
     REQUIRE(magSurfaceStyle.textureUsesAlpha);
     REQUIRE(phaseSurfaceStyle.textureUsesAlpha);

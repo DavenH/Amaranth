@@ -15,7 +15,8 @@ namespace {
 std::vector<float> rowsWithoutDc(
         const std::vector<float>& source,
         size_t columns,
-        size_t rows) {
+        size_t rows,
+        float frequencyTension) {
     if (columns == 0 || rows < 2 || source.size() < columns * rows) {
         return source;
     }
@@ -24,7 +25,7 @@ std::vector<float> rowsWithoutDc(
     std::vector<float> sourceRows(rows);
     Buffer<float> sourceRowPositions(sourceRows.data(), (int) sourceRows.size());
     sourceRowPositions.ramp(0.f, 1.f / (float) (rows - 1));
-    Arithmetic::applyInvLogMapping(sourceRowPositions, 500.f);
+    Arithmetic::applyInvLogMapping(sourceRowPositions, frequencyTension);
     sourceRowPositions.mul((float) (rows - 2)).add(1.f);
 
     for (size_t column = 0; column < columns; ++column) {
@@ -49,8 +50,13 @@ std::vector<float> rowsWithoutDc(
 std::vector<float> magnitudeSurface(
         const std::vector<float>& source,
         size_t columns,
-        size_t rows) {
-    std::vector<float> surface = rowsWithoutDc(source, columns, rows);
+        size_t rows,
+        float frequencyTension) {
+    std::vector<float> surface = rowsWithoutDc(
+            source,
+            columns,
+            rows,
+            frequencyTension);
 
     if (!surface.empty()) {
         Buffer<float>(surface.data(), (int) surface.size())
@@ -69,7 +75,7 @@ std::vector<float> phaseSurface(
         const std::vector<float>& source,
         size_t columns,
         size_t rows) {
-    std::vector<float> surface = rowsWithoutDc(source, columns, rows);
+    std::vector<float> surface = rowsWithoutDc(source, columns, rows, 500.f);
     if (surface.empty()) {
         return surface;
     }

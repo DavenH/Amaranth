@@ -15,7 +15,13 @@ double delayTimeSeconds(double unitValue, double bpm, int beatsPerMeasure) {
 }
 
 int delaySpinIterations(double unitValue) {
-    return std::max(1, (int) (12.0 * unitValue * unitValue));
+    const double normalized = std::clamp(unitValue, 0.0, 1.0);
+    return 1 + (int) std::round(normalized * 11.0);
+}
+
+double delaySpinUnitValueForIterations(int iterations) {
+    const int normalized = std::clamp(iterations, 1, 12);
+    return (double) (normalized - 1) / 11.0;
 }
 
 void CycleDelay::configure(const DelayConfiguration& configurationToUse) {
@@ -53,7 +59,7 @@ void CycleDelay::configure(const DelayConfiguration& configurationToUse) {
         state.pan = configuration.channel == DelayChannel::Left
                 ? std::min(1.f, 2.f * (1.f - pan))
                 : std::min(1.f, 2.f * pan);
-        state.startingLevel = std::pow(configuration.feedback, spinIndex + 1);
+        state.startingLevel = std::pow(configuration.feedback, spinIndex);
         state.inputDelaySamples = (size_t) std::max(
                 0,
                 (int) ((spinIndex + 1)

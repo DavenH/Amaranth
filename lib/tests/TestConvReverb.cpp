@@ -259,3 +259,46 @@ TEST_CASE("Cycle reverb kernel generation is deterministic and stereo", "[ConvRe
     REQUIRE_FALSE(firstLeft.isProbablyEmpty());
     REQUIRE_FALSE(firstRight.isProbablyEmpty());
 }
+
+TEST_CASE("Cycle reverb high pass attenuates low bins independently of damping",
+        "[ConvReverb][ReverbKernel]") {
+    constexpr int kernelSize = 4096;
+    constexpr int lowBinCount = 96;
+    constexpr int highBinStart = 512;
+    constexpr int highBinCount = 512;
+    ScopedAlloc<float> memory(kernelSize * 4);
+    Buffer<float> unfiltered = memory.place(kernelSize);
+    Buffer<float> highPassed = memory.place(kernelSize);
+    Buffer<float> scratchRight = memory.place(kernelSize);
+    Buffer<float> unfilteredMagnitudes = memory.place(kernelSize);
+
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = 0.35f;
+    configuration.damping = 0.f;
+    configuration.highPass = 0.f;
+    CycleDsp::buildReverbKernel(configuration, unfiltered, scratchRight);
+    configuration.highPass = 1.f;
+    CycleDsp::buildReverbKernel(configuration, highPassed, scratchRight);
+
+    Transform transform;
+    transform.allocate(kernelSize, Transform::DivFwdByN, true);
+    transform.forward(unfiltered);
+    transform.getMagnitudes().copyTo(unfilteredMagnitudes);
+    transform.forward(highPassed);
+    Buffer<float> highPassedMagnitudes = transform.getMagnitudes();
+
+    const float lowRetention = highPassedMagnitudes.withSize(lowBinCount).sum()
+            / unfilteredMagnitudes.withSize(lowBinCount).sum();
+    const float lowestRetention = highPassedMagnitudes.withSize(24).sum()
+            / unfilteredMagnitudes.withSize(24).sum();
+    const float highRetention = highPassedMagnitudes
+            .section(highBinStart, highBinCount)
+            .sum()
+            / unfilteredMagnitudes.section(highBinStart, highBinCount).sum();
+    INFO("low-bin retention: " << lowRetention);
+    INFO("lowest-bin retention: " << lowestRetention);
+    INFO("high-bin retention: " << highRetention);
+    REQUIRE(lowestRetention < 0.5f);
+    REQUIRE(lowRetention < 0.9f);
+    REQUIRE(highRetention > 0.9f);
+}

@@ -10,6 +10,7 @@
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
+#include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeRail.h"
 #include "../src/UI/SpectralPreviewMapping.h"
@@ -18,6 +19,13 @@
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
+
+TEST_CASE("EQ response preview does not require an Effect2D model",
+        "[cycle-v2][canvas][equalizer][regression]") {
+    REQUIRE_FALSE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Equalizer));
+    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Envelope));
+    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Waveshaper));
+}
 
 namespace {
 
@@ -358,6 +366,27 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
     REQUIRE(meshBounds.getWidth() == Catch::Approx(1080.f));
     REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
+}
+
+TEST_CASE("Every effect view exposes both its compact preview and hosted editor",
+        "[cycle-v2][canvas][view][effects]") {
+    const auto& registry = NodeViewModuleRegistry::instance();
+    for (const NodeKind kind : { NodeKind::Reverb, NodeKind::Delay, NodeKind::Equalizer }) {
+        const auto& module = registry.moduleFor(kind);
+        REQUIRE(module.capabilities().previewable);
+        REQUIRE(module.capabilities().hostedEditor);
+        REQUIRE(module.editorFactory() != nullptr);
+    }
+
+    const auto reverbBounds = registry.moduleFor(NodeKind::Reverb)
+            .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
+    REQUIRE(reverbBounds.getWidth() == Catch::Approx(520.f));
+    REQUIRE(reverbBounds.getHeight() == Catch::Approx(520.f));
+
+    const auto delayBounds = registry.moduleFor(NodeKind::Delay)
+            .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
+    REQUIRE(delayBounds.getWidth() == Catch::Approx(520.f));
+    REQUIRE(delayBounds.getHeight() == Catch::Approx(520.f));
 }
 
 TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {

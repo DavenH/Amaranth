@@ -100,4 +100,10 @@ std::unique_ptr<NodeAudioProcessor> createDelayAudioProcessor() {
     return std::make_unique<DelayAudioProcessor>();
 }
 
+std::unique_ptr<NodeAudioProcessor> createEqualizerAudioProcessor() {
+    return std::make_unique<ConfiguredEffectAudioProcessor<
+            EqualizerSignalProcessor,
+            AudioModuleRole::Equalizer>>();
+}
+
 }

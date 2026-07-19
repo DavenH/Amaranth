@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "reverb",
+      "x": 300,
+      "y": 900
+    },
+    {
+      "command": "addNode",
+      "kind": "delay",
+      "x": 620,
+      "y": 900
+    },
+    {
+      "command": "addNode",
+      "kind": "equalizer",
+      "x": 940,
+      "y": 900
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "reverb",
+      "parameterId": "size",
+      "label": "Size",
+      "value": "0.8"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "delay",
+      "parameterId": "feedback",
+      "label": "Feedback",
+      "value": "0.72"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

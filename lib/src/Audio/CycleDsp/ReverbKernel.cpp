@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 
 namespace CycleDsp {
 
@@ -56,11 +57,13 @@ void buildReverbKernel(
 
     Transform fft;
     fft.allocate(kernelBlockSize, Transform::DivFwdByN, true);
+    fft.setRemovesOffset(configuration.highPass > 0.f);
 
-    ScopedAlloc<float> memory(kernelBlockSize * 8);
+    ScopedAlloc<float> memory(kernelBlockSize * 9);
     Buffer<float> cumulativeRolloff = memory.place(kernelBlockSize);
     Buffer<float> noise = memory.place(kernelBlockSize);
     Buffer<float> rolloff = memory.place(kernelBlockSize);
+    Buffer<float> highPassRolloff = memory.place(kernelBlockSize);
     Buffer<float> volumeRamp = memory.place(kernelBlockSize);
     Buffer<float> filtered = memory.place(kernelBlockSize);
     Buffer<float> filteredA = memory.place(kernelBlockSize);
@@ -68,15 +71,16 @@ void buildReverbKernel(
     Buffer<float> inverseRamp = memory.place(kernelBlockSize);
 
     const int highStart = std::max(2, (int) (configuration.highPass * 0.05f * kernelBlockSize));
-    const float highLevelA = 1.f - configuration.damping * configuration.highPass * 1.5f;
+    const float highLevelA = 1.f - configuration.highPass;
     const float highLevelRamp = (1.f - highLevelA) / (float) highStart;
 
     rolloff.zero();
     rolloff.ramp(1.f, -configuration.damping / (float) kernelBlockSize);
-    forwardRamp.section(0, highStart).ramp(highLevelA, highLevelRamp);
-    rolloff.section(0, highStart).mul(forwardRamp);
     rolloff.mul(MathConstants<float>::halfPi).sin();
 
+    highPassRolloff.set(1.f);
+    highPassRolloff.section(0, highStart).ramp(highLevelA, highLevelRamp);
+    highPassRolloff.mul(MathConstants<float>::halfPi).sin();
     forwardRamp.ramp();
     forwardRamp.copyTo(inverseRamp);
     inverseRamp.subCRev(1.f);
@@ -100,7 +104,7 @@ void buildReverbKernel(
 
             noise.rand(seed);
             fft.forward(noise);
-            fft.getMagnitudes().mul(cumulativeRolloff);
+            fft.getMagnitudes().mul(cumulativeRolloff).mul(highPassRolloff);
             cumulativeRolloff.mul(rolloff);
 
             fft.inverse(filteredA);

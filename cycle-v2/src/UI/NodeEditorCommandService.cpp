@@ -25,6 +25,123 @@ const Node* NodeEditorCommandService::findNode(const String& nodeId) const {
     return document.graph().findNode(nodeId);
 }
 
+bool NodeEditorCommandService::beginNodeParameterEdit(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        float value) {
+    if (findNode(nodeId) == nullptr) {
+        return false;
+    }
+    activeParameterNodeId = nodeId;
+    activeParameterId = parameterId;
+    activeParameterLabel = label;
+    presentation.selectEditedNode(nodeId);
+    commands.beginCompoundEdit();
+    return updateNodeParameterEditValue(value);
+}
+
+bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
+    if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()) {
+        return false;
+    }
+    const auto result = commands.setNodeParameter(
+            activeParameterNodeId,
+            activeParameterId,
+            activeParameterLabel,
+            String(value, 6));
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.scheduleNodeEditorRefresh();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
+bool NodeEditorCommandService::beginNodeParameterPairEdit(
+        const String& nodeId,
+        const String& firstParameterId,
+        const String& firstLabel,
+        float firstValue,
+        const String& secondParameterId,
+        const String& secondLabel,
+        float secondValue) {
+    if (findNode(nodeId) == nullptr) {
+        return false;
+    }
+    activeParameterNodeId = nodeId;
+    activeParameterId = firstParameterId;
+    activeParameterLabel = firstLabel;
+    secondaryParameterId = secondParameterId;
+    secondaryParameterLabel = secondLabel;
+    presentation.selectEditedNode(nodeId);
+    commands.beginCompoundEdit();
+    return updateNodeParameterPairEditValues(firstValue, secondValue);
+}
+
+bool NodeEditorCommandService::updateNodeParameterPairEditValues(
+        float firstValue,
+        float secondValue) {
+    if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()
+            || secondaryParameterId.isEmpty()) {
+        return false;
+    }
+    const auto first = commands.setNodeParameter(
+            activeParameterNodeId,
+            activeParameterId,
+            activeParameterLabel,
+            String(firstValue, 6));
+    const auto second = commands.setNodeParameter(
+            activeParameterNodeId,
+            secondaryParameterId,
+            secondaryParameterLabel,
+            String(secondValue, 6));
+    if (!first.succeeded() || !second.succeeded()) {
+        return false;
+    }
+    presentation.scheduleNodeEditorRefresh();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
+void NodeEditorCommandService::endNodeParameterEdit() {
+    commands.commitCompoundEdit();
+    presentation.flushNodeEditorRefresh();
+    presentation.rebindNodeEditor();
+    activeParameterNodeId = {};
+    activeParameterId = {};
+    activeParameterLabel = {};
+    secondaryParameterId = {};
+    secondaryParameterLabel = {};
+}
+
+bool NodeEditorCommandService::setNodeParameterValue(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        float value) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr) {
+        return false;
+    }
+    const ParameterDefinition* definition =
+            NodeDefinitionRegistry::instance().findParameter(node->kind, parameterId);
+    const String serializedValue = definition != nullptr
+                    && definition->type == ParameterType::Boolean
+            ? String(value >= 0.5f ? 1 : 0)
+            : String(value, 6);
+    const auto result = commands.setNodeParameter(
+            nodeId, parameterId, label, serializedValue);
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
 bool NodeEditorCommandService::publishCurveState(
         const String& nodeId,
         const String& snapshot,

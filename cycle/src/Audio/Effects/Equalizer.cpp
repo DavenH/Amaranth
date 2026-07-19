@@ -10,13 +10,12 @@
 
 Equalizer::Equalizer(SingletonRepo *repo) : Effect(repo, "Equalizer")
                                             , samplerate(44100)
-                                            , filterOrder(1) {
+                                            , filterOrder(1)
+                                            , core(numEqChannels) {
     double freqs[numPartitions] = {60, 250, 1200, 4000, 8000};
-    Dsp::Cascade *cascadeArr[numPartitions] = {&lsFilter, &bsFilter[0], &bsFilter[1], &bsFilter[2], &hsFilter};
 
     for (int i = 0; i < numPartitions; ++i) {
         partitions[i].centreFreq.setValueDirect(freqs[i]);
-        partitions[i].cascade = cascadeArr[i];
     }
 
     overflowBuffer.resize(16);
@@ -36,13 +35,7 @@ void Equalizer::processBuffer(AudioSampleBuffer &buffer) {
     for (int c = 0; c < jmin(2, buffer.getNumChannels()); ++c) {
         Buffer destBuffer(buffer.getWritePointer(c), numSamples);
 
-        for (auto& part : partitions) {
-            if (part.gainDB.getCurrentValue() == 0) {
-                continue;
-            }
-
-            part.iir.process(c, destBuffer);
-        }
+        core.process(c, destBuffer);
     }
 }
 
@@ -88,30 +81,15 @@ void Equalizer::updatePartition(int idx) {
     double centreFreq = jlimit<double>(20.0, samplerate * 0.45, part.centreFreq.getCurrentValue());
     double gainDb = jlimit<double>(-30.0, 30.0, part.gainDB.getCurrentValue());
 
-    switch (idx) {
-        case lowShelfPartition:
-            lsFilter.setup(filterOrder, samplerate, centreFreq, gainDb);
-            break;
-
-        case highShelfPartition:
-            hsFilter.setup(filterOrder, samplerate, centreFreq, gainDb);
-            break;
-
-        default:
-            bsFilter[idx - 1].setup(filterOrder, samplerate, centreFreq, centreFreq * 0.7f, gainDb);
-            break;
-    }
-    part.iir.updateFromCascade(*part.cascade);
+    core.configureBand(idx, samplerate, (float) centreFreq, (float) gainDb);
 }
 
 void Equalizer::processVertexBuffer(Buffer<Float32> inputBuffer) {
     inputBuffer.section(inputBuffer.size() - overflowBuffer.size(),
                         overflowBuffer.size()).copyTo(overflowBuffer);
 
-    for (auto& partition : partitions) {
-        partition.iir.process(graphicEqChannel, overflowBuffer);
-        partition.iir.process(graphicEqChannel, inputBuffer);
-    }
+    core.process(graphicEqChannel, overflowBuffer);
+    core.process(graphicEqChannel, inputBuffer);
 
     inputBuffer.clip(-30.f, 30.f);
 }
@@ -119,9 +97,7 @@ void Equalizer::processVertexBuffer(Buffer<Float32> inputBuffer) {
 void Equalizer::clearGraphicBuffer() {
     overflowBuffer.zero();
 
-    for (auto& partition : partitions) {
-        partition.iir.clear();
-    }
+    core.clear();
 }
 
 bool Equalizer::isEnabled() const {
@@ -129,12 +105,13 @@ bool Equalizer::isEnabled() const {
 }
 
 double Equalizer::calcFreq(double value, double logTension) {
-    return jmax(40., 16000. * (exp(value * log(logTension + 1)) - 1) / logTension);
+    (void) logTension;
+    return CycleDsp::equalizerFrequency((float) value);
 }
 
 double Equalizer::calcKnobValue(double value, double logTension) {
-    double x = value / 16000;
-    return jlimit(0., 1., log(logTension * x + 1) / log(logTension + 1));
+    (void) logTension;
+    return CycleDsp::equalizerFrequencyUnitValue((float) value);
 }
 
 void Equalizer::updateSmoothedParameters(int deltaSamples) {

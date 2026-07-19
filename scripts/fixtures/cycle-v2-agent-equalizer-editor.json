@@ -1,0 +1,115 @@
+{
+  "commands": [
+    {
+      "command": "addNode",
+      "kind": "equalizer",
+      "x": 540,
+      "y": 280
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "eq",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.kind",
+      "equals": "EQUALIZER"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls",
+      "exists": true
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "eq",
+      "parameterId": "band3Gain",
+      "label": "Band 3 Gain",
+      "value": "0.75"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "eq",
+      "parameterId": "band3Frequency",
+      "label": "Band 3 Frequency",
+      "value": "0.6"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:eq.panel2D",
+      "targetX": 0.742,
+      "targetY": 0.171
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:eq.panel2D",
+      "downTargetId": "expanded:eq.panel2D",
+      "targetX": 0.78,
+      "targetY": 0.12,
+      "downTargetX": 0.742,
+      "downTargetY": 0.171
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:eq.panel2D",
+      "downTargetId": "expanded:eq.panel2D",
+      "targetX": 0.78,
+      "targetY": 0.12,
+      "downTargetX": 0.742,
+      "downTargetY": 0.171,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "eq"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "op": "greaterThan",
+      "value": 0.8
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.7.value",
+      "op": "greaterThan",
+      "value": 0.6
+    },
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+    },
+    {
+      "command": "screenshot",
+      "area": "window",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.png"
+    },
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "eq",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "op": "greaterThan",
+      "value": 0.8
+    }
+  ],
+  "quit": true
+}

@@ -9,6 +9,7 @@ namespace CycleDsp {
 
 double delayTimeSeconds(double unitValue, double bpm, int beatsPerMeasure);
 int delaySpinIterations(double unitValue);
+double delaySpinUnitValueForIterations(int iterations);
 
 enum class DelayChannel {
     Left,

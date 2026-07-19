@@ -240,6 +240,8 @@ void GraphAudioExecutor::prepareExecution(
     for (auto& slot : bufferSlots) {
         slot.block.samples.reserve(spec.maximumFrameCount);
         slot.traversalGrid.values.reserve(workArena.gridValueCapacity);
+        slot.secondaryBlock.samples.reserve(spec.maximumFrameCount);
+        slot.secondaryTraversalGrid.values.reserve(workArena.gridValueCapacity);
     }
     processContext.inputViews.reserve(plan.maximumInputCount);
     processContext.attachments.reserve(plan.maximumAttachmentCount);

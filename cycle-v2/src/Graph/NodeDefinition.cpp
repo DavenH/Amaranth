@@ -397,27 +397,46 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("size", "Size", 0.35f, 0.f, 1.f, dsp | presentation),
-                            number("damp", "Damp", 0.25f, 0.f, 1.f, dsp | presentation),
-                            number("width", "Width", 0.75f, 0.f, 1.f, dsp | presentation),
-                            number("wet", "Wet", 0.35f, 0.f, 1.f, dsp | presentation),
-                            number("highPass", "HighPass", 0.05f, 0.f, 1.f, dsp)
+                            number("size", "Size", 0.5f, 0.f, 1.f, dsp | presentation),
+                            number("damp", "Damp", 0.2f, 0.f, 1.f, dsp | presentation),
+                            number("width", "Width", 1.f, 0.f, 1.f, dsp | presentation),
+                            number("wet", "Wet", 0.4f, 0.f, 1.f, dsp | presentation),
+                            number("highPass", "High Pass", 0.05f, 0.f, 1.f, dsp | presentation)
                     }))
-                    .runtime(AudioModuleRole::Reverb, PreviewModuleRole::None,
+                    .runtime(AudioModuleRole::Reverb, PreviewModuleRole::ReverbSpectrogram,
                             "cycle/src/Audio/Effects/Reverb.cpp")
                     .finish(),
             buildDefinition(definition("delay", NodeKind::Delay, "Delay", "echo", "delay",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("time", "Time", 0.25f, 0.f, 1.f, dsp | presentation),
-                            number("feedback", "Feedback", 0.25f, 0.f, 1.f, dsp | presentation),
+                            number("time", "Time", 0.5f, 0.f, 1.f, dsp | presentation),
+                            number("feedback", "Feedback", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("wet", "Wet", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("spin", "Spin", 1.f, 0.f, 1.f, dsp),
-                            integer("spinIters", "Spin Iterations", 0, 0, 16, dsp)
+                            number("spin", "Pan Amount", 0.5f, 0.f, 1.f, dsp | presentation),
+                            number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation)
                     }))
                     .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Delay.cpp")
+                    .finish(),
+            buildDefinition(definition("equalizer", NodeKind::Equalizer, "EQ", "five band", "eq",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
+                    { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
+                            boolean("enabled", "Enabled", true, dsp | presentation),
+                            number("band1Gain", "Band 1 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band2Gain", "Band 2 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band3Gain", "Band 3 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band4Gain", "Band 4 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band5Gain", "Band 5 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band1Frequency", "Band 1 Frequency", 0.0437075f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band2Frequency", "Band 2 Frequency", 0.1468314f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band3Frequency", "Band 3 Frequency", 0.3962904f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band4Frequency", "Band 4 Frequency", 0.6619545f, 0.f, 1.f, dsp | preview | presentation),
+                            number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation)
+                    }))
+                    .runtime(AudioModuleRole::Equalizer, PreviewModuleRole::EqualizerResponse,
+                            "cycle/src/Audio/Effects/Equalizer.cpp")
+                    .presentation({ 230.f, 112.f })
                     .finish(),
             buildDefinition(definition("stereoSplit", NodeKind::StereoSplit, "Stereo Split", "L/R breakout", "split",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },

@@ -23,8 +23,9 @@ bool outputSideControlSupported(NodeKind kind) {
             .outputSideControl;
 }
 
-bool previewable(NodeKind kind) {
-    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().previewable;
+bool hasEditor(NodeKind kind) {
+    const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(kind).capabilities();
+    return capabilities.previewable || capabilities.hostedEditor;
 }
 
 String parameterValue(const Node& node, const String& parameterId) {
@@ -138,7 +139,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphXml(
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::openEditor(const String& nodeId) {
     const Node* node = findNode(nodeId);
-    if (node == nullptr || !previewable(node->kind)) {
+    if (node == nullptr || !hasEditor(node->kind)) {
         return {};
     }
 
@@ -269,7 +270,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setNodeParameter(
                     value),
             "Parameter set: " + nodeId + "." + parameterId,
             nodeId,
-            { true });
+            { true, true });
 }
 
 bool NodeCanvasAuthoring::getNodeParameter(
