@@ -366,6 +366,71 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
   #endif
 }
 
+TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFFT",
+        "[cycle-v2][runtime][fft][probe]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File diagnosticGraph = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("fft-sawtooth.cyclegraph");
+    REQUIRE(diagnosticGraph.existsAsFile());
+
+    const NodeGraph graph = GraphSerializer().fromXmlString(
+            diagnosticGraph.loadFileAsString());
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const GraphAudioResult audio = GraphAudioExecutor().process(
+            graph,
+            compileResult.plan,
+            128);
+    const GraphPreviewResult previews = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            128);
+    const auto& source = findProbePreview(previews, "sawProbe");
+    const auto& magnitude = findProbePreview(previews, "magnitudeProbe");
+    const auto& roundTrip = findProbePreview(previews, "roundTripProbe");
+
+    REQUIRE(source.connected);
+    REQUIRE(magnitude.connected);
+    REQUIRE(roundTrip.connected);
+    REQUIRE(magnitude.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(roundTrip.values.size() == source.values.size());
+
+    const float fundamental = magnitude.values[1];
+    float maximumFundamentalVariation = 0.f;
+    float maximumHarmonicRatioError = 0.f;
+
+    for (size_t column = 0; column < magnitude.gridColumns; ++column) {
+        const size_t offset = column * magnitude.gridRows;
+        const float columnFundamental = magnitude.values[offset + 1];
+        maximumFundamentalVariation = jmax(
+                maximumFundamentalVariation,
+                std::abs(columnFundamental - fundamental));
+
+        for (size_t harmonic = 2; harmonic <= 8; ++harmonic) {
+            maximumHarmonicRatioError = jmax(
+                    maximumHarmonicRatioError,
+                    std::abs(
+                            magnitude.values[offset + harmonic] / columnFundamental
+                            - 1.f / (float) harmonic));
+        }
+    }
+
+    REQUIRE(maximumFundamentalVariation < 0.002f);
+    REQUIRE(maximumHarmonicRatioError < 0.002f);
+
+    float maximumReconstructionError = 0.f;
+    for (size_t sample = 0; sample < source.values.size(); ++sample) {
+        maximumReconstructionError = jmax(
+                maximumReconstructionError,
+                std::abs(roundTrip.values[sample] - source.values[sample]));
+    }
+    REQUIRE(maximumReconstructionError < 1.0e-5f);
+  #endif
+}
+
 TEST_CASE("Graph preview executor captures a probe after Reverb", "[cycle-v2][runtime][probe]") {
     GraphNodeFactory factory;
     NodeGraph graph;

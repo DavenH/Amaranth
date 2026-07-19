@@ -1,5 +1,35 @@
 # Refactor Notes
 
+## Cycle V2 Causal Update Graph
+
+Proposed TDD:
+[`cycle-v2-causal-update-graph.md`](cycle-v2-causal-update-graph.md).
+
+Replace test-only invalidation policy and broad editor refreshes with one
+production causal scheduler. Semantic edits receive traceable identities only
+after effective-value normalization; dirty products execute at most once,
+converging paths merge, obsolete same-source asynchronous work is cancellable,
+and local editor products remain synchronous. The Spy rail supports commit-only
+or latest-live downstream feedback with auditable execution counts.
+
+Implement after the typed JSON node-model boundary below so edit snapshots,
+model revisions, and change impacts do not depend on serialized parameter
+strings.
+
+## Cycle V2 JSON Graph and Typed Node Models
+
+Proposed TDD:
+[`cycle-v2-json-graph-and-typed-node-models.md`](cycle-v2-json-graph-and-typed-node-models.md).
+
+Replace XML `.cyclegraph` persistence and escaped JSON parameters with one
+canonical JSON document. Separate scalar parameters, immutable aggregate node
+models, and editor intent; embed mature `Mesh`/`EnvelopeMesh` JSON directly;
+remove `mesh.topology` and `curve.modelSnapshot` parameter strings; and convert
+Cycle V2 presets directly without a compatibility layer.
+
+This is the prerequisite persistence/model boundary for the causal update
+graph and should be implemented first.
+
 ## Cycle 2 OpenGL Cable Tessellation
 
 The prototype GL cable renderer exposed platform-dependent artifacts with wide

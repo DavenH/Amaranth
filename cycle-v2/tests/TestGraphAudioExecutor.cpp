@@ -7,7 +7,11 @@
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
+
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
 #include <atomic>
@@ -90,6 +94,46 @@ const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const Strin
 
 const std::vector<float>& samples(const SignalPayload& payload) {
     return payload.block.samples;
+}
+
+const SignalPayload& outputForPort(const NodeAudioResult& result, const String& portId) {
+    const auto found = std::find_if(
+            result.outputs.begin(),
+            result.outputs.end(),
+            [&](const auto& output) {
+                return output.first == portId;
+            });
+
+    REQUIRE(found != result.outputs.end());
+    return found->second;
+}
+
+String sawtoothMeshTopology() {
+    Mesh mesh("FftSawtooth");
+    const auto addIntercept = [&mesh](float phase, float amplitude) {
+        VertCube* cube = TrimeshMeshFactory::addVoiceCube(
+                mesh,
+                phase,
+                phase,
+                amplitude,
+                amplitude,
+                1.f);
+
+        for (int index = 0; index < (int) VertCube::numVerts; ++index) {
+            Vertex* vertex = cube->getVertex(index);
+            vertex->values[Vertex::Phase] = phase;
+            vertex->values[Vertex::Amp] = amplitude;
+            vertex->values[Vertex::Curve] = 1.f;
+        }
+    };
+
+    addIntercept(0.f, 0.f);
+    addIntercept(0.999f, 1.f);
+    addIntercept(1.f, 0.f);
+
+    const String topology = TrimeshMeshState::serialize(mesh);
+    mesh.destroy();
+    return topology;
 }
 
 }
@@ -560,6 +604,95 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(samples(result.output)[1] == Catch::Approx(1.f / 3.f).margin(1.0e-5f));
     REQUIRE(samples(result.output)[2] == Catch::Approx(2.f / 3.f).margin(1.0e-5f));
     REQUIRE(samples(result.output)[3] == Catch::Approx(1.f).margin(1.0e-5f));
+}
+
+TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
+        "[cycle-v2][runtime][fft][trimesh]") {
+    constexpr size_t frameCount = 128;
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "saw", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 560.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 860.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 1160.f, 0.f }));
+    graph.replaceNodeParameters("saw", {
+            { "yellow", "Yellow", "0.5" },
+            { "red", "Red", "0.5" },
+            { "blue", "Blue", "0.5" },
+            { "primaryAxis", "Primary Axis", "yellow" },
+            { TrimeshMeshState::parameterId(), "Mesh Topology", sawtoothMeshTopology() }
+    });
+    graph.addEdge({ "voice", "context", "saw", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "saw", "out", "fft", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
+    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addSignalProbe({ "sawProbe", "saw", "out", "fft", "time", "Sawtooth", 0.5f, 0 });
+    graph.addSignalProbe({ "magnitudeProbe", "fft", "mag", "ifft", "mag", "Magnitude 1/n", 0.5f, 1 });
+    graph.addSignalProbe({ "roundTripProbe", "ifft", "time", "out", "time", "FFT round trip", 0.5f, 2 });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const GraphAudioResult result = GraphAudioExecutor().process(
+            graph,
+            compileResult.plan,
+            frameCount);
+    const SignalPayload& saw = findNodeAudio(result, "saw").output;
+    const SignalPayload& magnitude = outputForPort(findNodeAudio(result, "fft"), "mag");
+    const SignalPayload& reconstructed = findNodeAudio(result, "ifft").output;
+
+    REQUIRE(saw.traversalGrid.isValid());
+    REQUIRE(magnitude.traversalGrid.isValid());
+    REQUIRE(reconstructed.traversalGrid.isValid());
+    REQUIRE(magnitude.traversalGrid.rows == frameCount / 2 + 1);
+    REQUIRE(reconstructed.traversalGrid.columns == saw.traversalGrid.columns);
+    REQUIRE(reconstructed.traversalGrid.rows == saw.traversalGrid.rows);
+
+    const auto sawRange = std::minmax_element(
+            saw.traversalGrid.values.begin(),
+            saw.traversalGrid.values.end());
+    INFO("saw minimum: " << *sawRange.first);
+    INFO("saw maximum: " << *sawRange.second);
+    REQUIRE(*sawRange.first < -0.95f);
+    REQUIRE(*sawRange.second > 0.95f);
+
+    const float fundamental = magnitude.traversalGrid.values[1];
+    REQUIRE(fundamental > 0.f);
+    float maximumFundamentalVariation = 0.f;
+    float maximumHarmonicRatioError = 0.f;
+
+    for (size_t column = 0; column < magnitude.traversalGrid.columns; ++column) {
+        const size_t offset = column * magnitude.traversalGrid.rows;
+        const float columnFundamental = magnitude.traversalGrid.values[offset + 1];
+        maximumFundamentalVariation = std::max(
+                maximumFundamentalVariation,
+                std::abs(columnFundamental - fundamental));
+
+        for (size_t harmonic = 2; harmonic <= 8; ++harmonic) {
+            maximumHarmonicRatioError = std::max(
+                    maximumHarmonicRatioError,
+                    std::abs(
+                            magnitude.traversalGrid.values[offset + harmonic] / columnFundamental
+                            - 1.f / (float) harmonic));
+        }
+    }
+
+    INFO("maximum fundamental variation: " << maximumFundamentalVariation);
+    INFO("maximum harmonic ratio error: " << maximumHarmonicRatioError);
+    REQUIRE(maximumFundamentalVariation < 0.002f);
+    REQUIRE(maximumHarmonicRatioError < 0.002f);
+
+    float maximumReconstructionError = 0.f;
+    for (size_t sample = 0; sample < saw.traversalGrid.values.size(); ++sample) {
+        maximumReconstructionError = jmax(
+                maximumReconstructionError,
+                std::abs(reconstructed.traversalGrid.values[sample]
+                        - saw.traversalGrid.values[sample]));
+    }
+    REQUIRE(maximumReconstructionError < 1.0e-5f);
 }
 
 TEST_CASE("Graph audio executor renders the demo graph through resolved mesh operands", "[cycle-v2][runtime]") {

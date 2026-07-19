@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<cycleV2Graph formatVersion="2">
+  <node id="voice" kind="voiceContext" definitionVersion="1" title="Voice Context"
+        subtitle="waveform start" x="-129.3103485107422" y="0.0">
+    <output id="context" label="Context" domain="domain" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <parameter id="domain" label="Start Domain" value="waveform"/>
+    <parameter id="voices" label="Voices" value="1"/>
+    <parameter id="octave" label="Octave" value="0"/>
+    <parameter id="pitch" label="Pitch" value="0"/>
+    <parameter id="portamento" label="Portamento" value="0"/>
+    <parameter id="oversampling" label="Oversampling" value="1x"/>
+  </node>
+  <node id="saw" kind="trilinearMesh" definitionVersion="1" title="Trilinear Mesh"
+        subtitle="FFT diagnostic" x="260.0" y="0.0">
+    <input id="context" label="Context" domain="domain" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="scratch" label="Scratch" domain="envelope" channelLayout="mono"
+           purpose="scratchAttachment" side="left"/>
+    <input id="yellow" label="Yellow Morph" domain="control" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="red" label="Red Morph" domain="control" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="blue" label="Blue Morph" domain="control" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <output id="out" label="Out" domain="control" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+    <parameter id="yellow" label="Yellow" value="0.120"/>
+    <parameter id="red" label="Red" value="0.5"/>
+    <parameter id="blue" label="Blue" value="0.5"/>
+    <parameter id="primaryAxis" label="Primary Axis" value="yellow"/>
+    <parameter id="mesh.topology" label="Mesh Topology" value="{&#13;&#10;  &quot;name&quot;: &quot;FftSawtooth&quot;,&#13;&#10;  &quot;version&quot;: 2,&#13;&#10;  &quot;vertices&quot;: [&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 0&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 1&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 2&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 3&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 4&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 5&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 6&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 7&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 8&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 9&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 10&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 11&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 12&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 13&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 14&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 0.999000012874603,&#13;&#10;      &quot;amp&quot;: 1.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 15&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 16&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 17&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 18&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 0.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 19&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 20&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 0.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 21&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 0.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 22&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;time&quot;: 1.0,&#13;&#10;      &quot;phase&quot;: 1.0,&#13;&#10;      &quot;amp&quot;: 0.0,&#13;&#10;      &quot;key&quot;: 1.0,&#13;&#10;      &quot;mod&quot;: 1.0,&#13;&#10;      &quot;weight&quot;: 1.0,&#13;&#10;      &quot;id&quot;: 23&#13;&#10;    }&#13;&#10;  ],&#13;&#10;  &quot;cubes&quot;: [&#13;&#10;    {&#13;&#10;      &quot;vertexIds&quot;: [&#13;&#10;        0,&#13;&#10;        1,&#13;&#10;        2,&#13;&#10;        3,&#13;&#10;        4,&#13;&#10;        5,&#13;&#10;        6,&#13;&#10;        7&#13;&#10;      ],&#13;&#10;      &quot;guides&quot;: {&#13;&#10;        &quot;time&quot;: -1,&#13;&#10;        &quot;key&quot;: -1,&#13;&#10;        &quot;mod&quot;: -1,&#13;&#10;        &quot;phase&quot;: -1,&#13;&#10;        &quot;amp&quot;: -1,&#13;&#10;        &quot;curve&quot;: -1&#13;&#10;      },&#13;&#10;      &quot;gains&quot;: {&#13;&#10;        &quot;time&quot;: 0.558496236801147,&#13;&#10;        &quot;key&quot;: 0.5,&#13;&#10;        &quot;mod&quot;: 0.5,&#13;&#10;        &quot;phase&quot;: 0.5,&#13;&#10;        &quot;amp&quot;: 0.5,&#13;&#10;        &quot;curve&quot;: 0.5&#13;&#10;      }&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;vertexIds&quot;: [&#13;&#10;        8,&#13;&#10;        9,&#13;&#10;        10,&#13;&#10;        11,&#13;&#10;        12,&#13;&#10;        13,&#13;&#10;        14,&#13;&#10;        15&#13;&#10;      ],&#13;&#10;      &quot;guides&quot;: {&#13;&#10;        &quot;time&quot;: -1,&#13;&#10;        &quot;key&quot;: -1,&#13;&#10;        &quot;mod&quot;: -1,&#13;&#10;        &quot;phase&quot;: -1,&#13;&#10;        &quot;amp&quot;: -1,&#13;&#10;        &quot;curve&quot;: -1&#13;&#10;      },&#13;&#10;      &quot;gains&quot;: {&#13;&#10;        &quot;time&quot;: 0.558496236801147,&#13;&#10;        &quot;key&quot;: 0.5,&#13;&#10;        &quot;mod&quot;: 0.5,&#13;&#10;        &quot;phase&quot;: 0.5,&#13;&#10;        &quot;amp&quot;: 0.5,&#13;&#10;        &quot;curve&quot;: 0.5&#13;&#10;      }&#13;&#10;    },&#13;&#10;    {&#13;&#10;      &quot;vertexIds&quot;: [&#13;&#10;        16,&#13;&#10;        17,&#13;&#10;        18,&#13;&#10;        19,&#13;&#10;        20,&#13;&#10;        21,&#13;&#10;        22,&#13;&#10;        23&#13;&#10;      ],&#13;&#10;      &quot;guides&quot;: {&#13;&#10;        &quot;time&quot;: -1,&#13;&#10;        &quot;key&quot;: -1,&#13;&#10;        &quot;mod&quot;: -1,&#13;&#10;        &quot;phase&quot;: -1,&#13;&#10;        &quot;amp&quot;: -1,&#13;&#10;        &quot;curve&quot;: -1&#13;&#10;      },&#13;&#10;      &quot;gains&quot;: {&#13;&#10;        &quot;time&quot;: 0.558496236801147,&#13;&#10;        &quot;key&quot;: 0.5,&#13;&#10;        &quot;mod&quot;: 0.5,&#13;&#10;        &quot;phase&quot;: 0.5,&#13;&#10;        &quot;amp&quot;: 0.5,&#13;&#10;        &quot;curve&quot;: 0.5&#13;&#10;      }&#13;&#10;    }&#13;&#10;  ]&#13;&#10;}"/>
+    <parameter id="selectedVertexIndex" label="Selected Vertex" value="8"/>
+    <parameter id="link.yellow" label="Link yellow" value="0"/>
+  </node>
+  <node id="fft" kind="fft" definitionVersion="1" title="Time &#8594; Freq"
+        subtitle="cycle chunks" x="635.862060546875" y="0.0">
+    <input id="time" label="Time" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+    <output id="mag" label="Mag" domain="spectralMagnitude" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <output id="phase" label="Phase" domain="spectralPhase" channelLayout="mono"
+            purpose="signal" side="right"/>
+    <parameter id="cycleFrames" label="Cycle Frames" value="2048"/>
+    <parameter id="mode" label="Mode" value="cycle"/>
+  </node>
+  <node id="ifft" kind="ifft" definitionVersion="1" title="Freq &#8594; Time"
+        subtitle="cyclic overlap" x="1087.586181640625" y="0.0">
+    <input id="mag" label="Mag" domain="spectralMagnitude" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <input id="phase" label="Phase" domain="spectralPhase" channelLayout="mono"
+           purpose="signal" side="left"/>
+    <output id="time" label="Time" domain="time" channelLayout="linkedStereo"
+            purpose="signal" side="right"/>
+    <parameter id="cycleFrames" label="Cycle Frames" value="2048"/>
+    <parameter id="mode" label="Mode" value="cyclic"/>
+  </node>
+  <node id="out" kind="output" definitionVersion="1" title="Output" subtitle="sink"
+        x="1444.482788085938" y="0.0">
+    <input id="time" label="Time L/R" domain="time" channelLayout="linkedStereo"
+           purpose="signal" side="left"/>
+  </node>
+  <edge sourceNodeId="voice" sourcePortId="context" destNodeId="saw"
+        destPortId="context" domain="domain" attachment="0"/>
+  <edge sourceNodeId="saw" sourcePortId="out" destNodeId="fft" destPortId="time"
+        domain="time" attachment="0"/>
+  <edge sourceNodeId="fft" sourcePortId="mag" destNodeId="ifft" destPortId="mag"
+        domain="spectralMagnitude" attachment="0"/>
+  <edge sourceNodeId="fft" sourcePortId="phase" destNodeId="ifft" destPortId="phase"
+        domain="spectralPhase" attachment="0"/>
+  <edge sourceNodeId="ifft" sourcePortId="time" destNodeId="out" destPortId="time"
+        domain="time" attachment="0"/>
+  <probe id="sawProbe" sourceNodeId="saw" sourcePortId="out" anchorDestNodeId="fft"
+         anchorDestPortId="time" label="Sawtooth" tapPosition="0.5" railOrder="0"/>
+  <probe id="magnitudeProbe" sourceNodeId="fft" sourcePortId="mag" anchorDestNodeId="ifft"
+         anchorDestPortId="mag" label="Magnitude 1/n" tapPosition="0.5"
+         railOrder="1"/>
+  <probe id="roundTripProbe" sourceNodeId="ifft" sourcePortId="time" anchorDestNodeId="out"
+         anchorDestPortId="time" label="FFT round trip" tapPosition="0.5"
+         railOrder="2"/>
+</cycleV2Graph>

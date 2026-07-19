@@ -4,6 +4,12 @@
 
 Implemented.
 
+The completeness and authoritative-identity contract remains implemented. The
+choice to encode that state as the string parameter `mesh.topology` is
+superseded by the proposed structured JSON model boundary in
+[`cycle-v2-json-graph-and-typed-node-models.md`](cycle-v2-json-graph-and-typed-node-models.md).
+Do not return to sparse indexed parameters while replacing the storage layer.
+
 Implemented in July 2026. `mesh.topology` now adapts the authoritative Mesh
 JSON contract across the editor, graph serializer, DSP configuration, realtime
 fallback, and preview paths. Sparse indexed persistence and its selected-vertex
