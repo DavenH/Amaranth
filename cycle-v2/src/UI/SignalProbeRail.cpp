@@ -58,6 +58,16 @@ Rectangle<float> SignalProbeRail::collapseHandleFor(
             : Rectangle<float>(rail.getRight() - 174.f, rail.getY(), 150.f, rail.getHeight());
 }
 
+Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& state) {
+    if (!state.expanded) {
+        return {};
+    }
+    const Rectangle<float> collapse = collapseHandleFor(workspace, state);
+    return { collapse.getX() - 102.f, collapse.getY(), 94.f, collapse.getHeight() };
+}
+
 Rectangle<float> SignalProbeRail::tileBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state,
@@ -332,6 +342,16 @@ void SignalProbeRail::paintRail(
     if (!state.expanded) {
         return;
     }
+
+    const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
+    graphics.setColour(Colour(0xff26313d));
+    graphics.fillRoundedRectangle(refreshMode, 6.f);
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(11.f));
+    graphics.drawText(
+            state.refreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release",
+            refreshMode,
+            Justification::centred);
 
     Graphics::ScopedSaveState tileClip(graphics);
     graphics.reduceClipRegion(rail.toNearestInt());

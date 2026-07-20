@@ -4,6 +4,7 @@
 
 #include "NodeCanvasScene.h"
 #include "NodePreviewRenderer.h"
+#include "../Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
 
@@ -13,6 +14,7 @@ struct SignalProbeRailState {
     float horizontalOffset {};
     String selectedProbeId;
     String hoveredProbeId;
+    ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
 };
 
 class SignalProbeRail {
@@ -32,6 +34,9 @@ public:
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
     static Rectangle<float> collapseHandleFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& state);
+    static Rectangle<float> refreshModeBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
     static Rectangle<float> tileBoundsFor(

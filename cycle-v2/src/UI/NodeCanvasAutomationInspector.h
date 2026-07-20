@@ -15,6 +15,8 @@ struct NodeCanvasAutomationPresentation {
     juce::String expandedNodeId;
     juce::String editStatusMessage;
     int selectedEdgeIndex { -1 };
+    ProbeRefreshMode probeRefreshMode { ProbeRefreshMode::OnGestureCommit };
+    juce::Rectangle<float> probeRefreshModeBounds;
 };
 
 struct NodeCanvasAutomationContext {

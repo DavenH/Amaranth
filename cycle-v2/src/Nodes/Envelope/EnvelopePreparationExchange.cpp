@@ -1,9 +1,32 @@
+#include <cstring>
+
 #include "EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
 
+namespace {
+
+uint64_t packMorph(float red, float blue) {
+    uint32_t packedRed;
+    uint32_t packedBlue;
+    std::memcpy(&packedRed, &red, sizeof(red));
+    std::memcpy(&packedBlue, &blue, sizeof(blue));
+    return (uint64_t) packedBlue << 32U | packedRed;
+}
+
+void unpackMorph(uint64_t packed, float& red, float& blue) {
+    const uint32_t packedRed = (uint32_t) packed;
+    const uint32_t packedBlue = (uint32_t) (packed >> 32U);
+    std::memcpy(&red, &packedRed, sizeof(red));
+    std::memcpy(&blue, &packedBlue, sizeof(blue));
+}
+
+}
+
 void LatestEnvelopePreparationRequest::reset() {
     sequence.store(0, std::memory_order_release);
+    packedMorph.store(0, std::memory_order_release);
+    noteSerial.store(0, std::memory_order_release);
     preparedGeneration = 0;
 }
 
@@ -11,33 +34,39 @@ void LatestEnvelopePreparationRequest::publish(
         float redToPublish,
         float blueToPublish,
         uint64_t noteSerialToPublish) {
-    const uint64_t previous = sequence.load(std::memory_order_relaxed);
-    const uint64_t next = (previous & ~uint64_t(1)) + 2;
-    sequence.store(next - 1, std::memory_order_release);
-    red.store(redToPublish, std::memory_order_relaxed);
-    blue.store(blueToPublish, std::memory_order_relaxed);
-    noteSerial.store(noteSerialToPublish, std::memory_order_relaxed);
-    sequence.store(next, std::memory_order_release);
+    const uint64_t writing = sequence.load(std::memory_order_relaxed) + 1;
+    sequence.store(writing, std::memory_order_release);
+    packedMorph.store(packMorph(redToPublish, blueToPublish), std::memory_order_release);
+    noteSerial.store(noteSerialToPublish, std::memory_order_release);
+    sequence.store(writing + 1, std::memory_order_release);
     ++publications;
 }
 
 bool LatestEnvelopePreparationRequest::latest(EnvelopePreparationRequest& result) const {
-    const uint64_t firstSequence = sequence.load(std::memory_order_acquire);
-    if (firstSequence == 0
-            || (firstSequence & 1u) != 0
-            || firstSequence <= preparedGeneration) {
-        return false;
+    for (;;) {
+        const uint64_t before = sequence.load(std::memory_order_acquire);
+        if (before == 0) {
+            return false;
+        }
+        if ((before & 1U) != 0) {
+            continue;
+        }
+        const uint64_t morph = packedMorph.load(std::memory_order_acquire);
+        const uint64_t note = noteSerial.load(std::memory_order_acquire);
+        const uint64_t after = sequence.load(std::memory_order_acquire);
+        if (before != after) {
+            continue;
+        }
+        result.generation = after / 2;
+        result.noteSerial = note;
+        unpackMorph(morph, result.red, result.blue);
+        return result.generation > preparedGeneration;
     }
-
-    result.generation = firstSequence;
-    result.noteSerial = noteSerial.load(std::memory_order_relaxed);
-    result.red = red.load(std::memory_order_relaxed);
-    result.blue = blue.load(std::memory_order_relaxed);
-    return sequence.load(std::memory_order_acquire) == firstSequence;
 }
 
 bool LatestEnvelopePreparationRequest::isCurrent(uint64_t generation) const {
-    return sequence.load(std::memory_order_acquire) == generation;
+    const uint64_t current = sequence.load(std::memory_order_acquire);
+    return (current & 1U) == 0 && current / 2 == generation;
 }
 
 void LatestEnvelopePreparationRequest::markPrepared(uint64_t generation) {

@@ -121,6 +121,10 @@ uint64_t Effect2DWidget::modelRevision() const {
     return controller->modelRevision();
 }
 
+uint64_t Effect2DWidget::contentRevision() const {
+    return controller->contentRevision();
+}
+
 std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() const {
     return controller->selectedVertexParameters();
 }

@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphCommandDispatcher.h"
+#include "../src/Graph/GraphDocument.h"
+#include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphRuntime.h"
 
 #include <algorithm>
@@ -60,6 +63,35 @@ TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
     REQUIRE(findTraceNode(trace, "phaseMesh").signalOutputs.front().domain == PortDomain::SpectralPhaseSignal);
 }
 
+TEST_CASE("Queued presentation publication is inert after model destruction",
+        "[cycle-v2][runtime][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    bool completed {};
+    {
+        GraphPresentationModel presentation;
+        GraphChangeSet topology;
+        topology.topologyChanged = true;
+        REQUIRE(presentation.refresh(graph, 1, topology));
+
+        const auto mesh = std::find_if(
+                graph.getNodes().begin(), graph.getNodes().end(), [](const auto& node) {
+                    return node.kind == NodeKind::TrilinearMesh;
+                });
+        REQUIRE(mesh != graph.getNodes().end());
+        const auto edit = GraphEditor().setNodeParameter(
+                graph, mesh->id, "red", "Red", "0.7");
+        REQUIRE(edit.succeeded());
+        REQUIRE(edit.changed);
+        presentation.refreshAsync(graph, 2, edit.changes, [&] {
+            completed = true;
+        });
+    }
+
+    MessageManager::getInstance()->runDispatchLoopUntil(20);
+    REQUIRE_FALSE(completed);
+}
+
 TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cycle-v2][runtime]") {
     const NodeGraph graph = NodeGraph::createDemoGraph();
     const auto compileResult = GraphCompiler().compile(graph);
@@ -108,4 +140,22 @@ TEST_CASE("Runtime exposes targeted guide attachments separately from signal inp
             [](const RuntimeInput& input) {
                 return input.destPortId.startsWith("guide.vertex.");
             }));
+}
+
+TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",
+        "[cycle-v2][runtime][causal]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const size_t initialCompilations = presentation.compilationCount();
+
+    const auto result = commands.setNodeParameter("delay", "time", "Time", "0.75");
+    REQUIRE(result.succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+
+    REQUIRE(presentation.compilationCount() == initialCompilations);
+    REQUIRE(presentation.previewRenderCount() == 2);
 }

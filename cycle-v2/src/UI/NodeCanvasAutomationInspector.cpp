@@ -12,6 +12,38 @@ namespace {
 constexpr float kExpandedEditorHeaderHeight = 34.f;
 constexpr float kExpandedEditorMinMargin = 18.f;
 
+String updateProductLabel(UpdateProduct product) {
+    switch (product) {
+        case UpdateProduct::LocalSlice:          return "LocalSlice";
+        case UpdateProduct::LocalSurface:        return "LocalSurface";
+        case UpdateProduct::InteractionOverlay:  return "InteractionOverlay";
+        case UpdateProduct::CompactPreview:      return "CompactPreview";
+        case UpdateProduct::PreviewTraversal:    return "PreviewTraversal";
+        case UpdateProduct::ProbePreview:        return "ProbePreview";
+        case UpdateProduct::AudioConfiguration:  return "AudioConfiguration";
+        case UpdateProduct::DurablePublication:  return "DurablePublication";
+    }
+    return "Unknown";
+}
+
+String updatePhaseLabel(UpdateTracePhase phase) {
+    switch (phase) {
+        case UpdateTracePhase::Dirtied:                  return "Dirtied";
+        case UpdateTracePhase::Started:                  return "Started";
+        case UpdateTracePhase::Completed:                return "Completed";
+        case UpdateTracePhase::Published:                return "Published";
+        case UpdateTracePhase::AlreadyCurrent:           return "AlreadyCurrent";
+        case UpdateTracePhase::NotObserved:              return "NotObserved";
+        case UpdateTracePhase::DeferredUntilCommit:      return "DeferredUntilCommit";
+        case UpdateTracePhase::SupersededBeforeStart:    return "SupersededBeforeStart";
+        case UpdateTracePhase::CancelledDuringExecution: return "CancelledDuringExecution";
+        case UpdateTracePhase::StaleResultDiscarded:     return "StaleResultDiscarded";
+        case UpdateTracePhase::NoEffectiveChange:        return "NoEffectiveChange";
+        case UpdateTracePhase::InvariantViolation:       return "InvariantViolation";
+    }
+    return "Unknown";
+}
+
 class AutomationValueEncoder {
 public:
     static var rectangleToVar(Rectangle<float> bounds) {
@@ -229,7 +261,10 @@ public:
 
     static void addExpandedEditorTargets(Array<var>& targets, const Node& node, const Component& canvas,
                                          const NodeEditorHost& editorHost) {
-        Rectangle<float> panel = expandedEditorBounds(canvas, node);
+        const Component* editorComponent = editorHost.component();
+        Rectangle<float> panel = editorComponent != nullptr
+                ? editorComponent->getBounds().toFloat()
+                : expandedEditorBounds(canvas, node);
         targets.add(pointerTargetToVar("expanded:" + node.id, "expandedEditor", panel, node.id));
         targets.add(pointerTargetToVar("expanded:" + node.id + ".close", "expandedCloseButton",
                                        expandedEditorCloseButton(panel), node.id));
@@ -291,6 +326,23 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
     root->setProperty("runtimeTraceNodeCount", (int) runtimeTrace.nodes.size());
     root->setProperty("previewNodeCount", (int) previewResult.nodes.size());
+    root->setProperty(
+            "probeRefreshMode",
+            state.probeRefreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release");
+
+    Array<var> causalUpdates;
+    for (const auto& event : context.presentation.updateTrace().snapshot()) {
+        auto* update = new DynamicObject();
+        update->setProperty("editId", String((int64_t) event.edit.editId));
+        update->setProperty("gestureId", String((int64_t) event.edit.gestureId));
+        update->setProperty("nodeId", event.nodeId);
+        update->setProperty("product", updateProductLabel(event.product));
+        update->setProperty("phase", updatePhaseLabel(event.phase));
+        update->setProperty("fingerprint", String((int64_t) event.inputFingerprint));
+        update->setProperty("sequence", String((int64_t) event.sequence));
+        causalUpdates.add(update);
+    }
+    root->setProperty("causalUpdates", causalUpdates);
 
     Array<var> nodes;
     for (const auto& node : graph.getNodes()) {
@@ -415,6 +467,10 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     Array<var> targets;
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
+    targets.add(AutomationValueEncoder::pointerTargetToVar(
+            "probeRefreshMode",
+            "probeRefreshMode",
+            state.probeRefreshModeBounds));
 
     const auto& sceneSnapshot = scene.build(context.document.graph(), context.viewport, context.presentation.revision(),
                                             context.document.revision());

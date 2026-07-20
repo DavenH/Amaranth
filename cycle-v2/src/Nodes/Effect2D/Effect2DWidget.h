@@ -1,11 +1,11 @@
 #pragma once
 
-#include "../../Graph/NodeGraph.h"
-#include "CurvePanelController.h"
-
 #include <JuceHeader.h>
 
 #include <memory>
+
+#include "../../Graph/NodeGraph.h"
+#include "CurvePanelController.h"
 
 namespace CycleV2 {
 
@@ -37,6 +37,7 @@ public:
     String serializedModelSnapshot();
     String prepareModelPublication(uint64_t currentRevision);
     uint64_t modelRevision() const;
+    uint64_t contentRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool selectedEnvelopeMarkerState(bool loopMarker) const;

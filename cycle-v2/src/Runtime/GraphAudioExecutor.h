@@ -1,10 +1,11 @@
 #pragma once
 
-#include "NodeAudioProcessor.h"
-#include "GraphRuntime.h"
-
+#include <map>
 #include <memory>
 #include <unordered_map>
+
+#include "GraphRuntime.h"
+#include "NodeAudioProcessor.h"
 
 namespace CycleV2 {
 
@@ -52,6 +53,13 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             AudioVoiceContext voice) const;
+    GraphAudioResult processIncremental(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            const std::vector<String>& dirtyNodeIds) const;
+    void clearIncrementalCache() const;
+    size_t diagnosticProcessCount(const String& nodeId) const;
     GraphAudioOutputView processRealtime(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -127,7 +135,8 @@ private:
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
             bool captureDiagnostics,
-            GraphProcessObserver* observer) const;
+            GraphProcessObserver* observer,
+            const std::vector<String>* dirtyNodeIds = nullptr) const;
 
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessContext processContext;
@@ -135,6 +144,8 @@ private:
     mutable const SignalPayload* realtimeOutput {};
     mutable std::unordered_map<ProcessorKey, CachedProcessor, ProcessorKeyHash> processors;
     mutable std::unordered_map<int, PreparedVoice> preparedVoices;
+    mutable std::map<String, NodeAudioResult> diagnosticCache;
+    mutable std::map<String, size_t> diagnosticProcessCounts;
 };
 
 }

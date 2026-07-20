@@ -162,30 +162,53 @@ void CurveExpandedEditorComponent::publishCurrentState() {
         return;
     }
     applyEditorStateToWidget();
+    if (transactionActive) {
+        transientStateChanged = true;
+        uint64_t fingerprint = widget.contentRevision();
+        for (const auto& control : editorControls()) {
+            fingerprint ^= static_cast<uint64_t>(control.id.hashCode64())
+                    + static_cast<uint64_t>(control.value.hashCode64())
+                    + 0x9e3779b97f4a7c15ULL
+                    + (fingerprint << 6U)
+                    + (fingerprint >> 2U);
+        }
+        delegate->effect2DTransientStateChanged(fingerprint);
+        return;
+    }
+    publishDurableState();
+}
+
+bool CurveExpandedEditorComponent::publishDurableState() {
     const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
     const String snapshot = widget.prepareModelPublication(currentRevision);
     const auto controls = editorControls();
     if (!delegate->publishEffect2DState(snapshot, widget.modelRevision(), controls)) {
-        return;
+        return false;
     }
     node.parameters = controls;
     node.parameters.push_back({ CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", snapshot });
     node.parameters.push_back({ CurveNodeModelCodec::revisionParameterId(),
             "Curve Model Revision", String((int64_t) widget.modelRevision()) });
+    return true;
 }
 
 void CurveExpandedEditorComponent::beginTransaction() {
     if (!transactionActive && delegate != nullptr) {
         delegate->beginEffect2DTransaction();
         transactionActive = true;
+        transientStateChanged = false;
     }
 }
 
 void CurveExpandedEditorComponent::commitTransaction() {
     if (transactionActive && delegate != nullptr) {
+        if (transientStateChanged) {
+            publishDurableState();
+        }
         delegate->commitEffect2DTransaction();
     }
     transactionActive = false;
+    transientStateChanged = false;
 }
 
 void CurveExpandedEditorComponent::requestRepaint() {
@@ -264,8 +287,16 @@ void CurveExpandedEditorComponent::setCurvePanelControllerCursor(const MouseCurs
     setMouseCursor(cursor);
 }
 
+void CurveExpandedEditorComponent::beginCurvePanelControllerEdit() {
+    beginTransaction();
+}
+
 void CurveExpandedEditorComponent::curvePanelControllerEdited() {
     persistEffectMeshState();
+}
+
+void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
+    commitTransaction();
 }
 
 }

@@ -364,8 +364,8 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto meshBounds = registry.moduleFor(NodeKind::TrilinearMesh)
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
-    REQUIRE(meshBounds.getWidth() == Catch::Approx(1080.f));
-    REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
+    REQUIRE(meshBounds.getWidth() == Catch::Approx(972.f));
+    REQUIRE(meshBounds.getHeight() == Catch::Approx(764.f));
 }
 
 TEST_CASE("Every effect view exposes both its compact preview and hosted editor",

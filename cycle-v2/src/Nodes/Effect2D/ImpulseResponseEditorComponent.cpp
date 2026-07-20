@@ -33,6 +33,7 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(Effect2DWidget& t
     ,   impl(std::make_unique<Impl>(*this)) {
     bindDiscreteControl(impl->enabled);
     bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
+    impl->size.slider.setRange(0.0, 1.0, 1.0 / 7.0);
 }
 
 ImpulseResponseEditorComponent::~ImpulseResponseEditorComponent() = default;

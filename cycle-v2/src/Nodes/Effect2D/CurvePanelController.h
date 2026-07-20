@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../Graph/NodeGraph.h"
-#include "CurvePanelAdapterTypes.h"
-#include "../Trimesh/TrimeshNodeModel.h"
-
 #include <JuceHeader.h>
 
 #include <memory>
 #include <vector>
+
+#include "../../Graph/NodeGraph.h"
+#include "CurvePanelAdapterTypes.h"
+#include "../Trimesh/TrimeshNodeModel.h"
 
 namespace CycleV2 {
 
@@ -16,7 +16,9 @@ public:
     virtual ~CurvePanelControllerDelegate() = default;
     virtual void repaintCurvePanelController() = 0;
     virtual void setCurvePanelControllerCursor(const MouseCursor& cursor) = 0;
+    virtual void beginCurvePanelControllerEdit() = 0;
     virtual void curvePanelControllerEdited() = 0;
+    virtual void commitCurvePanelControllerEdit() = 0;
 };
 
 class CurvePanelController {
@@ -44,6 +46,7 @@ public:
     virtual String serializedModelSnapshot() = 0;
     virtual String prepareModelPublication(uint64_t currentRevision) = 0;
     virtual uint64_t modelRevision() const = 0;
+    virtual uint64_t contentRevision() const = 0;
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
     virtual bool setSelectedVertexParameter(const String& parameterId, float value) = 0;
 };

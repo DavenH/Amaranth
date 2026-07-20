@@ -20,11 +20,11 @@ TEST_CASE("Trimesh invalidation skips 3D geometry for primary-axis morph edits",
     REQUIRE(result.updateRasterizer);
     REQUIRE(result.refresh2DPanel);
     REQUIRE_FALSE(result.refresh3DGeometry);
-    REQUIRE(result.dirtyCompactPreview);
+    REQUIRE_FALSE(result.dirtyCompactPreview);
     REQUIRE(result.dirtySliceRasterization);
     REQUIRE(result.dirtyInterceptsRails);
     REQUIRE_FALSE(result.dirtyColumns3D);
-    REQUIRE(result.dirtyDspPrep);
+    REQUIRE_FALSE(result.dirtyDspPrep);
 }
 
 TEST_CASE("Trimesh invalidation refreshes 3D geometry for non-primary morph edits", "[cycle-v2][nodes][trimesh]") {

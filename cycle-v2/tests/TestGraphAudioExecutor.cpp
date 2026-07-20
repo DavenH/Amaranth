@@ -177,6 +177,35 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
             != findNodeAudio(result, "wave").output.traversalGrid.values);
 }
 
+TEST_CASE("Incremental graph audio reuses unaffected branch outputs", "[cycle-v2][runtime][causal]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "changed", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "unchanged", {}));
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    const auto first = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            16,
+            { "changed", "unchanged" });
+    REQUIRE(first.nodes.size() == 2);
+    CHECK(executor.diagnosticProcessCount("changed") == 1);
+    CHECK(executor.diagnosticProcessCount("unchanged") == 1);
+
+    const auto second = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            16,
+            { "changed" });
+    REQUIRE(second.nodes.size() == 2);
+    CHECK(executor.diagnosticProcessCount("changed") == 2);
+    CHECK(executor.diagnosticProcessCount("unchanged") == 1);
+}
+
 TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits",
         "[cycle-v2][runtime][envelope][modulation]") {
     GraphNodeFactory factory;

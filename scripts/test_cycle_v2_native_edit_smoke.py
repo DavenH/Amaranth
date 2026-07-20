@@ -130,6 +130,41 @@ class NativeEditSmoke:
         subprocess.run(drag_commands, check=True)
         time.sleep(SETTLE_SECONDS)
 
+    def drag_and_hold(self, source, destination):
+        self.focus_app()
+        moves = []
+        for step in range(1, 7):
+            x = round(source[0] + (destination[0] - source[0]) * step / 6)
+            y = round(source[1] + (destination[1] - source[1]) * step / 6)
+            moves.extend((f"dm:{x},{y}", "w:4"))
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{source[0] + 2},{source[1]}",
+            "w:10",
+            f"m:{source[0]},{source[1]}",
+            "w:20",
+            f"dd:{source[0]},{source[1]}",
+        ], check=True)
+        time.sleep(0.04)
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            *moves,
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def release_drag(self, destination):
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"du:{destination[0]},{destination[1]}",
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
     def capture(self, name, bounds):
         directory = os.environ.get("CYCLE_V2_NATIVE_CAPTURE_DIR")
         if not directory:
@@ -174,6 +209,32 @@ class NativeEditSmoke:
             time.sleep(0.005)
             state = self.graph_state()
         return state
+
+    @staticmethod
+    def causal_sequence(state):
+        return max((int(event["sequence"]) for event in state["causalUpdates"]), default=0)
+
+    @staticmethod
+    def causal_events_since(state, sequence):
+        return [
+            event for event in state["causalUpdates"]
+            if int(event["sequence"]) > sequence
+        ]
+
+    @staticmethod
+    def assert_causal_exactly_once(events, context):
+        assert not any(event["phase"] == "InvariantViolation" for event in events), (
+            context,
+            events,
+        )
+        completed = {}
+        for event in events:
+            if event["phase"] != "Completed":
+                continue
+            key = (event["editId"], event["nodeId"], event["product"])
+            completed[key] = completed.get(key, 0) + 1
+        duplicates = {key: count for key, count in completed.items() if count > 1}
+        assert not duplicates, (context, duplicates)
 
     def key_chord(self, key, shift=False):
         self.focus_app()
@@ -557,6 +618,11 @@ class NativeEditSmoke:
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Waveshaper downstream output")
 
     def envelope_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
         initial_audio = self.audio_samples(2048)
         initial_state = self.open_editor("env")
         initial_snapshot = self.parameters(initial_state)["curve.modelSnapshot"]
@@ -600,7 +666,22 @@ class NativeEditSmoke:
             min(1.35, intercept["x"] + 0.08),
             max(0.1, intercept["y"] - 0.12),
         )
-        self.drag(vertex_point, destination)
+        causal_start = self.causal_sequence(self.graph_state())
+        self.drag_and_hold(vertex_point, destination)
+        held_state = self.graph_state()
+        held_events = self.causal_events_since(held_state, causal_start)
+        assert held_state["probeRefreshMode"] == "On Release", held_state["probeRefreshMode"]
+        assert any(
+            event["product"] == "LocalSlice" and event["phase"] == "Completed"
+            for event in held_events
+        ), (held_events, self.inspect("env"))
+        assert any(event["phase"] == "DeferredUntilCommit" for event in held_events), held_events
+        assert not any(
+            event["product"] in ("PreviewTraversal", "ProbePreview")
+            and event["phase"] == "Completed"
+            for event in held_events
+        ), held_events
+        self.release_drag(destination)
         moved = self.inspect_until(
             "env",
             lambda state: self.model_revision(state) > initial_revision,
@@ -615,6 +696,59 @@ class NativeEditSmoke:
             or abs(moved_parameters["vertex.amp"] - selected_parameters["vertex.amp"]) > 0.01
         ), (selected_parameters, moved_parameters)
         assert self.parameters(moved)["curve.modelSnapshot"] != initial_snapshot
+        committed_state = self.graph_state_until(lambda state: any(
+            int(event["sequence"]) > causal_start
+            and event["product"] == "ProbePreview"
+            and event["phase"] == "Published"
+            for event in state["causalUpdates"]
+        ))
+        self.assert_causal_exactly_once(
+            self.causal_events_since(committed_state, causal_start),
+            "Envelope On Release gesture",
+        )
+
+        refresh_toggle = self.target("probeRefreshMode")
+        self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
+        toggled_state = self.graph_state()
+        assert toggled_state["probeRefreshMode"] == "Live", (refresh_toggle, toggled_state)
+
+        live_start = self.causal_sequence(self.graph_state())
+        live_source = panel_position(
+            moved_parameters["vertex.phase"],
+            moved_parameters["vertex.amp"],
+        )
+        live_destination = panel_position(
+            max(0.05, moved_parameters["vertex.phase"] - 0.04),
+            min(0.9, moved_parameters["vertex.amp"] + 0.08),
+        )
+        self.drag_and_hold(live_source, live_destination)
+        live_state = self.graph_state_until(lambda state: any(
+            int(event["sequence"]) > live_start
+            and event["product"] == "ProbePreview"
+            and event["phase"] == "Published"
+            for event in state["causalUpdates"]
+        ))
+        live_events = self.causal_events_since(live_state, live_start)
+        self.assert_causal_exactly_once(live_events, "Envelope Live movement")
+        completed_before_release = sum(
+            event["phase"] == "Completed"
+            and event["product"] in ("PreviewTraversal", "ProbePreview")
+            for event in live_events
+        )
+        self.release_drag(live_destination)
+        released_state = self.graph_state_until(lambda state: any(
+            int(event["sequence"]) > self.causal_sequence(live_state)
+            and event["phase"] == "AlreadyCurrent"
+            for event in state["causalUpdates"]
+        ))
+        released_events = self.causal_events_since(released_state, live_start)
+        completed_after_release = sum(
+            event["phase"] == "Completed"
+            and event["product"] in ("PreviewTraversal", "ProbePreview")
+            for event in released_events
+        )
+        assert completed_after_release == completed_before_release, released_events
+        self.assert_causal_exactly_once(released_events, "Envelope Live commit")
         self.assert_audio_changed(
             initial_audio,
             self.audio_samples(2048),
@@ -785,7 +919,77 @@ class NativeEditSmoke:
         reloaded_parameters = self.parameters(reloaded_state)
         assert reloaded_parameters["mesh.topology"] == final_parameters["mesh.topology"]
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
+
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
+
+    def causal_trimesh_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "with-spies.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        state = self.open_editor("waveMesh", trimesh=True)
+        parameters = self.parameters(state)
+
+        if self.graph_state()["probeRefreshMode"] != "On Release":
+            refresh_toggle = self.target("probeRefreshMode")
+            self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
+        assert self.graph_state()["probeRefreshMode"] == "On Release"
+
+        primary_axis = "red"
+        if parameters.get("primaryAxis") != primary_axis:
+            primary_axis_button = self.target(
+                f"expanded:waveMesh.trimeshPrimaryAxis.{primary_axis}"
+            )
+            self.primary_click(self.point(primary_axis_button, 0.5, 0.5))
+            parameters = self.parameters(self.inspect("waveMesh"))
+            assert parameters["primaryAxis"] == primary_axis
+        primary_slider = self.target(f"expanded:waveMesh.trimeshMorphRail.{primary_axis}")
+        primary_value = float(parameters[primary_axis])
+        primary_target = 0.25 if primary_value > 0.5 else 0.75
+        primary_start = self.causal_sequence(self.graph_state())
+        self.primary_click(self.point(primary_slider, primary_target, 0.5))
+        primary_events = self.causal_events_since(self.graph_state(), primary_start)
+        assert any(
+            event["product"] == "LocalSlice" and event["phase"] == "Completed"
+            for event in primary_events
+        ), (primary_axis, primary_value, primary_target, primary_slider,
+            self.parameters(self.inspect("waveMesh")), primary_events)
+        assert any(
+            event["product"] == "DurablePublication" and event["phase"] == "Completed"
+            for event in primary_events
+        ), primary_events
+        assert not any(
+            event["product"] in (
+                "CompactPreview",
+                "PreviewTraversal",
+                "ProbePreview",
+                "AudioConfiguration",
+            )
+            and event["phase"] == "Completed"
+            for event in primary_events
+        ), primary_events
+        self.assert_causal_exactly_once(primary_events, "Trimesh primary-axis morph")
+
+        nonprimary_axis = "red" if primary_axis != "red" else "blue"
+        parameters = self.parameters(self.inspect("waveMesh"))
+        nonprimary_slider = self.target(
+            f"expanded:waveMesh.trimeshMorphRail.{nonprimary_axis}"
+        )
+        nonprimary_value = float(parameters[nonprimary_axis])
+        nonprimary_target = 0.2 if nonprimary_value > 0.5 else 0.8
+        nonprimary_start = self.causal_sequence(self.graph_state())
+        self.primary_click(self.point(nonprimary_slider, nonprimary_target, 0.5))
+        nonprimary_state = self.graph_state_until(lambda graph_state: any(
+            int(event["sequence"]) > nonprimary_start
+            and event["product"] == "PreviewTraversal"
+            and event["phase"] == "Completed"
+            for event in graph_state["causalUpdates"]
+        ))
+        self.assert_causal_exactly_once(
+            self.causal_events_since(nonprimary_state, nonprimary_start),
+            "Trimesh non-primary morph",
+        )
 
     def run(self, sequences):
         self.start()
@@ -800,6 +1004,7 @@ class NativeEditSmoke:
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
+                "causal-trimesh": self.causal_trimesh_sequence,
             }
             for sequence in sequences:
                 available[sequence]()
@@ -811,7 +1016,13 @@ if __name__ == "__main__":
     if sys.platform != "darwin":
         raise SystemExit("Native CycleV2 edit smoke requires macOS")
     requested = sys.argv[1:] or ["authoring", "waveshaper", "envelope", "trimesh"]
-    unknown = set(requested) - {"authoring", "waveshaper", "envelope", "trimesh"}
+    unknown = set(requested) - {
+        "authoring",
+        "waveshaper",
+        "envelope",
+        "trimesh",
+        "causal-trimesh",
+    }
     if unknown:
         raise SystemExit(f"Unknown native edit smoke sequence: {', '.join(sorted(unknown))}")
     NativeEditSmoke().run(requested)

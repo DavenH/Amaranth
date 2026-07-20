@@ -25,6 +25,7 @@ public:
             const std::vector<NodeParameter>& controls) = 0;
     virtual void beginEffect2DTransaction() = 0;
     virtual void commitEffect2DTransaction() = 0;
+    virtual void effect2DTransientStateChanged(uint64_t) {}
 };
 
 class CurveExpandedEditorComponent : public Component,
@@ -95,11 +96,15 @@ private:
     Rectangle<float> closeButtonBounds() const;
     void updatePanelHost();
     void persistEffectMeshState();
+    bool publishDurableState();
     void repaintCurvePanelController() override;
     void setCurvePanelControllerCursor(const MouseCursor& cursor) override;
+    void beginCurvePanelControllerEdit() override;
     void curvePanelControllerEdited() override;
+    void commitCurvePanelControllerEdit() override;
 
     bool transactionActive {};
+    bool transientStateChanged {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)
 };

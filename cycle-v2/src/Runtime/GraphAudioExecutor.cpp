@@ -38,6 +38,26 @@ GraphAudioResult GraphAudioExecutor::process(
             nullptr);
 }
 
+GraphAudioResult GraphAudioExecutor::processIncremental(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        const std::vector<String>& dirtyNodeIds) const {
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, voice.voiceIndex });
+    return processInternal(graph, plan, frameCount, {}, voice, true, nullptr, &dirtyNodeIds);
+}
+
+void GraphAudioExecutor::clearIncrementalCache() const {
+    diagnosticCache.clear();
+    diagnosticProcessCounts.clear();
+}
+
+size_t GraphAudioExecutor::diagnosticProcessCount(const String& nodeId) const {
+    const auto found = diagnosticProcessCounts.find(nodeId);
+    return found == diagnosticProcessCounts.end() ? 0 : found->second;
+}
+
 GraphAudioOutputView GraphAudioExecutor::processRealtime(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
@@ -63,7 +83,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
         bool captureDiagnostics,
-        GraphProcessObserver* observer) const {
+        GraphProcessObserver* observer,
+        const std::vector<String>* dirtyNodeIds) const {
     if (captureDiagnostics) {
         AudioExecutionSpec executionSpec;
         executionSpec.maximumFrameCount = frameCount;
@@ -89,6 +110,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
 
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
         const auto& step = plan.steps[stepIndex];
+        const bool hasCachedResult = diagnosticCache.find(step.nodeId) != diagnosticCache.end();
+        const bool explicitlyDirty = dirtyNodeIds == nullptr
+                || std::find(dirtyNodeIds->begin(), dirtyNodeIds->end(), step.nodeId) != dirtyNodeIds->end();
+        if (captureDiagnostics && hasCachedResult && !explicitlyDirty) {
+            continue;
+        }
         NodeAudioProcessor* processor = stepIndex < preparedVoice->second.processors.size()
                 ? preparedVoice->second.processors[stepIndex]
                 : nullptr;
@@ -173,6 +200,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
 
         processor->process(context);
+        if (captureDiagnostics) {
+            ++diagnosticProcessCounts[step.nodeId];
+        }
 
         if (observer != nullptr) {
             observer->nodeProcessed(step.nodeId, context);
@@ -215,9 +245,24 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
 
         result.nodes.push_back({ step.nodeId, nodeOutputs.front().second, std::move(nodeOutputs) });
+        diagnosticCache[step.nodeId] = result.nodes.back();
 
         if (outputNode) {
             result.output = result.nodes.back().output;
+        }
+    }
+
+    if (captureDiagnostics && dirtyNodeIds != nullptr) {
+        result = {};
+        for (const auto& step : plan.steps) {
+            const auto cached = diagnosticCache.find(step.nodeId);
+            if (cached == diagnosticCache.end()) {
+                continue;
+            }
+            result.nodes.push_back(cached->second);
+            if (step.outputSink) {
+                result.output = cached->second.output;
+            }
         }
     }
 

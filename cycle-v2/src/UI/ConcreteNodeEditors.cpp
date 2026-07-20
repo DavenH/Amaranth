@@ -597,6 +597,10 @@ private:
         commands.commitCurveTransaction();
     }
 
+    void effect2DTransientStateChanged(uint64_t fingerprint) override {
+        presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     std::unique_ptr<CurveExpandedEditorComponent> editor;

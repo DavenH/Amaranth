@@ -9,6 +9,7 @@
 #include "../Graph/GraphDocument.h"
 #include "../Graph/NodeGraph.h"
 #include "../Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "../Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
 
@@ -84,6 +85,23 @@ public:
     virtual void refreshNodeEditorPresentation() = 0;
     virtual Point<float> nodeEditorCreationPosition() const = 0;
     virtual void rebindNodeEditor() = 0;
+    virtual void rebindNodeEditorTransient() {
+        rebindNodeEditor();
+    }
+    virtual ProbeRefreshMode probeRefreshMode() const {
+        return ProbeRefreshMode::OnGestureCommit;
+    }
+    virtual void recordNodeEditorMovement(
+            const String&,
+            const String&,
+            uint64_t) {
+    }
+    virtual void commitNodeEditorLocalState(
+            const String&,
+            const String&,
+            uint64_t,
+            uint64_t) {
+    }
 };
 
 class NodeEditorResources {
@@ -212,17 +230,24 @@ private:
     NodeEditorResources& resources;
     String activeMorphNodeId;
     String activeMorphParameterId;
+    uint64_t activeMorphFingerprint {};
+    bool activeMorphChanged {};
     String activeVertexNodeId;
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
     bool curveTransactionActive {};
     bool curvePublicationPending {};
+    String curvePublicationNodeId;
+    uint64_t curvePublicationFingerprint {};
     String activeParameterNodeId;
     String activeParameterId;
     String activeParameterLabel;
     String secondaryParameterId;
     String secondaryParameterLabel;
+    String activeParameterField;
+    uint64_t activeParameterFingerprint {};
+    bool activeParameterChanged {};
 };
 
 class NodeEditorHost {
@@ -236,6 +261,7 @@ public:
     ~NodeEditorHost();
 
     bool bind(const Node* node, Rectangle<int> bounds, uint64_t documentRevision = 0);
+    bool rebindTransient(const Node& node);
     void close();
     void detach();
     void renderOpenGL(float scaleFactor);

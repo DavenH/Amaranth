@@ -122,10 +122,14 @@ public:
     void refreshNodeEditorPresentation() override {}
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
+    void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
+        ++recordedMovements;
+    }
 
     int repaints {};
     int scheduledRefreshes {};
     int rebinds {};
+    int recordedMovements {};
 };
 
 class NullResources final : public NodeEditorResources {
@@ -409,7 +413,7 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     editor.slider.slider.onDragStart();
     editor.slider.slider.setValue(0.73, sendNotificationSync);
     editor.slider.slider.onDragEnd();
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "repaint", "commit" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.toggle.button.onClick();
@@ -494,7 +498,8 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(document.undo());
     REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
-    REQUIRE(presentation.scheduledRefreshes == 2);
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.rebinds == 1);
 }
 

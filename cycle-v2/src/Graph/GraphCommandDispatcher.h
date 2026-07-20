@@ -3,6 +3,7 @@
 #include "GraphDocument.h"
 
 #include <functional>
+#include <optional>
 
 namespace CycleV2 {
 
@@ -57,16 +58,35 @@ public:
     void beginCompoundEdit();
     void commitCompoundEdit();
     void cancelCompoundEdit();
+    void beginTransientEdit();
+    void commitTransientEdit();
+    void cancelTransientEdit();
+
+    const NodeGraph& editingGraph() const;
+    const GraphChangeSet& transientChanges() const;
+    bool hasTransientEdit() const { return transientEdit.has_value(); }
 
 private:
+    struct TransientEdit {
+        NodeGraph graph;
+        juce::String before;
+        GraphChangeSet changes;
+        int depth { 1 };
+        bool changed {};
+    };
+
     GraphEditResult apply(const std::function<GraphEditResult(NodeGraph&)>& command);
     GraphEditResult setNodeBounds(const juce::String& nodeId, juce::Rectangle<float> bounds);
+    void accumulateCompoundChange(const GraphChangeSet& change);
+    static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 
     GraphDocument& document;
     juce::String compoundBefore;
+    GraphChangeSet compoundChanges;
     bool compoundActive {};
     bool compoundChanged {};
     int compoundDepth {};
+    std::optional<TransientEdit> transientEdit;
 };
 
 }

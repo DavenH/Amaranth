@@ -26,6 +26,7 @@ namespace AppSettings {
     ,   LastPopupClickedTransp
     ,   LastPopupClickedHorz
     ,   CollisionDetection
+    ,   ProbeEditRefreshPolicy
 
     ,   numSettings
     };

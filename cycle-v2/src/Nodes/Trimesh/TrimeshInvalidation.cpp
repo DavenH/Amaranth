@@ -35,16 +35,24 @@ TrimeshInvalidationResult TrimeshInvalidation::invalidate(const TrimeshChange& c
             return withPanelContextRefresh(result, change);
 
         case TrimeshChangeKind::Morph:
+        {
+            const bool onlyPrimaryChanged = primaryMorphChanged(change)
+                    && !((change.primaryViewAxis != Vertex::Time && change.yellowChanged)
+                            || (change.primaryViewAxis != Vertex::Red && change.redChanged)
+                            || (change.primaryViewAxis != Vertex::Blue && change.blueChanged));
             result.rebuildNodeData = true;
             result.updateRasterizer = true;
             result.refresh2DPanel = true;
-            result.refresh3DGeometry = anyMorphChanged(change) && !primaryMorphChanged(change);
-            result.dirtyCompactPreview = true;
+            result.refresh3DGeometry = (change.primaryViewAxis != Vertex::Time && change.yellowChanged)
+                    || (change.primaryViewAxis != Vertex::Red && change.redChanged)
+                    || (change.primaryViewAxis != Vertex::Blue && change.blueChanged);
+            result.dirtyCompactPreview = !onlyPrimaryChanged;
             result.dirtySliceRasterization = true;
             result.dirtyInterceptsRails = true;
             result.dirtyColumns3D = result.refresh3DGeometry;
-            result.dirtyDspPrep = true;
+            result.dirtyDspPrep = !onlyPrimaryChanged;
             return withPanelContextRefresh(result, change);
+        }
 
         case TrimeshChangeKind::PrimaryAxis:
             result.rebuildNodeData = true;

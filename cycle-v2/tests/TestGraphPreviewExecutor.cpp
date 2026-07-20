@@ -165,19 +165,18 @@ NodeGraph previewlessChain(size_t processorCount) {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 100.f, 0.f }));
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, false });
 
-    String sourceId = "wave";
-    String sourcePort = "out";
+    String sourceId = "shape";
+    String sourcePort = "time";
     for (size_t i = 0; i < processorCount; ++i) {
-        const String nodeId = "reverb" + String((int) i);
-        graph.addNode(factory.createNode(NodeKind::Reverb, nodeId, { (float) i * 100.f, 0.f }));
+        const String nodeId = "delay" + String((int) i);
+        graph.addNode(factory.createNode(NodeKind::Delay, nodeId, { (float) i * 100.f, 0.f }));
         graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, false });
         sourceId = nodeId;
         sourcePort = "time";
     }
-
-    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 500.f, 0.f }));
-    graph.addEdge({ sourceId, sourcePort, "shape", "time", PortDomain::TimeSignal, false });
     return graph;
 }
 

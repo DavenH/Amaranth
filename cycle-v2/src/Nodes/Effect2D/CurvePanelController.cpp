@@ -94,6 +94,10 @@ public:
         return publicationRevision;
     }
 
+    uint64_t contentRevision() const override {
+        return transientContentRevision;
+    }
+
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const override {
         return panel->selectedVertexParameters();
     }
@@ -147,7 +151,7 @@ protected:
         if (controllerDelegate == nullptr || !registerMeshEdit()) {
             return false;
         }
-        ++publicationRevision;
+        ++transientContentRevision;
         controllerDelegate->curvePanelControllerEdited();
         return true;
     }
@@ -167,6 +171,7 @@ protected:
     std::unique_ptr<CurvePanelHost> host;
     ControlState controls;
     uint64_t publicationRevision { 1 };
+    uint64_t transientContentRevision { 1 };
 
 private:
     void initialiseCurvePanel(Component* component) override {
@@ -182,8 +187,24 @@ private:
         panel->refreshRasterizer();
     }
 
-    bool publishCurvePanelEdit() override {
-        return notifyMeshEdited();
+    void beginEdit() override {
+        editChanged = false;
+        if (controllerDelegate != nullptr) {
+            controllerDelegate->beginCurvePanelControllerEdit();
+        }
+    }
+
+    void publishIntermediateRevision() override {
+        editChanged = notifyMeshEdited() || editChanged;
+    }
+
+    void commitEdit() override {
+        if (!editChanged) {
+            synchronizeSelection();
+        }
+        if (controllerDelegate != nullptr) {
+            controllerDelegate->commitCurvePanelControllerEdit();
+        }
     }
 
     void synchronizeCurvePanelSelection() override {
@@ -203,6 +224,7 @@ private:
     }
 
     CurvePanelControllerDelegate* controllerDelegate {};
+    bool editChanged {};
 };
 
 class FlatPanelController final : public CurvePanelControllerBase {

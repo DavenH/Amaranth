@@ -5,6 +5,8 @@
 #include <array>
 #include <memory>
 
+#include <App/Settings.h>
+
 #include "../Graph/GraphEditor.h"
 #include "../Graph/GraphCommandDispatcher.h"
 #include "../Graph/GraphDocument.h"
@@ -94,6 +96,7 @@ private:
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     mutable NodeCanvasScene sceneBuilder;
+    Settings settings;
     GraphDocument document;
     GraphCommandDispatcher commands;
     const NodeGraph& graph;
@@ -145,6 +148,7 @@ private:
 
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
+    void refreshCompiledStateAsync();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
@@ -172,6 +176,17 @@ private:
     void refreshNodeEditorPresentation() override;
     Point<float> nodeEditorCreationPosition() const override;
     void rebindNodeEditor() override;
+    void rebindNodeEditorTransient() override;
+    ProbeRefreshMode probeRefreshMode() const override { return probeRailState.refreshMode; }
+    void recordNodeEditorMovement(
+            const String& nodeId,
+            const String& field,
+            uint64_t effectiveFingerprint) override;
+    void commitNodeEditorLocalState(
+            const String& nodeId,
+            const String& field,
+            uint64_t effectiveFingerprint,
+            uint64_t documentRevision) override;
 
     Effect2DWidget* effect2DWidget(const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;

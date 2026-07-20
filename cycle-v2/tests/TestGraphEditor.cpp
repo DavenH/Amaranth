@@ -1,8 +1,95 @@
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphCommandDispatcher.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2][graph][causal]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    const uint64_t graphRevision = graph.getRevision();
+
+    const auto result = GraphEditor().setNodeParameter(
+            graph, "delay", "time", "Time", "0.500000");
+
+    REQUIRE(result.succeeded());
+    REQUIRE_FALSE(result.changed);
+    REQUIRE(graph.getRevision() == graphRevision);
+}
+
+TEST_CASE("IR length uses one effective normalizer for graph and DSP edits",
+        "[cycle-v2][graph][causal]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
+
+    const auto first = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.51");
+    const auto sameLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.56");
+    const auto nextLength = GraphEditor().setNodeParameter(graph, "ir", "size", "Size", "0.58");
+
+    REQUIRE(first.succeeded());
+    REQUIRE_FALSE(first.changed);
+    REQUIRE(sameLength.succeeded());
+    REQUIRE_FALSE(sameLength.changed);
+    REQUIRE(nextLength.succeeded());
+    REQUIRE(nextLength.changed);
+}
+
+TEST_CASE("Compound editor movement publishes one durable document revision",
+        "[cycle-v2][graph][causal]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const uint64_t initialRevision = document.revision();
+    int publications {};
+    commands.beginCompoundEdit();
+    document.setListener([&](uint64_t, const GraphChangeSet&) {
+        ++publications;
+    });
+
+    REQUIRE(commands.setNodeParameter("delay", "time", "Time", "0.6").succeeded());
+    REQUIRE(commands.setNodeParameter("delay", "time", "Time", "0.7").succeeded());
+    REQUIRE(commands.setNodeParameter("delay", "time", "Time", "0.8").succeeded());
+    REQUIRE(document.revision() == initialRevision);
+    REQUIRE(publications == 0);
+
+    commands.commitCompoundEdit();
+
+    REQUIRE(document.revision() == initialRevision + 1);
+    REQUIRE(publications == 1);
+}
+
+TEST_CASE("Transient editor movement leaves the durable graph unchanged until commit",
+        "[cycle-v2][graph][causal]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto timeValue = [](const NodeGraph& source) {
+        const Node* node = source.findNode("delay");
+        const auto found = std::find_if(
+                node->parameters.begin(), node->parameters.end(), [](const auto& parameter) {
+                    return parameter.id == "time";
+                });
+        return found != node->parameters.end() ? found->value : String();
+    };
+    const String durableValue = timeValue(document.graph());
+    const uint64_t initialRevision = document.revision();
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.setNodeParameter("delay", "time", "Time", "0.8").changed);
+    const String transientValue = timeValue(commands.editingGraph());
+    CHECK(timeValue(document.graph()) == durableValue);
+    CHECK(transientValue != durableValue);
+    CHECK(document.revision() == initialRevision);
+
+    commands.commitTransientEdit();
+    CHECK(timeValue(document.graph()) == transientValue);
+    CHECK(document.revision() == initialRevision + 1);
+}
 
 TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();

@@ -265,8 +265,16 @@ bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
     const auto plane = impl->presentation.planeBounds(editorControlBounds());
     const float red = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
     const float blue = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
-    impl->redMorph.slider.setValue(red, sendNotificationSync);
-    impl->blueMorph.slider.setValue(blue, sendNotificationSync);
+    const bool redChanged = static_cast<float>(impl->redMorph.slider.getValue()) != red;
+    const bool blueChanged = static_cast<float>(impl->blueMorph.slider.getValue()) != blue;
+    if (!redChanged && !blueChanged) {
+        return true;
+    }
+
+    impl->redMorph.slider.setValue(red, dontSendNotification);
+    impl->blueMorph.slider.setValue(blue, dontSendNotification);
+    publishCurrentState();
+    requestRepaint();
     return true;
 }
 
