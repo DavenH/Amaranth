@@ -9,6 +9,8 @@
 
 namespace CycleV2 {
 
+struct PreviewControlContext;
+
 struct PreviewOutputPort {
     String portId;
     PortDomain domain {};
@@ -36,6 +38,7 @@ struct PreviewProcessContext {
     const PublishedNodeConfiguration* configuration {};
     const SignalPayload* capturedOutput {};
     bool reusedCapturedTraversal {};
+    const PreviewControlContext* controlContext {};
 };
 
 class NodePreviewProcessor {

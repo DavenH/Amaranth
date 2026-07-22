@@ -53,6 +53,7 @@ generate_svg_data(
     NodeIconData
     NodeIconData
     genericProcessor voiceContext waveSource imageSource trilinearMesh
+    modulationSource
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
     reverb delay equalizer stereoSplit stereoJoin output
 )
@@ -142,6 +143,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
 )
 
 set(NODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationSource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveEditorPrimitives.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditorFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopeEditorComponent.cpp"

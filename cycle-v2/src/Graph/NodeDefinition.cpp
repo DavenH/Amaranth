@@ -286,6 +286,18 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .disablePreview()
                     .presentation({}, { 300.f, 128.f })
                     .finish(),
+            buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
+                    { output("value", "Value", PortDomain::ControlSignal) }, {
+                            choice("source", "Source", "modWheel", {
+                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, dsp | preview | presentation),
+                            integer("controller", "Controller", 1, 0, 127, dsp | preview | presentation),
+                            number("constant", "Constant", 0.5f, 0.f, 1.f, dsp | preview | presentation)
+                    }))
+                    .runtime(AudioModuleRole::ModulationSource, PreviewModuleRole::ModulationSource)
+                    .presentation({ 210.f, 82.f })
+                    .finish(),
             buildDefinition(definition("waveSource", NodeKind::WaveSource, "Wave", "time source", "wave",
                     { input("context", "Context", PortDomain::DomainContext) },
                     { output("out", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {

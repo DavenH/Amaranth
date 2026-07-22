@@ -35,6 +35,7 @@ const NodePalette::Entry kSourceEntries[] = {
 };
 
 const NodePalette::Entry kControlEntries[] = {
+        { NodeKind::ModulationSource, "Modulation" },
         { NodeKind::Envelope, "Envelope" },
         { NodeKind::GuideCurve, "Guide" }
 };
