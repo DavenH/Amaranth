@@ -148,6 +148,20 @@ String singleLineObject(const DynamicObject& object) {
     return first ? String("{}") : result + " }";
 }
 
+String singleLineArray(const Array<var>& values) {
+    String result { "[ " };
+    for (int index = 0; index < values.size(); ++index) {
+        if (!isScalarJSON(values[index])) {
+            return {};
+        }
+        if (index > 0) {
+            result << ", ";
+        }
+        result << scalarToJSON(values[index]);
+    }
+    return values.isEmpty() ? String("[]") : result + " ]";
+}
+
 void appendIndent(String& output, int depth) {
     output << String::repeatedString("    ", depth);
 }
@@ -175,8 +189,9 @@ void appendCanonicalObject(const DynamicObject& object, int depth, String& outpu
 }
 
 void appendCanonicalArray(const Array<var>& values, int depth, String& output) {
-    if (values.isEmpty()) {
-        output << "[]";
+    const String compact = singleLineArray(values);
+    if (compact.isNotEmpty() && depth * 4 + compact.length() <= maximumLineLength) {
+        output << compact;
         return;
     }
 

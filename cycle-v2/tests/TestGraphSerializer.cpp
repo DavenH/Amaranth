@@ -114,6 +114,7 @@ TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][g
     REQUIRE(encoded.contains("\"amp\": 1.15"));
     REQUIRE_FALSE(encoded.contains("1.149999976158142"));
     REQUIRE(encoded.contains("{ \"time\":"));
+    REQUIRE(encoded.contains("\"vertexIds\": [ 0, 1, 2, 3, 4, 5, 6, 7 ]"));
 }
 
 TEST_CASE("Graph JSON rejects unsupported, unknown, and legacy input atomically", "[cycle-v2][graph]") {
