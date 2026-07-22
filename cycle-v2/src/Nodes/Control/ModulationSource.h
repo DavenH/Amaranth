@@ -26,6 +26,7 @@ struct PreviewControlContext {
     int highestNote { 127 };
     float channelPressure {};
     std::array<float, 128> controllers {};
+    bool traverseVoiceTime {};
 };
 
 struct ModulationSourceConfiguration final : public INodeDspConfiguration {

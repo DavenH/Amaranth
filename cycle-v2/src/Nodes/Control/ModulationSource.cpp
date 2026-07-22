@@ -98,14 +98,14 @@ public:
         context.domain = PortDomain::ControlSignal;
 
         if (configuration->mode == ModulationSourceMode::VoiceTime
-                && context.gridColumns > 0) {
-            const float denominator = context.gridColumns > 1
-                    ? (float) (context.gridColumns - 1)
+                && controls.traverseVoiceTime) {
+            const float denominator = context.pointCount > 1
+                    ? (float) (context.pointCount - 1)
                     : 1.f;
-            context.primary.resize(context.gridColumns);
-            for (size_t column = 0; column < context.gridColumns; ++column) {
+            for (size_t column = 0; column < context.pointCount; ++column) {
                 context.primary[column] = (float) column / denominator;
             }
+            context.gridColumns = context.pointCount;
             context.gridRows = 1;
             return;
         }

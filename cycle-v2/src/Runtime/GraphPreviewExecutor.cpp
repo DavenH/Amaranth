@@ -128,7 +128,8 @@ GraphPreviewResult renderPreview(
         const std::vector<const NodeAudioResult*>& audioNodes,
         size_t pointCount,
         GraphPreviewResult result = {},
-        const std::vector<uint8_t>* dirtyNodes = nullptr) {
+        const std::vector<uint8_t>* dirtyNodes = nullptr,
+        const PreviewControlContext* controlContext = nullptr) {
     if (result.previewResultIndexByStep.size() != plan.steps.size()) {
         result.nodes.clear();
         result.previewResultIndexByStep.assign(plan.steps.size(), -1);
@@ -200,6 +201,7 @@ GraphPreviewResult renderPreview(
 
         PreviewProcessContext context;
         context.pointCount = pointCount;
+        context.controlContext = controlContext;
         context.configuration = &step.configuration;
         if (stepIndex < audioIndex.size() && audioIndex[stepIndex] != nullptr) {
             context.capturedOutput = &audioIndex[stepIndex]->output;
@@ -296,6 +298,13 @@ void appendProbePreviews(
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
     return renderPreview(plan, {}, pointCount);
+}
+
+GraphPreviewResult GraphPreviewExecutor::render(
+        const GraphExecutionPlan& plan,
+        size_t pointCount,
+        const PreviewControlContext& controlContext) const {
+    return renderPreview(plan, {}, pointCount, {}, nullptr, &controlContext);
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(

@@ -3,6 +3,7 @@
 
 #include "../src/Nodes/Control/ModulationSource.h"
 #include "../src/Runtime/AudioProcessContextUtils.h"
+#include "../src/Runtime/MidiControlState.h"
 
 using namespace CycleV2;
 
@@ -143,4 +144,59 @@ TEST_CASE("Modulation preview is deterministic from explicit audition controls",
     REQUIRE(context.primary == std::vector<float>(7, 96.f / 127.f));
     controls.noteNumber = 12;
     REQUIRE(context.primary == std::vector<float>(7, 96.f / 127.f));
+}
+
+TEST_CASE("MIDI control state preserves block start values and ordered events",
+        "[cycle-v2][modulation][midi]") {
+    MidiControlState state;
+    state.prepare(8);
+    state.beginBlock();
+    state.ingest(MidiMessage::controllerEvent(2, 74, 32), 2);
+    state.ingest(MidiMessage::channelPressureChange(2, 96), 5);
+    AudioVoiceContext first;
+    state.prepareVoice(first);
+    state.populateVoice(first, 2);
+
+    REQUIRE(first.controls.controllers[74] == 0.f);
+    REQUIRE(first.controls.channelPressure == 0.f);
+    REQUIRE(first.controlEvents.size() == 2);
+    REQUIRE(first.controlEvents[0].sampleOffset == 2);
+    REQUIRE(first.controlEvents[1].sampleOffset == 5);
+
+    state.beginBlock();
+    AudioVoiceContext next;
+    state.prepareVoice(next);
+    state.populateVoice(next, 2);
+    REQUIRE(next.controls.controllers[74] == Catch::Approx(32.f / 127.f));
+    REQUIRE(next.controls.channelPressure == Catch::Approx(96.f / 127.f));
+    REQUIRE(next.controlEvents.empty());
+
+    AudioVoiceContext otherChannel;
+    state.prepareVoice(otherChannel);
+    state.populateVoice(otherChannel, 1);
+    REQUIRE(otherChannel.controls.controllers[74] == 0.f);
+    REQUIRE(otherChannel.controls.channelPressure == 0.f);
+}
+
+TEST_CASE("Voice-time preview traversal is explicit and stateless",
+        "[cycle-v2][modulation][preview]") {
+    auto processor = createModulationSourcePreviewProcessor();
+    PreviewControlContext controls;
+    controls.voiceTime = 0.4f;
+    PreviewProcessContext scalar;
+    scalar.pointCount = 5;
+    scalar.parameters = { { "source", "Source", "voiceTime" } };
+    scalar.controlContext = &controls;
+    processor->render(scalar);
+    REQUIRE(scalar.primary == std::vector<float>(5, 0.4f));
+
+    controls.traverseVoiceTime = true;
+    PreviewProcessContext traversal;
+    traversal.pointCount = 5;
+    traversal.parameters = scalar.parameters;
+    traversal.controlContext = &controls;
+    processor->render(traversal);
+    REQUIRE(traversal.primary == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(traversal.gridColumns == 5);
+    REQUIRE(traversal.gridRows == 1);
 }
