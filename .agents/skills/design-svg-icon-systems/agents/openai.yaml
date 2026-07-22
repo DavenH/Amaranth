@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design SVG Icon Systems"
+  short_description: "Create coherent, legible semantic SVG icon sets"
+  default_prompt: "Use $design-svg-icon-systems to design and visually validate a cohesive SVG icon set for this interface."

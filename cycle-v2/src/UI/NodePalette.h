@@ -6,6 +6,17 @@
 
 namespace CycleV2 {
 
+enum class PaletteIcon {
+    Context,
+    Transform,
+    Math,
+    Source,
+    Control,
+    Fx,
+    Channel,
+    Count
+};
+
 class NodePalette {
 public:
     struct Entry {
@@ -16,6 +27,7 @@ public:
     struct Section {
         const char* title;
         const char* shortLabel;
+        PaletteIcon icon {};
         PortDomain domain {};
         const Entry* entries {};
         int entryCount {};
