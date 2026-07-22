@@ -85,9 +85,9 @@ public:
         return state;
     }
 
-    String prepareModelPublication(uint64_t currentRevision) override {
+    NodeModelStatePtr prepareModelPublication(uint64_t currentRevision) override {
         publicationRevision = jmax(publicationRevision, currentRevision + 1);
-        return serializedModelSnapshot();
+        return modelPublication();
     }
 
     uint64_t modelRevision() const override {
@@ -133,8 +133,7 @@ protected:
     }
 
     void finishNodeSync(const Node& node) {
-        publicationRevision = jmax<uint64_t>(1, (uint64_t) parameterValueForNode(
-                node, CurveNodeModelCodec::revisionParameterId(), "1").getLargeIntValue());
+        publicationRevision = node.model != nullptr ? node.model->revision() : 1;
         applyPanelSettings();
         panel->refreshRasterizer();
     }
@@ -259,15 +258,15 @@ public:
         return adapter.serializedMeshState();
     }
 
-    String serializedModelSnapshot() override {
+    NodeModelStatePtr modelPublication() override {
         auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
-        const String snapshot = adapter.serializedModelSnapshot(
+        const auto publication = adapter.modelPublication(
                 flatPanel.selectedFlatVertexForModel(), publicationRevision);
-        if (snapshot.isEmpty()) {
+        if (publication == nullptr) {
             panel->clearInteractionState();
             panel->refreshRasterizer();
         }
-        return snapshot;
+        return publication;
     }
 
 private:
@@ -282,7 +281,7 @@ private:
 
     void synchronizeSelection() override {
         auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
-        adapter.serializedModelSnapshot(
+        adapter.modelPublication(
                 flatPanel.selectedFlatVertexForModel(), publicationRevision);
     }
 
@@ -353,14 +352,14 @@ public:
         return adapter.serializedMeshState();
     }
 
-    String serializedModelSnapshot() override {
-        const String snapshot = adapter.serializedModelSnapshot(
+    NodeModelStatePtr modelPublication() override {
+        const auto publication = adapter.modelPublication(
                 envelopePanel().selectedEnvelopeCubeForModel(), publicationRevision);
-        if (snapshot.isEmpty()) {
+        if (publication == nullptr) {
             panel->clearInteractionState();
             panel->refreshRasterizer();
         }
-        return snapshot;
+        return publication;
     }
 
 private:
@@ -375,7 +374,7 @@ private:
     }
 
     void synchronizeSelection() override {
-        adapter.serializedModelSnapshot(
+        adapter.modelPublication(
                 envelopePanel().selectedEnvelopeCubeForModel(), publicationRevision);
     }
 

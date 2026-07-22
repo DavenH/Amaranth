@@ -34,6 +34,8 @@ struct GraphChangeSet {
     bool layoutChanged {};
     bool probesChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
+    bool modelChanged {};
+    bool editorStateChanged {};
 };
 
 struct GraphEditResult {
@@ -82,6 +84,15 @@ public:
             NodeGraph& graph,
             const String& nodeId,
             const std::vector<NodeParameter>& parameters) const;
+    GraphEditResult replaceNodeModel(
+            NodeGraph& graph,
+            const String& nodeId,
+            uint64_t expectedRevision,
+            NodeModelStatePtr model) const;
+    GraphEditResult setNodeEditorState(
+            NodeGraph& graph,
+            const String& nodeId,
+            var editorState) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;

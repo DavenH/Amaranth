@@ -89,6 +89,7 @@ struct GraphExecutionStep {
     int latencyCycles {};
     String transformMode;
     std::vector<NodeParameter> parameters;
+    NodeModelStatePtr model;
     PublishedNodeConfiguration configuration;
     std::vector<GraphStepInput> inputs;
     std::vector<GraphStepOutput> outputs;

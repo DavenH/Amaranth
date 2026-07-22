@@ -52,7 +52,7 @@ public:
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
     var exportAutomationState() const;
-    String exportGraphXml() const;
+    String exportGraphJson() const;
     bool openNodeEditorForAutomation(const String& nodeId);
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
     bool moveNodeForAutomation(const String& nodeId, Point<float> position);

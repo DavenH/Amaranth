@@ -20,8 +20,7 @@ public:
     virtual void closeEffect2DEditor() = 0;
     virtual void repaintEffect2DEditorOpenGL() = 0;
     virtual bool publishEffect2DState(
-            const String& snapshot,
-            uint64_t revision,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
     virtual void beginEffect2DTransaction() = 0;
     virtual void commitEffect2DTransaction() = 0;

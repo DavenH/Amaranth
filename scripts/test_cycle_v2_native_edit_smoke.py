@@ -282,11 +282,28 @@ class NativeEditSmoke:
 
     @staticmethod
     def flat_snapshot(state):
-        return json.loads(NativeEditSmoke.parameters(state)["curve.modelSnapshot"])
+        snapshot = dict(state["model"]["state"])
+        selected_id = state.get("editor", {}).get("selectedVertexId")
+        current = state.get("effect2D", {}).get("panelState", {}).get("currentVertex")
+        if selected_id is not None:
+            snapshot["selection"] = selected_id
+        elif current is not None and snapshot.get("vertices"):
+            selected = min(
+                snapshot["vertices"],
+                key=lambda vertex: abs(vertex["x"] - current["x"]) + abs(vertex["y"] - current["y"]),
+            )
+            snapshot["selection"] = selected["id"]
+        else:
+            snapshot["selection"] = None
+        return snapshot
 
     @staticmethod
     def model_revision(state):
-        return int(NativeEditSmoke.parameters(state)["curve.modelRevision"])
+        return int(state["model"]["revision"])
+
+    @staticmethod
+    def trimesh_model(state):
+        return state["model"]["mesh"]
 
     @staticmethod
     def selected_vertex_parameters(state):
@@ -641,7 +658,7 @@ class NativeEditSmoke:
         time.sleep(SETTLE_SECONDS)
         initial_audio = self.audio_samples(2048)
         initial_state = self.open_editor("env")
-        initial_snapshot = self.parameters(initial_state)["curve.modelSnapshot"]
+        initial_snapshot = initial_state["model"]["state"]
         panel = self.target("expanded:env.panel2D")
         panel_state = initial_state["effect2D"]["panelState"]
         zoom = panel_state["zoom"]
@@ -690,7 +707,7 @@ class NativeEditSmoke:
             amp_rail,
         )
         initial_revision = self.model_revision(selected)
-        initial_snapshot = self.parameters(selected)["curve.modelSnapshot"]
+        initial_snapshot = selected["model"]["state"]
 
         blank = self.point(panel, 0.92, 0.12)
         self.click(f"m:{blank[0]},{blank[1]}")
@@ -737,7 +754,7 @@ class NativeEditSmoke:
             abs(moved_parameters["vertex.phase"] - selected_parameters["vertex.phase"]) > 0.01
             or abs(moved_parameters["vertex.amp"] - selected_parameters["vertex.amp"]) > 0.01
         ), (selected_parameters, moved_parameters)
-        assert self.parameters(moved)["curve.modelSnapshot"] != initial_snapshot
+        assert moved["model"]["state"] != initial_snapshot
         committed_state = self.graph_state_until(lambda state: any(
             int(event["sequence"]) > causal_start
             and event["product"] == "ProbePreview"
@@ -869,7 +886,7 @@ class NativeEditSmoke:
             min(0.95, source_after_collision["x"] + 0.025),
             1.0 - min(0.9, source_after_collision["y"] + 0.08),
         )
-        topology_before_drag = self.parameters(collision_state)["mesh.topology"]
+        topology_before_drag = self.trimesh_model(collision_state)
         self.drag(source, destination)
         moved_state = self.inspect("waveMesh")
         self.assert_trimesh_slice(moved_state, "Trimesh slice after vertex drag")
@@ -878,7 +895,7 @@ class NativeEditSmoke:
             parameter["id"]: parameter["value"]
             for parameter in moved_state["trimesh"]["selectedVertexParameters"]
         }
-        assert self.parameters(moved_state)["mesh.topology"] != topology_before_drag, (
+        assert self.trimesh_model(moved_state) != topology_before_drag, (
             "Trimesh vertex did not move after collision rejection",
             moved,
             source,
@@ -887,7 +904,7 @@ class NativeEditSmoke:
             collision_state["trimesh"],
             moved_state["trimesh"],
         )
-        topology_before_parameter_edit = self.parameters(moved_state)["mesh.topology"]
+        topology_before_parameter_edit = self.trimesh_model(moved_state)
         self.capture("trimesh-05-before-parameter", self.target("canvas"))
 
         amp_slider = self.target("expanded:waveMesh.trimeshVertexParameter.vertex.amp")
@@ -923,7 +940,7 @@ class NativeEditSmoke:
             amp_source,
             amp_point,
         )
-        topology_after_parameter_edit = self.parameters(parameter_state)["mesh.topology"]
+        topology_after_parameter_edit = self.trimesh_model(parameter_state)
         assert topology_after_parameter_edit != topology_before_parameter_edit
 
         red_slider = self.target("expanded:waveMesh.trimeshMorphRail.red")
@@ -961,9 +978,9 @@ class NativeEditSmoke:
         final_count = final_state["trimesh"]["vertexCount"]
         assert final_count > deleted_count
         final_parameters = self.parameters(final_state)
-        assert "mesh.topology" in final_parameters
+        assert "mesh.topology" not in final_parameters
         assert not any(parameter_id.startswith("mesh.vertex.") for parameter_id in final_parameters)
-        topology = json.loads(final_parameters["mesh.topology"])
+        topology = self.trimesh_model(final_state)
         assert len(topology["vertices"]) == final_count
         assert len(topology["cubes"]) > 0
         assert all(len(cube["vertexIds"]) == 8 for cube in topology["cubes"])
@@ -972,8 +989,7 @@ class NativeEditSmoke:
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
-        reloaded_parameters = self.parameters(reloaded_state)
-        assert reloaded_parameters["mesh.topology"] == final_parameters["mesh.topology"]
+        assert self.trimesh_model(reloaded_state) == topology
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")

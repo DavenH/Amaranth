@@ -94,7 +94,6 @@ TrimeshNodeModel::~TrimeshNodeModel() {
 
 TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
         ownedMesh       (std::move(other.ownedMesh))
-    ,   topologySnapshot(std::move(other.topologySnapshot))
     ,   morph           (other.morph)
     ,   primaryViewAxis (other.primaryViewAxis)
     ,   selectedVertexIndex (other.selectedVertexIndex)
@@ -105,7 +104,6 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
     if (this != &other) {
         clearMesh();
         ownedMesh = std::move(other.ownedMesh);
-        topologySnapshot = std::move(other.topologySnapshot);
         morph = other.morph;
         primaryViewAxis = other.primaryViewAxis;
         selectedVertexIndex = other.selectedVertexIndex;
@@ -124,11 +122,8 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     };
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameterString(node, "primaryAxis", "yellow"));
-    const int nextSelectedVertexIndex = parameterInt(node, "selectedVertexIndex", -1);
-    const String nextTopologySnapshot = parameterString(
-            node,
-            TrimeshMeshState::parameterId(),
-            {});
+    const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
+            "selectedVertexId", -1);
 
     if (nextMorph.time.getTargetValue() != morph.time.getTargetValue()
             || nextMorph.red.getTargetValue() != morph.red.getTargetValue()
@@ -147,7 +142,11 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
         bumpSelectedControlRevision();
     }
 
-    if (applyTopologySnapshot(nextTopologySnapshot)) {
+    const auto typedModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    if (typedModel != nullptr
+            && typedModel->revision() != appliedModelRevision
+            && mesh().readJSON(typedModel->meshJSON())) {
+        appliedModelRevision = typedModel->revision();
         bumpMeshContentRevision();
     }
 }
@@ -321,12 +320,11 @@ void TrimeshNodeModel::markMeshEdited() {
     bumpMeshContentRevision();
 }
 
-String TrimeshNodeModel::currentMeshState() {
+var TrimeshNodeModel::currentMeshJSON() {
     if (ownedMesh == nullptr) {
         return {};
     }
-    topologySnapshot = TrimeshMeshState::serialize(*ownedMesh);
-    return topologySnapshot;
+    return ownedMesh->writeJSON();
 }
 
 Mesh& TrimeshNodeModel::mesh() {
@@ -443,7 +441,6 @@ bool TrimeshNodeModel::setVertexParameter(
         return true;
     }
     vertex->values[valueIndex] = clampedValue;
-    topologySnapshot.clear();
     bumpMeshContentRevision();
     return true;
 }
@@ -480,17 +477,6 @@ Vertex* TrimeshNodeModel::vertexAtIndex(int vertexIndex) {
     }
 
     return nullptr;
-}
-
-bool TrimeshNodeModel::applyTopologySnapshot(const String& snapshot) {
-    if (snapshot.isEmpty() || snapshot == topologySnapshot) {
-        return false;
-    }
-    if (!TrimeshMeshState::apply(snapshot, mesh())) {
-        return false;
-    }
-    topologySnapshot = snapshot;
-    return true;
 }
 
 void TrimeshNodeModel::clearMesh() {

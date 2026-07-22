@@ -2,7 +2,15 @@
 
 ## Status
 
-Proposed.
+Implemented (2026-07-22).
+
+Cycle V2 graph persistence is now canonical JSON. Nodes own immutable typed
+Trimesh, Envelope, and flat-curve models; scalar controls and editor selection
+remain separate state. The compiler, DSP preparation, previews, compact and
+expanded editors consume those typed snapshots without reparsing graph JSON.
+The XML graph APIs and model-shaped parameter codecs were deleted, all bundled
+graphs were converted, and native save/reload editing is covered by the Cycle
+V2 native edit smoke.
 
 ## Problem
 

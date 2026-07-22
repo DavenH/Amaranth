@@ -19,8 +19,8 @@ var NodeWorkspace::exportAutomationState() const {
     return canvas.exportAutomationState();
 }
 
-String NodeWorkspace::exportGraphXml() const {
-    return canvas.exportGraphXml();
+String NodeWorkspace::exportGraphJson() const {
+    return canvas.exportGraphJson();
 }
 
 bool NodeWorkspace::openNodeEditorForAutomation(const String& nodeId) {

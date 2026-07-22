@@ -20,25 +20,36 @@ using namespace CycleV2;
 namespace {
 
 std::vector<CycleV2::NodeParameter> curveControls(const Node& node) {
-    std::vector<CycleV2::NodeParameter> controls;
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
-                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
-            controls.push_back(parameter);
-        }
-    }
-    return controls;
+    return node.parameters;
+}
+
+String modelSnapshotForNode(const Node& node) {
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    return typed != nullptr ? JSON::toString(typed->domainJSON(), false) : String();
 }
 
 CurveNodeStatePublication publicationFor(
         const Node& node,
         const String& snapshot,
         uint64_t revision) {
+    NodeModelStatePtr model;
+    if (node.kind == NodeKind::Envelope) {
+        EnvelopeNodeModel domain;
+        if (domain.loadSnapshot(snapshot)) {
+            model = std::make_shared<const CurveNodeModelState>(
+                    "envelope", EnvelopeNodeModel::currentVersion, revision, domain.writeJSON());
+        }
+    } else {
+        FlatCurveModel domain;
+        if (domain.loadSnapshot(snapshot)) {
+            model = std::make_shared<const CurveNodeModelState>(
+                    "flatCurve", FlatCurveModel::currentVersion, revision, domain.writeJSON());
+        }
+    }
     return {
         node.id,
-        CurveNodeModelCodec::revisionFromParameters(node.parameters),
-        revision,
-        snapshot,
+        node.model != nullptr ? node.model->revision() : 0,
+        std::move(model),
         curveControls(node)
     };
 }
@@ -99,7 +110,7 @@ TEST_CASE("Flat curve models validate atomically and preserve stable selection",
     REQUIRE(model.getMesh().getNumCubes() == 0);
 }
 
-TEST_CASE("Flat curve typed snapshots preserve values and selection",
+TEST_CASE("Flat curve typed snapshots preserve values but not editor selection",
         "[cycle-v2][curve-model]") {
     FlatCurveModel model;
     REQUIRE(model.replaceVertices({ { 1, 0.f, 0.25f, 0.5f }, { 2, 1.f, 0.75f, 0.5f } }));
@@ -108,10 +119,9 @@ TEST_CASE("Flat curve typed snapshots preserve values and selection",
     FlatCurveModel restored;
     REQUIRE(restored.loadSnapshot(model.snapshot()));
     REQUIRE(restored.getVertices().size() == 2);
-    REQUIRE(restored.selectedVertexId() == 2);
+    REQUIRE_FALSE(restored.selectedVertexId().has_value());
     REQUIRE(restored.getVertices()[1].y == 0.75f);
-    REQUIRE(restored.selectedMeshVertex() != nullptr);
-    REQUIRE(restored.selectedMeshVertex()->values[Vertex::Amp] == 0.75f);
+    REQUIRE(restored.selectedMeshVertex() == nullptr);
 }
 
 TEST_CASE("Flat curve publication retains identities around inserted vertices",
@@ -239,7 +249,7 @@ TEST_CASE("Invalid live flat edits restore the committed mesh atomically",
     REQUIRE(model.getMesh().getNumVerts() == 2);
 }
 
-TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
+TEST_CASE("Envelope model round trips envelope-only topology without editor intent",
         "[cycle-v2][curve-model][envelope]") {
     EnvelopeNodeModel model;
     model.logarithmic = true;
@@ -261,11 +271,8 @@ TEST_CASE("Envelope model round trips envelope-only topology and editor intent",
     REQUIRE(restored.blue == 0.75f);
     REQUIRE_FALSE(restored.redLinked);
     REQUIRE(restored.blueLinked);
-    REQUIRE(restored.selectedCubeId() == selectedId);
-    REQUIRE(restored.selectedMeshCube() != nullptr);
-    const auto& restoredCubes = restored.getMesh().getCubes();
-    REQUIRE(std::find(restoredCubes.begin(), restoredCubes.end(), restored.selectedMeshCube())
-            != restoredCubes.end());
+    REQUIRE_FALSE(restored.selectedCubeId().has_value());
+    REQUIRE(restored.selectedMeshCube() == nullptr);
 }
 
 TEST_CASE("Envelope model reads the node-owned dynamic playback policy",
@@ -318,7 +325,7 @@ TEST_CASE("Envelope mesh adapter preserves cube identities across insertion dele
     EnvelopeNodeModel restored;
     REQUIRE(restored.loadSnapshot(model.snapshot()));
     REQUIRE(restored.getCubeIds() == model.getCubeIds());
-    REQUIRE(restored.selectedCubeId() == selectedId);
+    REQUIRE_FALSE(restored.selectedCubeId().has_value());
 }
 
 TEST_CASE("Envelope typed loading rejects malformed state without mutation",
@@ -385,17 +392,14 @@ TEST_CASE("Curve model publication is one undoable semantic command",
     GraphCommandDispatcher commands(document);
     FlatCurveModel model;
     REQUIRE(model.replaceVertices({ { 1, 0.f, 0.f, 1.f }, { 2, 1.f, 1.f, 1.f } }));
-    const String initialSnapshot = CurveNodeModelCodec::snapshotFromParameters(
-            document.graph().findNode("shape")->parameters);
+    const auto initialModel = document.graph().findNode("shape")->model;
 
     REQUIRE(commands.publishCurveState(publicationFor(
             *document.graph().findNode("shape"), model.snapshot(), model.revision())).succeeded());
     REQUIRE(document.canUndo());
-    REQUIRE(CurveNodeModelCodec::snapshotFromParameters(
-            document.graph().findNode("shape")->parameters) == model.snapshot());
+    REQUIRE(document.graph().findNode("shape")->model->revision() == model.revision());
     REQUIRE(document.undo());
-    REQUIRE(CurveNodeModelCodec::snapshotFromParameters(
-            document.graph().findNode("shape")->parameters) == initialSnapshot);
+    REQUIRE(document.graph().findNode("shape")->model->equals(*initialModel));
 }
 
 TEST_CASE("Curve drag publications coalesce into one document undo entry",
@@ -442,8 +446,9 @@ TEST_CASE("Curve state publication atomically commits controls model and revisio
         ++notifications;
         const Node* observed = document.graph().findNode("shape");
         REQUIRE(parameterValueForNode(*observed, "pre") == "0.75");
-        REQUIRE(CurveNodeModelCodec::snapshotFromParameters(observed->parameters) == model.snapshot());
-        REQUIRE(CurveNodeModelCodec::revisionFromParameters(observed->parameters) == model.revision());
+        const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(observed->model);
+        REQUIRE(typed != nullptr);
+        REQUIRE(typed->revision() == model.revision());
     });
 
     const uint64_t documentRevision = document.revision();
@@ -454,7 +459,7 @@ TEST_CASE("Curve state publication atomically commits controls model and revisio
     REQUIRE(document.undo());
     const Node* restored = document.graph().findNode("shape");
     REQUIRE(parameterValueForNode(*restored, "pre") == "0.5");
-    REQUIRE(CurveNodeModelCodec::revisionFromParameters(restored->parameters) == 1);
+    REQUIRE(restored->model->revision() == 1);
 }
 
 TEST_CASE("Curve state revisions distinguish retries conflicts and stale writes",
@@ -503,22 +508,16 @@ TEST_CASE("Curve state publication rejects malformed typed and incomplete contro
 
     auto malformed = publicationFor(shape, "not-json", 2);
     REQUIRE(commands.publishCurveState(malformed).code == GraphEditCode::InvalidTypedSnapshot);
-    auto incomplete = publicationFor(
-            shape, CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper), 1);
+    auto incomplete = publicationFor(shape, modelSnapshotForNode(shape), 1);
     incomplete.controls.pop_back();
     REQUIRE(commands.publishCurveState(incomplete).code == GraphEditCode::InvalidControlValue);
     CurveNodeStatePublication wrongKind {
-        "add", 0, 1, CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper), {}
+        "add", 0, shape.model, {}
     };
     REQUIRE(commands.publishCurveState(wrongKind).code == GraphEditCode::WrongNodeKind);
 
-    REQUIRE(commands.setNodeParameter(
-            "shape", CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", "not-json").succeeded());
-    FlatCurveModel replacement;
-    REQUIRE(replacement.replaceVertices({ { 1, 0.f, 0.f, 1.f }, { 2, 1.f, 1.f, 1.f } }));
-    auto againstCorruptState = publicationFor(
-            *document.graph().findNode("shape"), replacement.snapshot(), replacement.revision());
-    REQUIRE(commands.publishCurveState(againstCorruptState).code == GraphEditCode::InvalidTypedSnapshot);
+    REQUIRE_FALSE(commands.setNodeParameter(
+            "shape", "curve.modelSnapshot", "Curve Model Snapshot", "not-json").succeeded());
 }
 
 TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
@@ -529,13 +528,12 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
             { 2, 0.5f, 0.8f, 0.5f },
             { 3, 1.f, 0.9f, 1.f }
     }));
-    const std::vector<CycleV2::NodeParameter> typedParameters {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) }
-    };
+    const std::vector<CycleV2::NodeParameter> typedParameters;
+    const auto typedModel = std::make_shared<const CurveNodeModelState>(
+            "flatCurve", FlatCurveModel::currentVersion, model.revision(), model.writeJSON());
 
-    const auto firstWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters);
-    const auto secondWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters);
+    const auto firstWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters, typedModel);
+    const auto secondWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters, typedModel);
     float firstSamples[] { -1.f, -0.5f, 0.f, 0.5f, 1.f };
     float secondSamples[] { -1.f, -0.5f, 0.f, 0.5f, 1.f };
     firstWaveshaper->transfer->process({ firstSamples, 5 }, 1.f, 1.f);
@@ -543,8 +541,8 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
     REQUIRE(std::vector<float>(firstSamples, firstSamples + 5)
             == std::vector<float>(secondSamples, secondSamples + 5));
 
-    const auto firstIr = IrSignalProcessor::buildConfiguration(typedParameters);
-    const auto secondIr = IrSignalProcessor::buildConfiguration(typedParameters);
+    const auto firstIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
+    const auto secondIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
     REQUIRE(firstIr->impulse == secondIr->impulse);
 }
 
@@ -554,31 +552,27 @@ TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer
     model.red = 0.2f;
     model.blue = 0.8f;
     const std::vector<CycleV2::NodeParameter> parameters {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) },
             { "red", "Red", "0.2" },
             { "blue", "Blue", "0.8" },
             { "level", "Level", "1" }
     };
 
-    const auto first = EnvelopeSignalProcessor::buildConfiguration(parameters);
-    const auto second = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    const auto typedModel = std::make_shared<const CurveNodeModelState>(
+            "envelope", EnvelopeNodeModel::currentVersion, model.revision(), model.writeJSON());
+    const auto first = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
+    const auto second = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
     REQUIRE(first != nullptr);
     REQUIRE(second != nullptr);
     REQUIRE(first->mesh.get() != second->mesh.get());
     REQUIRE(first->rasterizer.get() != second->rasterizer.get());
 }
 
-TEST_CASE("Malformed typed curve state is rejected without fallback",
+TEST_CASE("Malformed typed curve state is rejected by the domain codec",
         "[cycle-v2][curve-model][dsp]") {
-    const std::vector<CycleV2::NodeParameter> malformed {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", "not-json" },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", "1" }
-    };
-
-    REQUIRE(WaveshaperSignalProcessor::buildConfiguration(malformed) == nullptr);
-    REQUIRE(IrSignalProcessor::buildConfiguration(malformed) == nullptr);
-    REQUIRE(EnvelopeSignalProcessor::buildConfiguration(malformed) == nullptr);
+    CurveNodeDomainCodec codec(NodeKind::Waveshaper);
+    String error;
+    REQUIRE(codec.readJSON(JSON::parse("{\"schema\":\"flatCurve\",\"version\":1,\"revision\":1,\"state\":{}}"), error) == nullptr);
+    REQUIRE(error.isNotEmpty());
 }
 
 TEST_CASE("Curve node definitions provide canonical typed defaults",
@@ -590,16 +584,17 @@ TEST_CASE("Curve node definitions provide canonical typed defaults",
             NodeKind::GuideCurve,
             NodeKind::Envelope }) {
         const Node node = factory.createNode(kind, "curve", {});
-        const String snapshot = CurveNodeModelCodec::snapshotFromParameters(node.parameters);
-        REQUIRE(snapshot.isNotEmpty());
-        REQUIRE(CurveNodeModelCodec::revisionFromParameters(node.parameters) == 1);
+        REQUIRE(node.model != nullptr);
+        REQUIRE(node.model->revision() == 1);
+        const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+        REQUIRE(typed != nullptr);
         if (kind == NodeKind::Envelope) {
             EnvelopeNodeModel model;
-            REQUIRE(model.loadSnapshot(snapshot));
+            REQUIRE(model.readJSON(typed->domainJSON()));
             REQUIRE(model.revision() == 1);
         } else {
             FlatCurveModel model;
-            REQUIRE(model.loadSnapshot(snapshot));
+            REQUIRE(model.readJSON(typed->domainJSON()));
             REQUIRE(model.revision() == 1);
         }
         REQUIRE(parameterValueForNode(node, "effect.vertices").isEmpty());
@@ -611,7 +606,7 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
         "[cycle-v2][curve-state][presets]") {
     for (const String& filename : { String("default.cyclegraph"), String("with-spies.cyclegraph") }) {
         const File file = File(CYCLE_V2_SOURCE_DIR).getChildFile("resources").getChildFile(filename);
-        const NodeGraph graph = GraphSerializer().fromXmlString(file.loadFileAsString());
+        const NodeGraph graph = GraphSerializer().fromJsonString(file.loadFileAsString());
         REQUIRE_FALSE(graph.getNodes().empty());
         for (const auto& node : graph.getNodes()) {
             if (node.kind != NodeKind::Envelope
@@ -620,19 +615,19 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
                     && node.kind != NodeKind::Waveshaper) {
                 continue;
             }
-            const String snapshot = CurveNodeModelCodec::snapshotFromParameters(node.parameters);
-            const uint64_t revision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
-            REQUIRE(snapshot.isNotEmpty());
+            const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+            REQUIRE(typed != nullptr);
+            const uint64_t revision = typed->revision();
             if (node.kind == NodeKind::Envelope) {
                 EnvelopeNodeModel model;
-                REQUIRE(model.loadSnapshot(snapshot));
+                REQUIRE(model.readJSON(typed->domainJSON()));
                 REQUIRE(model.revision() == revision);
                 const String canonical = model.snapshot();
                 REQUIRE(model.loadSnapshot(canonical));
                 REQUIRE(model.snapshot() == canonical);
             } else {
                 FlatCurveModel model;
-                REQUIRE(model.loadSnapshot(snapshot));
+                REQUIRE(model.readJSON(typed->domainJSON()));
                 REQUIRE(model.revision() == revision);
                 const String canonical = model.snapshot();
                 REQUIRE(model.loadSnapshot(canonical));

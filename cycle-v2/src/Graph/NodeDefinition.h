@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <optional>
 
 #include "NodeGraph.h"
@@ -60,8 +61,17 @@ enum class ParameterType {
     Integer,
     Float,
     Choice,
-    Text,
-    ModelSnapshot
+    Text
+};
+
+class NodeModelCodec {
+public:
+    virtual ~NodeModelCodec() = default;
+
+    virtual String schemaId() const = 0;
+    virtual int currentVersion() const = 0;
+    virtual NodeModelStatePtr createDefault() const = 0;
+    virtual NodeModelStatePtr readJSON(const var& value, String& error) const = 0;
 };
 
 enum class ParameterImpact : uint32_t {
@@ -106,6 +116,7 @@ struct NodeDefinition {
     std::vector<Port> inputs;
     std::vector<Port> outputs;
     std::vector<ParameterDefinition> parameters;
+    std::shared_ptr<const NodeModelCodec> modelCodec;
     bool allowsDynamicParameters {};
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };

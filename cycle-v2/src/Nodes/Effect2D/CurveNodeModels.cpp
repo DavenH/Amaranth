@@ -201,7 +201,10 @@ bool FlatCurveModel::synchronizeFromMesh(Vertex* selectedVertex) {
 }
 
 bool FlatCurveModel::loadSnapshot(const String& serialized) {
-    const var root = JSON::parse(serialized);
+    return readJSON(JSON::parse(serialized));
+}
+
+bool FlatCurveModel::readJSON(const var& root) {
     const auto* object = root.getDynamicObject();
     if (object == nullptr || (int) object->getProperty("version") != currentVersion
             || object->getProperty("type").toString() != "flatCurve") {
@@ -242,11 +245,14 @@ bool FlatCurveModel::loadSnapshot(const String& serialized) {
 }
 
 String FlatCurveModel::snapshot() const {
+    return JSON::toString(writeJSON(), false);
+}
+
+var FlatCurveModel::writeJSON() const {
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("version", currentVersion);
     root->setProperty("type", "flatCurve");
     root->setProperty("revision", (int64) modelRevision);
-    root->setProperty("selection", selection.has_value() ? (int64) *selection : -1);
     Array<var> encodedVertices;
     for (const auto& vertex : vertices) {
         auto encoded = std::make_unique<DynamicObject>();
@@ -257,7 +263,7 @@ String FlatCurveModel::snapshot() const {
         encodedVertices.add(var(encoded.release()));
     }
     root->setProperty("vertices", var(encodedVertices));
-    return JSON::toString(var(root.release()), false);
+    return var(root.release());
 }
 
 bool FlatCurveModel::validate(const std::vector<FlatCurveVertex>& verticesToValidate) {
@@ -327,7 +333,10 @@ EnvelopeNodeModel::~EnvelopeNodeModel() {
 }
 
 bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
-    const var root = JSON::parse(serialized);
+    return readJSON(JSON::parse(serialized));
+}
+
+bool EnvelopeNodeModel::readJSON(const var& root) {
     const auto* object = root.getDynamicObject();
     if (object == nullptr || (int) object->getProperty("version") != currentVersion
             || object->getProperty("type").toString() != "envelope") {
@@ -335,8 +344,8 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
     }
 
     EnvelopeMesh validated("CycleV2EnvelopeSnapshotValidation");
-    const String payload = object->getProperty("payload").toString();
-    if (!EnvelopeMeshState::apply(payload, validated)) {
+    const var meshState = object->getProperty("mesh");
+    if (!validated.readJSON(meshState)) {
         validated.destroy();
         return false;
     }
@@ -363,12 +372,12 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
     validated.destroy();
 
     mesh.destroy();
-    if (!EnvelopeMeshState::apply(payload, mesh)) {
+    if (!mesh.readJSON(meshState)) {
         return false;
     }
     cubeIds = std::move(nextIds);
     rebuildIdentityMap();
-    committedPayload = payload;
+    committedPayload = JSON::toString(meshState, false);
     logarithmic = (bool) object->getProperty("logarithmic");
     red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
     blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
@@ -384,8 +393,8 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
 }
 
 bool EnvelopeNodeModel::syncFromNode(const Node& node) {
-    const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    const bool loaded = loadSnapshot(typed);
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    const bool loaded = typed != nullptr && readJSON(typed->domainJSON());
     logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
     dynamicWhileLive = parameterValueForNode(node, "dynamic", "0").getIntValue() != 0;
     red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
@@ -394,23 +403,26 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
 }
 
 String EnvelopeNodeModel::snapshot() const {
+    return JSON::toString(writeJSON(), false);
+}
+
+var EnvelopeNodeModel::writeJSON() const {
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("version", currentVersion);
     root->setProperty("type", "envelope");
     root->setProperty("revision", (int64) modelRevision);
-    root->setProperty("payload", EnvelopeMeshState::serialize(mesh));
+    root->setProperty("mesh", mesh.writeJSON());
     root->setProperty("logarithmic", logarithmic);
     root->setProperty("red", red);
     root->setProperty("blue", blue);
     root->setProperty("redLinked", redLinked);
     root->setProperty("blueLinked", blueLinked);
-    root->setProperty("selection", selection.has_value() ? (int64) *selection : -1);
     Array<var> encodedIds;
     for (const auto cubeId : cubeIds) {
         encodedIds.add((int64) cubeId);
     }
     root->setProperty("cubeIds", var(encodedIds));
-    return JSON::toString(var(root.release()), false);
+    return var(root.release());
 }
 
 bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
@@ -523,8 +535,10 @@ void WaveshaperNodeModel::syncFromNode(const Node& node) {
     preGain = jlimit(0.f, 1.f, parameterValueForNode(node, "pre", "0.5").getFloatValue());
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     oversampling = jmax(1, parameterValueForNode(node, "aaFactor", "1").getIntValue());
-    const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    curve.loadSnapshot(typed);
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (typed != nullptr) {
+        curve.readJSON(typed->domainJSON());
+    }
 }
 
 void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
@@ -532,8 +546,10 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
     size = jlimit(0.f, 1.f, parameterValueForNode(node, "size", "0.5").getFloatValue());
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     highPass = jlimit(0.f, 1.f, parameterValueForNode(node, "highPass", "0.5").getFloatValue());
-    const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    curve.loadSnapshot(typed);
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (typed != nullptr) {
+        curve.readJSON(typed->domainJSON());
+    }
 }
 
 void GuideCurveNodeModel::syncFromNode(const Node& node) {
@@ -541,23 +557,17 @@ void GuideCurveNodeModel::syncFromNode(const Node& node) {
     noise = jlimit(0.f, 1.f, parameterValueForNode(node, "noise", "0.5").getFloatValue());
     dcOffset = jlimit(0.f, 1.f, parameterValueForNode(node, "dcOffset", "0.5").getFloatValue());
     phase = jlimit(0.f, 1.f, parameterValueForNode(node, "phase", "0.5").getFloatValue());
-    const String typed = parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId(), {});
-    curve.loadSnapshot(typed);
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (typed != nullptr) {
+        curve.readJSON(typed->domainJSON());
+    }
 }
 
-String CurveNodeModelCodec::snapshotParameterId() {
-    return "curve.modelSnapshot";
-}
-
-String CurveNodeModelCodec::revisionParameterId() {
-    return "curve.modelRevision";
-}
-
-String CurveNodeModelCodec::defaultSnapshot(NodeKind kind) {
+static var defaultCurveModelState(NodeKind kind) {
     if (kind == NodeKind::Envelope) {
         EnvelopeNodeModel model;
         model.setPublicationRevision(1);
-        return model.snapshot();
+        return model.writeJSON();
     }
 
     std::vector<FlatCurveVertex> vertices;
@@ -599,45 +609,105 @@ String CurveNodeModelCodec::defaultSnapshot(NodeKind kind) {
         return {};
     }
     model.setPublicationRevision(1);
-    return model.snapshot();
+    return model.writeJSON();
 }
 
-String CurveNodeModelCodec::snapshotFromParameters(const std::vector<NodeParameter>& parameters) {
-    return parameterValue(parameters, snapshotParameterId());
+CurveNodeModelState::CurveNodeModelState(
+        String schemaToUse,
+        int versionToUse,
+        uint64_t revisionToUse,
+        var modelState,
+        var editorStateToUse) :
+        schema(std::move(schemaToUse))
+    ,   version(versionToUse)
+    ,   modelRevision(revisionToUse)
+    ,   state(std::move(modelState))
+    ,   editorState(std::move(editorStateToUse)) {}
+
+String CurveNodeModelState::schemaId() const {
+    return schema;
 }
 
-uint64_t CurveNodeModelCodec::revisionFromParameters(const std::vector<NodeParameter>& parameters) {
-    return (uint64_t) parameterValue(parameters, revisionParameterId()).getLargeIntValue();
+int CurveNodeModelState::schemaVersion() const {
+    return version;
 }
 
-std::vector<Effect2DVertexState> CurveNodeModelCodec::flatVerticesFromParameters(
-        const std::vector<NodeParameter>& parameters,
-        NodeKind kind) {
-    const String typedSnapshot = snapshotFromParameters(parameters);
-    FlatCurveModel model;
-    const String snapshot = typedSnapshot.isNotEmpty() ? typedSnapshot : defaultSnapshot(kind);
-    if (model.loadSnapshot(snapshot)) {
-        std::vector<Effect2DVertexState> result;
-        result.reserve(model.getVertices().size());
-        for (const auto& vertex : model.getVertices()) {
-            result.push_back({ vertex.x, vertex.y, vertex.curve });
-        }
-        return result;
+uint64_t CurveNodeModelState::revision() const {
+    return modelRevision;
+}
+
+var CurveNodeModelState::writeJSON() const {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("schema", schema);
+    result->setProperty("version", version);
+    result->setProperty("revision", (int64) modelRevision);
+    result->setProperty("state", state);
+    return var(result.release());
+}
+
+bool CurveNodeModelState::equals(const NodeModelState& other) const {
+    const auto* typed = dynamic_cast<const CurveNodeModelState*>(&other);
+    return typed != nullptr
+            && schema == typed->schema
+            && version == typed->version
+            && modelRevision == typed->modelRevision
+            && JSON::toString(state, false) == JSON::toString(typed->state, false);
+}
+
+CurveNodeDomainCodec::CurveNodeDomainCodec(NodeKind kindToUse) : kind(kindToUse) {}
+
+String CurveNodeDomainCodec::schemaId() const {
+    return kind == NodeKind::Envelope ? "envelope" : "flatCurve";
+}
+
+int CurveNodeDomainCodec::currentVersion() const {
+    return kind == NodeKind::Envelope
+            ? EnvelopeNodeModel::currentVersion
+            : FlatCurveModel::currentVersion;
+}
+
+NodeModelStatePtr CurveNodeDomainCodec::createDefault() const {
+    const var state = defaultCurveModelState(kind);
+    String error;
+    auto wrapper = std::make_unique<DynamicObject>();
+    wrapper->setProperty("schema", schemaId());
+    wrapper->setProperty("version", currentVersion());
+    wrapper->setProperty("revision", 1);
+    wrapper->setProperty("state", state);
+    return readJSON(var(wrapper.release()), error);
+}
+
+NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error) const {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
+        error = "Unexpected node model schema";
+        return nullptr;
     }
-    return {};
-}
-
-String CurveNodeModelCodec::envelopePayloadFromParameters(
-        const std::vector<NodeParameter>& parameters) {
-    const String typedSnapshot = snapshotFromParameters(parameters);
-    EnvelopeNodeModel model;
-    const String snapshot = typedSnapshot.isNotEmpty()
-            ? typedSnapshot
-            : defaultSnapshot(NodeKind::Envelope);
-    if (model.loadSnapshot(snapshot)) {
-        return EnvelopeMeshState::serialize(model.getMesh());
+    if ((int) object->getProperty("version") != currentVersion()) {
+        error = "Unsupported node model schema version";
+        return nullptr;
     }
-    return {};
+    const int64 revision = object->getProperty("revision");
+    if (revision < 1) {
+        error = "Node model revision must be positive";
+        return nullptr;
+    }
+
+    const var state = object->getProperty("state");
+    bool valid = false;
+    if (kind == NodeKind::Envelope) {
+        EnvelopeNodeModel model;
+        valid = model.readJSON(state) && model.revision() == (uint64_t) revision;
+    } else {
+        FlatCurveModel model;
+        valid = model.readJSON(state) && model.revision() == (uint64_t) revision;
+    }
+    if (!valid) {
+        error = "Invalid structured node model state";
+        return nullptr;
+    }
+    return std::make_shared<const CurveNodeModelState>(
+            schemaId(), currentVersion(), (uint64_t) revision, state);
 }
 
 }

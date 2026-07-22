@@ -9,6 +9,21 @@
 
 namespace CycleV2 {
 
+namespace {
+
+var editorStateWithSelectedVertex(const Node& node, int vertexId) {
+    auto result = std::make_unique<DynamicObject>();
+    if (const auto* current = node.editorState.getDynamicObject()) {
+        for (const auto& property : current->getProperties()) {
+            result->setProperty(property.name, property.value);
+        }
+    }
+    result->setProperty("selectedVertexId", vertexId);
+    return var(result.release());
+}
+
+}
+
 NodeEditorCommandService::NodeEditorCommandService(
         Component& ownerToUse,
         GraphDocument& documentToUse,
@@ -187,8 +202,7 @@ bool NodeEditorCommandService::setNodeParameterValue(
 
 bool NodeEditorCommandService::publishCurveState(
         const String& nodeId,
-        const String& snapshot,
-        uint64_t revision,
+        NodeModelStatePtr model,
         const std::vector<NodeParameter>& controls) {
     const Node* node = findNode(nodeId);
     if (node == nullptr) {
@@ -196,9 +210,8 @@ bool NodeEditorCommandService::publishCurveState(
     }
     const auto result = commands.publishCurveState({
             nodeId,
-            CurveNodeModelCodec::revisionFromParameters(node->parameters),
-            revision,
-            snapshot,
+            node->model != nullptr ? node->model->revision() : 0,
+            model,
             controls
     });
     if (!result.succeeded() || !result.changed) {
@@ -207,7 +220,10 @@ bool NodeEditorCommandService::publishCurveState(
     if (curveTransactionActive) {
         curvePublicationPending = true;
         curvePublicationNodeId = nodeId;
-        curvePublicationFingerprint = static_cast<uint64_t>(snapshot.hashCode64());
+        curvePublicationFingerprint = FingerprintBuilder()
+                .add(model->schemaId())
+                .add(model->revision())
+                .value();
     } else {
         presentation.scheduleNodeEditorRefresh();
     }
@@ -366,12 +382,13 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
     if (node == nullptr || widget == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
-    int vertexIndex = nodeParameterValue(*node, "selectedVertexIndex", "-1").getIntValue();
+    int vertexIndex = (int) node->editorState.getProperty("selectedVertexId", -1);
     commands.beginTransientEdit();
     if (vertexIndex < 0) {
         vertexIndex = widget->resolvedSelectedVertexIndexForNode(*node);
         if (vertexIndex >= 0) {
-            commands.setNodeParameter(nodeId, "selectedVertexIndex", "Selected Vertex", String(vertexIndex));
+            commands.setNodeEditorState(
+                    nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
         }
     }
     if (vertexIndex < 0) {
@@ -402,12 +419,13 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
             value)) {
         return false;
     }
-    const String meshState = activeVertexWidget->currentMeshState();
-    const auto result = commands.setNodeParameter(
+    const var meshState = activeVertexWidget->currentMeshJSON();
+    const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
+    const auto result = commands.replaceNodeModel(
             activeVertexNodeId,
-            TrimeshMeshState::parameterId(),
-            "Mesh Topology",
-            meshState);
+            modelRevision,
+            std::make_shared<const TrimeshNodeModelState>(
+                    meshState, modelRevision + 1));
     if (!result.succeeded()) {
         return false;
     }
@@ -416,7 +434,7 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     }
     const uint64_t fingerprint = FingerprintBuilder()
             .add(activeVertexParameterId)
-            .add(meshState)
+            .add(modelRevision + 1)
             .value();
     presentation.recordNodeEditorMovement(
             activeVertexNodeId,
@@ -463,18 +481,17 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
         presentation.selectEditedNode(nodeId);
     }
 
-    const String meshState = widget->currentMeshState();
+    const var meshState = widget->currentMeshJSON();
     const int selectedVertex = widget->selectedVertexIndexForPanel();
-    const auto topology = commands.setNodeParameter(
+    const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
+    const auto topology = commands.replaceNodeModel(
             nodeId,
-            TrimeshMeshState::parameterId(),
-            "Mesh Topology",
-            meshState);
-    const auto selection = commands.setNodeParameter(
-            nodeId,
-            "selectedVertexIndex",
-            "Selected Vertex",
-            String(selectedVertex));
+            modelRevision,
+            std::make_shared<const TrimeshNodeModelState>(
+                    meshState, modelRevision + 1));
+    auto editor = std::make_unique<DynamicObject>();
+    editor->setProperty("selectedVertexId", selectedVertex);
+    const auto selection = commands.setNodeEditorState(nodeId, var(editor.release()));
     if (!topology.succeeded() || !selection.succeeded()) {
         commands.cancelTransientEdit();
         activeMeshNodeId = {};
@@ -485,7 +502,7 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
     if (topology.changed || selection.changed) {
         activeMeshChanged = true;
         const uint64_t fingerprint = FingerprintBuilder()
-                .add(meshState)
+                .add(modelRevision + 1)
                 .add(static_cast<uint64_t>(selectedVertex))
                 .value();
         presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
@@ -562,11 +579,11 @@ bool NodeEditorCommandService::selectTrimeshVertexIndex(
     if (node == nullptr) {
         return false;
     }
-    if (nodeParameterValue(*node, "selectedVertexIndex", "-1").getIntValue() == vertexIndex) {
+    if ((int) node->editorState.getProperty("selectedVertexId", -1) == vertexIndex) {
         return true;
     }
-    const auto result = commands.setNodeParameter(
-            nodeId, "selectedVertexIndex", "Selected Vertex", String(vertexIndex));
+    const auto result = commands.setNodeEditorState(
+            nodeId, editorStateWithSelectedVertex(*node, vertexIndex));
     if (!result.succeeded()) {
         return false;
     }

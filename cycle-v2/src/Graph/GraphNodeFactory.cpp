@@ -23,6 +23,9 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     for (const auto& parameter : definition->parameters) {
         node.parameters.push_back({ parameter.id, parameter.label, parameter.defaultValue });
     }
+    if (definition->modelCodec != nullptr) {
+        node.model = definition->modelCodec->createDefault();
+    }
 
     const auto naturalSize = naturalSizeForNode(node);
     node.bounds.setSize(naturalSize.width, naturalSize.height);

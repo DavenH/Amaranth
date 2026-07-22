@@ -108,7 +108,7 @@ const SignalPayload& outputForPort(const NodeAudioResult& result, const String& 
     return found->second;
 }
 
-String sawtoothMeshTopology() {
+var sawtoothMeshTopology() {
     Mesh mesh("FftSawtooth");
     const auto addIntercept = [&mesh](float phase, float amplitude) {
         VertCube* cube = TrimeshMeshFactory::addVoiceCube(
@@ -131,7 +131,7 @@ String sawtoothMeshTopology() {
     addIntercept(0.999f, 1.f);
     addIntercept(1.f, 0.f);
 
-    const String topology = TrimeshMeshState::serialize(mesh);
+    const var topology = mesh.writeJSON();
     mesh.destroy();
     return topology;
 }
@@ -346,19 +346,24 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     const auto initialOutput = samples(initial.output);
 
     FlatCurveModel shapeModel;
-    REQUIRE(shapeModel.loadSnapshot(parameterValueForNode(
-            *graph.findNode("shape"), CurveNodeModelCodec::snapshotParameterId())));
+    const auto initialModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            graph.findNode("shape")->model);
+    REQUIRE(initialModel != nullptr);
+    REQUIRE(shapeModel.readJSON(initialModel->domainJSON()));
     auto flatVertices = shapeModel.getVertices();
     for (auto& vertex : flatVertices) {
         vertex.y = 0.25f;
     }
     REQUIRE(shapeModel.replaceVertices(std::move(flatVertices)));
-    REQUIRE(GraphEditor().setNodeParameter(
+    REQUIRE(GraphEditor().replaceNodeModel(
             graph,
             "shape",
-            CurveNodeModelCodec::snapshotParameterId(),
-            "Curve Model Snapshot",
-            shapeModel.snapshot()).succeeded());
+            initialModel->revision(),
+            std::make_shared<const CurveNodeModelState>(
+                    "flatCurve",
+                    FlatCurveModel::currentVersion,
+                    shapeModel.revision(),
+                    shapeModel.writeJSON())).succeeded());
 
     const auto shapedPlan = GraphCompiler().compile(graph);
     REQUIRE(shapedPlan.succeeded());
@@ -377,12 +382,16 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
         vertex->values[Vertex::Amp] = 0.25f;
     }
     REQUIRE(envelopeModel.synchronizeFromMesh(envelopeModel.getMesh().getCubes().front()));
-    REQUIRE(GraphEditor().setNodeParameter(
+    const auto currentEnvelopeModel = graph.findNode("env")->model;
+    REQUIRE(GraphEditor().replaceNodeModel(
             graph,
             "env",
-            CurveNodeModelCodec::snapshotParameterId(),
-            "Curve Model Snapshot",
-            envelopeModel.snapshot()).succeeded());
+            currentEnvelopeModel->revision(),
+            std::make_shared<const CurveNodeModelState>(
+                    "envelope",
+                    EnvelopeNodeModel::currentVersion,
+                    envelopeModel.revision(),
+                    envelopeModel.writeJSON())).succeeded());
 
     const auto envelopePlan = GraphCompiler().compile(graph);
     REQUIRE(envelopePlan.succeeded());
@@ -677,9 +686,11 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
             { "yellow", "Yellow", "0.5" },
             { "red", "Red", "0.5" },
             { "blue", "Blue", "0.5" },
-            { "primaryAxis", "Primary Axis", "yellow" },
-            { TrimeshMeshState::parameterId(), "Mesh Topology", sawtoothMeshTopology() }
+            { "primaryAxis", "Primary Axis", "yellow" }
     });
+    graph.replaceNodeModel(
+            "saw",
+            std::make_shared<const TrimeshNodeModelState>(sawtoothMeshTopology(), 2));
     graph.addEdge({ "voice", "context", "saw", "context", PortDomain::DomainContext, false });
     graph.addEdge({ "saw", "out", "fft", "time", PortDomain::TimeSignal, false });
     graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });

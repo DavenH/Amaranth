@@ -583,10 +583,9 @@ private:
     }
 
     bool publishEffect2DState(
-            const String& snapshot,
-            uint64_t revision,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override {
-        return commands.publishCurveState(nodeId, snapshot, revision, controls);
+        return commands.publishCurveState(nodeId, std::move(model), controls);
     }
 
     void beginEffect2DTransaction() override {

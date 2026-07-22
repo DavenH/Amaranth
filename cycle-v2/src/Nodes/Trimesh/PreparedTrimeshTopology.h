@@ -14,13 +14,10 @@ public:
     explicit PreparedTrimeshTopology(const String& meshName);
     ~PreparedTrimeshTopology();
 
-    Mesh& mesh(const std::vector<NodeParameter>& parameters);
+    Mesh& mesh();
 
 private:
-    void rebuild(const String& serializedState);
-
     String name;
-    String appliedState;
     std::unique_ptr<Mesh> preparedMesh;
 };
 

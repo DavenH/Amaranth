@@ -11,8 +11,7 @@ class NullEditorCommands final : public NodeEditorCommands {
 public:
     bool publishCurveState(
             const String&,
-            const String&,
-            uint64_t,
+            NodeModelStatePtr,
             const std::vector<NodeParameter>&) override {
         return true;
     }

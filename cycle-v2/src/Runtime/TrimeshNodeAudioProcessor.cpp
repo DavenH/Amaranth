@@ -162,10 +162,10 @@ private:
         return false;
     }
 
-    Mesh& currentMesh(const std::vector<NodeParameter>& parameters) {
+    Mesh& currentMesh(const std::vector<NodeParameter>&) {
         return configuration != nullptr
                 ? *configuration->mesh
-                : fallbackTopology.mesh(parameters);
+                : fallbackTopology.mesh();
     }
 
     void renderBlock(
@@ -193,7 +193,7 @@ private:
             return;
         }
 
-        Mesh& mesh = fallbackTopology.mesh(processParameters(context));
+        Mesh& mesh = fallbackTopology.mesh();
         trimeshDsp.prepare(
                 &mesh,
                 morph,

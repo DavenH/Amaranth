@@ -170,7 +170,7 @@ public:
             fileChooser = std::make_unique<FileChooser>(
                     "Open Cycle V2 graph",
                     defaultGraphDirectory(),
-                    "*.cyclegraph;*.xml");
+                    "*.cyclegraph");
 
             fileChooser->launchAsync(
                     FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
@@ -207,7 +207,7 @@ public:
             fileChooser = std::make_unique<FileChooser>(
                     "Save Cycle V2 graph",
                     initialFile,
-                    "*.cyclegraph;*.xml");
+                    "*.cyclegraph");
 
             fileChooser->launchAsync(
                     FileBrowserComponent::saveMode

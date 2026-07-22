@@ -22,7 +22,7 @@ public:
     VertCube* selectedMeshCube() const { return model.selectedMeshCube(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
-    String serializedModelSnapshot(VertCube* selectedCube, uint64_t publicationRevision);
+    NodeModelStatePtr modelPublication(VertCube* selectedCube, uint64_t publicationRevision);
     std::vector<CurvePreviewVertex> previewVertices();
     bool registerMeshEdit();
 
@@ -34,13 +34,12 @@ public:
     bool blueLinked() const { return model.blueLinked; }
 
     const String& lastNodeId() const { return syncedNodeId; }
-    const String& lastModelSnapshot() const { return syncedModelSnapshot; }
     const String& lastMeshState() const { return syncedMeshState; }
 
 private:
     EnvelopeNodeModel model;
     String syncedNodeId;
-    String syncedModelSnapshot;
+    uint64_t syncedModelRevision {};
     String syncedMeshState;
 };
 

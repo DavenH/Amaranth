@@ -806,8 +806,8 @@ var NodeCanvas::exportAutomationState() const {
     return automation.exportState(automationPresentationState());
 }
 
-String NodeCanvas::exportGraphXml() const {
-    return automation.exportGraphXml();
+String NodeCanvas::exportGraphJson() const {
+    return automation.exportGraphJson();
 }
 
 bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {

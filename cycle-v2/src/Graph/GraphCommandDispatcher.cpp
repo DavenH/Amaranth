@@ -16,30 +16,6 @@ bool isCurveNodeKind(NodeKind kind) {
         || kind == NodeKind::Waveshaper;
 }
 
-bool canonicalCurveSnapshot(
-        NodeKind kind,
-        const juce::String& snapshot,
-        uint64_t& revision,
-        juce::String& canonical) {
-    if (kind == NodeKind::Envelope) {
-        EnvelopeNodeModel model;
-        if (!model.loadSnapshot(snapshot)) {
-            return false;
-        }
-        revision = model.revision();
-        canonical = model.snapshot();
-        return true;
-    }
-
-    FlatCurveModel model;
-    if (!model.loadSnapshot(snapshot)) {
-        return false;
-    }
-    revision = model.revision();
-    canonical = model.snapshot();
-    return true;
-}
-
 const NodeParameter* findParameter(const std::vector<NodeParameter>& parameters, const juce::String& id) {
     const auto found = std::find_if(parameters.begin(), parameters.end(), [&](const auto& parameter) {
         return parameter.id == id;
@@ -191,6 +167,23 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
     });
 }
 
+GraphEditResult GraphCommandDispatcher::replaceNodeModel(
+        const juce::String& nodeId,
+        uint64_t expectedRevision,
+        NodeModelStatePtr model) {
+    return apply([&](auto& graph) {
+        return GraphEditor().replaceNodeModel(graph, nodeId, expectedRevision, std::move(model));
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::setNodeEditorState(
+        const juce::String& nodeId,
+        juce::var editorState) {
+    return apply([&](auto& graph) {
+        return GraphEditor().setNodeEditorState(graph, nodeId, std::move(editorState));
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::publishCurveState(
         const CurveNodeStatePublication& publication) {
     return apply([&](auto& graph) {
@@ -202,43 +195,31 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
             return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
         }
 
-        const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node->parameters);
-        if (publication.expectedRevision != currentRevision || publication.revision < currentRevision) {
+        const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
+        if (publication.model == nullptr) {
+            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
+        }
+        if (publication.expectedRevision != currentRevision
+                || publication.model->revision() < currentRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
         }
-
-        uint64_t snapshotRevision {};
-        juce::String canonicalSnapshot;
-        if (!canonicalCurveSnapshot(
-                    node->kind, publication.modelSnapshot, snapshotRevision, canonicalSnapshot)
-                || snapshotRevision != publication.revision) {
-            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
-        }
-        uint64_t currentSnapshotRevision {};
-        juce::String canonicalCurrentSnapshot;
-        if (!canonicalCurveSnapshot(
-                    node->kind,
-                    CurveNodeModelCodec::snapshotFromParameters(node->parameters),
-                    currentSnapshotRevision,
-                    canonicalCurrentSnapshot)
-                || currentSnapshotRevision != currentRevision) {
-            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
-        }
-
         const auto* definition = NodeDefinitionRegistry::instance().find(node->kind);
-        if (definition == nullptr) {
+        if (definition == nullptr || definition->modelCodec == nullptr
+                || publication.model->schemaId() != definition->modelCodec->schemaId()
+                || publication.model->schemaVersion() != definition->modelCodec->currentVersion()) {
             return GraphEditResult { GraphEditCode::WrongNodeKind, publication.nodeId, {} };
+        }
+        const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(publication.model);
+        if (typedModel == nullptr) {
+            return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
         }
 
         std::unordered_set<std::string> requiredControls;
         for (const auto& parameter : definition->parameters) {
-            if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
-                    && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
-                requiredControls.insert(parameter.id.toStdString());
-            }
+            requiredControls.insert(parameter.id.toStdString());
         }
         std::vector<NodeParameter> parameters;
-        parameters.reserve(publication.controls.size() + 2);
+        parameters.reserve(publication.controls.size());
         for (const auto& control : publication.controls) {
             const auto required = requiredControls.find(control.id.toStdString());
             const auto* controlDefinition = NodeDefinitionRegistry::instance().findParameter(
@@ -255,7 +236,7 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
         }
         if (node->kind == NodeKind::Envelope) {
             EnvelopeNodeModel envelope;
-            if (!envelope.loadSnapshot(canonicalSnapshot)) {
+            if (!envelope.readJSON(typedModel->domainJSON())) {
                 return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
             }
             const auto* red = findParameter(parameters, "red");
@@ -268,30 +249,41 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                 return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
             }
         }
-        parameters.push_back({
-                CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", canonicalSnapshot });
-        parameters.push_back({
-                CurveNodeModelCodec::revisionParameterId(),
-                "Curve Model Revision",
-                juce::String((int64_t) publication.revision) });
-
-        if (publication.revision == currentRevision) {
-            const bool identical = std::all_of(parameters.begin(), parameters.end(), [&](const auto& parameter) {
-                const auto* current = findParameter(node->parameters, parameter.id);
-                if (current == nullptr) {
-                    return false;
-                }
-                if (parameter.id == CurveNodeModelCodec::snapshotParameterId()) {
-                    return canonicalCurrentSnapshot == parameter.value;
-                }
-                return current->value == parameter.value;
-            });
-            if (!identical) {
-                return GraphEditResult { GraphEditCode::ConflictingRevision, publication.nodeId, {} };
-            }
+        const bool isModelRetry = node->model != nullptr
+                && node->model->revision() == publication.model->revision()
+                && node->model->equals(*publication.model);
+        const bool controlsMatch = node->parameters.size() == parameters.size()
+                && std::equal(
+                        node->parameters.begin(),
+                        node->parameters.end(),
+                        parameters.begin(),
+                        [](const NodeParameter& left, const NodeParameter& right) {
+                            return left.id == right.id && left.value == right.value;
+                        });
+        if (isModelRetry && !controlsMatch) {
+            return GraphEditResult { GraphEditCode::ConflictingRevision, publication.nodeId, {} };
         }
 
-        return GraphEditor().setNodeParametersAtomic(graph, publication.nodeId, parameters);
+        auto parameterResult = GraphEditor().setNodeParametersAtomic(graph, publication.nodeId, parameters);
+        if (!parameterResult.succeeded()) {
+            return parameterResult;
+        }
+        auto modelResult = GraphEditor().replaceNodeModel(
+                graph, publication.nodeId, publication.expectedRevision, publication.model);
+        modelResult.changes.parameterImpacts = modelResult.changes.parameterImpacts
+                | parameterResult.changes.parameterImpacts;
+        if (typedModel->editorJSON().getDynamicObject() != nullptr) {
+            auto editorResult = GraphEditor().setNodeEditorState(
+                    graph, publication.nodeId, typedModel->editorJSON());
+            if (!editorResult.succeeded()) {
+                return editorResult;
+            }
+            modelResult.changed = modelResult.changed || editorResult.changed;
+            modelResult.changes.editorStateChanged = editorResult.changed;
+            modelResult.changes.parameterImpacts = modelResult.changes.parameterImpacts
+                    | editorResult.changes.parameterImpacts;
+        }
+        return modelResult;
     });
 }
 
@@ -349,7 +341,7 @@ void GraphCommandDispatcher::beginCompoundEdit() {
         ++compoundDepth;
         return;
     }
-    compoundBefore = document.toXml();
+    compoundBefore = document.toJson();
     compoundChanges = {};
     compoundActive = true;
     compoundChanged = false;
@@ -376,7 +368,7 @@ void GraphCommandDispatcher::commitCompoundEdit() {
 
 void GraphCommandDispatcher::cancelCompoundEdit() {
     if (compoundActive && compoundChanged) {
-        document.restoreXml(compoundBefore);
+        document.restoreJson(compoundBefore);
     }
     compoundBefore = {};
     compoundActive = false;
@@ -398,7 +390,7 @@ void GraphCommandDispatcher::commitTransientEdit() {
         return;
     }
     if (transientEdit->changed) {
-        document.recordBeforeChange(document.toXml());
+        document.recordBeforeChange(document.toJson());
         document.currentGraph = std::move(transientEdit->graph);
         document.publishChange(std::move(transientEdit->changes));
     }
@@ -428,7 +420,7 @@ GraphEditResult GraphCommandDispatcher::apply(
         }
         return result;
     }
-    const juce::String before = compoundActive ? juce::String() : document.toXml();
+    const juce::String before = compoundActive ? juce::String() : document.toJson();
     GraphEditResult result = command(document.graphForCommand());
     if (!result.succeeded()) {
         return result;

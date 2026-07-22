@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 
+#include <memory>
 #include <vector>
 
 namespace CycleV2 {
@@ -84,6 +85,19 @@ struct NodeParameter {
     String value;
 };
 
+class NodeModelState {
+public:
+    virtual ~NodeModelState() = default;
+
+    virtual String schemaId() const = 0;
+    virtual int schemaVersion() const = 0;
+    virtual uint64_t revision() const = 0;
+    virtual var writeJSON() const = 0;
+    virtual bool equals(const NodeModelState& other) const = 0;
+};
+
+using NodeModelStatePtr = std::shared_ptr<const NodeModelState>;
+
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -93,6 +107,8 @@ struct Node {
     std::vector<NodeParameter> parameters;
     std::vector<Port> inputs;
     std::vector<Port> outputs;
+    NodeModelStatePtr model;
+    var editorState;
 };
 
 struct Edge {
@@ -143,6 +159,8 @@ public:
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
     bool replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters);
+    bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
+    bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
     void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
     void markChanged() { ++revision; }

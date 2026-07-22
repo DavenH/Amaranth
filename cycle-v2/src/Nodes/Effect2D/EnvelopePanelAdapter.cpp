@@ -15,23 +15,22 @@ bool EnvelopePanelAdapter::needsNodeSync(const Node& node) const {
     if (node.kind != NodeKind::Envelope) {
         return false;
     }
-    const String snapshot = parameterValueForNode(
-            node, CurveNodeModelCodec::snapshotParameterId(), {});
-    return snapshot.isNotEmpty()
-            && (syncedNodeId != node.id || syncedModelSnapshot != snapshot);
+    return node.model != nullptr
+            && node.model->schemaId() == "envelope"
+            && (syncedNodeId != node.id || syncedModelRevision != node.model->revision());
 }
 
 bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != NodeKind::Envelope) {
         return false;
     }
-    const String snapshot = parameterValueForNode(
-            node, CurveNodeModelCodec::snapshotParameterId(), {});
     if (!needsNodeSync(node) || !model.syncFromNode(node)) {
         return false;
     }
     syncedNodeId = node.id;
-    syncedModelSnapshot = snapshot;
+    syncedModelRevision = node.model->revision();
+    model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
+    model.setPublicationRevision(node.model->revision());
     syncedMeshState = serializedMeshState();
     return true;
 }
@@ -46,15 +45,23 @@ String EnvelopePanelAdapter::serializedMeshState() {
     return EnvelopeMeshState::serialize(mesh());
 }
 
-String EnvelopePanelAdapter::serializedModelSnapshot(
+NodeModelStatePtr EnvelopePanelAdapter::modelPublication(
         VertCube* selectedCube,
         uint64_t publicationRevision) {
     if (!model.synchronizeFromMesh(selectedCube)) {
         return {};
     }
     model.setPublicationRevision(publicationRevision);
-    syncedModelSnapshot = model.snapshot();
-    return syncedModelSnapshot;
+    auto editor = std::make_unique<DynamicObject>();
+    if (model.selectedCubeId().has_value()) {
+        editor->setProperty("selectedCubeId", (int64) *model.selectedCubeId());
+    }
+    return std::make_shared<const CurveNodeModelState>(
+            "envelope",
+            EnvelopeNodeModel::currentVersion,
+            publicationRevision,
+            model.writeJSON(),
+            var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {

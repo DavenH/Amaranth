@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "../../Graph/NodeDefinition.h"
 #include "Effect2DMeshState.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
@@ -64,6 +65,8 @@ public:
     bool synchronizeFromMesh(Vertex* selectedVertex);
     bool loadSnapshot(const String& snapshot);
     String snapshot() const;
+    bool readJSON(const var& value);
+    var writeJSON() const;
 
     const Mesh& getMesh() const { return mesh; }
     Mesh& getMesh() { return mesh; }
@@ -102,6 +105,8 @@ public:
     bool syncFromNode(const Node& node);
     bool synchronizeFromMesh(VertCube* selectedCube);
     String snapshot() const;
+    bool readJSON(const var& value);
+    var writeJSON() const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -165,17 +170,43 @@ struct GuideCurveNodeModel {
     void syncFromNode(const Node& node);
 };
 
-class CurveNodeModelCodec {
+class CurveNodeModelState : public NodeModelState {
 public:
-    static String snapshotParameterId();
-    static String revisionParameterId();
-    static String defaultSnapshot(NodeKind kind);
-    static String snapshotFromParameters(const std::vector<NodeParameter>& parameters);
-    static uint64_t revisionFromParameters(const std::vector<NodeParameter>& parameters);
-    static std::vector<Effect2DVertexState> flatVerticesFromParameters(
-            const std::vector<NodeParameter>& parameters,
-            NodeKind kind);
-    static String envelopePayloadFromParameters(const std::vector<NodeParameter>& parameters);
+    CurveNodeModelState(
+            String schema,
+            int version,
+            uint64_t revision,
+            var modelState,
+            var editorState = {});
+
+    String schemaId() const override;
+    int schemaVersion() const override;
+    uint64_t revision() const override;
+    var writeJSON() const override;
+    bool equals(const NodeModelState& other) const override;
+
+    const var& domainJSON() const { return state; }
+    const var& editorJSON() const { return editorState; }
+
+private:
+    String schema;
+    int version {};
+    uint64_t modelRevision {};
+    var state;
+    var editorState;
+};
+
+class CurveNodeDomainCodec : public NodeModelCodec {
+public:
+    explicit CurveNodeDomainCodec(NodeKind kindToUse);
+
+    String schemaId() const override;
+    int currentVersion() const override;
+    NodeModelStatePtr createDefault() const override;
+    NodeModelStatePtr readJSON(const var& value, String& error) const override;
+
+private:
+    NodeKind kind;
 };
 
 }

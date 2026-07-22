@@ -1,6 +1,7 @@
 #include "NodeDefinition.h"
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 
@@ -118,17 +119,6 @@ ParameterDefinition choice(
     };
 }
 
-ParameterDefinition snapshot(String id, String label, String defaultValue) {
-    return {
-            std::move(id),
-            std::move(label),
-            ParameterType::ModelSnapshot,
-            std::move(defaultValue),
-            {},
-            preview | dsp
-    };
-}
-
 NodeDefinition definition(
         String typeId,
         NodeKind kind,
@@ -149,6 +139,7 @@ NodeDefinition definition(
             std::move(inputs),
             std::move(outputs),
             std::move(parameters),
+            nullptr,
             allowsDynamicParameters
     };
 }
@@ -173,6 +164,11 @@ public:
         value.executable = audioRole != AudioModuleRole::None;
         value.previewable = previewRole != PreviewModuleRole::None;
         value.cycle1Reference = std::move(cycle1Reference);
+        return *this;
+    }
+
+    DefinitionBuilder& model(std::shared_ptr<const NodeModelCodec> codec) {
+        value.modelCodec = std::move(codec);
         return *this;
     }
 
@@ -314,7 +310,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
-                    }, true))
+                    }))
+                    .model(std::make_shared<TrimeshNodeModelCodec>())
                     .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
                             "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
                     .presentation({ 260.f, 130.f }, { 286.f, 269.f })
@@ -342,14 +339,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                       input("blue", "Blue Morph", PortDomain::ControlSignal) },
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
-                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
-                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Envelope)),
-                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             boolean("dynamic", "Dynamic While Live", false, dsp | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
-                    }, true))
+                    }))
+                    .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Envelope))
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
                             "cycle/src/Inter/EnvelopeInter2D.cpp")
                     .presentation({ 269.2f, 92.f })
@@ -371,11 +366,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             number("noise", "Noise", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("dcOffset", "DC Offset", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("phase", "Phase", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
-                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::GuideCurve)),
-                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true))
+                            number("phase", "Phase", 0.5f, 0.f, 1.f, dsp | preview | presentation)
+                    }))
+                    .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::GuideCurve))
                     .runtime(AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope,
                             "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp")
                     .presentation({ 269.2f, 100.f })
@@ -386,11 +379,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             impulseLength(),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation),
-                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
-                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::ImpulseResponse)),
-                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true))
+                            number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation)
+                    }))
+                    .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::ImpulseResponse))
                     .runtime(AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
                             "cycle/src/Audio/Effects/IrModeller.cpp")
                     .presentation({ 230.f, 92.f })
@@ -401,11 +392,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("pre", "Pre", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
-                            choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation),
-                            snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
-                                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Waveshaper)),
-                            integer(CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", 1, 1, INT_MAX, dsp | preview)
-                    }, true))
+                            choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation)
+                    }))
+                    .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Waveshaper))
                     .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
                     .presentation({ 154.f, 174.f })
@@ -553,9 +542,7 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
             continue;
         }
         found->label = parameterDefinition.label;
-        if (found->value.isEmpty() && parameterDefinition.type == ParameterType::ModelSnapshot) {
-            found->value = parameterDefinition.defaultValue;
-        } else if (parameterDefinition.accepts(found->value)) {
+        if (parameterDefinition.accepts(found->value)) {
             found->value = parameterDefinition.normalized(found->value);
         }
     }
