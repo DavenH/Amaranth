@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed.
+Implemented on 2026-07-22.
 
 This design extends the implemented contracts in:
 
@@ -677,3 +677,81 @@ its refactor, style, semantic-test, and realtime-boundary evidence is complete.
   or duplicated mesh/Envelope/smoothing implementation remains in Cycle v2.
 - Implementation review confirms the size/branch envelope or records and
   resolves the architectural reason for exceeding it.
+
+## Implementation Review
+
+The implementation follows the proposed ownership boundary. `ModulationSource`
+contains the shared normalization/evaluation core used by both audio and
+preview processors. `MidiControlState` normalizes JUCE MIDI messages once,
+retains fixed 128-controller snapshots for 16 channels, and copies only the
+applicable channel's ordered events into a voice-owned vector whose capacity is
+reserved by `prepareVoice`. The configured bound is
+`maximumEventsPerChannel`; overflow is dropped deterministically, counted, and
+covered by a semantic test. Source processing then performs only vector fills,
+ramps, and an event-boundary scan.
+
+Voice time is supplied by the voice owner as a normalized start and per-sample
+increment, then materialized with a clipped `Buffer` ramp. Preview time is an
+explicit scalar or traversal coordinate in `PreviewControlContext`; it never
+reads realtime state. Controller sources hold the block-start snapshot and
+apply ordered events at their exact offsets. Live values are invocation state
+and are absent from graph serialization, graph revisions, undo, and DSP
+configuration publication.
+
+Production and resource changes total 718 added lines and one removed line,
+excluding tests, fixtures, and this TDD. The largest additions are:
+
+- `ModulationSource.cpp`: 228 lines;
+- the hosted editor addition in `ConcreteNodeEditors.cpp`: 163 lines;
+- `MidiControlState.cpp`: 84 lines;
+- `ModulationSource.h`: 55 lines; and
+- `MidiControlState.h`: 39 lines.
+
+The explicit compatibility branches introduced are:
+
+- `NodeKind::ModulationSource` in graph identity, palette automation aliases,
+  palette presentation, view capabilities, compact presentation, and hosted
+  editor registration;
+- `AudioModuleRole::ModulationSource` in configuration, factory, and role-label
+  registries;
+- `PreviewModuleRole::ModulationSource` in factory and automation role-label
+  registries; and
+- the eight `ModulationSourceMode` cases in ID conversion and shared value
+  evaluation.
+
+These branches select metadata or a domain processor; none route by
+destination kind. The palette branch is a deletion target when palette entries
+are fully definition-driven. The canvas automation aliases remain a stable
+external command boundary. The hosted-editor and role registries are the
+current authoritative extension points and have no transitional deletion
+target.
+
+`TrimeshNodeAudioProcessor`, `EnvelopeSignalProcessor`, and
+`SmoothedMorphPosition` have no production diff in this work. Their established
+absolute-input smoothing, dynamic preparation, adoption, and playback paths
+are reused unchanged. The allocation-instrumented dynamic Envelope test now
+uses a real Modulation node upstream, and ordinary graph-edit tests connect the
+source to Envelope red/blue plus Trilinear Mesh yellow/red/blue while verifying
+single-input replacement and fan-out.
+
+The focused standalone fixture creates and edits the source, connects both
+destination families, inspects the hosted editor and preview role, and verifies
+parameters and edges after save/reload. Cycle V2's standalone shell has no live
+MIDI device/voice callback and therefore does not synthesize a MIDI gesture in
+UI automation. The authoritative MIDI-to-voice boundary is instead exercised
+directly by semantic tests for normalization, channel isolation, retained
+state, ordered sample offsets, capacity overflow, and realtime allocation.
+This is a test-surface divergence, not a second runtime control path.
+
+Verification evidence:
+
+- focused `[modulation]`: 155 assertions in 23 test cases;
+- full `CycleV2_tests`: 4,785 assertions in 347 test cases;
+- Standalone Debug build completed with `--parallel 10`;
+- the 16-command focused automation fixture completed with no failed command;
+- `git diff --check` passed; and
+- the modified DSP hot path contains no scalar `std::<math>` sample loop.
+
+`clang-tidy` was not available in the development environment; compilation
+with the repository warning settings and the explicit style/hot-loop audit are
+the recorded substitutes.
