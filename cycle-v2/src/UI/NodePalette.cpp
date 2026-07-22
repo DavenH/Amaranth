@@ -57,6 +57,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Context",
                 "Context",
+                PaletteIcon::Context,
                 PortDomain::VoiceControlSignal,
                 kContextEntries,
                 (int) std::size(kContextEntries)
@@ -64,6 +65,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Transform",
                 "Transform",
+                PaletteIcon::Transform,
                 PortDomain::SpectralMagnitudeSignal,
                 kTransformEntries,
                 (int) std::size(kTransformEntries)
@@ -71,6 +73,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Math",
                 "Math",
+                PaletteIcon::Math,
                 PortDomain::ControlSignal,
                 kMathEntries,
                 (int) std::size(kMathEntries)
@@ -78,6 +81,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Source",
                 "Source",
+                PaletteIcon::Source,
                 PortDomain::TimeSignal,
                 kSourceEntries,
                 (int) std::size(kSourceEntries)
@@ -85,6 +89,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Control",
                 "Control",
+                PaletteIcon::Control,
                 PortDomain::EnvelopeSignal,
                 kControlEntries,
                 (int) std::size(kControlEntries)
@@ -92,6 +97,7 @@ const NodePalette::Section kSections[] = {
         {
                 "FX",
                 "FX",
+                PaletteIcon::Fx,
                 PortDomain::SpectralPhaseSignal,
                 kFxEntries,
                 (int) std::size(kFxEntries)
@@ -99,6 +105,7 @@ const NodePalette::Section kSections[] = {
         {
                 "Channel",
                 "Channel",
+                PaletteIcon::Channel,
                 PortDomain::TimeSignal,
                 kChannelEntries,
                 (int) std::size(kChannelEntries)

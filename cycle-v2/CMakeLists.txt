@@ -4,12 +4,45 @@ if(NOT BUILD_TYPE STREQUAL "Standalone")
     return()
 endif()
 
+set(PALETTE_ICON_NAMES
+    context
+    transform
+    math
+    source
+    control
+    fx
+    channel
+)
+set(PALETTE_ICON_FILES)
+set(PALETTE_ICON_DATA_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(PALETTE_ICON_DATA_HEADER "${PALETTE_ICON_DATA_DIR}/NodePaletteIconData.h")
+file(MAKE_DIRECTORY "${PALETTE_ICON_DATA_DIR}")
+file(WRITE "${PALETTE_ICON_DATA_HEADER}" "#pragma once\n\nnamespace CycleV2::PaletteIconData {\n\n")
+
+foreach(ICON_NAME IN LISTS PALETTE_ICON_NAMES)
+    set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/palette-icons/${ICON_NAME}.svg")
+    file(READ "${ICON_FILE}" ICON_SVG)
+    file(APPEND "${PALETTE_ICON_DATA_HEADER}"
+        "inline constexpr char ${ICON_NAME}[] = R\"svg(${ICON_SVG})svg\";\n\n"
+    )
+    list(APPEND PALETTE_ICON_FILES "${ICON_FILE}")
+endforeach()
+
+file(APPEND "${PALETTE_ICON_DATA_HEADER}" "}\n")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PALETTE_ICON_FILES})
+set_source_files_properties(${PALETTE_ICON_FILES} PROPERTIES
+    HEADER_FILE_ONLY TRUE
+    MACOSX_PACKAGE_LOCATION "Resources/palette-icons"
+)
+
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 
 list(APPEND APP_SOURCES
+    ${PALETTE_ICON_FILES}
+    "${PALETTE_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
@@ -70,6 +103,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpectralPreviewMapping.cpp"
@@ -164,6 +198,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${PALETTE_ICON_DATA_DIR}
     ${JUCE_MODULES_DIR}
     ${IPP_DIR}/include/ipp
 )
@@ -197,6 +232,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         target_include_directories(${PROJECT_NAME}_tests PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${PALETTE_ICON_DATA_DIR}
             ${JUCE_MODULES_DIR}
             ${IPP_DIR}/include/ipp
         )
