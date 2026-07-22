@@ -134,6 +134,31 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
 }
 
+TEST_CASE("Compiler indexes both dependency directions and probe addresses",
+        "[cycle-v2][graph][runtime]") {
+    NodeGraph graph;
+    graph.addNode(graphNode(
+            "source", {}, { output("signal", PortDomain::TimeSignal) }));
+    graph.addNode(graphNode(
+            "sink", { input("in", PortDomain::TimeSignal) }, {}));
+    graph.addEdge({
+            "source", "signal", "sink", "in", PortDomain::TimeSignal, false });
+    graph.addSignalProbe({ "probe", "source", "signal", "sink", "in", "Probe" });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    const auto& index = result.plan.dependencyIndex;
+    REQUIRE(index.nodeIndexById.at("source") == 0);
+    REQUIRE(index.nodeIndexById.at("sink") == 1);
+    REQUIRE((index.dependents == std::vector<std::vector<int>> { { 1 }, {} }));
+    REQUIRE((index.dependencies == std::vector<std::vector<int>> { {}, { 0 } }));
+    REQUIRE(result.plan.signalProbes.size() == 1);
+    CHECK(result.plan.signalProbes.front().probeId == "probe");
+    CHECK(result.plan.signalProbes.front().sourceStepIndex == 0);
+    CHECK(result.plan.signalProbes.front().sourceOutputIndex == 0);
+}
+
 TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2][graph][configuration]") {
     GraphNodeFactory factory;
     NodeGraph graph;

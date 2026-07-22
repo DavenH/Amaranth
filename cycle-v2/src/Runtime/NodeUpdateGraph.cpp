@@ -1,4 +1,5 @@
 #include "NodeUpdateGraph.h"
+#include "FingerprintBuilder.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -7,9 +8,18 @@ namespace CycleV2 {
 
 namespace {
 
-uint64_t combineFingerprint(uint64_t seed, uint64_t value) {
-    seed ^= value + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
-    return seed;
+bool isObservedProductTarget(
+        UpdateProduct product,
+        int target,
+        const std::vector<uint8_t>& observed,
+        const std::vector<uint8_t>& leadsToObservation) {
+    if (product == UpdateProduct::ProbePreview) {
+        return observed[static_cast<size_t>(target)] != 0;
+    }
+    if (product == UpdateProduct::PreviewTraversal) {
+        return leadsToObservation[static_cast<size_t>(target)] != 0;
+    }
+    return true;
 }
 
 }
@@ -116,20 +126,6 @@ void SemanticEditGate::cancelGesture(const String& sourceStreamId) {
     activeGestureId = 0;
 }
 
-bool NodeUpdateGraph::ProductKey::operator<(const ProductKey& other) const {
-    if (nodeId != other.nodeId) {
-        return nodeId < other.nodeId;
-    }
-    return product < other.product;
-}
-
-bool NodeUpdateGraph::ExecutionKey::operator<(const ExecutionKey& other) const {
-    if (editId != other.editId) {
-        return editId < other.editId;
-    }
-    return product < other.product;
-}
-
 bool NodeUpdateGraph::GenerationKey::operator<(const GenerationKey& other) const {
     if (sourceStreamId != other.sourceStreamId) {
         return sourceStreamId < other.sourceStreamId;
@@ -163,43 +159,58 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
     }
     std::unique_lock<std::mutex> productLock(productMutex);
 
-    std::map<ProductKey, PlannedNodeProduct> planned;
-    std::map<String, std::vector<ProductKey>> productsByNode;
+    for (auto& affected : result.affected) {
+        affected.assign(plan.dependencyIndex.nodeIds.size(), 0);
+    }
+
+    planningSlots.resize(plan.dependencyIndex.nodeIds.size());
+    productFingerprints.resize(plan.dependencyIndex.nodeIds.size());
+    lastExecutedEdit.resize(plan.dependencyIndex.nodeIds.size());
+    for (auto& nodeProducts : planningSlots) {
+        for (auto& product : nodeProducts) {
+            product.reset();
+        }
+    }
+    prepareObservationMask(plan.dependencyIndex, request.observedNodeIds);
     for (const auto& invalidation : request.invalidations) {
-        const auto root = std::find(
-                plan.dependencyIndex.nodeIds.begin(),
-                plan.dependencyIndex.nodeIds.end(),
-                invalidation.sourceNodeId);
-        if (root == plan.dependencyIndex.nodeIds.end()) {
+        const auto root = plan.dependencyIndex.nodeIndexById.find(invalidation.sourceNodeId);
+        if (root == plan.dependencyIndex.nodeIndexById.end()) {
             continue;
         }
-
-        const int rootIndex = static_cast<int>(std::distance(
-                plan.dependencyIndex.nodeIds.begin(), root));
-        std::vector<int> targets { rootIndex };
+        const int rootIndex = root->second;
+        traversalTargets.clear();
+        traversalTargets.push_back(rootIndex);
         if (invalidation.downstream && propagatesDownstream(invalidation.product)) {
-            targets = downstreamClosure(plan.dependencyIndex, rootIndex);
+            downstreamClosure(plan.dependencyIndex, rootIndex);
         }
 
-        for (const int target : targets) {
+        for (const int target : traversalTargets) {
             const String& nodeId = plan.dependencyIndex.nodeIds[static_cast<size_t>(target)];
             if (request.filterObservedNodes
-                    && invalidation.product == UpdateProduct::ProbePreview
-                    && std::find(request.observedNodeIds.begin(), request.observedNodeIds.end(), nodeId)
-                            == request.observedNodeIds.end()) {
+                    && !isObservedProductTarget(
+                            invalidation.product,
+                            target,
+                            observedNodes,
+                            leadsToObservation)) {
                 PlannedNodeProduct skipped {
                         nodeId, invalidation.product,
                         targetFingerprint(invalidation.inputFingerprint, nodeId, invalidation.product),
-                        invalidation.causes };
+                        invalidation.causes,
+                        target };
                 trace(request, skipped, UpdateTracePhase::NotObserved);
                 continue;
             }
 
-            const ProductKey key { nodeId, invalidation.product };
-            if (planned.find(key) == planned.end()) {
-                productsByNode[nodeId].push_back(key);
+            result.affected[static_cast<size_t>(invalidation.product)]
+                    [static_cast<size_t>(target)] = 1;
+
+            auto& productSlot = planningSlots[static_cast<size_t>(target)]
+                    [static_cast<size_t>(invalidation.product)];
+            if (!productSlot.has_value()) {
+                productSlot = PlannedNodeProduct {
+                        nodeId, invalidation.product, 0, {}, target };
             }
-            auto& product = planned[key];
+            auto& product = *productSlot;
             product.nodeId = nodeId;
             product.product = invalidation.product;
             product.inputFingerprint = combineFingerprint(
@@ -209,29 +220,25 @@ CausalUpdateResult NodeUpdateGraph::executeDeferredPublication(
         }
     }
 
-    for (const auto& nodeId : plan.nodeOrder) {
-        const auto nodeProducts = productsByNode.find(nodeId);
-        if (nodeProducts == productsByNode.end()) {
-            continue;
-        }
-        for (const auto& productKey : nodeProducts->second) {
-            PlannedNodeProduct& product = planned.at(productKey);
+    for (size_t nodeIndex = 0; nodeIndex < planningSlots.size(); ++nodeIndex) {
+        for (auto& productSlot : planningSlots[nodeIndex]) {
+            if (!productSlot.has_value()) {
+                continue;
+            }
+            PlannedNodeProduct& product = *productSlot;
+            const size_t productIndex = static_cast<size_t>(product.product);
 
             trace(request, product, UpdateTracePhase::Dirtied);
-            const ExecutionKey executionKey { request.edit.editId, productKey };
-            constexpr size_t maximumLedgerSize = 8192;
-            if (executionLedger.size() == maximumLedgerSize) {
-                executionLedger.erase(executionLedger.begin());
-            }
-            if (!executionLedger.insert(executionKey).second) {
+            uint64_t& editStamp = lastExecutedEdit[nodeIndex][productIndex];
+            if (editStamp == request.edit.editId) {
                 trace(request, product, UpdateTracePhase::InvariantViolation);
                 result.invariantViolation = true;
                 continue;
             }
+            editStamp = request.edit.editId;
 
-            const auto cached = productFingerprints.find(productKey);
-            if (cached != productFingerprints.end()
-                    && cached->second == product.inputFingerprint) {
+            const auto& cached = productFingerprints[nodeIndex][productIndex];
+            if (cached.has_value() && *cached == product.inputFingerprint) {
                 trace(request, product, UpdateTracePhase::AlreadyCurrent);
                 continue;
             }
@@ -263,7 +270,11 @@ void NodeUpdateGraph::publish(
         const CausalUpdateResult& result) {
     const std::lock_guard<std::mutex> lock(productMutex);
     for (const auto& product : result.executed) {
-        productFingerprints[{ product.nodeId, product.product }] = product.inputFingerprint;
+        if (product.nodeIndex >= 0
+                && static_cast<size_t>(product.nodeIndex) < productFingerprints.size()) {
+            productFingerprints[static_cast<size_t>(product.nodeIndex)]
+                    [static_cast<size_t>(product.product)] = product.inputFingerprint;
+        }
         trace(request, product, UpdateTracePhase::Published);
     }
 }
@@ -289,7 +300,7 @@ bool NodeUpdateGraph::isCurrent(
 void NodeUpdateGraph::clearProductCache() {
     const std::lock_guard<std::mutex> lock(productMutex);
     productFingerprints.clear();
-    executionLedger.clear();
+    lastExecutedEdit.clear();
 }
 
 void NodeUpdateGraph::recordDecision(
@@ -313,24 +324,57 @@ std::vector<String> NodeUpdateGraph::affectedNodeIds(
         const CausalUpdateRequest& request,
         UpdateProduct product) const {
     std::vector<uint8_t> affected(plan.dependencyIndex.nodeIds.size());
+    std::vector<uint8_t> observed(plan.dependencyIndex.nodeIds.size());
+    std::vector<uint8_t> leadsToObserved(plan.dependencyIndex.nodeIds.size());
+    std::vector<int> observationPending;
+    for (const auto& nodeId : request.observedNodeIds) {
+        const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
+        if (found != plan.dependencyIndex.nodeIndexById.end()) {
+            observed[static_cast<size_t>(found->second)] = 1;
+            leadsToObserved[static_cast<size_t>(found->second)] = 1;
+            observationPending.push_back(found->second);
+        }
+    }
+    while (!observationPending.empty()) {
+        const int current = observationPending.back();
+        observationPending.pop_back();
+        for (const int dependency : plan.dependencyIndex.dependencies[static_cast<size_t>(current)]) {
+            if (leadsToObserved[static_cast<size_t>(dependency)] == 0) {
+                leadsToObserved[static_cast<size_t>(dependency)] = 1;
+                observationPending.push_back(dependency);
+            }
+        }
+    }
     for (const auto& invalidation : request.invalidations) {
         if (invalidation.product != product) {
             continue;
         }
-        const auto root = std::find(
-                plan.dependencyIndex.nodeIds.begin(),
-                plan.dependencyIndex.nodeIds.end(),
-                invalidation.sourceNodeId);
-        if (root == plan.dependencyIndex.nodeIds.end()) {
+        const auto root = plan.dependencyIndex.nodeIndexById.find(invalidation.sourceNodeId);
+        if (root == plan.dependencyIndex.nodeIndexById.end()) {
             continue;
         }
-        const int rootIndex = static_cast<int>(std::distance(
-                plan.dependencyIndex.nodeIds.begin(), root));
-        const std::vector<int> targets = invalidation.downstream
-                ? downstreamClosure(plan.dependencyIndex, rootIndex)
-                : std::vector<int> { rootIndex };
-        for (const int target : targets) {
-            affected[static_cast<size_t>(target)] = 1;
+        const int rootIndex = root->second;
+        std::vector<uint8_t> targets(plan.dependencyIndex.nodeIds.size());
+        targets[static_cast<size_t>(rootIndex)] = 1;
+        std::vector<int> pending { rootIndex };
+        while (invalidation.downstream && !pending.empty()) {
+            const int current = pending.back();
+            pending.pop_back();
+            for (const int dependent : plan.dependencyIndex.dependents[static_cast<size_t>(current)]) {
+                if (targets[static_cast<size_t>(dependent)] == 0) {
+                    targets[static_cast<size_t>(dependent)] = 1;
+                    pending.push_back(dependent);
+                }
+            }
+        }
+        for (int target = 0; target < static_cast<int>(targets.size()); ++target) {
+            if (targets[static_cast<size_t>(target)] == 0) {
+                continue;
+            }
+            if (!request.filterObservedNodes
+                    || isObservedProductTarget(product, target, observed, leadsToObserved)) {
+                affected[static_cast<size_t>(target)] = 1;
+            }
         }
     }
 
@@ -357,30 +401,65 @@ uint64_t NodeUpdateGraph::targetFingerprint(
     return combineFingerprint(fingerprint, static_cast<uint64_t>(nodeId.hashCode64()));
 }
 
-std::vector<int> NodeUpdateGraph::downstreamClosure(
+void NodeUpdateGraph::prepareObservationMask(
+        const GraphDependencyIndex& index,
+        const std::vector<String>& observedNodeIds) {
+    observedNodes.assign(index.nodeIds.size(), 0);
+    leadsToObservation.assign(index.nodeIds.size(), 0);
+    traversalPending.clear();
+    for (const auto& nodeId : observedNodeIds) {
+        const auto found = index.nodeIndexById.find(nodeId);
+        if (found == index.nodeIndexById.end()) {
+            continue;
+        }
+        observedNodes[static_cast<size_t>(found->second)] = 1;
+        leadsToObservation[static_cast<size_t>(found->second)] = 1;
+        traversalPending.push_back(found->second);
+    }
+    while (!traversalPending.empty()) {
+        const int current = traversalPending.back();
+        traversalPending.pop_back();
+        for (const int dependency : index.dependencies[static_cast<size_t>(current)]) {
+            if (leadsToObservation[static_cast<size_t>(dependency)] == 0) {
+                leadsToObservation[static_cast<size_t>(dependency)] = 1;
+                traversalPending.push_back(dependency);
+            }
+        }
+    }
+}
+
+const std::vector<int>& NodeUpdateGraph::downstreamClosure(
         const GraphDependencyIndex& index,
         int sourceIndex) {
-    std::vector<uint8_t> visited(index.nodeIds.size());
-    std::vector<int> pending { sourceIndex };
-    visited[static_cast<size_t>(sourceIndex)] = 1;
-    while (!pending.empty()) {
-        const int current = pending.back();
-        pending.pop_back();
+    if (closureVisitGeneration.size() != index.nodeIds.size()) {
+        closureVisitGeneration.assign(index.nodeIds.size(), 0);
+    }
+    if (++currentClosureGeneration == 0) {
+        closureVisitGeneration.assign(index.nodeIds.size(), 0);
+        ++currentClosureGeneration;
+    }
+    traversalPending.clear();
+    traversalTargets.clear();
+    traversalPending.push_back(sourceIndex);
+    closureVisitGeneration[static_cast<size_t>(sourceIndex)] = currentClosureGeneration;
+    while (!traversalPending.empty()) {
+        const int current = traversalPending.back();
+        traversalPending.pop_back();
         for (const int dependent : index.dependents[static_cast<size_t>(current)]) {
-            if (visited[static_cast<size_t>(dependent)] == 0) {
-                visited[static_cast<size_t>(dependent)] = 1;
-                pending.push_back(dependent);
+            if (closureVisitGeneration[static_cast<size_t>(dependent)]
+                    != currentClosureGeneration) {
+                closureVisitGeneration[static_cast<size_t>(dependent)] = currentClosureGeneration;
+                traversalPending.push_back(dependent);
             }
         }
     }
 
-    std::vector<int> result;
-    for (int indexValue = 0; indexValue < static_cast<int>(visited.size()); ++indexValue) {
-        if (visited[static_cast<size_t>(indexValue)] != 0) {
-            result.push_back(indexValue);
+    for (int nodeIndex = 0; nodeIndex < static_cast<int>(index.nodeIds.size()); ++nodeIndex) {
+        if (closureVisitGeneration[static_cast<size_t>(nodeIndex)] == currentClosureGeneration) {
+            traversalTargets.push_back(nodeIndex);
         }
     }
-    return result;
+    return traversalTargets;
 }
 
 void NodeUpdateGraph::mergeCauses(

@@ -69,7 +69,6 @@ public:
 private:
     struct TransientEdit {
         NodeGraph graph;
-        juce::String before;
         GraphChangeSet changes;
         int depth { 1 };
         bool changed {};

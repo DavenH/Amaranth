@@ -69,7 +69,9 @@ public:
             const String& parameterField,
             Rectangle<int> targetScreenArea) = 0;
     virtual bool selectTrimeshVertexIndex(const String& nodeId, int vertexIndex) = 0;
-    virtual void persistTrimeshMeshEdits(const String& nodeId) = 0;
+    virtual void persistTrimeshMeshEdits(
+            const String& nodeId,
+            bool gestureComplete) = 0;
 };
 
 class NodeEditorPresentation {
@@ -218,7 +220,7 @@ public:
             const String& parameterField,
             Rectangle<int> targetScreenArea) override;
     bool selectTrimeshVertexIndex(const String& nodeId, int vertexIndex) override;
-    void persistTrimeshMeshEdits(const String& nodeId) override;
+    void persistTrimeshMeshEdits(const String& nodeId, bool gestureComplete) override;
 
 private:
     const Node* findNode(const String& nodeId) const;
@@ -236,6 +238,8 @@ private:
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
+    String activeMeshNodeId;
+    bool activeMeshChanged {};
     bool curveTransactionActive {};
     bool curvePublicationPending {};
     String curvePublicationNodeId;

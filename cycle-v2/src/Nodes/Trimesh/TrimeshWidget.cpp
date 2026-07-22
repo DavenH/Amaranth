@@ -242,7 +242,8 @@ void TrimeshWidget::clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* del
     bridge.clearPanelHostDelegate(delegate);
 }
 
-void TrimeshWidget::setMeshEditedCallback(std::function<void()> callback) {
+void TrimeshWidget::setMeshEditedCallback(
+        std::function<void(TrimeshMeshEditEvent)> callback) {
     bridge.setMeshEditedCallback(std::move(callback));
 }
 

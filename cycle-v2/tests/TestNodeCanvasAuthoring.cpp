@@ -34,7 +34,7 @@ public:
         return true;
     }
     bool selectTrimeshVertexIndex(const String&, int) override { return true; }
-    void persistTrimeshMeshEdits(const String&) override {}
+    void persistTrimeshMeshEdits(const String&, bool) override {}
 };
 
 NodeCanvasAuthoring makeAuthoring(

@@ -1,4 +1,5 @@
 #include "GraphPresentationModel.h"
+#include "FingerprintBuilder.h"
 
 #include <algorithm>
 
@@ -6,36 +7,16 @@ namespace CycleV2 {
 
 namespace {
 
-class PresentationUpdateJob final : public ThreadPoolJob {
-public:
-    explicit PresentationUpdateJob(std::function<void()> operationToUse) :
-            ThreadPoolJob("Cycle V2 causal preview")
-        ,   operation(std::move(operationToUse)) {
-    }
-
-    JobStatus runJob() override {
-        operation();
-        return jobHasFinished;
-    }
-
-private:
-    std::function<void()> operation;
-};
-
 }
 
 GraphPresentationModel::GraphPresentationModel() :
-        asyncState(std::make_shared<AsyncState>())
-    ,   publicationTarget(std::make_shared<PublicationTarget>()) {
-    publicationTarget->model = this;
+        asyncState(std::make_shared<AsyncState>()) {
 }
 
 GraphPresentationModel::~GraphPresentationModel() {
     asyncState->alive.store(false);
     asyncState->generation.fetch_add(1);
-    worker.removeAllJobs(true, -1);
-    const std::lock_guard<std::mutex> lock(publicationTarget->mutex);
-    publicationTarget->model = nullptr;
+    asyncWorker.shutdown();
 }
 
 bool GraphPresentationModel::refresh(
@@ -47,7 +28,7 @@ bool GraphPresentationModel::refresh(
     const bool preview = compile || requiresPreview(change);
     if (compile) {
         asyncState->generation.fetch_add(1);
-        worker.removeAllJobs(true, -1);
+        asyncWorker.cancelAndWait();
     }
 
     GraphPresentationSnapshot next = current;
@@ -185,29 +166,15 @@ void GraphPresentationModel::refreshAsync(
     refresh->requestFingerprint = requestFingerprint;
     refresh->snapshot = std::move(next);
     refresh->completion = std::move(completion);
-    worker.addJob(new PresentationUpdateJob([this, refresh] {
-        runAsyncRefresh(refresh);
-    }), true);
-}
-
-void GraphPresentationModel::runAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh) {
-    if (!isCurrent(*refresh)) {
-        updateGraph.recordDecision(refresh->request, UpdateTracePhase::SupersededBeforeStart);
-        return;
-    }
-    if (!prepareAsyncRefresh(*refresh)) {
-        return;
-    }
-    const auto target = publicationTarget;
-    MessageManager::callAsync([target, refresh] {
-        std::function<void()> completion;
-        {
-            const std::lock_guard<std::mutex> lock(target->mutex);
-            if (target->model == nullptr || !refresh->state->alive.load()) {
-                return;
-            }
-            completion = target->model->publishAsyncRefresh(refresh);
+    asyncWorker.post([this, refresh] {
+        if (!isCurrent(*refresh)) {
+            updateGraph.recordDecision(
+                    refresh->request, UpdateTracePhase::SupersededBeforeStart);
+            return false;
         }
+        return prepareAsyncRefresh(*refresh);
+    }, [this, refresh] {
+        auto completion = publishAsyncRefresh(refresh);
         if (completion) {
             completion();
         }
@@ -247,23 +214,30 @@ bool GraphPresentationModel::executeAsyncProducts(
             ChannelLayout::LinkedStereo
     };
     previewAudioExecutor.prepareExecution(next.compileResult.plan, spec);
-    const auto dirtyNodes = updateGraph.affectedNodeIds(
-            next.compileResult.plan,
-            refresh.request,
-            UpdateProduct::PreviewTraversal);
-    const GraphAudioResult audio = previewAudioExecutor.processIncremental(
+    std::vector<uint8_t> dirtyNodes(next.compileResult.plan.steps.size());
+    for (const auto& product : products) {
+        if (product.product == UpdateProduct::PreviewTraversal
+                && product.nodeIndex >= 0
+                && static_cast<size_t>(product.nodeIndex) < dirtyNodes.size()) {
+            dirtyNodes[static_cast<size_t>(product.nodeIndex)] = 1;
+        }
+    }
+    const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
             refresh.graph,
             next.compileResult.plan,
             previewFrameCount,
-            dirtyNodes);
-    if (!isCurrent(refresh)) {
+            dirtyNodes,
+            [&] { return isCurrent(refresh); });
+    if (audio.cancelled || !isCurrent(refresh)) {
         return false;
     }
-    next.previewResult = GraphPreviewExecutor().render(
+    GraphPreviewExecutor().renderIncremental(
             next.compileResult.plan,
             audio,
             refresh.graph.getSignalProbes(),
-            40);
+            dirtyNodes,
+            40,
+            next.previewResult);
     refresh.previewRendered = true;
     return true;
 }
@@ -312,15 +286,10 @@ void GraphPresentationModel::recordEditorMovement(
         uint64_t effectiveFingerprint,
         bool deferredUntilCommit) {
     const String stream = "editor:" + nodeId;
-    uint64_t streamFingerprint = effectiveFingerprint;
-    streamFingerprint ^= static_cast<uint64_t>(nodeId.hashCode64())
-            + 0x9e3779b97f4a7c15ULL
-            + (streamFingerprint << 6U)
-            + (streamFingerprint >> 2U);
-    streamFingerprint ^= static_cast<uint64_t>(field.hashCode64())
-            + 0x9e3779b97f4a7c15ULL
-            + (streamFingerprint << 6U)
-            + (streamFingerprint >> 2U);
+    const uint64_t streamFingerprint = FingerprintBuilder(effectiveFingerprint)
+            .add(nodeId)
+            .add(field)
+            .value();
     const auto identity = editGate.accept(stream, streamFingerprint, EditPhase::Movement);
     if (!identity.has_value()) {
         return;
@@ -481,17 +450,12 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         if (node == nullptr) {
             continue;
         }
-        effectiveFingerprint ^= static_cast<uint64_t>(nodeId.hashCode64());
+        FingerprintBuilder nodeFingerprint(effectiveFingerprint);
+        nodeFingerprint.add(nodeId);
         for (const auto& parameter : node->parameters) {
-            effectiveFingerprint ^= static_cast<uint64_t>(parameter.id.hashCode64())
-                    + 0x9e3779b97f4a7c15ULL
-                    + (effectiveFingerprint << 6U)
-                    + (effectiveFingerprint >> 2U);
-            effectiveFingerprint ^= static_cast<uint64_t>(parameter.value.hashCode64())
-                    + 0x9e3779b97f4a7c15ULL
-                    + (effectiveFingerprint << 6U)
-                    + (effectiveFingerprint >> 2U);
+            nodeFingerprint.add(parameter.id).add(parameter.value);
         }
+        effectiveFingerprint = nodeFingerprint.value();
     }
     const EditPhase phase = documentRevision > current.graphRevision
             ? EditPhase::Commit
@@ -545,7 +509,13 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
             observedNodeIds.push_back(probe.sourceNodeId);
         }
     }
-    return { *identity, std::move(invalidations), std::move(observedNodeIds), true };
+    const bool filterToActiveProbes = !observedNodeIds.empty();
+    return {
+            *identity,
+            std::move(invalidations),
+            std::move(observedNodeIds),
+            filterToActiveProbes
+    };
 }
 
 }

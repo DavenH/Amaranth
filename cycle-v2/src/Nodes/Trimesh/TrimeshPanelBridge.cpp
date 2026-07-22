@@ -124,8 +124,8 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     model.markMeshEdited();
     syncPrimaryAxisContext();
 
-    if (event.gestureComplete && meshEditedCallback != nullptr) {
-        meshEditedCallback();
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback(event);
     }
 
     dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
@@ -133,7 +133,8 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     lastSyncedRevision = panelRevisionFor(model);
 }
 
-void TrimeshPanelBridge::setMeshEditedCallback(std::function<void()> callback) {
+void TrimeshPanelBridge::setMeshEditedCallback(
+        std::function<void(TrimeshMeshEditEvent)> callback) {
     meshEditedCallback = std::move(callback);
 }
 

@@ -337,6 +337,22 @@ class NativeEditSmoke:
         initial = self.graph_state()
         assert initial["compileSucceeded"]
 
+        fft_edge_index = next(
+            index for index, edge in enumerate(initial["edges"])
+            if edge["sourceNodeId"] == "waveMesh"
+            and edge["destNodeId"] == "fft"
+        )
+        cable_before = self.target(f"edge:{fft_edge_index}")
+        fft_node = self.target("node:fft")
+        fft_source = self.point(fft_node, 0.5, 0.5)
+        fft_destination = (fft_source[0] + 120, fft_source[1] + 80)
+        self.drag_and_hold(fft_source, fft_destination)
+        cable_during_drag = self.target(f"edge:{fft_edge_index}")
+        assert cable_during_drag != cable_before, (cable_before, cable_during_drag)
+        self.capture("authoring-cable-drag", self.target("canvas"))
+        self.release_drag(fft_destination)
+        self.key_chord("z")
+
         created_envelope = self.create_from_palette(4, 0)
         assert created_envelope == "env2"
         created = self.graph_state()
@@ -480,7 +496,7 @@ class NativeEditSmoke:
 
         panel = self.target("expanded:waveshaper.panel2D")
         source = panel_position(added_vertex["x"], added_vertex["y"])
-        destination = panel_position(min(0.85, added_vertex["x"] + 0.08), min(0.85, added_vertex["y"] + 0.08))
+        destination = panel_position(min(0.85, added_vertex["x"] + 0.16), min(0.85, added_vertex["y"] + 0.16))
         self.click(f"m:{source[0]},{source[1]}")
         self.drag(source, destination)
         moved_state = self.inspect_until(
@@ -648,7 +664,33 @@ class NativeEditSmoke:
         self.primary_click(vertex_point)
         selected = self.inspect("env")
         selected_parameters = self.selected_vertex_parameters(selected)
+        expanded = self.target("expanded:env")
+        amp_rail = next(
+            rail for rail in selected["effect2D"]["vertexParameterRails"]
+            if rail["id"] == "vertex.amp"
+        )["bounds"]
+        amp_value = float(selected_parameters["vertex.amp"])
+        amp_target = amp_value - 0.08 if amp_value > 0.5 else amp_value + 0.08
+        amp_point = (
+            round(expanded["x"] + amp_rail["x"] + amp_rail["width"] * amp_target),
+            round(expanded["y"] + amp_rail["y"] + amp_rail["height"] * 0.5),
+        )
+        self.primary_click(amp_point)
+        selected = self.inspect_until(
+            "env",
+            lambda state: abs(
+                self.selected_vertex_parameters(state)["vertex.amp"] - amp_target
+            ) < 0.03,
+        )
+        selected_parameters = self.selected_vertex_parameters(selected)
+        assert abs(selected_parameters["vertex.amp"] - amp_target) < 0.03, (
+            amp_value,
+            amp_target,
+            selected_parameters["vertex.amp"],
+            amp_rail,
+        )
         initial_revision = self.model_revision(selected)
+        initial_snapshot = self.parameters(selected)["curve.modelSnapshot"]
 
         blank = self.point(panel, 0.92, 0.12)
         self.click(f"m:{blank[0]},{blank[1]}")
@@ -711,6 +753,7 @@ class NativeEditSmoke:
         self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
         toggled_state = self.graph_state()
         assert toggled_state["probeRefreshMode"] == "Live", (refresh_toggle, toggled_state)
+        self.capture("probe-rail-live-tabs", self.target("canvas"))
 
         live_start = self.causal_sequence(self.graph_state())
         live_source = panel_position(
@@ -849,7 +892,20 @@ class NativeEditSmoke:
 
         amp_slider = self.target("expanded:waveMesh.trimeshVertexParameter.vertex.amp")
         moved_amp = float(moved["vertex.amp"])
-        amp_target = 0.15 if moved_amp > 0.5 else 0.85
+        amp_target = max(0.05, moved_amp - 0.08) if moved_amp > 0.5 else min(0.95, moved_amp + 0.08)
+        self.primary_click(self.point(amp_slider, amp_target, 0.5))
+        clicked_parameter_state = self.inspect("waveMesh")
+        clicked_parameters = {
+            parameter["id"]: parameter["value"]
+            for parameter in clicked_parameter_state["trimesh"]["selectedVertexParameters"]
+        }
+        assert abs(float(clicked_parameters["vertex.amp"]) - amp_target) < 0.03, (
+            amp_target,
+            clicked_parameters["vertex.amp"],
+            amp_slider,
+        )
+        moved_amp = float(clicked_parameters["vertex.amp"])
+        amp_target = 0.85 if moved_amp < 0.5 else 0.15
         amp_source = self.point(amp_slider, moved_amp, 0.5)
         amp_point = self.point(amp_slider, amp_target, 0.5)
         self.drag(amp_source, amp_point)
@@ -990,6 +1046,37 @@ class NativeEditSmoke:
             self.causal_events_since(nonprimary_state, nonprimary_start),
             "Trimesh non-primary morph",
         )
+
+        refresh_toggle = self.target("probeRefreshMode")
+        self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
+        assert self.graph_state()["probeRefreshMode"] == "Live"
+
+        editor_state = self.inspect("waveMesh")
+        panel = self.target("expanded:waveMesh.panel2D")
+        intercepts = sorted(
+            editor_state["trimesh"]["panelIntercepts"],
+            key=lambda intercept: intercept["x"],
+        )
+        source_intercept = intercepts[len(intercepts) // 2]
+        source = self.point(panel, source_intercept["x"], 1.0 - source_intercept["y"])
+        destination = self.point(
+            panel,
+            min(0.95, source_intercept["x"] + 0.03),
+            1.0 - min(0.9, source_intercept["y"] + 0.05),
+        )
+        mesh_start = self.causal_sequence(self.graph_state())
+        self.drag_and_hold(source, destination)
+        mesh_state = self.graph_state_until(lambda graph_state: any(
+            int(event["sequence"]) > mesh_start
+            and event["product"] == "ProbePreview"
+            and event["phase"] == "Published"
+            for event in graph_state["causalUpdates"]
+        ))
+        self.assert_causal_exactly_once(
+            self.causal_events_since(mesh_state, mesh_start),
+            "Trimesh Live panel movement",
+        )
+        self.release_drag(destination)
 
     def run(self, sequences):
         self.start()

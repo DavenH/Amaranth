@@ -54,7 +54,7 @@ Rectangle<float> SignalProbeRail::collapseHandleFor(
         const SignalProbeRailState& state) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     return state.expanded
-            ? Rectangle<float>(rail.getRight() - 140.f, rail.getY() - 8.f, 116.f, 28.f)
+            ? Rectangle<float>(rail.getRight() - 140.f, rail.getY() - 34.f, 116.f, 34.f)
             : Rectangle<float>(rail.getRight() - 174.f, rail.getY(), 150.f, rail.getHeight());
 }
 

@@ -9,6 +9,7 @@
 #include "GraphAudioExecutor.h"
 #include "GraphPreviewExecutor.h"
 #include "GraphRuntime.h"
+#include "MessageThreadWorker.h"
 #include "NodeUpdateGraph.h"
 #include "../Graph/GraphCompiler.h"
 #include "../Graph/GraphEditor.h"
@@ -60,11 +61,6 @@ public:
     GraphAudioResult captureAudio(const NodeGraph& graph, size_t frameCount) const;
 
 private:
-    struct PublicationTarget {
-        std::mutex mutex;
-        GraphPresentationModel* model {};
-    };
-
     struct AsyncState {
         std::atomic<bool> alive { true };
         std::atomic<uint64_t> generation {};
@@ -89,7 +85,6 @@ private:
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
             const std::vector<String>& nodeIds);
-    void runAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
     bool prepareAsyncRefresh(AsyncRefresh& refresh);
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
@@ -118,9 +113,8 @@ private:
     uint64_t publishedGeneration {};
     std::optional<EditIdentity> latestMovementIdentity;
     String latestMovementStream;
-    ThreadPool worker { 1 };
+    MessageThreadWorker asyncWorker;
     std::shared_ptr<AsyncState> asyncState;
-    std::shared_ptr<PublicationTarget> publicationTarget;
 };
 
 }

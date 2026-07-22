@@ -282,7 +282,11 @@ public:
             for (const auto& region : TrimeshWidget::expandedControlHitRegions(content)) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
-                targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, region.bounds,
+                const Rectangle<float> targetBounds =
+                        region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+                        ? region.bounds.reduced(5.f, 8.f)
+                        : region.bounds;
+                targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, targetBounds,
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
             return;

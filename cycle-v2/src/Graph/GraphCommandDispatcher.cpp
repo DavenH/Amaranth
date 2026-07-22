@@ -390,7 +390,7 @@ void GraphCommandDispatcher::beginTransientEdit() {
         ++transientEdit->depth;
         return;
     }
-    transientEdit = TransientEdit { document.graph(), document.toXml() };
+    transientEdit = TransientEdit { document.graph() };
 }
 
 void GraphCommandDispatcher::commitTransientEdit() {
@@ -398,7 +398,7 @@ void GraphCommandDispatcher::commitTransientEdit() {
         return;
     }
     if (transientEdit->changed) {
-        document.recordBeforeChange(std::move(transientEdit->before));
+        document.recordBeforeChange(document.toXml());
         document.currentGraph = std::move(transientEdit->graph);
         document.publishChange(std::move(transientEdit->changes));
     }

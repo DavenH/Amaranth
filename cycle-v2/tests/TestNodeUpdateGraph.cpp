@@ -18,6 +18,17 @@ GraphExecutionPlan causalDiamondPlan() {
         { 3 },
         {}
     };
+    plan.dependencyIndex.dependencies = {
+        {},
+        { 0 },
+        { 0 },
+        { 1, 2 }
+    };
+    for (size_t index = 0; index < plan.nodeOrder.size(); ++index) {
+        plan.dependencyIndex.nodeIndexById.emplace(
+                plan.nodeOrder[index],
+                static_cast<int>(index));
+    }
     return plan;
 }
 
@@ -246,4 +257,35 @@ TEST_CASE("Probe planning excludes nodes without active observations",
     REQUIRE(result.executed.front().nodeId == "left");
     REQUIRE(graph.trace().count(
             42, "join", UpdateProduct::ProbePreview, UpdateTracePhase::NotObserved) == 1);
+}
+
+TEST_CASE("Preview traversal stops at active probes and excludes later branches",
+        "[cycle-v2][runtime][causal]") {
+    NodeUpdateGraph graph;
+    const auto plan = causalDiamondPlan();
+    const CausalUpdateRequest request {
+        { 43, 11, EditPhase::Movement },
+        {
+            {
+                "root", "editor:root", UpdateProduct::PreviewTraversal, 503,
+                { { "root", "curve" } }, true
+            }
+        },
+        { "left" },
+        true
+    };
+
+    const auto result = graph.execute(plan, request, [](const auto&) { return true; });
+    std::vector<String> executed;
+    for (const auto& product : result.executed) {
+        executed.push_back(product.nodeId);
+    }
+
+    REQUIRE(executed == std::vector<String> { "root", "left" });
+    REQUIRE(graph.affectedNodeIds(plan, request, UpdateProduct::PreviewTraversal)
+            == std::vector<String> { "root", "left" });
+    REQUIRE(graph.trace().count(
+            43, "right", UpdateProduct::PreviewTraversal, UpdateTracePhase::NotObserved) == 1);
+    REQUIRE(graph.trace().count(
+            43, "join", UpdateProduct::PreviewTraversal, UpdateTracePhase::NotObserved) == 1);
 }

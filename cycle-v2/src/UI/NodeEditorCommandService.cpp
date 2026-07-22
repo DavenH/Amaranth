@@ -1,6 +1,7 @@
 #include "NodeEditorHost.h"
 
 #include "NodeParameterValue.h"
+#include "../Runtime/FingerprintBuilder.h"
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
@@ -116,11 +117,10 @@ bool NodeEditorCommandService::updateNodeParameterPairEditValues(
     if (!first.changed && !second.changed) {
         return true;
     }
-    uint64_t fingerprint = static_cast<uint64_t>(String(firstValue, 9).hashCode64());
-    fingerprint ^= static_cast<uint64_t>(String(secondValue, 9).hashCode64())
-            + 0x9e3779b97f4a7c15ULL
-            + (fingerprint << 6U)
-            + (fingerprint >> 2U);
+    const uint64_t fingerprint = FingerprintBuilder(
+            static_cast<uint64_t>(String(firstValue, 9).hashCode64()))
+            .add(String(secondValue, 9))
+            .value();
     activeParameterFingerprint = fingerprint;
     activeParameterChanged = true;
     presentation.recordNodeEditorMovement(
@@ -402,6 +402,26 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
             value)) {
         return false;
     }
+    const String meshState = activeVertexWidget->currentMeshState();
+    const auto result = commands.setNodeParameter(
+            activeVertexNodeId,
+            TrimeshMeshState::parameterId(),
+            "Mesh Topology",
+            meshState);
+    if (!result.succeeded()) {
+        return false;
+    }
+    if (!result.changed) {
+        return true;
+    }
+    const uint64_t fingerprint = FingerprintBuilder()
+            .add(activeVertexParameterId)
+            .add(meshState)
+            .value();
+    presentation.recordNodeEditorMovement(
+            activeVertexNodeId,
+            activeVertexParameterId,
+            fingerprint);
     presentation.setNodeEditorStatus(
             "Vertex #" + String(activeVertexIndex) + " " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);
@@ -412,17 +432,7 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     if (activeVertexNodeId.isEmpty()) {
         return;
     }
-    const Node* node = findNode(activeVertexNodeId);
-    bool published {};
-    if (node != nullptr && activeVertexWidget != nullptr) {
-        const auto result = commands.setNodeParameter(
-                activeVertexNodeId,
-                TrimeshMeshState::parameterId(),
-                "Mesh Topology",
-                activeVertexWidget->currentMeshState());
-        published = result.succeeded();
-    }
-    if (published) {
+    if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         commands.commitTransientEdit();
     } else {
         commands.cancelTransientEdit();
@@ -434,26 +444,64 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     activeVertexIndex = -1;
 }
 
-void NodeEditorCommandService::persistTrimeshMeshEdits(const String& nodeId) {
+void NodeEditorCommandService::persistTrimeshMeshEdits(
+        const String& nodeId,
+        bool gestureComplete) {
     const Node* node = findNode(nodeId);
     TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
     if (node == nullptr || widget == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return;
     }
-    commands.beginCompoundEdit();
-    commands.setNodeParameter(
+
+    if (activeMeshNodeId != nodeId) {
+        if (activeMeshNodeId.isNotEmpty()) {
+            commands.cancelTransientEdit();
+        }
+        commands.beginTransientEdit();
+        activeMeshNodeId = nodeId;
+        activeMeshChanged = false;
+        presentation.selectEditedNode(nodeId);
+    }
+
+    const String meshState = widget->currentMeshState();
+    const int selectedVertex = widget->selectedVertexIndexForPanel();
+    const auto topology = commands.setNodeParameter(
             nodeId,
             TrimeshMeshState::parameterId(),
             "Mesh Topology",
-            widget->currentMeshState());
-    commands.setNodeParameter(
+            meshState);
+    const auto selection = commands.setNodeParameter(
             nodeId,
             "selectedVertexIndex",
             "Selected Vertex",
-            String(widget->selectedVertexIndexForPanel()));
-    commands.commitCompoundEdit();
-    presentation.scheduleNodeEditorRefresh();
-    presentation.repaintNodeEditor(false);
+            String(selectedVertex));
+    if (!topology.succeeded() || !selection.succeeded()) {
+        commands.cancelTransientEdit();
+        activeMeshNodeId = {};
+        activeMeshChanged = false;
+        return;
+    }
+
+    if (topology.changed || selection.changed) {
+        activeMeshChanged = true;
+        const uint64_t fingerprint = FingerprintBuilder()
+                .add(meshState)
+                .add(static_cast<uint64_t>(selectedVertex))
+                .value();
+        presentation.recordNodeEditorMovement(nodeId, "mesh", fingerprint);
+        presentation.repaintNodeEditor(true);
+    }
+
+    if (!gestureComplete) {
+        return;
+    }
+
+    commands.commitTransientEdit();
+    if (activeMeshChanged) {
+        presentation.flushNodeEditorRefresh();
+    }
+    activeMeshNodeId = {};
+    activeMeshChanged = false;
 }
 
 bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(

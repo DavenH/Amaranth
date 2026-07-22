@@ -530,6 +530,38 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
             }));
 }
 
+TEST_CASE("Incremental preview rendering preserves clean cached nodes",
+        "[cycle-v2][runtime][incremental][complexity]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor audioExecutor;
+    const GraphAudioResult audio = audioExecutor.process(graph, compileResult.plan, 32);
+    GraphPreviewExecutor previewExecutor;
+    GraphPreviewResult result = previewExecutor.render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            16);
+    const auto cleanBefore = findPreview(result, "waveMesh").primary;
+
+    GraphAudioResultView audioView;
+    for (const auto& node : audio.nodes) {
+        audioView.nodes.push_back(&node);
+    }
+    previewExecutor.renderIncremental(
+            compileResult.plan,
+            audioView,
+            graph.getSignalProbes(),
+            { "env" },
+            16,
+            result);
+
+    REQUIRE(result.renderedNodeCount == 1);
+    REQUIRE(findPreview(result, "waveMesh").primary == cleanBefore);
+}
+
 TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][runtime]") {
     const auto compileResult = GraphCompiler().compile(NodeGraph::createDemoGraph());
     REQUIRE(compileResult.succeeded());

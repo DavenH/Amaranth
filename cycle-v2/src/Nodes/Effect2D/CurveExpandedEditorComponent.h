@@ -90,13 +90,12 @@ private:
         operation();
         publishCurrentState();
         commitTransaction();
-        requestRepaint();
     }
 
     Rectangle<float> closeButtonBounds() const;
     void updatePanelHost();
     void persistEffectMeshState();
-    bool publishDurableState();
+    bool publishModelState();
     void repaintCurvePanelController() override;
     void setCurvePanelControllerCursor(const MouseCursor& cursor) override;
     void beginCurvePanelControllerEdit() override;
@@ -105,6 +104,7 @@ private:
 
     bool transactionActive {};
     bool transientStateChanged {};
+    uint64_t transactionBaseRevision {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)
 };

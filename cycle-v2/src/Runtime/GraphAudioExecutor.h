@@ -1,7 +1,8 @@
 #pragma once
 
-#include <map>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 
 #include "GraphRuntime.h"
@@ -18,6 +19,13 @@ struct NodeAudioResult {
 struct GraphAudioResult {
     SignalPayload output;
     std::vector<NodeAudioResult> nodes;
+    bool cancelled {};
+};
+
+struct GraphAudioResultView {
+    const SignalPayload* output {};
+    std::vector<const NodeAudioResult*> nodes;
+    bool cancelled {};
 };
 
 class GraphProcessObserver {
@@ -34,6 +42,7 @@ struct GraphAudioOutputView {
 
 class GraphAudioExecutor {
 public:
+    using CancellationCheck = std::function<bool()>;
     void prepareExecution(
             const GraphExecutionPlan& plan,
             const AudioExecutionSpec& spec,
@@ -53,11 +62,18 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             AudioVoiceContext voice) const;
-    GraphAudioResult processIncremental(
+    GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
             size_t frameCount,
-            const std::vector<String>& dirtyNodeIds) const;
+            const std::vector<String>& dirtyNodeIds,
+            CancellationCheck cancellationCheck = {}) const;
+    GraphAudioResultView processIncrementalIndexed(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            const std::vector<uint8_t>& dirtyNodes,
+            CancellationCheck cancellationCheck = {}) const;
     void clearIncrementalCache() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
     GraphAudioOutputView processRealtime(
@@ -80,7 +96,7 @@ private:
 
     struct ProcessorKeyHash {
         size_t operator()(const ProcessorKey& key) const {
-            const size_t nodeHash = (size_t) key.nodeId.hashCode64();
+            const size_t nodeHash = static_cast<size_t>(key.nodeId.hashCode64());
             const size_t voiceHash = std::hash<int> {}(key.voiceIndex);
             return nodeHash ^ (voiceHash + 0x9e3779b9 + (nodeHash << 6) + (nodeHash >> 2));
         }
@@ -136,7 +152,9 @@ private:
             const AudioVoiceContext& voice,
             bool captureDiagnostics,
             GraphProcessObserver* observer,
-            const std::vector<String>* dirtyNodeIds = nullptr) const;
+            const std::vector<uint8_t>* dirtyNodes = nullptr,
+            const CancellationCheck& cancellationCheck = {},
+            GraphAudioResultView* incrementalResult = nullptr) const;
 
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessContext processContext;
@@ -144,8 +162,9 @@ private:
     mutable const SignalPayload* realtimeOutput {};
     mutable std::unordered_map<ProcessorKey, CachedProcessor, ProcessorKeyHash> processors;
     mutable std::unordered_map<int, PreparedVoice> preparedVoices;
-    mutable std::map<String, NodeAudioResult> diagnosticCache;
-    mutable std::map<String, size_t> diagnosticProcessCounts;
+    mutable std::vector<String> diagnosticNodeIds;
+    mutable std::vector<std::optional<NodeAudioResult>> diagnosticCache;
+    mutable std::vector<size_t> diagnosticProcessCounts;
 };
 
 }

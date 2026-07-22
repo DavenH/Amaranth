@@ -11,12 +11,12 @@ uint64_t packMorph(float red, float blue) {
     uint32_t packedBlue;
     std::memcpy(&packedRed, &red, sizeof(red));
     std::memcpy(&packedBlue, &blue, sizeof(blue));
-    return (uint64_t) packedBlue << 32U | packedRed;
+    return static_cast<uint64_t>(packedBlue) << 32U | packedRed;
 }
 
 void unpackMorph(uint64_t packed, float& red, float& blue) {
-    const uint32_t packedRed = (uint32_t) packed;
-    const uint32_t packedBlue = (uint32_t) (packed >> 32U);
+    const uint32_t packedRed = static_cast<uint32_t>(packed);
+    const uint32_t packedBlue = static_cast<uint32_t>(packed >> 32U);
     std::memcpy(&red, &packedRed, sizeof(red));
     std::memcpy(&blue, &packedBlue, sizeof(blue));
 }
@@ -43,7 +43,8 @@ void LatestEnvelopePreparationRequest::publish(
 }
 
 bool LatestEnvelopePreparationRequest::latest(EnvelopePreparationRequest& result) const {
-    for (;;) {
+    constexpr int maximumReadAttempts = 3;
+    for (int attempt = 0; attempt < maximumReadAttempts; ++attempt) {
         const uint64_t before = sequence.load(std::memory_order_acquire);
         if (before == 0) {
             return false;
@@ -62,6 +63,7 @@ bool LatestEnvelopePreparationRequest::latest(EnvelopePreparationRequest& result
         unpackMorph(morph, result.red, result.blue);
         return result.generation > preparedGeneration;
     }
+    return false;
 }
 
 bool LatestEnvelopePreparationRequest::isCurrent(uint64_t generation) const {
@@ -98,7 +100,7 @@ bool PreparedEnvelopeExchange::publish(
     const int published = publishedSlot.load(std::memory_order_acquire);
     const int active = activeSlot.load(std::memory_order_acquire);
     int destination = -1;
-    for (int i = 0; i < (int) slots.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(slots.size()); ++i) {
         if (i != published && i != active) {
             destination = i;
             break;
@@ -108,7 +110,8 @@ bool PreparedEnvelopeExchange::publish(
         return false;
     }
 
-    slots[(size_t) destination] = { std::move(configuration), generation, noteSerial };
+    slots[static_cast<size_t>(destination)] = {
+            std::move(configuration), generation, noteSerial };
     publishedSlot.store(destination, std::memory_order_release);
     ++preparations;
     return true;
@@ -121,7 +124,7 @@ PreparedEnvelopeExchange::Adoption PreparedEnvelopeExchange::adoptNewest(
     if (slotIndex < 0) {
         return {};
     }
-    const auto& slot = slots[(size_t) slotIndex];
+    const auto& slot = slots[static_cast<size_t>(slotIndex)];
     if (slot.configuration == nullptr
             || slot.generation <= adoptedGeneration.load(std::memory_order_relaxed)) {
         return {};
@@ -141,13 +144,13 @@ PreparedEnvelopeExchange::Adoption PreparedEnvelopeExchange::adoptNewest(
 const EnvelopeConfiguration* PreparedEnvelopeExchange::active(
         const EnvelopeConfiguration* fallback) const {
     const int slot = activeSlot.load(std::memory_order_acquire);
-    return slot >= 0 ? slots[(size_t) slot].configuration.get() : fallback;
+    return slot >= 0 ? slots[static_cast<size_t>(slot)].configuration.get() : fallback;
 }
 
 std::shared_ptr<const EnvelopeConfiguration> PreparedEnvelopeExchange::activeOwnership(
         std::shared_ptr<const EnvelopeConfiguration> fallback) const {
     const int slot = activeSlot.load(std::memory_order_acquire);
-    return slot >= 0 ? slots[(size_t) slot].configuration : std::move(fallback);
+    return slot >= 0 ? slots[static_cast<size_t>(slot)].configuration : std::move(fallback);
 }
 
 uint64_t PreparedEnvelopeExchange::preparationCount() const {

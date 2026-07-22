@@ -95,7 +95,7 @@ public:
     bool showTrimeshGuideAttachmentMenu(
             const String&, const String&, Rectangle<int>) override { return true; }
     bool selectTrimeshVertexIndex(const String&, int) override { return true; }
-    void persistTrimeshMeshEdits(const String&) override {}
+    void persistTrimeshMeshEdits(const String&, bool) override {}
 };
 
 class NullPresentation final : public NodeEditorPresentation {
@@ -417,17 +417,17 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
 
     delegate.events.clear();
     editor.toggle.button.onClick();
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.menu.addItem("Four", 4);
     editor.menu.setSelectedId(4, sendNotificationSync);
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.action.onClick();
     REQUIRE(editor.actionPerformed);
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

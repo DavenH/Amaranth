@@ -1,11 +1,11 @@
 #pragma once
 
+#include <array>
 #include <deque>
 #include <functional>
 #include <map>
 #include <mutex>
 #include <optional>
-#include <set>
 #include <vector>
 
 #include "../Graph/GraphCompiler.h"
@@ -35,6 +35,9 @@ enum class UpdateProduct {
     AudioConfiguration,
     DurablePublication
 };
+
+constexpr size_t updateProductCount =
+        static_cast<size_t>(UpdateProduct::DurablePublication) + 1;
 
 enum class UpdateTracePhase {
     Dirtied,
@@ -94,10 +97,12 @@ struct PlannedNodeProduct {
     UpdateProduct product {};
     uint64_t inputFingerprint {};
     std::vector<UpdateCause> causes;
+    int nodeIndex { -1 };
 };
 
 struct CausalUpdateResult {
     std::vector<PlannedNodeProduct> executed;
+    std::array<std::vector<uint8_t>, updateProductCount> affected;
     bool invariantViolation {};
 };
 
@@ -184,19 +189,10 @@ public:
     const UpdateAuditTrace& trace() const { return auditTrace; }
 
 private:
-    struct ProductKey {
-        String nodeId;
-        UpdateProduct product {};
-
-        bool operator<(const ProductKey& other) const;
-    };
-
-    struct ExecutionKey {
-        uint64_t editId {};
-        ProductKey product;
-
-        bool operator<(const ExecutionKey& other) const;
-    };
+    static constexpr size_t productCount = updateProductCount;
+    using PlanningSlots = std::array<std::optional<PlannedNodeProduct>, productCount>;
+    using FingerprintSlots = std::array<std::optional<uint64_t>, productCount>;
+    using EditStampSlots = std::array<uint64_t, productCount>;
 
     struct GenerationKey {
         String sourceStreamId;
@@ -210,7 +206,10 @@ private:
             uint64_t sourceFingerprint,
             const String& nodeId,
             UpdateProduct product);
-    static std::vector<int> downstreamClosure(
+    void prepareObservationMask(
+            const GraphDependencyIndex& index,
+            const std::vector<String>& observedNodeIds);
+    const std::vector<int>& downstreamClosure(
             const GraphDependencyIndex& index,
             int sourceIndex);
     static void mergeCauses(
@@ -220,8 +219,15 @@ private:
             const CausalUpdateRequest& request,
             const PlannedNodeProduct& product,
             UpdateTracePhase phase);
-    std::map<ProductKey, uint64_t> productFingerprints;
-    std::set<ExecutionKey> executionLedger;
+    std::vector<FingerprintSlots> productFingerprints;
+    std::vector<EditStampSlots> lastExecutedEdit;
+    std::vector<PlanningSlots> planningSlots;
+    std::vector<uint8_t> observedNodes;
+    std::vector<uint8_t> leadsToObservation;
+    std::vector<int> traversalPending;
+    std::vector<int> traversalTargets;
+    std::vector<uint64_t> closureVisitGeneration;
+    uint64_t currentClosureGeneration {};
     mutable std::mutex productMutex;
     mutable std::mutex generationMutex;
     std::map<GenerationKey, uint64_t> generations;
