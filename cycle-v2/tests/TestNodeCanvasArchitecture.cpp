@@ -1,16 +1,18 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Graph/NodeDefinition.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
+#include "../src/UI/NodePaletteEntryIconRenderer.h"
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeRail.h"
@@ -121,6 +123,14 @@ TEST_CASE("Node palette resolves every authored node kind from its visible entry
             REQUIRE(palette.findKindAt(palette.entryBounds(sectionIndex, entryIndex).getCentre(), resolvedKind));
             REQUIRE(resolvedKind == section.entries[entryIndex].kind);
         }
+    }
+}
+
+TEST_CASE("Every registered node kind has a parseable palette icon",
+        "[cycle-v2][canvas][palette][icons]") {
+    for (const auto& definition : NodeDefinitionRegistry::instance().definitions()) {
+        INFO("Missing or invalid icon for node type " << definition.typeId);
+        REQUIRE(NodePaletteEntryIconRenderer::hasIcon(definition.kind));
     }
 }
 
