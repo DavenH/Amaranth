@@ -4,35 +4,57 @@ if(NOT BUILD_TYPE STREQUAL "Standalone")
     return()
 endif()
 
-set(PALETTE_ICON_NAMES
-    context
-    transform
-    math
-    source
-    control
-    fx
-    channel
-)
-set(PALETTE_ICON_FILES)
-set(PALETTE_ICON_DATA_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(PALETTE_ICON_DATA_HEADER "${PALETTE_ICON_DATA_DIR}/NodePaletteIconData.h")
-file(MAKE_DIRECTORY "${PALETTE_ICON_DATA_DIR}")
-file(WRITE "${PALETTE_ICON_DATA_HEADER}" "#pragma once\n\nnamespace CycleV2::PaletteIconData {\n\n")
+set(SVG_DATA_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${SVG_DATA_DIR}")
 
-foreach(ICON_NAME IN LISTS PALETTE_ICON_NAMES)
-    set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/palette-icons/${ICON_NAME}.svg")
-    file(READ "${ICON_FILE}" ICON_SVG)
-    file(APPEND "${PALETTE_ICON_DATA_HEADER}"
-        "inline constexpr char ${ICON_NAME}[] = R\"svg(${ICON_SVG})svg\";\n\n"
+function(generate_svg_data SET_NAME SOURCE_DIRECTORY DATA_NAMESPACE DATA_HEADER_NAME)
+    set(ICON_NAMES ${ARGN})
+    set(ICON_FILES)
+    set(DATA_HEADER "${SVG_DATA_DIR}/${DATA_HEADER_NAME}.h")
+    file(WRITE "${DATA_HEADER}"
+        "#pragma once\n\nnamespace CycleV2::${DATA_NAMESPACE} {\n\nstruct SvgSource {\n    const char* name;\n    const char* svg;\n};\n\n"
     )
-    list(APPEND PALETTE_ICON_FILES "${ICON_FILE}")
-endforeach()
 
-file(APPEND "${PALETTE_ICON_DATA_HEADER}" "}\n")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PALETTE_ICON_FILES})
-set_source_files_properties(${PALETTE_ICON_FILES} PROPERTIES
-    HEADER_FILE_ONLY TRUE
-    MACOSX_PACKAGE_LOCATION "Resources/palette-icons"
+    foreach(ICON_NAME IN LISTS ICON_NAMES)
+        set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/${SOURCE_DIRECTORY}/${ICON_NAME}.svg")
+        file(READ "${ICON_FILE}" ICON_SVG)
+        file(APPEND "${DATA_HEADER}"
+            "inline constexpr char ${ICON_NAME}[] = R\"svg(${ICON_SVG})svg\";\n\n"
+        )
+        list(APPEND ICON_FILES "${ICON_FILE}")
+    endforeach()
+
+    file(APPEND "${DATA_HEADER}" "inline constexpr SvgSource sources[] = {\n")
+    foreach(ICON_NAME IN LISTS ICON_NAMES)
+        file(APPEND "${DATA_HEADER}" "    { \"${ICON_NAME}\", ${ICON_NAME} },\n")
+    endforeach()
+    file(APPEND "${DATA_HEADER}" "};\n\n}\n")
+
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ICON_FILES})
+    set_source_files_properties(${ICON_FILES} PROPERTIES
+        HEADER_FILE_ONLY TRUE
+        MACOSX_PACKAGE_LOCATION "Resources/${SOURCE_DIRECTORY}"
+    )
+    set(${SET_NAME}_FILES ${ICON_FILES} PARENT_SCOPE)
+    set(${SET_NAME}_DATA_HEADER ${DATA_HEADER} PARENT_SCOPE)
+endfunction()
+
+generate_svg_data(
+    PALETTE_ICON
+    palette-icons
+    PaletteIconData
+    NodePaletteIconData
+    context transform math source control fx channel
+)
+
+generate_svg_data(
+    NODE_ICON
+    node-icons
+    NodeIconData
+    NodeIconData
+    genericProcessor voiceContext waveSource imageSource trilinearMesh
+    fft ifft envelope add multiply guideCurve impulseResponse waveshaper
+    reverb delay equalizer stereoSplit stereoJoin output
 )
 
 file(GLOB_RECURSE APP_SOURCES
@@ -42,7 +64,9 @@ file(GLOB_RECURSE APP_SOURCES
 
 list(APPEND APP_SOURCES
     ${PALETTE_ICON_FILES}
+    ${NODE_ICON_FILES}
     "${PALETTE_ICON_DATA_HEADER}"
+    "${NODE_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
@@ -103,6 +127,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
@@ -198,7 +223,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${PALETTE_ICON_DATA_DIR}
+    ${SVG_DATA_DIR}
     ${JUCE_MODULES_DIR}
     ${IPP_DIR}/include/ipp
 )
@@ -232,7 +257,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         target_include_directories(${PROJECT_NAME}_tests PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/src
-            ${PALETTE_ICON_DATA_DIR}
+            ${SVG_DATA_DIR}
             ${JUCE_MODULES_DIR}
             ${IPP_DIR}/include/ipp
         )

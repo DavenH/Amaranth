@@ -1,6 +1,6 @@
 #include "NodeCanvasPresentation.h"
 
-#include "../Graph/GraphNodeFactory.h"
+#include "NodePaletteEntryIconRenderer.h"
 #include "NodePaletteIconRenderer.h"
 
 namespace CycleV2 {
@@ -200,24 +200,17 @@ void NodeCanvasPresentation::paintPalette(
         graphics.setColour(Colour(0xff8290a2).withAlpha(hover ? 0.76f : 0.42f));
         graphics.drawRoundedRectangle(row, 6.f, hover ? 1.4f : 1.f);
 
-        Node previewNode = GraphNodeFactory().createNode(entry.kind, {}, {});
-        const PortDomain domain = previewNode.outputs.empty()
-                ? PortDomain::ControlSignal
-                : previewNode.outputs.front().domain;
-        previewRenderer.paint(graphics, {
-                previewNode,
-                nullptr,
-                Rectangle<float>(row.getX() + 7.f, row.getY() + 8.f, 39.f, row.getHeight() - 16.f),
-                TrimeshRenderProfile::fromDomain(domain),
-                frame.viewport.getZoom(),
-                false
-        });
+        NodePaletteEntryIconRenderer::paint(
+                graphics,
+                entry.kind,
+                Rectangle<float>(row.getX() + 7.f, row.getY() + 6.f, 34.f, row.getHeight() - 12.f),
+                hover);
 
         graphics.setColour(kText.withAlpha(hover ? 0.96f : 0.82f));
         graphics.setFont(FontOptions(11.2f, Font::bold));
         graphics.drawText(
                 String::fromUTF8(entry.label),
-                row.withTrimmedLeft(53.f).reduced(0.f, 2.f),
+                row.withTrimmedLeft(48.f).reduced(0.f, 2.f),
                 Justification::centredLeft);
     }
 }
