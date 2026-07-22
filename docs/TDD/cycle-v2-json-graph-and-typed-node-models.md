@@ -2,15 +2,20 @@
 
 ## Status
 
-Implemented (2026-07-22).
+In progress (2026-07-22).
 
-Cycle V2 graph persistence is now canonical JSON. Nodes own immutable typed
-Trimesh, Envelope, and flat-curve models; scalar controls and editor selection
-remain separate state. The compiler, DSP preparation, previews, compact and
-expanded editors consume those typed snapshots without reparsing graph JSON.
-The XML graph APIs and model-shaped parameter codecs were deleted, all bundled
-graphs were converted, and native save/reload editing is covered by the Cycle
-V2 native edit smoke.
+Cycle V2 graph persistence is canonical JSON, the XML graph APIs and
+model-shaped parameter codecs are deleted, and all bundled graphs are
+converted. Scalar controls, aggregate model publication, and editor selection
+also have distinct graph command and persistence boundaries.
+
+The typed-model runtime boundary is not complete. `TrimeshNodeModelState` and
+`CurveNodeModelState` still retain structured `var` payloads, and DSP,
+preview, and presentation consumers reconstruct domain objects through
+`readJSON(var)`. Replace those payload holders with immutable concrete domain
+state and delete runtime/presentation JSON reconstruction before marking this
+TDD implemented. The remaining work is tracked in
+[`refactors.md`](refactors.md#cycle-v2-json-graph-and-typed-node-models).
 
 ## Problem
 
