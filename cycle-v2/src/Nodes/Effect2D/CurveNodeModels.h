@@ -67,6 +67,8 @@ public:
     String snapshot() const;
     bool readJSON(const var& value);
     var writeJSON() const;
+    bool copyFrom(const FlatCurveModel& other);
+    bool equals(const FlatCurveModel& other) const;
 
     const Mesh& getMesh() const { return mesh; }
     Mesh& getMesh() { return mesh; }
@@ -107,6 +109,8 @@ public:
     String snapshot() const;
     bool readJSON(const var& value);
     var writeJSON() const;
+    bool copyFrom(const EnvelopeNodeModel& other);
+    bool equals(const EnvelopeNodeModel& other) const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -126,7 +130,6 @@ public:
     bool blueLinked { true };
 
 private:
-    bool applyEnvelopePayload(const String& payload);
     EnvelopeCubeId nextIdentity() const;
     void rebuildIdentityMap();
 
@@ -136,7 +139,7 @@ private:
     std::unordered_map<VertCube*, EnvelopeCubeId> identitiesByCube;
     std::unordered_map<EnvelopeCubeId, VertCube*> cubesByIdentity;
     EnvelopeCubeId nextCubeIdentity { 1 };
-    String committedPayload;
+    EnvelopeMesh committedMesh { "CycleV2EnvelopeCommittedModel" };
     uint64_t modelRevision { 1 };
 };
 
@@ -172,11 +175,13 @@ struct GuideCurveNodeModel {
 
 class CurveNodeModelState : public NodeModelState {
 public:
-    CurveNodeModelState(
-            String schema,
-            int version,
+    static std::shared_ptr<const CurveNodeModelState> copyOf(
+            const FlatCurveModel& model,
             uint64_t revision,
-            var modelState,
+            var editorState = {});
+    static std::shared_ptr<const CurveNodeModelState> copyOf(
+            const EnvelopeNodeModel& model,
+            uint64_t revision,
             var editorState = {});
 
     String schemaId() const override;
@@ -185,14 +190,31 @@ public:
     var writeJSON() const override;
     bool equals(const NodeModelState& other) const override;
 
-    const var& domainJSON() const { return state; }
+    const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
+    const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
     const var& editorJSON() const { return editorState; }
 
 private:
+    friend class CurveNodeDomainCodec;
+
+    CurveNodeModelState(
+            String schema,
+            int version,
+            uint64_t revision,
+            std::shared_ptr<const FlatCurveModel> modelState,
+            var editorState = {});
+    CurveNodeModelState(
+            String schema,
+            int version,
+            uint64_t revision,
+            std::shared_ptr<const EnvelopeNodeModel> modelState,
+            var editorState = {});
+
     String schema;
     int version {};
     uint64_t modelRevision {};
-    var state;
+    std::shared_ptr<const FlatCurveModel> flatCurveState;
+    std::shared_ptr<const EnvelopeNodeModel> envelopeState;
     var editorState;
 };
 

@@ -33,13 +33,13 @@ bool FlatCurvePreparation::prepare() {
         model = CurveNodeDomainCodec(kind).createDefault();
     }
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(model);
-    FlatCurveModel curve;
-    if (typedModel == nullptr || !curve.readJSON(typedModel->domainJSON())) {
+    const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
+    if (curve == nullptr) {
         return false;
     }
     std::vector<Effect2DVertexState> vertices;
-    vertices.reserve(curve.getVertices().size());
-    for (const auto& vertex : curve.getVertices()) {
+    vertices.reserve(curve->getVertices().size());
+    for (const auto& vertex : curve->getVertices()) {
         vertices.push_back({ vertex.x, vertex.y, vertex.curve });
     }
     if (vertices.empty()) {

@@ -35,8 +35,8 @@ VertCube* addCube(EnvelopeMesh& mesh, float x, float amp, float curve) {
 
 }
 
-juce::String EnvelopeMeshState::defaultSnapshot() {
-    EnvelopeMesh mesh("CycleV2Envelope");
+void EnvelopeMeshState::initialiseDefault(EnvelopeMesh& mesh) {
+    mesh.destroy();
     addCube(mesh, 0.f, 0.f, 1.f);
     addCube(mesh, 0.05f, 1.f, 0.5f);
     VertCube* morphCube = addCube(mesh, 0.7f, 0.8f, 0.3f);
@@ -58,7 +58,11 @@ juce::String EnvelopeMeshState::defaultSnapshot() {
     addCube(mesh, 1.075f, 0.6f, -1.f);
     addCube(mesh, 1.15f, 0.f, -1.f);
     addCube(mesh, 1.25f, 0.f, -1.f);
+}
 
+juce::String EnvelopeMeshState::defaultSnapshot() {
+    EnvelopeMesh mesh("CycleV2Envelope");
+    initialiseDefault(mesh);
     const juce::String result = serialize(mesh);
     mesh.destroy();
     return result;

@@ -17,18 +17,14 @@ std::shared_ptr<const TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model) {
     auto configuration = std::make_shared<TrimeshConfiguration>();
-    auto mesh = TrimeshMeshFactory::createDefaultMesh();
     const NodeModelStatePtr modelToUse = model != nullptr
             ? model
             : TrimeshNodeModelCodec().createDefault();
     const auto typedModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(modelToUse);
-    if (typedModel == nullptr || !mesh->readJSON(typedModel->meshJSON())) {
+    if (typedModel == nullptr) {
         return {};
     }
-    configuration->mesh = std::shared_ptr<Mesh>(mesh.release(), [](Mesh* value) {
-        value->destroy();
-        delete value;
-    });
+    configuration->mesh = typedModel->sharedMesh();
     configuration->morph = {
             typedParameterFloat(parameters, "yellow", 0.5f),
             typedParameterFloat(parameters, "red", 0.5f),

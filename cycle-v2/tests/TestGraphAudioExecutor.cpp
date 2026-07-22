@@ -349,7 +349,8 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     const auto initialModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
             graph.findNode("shape")->model);
     REQUIRE(initialModel != nullptr);
-    REQUIRE(shapeModel.readJSON(initialModel->domainJSON()));
+    REQUIRE(initialModel->flatCurve() != nullptr);
+    REQUIRE(shapeModel.copyFrom(*initialModel->flatCurve()));
     auto flatVertices = shapeModel.getVertices();
     for (auto& vertex : flatVertices) {
         vertex.y = 0.25f;
@@ -359,11 +360,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
             graph,
             "shape",
             initialModel->revision(),
-            std::make_shared<const CurveNodeModelState>(
-                    "flatCurve",
-                    FlatCurveModel::currentVersion,
-                    shapeModel.revision(),
-                    shapeModel.writeJSON())).succeeded());
+            CurveNodeModelState::copyOf(shapeModel, shapeModel.revision())).succeeded());
 
     const auto shapedPlan = GraphCompiler().compile(graph);
     REQUIRE(shapedPlan.succeeded());
@@ -387,11 +384,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
             graph,
             "env",
             currentEnvelopeModel->revision(),
-            std::make_shared<const CurveNodeModelState>(
-                    "envelope",
-                    EnvelopeNodeModel::currentVersion,
-                    envelopeModel.revision(),
-                    envelopeModel.writeJSON())).succeeded());
+            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision())).succeeded());
 
     const auto envelopePlan = GraphCompiler().compile(graph);
     REQUIRE(envelopePlan.succeeded());
@@ -688,9 +681,10 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
             { "blue", "Blue", "0.5" },
             { "primaryAxis", "Primary Axis", "yellow" }
     });
-    graph.replaceNodeModel(
-            "saw",
-            std::make_shared<const TrimeshNodeModelState>(sawtoothMeshTopology(), 2));
+    Mesh sawtoothMesh;
+    REQUIRE(sawtoothMesh.readJSON(sawtoothMeshTopology()));
+    graph.replaceNodeModel("saw", TrimeshNodeModelState::copyOf(sawtoothMesh, 2));
+    sawtoothMesh.destroy();
     graph.addEdge({ "voice", "context", "saw", "context", PortDomain::DomainContext, false });
     graph.addEdge({ "saw", "out", "fft", "time", PortDomain::TimeSignal, false });
     graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });

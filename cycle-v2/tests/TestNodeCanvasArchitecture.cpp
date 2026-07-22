@@ -317,18 +317,15 @@ TEST_CASE("Typed model edits refresh configuration without topology compilation"
             document.graph().findNode("shape")->model);
     FlatCurveModel edited;
     REQUIRE(current != nullptr);
-    REQUIRE(edited.readJSON(current->domainJSON()));
+    REQUIRE(current->flatCurve() != nullptr);
+    REQUIRE(edited.copyFrom(*current->flatCurve()));
     auto vertices = edited.getVertices();
     vertices.front().y += 0.01f;
     REQUIRE(edited.replaceVertices(std::move(vertices)));
     REQUIRE(commands.replaceNodeModel(
             "shape",
             current->revision(),
-            std::make_shared<const CurveNodeModelState>(
-                    "flatCurve",
-                    FlatCurveModel::currentVersion,
-                    current->revision() + 1,
-                    edited.writeJSON())).succeeded());
+            CurveNodeModelState::copyOf(edited, current->revision() + 1)).succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
     REQUIRE(presentation.compilationCount() == compilationCount);
     REQUIRE(presentation.compileResult().plan.steps.front().configuration.revision

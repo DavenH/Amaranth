@@ -36,7 +36,8 @@ bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
         return false;
     }
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (!needsNodeSync(node) || typed == nullptr || !model.readJSON(typed->domainJSON())) {
+    if (!needsNodeSync(node) || typed == nullptr || typed->flatCurve() == nullptr
+            || !model.copyFrom(*typed->flatCurve())) {
         return false;
     }
     syncedNodeId = node.id;
@@ -101,12 +102,8 @@ NodeModelStatePtr FlatCurvePanelAdapter::modelPublication(
     if (model.selectedVertexId().has_value()) {
         editor->setProperty("selectedVertexId", (int64) *model.selectedVertexId());
     }
-    return std::make_shared<const CurveNodeModelState>(
-            "flatCurve",
-            FlatCurveModel::currentVersion,
-            publicationRevision,
-            model.writeJSON(),
-            var(editor.release()));
+    return CurveNodeModelState::copyOf(
+            model, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> FlatCurvePanelAdapter::previewVertices() {

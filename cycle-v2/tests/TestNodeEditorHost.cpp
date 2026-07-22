@@ -447,11 +447,7 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     commands.beginCurveTransaction();
     REQUIRE(commands.publishCurveState(
             "shape",
-            std::make_shared<const CurveNodeModelState>(
-                    "flatCurve",
-                    FlatCurveModel::currentVersion,
-                    model.revision(),
-                    model.writeJSON()),
+            CurveNodeModelState::copyOf(model, model.revision()),
             curveControls(*document.graph().findNode("shape"))));
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.repaints == 1);

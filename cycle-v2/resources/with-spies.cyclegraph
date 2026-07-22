@@ -149,6 +149,9 @@
             "definitionVersion": 1,
             "title": "Trilinear Mesh",
             "position": { "x": 1218.96558, "y": 32.13789 },
+            "portSides": {
+                "outputs": { "out": "bottom" }
+            },
             "parameters": { "yellow": 0.5, "red": 0.411, "blue": 0.184, "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
@@ -274,6 +277,9 @@
             "definitionVersion": 1,
             "title": "Add",
             "position": { "x": 1286.96558, "y": 395.99997 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
@@ -282,6 +288,9 @@
             "definitionVersion": 1,
             "title": "Trilinear Mesh",
             "position": { "x": 1218.96558, "y": 786.0 },
+            "portSides": {
+                "outputs": { "out": "top" }
+            },
             "parameters": { "yellow": 0.495, "red": 0.0, "blue": 0.205, "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
@@ -431,6 +440,9 @@
             "definitionVersion": 1,
             "title": "Add",
             "position": { "x": 1286.96558, "y": 579.86206 },
+            "portSides": {
+                "inputs": { "right": "bottom" }
+            },
             "parameters": {}
         },
         {
@@ -766,6 +778,9 @@
             "definitionVersion": 1,
             "title": "Multiply",
             "position": { "x": 2696.0, "y": 457.9147 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {

@@ -19,6 +19,7 @@ public:
     bool readXML(const XmlElement* element) override;
     var writeJSON() const override;
     bool readJSON(const var& object) override;
+    [[nodiscard]] bool equals(const EnvelopeMesh& other) const;
 
     set<VertCube*> loopCubes;
     set<VertCube*> sustainCubes;

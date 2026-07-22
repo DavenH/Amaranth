@@ -14,6 +14,7 @@ namespace CycleV2 {
 class EnvelopePanelAdapter final {
 public:
     EnvelopePanelAdapter();
+    ~EnvelopePanelAdapter();
 
     EnvelopeMesh& mesh() { return model.getMesh(); }
     const EnvelopeMesh& mesh() const { return model.getMesh(); }
@@ -34,13 +35,12 @@ public:
     bool blueLinked() const { return model.blueLinked; }
 
     const String& lastNodeId() const { return syncedNodeId; }
-    const String& lastMeshState() const { return syncedMeshState; }
-
 private:
     EnvelopeNodeModel model;
     String syncedNodeId;
     uint64_t syncedModelRevision {};
-    String syncedMeshState;
+    EnvelopeMesh syncedMesh { "CycleV2EnvelopePanelSyncedMesh" };
+    bool hasSyncedMesh {};
 };
 
 }

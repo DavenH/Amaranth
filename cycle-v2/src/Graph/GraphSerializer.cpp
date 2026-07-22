@@ -78,6 +78,81 @@ var positionToJSON(Point<float> position) {
     return var(result.release());
 }
 
+String portSideToString(PortSide side) {
+    switch (side) {
+        case PortSide::Left:   return "left";
+        case PortSide::Top:    return "top";
+        case PortSide::Right:  return "right";
+        case PortSide::Bottom: return "bottom";
+    }
+    return {};
+}
+
+bool portSideFromString(const String& value, PortSide& side) {
+    if (value == "left") {
+        side = PortSide::Left;
+    } else if (value == "top") {
+        side = PortSide::Top;
+    } else if (value == "right") {
+        side = PortSide::Right;
+    } else if (value == "bottom") {
+        side = PortSide::Bottom;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+var portSideOverrides(
+        const std::vector<Port>& ports,
+        const std::vector<Port>& defaults) {
+    auto result = std::make_unique<DynamicObject>();
+    for (const auto& port : ports) {
+        const auto found = std::find_if(defaults.begin(), defaults.end(), [&](const auto& candidate) {
+            return candidate.id == port.id;
+        });
+        if (found != defaults.end() && found->side != port.side) {
+            result->setProperty(port.id, portSideToString(port.side));
+        }
+    }
+    return result->getProperties().isEmpty() ? var() : var(result.release());
+}
+
+var nodePortSideOverrides(const Node& node, const NodeDefinition& definition) {
+    auto result = std::make_unique<DynamicObject>();
+    const var inputs = portSideOverrides(node.inputs, definition.inputs);
+    const var outputs = portSideOverrides(node.outputs, definition.outputs);
+    if (!inputs.isVoid()) {
+        result->setProperty("inputs", inputs);
+    }
+    if (!outputs.isVoid()) {
+        result->setProperty("outputs", outputs);
+    }
+    return result->getProperties().isEmpty() ? var() : var(result.release());
+}
+
+bool applyPortSideOverrides(const var& encoded, std::vector<Port>& ports) {
+    if (encoded.isVoid()) {
+        return true;
+    }
+    const auto* object = encoded.getDynamicObject();
+    if (object == nullptr) {
+        return false;
+    }
+    for (const auto& property : object->getProperties()) {
+        const auto found = std::find_if(ports.begin(), ports.end(), [&](const auto& port) {
+            return port.id == property.name.toString();
+        });
+        PortSide side;
+        if (found == ports.end() || !property.value.isString()
+                || !portSideFromString(property.value.toString(), side)) {
+            return false;
+        }
+        found->side = side;
+    }
+    return true;
+}
+
 var edgeToJSON(const Edge& edge) {
     auto result = std::make_unique<DynamicObject>();
     result->setProperty("sourceNodeId", edge.sourceNodeId);
@@ -232,6 +307,12 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         encoded->setProperty("definitionVersion", definition != nullptr ? definition->version : 1);
         encoded->setProperty("title", node.title);
         encoded->setProperty("position", positionToJSON(node.bounds.getPosition()));
+        if (definition != nullptr) {
+            const var portSides = nodePortSideOverrides(node, *definition);
+            if (!portSides.isVoid()) {
+                encoded->setProperty("portSides", portSides);
+            }
+        }
 
         auto parameters = std::make_unique<DynamicObject>();
         if (definition != nullptr) {
@@ -344,6 +425,17 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         node.bounds.setPosition((float) x, (float) y);
+
+        const var portSides = encoded->getProperty("portSides");
+        const auto* portSideGroups = portSides.getDynamicObject();
+        if ((!portSides.isVoid() && portSideGroups == nullptr)
+                || (portSideGroups != nullptr
+                    && (!applyPortSideOverrides(portSideGroups->getProperty("inputs"), node.inputs)
+                        || !applyPortSideOverrides(portSideGroups->getProperty("outputs"), node.outputs)))) {
+            result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                    "Node '" + nodeId + "' has invalid port side overrides" });
+            continue;
+        }
 
         const auto* parameters = encoded->getProperty("parameters").getDynamicObject();
         if (parameters == nullptr) {

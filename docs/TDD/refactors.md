@@ -2,7 +2,7 @@
 
 ## Cycle V2 JSON Graph and Typed Node Models
 
-Status: In progress (2026-07-22).
+Status: Production refactor complete; native verification blocked (2026-07-22).
 
 Active TDD:
 [`cycle-v2-json-graph-and-typed-node-models.md`](cycle-v2-json-graph-and-typed-node-models.md).
@@ -15,23 +15,23 @@ Completed:
 - Converted bundled presets without a graph-format compatibility layer.
 - Added conflict-checked model replacement, undo/redo, semantic persistence
   tests, and native save/reload coverage.
+- Replaced `var` payload holders with immutable concrete Trimesh, Envelope,
+  and flat-curve snapshots.
+- Removed runtime and presentation JSON reconstruction from synchronization,
+  DSP preparation, preview, and audio paths.
+- Added decode instrumentation proving already-loaded graphs remain outside
+  JSON during presentation and runtime consumption.
+- Renamed graph snapshot and automation outputs to `.cyclegraph`.
+- Persisted authored port-side overrides without duplicating definition-owned
+  port declarations, restoring the reviewed bundled layouts.
 
-Remaining:
+Remaining verification:
 
-- Replace `TrimeshNodeModelState::meshState` and
-  `CurveNodeModelState::state` `var` payloads with immutable concrete domain
-  state. JSON must remain a serializer/codec boundary, not the in-memory model.
-- Delete `readJSON(var)` reconstruction from Trimesh synchronization,
-  flat-curve preparation and panel refresh, and envelope DSP preparation.
-  These consumers must use or clone the already validated typed state.
-- Prove through instrumentation that pointer movement, preview traversal,
-  preparation from a loaded graph, and realtime processing perform no JSON
-  decoding or domain reconstruction from JSON values.
-- Rename remaining Cycle V2 graph snapshot and automation output paths that
-  still use `.xml`, then verify all graph fixtures consistently describe JSON
-  `.cyclegraph` files.
-- Rerun the full semantic, standalone, and native smoke gates, then perform the
-  production-diff/refactor audit before changing the TDD status to Implemented.
+- Complete one reliable native macOS save/reload run across Trimesh, Envelope,
+  and flat curves. The full suite and standalone build pass, but the native
+  fixture currently misses pointer gestures nondeterministically and can fail
+  before its persistence assertions. Keep the TDD in progress until this gate
+  runs reliably or the native fixture is repaired and passes.
 
 This is the prerequisite persistence/model boundary for the causal update
 graph and must be completed before that boundary is considered closed.

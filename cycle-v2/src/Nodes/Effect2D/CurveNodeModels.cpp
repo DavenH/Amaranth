@@ -1,5 +1,7 @@
 #include "CurveNodeModels.h"
 
+#include "../../Graph/NodeModelDecodeDiagnostics.h"
+
 #include "../Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/Vertex.h>
@@ -205,6 +207,7 @@ bool FlatCurveModel::loadSnapshot(const String& serialized) {
 }
 
 bool FlatCurveModel::readJSON(const var& root) {
+    NodeModelDecodeDiagnostics::recordDecode();
     const auto* object = root.getDynamicObject();
     if (object == nullptr || (int) object->getProperty("version") != currentVersion
             || object->getProperty("type").toString() != "flatCurve") {
@@ -266,6 +269,22 @@ var FlatCurveModel::writeJSON() const {
     return var(root.release());
 }
 
+bool FlatCurveModel::copyFrom(const FlatCurveModel& other) {
+    if (!replaceVertices(other.vertices)) {
+        return false;
+    }
+    selection = other.selection;
+    nextVertexIdentity = other.nextVertexIdentity;
+    modelRevision = other.modelRevision;
+    return true;
+}
+
+bool FlatCurveModel::equals(const FlatCurveModel& other) const {
+    return vertices == other.vertices
+            && selection == other.selection
+            && modelRevision == other.modelRevision;
+}
+
 bool FlatCurveModel::validate(const std::vector<FlatCurveVertex>& verticesToValidate) {
     if (verticesToValidate.size() < 2) {
         return false;
@@ -325,11 +344,19 @@ CurveVertexId FlatCurveModel::nextIdentity() const {
 
 EnvelopeNodeModel::EnvelopeNodeModel() :
         mesh("CycleV2EnvelopeNodeModel") {
-    applyEnvelopePayload(EnvelopeMeshState::defaultSnapshot());
+    EnvelopeMeshState::initialiseDefault(mesh);
+    EnvelopeCubeId identity = 1;
+    for (size_t index = 0; index < mesh.getCubes().size(); ++index) {
+        cubeIds.push_back(identity++);
+    }
+    nextCubeIdentity = identity;
+    rebuildIdentityMap();
+    committedMesh.deepCopy(&mesh);
 }
 
 EnvelopeNodeModel::~EnvelopeNodeModel() {
     mesh.destroy();
+    committedMesh.destroy();
 }
 
 bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
@@ -337,6 +364,7 @@ bool EnvelopeNodeModel::loadSnapshot(const String& serialized) {
 }
 
 bool EnvelopeNodeModel::readJSON(const var& root) {
+    NodeModelDecodeDiagnostics::recordDecode();
     const auto* object = root.getDynamicObject();
     if (object == nullptr || (int) object->getProperty("version") != currentVersion
             || object->getProperty("type").toString() != "envelope") {
@@ -377,7 +405,7 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
     }
     cubeIds = std::move(nextIds);
     rebuildIdentityMap();
-    committedPayload = JSON::toString(meshState, false);
+    committedMesh.deepCopy(&mesh);
     logarithmic = (bool) object->getProperty("logarithmic");
     red = jlimit(0.f, 1.f, (float) object->getProperty("red"));
     blue = jlimit(0.f, 1.f, (float) object->getProperty("blue"));
@@ -394,7 +422,9 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
 
 bool EnvelopeNodeModel::syncFromNode(const Node& node) {
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    const bool loaded = typed != nullptr && readJSON(typed->domainJSON());
+    const bool loaded = typed != nullptr
+            && typed->envelope() != nullptr
+            && copyFrom(*typed->envelope());
     logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
     dynamicWhileLive = parameterValueForNode(node, "dynamic", "0").getIntValue() != 0;
     red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
@@ -423,6 +453,36 @@ var EnvelopeNodeModel::writeJSON() const {
     }
     root->setProperty("cubeIds", var(encodedIds));
     return var(root.release());
+}
+
+bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
+    mesh.deepCopy(&other.mesh);
+    cubeIds = other.cubeIds;
+    selection = other.selection;
+    logarithmic = other.logarithmic;
+    dynamicWhileLive = other.dynamicWhileLive;
+    red = other.red;
+    blue = other.blue;
+    redLinked = other.redLinked;
+    blueLinked = other.blueLinked;
+    nextCubeIdentity = other.nextCubeIdentity;
+    committedMesh.deepCopy(&other.committedMesh);
+    modelRevision = other.modelRevision;
+    rebuildIdentityMap();
+    return true;
+}
+
+bool EnvelopeNodeModel::equals(const EnvelopeNodeModel& other) const {
+    return mesh.equals(other.mesh)
+            && cubeIds == other.cubeIds
+            && selection == other.selection
+            && logarithmic == other.logarithmic
+            && dynamicWhileLive == other.dynamicWhileLive
+            && red == other.red
+            && blue == other.blue
+            && redLinked == other.redLinked
+            && blueLinked == other.blueLinked
+            && modelRevision == other.modelRevision;
 }
 
 bool EnvelopeNodeModel::selectCube(std::optional<EnvelopeCubeId> cubeId) {
@@ -466,17 +526,7 @@ bool EnvelopeNodeModel::synchronizeFromMesh(VertCube* selectedCube) {
         }
     }
 
-    const String payload = EnvelopeMeshState::serialize(mesh);
-    EnvelopeMesh validated("CycleV2EnvelopeEditValidation");
-    if (!EnvelopeMeshState::apply(payload, validated)) {
-        validated.destroy();
-        mesh.destroy();
-        EnvelopeMeshState::apply(committedPayload, mesh);
-        rebuildIdentityMap();
-        return false;
-    }
-    validated.destroy();
-    const bool changed = nextIds != cubeIds || payload != committedPayload;
+    const bool changed = nextIds != cubeIds || !mesh.equals(committedMesh);
     cubeIds = std::move(nextIds);
     identitiesByCube = std::move(nextIdentityByCube);
     nextCubeIdentity = jmax(nextCubeIdentity, identity);
@@ -485,34 +535,10 @@ bool EnvelopeNodeModel::synchronizeFromMesh(VertCube* selectedCube) {
     selection = selected != identitiesByCube.end()
             ? std::optional<EnvelopeCubeId>(selected->second)
             : std::nullopt;
-    committedPayload = payload;
+    committedMesh.deepCopy(&mesh);
     if (changed) {
         ++modelRevision;
     }
-    return true;
-}
-
-bool EnvelopeNodeModel::applyEnvelopePayload(const String& payload) {
-    EnvelopeMesh validated("CycleV2EnvelopeValidation");
-    if (!EnvelopeMeshState::apply(payload, validated)) {
-        validated.destroy();
-        return false;
-    }
-    validated.destroy();
-
-    mesh.destroy();
-    if (!EnvelopeMeshState::apply(payload, mesh)) {
-        return false;
-    }
-    cubeIds.clear();
-    EnvelopeCubeId identity = 1;
-    for (size_t i = 0; i < mesh.getCubes().size(); ++i) {
-        cubeIds.push_back(identity++);
-    }
-    rebuildIdentityMap();
-    committedPayload = payload;
-    selection = std::nullopt;
-    ++modelRevision;
     return true;
 }
 
@@ -536,8 +562,8 @@ void WaveshaperNodeModel::syncFromNode(const Node& node) {
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     oversampling = jmax(1, parameterValueForNode(node, "aaFactor", "1").getIntValue());
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (typed != nullptr) {
-        curve.readJSON(typed->domainJSON());
+    if (typed != nullptr && typed->flatCurve() != nullptr) {
+        curve.copyFrom(*typed->flatCurve());
     }
 }
 
@@ -547,8 +573,8 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
     postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
     highPass = jlimit(0.f, 1.f, parameterValueForNode(node, "highPass", "0.5").getFloatValue());
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (typed != nullptr) {
-        curve.readJSON(typed->domainJSON());
+    if (typed != nullptr && typed->flatCurve() != nullptr) {
+        curve.copyFrom(*typed->flatCurve());
     }
 }
 
@@ -558,8 +584,8 @@ void GuideCurveNodeModel::syncFromNode(const Node& node) {
     dcOffset = jlimit(0.f, 1.f, parameterValueForNode(node, "dcOffset", "0.5").getFloatValue());
     phase = jlimit(0.f, 1.f, parameterValueForNode(node, "phase", "0.5").getFloatValue());
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (typed != nullptr) {
-        curve.readJSON(typed->domainJSON());
+    if (typed != nullptr && typed->flatCurve() != nullptr) {
+        curve.copyFrom(*typed->flatCurve());
     }
 }
 
@@ -616,13 +642,49 @@ CurveNodeModelState::CurveNodeModelState(
         String schemaToUse,
         int versionToUse,
         uint64_t revisionToUse,
-        var modelState,
+        std::shared_ptr<const FlatCurveModel> modelState,
         var editorStateToUse) :
         schema(std::move(schemaToUse))
     ,   version(versionToUse)
     ,   modelRevision(revisionToUse)
-    ,   state(std::move(modelState))
+    ,   flatCurveState(std::move(modelState))
     ,   editorState(std::move(editorStateToUse)) {}
+
+CurveNodeModelState::CurveNodeModelState(
+        String schemaToUse,
+        int versionToUse,
+        uint64_t revisionToUse,
+        std::shared_ptr<const EnvelopeNodeModel> modelState,
+        var editorStateToUse) :
+        schema(std::move(schemaToUse))
+    ,   version(versionToUse)
+    ,   modelRevision(revisionToUse)
+    ,   envelopeState(std::move(modelState))
+    ,   editorState(std::move(editorStateToUse)) {}
+
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
+        const FlatCurveModel& model,
+        uint64_t revision,
+        var editorState) {
+    auto copy = std::make_shared<FlatCurveModel>();
+    copy->copyFrom(model);
+    copy->setPublicationRevision(revision);
+    return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+            "flatCurve", FlatCurveModel::currentVersion,
+            revision, std::move(copy), std::move(editorState)));
+}
+
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
+        const EnvelopeNodeModel& model,
+        uint64_t revision,
+        var editorState) {
+    auto copy = std::make_shared<EnvelopeNodeModel>();
+    copy->copyFrom(model);
+    copy->setPublicationRevision(revision);
+    return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+            "envelope", EnvelopeNodeModel::currentVersion,
+            revision, std::move(copy), std::move(editorState)));
+}
 
 String CurveNodeModelState::schemaId() const {
     return schema;
@@ -641,7 +703,9 @@ var CurveNodeModelState::writeJSON() const {
     result->setProperty("schema", schema);
     result->setProperty("version", version);
     result->setProperty("revision", (int64) modelRevision);
-    result->setProperty("state", state);
+    result->setProperty("state", flatCurveState != nullptr
+            ? flatCurveState->writeJSON()
+            : envelopeState->writeJSON());
     return var(result.release());
 }
 
@@ -651,7 +715,10 @@ bool CurveNodeModelState::equals(const NodeModelState& other) const {
             && schema == typed->schema
             && version == typed->version
             && modelRevision == typed->modelRevision
-            && JSON::toString(state, false) == JSON::toString(typed->state, false);
+            && ((flatCurveState != nullptr && typed->flatCurveState != nullptr
+                        && flatCurveState->equals(*typed->flatCurveState))
+                    || (envelopeState != nullptr && typed->envelopeState != nullptr
+                        && envelopeState->equals(*typed->envelopeState)));
 }
 
 CurveNodeDomainCodec::CurveNodeDomainCodec(NodeKind kindToUse) : kind(kindToUse) {}
@@ -694,24 +761,21 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     }
 
     const var state = object->getProperty("state");
-    var canonicalState;
     if (kind == NodeKind::Envelope) {
-        EnvelopeNodeModel model;
-        if (model.readJSON(state) && model.revision() == (uint64_t) revision) {
-            canonicalState = model.writeJSON();
+        auto model = std::make_shared<EnvelopeNodeModel>();
+        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
+            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
         }
     } else {
-        FlatCurveModel model;
-        if (model.readJSON(state) && model.revision() == (uint64_t) revision) {
-            canonicalState = model.writeJSON();
+        auto model = std::make_shared<FlatCurveModel>();
+        if (model->readJSON(state) && model->revision() == (uint64_t) revision) {
+            return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+                    schemaId(), currentVersion(), (uint64_t) revision, std::move(model)));
         }
     }
-    if (canonicalState.isVoid()) {
-        error = "Invalid structured node model state";
-        return nullptr;
-    }
-    return std::make_shared<const CurveNodeModelState>(
-            schemaId(), currentVersion(), (uint64_t) revision, std::move(canonicalState));
+    error = "Invalid structured node model state";
+    return nullptr;
 }
 
 }

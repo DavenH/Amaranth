@@ -10,7 +10,7 @@ namespace {
 
 std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         const String& name,
-        const var& meshState,
+        const EnvelopeMesh& meshState,
         float red,
         float blue,
         float level,
@@ -24,9 +24,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
                 delete mesh;
             });
 
-    if (!result->mesh->readJSON(meshState)) {
-        return {};
-    }
+    result->mesh->deepCopy(&meshState);
 
     result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
@@ -63,13 +61,13 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             ? model
             : CurveNodeDomainCodec(NodeKind::Envelope).createDefault();
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(modelToUse);
-    EnvelopeNodeModel envelope;
-    if (typedModel == nullptr || !envelope.readJSON(typedModel->domainJSON())) {
+    const EnvelopeNodeModel* envelope = typedModel != nullptr ? typedModel->envelope() : nullptr;
+    if (envelope == nullptr) {
         return {};
     }
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
-            envelope.getMesh().writeJSON(),
+            envelope->getMesh(),
             parameterFloat(parameters, "red", 0.5f),
             parameterFloat(parameters, "blue", 0.5f),
             parameterFloat(parameters, "level", 1.f),
@@ -128,7 +126,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDyn
         float blue) {
     return prepareEnvelopeConfiguration(
             "CycleV2DynamicEnvelope",
-            base.mesh->writeJSON(),
+            *base.mesh,
             red,
             blue,
             base.level,

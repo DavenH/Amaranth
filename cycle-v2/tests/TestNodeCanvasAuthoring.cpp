@@ -90,6 +90,34 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
 }
 
+TEST_CASE("Node port layout cycling survives document serialization",
+        "[cycle-v2][canvas][authoring][layout]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
+    REQUIRE(authoring.cycleMeshOutputSide("mesh").succeeded);
+    const Node* editedAdd = document.graph().findNode("add");
+    const Node* editedMesh = document.graph().findNode("mesh");
+    REQUIRE(editedAdd->inputs[0].side == PortSide::Left);
+    REQUIRE(editedAdd->inputs[1].side == PortSide::Top);
+    REQUIRE(editedMesh->outputs[0].side == PortSide::Bottom);
+
+    GraphDocument restored;
+    REQUIRE(restored.loadJson(document.toJson(), false));
+    const Node* restoredAdd = restored.graph().findNode("add");
+    const Node* restoredMesh = restored.graph().findNode("mesh");
+    REQUIRE(restoredAdd->inputs[0].side == PortSide::Left);
+    REQUIRE(restoredAdd->inputs[1].side == PortSide::Top);
+    REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
+}
+
 TEST_CASE("Hosted effect editors open without requiring a compact preview",
         "[cycle-v2][canvas][authoring][effects]") {
     NodeGraph graph;

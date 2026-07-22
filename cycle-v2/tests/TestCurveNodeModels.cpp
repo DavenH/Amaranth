@@ -3,6 +3,8 @@
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
+#include "../src/Graph/NodeModelDecodeDiagnostics.h"
 #include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Effect2D/EnvelopePanelAdapter.h"
@@ -10,7 +12,10 @@
 #include "../src/Nodes/Envelope/EnvelopeMeshState.h"
 #include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
+#include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
 #include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "../src/Runtime/GraphAudioExecutor.h"
+#include "../src/Runtime/GraphPreviewExecutor.h"
 
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
@@ -25,7 +30,13 @@ std::vector<CycleV2::NodeParameter> curveControls(const Node& node) {
 
 String modelSnapshotForNode(const Node& node) {
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    return typed != nullptr ? JSON::toString(typed->domainJSON(), false) : String();
+    if (typed == nullptr) {
+        return {};
+    }
+    const var state = typed->flatCurve() != nullptr
+            ? typed->flatCurve()->writeJSON()
+            : typed->envelope()->writeJSON();
+    return JSON::toString(state, false);
 }
 
 CurveNodeStatePublication publicationFor(
@@ -36,14 +47,12 @@ CurveNodeStatePublication publicationFor(
     if (node.kind == NodeKind::Envelope) {
         EnvelopeNodeModel domain;
         if (domain.loadSnapshot(snapshot)) {
-            model = std::make_shared<const CurveNodeModelState>(
-                    "envelope", EnvelopeNodeModel::currentVersion, revision, domain.writeJSON());
+            model = CurveNodeModelState::copyOf(domain, revision);
         }
     } else {
         FlatCurveModel domain;
         if (domain.loadSnapshot(snapshot)) {
-            model = std::make_shared<const CurveNodeModelState>(
-                    "flatCurve", FlatCurveModel::currentVersion, revision, domain.writeJSON());
+            model = CurveNodeModelState::copyOf(domain, revision);
         }
     }
     return {
@@ -529,8 +538,7 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
             { 3, 1.f, 0.9f, 1.f }
     }));
     const std::vector<CycleV2::NodeParameter> typedParameters;
-    const auto typedModel = std::make_shared<const CurveNodeModelState>(
-            "flatCurve", FlatCurveModel::currentVersion, model.revision(), model.writeJSON());
+    const auto typedModel = CurveNodeModelState::copyOf(model, model.revision());
 
     const auto firstWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters, typedModel);
     const auto secondWaveshaper = WaveshaperSignalProcessor::buildConfiguration(typedParameters, typedModel);
@@ -557,8 +565,7 @@ TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer
             { "level", "Level", "1" }
     };
 
-    const auto typedModel = std::make_shared<const CurveNodeModelState>(
-            "envelope", EnvelopeNodeModel::currentVersion, model.revision(), model.writeJSON());
+    const auto typedModel = CurveNodeModelState::copyOf(model, model.revision());
     const auto first = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
     const auto second = EnvelopeSignalProcessor::buildConfiguration(parameters, typedModel);
     REQUIRE(first != nullptr);
@@ -589,13 +596,11 @@ TEST_CASE("Curve node definitions provide canonical typed defaults",
         const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
         REQUIRE(typed != nullptr);
         if (kind == NodeKind::Envelope) {
-            EnvelopeNodeModel model;
-            REQUIRE(model.readJSON(typed->domainJSON()));
-            REQUIRE(model.revision() == 1);
+            REQUIRE(typed->envelope() != nullptr);
+            REQUIRE(typed->envelope()->revision() == 1);
         } else {
-            FlatCurveModel model;
-            REQUIRE(model.readJSON(typed->domainJSON()));
-            REQUIRE(model.revision() == 1);
+            REQUIRE(typed->flatCurve() != nullptr);
+            REQUIRE(typed->flatCurve()->revision() == 1);
         }
         REQUIRE(parameterValueForNode(node, "effect.vertices").isEmpty());
         REQUIRE(parameterValueForNode(node, "envelope.snapshot").isEmpty());
@@ -620,14 +625,16 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
             const uint64_t revision = typed->revision();
             if (node.kind == NodeKind::Envelope) {
                 EnvelopeNodeModel model;
-                REQUIRE(model.readJSON(typed->domainJSON()));
+                REQUIRE(typed->envelope() != nullptr);
+                REQUIRE(model.copyFrom(*typed->envelope()));
                 REQUIRE(model.revision() == revision);
                 const String canonical = model.snapshot();
                 REQUIRE(model.loadSnapshot(canonical));
                 REQUIRE(model.snapshot() == canonical);
             } else {
                 FlatCurveModel model;
-                REQUIRE(model.readJSON(typed->domainJSON()));
+                REQUIRE(typed->flatCurve() != nullptr);
+                REQUIRE(model.copyFrom(*typed->flatCurve()));
                 REQUIRE(model.revision() == revision);
                 const String canonical = model.snapshot();
                 REQUIRE(model.loadSnapshot(canonical));
@@ -635,4 +642,41 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
             }
         }
     }
+}
+
+TEST_CASE("Loaded typed models require no JSON decoding during runtime consumption",
+        "[cycle-v2][curve-model][runtime-boundary]") {
+    NodeModelDecodeDiagnostics::reset();
+    Mesh::resetJsonReadCount();
+    const File file = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("resources")
+            .getChildFile("default.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(file.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(NodeModelDecodeDiagnostics::count() > 0);
+    REQUIRE(Mesh::getJsonReadCount() > 0);
+    NodeModelDecodeDiagnostics::reset();
+    Mesh::resetJsonReadCount();
+
+    for (const auto& node : loaded.graph.getNodes()) {
+        if (node.kind == NodeKind::TrilinearMesh) {
+            TrimeshNodeModel model;
+            model.syncFromNode(node);
+        } else if (node.kind == NodeKind::Envelope) {
+            EnvelopePanelAdapter adapter;
+            REQUIRE(adapter.syncFromNode(node));
+        } else if (node.kind == NodeKind::GuideCurve
+                || node.kind == NodeKind::ImpulseResponse
+                || node.kind == NodeKind::Waveshaper) {
+            FlatCurvePanelAdapter adapter(node.kind);
+            REQUIRE(adapter.syncFromNode(node));
+        }
+    }
+
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    const auto audio = GraphAudioExecutor().process(loaded.graph, compiled.plan, 64);
+    GraphPreviewExecutor().render(compiled.plan, audio, 32);
+    REQUIRE(NodeModelDecodeDiagnostics::count() == 0);
+    REQUIRE(Mesh::getJsonReadCount() == 0);
 }

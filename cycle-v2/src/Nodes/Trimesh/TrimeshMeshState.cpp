@@ -1,14 +1,40 @@
 #include "TrimeshMeshState.h"
 
+#include "../../Graph/NodeModelDecodeDiagnostics.h"
+
 #include <Curve/Mesh/Mesh.h>
 
 #include "TrimeshMeshFactory.h"
 
 namespace CycleV2 {
 
-TrimeshNodeModelState::TrimeshNodeModelState(var meshStateToUse, uint64_t revisionToUse) :
+namespace {
+
+std::shared_ptr<Mesh> ownedMesh(Mesh* mesh) {
+    return std::shared_ptr<Mesh>(mesh, [](Mesh* value) {
+        value->destroy();
+        delete value;
+    });
+}
+
+}
+
+TrimeshNodeModelState::TrimeshNodeModelState(
+        std::shared_ptr<Mesh> meshStateToUse,
+        uint64_t revisionToUse) :
         meshState(std::move(meshStateToUse))
-    ,   modelRevision(revisionToUse) {}
+    ,   modelRevision(revisionToUse) {
+    jassert(meshState != nullptr);
+}
+
+std::shared_ptr<const TrimeshNodeModelState> TrimeshNodeModelState::copyOf(
+        const Mesh& mesh,
+        uint64_t revisionToUse) {
+    auto copy = ownedMesh(new Mesh());
+    copy->deepCopy(&mesh);
+    return std::shared_ptr<const TrimeshNodeModelState>(
+            new TrimeshNodeModelState(std::move(copy), revisionToUse));
+}
 
 String TrimeshNodeModelState::schemaId() const {
     return "trimesh";
@@ -27,7 +53,7 @@ var TrimeshNodeModelState::writeJSON() const {
     result->setProperty("schema", schemaId());
     result->setProperty("version", schemaVersion());
     result->setProperty("revision", (int64) modelRevision);
-    result->setProperty("mesh", meshState);
+    result->setProperty("mesh", meshState->writeJSON());
     return var(result.release());
 }
 
@@ -35,7 +61,7 @@ bool TrimeshNodeModelState::equals(const NodeModelState& other) const {
     const auto* typed = dynamic_cast<const TrimeshNodeModelState*>(&other);
     return typed != nullptr
             && modelRevision == typed->modelRevision
-            && JSON::toString(meshState, false) == JSON::toString(typed->meshState, false);
+            && meshState->equals(*typed->meshState);
 }
 
 String TrimeshNodeModelCodec::schemaId() const {
@@ -48,12 +74,12 @@ int TrimeshNodeModelCodec::currentVersion() const {
 
 NodeModelStatePtr TrimeshNodeModelCodec::createDefault() const {
     auto mesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
-    var state = mesh->writeJSON();
-    mesh->destroy();
-    return std::make_shared<const TrimeshNodeModelState>(std::move(state), 1);
+    return std::shared_ptr<const TrimeshNodeModelState>(
+            new TrimeshNodeModelState(ownedMesh(mesh.release()), 1));
 }
 
 NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& error) const {
+    NodeModelDecodeDiagnostics::recordDecode();
     const auto* object = value.getDynamicObject();
     if (object == nullptr || object->getProperty("schema").toString() != schemaId()) {
         error = "Expected Trimesh model schema 'trimesh'";
@@ -81,18 +107,15 @@ NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& erro
         error = "Trimesh mesh state is incomplete";
         return nullptr;
     }
-    Mesh validated;
-    if (!validated.readJSON(meshState)
-            || validated.getNumVerts() != vertices->size()
-            || validated.getNumCubes() != cubes->size()) {
-        validated.destroy();
+    auto validated = ownedMesh(new Mesh());
+    if (!validated->readJSON(meshState)
+            || validated->getNumVerts() != vertices->size()
+            || validated->getNumCubes() != cubes->size()) {
         error = "Invalid Trimesh mesh state";
         return nullptr;
     }
-    var canonicalState = validated.writeJSON();
-    validated.destroy();
-    return std::make_shared<const TrimeshNodeModelState>(
-            std::move(canonicalState), (uint64_t) revision);
+    return std::shared_ptr<const TrimeshNodeModelState>(
+            new TrimeshNodeModelState(std::move(validated), (uint64_t) revision));
 }
 
 }

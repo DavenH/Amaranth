@@ -989,7 +989,8 @@ class NativeEditSmoke:
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
-        assert self.trimesh_model(reloaded_state) == topology
+        reloaded_topology = self.trimesh_model(reloaded_state)
+        assert reloaded_topology == topology, (topology, reloaded_topology)
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")

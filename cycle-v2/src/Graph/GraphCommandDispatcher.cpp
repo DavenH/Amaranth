@@ -235,17 +235,17 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
             return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
         }
         if (node->kind == NodeKind::Envelope) {
-            EnvelopeNodeModel envelope;
-            if (!envelope.readJSON(typedModel->domainJSON())) {
+            const EnvelopeNodeModel* envelope = typedModel->envelope();
+            if (envelope == nullptr) {
                 return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
             }
             const auto* red = findParameter(parameters, "red");
             const auto* blue = findParameter(parameters, "blue");
             const auto* logarithmic = findParameter(parameters, "logarithmic");
             if (red == nullptr || blue == nullptr || logarithmic == nullptr
-                    || red->value.getFloatValue() != envelope.red
-                    || blue->value.getFloatValue() != envelope.blue
-                    || (logarithmic->value.getIntValue() != 0) != envelope.logarithmic) {
+                    || red->value.getFloatValue() != envelope->red
+                    || blue->value.getFloatValue() != envelope->blue
+                    || (logarithmic->value.getIntValue() != 0) != envelope->logarithmic) {
                 return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
             }
         }

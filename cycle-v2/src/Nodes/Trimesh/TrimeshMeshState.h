@@ -10,7 +10,9 @@ namespace CycleV2 {
 
 class TrimeshNodeModelState : public NodeModelState {
 public:
-    TrimeshNodeModelState(var meshState, uint64_t revisionToUse);
+    static std::shared_ptr<const TrimeshNodeModelState> copyOf(
+            const Mesh& mesh,
+            uint64_t revisionToUse);
 
     String schemaId() const override;
     int schemaVersion() const override;
@@ -18,10 +20,15 @@ public:
     var writeJSON() const override;
     bool equals(const NodeModelState& other) const override;
 
-    const var& meshJSON() const { return meshState; }
+    const Mesh& mesh() const { return *meshState; }
+    std::shared_ptr<const Mesh> sharedMesh() const { return meshState; }
 
 private:
-    var meshState;
+    friend class TrimeshNodeModelCodec;
+
+    TrimeshNodeModelState(std::shared_ptr<Mesh> meshToUse, uint64_t revisionToUse);
+
+    std::shared_ptr<const Mesh> meshState;
     uint64_t modelRevision {};
 };
 

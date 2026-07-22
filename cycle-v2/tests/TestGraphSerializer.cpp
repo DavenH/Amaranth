@@ -69,6 +69,38 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
 }
 
+TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    Node* add = graph.findNodeForEditing("addMag");
+    REQUIRE(add != nullptr);
+    add->inputs[0].side = PortSide::Top;
+    add->inputs[1].side = PortSide::Bottom;
+    add->outputs[0].side = PortSide::Top;
+
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(graph);
+    REQUIRE(encoded.contains("\"portSides\""));
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+    REQUIRE(loaded.succeeded());
+    const Node* restored = loaded.graph.findNode("addMag");
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->inputs[0].side == PortSide::Top);
+    REQUIRE(restored->inputs[1].side == PortSide::Bottom);
+    REQUIRE(restored->outputs[0].side == PortSide::Top);
+    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+
+    var malformed = serializer.writeJSON(graph);
+    auto* nodes = malformed.getProperty("nodes", {}).getArray();
+    auto found = std::find_if(nodes->begin(), nodes->end(), [](const var& node) {
+        return node.getProperty("id", {}).toString() == "addMag";
+    });
+    REQUIRE(found != nodes->end());
+    found->getProperty("portSides", {}).getDynamicObject()
+            ->getProperty("inputs").getDynamicObject()
+            ->setProperty("missing", "left");
+    REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
+}
+
 TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v2][graph]") {
     GraphSerializer serializer;
     NodeGraph graph = NodeGraph::createDemoGraph();
@@ -78,11 +110,11 @@ TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v
     REQUIRE(current != nullptr);
 
     Mesh edited;
-    REQUIRE(edited.readJSON(current->meshJSON()));
+    edited.deepCopy(&current->mesh());
     edited.getVerts().front()->values[Vertex::Amp] += 0.01f;
     REQUIRE(graph.replaceNodeModel(
             "waveMesh",
-            std::make_shared<const TrimeshNodeModelState>(edited.writeJSON(), 2)));
+            TrimeshNodeModelState::copyOf(edited, 2)));
     edited.destroy();
 
     const StringArray beforeLines = StringArray::fromLines(before);
@@ -103,11 +135,11 @@ TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][g
     REQUIRE(current != nullptr);
 
     Mesh edited;
-    REQUIRE(edited.readJSON(current->meshJSON()));
+    edited.deepCopy(&current->mesh());
     edited.getVerts().front()->values[Vertex::Amp] = 1.149999976158142f;
     REQUIRE(graph.replaceNodeModel(
             "waveMesh",
-            std::make_shared<const TrimeshNodeModelState>(edited.writeJSON(), 2)));
+            TrimeshNodeModelState::copyOf(edited, 2)));
     edited.destroy();
 
     const String encoded = serializer.toJsonString(graph);

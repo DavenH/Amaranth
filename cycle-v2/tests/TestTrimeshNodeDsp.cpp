@@ -430,7 +430,7 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
 
     auto editedMesh = TrimeshMeshFactory::createDefaultMesh("RevisionMesh");
     editedMesh->getVerts()[2]->values[Vertex::Amp] = 0.17f;
-    node.model = std::make_shared<const TrimeshNodeModelState>(editedMesh->writeJSON(), 2);
+    node.model = TrimeshNodeModelState::copyOf(*editedMesh, 2);
     editedMesh->destroy();
     model.syncFromNode(node);
     const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
@@ -454,7 +454,7 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     authored->getVerts()[0]->values[Vertex::Phase] = 0.22f;
     authored->getVerts()[2]->values[Vertex::Amp] = 0.77f;
     authored->getVerts()[2]->values[Vertex::Curve] = 0.88f;
-    const var topology = authored->writeJSON();
+    const auto topology = TrimeshNodeModelState::copyOf(*authored, 2);
     authored->destroy();
     Node node {
             "mesh",
@@ -465,7 +465,7 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
             {},
             {},
             {},
-            std::make_shared<const TrimeshNodeModelState>(topology, 2),
+            topology,
             selectedVertexEditorState(0)
     };
     TrimeshNodeModel model;

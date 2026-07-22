@@ -65,14 +65,14 @@ public:
         morphInitialized = true;
 
         trimeshDsp.prepare(
-                configuration->mesh.get(),
+                const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
                 configuration->primaryViewAxis,
                 preparedDomain == PortDomain::TimeSignal);
 
         trimeshGridDsp.setCyclic(preparedDomain == PortDomain::TimeSignal);
         trimeshGridDsp.prepare(
-                *configuration->mesh,
+                *const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
                 configuration->primaryViewAxis,
                 std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
@@ -164,7 +164,7 @@ private:
 
     Mesh& currentMesh(const std::vector<NodeParameter>&) {
         return configuration != nullptr
-                ? *configuration->mesh
+                ? *const_cast<Mesh*>(configuration->mesh.get())
                 : fallbackTopology.mesh();
     }
 

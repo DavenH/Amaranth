@@ -21,12 +21,12 @@
     {
       "command": "invokeMenuItem",
       "id": "file.saveGraph",
-      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.graph.xml"
+      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.cyclegraph"
     },
     {
       "command": "invokeMenuItem",
       "id": "file.openGraph",
-      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.graph.xml"
+      "path": "/private/tmp/cycle-v2-agent-smokes/menu-palette.cyclegraph"
     }
   ],
   "quit": true

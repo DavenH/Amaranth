@@ -248,8 +248,7 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from typed ed
     editedMesh->getVerts()[0]->values[Vertex::Amp] = 0.05f;
     editedMesh->getVerts()[1]->values[Vertex::Amp] = 0.95f;
     editedMesh->getVerts()[2]->values[Vertex::Phase] = 0.44f;
-    addGraph(editedGraph, std::make_shared<const TrimeshNodeModelState>(
-            editedMesh->writeJSON(), 2));
+    addGraph(editedGraph, TrimeshNodeModelState::copyOf(*editedMesh, 2));
     editedMesh->destroy();
 
     const auto baselineCompile = GraphCompiler().compile(baselineGraph);

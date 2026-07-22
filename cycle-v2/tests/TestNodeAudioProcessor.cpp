@@ -128,11 +128,7 @@ std::vector<NodeParameter> curveParameters(std::vector<FlatCurveVertex> vertices
 NodeModelStatePtr curveModel(std::vector<FlatCurveVertex> vertices) {
     FlatCurveModel model;
     REQUIRE(model.replaceVertices(std::move(vertices)));
-    return std::make_shared<const CurveNodeModelState>(
-            "flatCurve",
-            FlatCurveModel::currentVersion,
-            model.revision(),
-            model.writeJSON());
+    return CurveNodeModelState::copyOf(model, model.revision());
 }
 
 std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {

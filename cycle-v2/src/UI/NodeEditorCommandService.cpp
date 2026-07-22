@@ -419,13 +419,12 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
             value)) {
         return false;
     }
-    const var meshState = activeVertexWidget->currentMeshJSON();
     const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
     const auto result = commands.replaceNodeModel(
             activeVertexNodeId,
             modelRevision,
-            std::make_shared<const TrimeshNodeModelState>(
-                    meshState, modelRevision + 1));
+            TrimeshNodeModelState::copyOf(
+                    activeVertexWidget->currentMesh(), modelRevision + 1));
     if (!result.succeeded()) {
         return false;
     }
@@ -481,14 +480,12 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
         presentation.selectEditedNode(nodeId);
     }
 
-    const var meshState = widget->currentMeshJSON();
     const int selectedVertex = widget->selectedVertexIndexForPanel();
     const uint64_t modelRevision = node->model != nullptr ? node->model->revision() : 0;
     const auto topology = commands.replaceNodeModel(
             nodeId,
             modelRevision,
-            std::make_shared<const TrimeshNodeModelState>(
-                    meshState, modelRevision + 1));
+            TrimeshNodeModelState::copyOf(widget->currentMesh(), modelRevision + 1));
     auto editor = std::make_unique<DynamicObject>();
     editor->setProperty("selectedVertexId", selectedVertex);
     const auto selection = commands.setNodeEditorState(nodeId, var(editor.release()));

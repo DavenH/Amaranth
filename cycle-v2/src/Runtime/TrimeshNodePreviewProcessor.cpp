@@ -74,7 +74,7 @@ public:
                         context.configuration->value)
                 : nullptr;
         Mesh* mesh = configuration != nullptr
-                ? configuration->mesh.get()
+                ? const_cast<Mesh*>(configuration->mesh.get())
                 : &fallbackTopology.mesh();
         const MorphPosition morph = configuration != nullptr
                 ? configuration->morph

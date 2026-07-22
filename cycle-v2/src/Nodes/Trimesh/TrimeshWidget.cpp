@@ -247,8 +247,8 @@ void TrimeshWidget::setMeshEditedCallback(
     bridge.setMeshEditedCallback(std::move(callback));
 }
 
-var TrimeshWidget::currentMeshJSON() {
-    return bridge.getModel().currentMeshJSON();
+Mesh& TrimeshWidget::currentMesh() {
+    return bridge.getModel().currentMesh();
 }
 
 bool TrimeshWidget::setVertexParameter(

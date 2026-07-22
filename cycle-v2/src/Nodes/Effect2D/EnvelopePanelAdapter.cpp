@@ -11,6 +11,10 @@ namespace CycleV2 {
 
 EnvelopePanelAdapter::EnvelopePanelAdapter() = default;
 
+EnvelopePanelAdapter::~EnvelopePanelAdapter() {
+    syncedMesh.destroy();
+}
+
 bool EnvelopePanelAdapter::needsNodeSync(const Node& node) const {
     if (node.kind != NodeKind::Envelope) {
         return false;
@@ -31,13 +35,14 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     syncedModelRevision = node.model->revision();
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
-    syncedMeshState = serializedMeshState();
+    syncedMesh.deepCopy(&mesh());
+    hasSyncedMesh = true;
     return true;
 }
 
 void EnvelopePanelAdapter::initialiseDefaultMesh() {
     if (mesh().getNumVerts() == 0) {
-        EnvelopeMeshState::apply(EnvelopeMeshState::defaultSnapshot(), mesh());
+        EnvelopeMeshState::initialiseDefault(mesh());
     }
 }
 
@@ -56,12 +61,8 @@ NodeModelStatePtr EnvelopePanelAdapter::modelPublication(
     if (model.selectedCubeId().has_value()) {
         editor->setProperty("selectedCubeId", (int64) *model.selectedCubeId());
     }
-    return std::make_shared<const CurveNodeModelState>(
-            "envelope",
-            EnvelopeNodeModel::currentVersion,
-            publicationRevision,
-            model.writeJSON(),
-            var(editor.release()));
+    return CurveNodeModelState::copyOf(
+            model, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
@@ -96,11 +97,11 @@ std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
 }
 
 bool EnvelopePanelAdapter::registerMeshEdit() {
-    const String nextState = serializedMeshState();
-    if (nextState == syncedMeshState) {
+    if (hasSyncedMesh && mesh().equals(syncedMesh)) {
         return false;
     }
-    syncedMeshState = nextState;
+    syncedMesh.deepCopy(&mesh());
+    hasSyncedMesh = true;
     return true;
 }
 

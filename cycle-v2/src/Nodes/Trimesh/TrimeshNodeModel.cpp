@@ -144,8 +144,8 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
 
     const auto typedModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
     if (typedModel != nullptr
-            && typedModel->revision() != appliedModelRevision
-            && mesh().readJSON(typedModel->meshJSON())) {
+            && typedModel->revision() != appliedModelRevision) {
+        mesh().deepCopy(&typedModel->mesh());
         appliedModelRevision = typedModel->revision();
         bumpMeshContentRevision();
     }
@@ -318,13 +318,6 @@ int TrimeshNodeModel::getResolvedSelectedVertexIndex() {
 
 void TrimeshNodeModel::markMeshEdited() {
     bumpMeshContentRevision();
-}
-
-var TrimeshNodeModel::currentMeshJSON() {
-    if (ownedMesh == nullptr) {
-        return {};
-    }
-    return ownedMesh->writeJSON();
 }
 
 Mesh& TrimeshNodeModel::mesh() {

@@ -905,7 +905,7 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
 File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")
-            .getChildFile("graph-snapshot.xml");
+            .getChildFile("graph-snapshot.cyclegraph");
 }
 
 bool NodeCanvas::saveGraphToFile(const File& file) {

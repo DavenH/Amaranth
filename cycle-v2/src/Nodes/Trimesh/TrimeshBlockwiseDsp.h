@@ -12,7 +12,7 @@ namespace CycleV2 {
 struct TrimeshConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
 
-    std::shared_ptr<Mesh> mesh;
+    std::shared_ptr<const Mesh> mesh;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
 };
