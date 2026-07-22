@@ -48,6 +48,14 @@ public:
 
         const AudioVoiceContext& voice = processVoice(context);
         PreviewControlContext current = previewContextForVoice(voice);
+        if (configuration->mode == ModulationSourceMode::VoiceTime) {
+            values.ramp(
+                    jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),
+                    voice.controls.normalizedVoiceTimeIncrement);
+            values.clip(0.f, 1.f);
+            publishSingleOutput(context, std::move(output));
+            return;
+        }
         const bool timedController = configuration->mode == ModulationSourceMode::ModWheel
                 || configuration->mode == ModulationSourceMode::MidiController
                 || configuration->mode == ModulationSourceMode::ChannelPressure;
@@ -120,26 +128,48 @@ public:
 }
 
 ModulationSourceMode ModulationSource::modeFromId(const String& id) {
-    if (id == "voiceTime")         return ModulationSourceMode::VoiceTime;
-    if (id == "velocity")          return ModulationSourceMode::Velocity;
-    if (id == "inverseVelocity")   return ModulationSourceMode::InverseVelocity;
-    if (id == "keyScale")          return ModulationSourceMode::KeyScale;
-    if (id == "channelPressure")   return ModulationSourceMode::ChannelPressure;
-    if (id == "midiCC")            return ModulationSourceMode::MidiController;
-    if (id == "constant")          return ModulationSourceMode::Constant;
+    if (id == "voiceTime") {
+        return ModulationSourceMode::VoiceTime;
+    }
+    if (id == "velocity") {
+        return ModulationSourceMode::Velocity;
+    }
+    if (id == "inverseVelocity") {
+        return ModulationSourceMode::InverseVelocity;
+    }
+    if (id == "keyScale") {
+        return ModulationSourceMode::KeyScale;
+    }
+    if (id == "channelPressure") {
+        return ModulationSourceMode::ChannelPressure;
+    }
+    if (id == "midiCC") {
+        return ModulationSourceMode::MidiController;
+    }
+    if (id == "constant") {
+        return ModulationSourceMode::Constant;
+    }
     return ModulationSourceMode::ModWheel;
 }
 
 String ModulationSource::idForMode(ModulationSourceMode mode) {
     switch (mode) {
-        case ModulationSourceMode::VoiceTime:        return "voiceTime";
-        case ModulationSourceMode::Velocity:         return "velocity";
-        case ModulationSourceMode::InverseVelocity:  return "inverseVelocity";
-        case ModulationSourceMode::KeyScale:         return "keyScale";
-        case ModulationSourceMode::ModWheel:         return "modWheel";
-        case ModulationSourceMode::ChannelPressure:  return "channelPressure";
-        case ModulationSourceMode::MidiController:   return "midiCC";
-        case ModulationSourceMode::Constant:         return "constant";
+        case ModulationSourceMode::VoiceTime:
+            return "voiceTime";
+        case ModulationSourceMode::Velocity:
+            return "velocity";
+        case ModulationSourceMode::InverseVelocity:
+            return "inverseVelocity";
+        case ModulationSourceMode::KeyScale:
+            return "keyScale";
+        case ModulationSourceMode::ModWheel:
+            return "modWheel";
+        case ModulationSourceMode::ChannelPressure:
+            return "channelPressure";
+        case ModulationSourceMode::MidiController:
+            return "midiCC";
+        case ModulationSourceMode::Constant:
+            return "constant";
     }
     return "modWheel";
 }

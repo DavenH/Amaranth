@@ -1,0 +1,21 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "modulation", "x": 360, "y": 180 },
+    { "command": "setNodeParameter", "nodeId": "mod", "parameterId": "source", "label": "Source", "value": "midiCC" },
+    { "command": "setNodeParameter", "nodeId": "mod", "parameterId": "controller", "label": "Controller", "value": "74" },
+    { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "source", "equals": "midiCC" },
+    { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "controller", "equals": "74" },
+    { "command": "connectPorts", "sourceNodeId": "mod", "sourcePortId": "value", "destNodeId": "env", "destPortId": "red" },
+    { "command": "connectPorts", "sourceNodeId": "mod", "sourcePortId": "value", "destNodeId": "waveMesh", "destPortId": "blue" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "openNodeEditor", "nodeId": "mod", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.modulationSource.source", "equals": "midiCC" },
+    { "command": "assertState", "path": "expandedNodeControls.modulationSource.controller", "equals": 74 },
+    { "command": "saveGraph", "path": "/private/tmp/cycle-v2-modulation-source.cyclegraph" },
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-modulation-source.cyclegraph" },
+    { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "source", "equals": "midiCC" },
+    { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "controller", "equals": "74" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true }
+  ],
+  "quit": true
+}

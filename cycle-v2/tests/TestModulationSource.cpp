@@ -2,8 +2,15 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Nodes/Control/ModulationSource.h"
+#include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
 #include "../src/Runtime/AudioProcessContextUtils.h"
+#include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/MidiControlState.h"
+#include "../src/UI/NodeEditorHost.h"
+#include "../src/UI/NodeViewModule.h"
 
 using namespace CycleV2;
 
@@ -82,6 +89,26 @@ TEST_CASE("Mod wheel and MIDI CC 1 share controller state",
             == ModulationSource::evaluate(*configuration("midiCC", 1), context));
 }
 
+TEST_CASE("MIDI endpoints normalize for every supported control kind",
+        "[cycle-v2][modulation][control]") {
+    MidiControlState state;
+    state.prepare(8);
+    state.beginBlock();
+    state.ingest(MidiMessage::controllerEvent(1, 0, 0), 0);
+    state.ingest(MidiMessage::controllerEvent(1, 127, 127), 1);
+    state.ingest(MidiMessage::channelPressureChange(1, 127), 2);
+    AudioVoiceContext voice;
+    state.prepareVoice(voice);
+    state.populateVoice(voice, 1);
+
+    REQUIRE(voice.controlEvents[0].controller == 0);
+    REQUIRE(voice.controlEvents[0].value == 0.f);
+    REQUIRE(voice.controlEvents[1].controller == 127);
+    REQUIRE(voice.controlEvents[1].value == 1.f);
+    REQUIRE(voice.controlEvents[2].kind == ControlEventKind::ChannelPressure);
+    REQUIRE(voice.controlEvents[2].value == 1.f);
+}
+
 TEST_CASE("Timed controller changes produce sample-accurate held spans",
         "[cycle-v2][modulation][audio]") {
     AudioVoiceContext voice;
@@ -95,6 +122,16 @@ TEST_CASE("Timed controller changes produce sample-accurate held spans",
     REQUIRE(output == std::vector<float> {
             0.1f, 0.1f, 0.5f, 0.5f, 0.5f, 0.9f, 0.9f, 0.9f
     });
+}
+
+TEST_CASE("Voice time advances at audio rate and clamps at its normalized endpoint",
+        "[cycle-v2][modulation][audio]") {
+    AudioVoiceContext voice;
+    voice.controls.normalizedVoiceTime = 0.25f;
+    voice.controls.normalizedVoiceTimeIncrement = 0.2f;
+
+    REQUIRE(renderAudio(*configuration("voiceTime"), voice, 6)
+            == std::vector<float> { 0.25f, 0.45f, 0.65f, 0.85f, 1.f, 1.f });
 }
 
 TEST_CASE("Unrelated controller events do not change a selected source",
@@ -178,6 +215,26 @@ TEST_CASE("MIDI control state preserves block start values and ordered events",
     REQUIRE(otherChannel.controls.channelPressure == 0.f);
 }
 
+TEST_CASE("MIDI control state bounds event storage and reports overflow",
+        "[cycle-v2][modulation][midi]") {
+    MidiControlState state;
+    state.prepare(1);
+    state.beginBlock();
+    state.ingest(MidiMessage::controllerEvent(1, 1, 32), 1);
+    state.ingest(MidiMessage::controllerEvent(1, 1, 96), 2);
+
+    AudioVoiceContext voice;
+    state.prepareVoice(voice);
+    state.populateVoice(voice, 1);
+    REQUIRE(voice.controlEvents.size() == 1);
+    REQUIRE(state.droppedEventCount() == 1);
+
+    state.beginBlock();
+    REQUIRE(state.droppedEventCount() == 0);
+    state.populateVoice(voice, 1);
+    REQUIRE(voice.controls.controllers[1] == Catch::Approx(96.f / 127.f));
+}
+
 TEST_CASE("Voice-time preview traversal is explicit and stateless",
         "[cycle-v2][modulation][preview]") {
     auto processor = createModulationSourcePreviewProcessor();
@@ -199,4 +256,114 @@ TEST_CASE("Voice-time preview traversal is explicit and stateless",
     REQUIRE(traversal.primary == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
     REQUIRE(traversal.gridColumns == 5);
     REQUIRE(traversal.gridRows == 1);
+}
+
+TEST_CASE("Modulation nodes compile, fan out, and round-trip as graph routes",
+        "[cycle-v2][modulation][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "cc", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.replaceNodeParameters("cc", {
+            { "source", "Source", "midiCC" },
+            { "controller", "Controller", "74" },
+            { "constant", "Constant", "0.5" }
+    });
+    graph.addEdge({ "cc", "value", "env", "red", PortDomain::ControlSignal, false });
+    graph.addEdge({ "cc", "value", "mesh", "blue", PortDomain::ControlSignal, false });
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const GraphSerializer serializer;
+    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(graph));
+    REQUIRE(restored.getEdges().size() == 2);
+    const Node* source = restored.findNode("cc");
+    REQUIRE(source != nullptr);
+    REQUIRE(source->kind == NodeKind::ModulationSource);
+    REQUIRE(parameterValueForNode(*source, "source") == "midiCC");
+    REQUIRE(parameterValueForNode(*source, "controller") == "74");
+}
+
+TEST_CASE("Ordinary graph editing routes modulation to every morph input and replaces conflicts",
+        "[cycle-v2][modulation][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "second", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphEditor editor;
+
+    for (const String portId : { String("red"), String("blue") }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "first", "value", false },
+                { "env", portId, true }).succeeded());
+    }
+    for (const String portId : { String("yellow"), String("red"), String("blue") }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "first", "value", false },
+                { "mesh", portId, true }).succeeded());
+    }
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+    REQUIRE(graph.getEdges().size() == 5);
+
+    REQUIRE(editor.connect(
+            graph,
+            { "second", "value", false },
+            { "env", "red", true }).succeeded());
+    REQUIRE(graph.getEdges().size() == 5);
+    const auto incoming = std::count_if(
+            graph.getEdges().begin(),
+            graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.destNodeId == "env" && edge.destPortId == "red";
+            });
+    REQUIRE(incoming == 1);
+}
+
+TEST_CASE("Graph execution delivers per-voice modulation to connected destinations",
+        "[cycle-v2][modulation][graph][audio]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "velocity", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.replaceNodeParameters("velocity", {
+            { "source", "Source", "velocity" },
+            { "controller", "Controller", "1" },
+            { "constant", "Constant", "0.5" }
+    });
+    graph.addEdge({
+            "velocity", "value", "env", "red", PortDomain::ControlSignal, false
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 16;
+    executor.prepareExecution(compiled.plan, spec, 3);
+    AudioVoiceContext voice;
+    voice.voiceIndex = 3;
+    voice.controls.velocity = 0.35f;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 3 });
+
+    const auto result = executor.process(graph, compiled.plan, 16, {}, voice);
+    const auto found = std::find_if(
+            result.nodes.begin(),
+            result.nodes.end(),
+            [](const NodeAudioResult& node) { return node.nodeId == "velocity"; });
+    REQUIRE(found != result.nodes.end());
+    REQUIRE(found->output.block.samples == std::vector<float>(16, 0.35f));
+}
+
+TEST_CASE("Modulation node exposes its hosted authoring editor",
+        "[cycle-v2][modulation][ui]") {
+    REQUIRE(NodeEditorFactoryRegistry::instance().find(NodeKind::ModulationSource) != nullptr);
+    const auto& capabilities = NodeViewModuleRegistry::instance()
+            .moduleFor(NodeKind::ModulationSource)
+            .capabilities();
+    REQUIRE(capabilities.previewable);
+    REQUIRE(capabilities.hostedEditor);
 }

@@ -73,7 +73,10 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     preview.previewable = true;
     add(NodeKind::WaveSource, preview);
     add(NodeKind::ImageSource, preview);
-    add(NodeKind::ModulationSource, preview);
+    NodeViewCapabilities modulation = preview;
+    modulation.hostedEditor = true;
+    modulation.expandedEditorSize = Point<float>(420.f, 180.f);
+    add(NodeKind::ModulationSource, modulation);
 
     NodeViewCapabilities voice = preview;
     voice.expandedEditorBlocksCanvas = false;

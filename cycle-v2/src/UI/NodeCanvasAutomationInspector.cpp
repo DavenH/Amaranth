@@ -171,6 +171,8 @@ public:
             return "Voice Context";
         case PreviewModuleRole::SignalSpy:
             return "Signal Spy";
+        case PreviewModuleRole::ModulationSource:
+            return "Modulation Source";
         case PreviewModuleRole::Generic:
             return "Generic";
         case PreviewModuleRole::None:

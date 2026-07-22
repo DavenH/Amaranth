@@ -14,6 +14,7 @@ void MidiControlState::prepareVoice(AudioVoiceContext& voice) const {
 }
 
 void MidiControlState::beginBlock() {
+    droppedEvents = 0;
     for (auto& channel : channels) {
         channel.blockStartPressure = channel.pressure;
         channel.blockStartControllers = channel.controllers;
@@ -34,6 +35,8 @@ void MidiControlState::ingest(const MidiMessage& message, size_t sampleOffset) {
                     controller,
                     value
             });
+        } else {
+            ++droppedEvents;
         }
     } else if (message.isChannelPressure()) {
         const float value = (float) message.getChannelPressureValue() / 127.f;
@@ -45,6 +48,8 @@ void MidiControlState::ingest(const MidiMessage& message, size_t sampleOffset) {
                     0,
                     value
             });
+        } else {
+            ++droppedEvents;
         }
     }
 }
@@ -62,6 +67,7 @@ void MidiControlState::populateVoice(AudioVoiceContext& voice, int midiChannel) 
 }
 
 void MidiControlState::reset() {
+    droppedEvents = 0;
     for (auto& channel : channels) {
         channel.pressure = 0.f;
         channel.blockStartPressure = 0.f;

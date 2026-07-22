@@ -27,6 +27,32 @@ float portScale(float zoom) {
     return zoom / kCableReferenceZoom;
 }
 
+String modulationSourceLabel(const Node& node) {
+    const String source = parameterValueForNode(node, "source", "modWheel");
+    if (source == "voiceTime") {
+        return "Voice Time";
+    }
+    if (source == "velocity") {
+        return "Velocity";
+    }
+    if (source == "inverseVelocity") {
+        return "1-Velocity";
+    }
+    if (source == "keyScale") {
+        return "Key Scale";
+    }
+    if (source == "channelPressure") {
+        return "Pressure";
+    }
+    if (source == "midiCC") {
+        return "CC " + parameterValueForNode(node, "controller", "1");
+    }
+    if (source == "constant") {
+        return parameterValueForNode(node, "constant", "0.5");
+    }
+    return "Mod Wheel";
+}
+
 Colour displayColour(const Node& node, const Port& port) {
     if (port.input && (node.kind == NodeKind::Envelope || node.kind == NodeKind::TrilinearMesh)) {
         if (port.id == "yellow") {
@@ -433,6 +459,14 @@ void NodeCanvasPresentation::paintNode(
     graphics.setFont(FontOptions(15.f * zoom, Font::bold));
     graphics.setColour(kText);
     graphics.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
+    if (node.kind == NodeKind::ModulationSource) {
+        graphics.setFont(FontOptions(11.f * zoom));
+        graphics.setColour(kMutedText);
+        graphics.drawText(
+                modulationSourceLabel(node),
+                header.reduced(13.f * zoom, 4.f * zoom),
+                Justification::centredRight);
+    }
 
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {

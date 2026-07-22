@@ -128,6 +128,7 @@ struct AudioVoiceControls {
     int highestNote { 127 };
     float velocity { 1.f };
     float normalizedVoiceTime {};
+    float normalizedVoiceTimeIncrement {};
     float channelPressure {};
     std::array<float, 128> controllers {};
 };

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <JuceHeader.h>
-
 #include <array>
+
+#include <JuceHeader.h>
 
 #include "AudioProcessTypes.h"
 
@@ -18,6 +18,7 @@ public:
     void ingest(const MidiMessage& message, size_t sampleOffset);
     void populateVoice(AudioVoiceContext& voice, int midiChannel) const;
     void reset();
+    size_t droppedEventCount() const { return droppedEvents; }
 
 private:
     struct ChannelState {
@@ -32,6 +33,7 @@ private:
 
     std::array<ChannelState, channelCount> channels;
     size_t eventCapacity {};
+    size_t droppedEvents {};
 };
 
 }

@@ -237,13 +237,13 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
         "[cycle-v2][runtime][envelope][modulation]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "redControl", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
     graph.addEdge({
-            "redControl", "out", "env", "red", PortDomain::ControlSignal, false
+            "redControl", "value", "env", "red", PortDomain::ControlSignal, false
     });
     graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
     graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });

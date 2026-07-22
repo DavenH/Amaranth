@@ -1,0 +1,70 @@
+# UI Bug Notes
+
+## Open: Cycle v2 full suite emits JUCE Component assertions
+
+Context:
+
+- A full `CycleV2_tests` run during Modulation source parity work on 2026-07-22
+  repeatedly emitted `JUCE Assertion failure in juce_Component.cpp:1607` while
+  otherwise completing 347 test cases.
+- The focused Modulation suite and standalone automation fixture do not emit
+  the assertion, so it is incidental to the control-source implementation.
+
+Current status: open; isolate the broad UI test that adds an already-parented
+component and capture its exact call site.
+
+## Open: Cycle v2 automation screenshots append to existing PNG files
+
+Context:
+
+- Reusing an existing `path` with the Cycle v2 `screenshot` automation command appends another PNG payload instead of replacing the prior image.
+- Image viewers consequently decode the oldest frame, which can make visual-regression review appear stale even though the report says the screenshot succeeded.
+- Reproduced on 2026-07-22 with `scripts/fixtures/cycle-v2-agent-screenshot.json` and `/private/tmp/cycle-v2-agent-canvas.png`; moving the old output away before capture produced the current frame.
+
+Current status: open; automation screenshot output should truncate or replace its target atomically.
+
+## Open: Trilinear mesh 2D rasterization changes when primary view axis changes
+
+Context:
+
+- In the Cycle v2 Trilinear Mesh popup, changing the primary view axis should only change which morph dimension is swept by the 3D grid.
+- At a fixed morph position, the 2D waveshape panel should remain unchanged when switching between yellow/time, red, and blue primary axes.
+- Yellow/time and red behave plausibly after the Cycle v2 bridge started propagating node-local primary axis state into the 3D panel/interactor.
+- Blue is still wrong: the 2D waveshape changes, and the rails/color points appear offset relative to the curve. The visual effect looks similar to control points being associated with a neighboring intercept, or the yellow dimension not being applied consistently except for color points.
+- The same class of behavior was checked in Cycle v1, which suggests this is likely in shared trilinear rasterizer/slicer logic rather than only the Cycle v2 popup bridge.
+
+Current status: open.
+
+## Open: Cycle v2 full-suite architecture assertions
+
+Context:
+
+- A full `CycleV2_tests` run during the Reverb spectrogram work on 2026-07-18
+  failed `TestGraphPreviewExecutor.cpp:441`: `aliasedInputCount` was 0 rather
+  than 8 in `Graph preview address lookup scales with compiled inputs`.
+- The same run failed `TestNodeCanvasArchitecture.cpp:334`: the rich mesh view
+  width was 972 rather than the expected 1080.
+- The focused Reverb preview suite passes. Neither failure exercises the
+  spectral mapping or Reverb rendering path modified in that work.
+
+Current status: open; failures reproduced in the existing full test binary.
+
+Likely area:
+
+- `lib/src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h`
+- `lib/src/Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.*`
+- primary-view-axis handling across `RasterizationRequest::primaryViewDimension`, `RasterizationRequest::dims`, and `MorphPosition`
+
+Expected invariant:
+
+- For the same mesh and morph position, re-rasterizing the 2D waveshape with a different primary view axis should produce the same 2D waveform and aligned intercept/color-point overlays.
+
+## Open: default Cycle v2 launch asserts while creating Effect2D widgets
+
+Context:
+
+- The focused EQ editor automation run on 2026-07-17 completed node creation and editor inspection, then logged `JUCE Assertion failure in Effect2DWidget.cpp:8`.
+- The assertion is incidental to the EQ/Reverb/Delay popup work; the EQ editor state and response preview were produced successfully.
+- Repro artifacts: `/private/tmp/cycle-v2-eq-editor-report.json` and `/private/tmp/cycle-v2-eq-editor-logs.txt`.
+
+Current status: open.
