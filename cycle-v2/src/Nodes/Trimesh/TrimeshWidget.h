@@ -81,7 +81,7 @@ public:
     int resolvedSelectedVertexIndexForNode(const Node& node);
     void setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
-    void setMeshEditedCallback(std::function<void()> callback);
+    void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
     juce::String currentMeshState();
     bool setVertexParameter(int vertexIndex, const juce::String& parameterId, float value);
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);

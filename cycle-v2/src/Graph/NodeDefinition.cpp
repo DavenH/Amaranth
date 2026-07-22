@@ -2,6 +2,8 @@
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 
+#include <Audio/CycleDsp/IrModel.h>
+
 #include <algorithm>
 #include <climits>
 #include <cmath>
@@ -82,6 +84,18 @@ ParameterDefinition number(
             { (double) minimum, (double) maximum, {} },
             impacts
     };
+}
+
+ParameterDefinition impulseLength() {
+    auto result = number(
+            "size", "Size", 0.5f, 0.f, 1.f,
+            dsp | preview | presentation);
+    result.normalizer = [](const String& value) {
+        const int length = CycleDsp::irImpulseLength(value.getDoubleValue());
+        return String(CycleDsp::irImpulseLengthValue(length), 9);
+    };
+    result.defaultValue = result.normalized(result.defaultValue);
+    return result;
 }
 
 ParameterDefinition choice(
@@ -229,6 +243,9 @@ bool ParameterDefinition::accepts(const String& value) const {
 }
 
 String ParameterDefinition::normalized(const String& value) const {
+    if (normalizer) {
+        return normalizer(value);
+    }
     if (type == ParameterType::Boolean) {
         const String normalizedValue = value.trim().toLowerCase();
         return normalizedValue == "1" || normalizedValue == "true"
@@ -367,7 +384,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("size", "Size", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            impulseLength(),
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation),
                             snapshot(CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",

@@ -1,6 +1,6 @@
 #include "GraphPreviewExecutor.h"
 
-#include <unordered_map>
+#include <functional>
 
 namespace CycleV2 {
 
@@ -21,17 +21,13 @@ struct PreviewResultView {
 
 std::vector<const NodeAudioResult*> indexAudioResults(
         const GraphExecutionPlan& plan,
-        const GraphAudioResult* audioResult,
+        const std::vector<const NodeAudioResult*>& audioNodes,
         GraphPreviewResult& result) {
     std::vector<const NodeAudioResult*> index(plan.steps.size());
-    if (audioResult == nullptr) {
-        return index;
-    }
-
     size_t stepIndex = 0;
-    for (const auto& node : audioResult->nodes) {
+    for (const NodeAudioResult* node : audioNodes) {
         while (stepIndex < plan.steps.size()
-                && plan.steps[stepIndex].nodeId != node.nodeId) {
+                && plan.steps[stepIndex].nodeId != node->nodeId) {
             ++stepIndex;
             ++result.indexedNodeCount;
         }
@@ -39,7 +35,7 @@ std::vector<const NodeAudioResult*> indexAudioResults(
             break;
         }
 
-        index[stepIndex] = &node;
+        index[stepIndex] = node;
         ++stepIndex;
         ++result.indexedNodeCount;
     }
@@ -129,17 +125,65 @@ PreviewResultView viewOf(const NodePreviewResult& preview) {
 
 GraphPreviewResult renderPreview(
         const GraphExecutionPlan& plan,
-        const GraphAudioResult* audioResult,
-        size_t pointCount) {
-    GraphPreviewResult result;
+        const std::vector<const NodeAudioResult*>& audioNodes,
+        size_t pointCount,
+        GraphPreviewResult result = {},
+        const std::vector<uint8_t>* dirtyNodes = nullptr) {
+    if (result.previewResultIndexByStep.size() != plan.steps.size()) {
+        result.nodes.clear();
+        result.previewResultIndexByStep.assign(plan.steps.size(), -1);
+    }
+    result.indexedNodeCount = 0;
+    result.addressLookupCount = 0;
+    result.aliasedInputCount = 0;
+    result.reusedCapturedTraversalCount = 0;
+    result.renderedNodeCount = 0;
     result.nodes.reserve(plan.steps.size());
     std::vector<PreviewResultView> workspace(plan.steps.size());
-    const auto audioIndex = indexAudioResults(plan, audioResult, result);
+    const auto audioIndex = indexAudioResults(plan, audioNodes, result);
     NodePreviewProcessorFactory factory;
 
+    std::vector<size_t> stepIndices;
+    stepIndices.reserve(plan.steps.size());
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        const int cachedIndex = result.previewResultIndexByStep[stepIndex];
+        if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
+            workspace[stepIndex] = viewOf(result.nodes[static_cast<size_t>(cachedIndex)]);
+        }
+        if (dirtyNodes == nullptr
+                || (stepIndex < dirtyNodes->size() && (*dirtyNodes)[stepIndex] != 0)) {
+            stepIndices.push_back(stepIndex);
+        }
+    }
+
+    std::function<PreviewResultView(size_t)> resolveInput = [&](size_t stepIndex) {
         const auto& step = plan.steps[stepIndex];
-        const auto inputPreview = inputPreviewForStep(step, workspace, result);
+        for (const auto& input : step.inputs) {
+            ++result.addressLookupCount;
+            if (input.sourceStepIndex < 0
+                    || static_cast<size_t>(input.sourceStepIndex) >= workspace.size()) {
+                continue;
+            }
+            const size_t sourceIndex = static_cast<size_t>(input.sourceStepIndex);
+            if (workspace[sourceIndex].hasValues()) {
+                return workspace[sourceIndex];
+            }
+            if (!plan.steps[sourceIndex].previewable) {
+                workspace[sourceIndex] = resolveInput(sourceIndex);
+                if (workspace[sourceIndex].hasValues()) {
+                    return workspace[sourceIndex];
+                }
+            }
+        }
+        return PreviewResultView {};
+    };
+
+    for (const size_t stepIndex : stepIndices) {
+        const auto& step = plan.steps[stepIndex];
+        const auto inputPreview = dirtyNodes == nullptr
+                ? inputPreviewForStep(step, workspace, result)
+                : resolveInput(stepIndex);
+        const int cachedIndex = result.previewResultIndexByStep[stepIndex];
 
         if (!step.previewable) {
             workspace[stepIndex] = inputPreview;
@@ -181,11 +225,12 @@ GraphPreviewResult renderPreview(
         }
         addAudioTraversalGridToContext(context, step, audioIndex, result);
         processor->render(context);
+        ++result.renderedNodeCount;
         if (context.reusedCapturedTraversal) {
             ++result.reusedCapturedTraversalCount;
         }
 
-        result.nodes.push_back({
+        NodePreviewResult preview {
                 step.nodeId,
                 step.previewRole,
                 std::move(context.primary),
@@ -193,34 +238,45 @@ GraphPreviewResult renderPreview(
                 context.gridColumns,
                 context.gridRows,
                 context.domain
-        });
-        workspace[stepIndex] = viewOf(result.nodes.back());
+        };
+        if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
+            result.nodes[static_cast<size_t>(cachedIndex)] = std::move(preview);
+            workspace[stepIndex] = viewOf(result.nodes[static_cast<size_t>(cachedIndex)]);
+        } else {
+            result.nodes.push_back(std::move(preview));
+            result.previewResultIndexByStep[stepIndex] = static_cast<int>(result.nodes.size() - 1);
+            workspace[stepIndex] = viewOf(result.nodes.back());
+        }
     }
 
     return result;
 }
 
-struct StringHash {
-    size_t operator()(const String& value) const {
-        return (size_t) value.hashCode64();
-    }
-};
-
 void appendProbePreviews(
         GraphPreviewResult& result,
-        const GraphAudioResult& audioResult,
+        const GraphExecutionPlan& plan,
+        const std::vector<const NodeAudioResult*>& audioNodes,
         const std::vector<SignalProbe>& probes) {
-    std::unordered_map<String, const SignalPayload*, StringHash> outputs;
-    for (const auto& node : audioResult.nodes) {
-        for (const auto& output : node.outputs) {
-            outputs.emplace(node.nodeId + "\n" + output.first, &output.second);
-        }
-    }
+    const auto audioIndex = indexAudioResults(plan, audioNodes, result);
 
+    result.probes.clear();
     result.probes.reserve(probes.size());
-    for (const auto& probe : probes) {
-        const auto found = outputs.find(probe.sourceNodeId + "\n" + probe.sourcePortId);
-        const SignalPayload* payload = found != outputs.end() ? found->second : nullptr;
+    for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
+        const auto& probe = probes[probeIndex];
+        const SignalPayload* payload {};
+        if (probeIndex < plan.signalProbes.size()) {
+            const auto& address = plan.signalProbes[probeIndex];
+            if (address.probeId == probe.id
+                    && address.sourceStepIndex >= 0
+                    && static_cast<size_t>(address.sourceStepIndex) < audioIndex.size()) {
+                const NodeAudioResult* node = audioIndex[static_cast<size_t>(address.sourceStepIndex)];
+                if (node != nullptr
+                        && address.sourceOutputIndex >= 0
+                        && static_cast<size_t>(address.sourceOutputIndex) < node->outputs.size()) {
+                    payload = &node->outputs[static_cast<size_t>(address.sourceOutputIndex)].second;
+                }
+            }
+        }
         const bool connected = payload != nullptr && payload->traversalGrid.isValid();
         GraphPreviewResult::SignalProbePreview preview;
         preview.probeId = probe.id;
@@ -239,14 +295,19 @@ void appendProbePreviews(
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {
-    return renderPreview(plan, nullptr, pointCount);
+    return renderPreview(plan, {}, pointCount);
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(
         const GraphExecutionPlan& plan,
         const GraphAudioResult& audioResult,
         size_t pointCount) const {
-    return renderPreview(plan, &audioResult, pointCount);
+    std::vector<const NodeAudioResult*> nodes;
+    nodes.reserve(audioResult.nodes.size());
+    for (const auto& node : audioResult.nodes) {
+        nodes.push_back(&node);
+    }
+    return renderPreview(plan, nodes, pointCount);
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(
@@ -254,9 +315,52 @@ GraphPreviewResult GraphPreviewExecutor::render(
         const GraphAudioResult& audioResult,
         const std::vector<SignalProbe>& probes,
         size_t pointCount) const {
-    GraphPreviewResult result = renderPreview(plan, &audioResult, pointCount);
-    appendProbePreviews(result, audioResult, probes);
+    std::vector<const NodeAudioResult*> nodes;
+    nodes.reserve(audioResult.nodes.size());
+    for (const auto& node : audioResult.nodes) {
+        nodes.push_back(&node);
+    }
+    GraphPreviewResult result = renderPreview(plan, nodes, pointCount);
+    appendProbePreviews(result, plan, nodes, probes);
     return result;
+}
+
+GraphPreviewResult GraphPreviewExecutor::render(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResultView& audioResult,
+        const std::vector<SignalProbe>& probes,
+        size_t pointCount) const {
+    GraphPreviewResult result = renderPreview(plan, audioResult.nodes, pointCount);
+    appendProbePreviews(result, plan, audioResult.nodes, probes);
+    return result;
+}
+
+void GraphPreviewExecutor::renderIncremental(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResultView& audioResult,
+        const std::vector<SignalProbe>& probes,
+        const std::vector<String>& dirtyNodeIds,
+        size_t pointCount,
+        GraphPreviewResult& result) const {
+    std::vector<uint8_t> dirtyMask(plan.steps.size());
+    for (const auto& nodeId : dirtyNodeIds) {
+        const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
+        if (found != plan.dependencyIndex.nodeIndexById.end()) {
+            dirtyMask[static_cast<size_t>(found->second)] = 1;
+        }
+    }
+    renderIncremental(plan, audioResult, probes, dirtyMask, pointCount, result);
+}
+
+void GraphPreviewExecutor::renderIncremental(
+        const GraphExecutionPlan& plan,
+        const GraphAudioResultView& audioResult,
+        const std::vector<SignalProbe>& probes,
+        const std::vector<uint8_t>& dirtyNodes,
+        size_t pointCount,
+        GraphPreviewResult& result) const {
+    result = renderPreview(plan, audioResult.nodes, pointCount, std::move(result), &dirtyNodes);
+    appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
 }

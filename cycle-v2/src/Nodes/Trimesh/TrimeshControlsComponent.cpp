@@ -5,32 +5,30 @@
 
 namespace CycleV2 {
 
-class TrimeshControlsComponent::ControlSlider : public Slider {
+class TrimeshControlsComponent::ControlTarget : public Component {
 public:
-    ControlSlider(
-            TrimeshControlsComponent& owner,
-            TrimeshExpandedHitRegion region) :
-            Slider(region.parameterId)
-        ,   owner(owner)
-        ,   region(std::move(region)) {
-        setRange(0.0, 1.0, 0.0);
-        setSliderStyle(Slider::LinearHorizontal);
-        setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-        setScrollWheelEnabled(false);
+    ControlTarget(
+            TrimeshControlsComponent& targetOwner,
+            TrimeshExpandedHitRegion targetRegion) :
+            owner   (targetOwner)
+        ,   region  (std::move(targetRegion)) {
         setOpaque(false);
-        setInterceptsMouseClicks(true, true);
-        setMouseCursor(MouseCursor::LeftRightResizeCursor);
+        setMouseCursor(
+                region.kind == TrimeshExpandedHitRegionKind::MorphControl
+                        || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+                ? MouseCursor::LeftRightResizeCursor
+                : MouseCursor::PointingHandCursor);
     }
 
     void paint(Graphics&) override {
     }
 
     void mouseDown(const MouseEvent& event) override {
-        owner.beginControlDrag(region, parentPosition(event.position), getScreenBounds());
+        owner.beginControlDrag(region, ownerPosition(event.position), getScreenBounds());
     }
 
     void mouseDrag(const MouseEvent& event) override {
-        owner.dragControl(parentPosition(event.position));
+        owner.dragControl(ownerPosition(event.position));
     }
 
     void mouseUp(const MouseEvent&) override {
@@ -38,35 +36,10 @@ public:
     }
 
 private:
-    Point<float> parentPosition(Point<float> localPosition) const {
-        return getBounds().toFloat().getTopLeft() + localPosition;
+    Point<float> ownerPosition(Point<float> position) const {
+        return getBounds().toFloat().getTopLeft() + position;
     }
 
-    TrimeshControlsComponent& owner;
-    TrimeshExpandedHitRegion region;
-};
-
-class TrimeshControlsComponent::PrimaryAxisButton : public Button {
-public:
-    PrimaryAxisButton(
-            TrimeshControlsComponent& owner,
-            TrimeshExpandedHitRegion region) :
-            Button(region.axisValue)
-        ,   owner(owner)
-        ,   region(std::move(region)) {
-        setOpaque(false);
-        setMouseCursor(MouseCursor::PointingHandCursor);
-        setTriggeredOnMouseDown(true);
-    }
-
-    void paintButton(Graphics&, bool, bool) override {
-    }
-
-    void clicked() override {
-        owner.beginControlDrag(region, getBounds().toFloat().getCentre(), getScreenBounds());
-    }
-
-private:
     TrimeshControlsComponent& owner;
     TrimeshExpandedHitRegion region;
 };
@@ -186,16 +159,7 @@ void TrimeshControlsComponent::updateHitRegions() {
     controlHitRegions = widget.expandedControlHitRegions(contentBounds);
 
     for (const auto& region : controlHitRegions) {
-        std::unique_ptr<Component> component;
-
-        if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
-                || region.kind == TrimeshExpandedHitRegionKind::LinkToggle
-                || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
-            component = std::make_unique<PrimaryAxisButton>(*this, region);
-        } else {
-            component = std::make_unique<ControlSlider>(*this, region);
-        }
-
+        auto component = std::make_unique<ControlTarget>(*this, region);
         component->setBounds(region.bounds.toNearestInt());
         addAndMakeVisible(component.get());
         controlRegions.push_back(std::move(component));

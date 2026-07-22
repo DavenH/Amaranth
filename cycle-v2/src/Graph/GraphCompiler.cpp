@@ -366,20 +366,20 @@ void compileRouting(GraphExecutionPlan& plan) {
 }
 
 int dependencyNodeIndex(const GraphDependencyIndex& index, const String& nodeId) {
-    for (int i = 0; i < (int) index.nodeIds.size(); ++i) {
-        if (index.nodeIds[(size_t) i] == nodeId) {
-            return i;
-        }
-    }
-
-    return -1;
+    const auto found = index.nodeIndexById.find(nodeId);
+    return found != index.nodeIndexById.end() ? found->second : -1;
 }
 
 void compileDependencyIndex(GraphExecutionPlan& plan) {
     auto& index = plan.dependencyIndex;
     index.nodeIds = plan.nodeOrder;
-    index.dependents.clear();
-    index.dependents.resize(index.nodeIds.size());
+    index.dependents.assign(index.nodeIds.size(), {});
+    index.dependencies.assign(index.nodeIds.size(), {});
+    index.nodeIndexById.clear();
+    index.nodeIndexById.reserve(index.nodeIds.size());
+    for (size_t nodeIndex = 0; nodeIndex < index.nodeIds.size(); ++nodeIndex) {
+        index.nodeIndexById.emplace(index.nodeIds[nodeIndex], static_cast<int>(nodeIndex));
+    }
 
     const auto appendEdges = [&](const std::vector<Edge>& edges) {
         for (const auto& edge : edges) {
@@ -393,12 +393,34 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
             if (std::find(destinations.begin(), destinations.end(), destination)
                     == destinations.end()) {
                 destinations.push_back(destination);
+                index.dependencies[static_cast<size_t>(destination)].push_back(source);
             }
         }
     };
 
     appendEdges(plan.signalEdges);
     appendEdges(plan.attachments);
+}
+
+void compileSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) {
+    plan.signalProbes.clear();
+    plan.signalProbes.reserve(graph.getSignalProbes().size());
+    for (const auto& probe : graph.getSignalProbes()) {
+        CompiledSignalProbe compiled;
+        compiled.probeId = probe.id;
+        const auto source = plan.dependencyIndex.nodeIndexById.find(probe.sourceNodeId);
+        if (source != plan.dependencyIndex.nodeIndexById.end()) {
+            compiled.sourceStepIndex = source->second;
+            const auto& outputs = plan.steps[static_cast<size_t>(source->second)].outputs;
+            const auto output = std::find_if(outputs.begin(), outputs.end(), [&](const auto& candidate) {
+                return candidate.portId == probe.sourcePortId;
+            });
+            if (output != outputs.end()) {
+                compiled.sourceOutputIndex = static_cast<int>(std::distance(outputs.begin(), output));
+            }
+        }
+        plan.signalProbes.push_back(std::move(compiled));
+    }
 }
 
 std::vector<GraphBufferPlan> buildBufferPlan(
@@ -477,6 +499,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 moduleRegistry);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
+        compileSignalProbes(graph, result.plan);
         publishConfigurations(result.plan.steps);
     }
 

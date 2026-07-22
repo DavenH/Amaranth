@@ -350,6 +350,7 @@ void GraphCommandDispatcher::beginCompoundEdit() {
         return;
     }
     compoundBefore = document.toXml();
+    compoundChanges = {};
     compoundActive = true;
     compoundChanged = false;
     compoundDepth = 1;
@@ -364,10 +365,12 @@ void GraphCommandDispatcher::commitCompoundEdit() {
     }
     if (compoundChanged) {
         document.recordBeforeChange(std::move(compoundBefore));
+        document.publishChange(std::move(compoundChanges));
     }
     compoundBefore = {};
     compoundActive = false;
     compoundChanged = false;
+    compoundChanges = {};
     compoundDepth = 0;
 }
 
@@ -378,11 +381,53 @@ void GraphCommandDispatcher::cancelCompoundEdit() {
     compoundBefore = {};
     compoundActive = false;
     compoundChanged = false;
+    compoundChanges = {};
     compoundDepth = 0;
+}
+
+void GraphCommandDispatcher::beginTransientEdit() {
+    if (transientEdit.has_value()) {
+        ++transientEdit->depth;
+        return;
+    }
+    transientEdit = TransientEdit { document.graph() };
+}
+
+void GraphCommandDispatcher::commitTransientEdit() {
+    if (!transientEdit.has_value() || --transientEdit->depth > 0) {
+        return;
+    }
+    if (transientEdit->changed) {
+        document.recordBeforeChange(document.toXml());
+        document.currentGraph = std::move(transientEdit->graph);
+        document.publishChange(std::move(transientEdit->changes));
+    }
+    transientEdit.reset();
+}
+
+void GraphCommandDispatcher::cancelTransientEdit() {
+    transientEdit.reset();
+}
+
+const NodeGraph& GraphCommandDispatcher::editingGraph() const {
+    return transientEdit.has_value() ? transientEdit->graph : document.graph();
+}
+
+const GraphChangeSet& GraphCommandDispatcher::transientChanges() const {
+    static const GraphChangeSet noChanges;
+    return transientEdit.has_value() ? transientEdit->changes : noChanges;
 }
 
 GraphEditResult GraphCommandDispatcher::apply(
         const std::function<GraphEditResult(NodeGraph&)>& command) {
+    if (transientEdit.has_value()) {
+        GraphEditResult result = command(transientEdit->graph);
+        if (result.succeeded() && result.changed) {
+            transientEdit->changed = true;
+            accumulateChange(transientEdit->changes, result.changes);
+        }
+        return result;
+    }
     const juce::String before = compoundActive ? juce::String() : document.toXml();
     GraphEditResult result = command(document.graphForCommand());
     if (!result.succeeded()) {
@@ -394,11 +439,31 @@ GraphEditResult GraphCommandDispatcher::apply(
 
     if (compoundActive) {
         compoundChanged = true;
+        accumulateCompoundChange(result.changes);
     } else {
         document.recordBeforeChange(before);
+        document.publishChange(result.changes);
     }
-    document.publishChange(result.changes);
     return result;
+}
+
+void GraphCommandDispatcher::accumulateCompoundChange(const GraphChangeSet& change) {
+    accumulateChange(compoundChanges, change);
+}
+
+void GraphCommandDispatcher::accumulateChange(
+        GraphChangeSet& destination,
+        const GraphChangeSet& change) {
+    for (const auto& nodeId : change.nodeIds) {
+        if (std::find(destination.nodeIds.begin(), destination.nodeIds.end(), nodeId)
+                == destination.nodeIds.end()) {
+            destination.nodeIds.push_back(nodeId);
+        }
+    }
+    destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
+    destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
+    destination.probesChanged = destination.probesChanged || change.probesChanged;
+    destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
 }
 
 GraphEditResult GraphCommandDispatcher::setNodeBounds(

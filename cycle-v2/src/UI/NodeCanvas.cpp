@@ -45,7 +45,8 @@ GraphDocument createStartupDocument() {
 }
 
 NodeCanvas::NodeCanvas() :
-        document(createStartupDocument())
+        settings(nullptr)
+    ,   document(createStartupDocument())
     ,   commands(document)
     ,   graph(document.graph())
     ,   compileResult(presentation.compileResult())
@@ -78,6 +79,11 @@ NodeCanvas::NodeCanvas() :
         })
     ,   renderInvalidation(*this)
     ,   hitRouter(graph, palette, queries) {
+    settings.initialiseSettings();
+    probeRailState.refreshMode = settings.getGlobalSettingValue(
+            AppSettings::ProbeEditRefreshPolicy) == 1
+            ? ProbeRefreshMode::LiveLatest
+            : ProbeRefreshMode::OnGestureCommit;
     probeRailState.expanded = !graph.getSignalProbes().empty();
     refreshCompiledState();
 
@@ -153,6 +159,15 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     SignalProbeRail& probeRail = canvasPresentation.probeRail();
+    if (probeRail.refreshModeBoundsFor(workspace, probeRailState).contains(event.position)) {
+        probeRailState.refreshMode = probeRailState.refreshMode == ProbeRefreshMode::LiveLatest
+                ? ProbeRefreshMode::OnGestureCommit
+                : ProbeRefreshMode::LiveLatest;
+        settings.getGlobalSetting(AppSettings::ProbeEditRefreshPolicy) =
+                probeRailState.refreshMode == ProbeRefreshMode::LiveLatest ? 1 : 0;
+        requestCanvasRepaint();
+        return;
+    }
     if (probeRail.collapseHandleFor(workspace, probeRailState).contains(event.position)) {
         probeRailState.expanded = !probeRailState.expanded;
         resized();
@@ -699,6 +714,29 @@ void NodeCanvas::refreshCompiledState() {
     presentation.refresh(graph, document.revision(), document.lastChange());
 }
 
+void NodeCanvas::refreshCompiledStateAsync() {
+    compiledStateRefreshPending = false;
+    editorCoordinator.clearPreviewCache();
+    const NodeGraph& refreshGraph = commands.editingGraph();
+    const GraphChangeSet& refreshChange = commands.hasTransientEdit()
+            ? commands.transientChanges()
+            : document.lastChange();
+    presentation.refreshAsync(
+            refreshGraph,
+            document.revision(),
+            refreshChange,
+            [safeThis = SafePointer<NodeCanvas>(this)] {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->editorCoordinator.updateHost(
+                        safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
+                        safeThis->canvasContentBounds());
+                safeThis->openGLContext.triggerRepaint();
+                safeThis->requestCanvasRepaint();
+            });
+}
+
 bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;
@@ -737,7 +775,11 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             selectedNodeId,
             expandedNodeId,
             editStatusMessage,
-            selectedEdgeIndex
+            selectedEdgeIndex,
+            probeRailState.refreshMode,
+            SignalProbeRail::refreshModeBoundsFor(
+                    getLocalBounds().toFloat(),
+                    probeRailState)
     };
 }
 
@@ -757,9 +799,7 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
         return;
     }
 
-    refreshCompiledState();
-    openGLContext.triggerRepaint();
-    requestCanvasRepaint();
+    refreshCompiledStateAsync();
 }
 
 var NodeCanvas::exportAutomationState() const {
@@ -966,7 +1006,7 @@ void NodeCanvas::flushNodeEditorRefresh() {
 }
 
 void NodeCanvas::refreshNodeEditorPresentation() {
-    refreshCompiledState();
+    refreshCompiledStateAsync();
 }
 
 Point<float> NodeCanvas::nodeEditorCreationPosition() const {
@@ -975,6 +1015,36 @@ Point<float> NodeCanvas::nodeEditorCreationPosition() const {
 
 void NodeCanvas::rebindNodeEditor() {
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+}
+
+void NodeCanvas::rebindNodeEditorTransient() {
+    const Node* node = commands.editingGraph().findNode(expandedNodeId);
+    if (node != nullptr) {
+        editorCoordinator.host().rebindTransient(*node);
+    }
+}
+
+void NodeCanvas::recordNodeEditorMovement(
+        const String& nodeId,
+        const String& field,
+        uint64_t effectiveFingerprint) {
+    const bool deferred = probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
+    presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, deferred);
+    if (!deferred) {
+        scheduleCompiledStateRefresh();
+    }
+}
+
+void NodeCanvas::commitNodeEditorLocalState(
+        const String& nodeId,
+        const String& field,
+        uint64_t effectiveFingerprint,
+        uint64_t documentRevision) {
+    presentation.commitLocalEditorState(
+            nodeId,
+            field,
+            effectiveFingerprint,
+            documentRevision);
 }
 
 Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {

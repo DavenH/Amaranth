@@ -27,9 +27,8 @@ public:
 
 private:
     std::atomic<uint64_t> sequence {};
+    std::atomic<uint64_t> packedMorph {};
     std::atomic<uint64_t> noteSerial {};
-    std::atomic<float> red { 0.5f };
-    std::atomic<float> blue { 0.5f };
     std::atomic<uint64_t> publications {};
     std::atomic<uint64_t> staleResults {};
     uint64_t preparedGeneration {};

@@ -54,6 +54,7 @@ void Settings::initialiseSettings() {
     addSetting(LinkRed,                 true);
     addSetting(LinkYellow,              true);
     addSetting(PointSizeScale,          ScaleSizes::ScaleSmall);
+    addSetting(ProbeEditRefreshPolicy,  0);
     addSetting(SelectWithRight,         false);
     addSetting(Tool,                    Tools::Selector);
     addSetting(UpdateGfxRealtime,       true);

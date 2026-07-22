@@ -597,6 +597,10 @@ private:
         commands.commitCurveTransaction();
     }
 
+    void effect2DTransientStateChanged(uint64_t fingerprint) override {
+        presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
     std::unique_ptr<CurveExpandedEditorComponent> editor;
@@ -634,7 +638,9 @@ public:
         jassert(widget != nullptr);
         boundNode = node;
         boundWidget = widget;
-        widget->setMeshEditedCallback([this] { commands.persistTrimeshMeshEdits(nodeId); });
+        widget->setMeshEditedCallback([this](TrimeshMeshEditEvent event) {
+            commands.persistTrimeshMeshEdits(nodeId, event.gestureComplete);
+        });
         editor->setRenderProfile(resources.trimeshRenderProfile(node));
         editor->setGuideAttachmentLabels(resources.trimeshGuideLabels(node));
         editor->setNode(node);

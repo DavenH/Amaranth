@@ -35,7 +35,7 @@ public:
     void setDelegate(TrimeshControlsDelegate* nextDelegate);
     void setNode(const Node& nextNode);
     void setContentBounds(juce::Rectangle<float> nextContentBounds);
-    int getControlRegionCount() const { return (int) controlRegions.size(); }
+    int getControlRegionCount() const { return static_cast<int>(controlRegions.size()); }
     int getMorphSliderCount() const;
     int getPrimaryAxisButtonCount() const;
     int getLinkToggleButtonCount() const;
@@ -52,8 +52,7 @@ public:
     void resized() override;
 
 private:
-    class ControlSlider;
-    class PrimaryAxisButton;
+    class ControlTarget;
 
     enum class DragTarget {
         None,
@@ -79,7 +78,7 @@ private:
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;
-    std::vector<std::unique_ptr<juce::Component>> controlRegions;
+    std::vector<std::unique_ptr<ControlTarget>> controlRegions;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshControlsComponent)
 };

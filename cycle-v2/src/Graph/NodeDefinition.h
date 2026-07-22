@@ -1,8 +1,9 @@
 #pragma once
 
-#include "NodeGraph.h"
-
+#include <functional>
 #include <optional>
+
+#include "NodeGraph.h"
 
 namespace CycleV2 {
 
@@ -89,6 +90,7 @@ struct ParameterDefinition {
     ParameterConstraint constraint;
     ParameterImpact impacts { ParameterImpact::None };
     bool persisted { true };
+    std::function<String(const String&)> normalizer;
 
     bool accepts(const String& value) const;
     String normalized(const String& value) const;

@@ -2,6 +2,7 @@
 
 #include "CurveEditorPrimitives.h"
 #include "CurveNodeModels.h"
+#include "../../Runtime/FingerprintBuilder.h"
 
 namespace CycleV2 {
 
@@ -162,22 +163,44 @@ void CurveExpandedEditorComponent::publishCurrentState() {
         return;
     }
     applyEditorStateToWidget();
-    const uint64_t currentRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
+    requestRepaint();
+    if (transactionActive) {
+        if (!publishModelState()) {
+            return;
+        }
+        transientStateChanged = true;
+        FingerprintBuilder fingerprint(widget.contentRevision());
+        for (const auto& control : editorControls()) {
+            fingerprint.add(control.id).add(control.value);
+        }
+        delegate->effect2DTransientStateChanged(fingerprint.value());
+        return;
+    }
+    publishModelState();
+}
+
+bool CurveExpandedEditorComponent::publishModelState() {
+    const uint64_t currentRevision = transactionActive
+            ? transactionBaseRevision
+            : CurveNodeModelCodec::revisionFromParameters(node.parameters);
     const String snapshot = widget.prepareModelPublication(currentRevision);
     const auto controls = editorControls();
     if (!delegate->publishEffect2DState(snapshot, widget.modelRevision(), controls)) {
-        return;
+        return false;
     }
     node.parameters = controls;
     node.parameters.push_back({ CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", snapshot });
     node.parameters.push_back({ CurveNodeModelCodec::revisionParameterId(),
             "Curve Model Revision", String((int64_t) widget.modelRevision()) });
+    return true;
 }
 
 void CurveExpandedEditorComponent::beginTransaction() {
     if (!transactionActive && delegate != nullptr) {
+        transactionBaseRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
         delegate->beginEffect2DTransaction();
         transactionActive = true;
+        transientStateChanged = false;
     }
 }
 
@@ -186,6 +209,7 @@ void CurveExpandedEditorComponent::commitTransaction() {
         delegate->commitEffect2DTransaction();
     }
     transactionActive = false;
+    transientStateChanged = false;
 }
 
 void CurveExpandedEditorComponent::requestRepaint() {
@@ -198,7 +222,6 @@ void CurveExpandedEditorComponent::requestRepaint() {
 void CurveExpandedEditorComponent::bindContinuousControl(LabeledParameterSlider& control) {
     control.slider.onValueChange = [this] {
         publishCurrentState();
-        requestRepaint();
     };
     control.slider.onDragStart = [this] {
         beginTransaction();
@@ -253,7 +276,6 @@ void CurveExpandedEditorComponent::updatePanelHost() {
 
 void CurveExpandedEditorComponent::persistEffectMeshState() {
     publishCurrentState();
-    requestRepaint();
 }
 
 void CurveExpandedEditorComponent::repaintCurvePanelController() {
@@ -264,8 +286,16 @@ void CurveExpandedEditorComponent::setCurvePanelControllerCursor(const MouseCurs
     setMouseCursor(cursor);
 }
 
+void CurveExpandedEditorComponent::beginCurvePanelControllerEdit() {
+    beginTransaction();
+}
+
 void CurveExpandedEditorComponent::curvePanelControllerEdited() {
     persistEffectMeshState();
+}
+
+void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
+    commitTransaction();
 }
 
 }

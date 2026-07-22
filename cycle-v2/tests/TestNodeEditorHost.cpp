@@ -95,7 +95,7 @@ public:
     bool showTrimeshGuideAttachmentMenu(
             const String&, const String&, Rectangle<int>) override { return true; }
     bool selectTrimeshVertexIndex(const String&, int) override { return true; }
-    void persistTrimeshMeshEdits(const String&) override {}
+    void persistTrimeshMeshEdits(const String&, bool) override {}
 };
 
 class NullPresentation final : public NodeEditorPresentation {
@@ -122,10 +122,14 @@ public:
     void refreshNodeEditorPresentation() override {}
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
+    void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
+        ++recordedMovements;
+    }
 
     int repaints {};
     int scheduledRefreshes {};
     int rebinds {};
+    int recordedMovements {};
 };
 
 class NullResources final : public NodeEditorResources {
@@ -409,21 +413,21 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     editor.slider.slider.onDragStart();
     editor.slider.slider.setValue(0.73, sendNotificationSync);
     editor.slider.slider.onDragEnd();
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "repaint", "commit" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.toggle.button.onClick();
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.menu.addItem("Four", 4);
     editor.menu.setSelectedId(4, sendNotificationSync);
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();
     editor.action.onClick();
     REQUIRE(editor.actionPerformed);
-    REQUIRE(delegate.events == StringArray { "begin", "publish", "commit", "repaint" });
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {
@@ -494,7 +498,8 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(document.undo());
     REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
-    REQUIRE(presentation.scheduledRefreshes == 2);
+    REQUIRE(presentation.scheduledRefreshes == 0);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.rebinds == 1);
 }
 

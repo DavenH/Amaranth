@@ -42,7 +42,7 @@ public:
     Component* getPanel2DHostComponentIfCreated() const;
     void setPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
     void clearPanelHostDelegate(TrimeshPanelHostDelegate* delegate);
-    void setMeshEditedCallback(std::function<void()> callback);
+    void setMeshEditedCallback(std::function<void(TrimeshMeshEditEvent)> callback);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void setDisplayDomain(PortDomain domain);
@@ -67,7 +67,7 @@ private:
     TrimeshPanel3D panel3D;
     TrimeshPanelHosts panelHosts;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
-    std::function<void()> meshEditedCallback;
+    std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
     uint64_t lastSyncedRevision { UINT64_MAX };
     PortDomain lastRenderDomain { PortDomain::ControlSignal };
     int lastRows {};

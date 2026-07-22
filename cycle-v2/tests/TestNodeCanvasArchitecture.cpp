@@ -51,10 +51,12 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     const Rectangle<float> content = SignalProbeRail::contentBoundsFor(workspace, expanded);
     REQUIRE(content == Rectangle<float>(0.f, 0.f, 1200.f, 610.f));
     REQUIRE(SignalProbeRail::boundsFor(workspace, expanded).getY() == content.getBottom());
-    REQUIRE(SignalProbeRail::collapseHandleFor(workspace, expanded).getY()
-            < SignalProbeRail::boundsFor(workspace, expanded).getY());
-    REQUIRE(SignalProbeRail::collapseHandleFor(workspace, expanded).getBottom()
-            < SignalProbeRail::boundsFor(workspace, expanded).getY() + 24.f);
+    const Rectangle<float> collapse = SignalProbeRail::collapseHandleFor(workspace, expanded);
+    const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(workspace, expanded);
+    const Rectangle<float> rail = SignalProbeRail::boundsFor(workspace, expanded);
+    REQUIRE(collapse.getBottom() <= rail.getY());
+    REQUIRE(refreshMode.getBottom() <= rail.getY());
+    REQUIRE_FALSE(collapse.intersects(refreshMode));
     REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
             < SignalProbeRail::boundsFor(workspace, expanded).getY() + 20.f);
 
@@ -199,7 +201,9 @@ TEST_CASE("Node canvas scene invalidates only for relevant revisions", "[cycle-v
     viewport.panBy({ 1.f, 0.f });
     REQUIRE(scene.build(graph, viewport, 4).viewportRevision == viewport.getRevision());
     REQUIRE(scene.build(graph, viewport, 5).presentationRevision == 5);
-    REQUIRE(scene.build(graph, viewport, 5, 99).graphRevision == 99);
+    const auto& documentChanged = scene.build(graph, viewport, 5, 99);
+    REQUIRE(documentChanged.graphRevision == graph.getRevision());
+    REQUIRE(documentChanged.documentRevision == 99);
 }
 
 TEST_CASE("Graph document rejects failed loads without replacing active state", "[cycle-v2][canvas][document]") {
@@ -364,8 +368,8 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto meshBounds = registry.moduleFor(NodeKind::TrilinearMesh)
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
-    REQUIRE(meshBounds.getWidth() == Catch::Approx(1080.f));
-    REQUIRE(meshBounds.getHeight() == Catch::Approx(720.f));
+    REQUIRE(meshBounds.getWidth() == Catch::Approx(972.f));
+    REQUIRE(meshBounds.getHeight() == Catch::Approx(764.f));
 }
 
 TEST_CASE("Every effect view exposes both its compact preview and hosted editor",
@@ -411,6 +415,36 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     REQUIRE(snapshot.edges.front().hitPath.contains(
             snapshot.edges.front().cablePath.getPointAlongPath(
                     snapshot.edges.front().cablePath.getLength() * 0.5f)));
+}
+
+TEST_CASE("Cable endpoints follow node movement before a drag transaction commits",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "source", { 40.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 420.f, 80.f }));
+    graph.addEdge({
+            "source", "out", "output", "time",
+            PortDomain::TimeSignal, false });
+
+    NodeCanvasViewport viewport;
+    NodeCanvasScene scene;
+    constexpr uint64_t presentationRevision = 7;
+    constexpr uint64_t documentRevision = 11;
+    const auto initialDestination = scene.build(
+            graph, viewport, presentationRevision, documentRevision)
+            .edges.front().destination;
+
+    REQUIRE(graph.setNodeBounds(
+            "output",
+            graph.findNode("output")->bounds.withPosition({ 560.f, 190.f })));
+    const auto& moved = scene.build(
+            graph, viewport, presentationRevision, documentRevision);
+
+    REQUIRE(moved.edges.front().destination != initialDestination);
+    REQUIRE(moved.edges.front().destination == viewport.toScreen(
+            NodeCanvasScene::portWorldCentre(
+                    *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
 TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",

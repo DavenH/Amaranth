@@ -122,6 +122,7 @@ public:
         }
         activePointer = true;
         grabKeyboardFocus();
+        delegate.beginEdit();
         const MouseEvent localEvent = currentMouseEvent(event);
         enterIfNeeded(localEvent);
         if (Interactor* interactor = panel.getInteractor().get()) {
@@ -138,7 +139,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseDoubleClick(localEvent);
         }
-        delegate.publishCurvePanelEdit();
+        delegate.publishIntermediateRevision();
     }
 
     void mouseDrag(const MouseEvent& event) override {
@@ -150,6 +151,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseDrag(localEvent);
         }
+        delegate.publishIntermediateRevision();
     }
 
     void mouseUp(const MouseEvent& event) override {
@@ -161,9 +163,8 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseUp(localEvent);
         }
-        if (!delegate.publishCurvePanelEdit()) {
-            delegate.synchronizeCurvePanelSelection();
-        }
+        delegate.publishIntermediateRevision();
+        delegate.commitEdit();
     }
 
     void mouseExit(const MouseEvent& event) override {
@@ -181,9 +182,11 @@ public:
             return false;
         }
         if (Interactor* interactor = panel.getInteractor().get()) {
+            delegate.beginEdit();
             interactor->eraseSelected();
             interactor->performUpdate(Update);
-            delegate.publishCurvePanelEdit();
+            delegate.publishIntermediateRevision();
+            delegate.commitEdit();
             return true;
         }
         return false;

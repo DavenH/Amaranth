@@ -165,19 +165,18 @@ NodeGraph previewlessChain(size_t processorCount) {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 100.f, 0.f }));
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, false });
 
-    String sourceId = "wave";
-    String sourcePort = "out";
+    String sourceId = "shape";
+    String sourcePort = "time";
     for (size_t i = 0; i < processorCount; ++i) {
-        const String nodeId = "reverb" + String((int) i);
-        graph.addNode(factory.createNode(NodeKind::Reverb, nodeId, { (float) i * 100.f, 0.f }));
+        const String nodeId = "delay" + String((int) i);
+        graph.addNode(factory.createNode(NodeKind::Delay, nodeId, { (float) i * 100.f, 0.f }));
         graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, false });
         sourceId = nodeId;
         sourcePort = "time";
     }
-
-    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 500.f, 0.f }));
-    graph.addEdge({ sourceId, sourcePort, "shape", "time", PortDomain::TimeSignal, false });
     return graph;
 }
 
@@ -529,6 +528,38 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
             [](const NodePreviewResult& preview) {
                 return preview.nodeId == "out";
             }));
+}
+
+TEST_CASE("Incremental preview rendering preserves clean cached nodes",
+        "[cycle-v2][runtime][incremental][complexity]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor audioExecutor;
+    const GraphAudioResult audio = audioExecutor.process(graph, compileResult.plan, 32);
+    GraphPreviewExecutor previewExecutor;
+    GraphPreviewResult result = previewExecutor.render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            16);
+    const auto cleanBefore = findPreview(result, "waveMesh").primary;
+
+    GraphAudioResultView audioView;
+    for (const auto& node : audio.nodes) {
+        audioView.nodes.push_back(&node);
+    }
+    previewExecutor.renderIncremental(
+            compileResult.plan,
+            audioView,
+            graph.getSignalProbes(),
+            { "env" },
+            16,
+            result);
+
+    REQUIRE(result.renderedNodeCount == 1);
+    REQUIRE(findPreview(result, "waveMesh").primary == cleanBefore);
 }
 
 TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][runtime]") {

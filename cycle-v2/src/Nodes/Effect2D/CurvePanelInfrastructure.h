@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../Trimesh/TrimeshPanelEnvironment.h"
-
 #include <JuceHeader.h>
 #include <UI/Panels/PanelHostContext.h>
 
@@ -10,6 +8,7 @@
 #include <memory>
 
 #include "../../UI/RenderInvalidationAccumulator.h"
+#include "../Trimesh/TrimeshPanelEnvironment.h"
 
 class CommonGL;
 class GLPanelRenderer;
@@ -44,13 +43,12 @@ public:
     virtual void commitEdit() = 0;
 };
 
-class CurvePanelHostDelegate {
+class CurvePanelHostDelegate : public CurvePanelInteractionAdapter {
 public:
     virtual ~CurvePanelHostDelegate() = default;
     virtual void initialiseCurvePanel(Component* component) = 0;
     virtual void updateCurvePanelZoom(bool resetView) = 0;
     virtual void prepareCurvePanel() = 0;
-    virtual bool publishCurvePanelEdit() = 0;
     virtual void synchronizeCurvePanelSelection() = 0;
     virtual void repaintCurvePanel() = 0;
     virtual void setCurvePanelCursor(const MouseCursor& cursor) = 0;

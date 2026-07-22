@@ -159,6 +159,19 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));
+    Array<var> parameterRails;
+    const auto parameters = widget.selectedVertexParameters();
+    const auto parameterArea = impl->presentation.vertexBounds(editorControlBounds());
+    for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
+        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, index);
+        auto* rail = new DynamicObject();
+        rail->setProperty("id", parameters[static_cast<size_t>(index)].id);
+        rail->setProperty(
+                "bounds",
+                editorBoundsToVar(TrimeshSidePanelRenderer::vertexParameterRailBounds(row)));
+        parameterRails.add(rail);
+    }
+    state.setProperty("vertexParameterRails", parameterRails);
 }
 
 bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
@@ -216,7 +229,6 @@ bool EnvelopeEditorComponent::handleAxisMouseDown(
             bool& linked = axis == 1 ? impl->redLinked : impl->blueLinked;
             linked = !linked;
             publishCurrentState();
-            requestRepaint();
             return true;
         }
     }
@@ -241,10 +253,14 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
 
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
         if (rail.expanded(5.f, 8.f).contains(position)) {
-            impl->parameterId = parameters[static_cast<size_t>(index)].id;
+            const auto& parameter = parameters[static_cast<size_t>(index)];
+            impl->parameterId = parameter.id;
             impl->draggingParameter = true;
             const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
-            widget.setSelectedVertexParameter(impl->parameterId, value);
+            if (parameter.value != value
+                    && widget.setSelectedVertexParameter(impl->parameterId, value)) {
+                publishCurrentState();
+            }
             return true;
         }
     }
@@ -265,8 +281,15 @@ bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
     const auto plane = impl->presentation.planeBounds(editorControlBounds());
     const float red = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
     const float blue = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
-    impl->redMorph.slider.setValue(red, sendNotificationSync);
-    impl->blueMorph.slider.setValue(blue, sendNotificationSync);
+    const bool redChanged = static_cast<float>(impl->redMorph.slider.getValue()) != red;
+    const bool blueChanged = static_cast<float>(impl->blueMorph.slider.getValue()) != blue;
+    if (!redChanged && !blueChanged) {
+        return true;
+    }
+
+    impl->redMorph.slider.setValue(red, dontSendNotification);
+    impl->blueMorph.slider.setValue(blue, dontSendNotification);
+    publishCurrentState();
     return true;
 }
 
@@ -280,8 +303,9 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
         const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(area, index);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
         const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
-        if (widget.setSelectedVertexParameter(impl->parameterId, value)) {
-            requestRepaint();
+        if (parameters[static_cast<size_t>(index)].value != value
+                && widget.setSelectedVertexParameter(impl->parameterId, value)) {
+            publishCurrentState();
         }
         return true;
     }

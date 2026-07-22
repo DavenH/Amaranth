@@ -28,11 +28,13 @@ struct GraphPreviewResult {
     };
 
     std::vector<NodePreviewResult> nodes;
+    std::vector<int> previewResultIndexByStep;
     std::vector<SignalProbePreview> probes;
     size_t indexedNodeCount {};
     size_t addressLookupCount {};
     size_t aliasedInputCount {};
     size_t reusedCapturedTraversalCount {};
+    size_t renderedNodeCount {};
 };
 
 class GraphPreviewExecutor {
@@ -47,6 +49,25 @@ public:
             const GraphAudioResult& audioResult,
             const std::vector<SignalProbe>& probes,
             size_t pointCount) const;
+    GraphPreviewResult render(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResultView& audioResult,
+            const std::vector<SignalProbe>& probes,
+            size_t pointCount) const;
+    void renderIncremental(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResultView& audioResult,
+            const std::vector<SignalProbe>& probes,
+            const std::vector<String>& dirtyNodeIds,
+            size_t pointCount,
+            GraphPreviewResult& result) const;
+    void renderIncremental(
+            const GraphExecutionPlan& plan,
+            const GraphAudioResultView& audioResult,
+            const std::vector<SignalProbe>& probes,
+            const std::vector<uint8_t>& dirtyNodes,
+            size_t pointCount,
+            GraphPreviewResult& result) const;
 };
 
 }

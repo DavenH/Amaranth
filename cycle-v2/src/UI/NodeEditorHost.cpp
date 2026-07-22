@@ -52,6 +52,14 @@ bool NodeEditorHost::bind(const Node* node, Rectangle<int> bounds, uint64_t docu
     return true;
 }
 
+bool NodeEditorHost::rebindTransient(const Node& node) {
+    if (editor == nullptr || activeNodeId != node.id || activeKind != node.kind) {
+        return false;
+    }
+    editor->bind(node);
+    return true;
+}
+
 void NodeEditorHost::close() {
     if (editor == nullptr) {
         activeNodeId = {};

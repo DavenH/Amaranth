@@ -330,6 +330,15 @@ GraphEditResult GraphEditor::setNodeParameter(
 
     for (auto& parameter : node->parameters) {
         if (parameter.id == parameterId) {
+            const bool effectiveValueEqual = parameterDefinition != nullptr
+                            && parameterDefinition->type == ParameterType::Float
+                    ? parameter.value.getDoubleValue() == normalizedValue.getDoubleValue()
+                    : parameter.value == normalizedValue;
+            if (effectiveValueEqual && parameter.label == resolvedLabel) {
+                GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+                result.changed = false;
+                return result;
+            }
             parameter.label = resolvedLabel;
             parameter.value = normalizedValue;
             graph.markChanged();

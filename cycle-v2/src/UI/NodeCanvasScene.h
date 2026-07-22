@@ -52,6 +52,7 @@ struct NodeSceneEdge {
 
 struct NodeCanvasSceneSnapshot {
     uint64_t graphRevision {};
+    uint64_t documentRevision {};
     uint64_t viewportRevision {};
     uint64_t presentationRevision {};
     std::vector<NodeSceneTarget> targets;

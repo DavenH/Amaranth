@@ -5,6 +5,7 @@
 #include "../Runtime/NodeDspConfiguration.h"
 #include "../Runtime/NodeModuleRegistry.h"
 
+#include <unordered_map>
 #include <vector>
 
 namespace CycleV2 {
@@ -56,8 +57,22 @@ struct GraphBufferPlan {
 };
 
 struct GraphDependencyIndex {
+    struct StringHash {
+        size_t operator()(const String& value) const {
+            return static_cast<size_t>(value.hashCode64());
+        }
+    };
+
     std::vector<String> nodeIds;
     std::vector<std::vector<int>> dependents;
+    std::vector<std::vector<int>> dependencies;
+    std::unordered_map<String, int, StringHash> nodeIndexById;
+};
+
+struct CompiledSignalProbe {
+    String probeId;
+    int sourceStepIndex { -1 };
+    int sourceOutputIndex { -1 };
 };
 
 struct GraphExecutionStep {
@@ -90,6 +105,7 @@ struct GraphExecutionPlan {
     std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
+    std::vector<CompiledSignalProbe> signalProbes;
     GraphDependencyIndex dependencyIndex;
 };
 

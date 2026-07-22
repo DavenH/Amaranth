@@ -120,8 +120,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const NodeCanvasViewport& viewport,
         uint64_t presentationRevision,
         uint64_t documentRevision) {
-    const uint64_t graphRevision = documentRevision != 0 ? documentRevision : graph.getRevision();
+    const uint64_t graphRevision = graph.getRevision();
     if (current.graphRevision == graphRevision
+            && current.documentRevision == documentRevision
             && current.viewportRevision == viewport.getRevision()
             && current.presentationRevision == presentationRevision) {
         return current;
@@ -129,6 +130,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
 
     current = {};
     current.graphRevision = graphRevision;
+    current.documentRevision = documentRevision;
     current.viewportRevision = viewport.getRevision();
     current.presentationRevision = presentationRevision;
 
