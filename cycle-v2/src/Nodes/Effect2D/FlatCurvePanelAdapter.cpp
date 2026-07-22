@@ -26,23 +26,24 @@ bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
     if (node.kind != nodeKind) {
         return false;
     }
-    const String snapshot = parameterValueForNode(
-            node, CurveNodeModelCodec::snapshotParameterId(), {});
-    return snapshot.isNotEmpty()
-            && (syncedNodeId != node.id || syncedModelSnapshot != snapshot);
+    return node.model != nullptr
+            && node.model->schemaId() == "flatCurve"
+            && (syncedNodeId != node.id || syncedModelRevision != node.model->revision());
 }
 
 bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
     if (node.kind != nodeKind) {
         return false;
     }
-    const String snapshot = parameterValueForNode(
-            node, CurveNodeModelCodec::snapshotParameterId(), {});
-    if (!needsNodeSync(node) || !model.loadSnapshot(snapshot)) {
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    if (!needsNodeSync(node) || typed == nullptr || typed->flatCurve() == nullptr
+            || !model.copyFrom(*typed->flatCurve())) {
         return false;
     }
     syncedNodeId = node.id;
-    syncedModelSnapshot = snapshot;
+    syncedModelRevision = node.model->revision();
+    model.selectVertex((uint64_t) (int64) node.editorState.getProperty("selectedVertexId", 0));
+    model.setPublicationRevision(node.model->revision());
     syncedMeshState = serializedMeshState();
     return true;
 }
@@ -90,15 +91,19 @@ String FlatCurvePanelAdapter::serializedMeshState() {
     return Effect2DMeshState::serialize(vertices);
 }
 
-String FlatCurvePanelAdapter::serializedModelSnapshot(
+NodeModelStatePtr FlatCurvePanelAdapter::modelPublication(
         Vertex* selectedVertex,
         uint64_t publicationRevision) {
     if (!model.synchronizeFromMesh(selectedVertex)) {
         return {};
     }
     model.setPublicationRevision(publicationRevision);
-    syncedModelSnapshot = model.snapshot();
-    return syncedModelSnapshot;
+    auto editor = std::make_unique<DynamicObject>();
+    if (model.selectedVertexId().has_value()) {
+        editor->setProperty("selectedVertexId", (int64) *model.selectedVertexId());
+    }
+    return CurveNodeModelState::copyOf(
+            model, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> FlatCurvePanelAdapter::previewVertices() {

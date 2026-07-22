@@ -40,6 +40,10 @@ Node node(String id, NodeKind kind, String title, String subtitle, Point<float> 
         std::move(inputs),
         std::move(outputs)
     };
+    const auto* definition = NodeDefinitionRegistry::instance().find(kind);
+    if (definition != nullptr && definition->modelCodec != nullptr) {
+        result.model = definition->modelCodec->createDefault();
+    }
     const auto naturalSize = naturalSizeForNode(result);
     result.bounds.setSize(naturalSize.width, naturalSize.height);
     return result;
@@ -190,6 +194,32 @@ bool NodeGraph::replaceNodeParameters(const String& nodeId, std::vector<NodePara
     }
     node->parameters = std::move(parameters);
     ++revision;
+    return true;
+}
+
+bool NodeGraph::replaceNodeModel(const String& nodeId, NodeModelStatePtr model) {
+    Node* node = findNodeForEditing(nodeId);
+    if (node == nullptr) {
+        return false;
+    }
+    if ((node->model == nullptr && model == nullptr)
+            || (node->model != nullptr && model != nullptr && node->model->equals(*model))) {
+        return false;
+    }
+
+    node->model = std::move(model);
+    markChanged();
+    return true;
+}
+
+bool NodeGraph::replaceNodeEditorState(const String& nodeId, var editorState) {
+    Node* node = findNodeForEditing(nodeId);
+    if (node == nullptr || JSON::toString(node->editorState, false) == JSON::toString(editorState, false)) {
+        return false;
+    }
+
+    node->editorState = std::move(editorState);
+    markChanged();
     return true;
 }
 

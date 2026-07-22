@@ -18,7 +18,8 @@ float cycle1GainForParameter(float value) {
 }
 
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        const NodeModelStatePtr& model) {
     auto result = std::make_shared<WaveshaperConfiguration>();
     result->enabled = typedParameterBool(parameters, "enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
@@ -26,6 +27,7 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
             "CycleV2WaveshaperConfiguration",
             NodeKind::Waveshaper,
             parameters,
+            model,
             FXRasterizer::Unipolar);
     if (!curve.prepare()) {
         return {};

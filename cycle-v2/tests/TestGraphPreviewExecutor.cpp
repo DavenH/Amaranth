@@ -228,14 +228,16 @@ TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][
     REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 12);
 }
 
-TEST_CASE("Graph preview executor updates mesh spy traversal grids from serialized edits", "[cycle-v2][runtime]") {
+TEST_CASE("Graph preview executor updates mesh spy traversal grids from typed edits", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph baselineGraph;
     NodeGraph editedGraph;
 
-    auto addGraph = [&factory](NodeGraph& graph, std::vector<NodeParameter> meshParameters) {
+    auto addGraph = [&factory](NodeGraph& graph, NodeModelStatePtr model) {
         auto mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 0.f });
-        mesh.parameters = std::move(meshParameters);
+        if (model != nullptr) {
+            mesh.model = std::move(model);
+        }
 
         graph.addNode(mesh);
         graph.addSignalProbe({ "probe", "mesh", "out", {}, {}, "Mesh", 0.5f, 0 });
@@ -246,15 +248,7 @@ TEST_CASE("Graph preview executor updates mesh spy traversal grids from serializ
     editedMesh->getVerts()[0]->values[Vertex::Amp] = 0.05f;
     editedMesh->getVerts()[1]->values[Vertex::Amp] = 0.95f;
     editedMesh->getVerts()[2]->values[Vertex::Phase] = 0.44f;
-    addGraph(
-            editedGraph,
-            {
-                    {
-                            TrimeshMeshState::parameterId(),
-                            "Mesh Topology",
-                            TrimeshMeshState::serialize(*editedMesh)
-                    }
-            });
+    addGraph(editedGraph, TrimeshNodeModelState::copyOf(*editedMesh, 2));
     editedMesh->destroy();
 
     const auto baselineCompile = GraphCompiler().compile(baselineGraph);
@@ -323,7 +317,7 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
 
     REQUIRE(spyGraph.existsAsFile());
 
-    const NodeGraph graph = GraphSerializer().fromXmlString(spyGraph.loadFileAsString());
+    const NodeGraph graph = GraphSerializer().fromJsonString(spyGraph.loadFileAsString());
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
@@ -373,7 +367,7 @@ TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFF
             .getChildFile("fft-sawtooth.cyclegraph");
     REQUIRE(diagnosticGraph.existsAsFile());
 
-    const NodeGraph graph = GraphSerializer().fromXmlString(
+    const NodeGraph graph = GraphSerializer().fromJsonString(
             diagnosticGraph.loadFileAsString());
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());

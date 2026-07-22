@@ -375,6 +375,12 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         nodeObject->setProperty("inputs", inputs);
         nodeObject->setProperty("outputs", outputs);
         nodeObject->setProperty("parameters", parameters);
+        if (node.model != nullptr) {
+            nodeObject->setProperty("model", node.model->writeJSON());
+        }
+        if (node.editorState.getDynamicObject() != nullptr) {
+            nodeObject->setProperty("editor", node.editorState);
+        }
         nodes.add(nodeObject);
     }
 
@@ -437,7 +443,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     return root;
 }
 
-String NodeCanvasAutomationInspector::exportGraphXml() const { return context.document.toXml(); }
+String NodeCanvasAutomationInspector::exportGraphJson() const { return context.document.toJson(); }
 
 var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
                                                        const NodeCanvasAutomationPresentation& state) const {
@@ -458,6 +464,12 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
         parameters.add(AutomationValueEncoder::parameterToVar(parameter));
     }
     root->setProperty("parameters", parameters);
+    if (node->model != nullptr) {
+        root->setProperty("model", node->model->writeJSON());
+    }
+    if (node->editorState.getDynamicObject() != nullptr) {
+        root->setProperty("editor", node->editorState);
+    }
 
     if (context.editorHost.isEditing(nodeId)) {
         context.editorHost.appendAutomationState(*root);

@@ -114,7 +114,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
         return handledResult(false, "Nothing to undo", { true });
     }
 
-    return restoreGraphXml({}, "Undo");
+    return restoreGraphJson({}, "Undo");
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::redo() {
@@ -122,13 +122,13 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::redo() {
         return handledResult(false, "Nothing to redo", { true });
     }
 
-    return restoreGraphXml({}, "Redo");
+    return restoreGraphJson({}, "Redo");
 }
 
-NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphXml(
-        const String& xml,
+NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphJson(
+        const String& json,
         const String& statusMessage) {
-    if (xml.isNotEmpty() && !document.loadXml(xml, false)) {
+    if (json.isNotEmpty() && !document.loadJson(json, false)) {
         return handledResult(false, "Restore failed", { true });
     }
 

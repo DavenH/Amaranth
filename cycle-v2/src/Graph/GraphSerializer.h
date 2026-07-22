@@ -5,9 +5,13 @@
 namespace CycleV2 {
 
 enum class GraphLoadCode {
-    InvalidXml,
+    InvalidJson,
+    InvalidSchema,
     UnsupportedVersion,
     UnknownNodeType,
+    InvalidParameter,
+    InvalidModel,
+    DuplicateIdentity,
     InvalidGraph
 };
 
@@ -25,14 +29,13 @@ struct GraphLoadResult {
 
 class GraphSerializer {
 public:
-    static constexpr int currentFormatVersion = 2;
+    static constexpr int currentFormatVersion = 1;
 
-    ValueTree toValueTree(const NodeGraph& graph) const;
-    NodeGraph fromValueTree(const ValueTree& tree) const;
-    GraphLoadResult loadValueTree(const ValueTree& tree) const;
-    String toXmlString(const NodeGraph& graph) const;
-    NodeGraph fromXmlString(const String& xml) const;
-    GraphLoadResult loadXmlString(const String& xml) const;
+    var writeJSON(const NodeGraph& graph) const;
+    GraphLoadResult readJSON(const var& value) const;
+    String toJsonString(const NodeGraph& graph) const;
+    NodeGraph fromJsonString(const String& json) const;
+    GraphLoadResult loadJsonString(const String& json) const;
 };
 
 }

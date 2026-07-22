@@ -60,11 +60,11 @@ TEST_CASE("Signal probes serialize independently from processing nodes", "[cycle
     NodeGraph graph = probeGraph();
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.4f).succeeded());
 
-    const String xml = GraphSerializer().toXmlString(graph);
-    REQUIRE(xml.contains("<probe"));
-    REQUIRE_FALSE(xml.contains("kind=\"spy\""));
+    const String json = GraphSerializer().toJsonString(graph);
+    REQUIRE(json.contains("\"probes\""));
+    REQUIRE(json.contains("\"id\": \"probe\""));
 
-    const NodeGraph restored = GraphSerializer().fromXmlString(xml);
+    const NodeGraph restored = GraphSerializer().fromJsonString(json);
     REQUIRE(restored.getSignalProbes().size() == 1);
     const auto& probe = restored.getSignalProbes().front();
     REQUIRE(probe.sourceNodeId == "wave");

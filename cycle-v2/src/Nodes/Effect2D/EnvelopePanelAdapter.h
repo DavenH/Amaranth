@@ -14,6 +14,7 @@ namespace CycleV2 {
 class EnvelopePanelAdapter final {
 public:
     EnvelopePanelAdapter();
+    ~EnvelopePanelAdapter();
 
     EnvelopeMesh& mesh() { return model.getMesh(); }
     const EnvelopeMesh& mesh() const { return model.getMesh(); }
@@ -22,7 +23,7 @@ public:
     VertCube* selectedMeshCube() const { return model.selectedMeshCube(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
-    String serializedModelSnapshot(VertCube* selectedCube, uint64_t publicationRevision);
+    NodeModelStatePtr modelPublication(VertCube* selectedCube, uint64_t publicationRevision);
     std::vector<CurvePreviewVertex> previewVertices();
     bool registerMeshEdit();
 
@@ -34,14 +35,12 @@ public:
     bool blueLinked() const { return model.blueLinked; }
 
     const String& lastNodeId() const { return syncedNodeId; }
-    const String& lastModelSnapshot() const { return syncedModelSnapshot; }
-    const String& lastMeshState() const { return syncedMeshState; }
-
 private:
     EnvelopeNodeModel model;
     String syncedNodeId;
-    String syncedModelSnapshot;
-    String syncedMeshState;
+    uint64_t syncedModelRevision {};
+    EnvelopeMesh syncedMesh { "CycleV2EnvelopePanelSyncedMesh" };
+    bool hasSyncedMesh {};
 };
 
 }

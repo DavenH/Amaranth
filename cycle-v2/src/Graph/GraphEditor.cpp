@@ -423,6 +423,61 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     return result;
 }
 
+GraphEditResult GraphEditor::replaceNodeModel(
+        NodeGraph& graph,
+        const String& nodeId,
+        uint64_t expectedRevision,
+        NodeModelStatePtr model) const {
+    Node* node = findMutableNode(graph, nodeId);
+    if (node == nullptr) {
+        return { GraphEditCode::MissingNode, nodeId, {} };
+    }
+    if (model == nullptr) {
+        return { GraphEditCode::InvalidTypedSnapshot, nodeId, {} };
+    }
+
+    const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
+    if (currentRevision != expectedRevision) {
+        return { GraphEditCode::StaleRevision, nodeId, {} };
+    }
+    if (node->model != nullptr && node->model->schemaId() != model->schemaId()) {
+        return { GraphEditCode::WrongNodeKind, nodeId, {} };
+    }
+    if (model->revision() < currentRevision) {
+        return { GraphEditCode::StaleRevision, nodeId, {} };
+    }
+    if (model->revision() == currentRevision && !node->model->equals(*model)) {
+        return { GraphEditCode::ConflictingRevision, nodeId, {} };
+    }
+
+    GraphEditResult result;
+    result.nodeId = nodeId;
+    result.changed = graph.replaceNodeModel(nodeId, std::move(model));
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.modelChanged = result.changed;
+    result.changes.parameterImpacts = ParameterImpact::Presentation
+            | ParameterImpact::Preview
+            | ParameterImpact::DspConfiguration;
+    return result;
+}
+
+GraphEditResult GraphEditor::setNodeEditorState(
+        NodeGraph& graph,
+        const String& nodeId,
+        var editorState) const {
+    if (findMutableNode(graph, nodeId) == nullptr) {
+        return { GraphEditCode::MissingNode, nodeId, {} };
+    }
+
+    GraphEditResult result;
+    result.nodeId = nodeId;
+    result.changed = graph.replaceNodeEditorState(nodeId, std::move(editorState));
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.editorStateChanged = result.changed;
+    result.changes.parameterImpacts = ParameterImpact::Presentation;
+    return result;
+}
+
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {
     for (const auto& node : graph.getNodes()) {
         if (node.id == nodeId) {

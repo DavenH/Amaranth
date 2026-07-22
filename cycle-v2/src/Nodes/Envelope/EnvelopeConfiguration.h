@@ -17,7 +17,6 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     float blueMorph { 0.5f };
     bool logarithmic {};
     bool dynamicWhileLive {};
-    String meshSnapshot;
 };
 
 }

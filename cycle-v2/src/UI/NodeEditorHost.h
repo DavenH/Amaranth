@@ -22,8 +22,7 @@ public:
 
     virtual bool publishCurveState(
             const String& nodeId,
-            const String& snapshot,
-            uint64_t revision,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
     virtual bool beginNodeParameterEdit(
             const String& nodeId,
@@ -175,8 +174,7 @@ public:
 
     bool publishCurveState(
             const String& nodeId,
-            const String& snapshot,
-            uint64_t revision,
+            NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
     bool beginNodeParameterEdit(
             const String& nodeId,

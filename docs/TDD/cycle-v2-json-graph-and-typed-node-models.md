@@ -2,7 +2,20 @@
 
 ## Status
 
-Proposed.
+In progress: implementation complete, native verification blocked (2026-07-22).
+
+Cycle V2 graph persistence is canonical JSON, the XML graph APIs and
+model-shaped parameter codecs are deleted, and all bundled graphs are
+converted. Scalar controls, aggregate model publication, and editor selection
+also have distinct graph command and persistence boundaries.
+
+The production implementation and automated semantic coverage are complete.
+Trimesh and curve model states own immutable concrete domain snapshots, and
+DSP, preview, and presentation consumers no longer reconstruct those models
+from JSON. The full Cycle V2 suite passes. Final status remains in progress
+because the required native smoke is currently blocked by the independently
+tracked nondeterministic native pointer-delivery failures; repeated runs fail
+at different gestures before consistently completing all save/reload checks.
 
 ## Problem
 
@@ -228,7 +241,13 @@ Persist only authored exceptions:
 - node identity, kind, definition version, title override, and position;
 - scalar parameter values;
 - aggregate model and editor state;
+- port-side overrides keyed by stable input/output port identity;
 - edges and signal probes.
+
+Port labels, domains, and existence remain definition-owned. A `portSides`
+object is emitted only when an authored side differs from the registered
+definition, so rotating a node layout survives save/reload without duplicating
+the complete static port declaration.
 
 Dynamic ports are out of scope unless a node kind first defines a genuine
 authoring contract for them. Generic dynamic parameter acceptance must not be
@@ -346,6 +365,22 @@ more directly used.
 - Native macOS save/reload smoke edits Trimesh, Envelope, and a flat curve,
   then proves exact model identity and visual behavior through application
   state plus OS capture for OpenGL panels.
+
+## Implementation Evidence
+
+- `CycleV2_tests` passes 334 test cases and 4,711 assertions, including
+  canonical graph output, authored port-side save/reload, typed model
+  round-trips, runtime preparation, preview, audio, and undo/redo.
+- Decode instrumentation proves graph load performs the domain decode while
+  subsequent presentation synchronization, compilation, preview traversal,
+  audio preparation, and processing perform zero JSON reads.
+- Bundled graph port layouts were checked against the pre-conversion XML and
+  their non-default top/bottom sides were restored as authored overrides.
+- Native smoke attempts on 2026-07-22 were blocked by nondeterministic pointer
+  delivery: cable and curve gestures were missed, an Envelope drag sometimes
+  published two revisions, and Trimesh runs failed at different interaction
+  stages. These failures are recorded in `ui-bugs.md`; they do not justify
+  weakening the native completion criterion.
 
 ## Implementation Sequence
 

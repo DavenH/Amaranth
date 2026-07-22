@@ -32,7 +32,7 @@ public:
     explicit NodeCanvasAutomationInspector(NodeCanvasAutomationContext context);
 
     juce::var exportState(const NodeCanvasAutomationPresentation& state) const;
-    juce::String exportGraphXml() const;
+    juce::String exportGraphJson() const;
     juce::var inspectNodeControls(const juce::String& nodeId, const NodeCanvasAutomationPresentation& state) const;
     juce::var inspectPointerTargets(const NodeCanvasAutomationPresentation& state) const;
     juce::var captureAudio(size_t frameCount) const;

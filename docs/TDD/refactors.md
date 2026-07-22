@@ -2,17 +2,39 @@
 
 ## Cycle V2 JSON Graph and Typed Node Models
 
-Proposed TDD:
+Status: Production refactor complete; native verification blocked (2026-07-22).
+
+Active TDD:
 [`cycle-v2-json-graph-and-typed-node-models.md`](cycle-v2-json-graph-and-typed-node-models.md).
 
-Replace XML `.cyclegraph` persistence and escaped JSON parameters with one
-canonical JSON document. Separate scalar parameters, immutable aggregate node
-models, and editor intent; embed mature `Mesh`/`EnvelopeMesh` JSON directly;
-remove `mesh.topology` and `curve.modelSnapshot` parameter strings; and convert
-Cycle V2 presets directly without a compatibility layer.
+Completed:
+
+- Replaced XML `.cyclegraph` persistence with deterministic canonical JSON.
+- Removed escaped `mesh.topology` and `curve.modelSnapshot` parameters.
+- Separated scalar parameters, aggregate model publication, and editor state.
+- Converted bundled presets without a graph-format compatibility layer.
+- Added conflict-checked model replacement, undo/redo, semantic persistence
+  tests, and native save/reload coverage.
+- Replaced `var` payload holders with immutable concrete Trimesh, Envelope,
+  and flat-curve snapshots.
+- Removed runtime and presentation JSON reconstruction from synchronization,
+  DSP preparation, preview, and audio paths.
+- Added decode instrumentation proving already-loaded graphs remain outside
+  JSON during presentation and runtime consumption.
+- Renamed graph snapshot and automation outputs to `.cyclegraph`.
+- Persisted authored port-side overrides without duplicating definition-owned
+  port declarations, restoring the reviewed bundled layouts.
+
+Remaining verification:
+
+- Complete one reliable native macOS save/reload run across Trimesh, Envelope,
+  and flat curves. The full suite and standalone build pass, but the native
+  fixture currently misses pointer gestures nondeterministically and can fail
+  before its persistence assertions. Keep the TDD in progress until this gate
+  runs reliably or the native fixture is repaired and passes.
 
 This is the prerequisite persistence/model boundary for the causal update
-graph and should be implemented first.
+graph and must be completed before that boundary is considered closed.
 
 ## Cycle 2 OpenGL Cable Tessellation
 

@@ -26,7 +26,8 @@ public:
     EnvelopeSignalProcessor();
 
     static std::shared_ptr<const EnvelopeConfiguration> buildConfiguration(
-            const std::vector<NodeParameter>& parameters);
+            const std::vector<NodeParameter>& parameters,
+            const NodeModelStatePtr& model = {});
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);

@@ -1,176 +1,245 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+
+#include <limits>
 
 using namespace CycleV2;
 
-TEST_CASE("Graph serializer round trips demo graph", "[cycle-v2][graph]") {
-    const NodeGraph source = NodeGraph::createDemoGraph();
-    const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
+namespace {
 
-    REQUIRE(restored.getNodes().size() == source.getNodes().size());
-    REQUIRE(restored.getEdges().size() == source.getEdges().size());
-    REQUIRE(GraphValidator().isValid(restored));
-    REQUIRE(GraphCompiler().compile(restored).succeeded());
+GraphLoadResult loadObject(std::unique_ptr<DynamicObject> object) {
+    return GraphSerializer().readJSON(var(object.release()));
 }
 
-TEST_CASE("Graph serializer preserves node and port metadata", "[cycle-v2][graph]") {
-    const NodeGraph source = NodeGraph::createDemoGraph();
-    const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-    const auto& voice = restored.getNodes()[0];
-    const auto& waveMesh = restored.getNodes()[1];
-
-    REQUIRE(voice.id == "voice");
-    REQUIRE(voice.kind == NodeKind::VoiceContext);
-    REQUIRE(voice.outputs[0].domain == PortDomain::DomainContext);
-    REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
-    REQUIRE(parameterValueForNode(voice, "voices") == "6");
-    REQUIRE(parameterValueForNode(voice, "octave") == "0");
-    REQUIRE(parameterValueForNode(voice, "pitch") == "0");
-    REQUIRE(parameterValueForNode(voice, "portamento") == "0");
-    REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
-
-    REQUIRE(waveMesh.id == "waveMesh");
-    REQUIRE(waveMesh.kind == NodeKind::TrilinearMesh);
-    REQUIRE(waveMesh.bounds.getWidth() >= 260.f);
-    REQUIRE(waveMesh.inputs.size() == 5);
-    REQUIRE(waveMesh.inputs[1].id == "scratch");
-    REQUIRE(waveMesh.inputs[1].purpose == PortPurpose::ScratchAttachment);
-    REQUIRE(waveMesh.inputs[1].side == PortSide::Left);
-    REQUIRE(waveMesh.inputs[2].id == "yellow");
-    REQUIRE(waveMesh.inputs[3].id == "red");
-    REQUIRE(waveMesh.inputs[4].id == "blue");
-    REQUIRE(waveMesh.outputs[0].domain == PortDomain::ControlSignal);
-    REQUIRE(waveMesh.outputs[0].channelLayout == ChannelLayout::LinkedStereo);
-    REQUIRE(waveMesh.outputs[0].side == PortSide::Right);
-}
-
-TEST_CASE("Graph serializer preserves node parameters", "[cycle-v2][graph]") {
-    NodeGraph source = NodeGraph::createDemoGraph();
-    source.findNodeForEditing("voice")->parameters.push_back({ "mode", "Mode", "spectral" });
-    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("SerializedTopology");
-    const String topology = TrimeshMeshState::serialize(*authoredMesh);
-    authoredMesh->destroy();
-    source.findNodeForEditing("waveMesh")->parameters.push_back({
-            TrimeshMeshState::parameterId(),
-            "Mesh Topology",
-            topology
-    });
-
-    const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-    const auto& voice = restored.getNodes()[0];
-    const auto& waveMesh = restored.getNodes()[1];
-
-    REQUIRE(parameterValueForNode(voice, "mode") == "spectral");
-    REQUIRE(parameterValueForNode(voice, "octave") == "0");
-    REQUIRE(parameterValueForNode(voice, "oversampling") == "1x");
-    REQUIRE(parameterValueForNode(voice, "missing", "fallback") == "fallback");
-    REQUIRE(parameterValueForNode(waveMesh, TrimeshMeshState::parameterId()) == topology);
-}
-
-TEST_CASE("Graph serializer preserves attachment edges", "[cycle-v2][graph]") {
-    const NodeGraph source = NodeGraph::createDemoGraph();
-    const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-
-    bool foundScratchAttachment = false;
-    for (const auto& edge : restored.getEdges()) {
-        if (edge.sourceNodeId == "scratchEnv" && edge.destNodeId == "waveMesh" && edge.destPortId == "scratch") {
-            foundScratchAttachment = edge.attachment;
-        }
-    }
-
-    REQUIRE(foundScratchAttachment);
-}
-
-TEST_CASE("Graph serializer preserves mesh output port side", "[cycle-v2][graph]") {
-    NodeGraph source = NodeGraph::createDemoGraph();
-
-    source.findNodeForEditing("waveMesh")->outputs[0].side = PortSide::Bottom;
-
-    const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(source));
-    const auto found = std::find_if(
-            restored.getNodes().begin(),
-            restored.getNodes().end(),
-            [](const Node& node) {
-                return node.id == "waveMesh";
-            });
-
-    REQUIRE(found != restored.getNodes().end());
-    REQUIRE(found->outputs[0].side == PortSide::Bottom);
-}
-
-TEST_CASE("Graph serializer round trips XML", "[cycle-v2][graph]") {
-    const NodeGraph source = NodeGraph::createDemoGraph();
-    const GraphSerializer serializer;
-    const String xml = serializer.toXmlString(source);
-    const NodeGraph restored = serializer.fromXmlString(xml);
-
-    REQUIRE(xml.contains("cycleV2Graph"));
-    REQUIRE(xml.contains("formatVersion=\"2\""));
-    REQUIRE_FALSE(xml.contains(" w=\""));
-    REQUIRE_FALSE(xml.contains(" h=\""));
-    REQUIRE(restored.getNodes().size() == source.getNodes().size());
-    REQUIRE(restored.getEdges().size() == source.getEdges().size());
-    REQUIRE(GraphValidator().isValid(restored));
-}
-
-TEST_CASE("Graph serializer reports unsupported and unknown graph data", "[cycle-v2][graph][migration]") {
-    GraphSerializer serializer;
-    ValueTree future("cycleV2Graph");
-    future.setProperty("formatVersion", GraphSerializer::currentFormatVersion + 1, nullptr);
-    REQUIRE(serializer.loadValueTree(future).issues.front().code == GraphLoadCode::UnsupportedVersion);
-
-    ValueTree unknown("cycleV2Graph");
-    unknown.setProperty("formatVersion", GraphSerializer::currentFormatVersion, nullptr);
-    ValueTree node("node");
-    node.setProperty("id", "mystery", nullptr);
-    node.setProperty("kind", "not-installed", nullptr);
-    unknown.addChild(node, -1, nullptr);
-    REQUIRE(serializer.loadValueTree(unknown).issues.front().code == GraphLoadCode::UnknownNodeType);
-}
-
-TEST_CASE("Bundled default graph loads", "[cycle-v2][graph]") {
+File resource(const String& name) {
   #if defined(CYCLE_V2_SOURCE_DIR)
-    const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
-            .getChildFile("resources")
-            .getChildFile("default.cyclegraph");
-
-    REQUIRE(defaultGraph.existsAsFile());
-
-    const NodeGraph graph = GraphSerializer().fromXmlString(defaultGraph.loadFileAsString());
-
-    REQUIRE_FALSE(graph.getNodes().empty());
-    REQUIRE(GraphValidator().isValid(graph));
-    REQUIRE(GraphCompiler().compile(graph).succeeded());
+    return File(String(CYCLE_V2_SOURCE_DIR)).getChildFile("resources").getChildFile(name);
   #else
-    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+    return File();
   #endif
 }
 
-TEST_CASE("Bundled spy graph loads", "[cycle-v2][graph]") {
+}
+
+TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
+    const NodeGraph source = NodeGraph::createDemoGraph();
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(source);
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(encoded.trimStart().startsWithChar('{'));
+    REQUIRE(encoded.endsWith("\n"));
+    REQUIRE(encoded.contains("\"format\": \"cycle-v2-graph\""));
+    REQUIRE_FALSE(encoded.contains("<cycleV2Graph"));
+    REQUIRE_FALSE(encoded.contains("&quot;"));
+    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[cycle-v2][graph]") {
+    const GraphSerializer serializer;
+    const GraphLoadResult loaded = serializer.loadJsonString(
+            serializer.toJsonString(NodeGraph::createDemoGraph()));
+
+    REQUIRE(loaded.succeeded());
+    const Node* voice = loaded.graph.findNode("voice");
+    const Node* mesh = loaded.graph.findNode("waveMesh");
+    REQUIRE(voice != nullptr);
+    REQUIRE(mesh != nullptr);
+    REQUIRE(voice->outputs.size() == 1);
+    REQUIRE(voice->outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(parameterValueForNode(*voice, "voices") == "6");
+    REQUIRE(mesh->inputs.size() == 5);
+    REQUIRE(mesh->inputs[1].purpose == PortPurpose::ScratchAttachment);
+    REQUIRE(mesh->model != nullptr);
+    REQUIRE(mesh->model->schemaId() == "trimesh");
+
+    const var json = serializer.writeJSON(loaded.graph);
+    const auto* nodes = json.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    const var voiceJson = nodes->getReference(0);
+    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("voices", {}).isInt());
+    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isString());
+    REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
+}
+
+TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    Node* add = graph.findNodeForEditing("addMag");
+    REQUIRE(add != nullptr);
+    add->inputs[0].side = PortSide::Top;
+    add->inputs[1].side = PortSide::Bottom;
+    add->outputs[0].side = PortSide::Top;
+
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(graph);
+    REQUIRE(encoded.contains("\"portSides\""));
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+    REQUIRE(loaded.succeeded());
+    const Node* restored = loaded.graph.findNode("addMag");
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->inputs[0].side == PortSide::Top);
+    REQUIRE(restored->inputs[1].side == PortSide::Bottom);
+    REQUIRE(restored->outputs[0].side == PortSide::Top);
+    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+
+    var malformed = serializer.writeJSON(graph);
+    auto* nodes = malformed.getProperty("nodes", {}).getArray();
+    auto found = std::find_if(nodes->begin(), nodes->end(), [](const var& node) {
+        return node.getProperty("id", {}).toString() == "addMag";
+    });
+    REQUIRE(found != nodes->end());
+    found->getProperty("portSides", {}).getDynamicObject()
+            ->getProperty("inputs").getDynamicObject()
+            ->setProperty("missing", "left");
+    REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
+}
+
+TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const String before = serializer.toJsonString(graph);
+    const auto current = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            graph.findNode("waveMesh")->model);
+    REQUIRE(current != nullptr);
+
+    Mesh edited;
+    edited.deepCopy(&current->mesh());
+    edited.getVerts().front()->values[Vertex::Amp] += 0.01f;
+    REQUIRE(graph.replaceNodeModel(
+            "waveMesh",
+            TrimeshNodeModelState::copyOf(edited, 2)));
+    edited.destroy();
+
+    const StringArray beforeLines = StringArray::fromLines(before);
+    const StringArray afterLines = StringArray::fromLines(serializer.toJsonString(graph));
+    REQUIRE(beforeLines.size() == afterLines.size());
+    int changedLines = 0;
+    for (int index = 0; index < beforeLines.size(); ++index) {
+        changedLines += beforeLines[index] != afterLines[index] ? 1 : 0;
+    }
+    REQUIRE(changedLines == 2);
+}
+
+TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto current = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            graph.findNode("waveMesh")->model);
+    REQUIRE(current != nullptr);
+
+    Mesh edited;
+    edited.deepCopy(&current->mesh());
+    edited.getVerts().front()->values[Vertex::Amp] = 1.149999976158142f;
+    REQUIRE(graph.replaceNodeModel(
+            "waveMesh",
+            TrimeshNodeModelState::copyOf(edited, 2)));
+    edited.destroy();
+
+    const String encoded = serializer.toJsonString(graph);
+    REQUIRE(encoded.contains("\"amp\": 1.15"));
+    REQUIRE_FALSE(encoded.contains("1.149999976158142"));
+    REQUIRE(encoded.contains("{ \"time\":"));
+    REQUIRE(encoded.contains("\"vertexIds\": [ 0, 1, 2, 3, 4, 5, 6, 7 ]"));
+}
+
+TEST_CASE("Graph JSON rejects unsupported, unknown, and legacy input atomically", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    REQUIRE(serializer.loadJsonString("<cycleV2Graph/>").issues.front().code
+            == GraphLoadCode::InvalidJson);
+
+    var valid = serializer.writeJSON(NodeGraph::createDemoGraph());
+    valid.getDynamicObject()->setProperty("formatVersion", 99);
+    REQUIRE(serializer.readJSON(valid).issues.front().code == GraphLoadCode::UnsupportedVersion);
+
+    valid = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = valid.getProperty("nodes", {}).getArray();
+    nodes->getReference(0).getDynamicObject()->setProperty("kind", "not-installed");
+    const GraphLoadResult unknown = serializer.readJSON(valid);
+    REQUIRE_FALSE(unknown.succeeded());
+    REQUIRE(unknown.graph.getNodes().empty());
+    REQUIRE(unknown.issues.front().code == GraphLoadCode::UnknownNodeType);
+}
+
+TEST_CASE("Graph JSON rejects malformed models without partial adoption", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    var& mesh = nodes->getReference(1);
+    mesh.getProperty("model", {}).getDynamicObject()->setProperty("version", 999);
+
+    const GraphLoadResult result = serializer.readJSON(encoded);
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.graph.getNodes().empty());
+    REQUIRE(result.issues.front().code == GraphLoadCode::InvalidModel);
+}
+
+TEST_CASE("Graph JSON reports duplicate identities non-finite values and invalid addresses atomically",
+        "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    nodes->getReference(1).getDynamicObject()->setProperty(
+            "id", nodes->getReference(0).getProperty("id", {}));
+    GraphLoadResult result = serializer.readJSON(encoded);
+    REQUIRE(result.issues.front().code == GraphLoadCode::DuplicateIdentity);
+    REQUIRE(result.graph.getNodes().empty());
+
+    encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    nodes = encoded.getProperty("nodes", {}).getArray();
+    nodes->getReference(0).getProperty("position", {}).getDynamicObject()->setProperty(
+            "x", std::numeric_limits<double>::infinity());
+    result = serializer.readJSON(encoded);
+    REQUIRE(result.issues.front().code == GraphLoadCode::InvalidSchema);
+    REQUIRE(result.graph.getNodes().empty());
+
+    encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    edges->getReference(0).getDynamicObject()->setProperty("sourcePortId", "missing");
+    result = serializer.readJSON(encoded);
+    REQUIRE(result.issues.front().code == GraphLoadCode::InvalidGraph);
+    REQUIRE(result.graph.getNodes().empty());
+}
+
+TEST_CASE("Graph JSON rejects incomplete model arrays", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    var& meshNode = nodes->getReference(1);
+    meshNode.getProperty("model", {}).getProperty("mesh", {})
+            .getDynamicObject()->removeProperty("vertices");
+
+    const GraphLoadResult result = serializer.readJSON(encoded);
+    REQUIRE(result.issues.front().code == GraphLoadCode::InvalidModel);
+    REQUIRE(result.graph.getNodes().empty());
+}
+
+TEST_CASE("Every bundled graph is canonical JSON and compiles", "[cycle-v2][graph]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
-    const File spyGraph = File(String(CYCLE_V2_SOURCE_DIR))
-            .getChildFile("resources")
-            .getChildFile("with-spies.cyclegraph");
-
-    REQUIRE(spyGraph.existsAsFile());
-
-    const NodeGraph graph = GraphSerializer().fromXmlString(spyGraph.loadFileAsString());
-
-    REQUIRE_FALSE(graph.getNodes().empty());
-    REQUIRE(GraphValidator().isValid(graph));
-    REQUIRE(GraphCompiler().compile(graph).succeeded());
+    for (const String& name : {
+                String("default.cyclegraph"),
+                String("with-spies.cyclegraph"),
+                String("fft-sawtooth.cyclegraph") }) {
+        const File file = resource(name);
+        REQUIRE(file.existsAsFile());
+        const String encoded = file.loadFileAsString();
+        const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
+        INFO(name << ": " << (loaded.issues.empty() ? String() : loaded.issues.front().message));
+        REQUIRE(loaded.succeeded());
+        REQUIRE(GraphValidator().isValid(loaded.graph));
+        REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+        REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+        REQUIRE_FALSE(encoded.contains("&quot;"));
+        REQUIRE_FALSE(encoded.contains("mesh.topology"));
+        REQUIRE_FALSE(encoded.contains("curve.modelSnapshot"));
+    }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

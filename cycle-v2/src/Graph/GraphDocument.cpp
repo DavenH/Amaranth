@@ -9,7 +9,7 @@ GraphDocument GraphDocument::openOrDefault(
         const juce::File& source,
         NodeGraph fallback) {
     if (source.existsAsFile()) {
-        NodeGraph loaded = GraphSerializer().fromXmlString(source.loadFileAsString());
+        NodeGraph loaded = GraphSerializer().fromJsonString(source.loadFileAsString());
         if (!loaded.getNodes().empty()) {
             GraphDocument document(std::move(loaded));
             document.currentFile = source;
@@ -24,7 +24,7 @@ bool GraphDocument::save(const juce::File& destination) {
         return false;
     }
     destination.getParentDirectory().createDirectory();
-    if (!destination.replaceWithText(toXml())) {
+    if (!destination.replaceWithText(toJson())) {
         return false;
     }
 
@@ -34,7 +34,7 @@ bool GraphDocument::save(const juce::File& destination) {
 }
 
 bool GraphDocument::load(const juce::File& source) {
-    if (!source.existsAsFile() || !loadXml(source.loadFileAsString())) {
+    if (!source.existsAsFile() || !loadJson(source.loadFileAsString())) {
         return false;
     }
 
@@ -43,14 +43,14 @@ bool GraphDocument::load(const juce::File& source) {
     return true;
 }
 
-bool GraphDocument::loadXml(const juce::String& xml, bool recordUndo) {
-    NodeGraph candidate = GraphSerializer().fromXmlString(xml);
+bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
+    NodeGraph candidate = GraphSerializer().fromJsonString(json);
     if (candidate.getNodes().empty()) {
         return false;
     }
 
     if (recordUndo) {
-        recordBeforeChange(toXml());
+        recordBeforeChange(toJson());
     }
     currentGraph = std::move(candidate);
     GraphChangeSet change;
@@ -60,8 +60,8 @@ bool GraphDocument::loadXml(const juce::String& xml, bool recordUndo) {
     return true;
 }
 
-juce::String GraphDocument::toXml() const {
-    return GraphSerializer().toXmlString(currentGraph);
+juce::String GraphDocument::toJson() const {
+    return GraphSerializer().toJsonString(currentGraph);
 }
 
 bool GraphDocument::undo() {
@@ -69,10 +69,10 @@ bool GraphDocument::undo() {
         return false;
     }
 
-    redoHistory.push_back(toXml());
-    const juce::String xml = std::move(undoHistory.back());
+    redoHistory.push_back(toJson());
+    const juce::String json = std::move(undoHistory.back());
     undoHistory.pop_back();
-    return restoreXml(xml);
+    return restoreJson(json);
 }
 
 bool GraphDocument::redo() {
@@ -80,23 +80,23 @@ bool GraphDocument::redo() {
         return false;
     }
 
-    undoHistory.push_back(toXml());
-    const juce::String xml = std::move(redoHistory.back());
+    undoHistory.push_back(toJson());
+    const juce::String json = std::move(redoHistory.back());
     redoHistory.pop_back();
-    return restoreXml(xml);
+    return restoreJson(json);
 }
 
-void GraphDocument::recordExternalChange(juce::String beforeXml, GraphChangeSet change) {
-    recordBeforeChange(std::move(beforeXml));
+void GraphDocument::recordExternalChange(juce::String beforeJson, GraphChangeSet change) {
+    recordBeforeChange(std::move(beforeJson));
     publishChange(std::move(change));
 }
 
-void GraphDocument::recordBeforeChange(juce::String xml) {
-    if (xml.isEmpty()) {
+void GraphDocument::recordBeforeChange(juce::String json) {
+    if (json.isEmpty()) {
         return;
     }
 
-    undoHistory.push_back(std::move(xml));
+    undoHistory.push_back(std::move(json));
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {
         undoHistory.erase(undoHistory.begin());
@@ -112,8 +112,8 @@ void GraphDocument::publishChange(GraphChangeSet change) {
     }
 }
 
-bool GraphDocument::restoreXml(const juce::String& xml) {
-    NodeGraph restored = GraphSerializer().fromXmlString(xml);
+bool GraphDocument::restoreJson(const juce::String& json) {
+    NodeGraph restored = GraphSerializer().fromJsonString(json);
     if (restored.getNodes().empty()) {
         return false;
     }
