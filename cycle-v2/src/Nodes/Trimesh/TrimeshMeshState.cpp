@@ -89,8 +89,10 @@ NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& erro
         error = "Invalid Trimesh mesh state";
         return nullptr;
     }
+    var canonicalState = validated.writeJSON();
     validated.destroy();
-    return std::make_shared<const TrimeshNodeModelState>(meshState, (uint64_t) revision);
+    return std::make_shared<const TrimeshNodeModelState>(
+            std::move(canonicalState), (uint64_t) revision);
 }
 
 }

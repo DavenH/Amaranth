@@ -694,20 +694,24 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     }
 
     const var state = object->getProperty("state");
-    bool valid = false;
+    var canonicalState;
     if (kind == NodeKind::Envelope) {
         EnvelopeNodeModel model;
-        valid = model.readJSON(state) && model.revision() == (uint64_t) revision;
+        if (model.readJSON(state) && model.revision() == (uint64_t) revision) {
+            canonicalState = model.writeJSON();
+        }
     } else {
         FlatCurveModel model;
-        valid = model.readJSON(state) && model.revision() == (uint64_t) revision;
+        if (model.readJSON(state) && model.revision() == (uint64_t) revision) {
+            canonicalState = model.writeJSON();
+        }
     }
-    if (!valid) {
+    if (canonicalState.isVoid()) {
         error = "Invalid structured node model state";
         return nullptr;
     }
     return std::make_shared<const CurveNodeModelState>(
-            schemaId(), currentVersion(), (uint64_t) revision, state);
+            schemaId(), currentVersion(), (uint64_t) revision, std::move(canonicalState));
 }
 
 }

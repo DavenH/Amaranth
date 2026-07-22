@@ -95,6 +95,27 @@ TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v
     REQUIRE(changedLines == 2);
 }
 
+TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto current = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            graph.findNode("waveMesh")->model);
+    REQUIRE(current != nullptr);
+
+    Mesh edited;
+    REQUIRE(edited.readJSON(current->meshJSON()));
+    edited.getVerts().front()->values[Vertex::Amp] = 1.149999976158142f;
+    REQUIRE(graph.replaceNodeModel(
+            "waveMesh",
+            std::make_shared<const TrimeshNodeModelState>(edited.writeJSON(), 2)));
+    edited.destroy();
+
+    const String encoded = serializer.toJsonString(graph);
+    REQUIRE(encoded.contains("\"amp\": 1.15"));
+    REQUIRE_FALSE(encoded.contains("1.149999976158142"));
+    REQUIRE(encoded.contains("{ \"time\":"));
+}
+
 TEST_CASE("Graph JSON rejects unsupported, unknown, and legacy input atomically", "[cycle-v2][graph]") {
     GraphSerializer serializer;
     REQUIRE(serializer.loadJsonString("<cycleV2Graph/>").issues.front().code

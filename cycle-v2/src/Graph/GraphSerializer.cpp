@@ -12,6 +12,8 @@ namespace CycleV2 {
 namespace {
 
 constexpr auto formatId = "cycle-v2-graph";
+constexpr int maximumDecimalPlaces = 5;
+constexpr int maximumLineLength = 140;
 
 struct StringHash {
     size_t operator()(const String& value) const {
@@ -120,6 +122,82 @@ bool readRequiredString(const DynamicObject& object, const Identifier& name, Str
     }
     result = value.toString();
     return true;
+}
+
+bool isScalarJSON(const var& value) {
+    return value.getDynamicObject() == nullptr && value.getArray() == nullptr;
+}
+
+String scalarToJSON(const var& value) {
+    return JSON::toString(value, true, maximumDecimalPlaces);
+}
+
+String singleLineObject(const DynamicObject& object) {
+    String result { "{ " };
+    bool first = true;
+    for (const auto& property : object.getProperties()) {
+        if (!isScalarJSON(property.value)) {
+            return {};
+        }
+        if (!first) {
+            result << ", ";
+        }
+        result << scalarToJSON(property.name.toString()) << ": " << scalarToJSON(property.value);
+        first = false;
+    }
+    return first ? String("{}") : result + " }";
+}
+
+void appendIndent(String& output, int depth) {
+    output << String::repeatedString("    ", depth);
+}
+
+void appendCanonicalJSON(const var& value, int depth, String& output);
+
+void appendCanonicalObject(const DynamicObject& object, int depth, String& output) {
+    const String compact = singleLineObject(object);
+    if (compact.isNotEmpty() && depth * 4 + compact.length() <= maximumLineLength) {
+        output << compact;
+        return;
+    }
+
+    output << "{\n";
+    const auto& properties = object.getProperties();
+    int index = 0;
+    for (const auto& property : properties) {
+        appendIndent(output, depth + 1);
+        output << scalarToJSON(property.name.toString()) << ": ";
+        appendCanonicalJSON(property.value, depth + 1, output);
+        output << (++index < properties.size() ? ",\n" : "\n");
+    }
+    appendIndent(output, depth);
+    output << "}";
+}
+
+void appendCanonicalArray(const Array<var>& values, int depth, String& output) {
+    if (values.isEmpty()) {
+        output << "[]";
+        return;
+    }
+
+    output << "[\n";
+    for (int index = 0; index < values.size(); ++index) {
+        appendIndent(output, depth + 1);
+        appendCanonicalJSON(values[index], depth + 1, output);
+        output << (index + 1 < values.size() ? ",\n" : "\n");
+    }
+    appendIndent(output, depth);
+    output << "]";
+}
+
+void appendCanonicalJSON(const var& value, int depth, String& output) {
+    if (const auto* object = value.getDynamicObject()) {
+        appendCanonicalObject(*object, depth, output);
+    } else if (const auto* array = value.getArray()) {
+        appendCanonicalArray(*array, depth, output);
+    } else {
+        output << scalarToJSON(value);
+    }
 }
 
 }
@@ -359,8 +437,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 }
 
 String GraphSerializer::toJsonString(const NodeGraph& graph) const {
-    String result = JSON::toString(writeJSON(graph), false);
-    result = result.replace("\r\n", "\n").replaceCharacter('\r', '\n');
+    String result;
+    appendCanonicalJSON(writeJSON(graph), 0, result);
     return result + "\n";
 }
 
