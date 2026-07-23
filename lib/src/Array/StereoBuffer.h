@@ -1,25 +1,26 @@
 #pragma once
 
 #include "Buffer.h"
-#include "ScopedAlloc.h"
 
+// Non-owning channel view. Copies alias the same underlying sample memory.
 class StereoBuffer {
-private:
-
 public:
-    int numChannels;
-    ScopedAlloc<float> workBuffer;
-    Buffer<float> left, right;
+    StereoBuffer() = default;
+
+    StereoBuffer(const StereoBuffer&) = default;
+    StereoBuffer& operator=(const StereoBuffer&) = default;
+    StereoBuffer(StereoBuffer&&) noexcept = default;
+    StereoBuffer& operator=(StereoBuffer&&) noexcept = default;
 
     explicit StereoBuffer(AudioBuffer<float>& audioBuffer) :
-            numChannels(audioBuffer.getNumChannels()) {
+            numChannels(jmin(2, audioBuffer.getNumChannels())) {
         for (int i = 0; i < numChannels; ++i) {
             (*this)[i] = Buffer<float>(audioBuffer, i);
         }
     }
 
     StereoBuffer(AudioBuffer<float>& audioBuffer, int start, int size) :
-            numChannels(audioBuffer.getNumChannels()) {
+            numChannels(jmin(2, audioBuffer.getNumChannels())) {
         left = Buffer(audioBuffer.getWritePointer(0, start), size);
 
         if (numChannels > 1) {
@@ -31,19 +32,27 @@ public:
         left = Buffer(source);
     }
 
-    explicit StereoBuffer(int channels) : numChannels(channels) {}
-
-    void takeOwnership() {
-        workBuffer.resize(numChannels * left.size());
-        int size = left.size();
-        for (int i = 0; i < numChannels; ++i) {
-            Buffer<float> futureChannel = workBuffer.place(size);
-            operator[](i).copyTo(futureChannel);
-            operator[](i) = futureChannel;
-        }
+    StereoBuffer(const Buffer<float>& left, const Buffer<float>& right) :
+            numChannels(right.empty() ? 1 : 2)
+        ,   left(left)
+        ,   right(right) {
+        jassert(right.empty() || left.size() == right.size());
     }
 
+    explicit StereoBuffer(int channels) : numChannels(channels) {}
+
     Buffer<float>& operator[](const int index) {
+        switch (index) {
+            case 0: return left;
+            case 1: return right;
+            default:
+                jassertfalse;
+                break;
+        }
+        return left;
+    }
+
+    const Buffer<float>& operator[](const int index) const {
         switch (index) {
             case 0: return left;
             case 1: return right;
@@ -72,7 +81,7 @@ public:
             right.add(sb.right);
         } else if (numChannels > 1) {
             right.add(sb.left);
-        } else if (sb.numChannels) {
+        } else if (sb.numChannels > 1) {
             left.add(sb.right);
         }
 
@@ -99,7 +108,7 @@ public:
         return *this;
     }
 
-    StereoBuffer& mul(StereoBuffer& buff) {
+    StereoBuffer& mul(const StereoBuffer& buff) {
         left.mul(buff.left);
 
         if (numChannels > 1 && buff.numChannels > 1) {
@@ -112,7 +121,11 @@ public:
     }
 
     [[nodiscard]] float max() const {
-        return jmax(left.max(), right.max());
+        if (isEmpty()) {
+            return 0.f;
+        }
+
+        return numChannels > 1 ? jmax(left.max(), right.max()) : left.max();
     }
 
     void clear() {
@@ -130,4 +143,8 @@ public:
     [[nodiscard]] bool isEmpty() const {
         return left.empty();
     }
+
+    int numChannels{};
+    Buffer<float> left;
+    Buffer<float> right;
 };

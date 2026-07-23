@@ -28,7 +28,27 @@ PitchedSample::PitchedSample() :
 
 PitchedSample::PitchedSample(const Buffer<float>& sample) :
         PitchedSample() {
-    audio = StereoBuffer(sample);
+    copyAudio(sample);
+}
+
+void PitchedSample::copyAudio(const Buffer<float>& source) {
+    audioMemory.resize(source.size());
+    source.copyTo(audioMemory);
+    audio = StereoBuffer(audioMemory);
+}
+
+void PitchedSample::copyAudio(AudioBuffer<float>& source) {
+    const int numChannels = jmin(2, source.getNumChannels());
+    const int channelSize = source.getNumSamples();
+    audioMemory.resize(numChannels * channelSize);
+    audioMemory.resetPlacement();
+    audio = StereoBuffer(numChannels);
+
+    for (int channel = 0; channel < numChannels; ++channel) {
+        Buffer<float> destination = audioMemory.place(channelSize);
+        Buffer<float>(source, channel).copyTo(destination);
+        audio[channel] = destination;
+    }
 }
 
 void PitchedSample::writeXML(XmlElement* sampleElem) const {
@@ -402,8 +422,7 @@ int PitchedSample::load(const String& filename) {
     reader->read(&audioBuffer, 0L, size, 0L, true, true);
 
     lastLoadedFilePath = audioFile.getFullPathName();
-    audio = StereoBuffer(audioBuffer);
-    audio.takeOwnership();
+    copyAudio(audioBuffer);
 
     float maxMag = audio.max();
 
