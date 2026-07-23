@@ -2,8 +2,8 @@
 
 ## Status
 
-In progress: the source/control runtime is implemented; compact single-source
-and bundled triple-source authoring UX is being added.
+Implemented on 2026-07-23, including compact single-source and bundled
+triple-source authoring UX.
 
 This design extends the implemented contracts in:
 
@@ -720,7 +720,7 @@ its refactor, style, semantic-test, and realtime-boundary evidence is complete.
 - Implementation review confirms the size/branch envelope or records and
   resolves the architectural reason for exceeding it.
 
-## Implementation Review
+## Initial Implementation Review
 
 The implementation follows the proposed ownership boundary. `ModulationSource`
 contains the shared normalization/evaluation core used by both audio and
@@ -797,3 +797,76 @@ Verification evidence:
 `clang-tidy` was not available in the development environment; compilation
 with the repository warning settings and the explicit style/hot-loop audit are
 the recorded substitutes.
+
+## Compact And Triple UX Implementation Review
+
+The extension adds `NodeKind::ModulationTriple` and
+`AudioModuleRole::ModulationTriple`. The node publishes three ordinary mono
+`ControlSignal` outputs. `ModulationTripleAudioProcessor` delegates every
+output block to `ModulationSource::renderAudioBlock`, so normalization,
+voice-time ramping, timed MIDI span handling, and realtime constraints remain
+shared with the single source. No preview role, triplet payload, destination
+adapter, smoothing path, or mesh/Envelope algorithm was added.
+
+The canvas-only `ModulationCableBundle` recognizes a pseudo composite
+authoring address for Modulation Triple output and Trilinear Mesh input. One
+gesture validates three normal `GraphEditor` connections, executes them in one
+compound undo transaction, and leaves three ordinary edges in the graph.
+Complete matching yellow/red/blue edge sets are inferred at scene-build time
+and coalesced into one cable target. No bundle identifier or presentation
+metadata is serialized. Deletion applies to all three inferred edges in one
+undoable gesture; cable splicing is intentionally disabled for a bundle
+because it would be ambiguous by axis.
+
+The visible bundle is one curved path with nested yellow, red, and blue bands
+and pie-chart endpoints. Trilinear Mesh retains its individual axis targets for
+single-source routes. The compact single-source node is fixed at 48 pixels
+high and makes the selected source its dominant label. The triple is fixed at
+126 pixels high with separate yellow, red, and blue source rows and the legacy
+defaults `voiceTime`, `keyScale`, and `modWheel`.
+
+The extension adds 1,059 and removes 230 production/resource lines, for a net
+increase of 829. The largest new files are:
+
+- `ModulationNodeEditors.cpp`: 302 lines;
+- `ModulationCableBundle.cpp`: 158 lines;
+- the compact/bundle additions in `NodeCanvasPresentation.cpp`: 158 added and
+  14 removed; and
+- `NodeCableRenderer.cpp`: 85 added and one removed.
+
+The production volume includes extracting approximately 160 lines of
+Modulation editor code from the 1,000-line `ConcreteNodeEditors.cpp`; that file
+is now 844 lines. Its remaining decomposition is recorded in
+`docs/TDD/refactors.md` rather than adding more unrelated behavior to it.
+
+New compatibility branches are limited to:
+
+- Modulation Triple definition, palette alias/entry, view module, editor
+  registration, and compact canvas dispatch;
+- Modulation Triple audio configuration and processor factory registration;
+- the bundle helper's exact Modulation Triple source and Trilinear Mesh
+  destination predicates; and
+- scene/presentation branches which create and paint the composite targets.
+
+The bundle helper is a stable UI authoring/presentation boundary. It translates
+one gesture into ordinary graph edits and infers one visual cable from those
+edges; it contains no graph execution or signal behavior.
+
+Verification evidence:
+
+- focused `[modulation]`: 194 assertions in 29 test cases, including the
+  prepared-graph no-allocation boundary with a Modulation Triple;
+- full `CycleV2_tests`: 4,854 assertions in 352 test cases;
+- compact-source fixture: 17 commands, no failures, 48-pixel node height;
+- triple fixture: 17 commands, no failures, 126-pixel node height, three
+  persisted edges after save/reload;
+- Standalone Debug build completed with `--parallel 10`;
+- external screen capture visually confirmed the stacked labels, composite
+  sockets, and one coalesced cable at
+  `/private/tmp/cycle-v2-modulation-triple-screen.png`;
+- `git diff --check` passed; and
+- the modified DSP files contain no scalar `std::<math>` hot loop.
+
+Repository-wide CTest passed 550 of 551 tests. The unrelated
+`GuideCurveOffsetSeeds` test failed identically in isolation and is recorded in
+`docs/TDD/ui-bugs.md`. `clang-tidy` remains unavailable in the environment.

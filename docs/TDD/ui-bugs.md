@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: GuideCurveOffsetSeeds vertical seed contract fails
+
+Context:
+
+- Repository-wide CTest during Modulation Triple work on 2026-07-23 passed
+  550 of 551 tests.
+- `GuideCurveOffsetSeeds owns paired phase and vertical seed arrays` failed at
+  `lib/tests/TestRasterizerTypes.cpp:31`: `verticalAt(2)` returned 16 instead of
+  4.
+- A focused rerun failed identically. The modulation work does not modify
+  rasterizer seed storage or guide-curve rasterization.
+
+Current status: open; reconcile the paired seed test contract with the current
+`GuideCurveOffsetSeeds` representation.
+
 ## Open: Cycle v2 automation launch emits Settings assertions
 
 Context:

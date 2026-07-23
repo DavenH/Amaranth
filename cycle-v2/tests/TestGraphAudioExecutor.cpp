@@ -797,10 +797,21 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
     REQUIRE(second.payload->block.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
 }
 
-TEST_CASE("Prepared graph audio processing performs no heap allocations", "[cycle-v2][runtime][realtime]") {
-    const NodeGraph graph = NodeGraph::createDemoGraph();
+TEST_CASE("Prepared graph audio processing performs no heap allocations",
+        "[cycle-v2][runtime][realtime][modulation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "allocationTriple",
+            {}));
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
+    REQUIRE(std::any_of(
+            compileResult.plan.steps.begin(),
+            compileResult.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "allocationTriple";
+            }));
 
     GraphAudioExecutor executor;
     AudioExecutionSpec spec;
