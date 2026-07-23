@@ -511,6 +511,8 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         target->setProperty("sourcePortId", edge.sourcePortId);
         target->setProperty("destNodeId", edge.destNodeId);
         target->setProperty("destPortId", edge.destPortId);
+        target->setProperty("modulationBundle", sceneEdge.modulationBundle);
+        target->setProperty("bundleEdgeCount", (int) sceneEdge.edgeIndices.size());
         targets.add(target);
     }
 

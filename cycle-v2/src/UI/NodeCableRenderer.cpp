@@ -8,6 +8,37 @@ const Colour kCanvasBackground { 0xff101318 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
 
+void paintModulationPie(
+        Graphics& graphics,
+        Point<float> centre,
+        float diameter,
+        bool output) {
+    const Rectangle<float> bounds(diameter, diameter);
+    const auto placed = bounds.withCentre(centre);
+    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+    graphics.fillEllipse(placed);
+
+    const MorphDimension dimensions[] {
+            MorphDimension::Yellow,
+            MorphDimension::Red,
+            MorphDimension::Blue
+    };
+    constexpr float segment = MathConstants<float>::twoPi / 3.f;
+    for (int index = 0; index < 3; ++index) {
+        Path wedge;
+        wedge.addPieSegment(
+                placed.reduced(output ? diameter * 0.14f : diameter * 0.06f),
+                -MathConstants<float>::halfPi + segment * (float) index,
+                -MathConstants<float>::halfPi + segment * (float) (index + 1),
+                0.f);
+        graphics.setColour(colourForMorphDimension(dimensions[index]));
+        graphics.fillPath(wedge);
+    }
+
+    graphics.setColour(Colours::white.withAlpha(0.62f));
+    graphics.drawEllipse(placed, jmax(1.f, diameter * 0.08f));
+}
+
 void paintSpliceMarker(
         Graphics& graphics,
         const Path& cable,
@@ -115,11 +146,49 @@ void paintSignalCable(
                     PathStrokeType::rounded));
 }
 
+void paintModulationBundleCable(
+        Graphics& graphics,
+        const Path& cable,
+        const NodeCableStyle& style,
+        float scale) {
+    graphics.setColour(kCanvasBackground.withAlpha(0.82f));
+    graphics.strokePath(
+            cable,
+            PathStrokeType(
+                    (style.selected ? 12.f : 10.f) * scale,
+                    PathStrokeType::curved,
+                    PathStrokeType::rounded));
+
+    const MorphDimension dimensions[] {
+            MorphDimension::Yellow,
+            MorphDimension::Red,
+            MorphDimension::Blue
+    };
+    const float widths[] { 7.f, 5.f, 3.f };
+    for (int index = 0; index < 3; ++index) {
+        graphics.setColour(colourForMorphDimension(dimensions[index]).withAlpha(
+                style.selected ? 0.98f : 0.88f));
+        graphics.strokePath(
+                cable,
+                PathStrokeType(
+                        widths[index] * scale,
+                        PathStrokeType::curved,
+                        PathStrokeType::rounded));
+    }
+}
+
 void paintEndpoints(
         Graphics& graphics,
         const NodeSceneEdge& edge,
         const NodeCableStyle& style,
         float scale) {
+    if (style.modulationBundle) {
+        const float size = (style.selected ? 16.f : 14.f) * scale;
+        paintModulationPie(graphics, edge.source, size, true);
+        paintModulationPie(graphics, edge.destination, size, false);
+        return;
+    }
+
     const float endpointSize = (style.spliceTarget ? 15.f : (style.selected ? 14.f : 11.f)) * scale;
     const Rectangle<float> endpoint(endpointSize, endpointSize);
     const Rectangle<float> sourceMarker = endpoint.withCentre(edge.source);
@@ -171,7 +240,9 @@ void NodeCableRenderer::paint(
         float zoom) {
     const float scale = scaleForZoom(zoom);
 
-    if (style.attachment) {
+    if (style.modulationBundle) {
+        paintModulationBundleCable(graphics, edge.cablePath, style, scale);
+    } else if (style.attachment) {
         paintAttachmentCable(graphics, edge.cablePath, style, scale);
     } else {
         paintSignalCable(graphics, edge.cablePath, style, scale);
@@ -209,6 +280,19 @@ void NodeCableRenderer::paintPending(
     graphics.setColour(connection.colour.withAlpha(0.96f));
     graphics.drawEllipse(sourceMarker, 1.8f * scale);
     graphics.fillEllipse(destinationMarker.reduced(2.f * scale));
+
+    if (connection.modulationBundle) {
+        paintModulationPie(graphics, connection.source, 14.f * scale, true);
+        paintModulationPie(graphics, connection.destination, 14.f * scale, false);
+    }
+}
+
+void NodeCableRenderer::paintModulationSocket(
+        Graphics& graphics,
+        Point<float> centre,
+        float diameter,
+        bool output) {
+    paintModulationPie(graphics, centre, diameter, output);
 }
 
 }

@@ -1,0 +1,22 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "modTriple", "x": 330, "y": 150 },
+    { "command": "assertNodeParameter", "nodeId": "modTriple", "parameterId": "yellowSource", "equals": "voiceTime" },
+    { "command": "assertNodeParameter", "nodeId": "modTriple", "parameterId": "redSource", "equals": "keyScale" },
+    { "command": "assertNodeParameter", "nodeId": "modTriple", "parameterId": "blueSource", "equals": "modWheel" },
+    { "command": "assertState", "path": "nodes.15.bounds.height", "equals": 126 },
+    { "command": "connectPorts", "sourceNodeId": "modTriple", "sourcePortId": "__modulationBundle", "destNodeId": "waveMesh", "destPortId": "__modulationBundle" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "edgeCount", "equals": 19 },
+    { "command": "openNodeEditor", "nodeId": "modTriple", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.modulationTriple.yellow.source", "equals": "voiceTime" },
+    { "command": "assertState", "path": "expandedNodeControls.modulationTriple.red.source", "equals": "keyScale" },
+    { "command": "assertState", "path": "expandedNodeControls.modulationTriple.blue.source", "equals": "modWheel" },
+    { "command": "screenshot", "path": "/private/tmp/cycle-v2-modulation-triple.png" },
+    { "command": "saveGraph", "path": "/private/tmp/cycle-v2-modulation-triple.cyclegraph" },
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-modulation-triple.cyclegraph" },
+    { "command": "assertState", "path": "edgeCount", "equals": 19 },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true }
+  ],
+  "quit": true
+}

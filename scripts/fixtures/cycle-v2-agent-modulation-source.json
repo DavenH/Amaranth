@@ -5,6 +5,7 @@
     { "command": "setNodeParameter", "nodeId": "mod", "parameterId": "controller", "label": "Controller", "value": "74" },
     { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "source", "equals": "midiCC" },
     { "command": "assertNodeParameter", "nodeId": "mod", "parameterId": "controller", "equals": "74" },
+    { "command": "assertState", "path": "nodes.15.bounds.height", "equals": 48 },
     { "command": "connectPorts", "sourceNodeId": "mod", "sourcePortId": "value", "destNodeId": "env", "destPortId": "red" },
     { "command": "connectPorts", "sourceNodeId": "mod", "sourcePortId": "value", "destNodeId": "waveMesh", "destPortId": "blue" },
     { "command": "assertState", "path": "compileSucceeded", "equals": true },

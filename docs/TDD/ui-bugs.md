@@ -1,5 +1,21 @@
 # UI Bug Notes
 
+## Open: Cycle v2 automation launch emits Settings assertions
+
+Context:
+
+- The focused compact Modulation and Modulation Triple fixtures on 2026-07-23
+  completed every command successfully but logged JUCE assertions at
+  `Settings.cpp:222` and `Settings.cpp:223`.
+- The assertions occur during standalone launch and are incidental to the
+  modulation graph, editor, bundle, and persistence behavior.
+- Repro logs:
+  `/private/tmp/cycle-v2-modulation-source-compact-logs.txt` and
+  `/private/tmp/cycle-v2-modulation-triple-logs.txt`.
+
+Current status: open; inspect the settings property access performed during
+standalone initialization.
+
 ## Open: Cycle v2 full suite emits JUCE Component assertions
 
 Context:

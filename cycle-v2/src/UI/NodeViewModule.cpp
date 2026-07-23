@@ -77,6 +77,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     modulation.hostedEditor = true;
     modulation.expandedEditorSize = Point<float>(420.f, 180.f);
     add(NodeKind::ModulationSource, modulation);
+    modulation.previewable = false;
     modulation.expandedEditorSize = Point<float>(520.f, 300.f);
     add(NodeKind::ModulationTriple, modulation);
 

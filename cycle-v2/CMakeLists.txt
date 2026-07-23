@@ -115,6 +115,8 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAuthoring.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAutomationController.cpp"

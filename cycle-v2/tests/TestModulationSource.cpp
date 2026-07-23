@@ -11,6 +11,8 @@
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/MidiControlState.h"
 #include "../src/UI/NodeEditorHost.h"
+#include "../src/UI/ModulationCableBundle.h"
+#include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeViewModule.h"
 
 using namespace CycleV2;
@@ -419,4 +421,56 @@ TEST_CASE("Modulation triple definition retains Cycle v1 axis defaults",
     REQUIRE(parameterValueForNode(triple, "redSource") == "keyScale");
     REQUIRE(parameterValueForNode(triple, "blueSource") == "modWheel");
     REQUIRE(triple.bounds.getHeight() == 126.f);
+}
+
+TEST_CASE("Matching triple routes coalesce into one canvas cable",
+        "[cycle-v2][modulation][triple][ui]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            { 10.f, 20.f }));
+    graph.addNode(factory.createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            { 420.f, 20.f }));
+    const Node* triple = graph.findNode("triple");
+    const Node* mesh = graph.findNode("mesh");
+    REQUIRE(triple != nullptr);
+    REQUIRE(mesh != nullptr);
+
+    const PortAddress source = ModulationCableBundle::sourceAddress(*triple);
+    const PortAddress destination = ModulationCableBundle::destinationAddress(*mesh);
+    REQUIRE(ModulationCableBundle::canConnect(graph, source, destination));
+    for (const auto& route : ModulationCableBundle::routes(graph, source, destination)) {
+        REQUIRE(GraphEditor().connect(graph, route.source, route.destination).succeeded());
+    }
+    REQUIRE(graph.getEdges().size() == 3);
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport);
+    REQUIRE(snapshot.edges.size() == 1);
+    REQUIRE(snapshot.edges.front().modulationBundle);
+    REQUIRE(snapshot.edges.front().edgeIndices.size() == 3);
+
+    const auto bundleTargetCount = std::count_if(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.portId == ModulationCableBundle::portId();
+            });
+    REQUIRE(bundleTargetCount == 2);
+}
+
+TEST_CASE("Modulation triple exposes the shared hosted editor",
+        "[cycle-v2][modulation][triple][ui]") {
+    REQUIRE(NodeEditorFactoryRegistry::instance().find(NodeKind::ModulationTriple) != nullptr);
+    const auto& capabilities = NodeViewModuleRegistry::instance()
+            .moduleFor(NodeKind::ModulationTriple)
+            .capabilities();
+    REQUIRE(capabilities.hostedEditor);
+    REQUIRE_FALSE(capabilities.previewable);
 }

@@ -2,6 +2,7 @@
 
 #include "NodeEditorHost.h"
 
+#include "ModulationNodeEditors.h"
 #include "NodeParameterValue.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Effects/EffectPlotPalette.h"
@@ -545,166 +546,6 @@ public:
     }
 };
 
-class ModulationSourceEditorComponent final : public Component {
-public:
-    ModulationSourceEditorComponent(
-            NodeEditorCommands& commandsToUse,
-            NodeEditorPresentation& presentationToUse) :
-            commands     (commandsToUse)
-        ,   presentation (presentationToUse) {
-        closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
-        closeButton.onClick = [this] { presentation.closeNodeEditor(); };
-        addAndMakeVisible(closeButton);
-
-        const StringArray names {
-                "Voice Time", "Velocity", "1-Velocity", "Key Scale",
-                "Mod Wheel", "Channel Pressure", "MIDI CC", "Constant"
-        };
-        const StringArray ids {
-                "voiceTime", "velocity", "inverseVelocity", "keyScale",
-                "modWheel", "channelPressure", "midiCC", "constant"
-        };
-        for (int index = 0; index < names.size(); ++index) {
-            source.addItem(names[index], index + 1);
-            sourceIds.add(ids[index]);
-        }
-        source.onChange = [this] {
-            if (binding || source.getSelectedItemIndex() < 0) {
-                return;
-            }
-            commands.setNodeParameterText(
-                    node.id,
-                    "source",
-                    "Source",
-                    sourceIds[source.getSelectedItemIndex()]);
-            updateConditionalControls();
-        };
-        addAndMakeVisible(source);
-
-        controller.setSliderStyle(Slider::LinearHorizontal);
-        controller.setTextBoxStyle(Slider::TextBoxRight, false, 56, 22);
-        controller.setRange(0.0, 127.0, 1.0);
-        controller.onValueChange = [this] {
-            if (!binding) {
-                commands.setNodeParameterValue(
-                        node.id, "controller", "Controller", (float) controller.getValue());
-            }
-        };
-        addAndMakeVisible(controller);
-
-        constant.setSliderStyle(Slider::LinearHorizontal);
-        constant.setTextBoxStyle(Slider::TextBoxRight, false, 56, 22);
-        constant.setRange(0.0, 1.0, 0.001);
-        constant.onValueChange = [this] {
-            if (!binding) {
-                commands.setNodeParameterValue(
-                        node.id, "constant", "Constant", (float) constant.getValue());
-            }
-        };
-        addAndMakeVisible(constant);
-    }
-
-    void setNode(const Node& nodeToUse) {
-        node = nodeToUse;
-        binding = true;
-        const String sourceId = nodeParameterValue(node, "source", "modWheel");
-        source.setSelectedItemIndex(jmax(0, sourceIds.indexOf(sourceId)), dontSendNotification);
-        controller.setValue(
-                nodeParameterValue(node, "controller", "1").getDoubleValue(),
-                dontSendNotification);
-        constant.setValue(
-                nodeParameterValue(node, "constant", "0.5").getDoubleValue(),
-                dontSendNotification);
-        binding = false;
-        updateConditionalControls();
-    }
-
-    void paint(Graphics& graphics) override {
-        graphics.fillAll(Colour(0xff11151b));
-        graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
-        graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f, Font::bold));
-        graphics.drawText("MODULATION", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
-        graphics.setFont(FontOptions(13.f));
-        graphics.setColour(Colour(0xffaab4c0));
-        graphics.drawText("Source", 18, 56, 90, 24, Justification::centredLeft);
-        if (controller.isVisible()) {
-            graphics.drawText("Controller", 18, 104, 90, 24, Justification::centredLeft);
-        }
-        if (constant.isVisible()) {
-            graphics.drawText("Value", 18, 104, 90, 24, Justification::centredLeft);
-        }
-    }
-
-    void resized() override {
-        closeButton.setBounds(getWidth() - 42, 9, 28, 28);
-        source.setBounds(112, 54, getWidth() - 130, 28);
-        controller.setBounds(112, 102, getWidth() - 130, 28);
-        constant.setBounds(112, 102, getWidth() - 130, 28);
-    }
-
-    var automationState() const {
-        auto* state = new DynamicObject();
-        state->setProperty("source", selectedSourceId());
-        state->setProperty("controller", controller.getValue());
-        state->setProperty("constant", constant.getValue());
-        return state;
-    }
-
-private:
-    void updateConditionalControls() {
-        const String selected = selectedSourceId();
-        controller.setVisible(selected == "midiCC");
-        constant.setVisible(selected == "constant");
-        repaint();
-    }
-
-    String selectedSourceId() const {
-        const int index = source.getSelectedItemIndex();
-        return isPositiveAndBelow(index, sourceIds.size()) ? sourceIds[index] : "modWheel";
-    }
-
-    NodeEditorCommands& commands;
-    NodeEditorPresentation& presentation;
-    Node node;
-    bool binding {};
-    StringArray sourceIds;
-    TextButton closeButton;
-    ComboBox source;
-    Slider controller;
-    Slider constant;
-};
-
-class ModulationSourceNodeEditor final : public NodeEditor {
-public:
-    ModulationSourceNodeEditor(const Node&, const NodeEditorContext& context) :
-            editor(context.commands, context.presentation) {}
-
-    Component& component() override { return editor; }
-    void bind(const Node& node) override { editor.setNode(node); }
-    void renderOpenGL(float) override {}
-    void appendAutomationState(DynamicObject& state) const override {
-        state.setProperty("modulationSource", editor.automationState());
-    }
-    Rectangle<float> panelBoundsForAutomation() const override {
-        return editor.getLocalBounds().toFloat();
-    }
-    void releaseOpenGLResources() override {}
-
-private:
-    ModulationSourceEditorComponent editor;
-};
-
-class ModulationSourceNodeEditorFactory final : public NodeEditorFactory {
-public:
-    std::unique_ptr<NodeEditor> create(
-            const Node& node,
-            const NodeEditorContext& context) const override {
-        return std::make_unique<ModulationSourceNodeEditor>(node, context);
-    }
-};
-
 class CurveNodeEditor final : public NodeEditor,
                               private CurveExpandedEditorDelegate {
 public:
@@ -977,7 +818,10 @@ const NodeEditorFactoryRegistry& NodeEditorFactoryRegistry::instance() {
 NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
     factories.emplace_back(
             NodeKind::ModulationSource,
-            std::make_unique<ModulationSourceNodeEditorFactory>());
+            createModulationNodeEditorFactory());
+    factories.emplace_back(
+            NodeKind::ModulationTriple,
+            createModulationNodeEditorFactory());
     factories.emplace_back(NodeKind::Envelope, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::GuideCurve, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());

@@ -12,6 +12,7 @@ struct NodeCableStyle {
     bool invalid {};
     bool selected {};
     bool spliceTarget {};
+    bool modulationBundle {};
 };
 
 struct PendingNodeConnection {
@@ -19,6 +20,7 @@ struct PendingNodeConnection {
     Point<float> source;
     Point<float> destination;
     Colour colour;
+    bool modulationBundle {};
 };
 
 class NodeCableRenderer {
@@ -34,6 +36,11 @@ public:
             Graphics& graphics,
             const PendingNodeConnection& connection,
             float zoom);
+    static void paintModulationSocket(
+            Graphics& graphics,
+            Point<float> centre,
+            float diameter,
+            bool output);
 };
 
 }
