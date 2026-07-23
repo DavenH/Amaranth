@@ -53,7 +53,7 @@ generate_svg_data(
     NodeIconData
     NodeIconData
     genericProcessor voiceContext waveSource imageSource trilinearMesh
-    modulationSource
+    modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
     reverb delay equalizer stereoSplit stereoJoin output
 )
@@ -111,6 +111,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TransformNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodePreviewProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationTriple.cpp"
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES

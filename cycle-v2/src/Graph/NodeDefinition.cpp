@@ -296,7 +296,34 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("constant", "Constant", 0.5f, 0.f, 1.f, dsp | preview | presentation)
                     }))
                     .runtime(AudioModuleRole::ModulationSource, PreviewModuleRole::ModulationSource)
-                    .presentation({ 210.f, 82.f })
+                    .presentation({}, { 250.f, 48.f })
+                    .finish(),
+            buildDefinition(definition("modulationTriple", NodeKind::ModulationTriple, "Modulation Triple", "three-axis control", "modTriple", {},
+                    { output("yellow", "Yellow", PortDomain::ControlSignal),
+                      output("red", "Red", PortDomain::ControlSignal),
+                      output("blue", "Blue", PortDomain::ControlSignal) }, {
+                            choice("yellowSource", "Yellow Source", "voiceTime", {
+                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, dsp | presentation),
+                            integer("yellowController", "Yellow Controller", 1, 0, 127, dsp | presentation),
+                            number("yellowConstant", "Yellow Constant", 0.5f, 0.f, 1.f, dsp | presentation),
+                            choice("redSource", "Red Source", "keyScale", {
+                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, dsp | presentation),
+                            integer("redController", "Red Controller", 1, 0, 127, dsp | presentation),
+                            number("redConstant", "Red Constant", 0.5f, 0.f, 1.f, dsp | presentation),
+                            choice("blueSource", "Blue Source", "modWheel", {
+                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, dsp | presentation),
+                            integer("blueController", "Blue Controller", 1, 0, 127, dsp | presentation),
+                            number("blueConstant", "Blue Constant", 0.5f, 0.f, 1.f, dsp | presentation)
+                    }))
+                    .runtime(AudioModuleRole::ModulationTriple, PreviewModuleRole::None)
+                    .disablePreview()
+                    .presentation({}, { 280.f, 126.f })
                     .finish(),
             buildDefinition(definition("waveSource", NodeKind::WaveSource, "Wave", "time source", "wave",
                     { input("context", "Context", PortDomain::DomainContext) },

@@ -11,6 +11,7 @@ enum class AudioModuleRole {
     None,
     VoiceContext,
     ModulationSource,
+    ModulationTriple,
     WaveSource,
     ImageSource,
     MeshSource,

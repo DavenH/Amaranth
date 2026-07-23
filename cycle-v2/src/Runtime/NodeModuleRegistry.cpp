@@ -49,6 +49,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::None:              return "None";
         case AudioModuleRole::VoiceContext:      return "Voice Context";
         case AudioModuleRole::ModulationSource:  return "Modulation Source";
+        case AudioModuleRole::ModulationTriple:  return "Modulation Triple";
         case AudioModuleRole::WaveSource:        return "Wave Source";
         case AudioModuleRole::ImageSource:       return "Image Source";
         case AudioModuleRole::MeshSource:        return "Mesh Source";

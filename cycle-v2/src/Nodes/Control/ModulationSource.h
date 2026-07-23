@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Array/Buffer.h>
+
 #include <array>
 
 #include "../../Runtime/NodeAudioProcessor.h"
@@ -47,6 +49,14 @@ public:
             const PreviewControlContext& context);
     static std::shared_ptr<const ModulationSourceConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters);
+    static ModulationSourceConfiguration buildConfiguration(
+            const std::vector<NodeParameter>& parameters,
+            const String& prefix,
+            const String& defaultSource);
+    static void renderAudioBlock(
+            const ModulationSourceConfiguration& configuration,
+            const AudioVoiceContext& voice,
+            Buffer<float> values);
 };
 
 std::unique_ptr<NodeAudioProcessor> createModulationSourceAudioProcessor();

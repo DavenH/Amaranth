@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Nodes/Control/ModulationSource.h"
+#include "../src/Nodes/Control/ModulationTriple.h"
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
@@ -366,4 +367,56 @@ TEST_CASE("Modulation node exposes its hosted authoring editor",
             .capabilities();
     REQUIRE(capabilities.previewable);
     REQUIRE(capabilities.hostedEditor);
+}
+
+TEST_CASE("Modulation triple reuses source semantics across ordinary outputs",
+        "[cycle-v2][modulation][triple][audio]") {
+    auto processor = createModulationTripleAudioProcessor();
+    const auto tripleConfiguration = buildModulationTripleConfiguration({
+            { "yellowSource", "Yellow Source", "voiceTime" },
+            { "redSource", "Red Source", "keyScale" },
+            { "blueSource", "Blue Source", "midiCC" },
+            { "blueController", "Blue Controller", "74" }
+    });
+    processor->adoptConfiguration({ 1, "triple", tripleConfiguration });
+
+    AudioVoiceContext voice;
+    voice.controls.normalizedVoiceTime = 0.1f;
+    voice.controls.normalizedVoiceTimeIncrement = 0.1f;
+    voice.controls.noteNumber = 63;
+    voice.controls.lowestNote = 0;
+    voice.controls.highestNote = 126;
+    voice.controls.controllers[74] = 0.25f;
+    voice.controlEvents.push_back({ ControlEventKind::Controller, 2, 74, 0.75f });
+
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.voiceView = &voice;
+    context.outputPorts = {
+            { "yellow", PortDomain::ControlSignal, ChannelLayout::Mono },
+            { "red", PortDomain::ControlSignal, ChannelLayout::Mono },
+            { "blue", PortDomain::ControlSignal, ChannelLayout::Mono }
+    };
+    processor->process(context);
+
+    REQUIRE(context.outputs.size() == 3);
+    REQUIRE(context.outputs[0].block.samples
+            == std::vector<float> { 0.1f, 0.2f, 0.3f, 0.4f });
+    REQUIRE(context.outputs[1].block.samples == std::vector<float>(4, 0.5f));
+    REQUIRE(context.outputs[2].block.samples
+            == std::vector<float> { 0.25f, 0.25f, 0.75f, 0.75f });
+}
+
+TEST_CASE("Modulation triple definition retains Cycle v1 axis defaults",
+        "[cycle-v2][modulation][triple][graph]") {
+    const Node triple = GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {});
+
+    REQUIRE(triple.outputs.size() == 3);
+    REQUIRE(parameterValueForNode(triple, "yellowSource") == "voiceTime");
+    REQUIRE(parameterValueForNode(triple, "redSource") == "keyScale");
+    REQUIRE(parameterValueForNode(triple, "blueSource") == "modWheel");
+    REQUIRE(triple.bounds.getHeight() == 126.f);
 }

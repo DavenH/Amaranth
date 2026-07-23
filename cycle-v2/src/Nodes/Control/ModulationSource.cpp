@@ -47,44 +47,7 @@ public:
         }
 
         const AudioVoiceContext& voice = processVoice(context);
-        PreviewControlContext current = previewContextForVoice(voice);
-        if (configuration->mode == ModulationSourceMode::VoiceTime) {
-            values.ramp(
-                    jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),
-                    voice.controls.normalizedVoiceTimeIncrement);
-            values.clip(0.f, 1.f);
-            publishSingleOutput(context, std::move(output));
-            return;
-        }
-        const bool timedController = configuration->mode == ModulationSourceMode::ModWheel
-                || configuration->mode == ModulationSourceMode::MidiController
-                || configuration->mode == ModulationSourceMode::ChannelPressure;
-        if (!timedController) {
-            values.set(ModulationSource::evaluate(*configuration, current));
-            publishSingleOutput(context, std::move(output));
-            return;
-        }
-
-        size_t offset = 0;
-        for (const auto& event : voice.controlEvents) {
-            const size_t eventOffset = jmin(event.sampleOffset, context.frameCount);
-            if (eventOffset > offset) {
-                values.section((int) offset, (int) (eventOffset - offset)).set(
-                        ModulationSource::evaluate(*configuration, current));
-            }
-
-            if (event.kind == ControlEventKind::ChannelPressure) {
-                current.channelPressure = event.value;
-            } else {
-                current.controllers[(size_t) jlimit(0, 127, event.controller)] = event.value;
-            }
-            offset = eventOffset;
-        }
-
-        if (offset < context.frameCount) {
-            values.section((int) offset, (int) (context.frameCount - offset)).set(
-                    ModulationSource::evaluate(*configuration, current));
-        }
+        ModulationSource::renderAudioBlock(*configuration, voice, values);
         publishSingleOutput(context, std::move(output));
     }
 
@@ -208,13 +171,68 @@ float ModulationSource::evaluate(
 
 std::shared_ptr<const ModulationSourceConfiguration> ModulationSource::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
-    auto configuration = std::make_shared<ModulationSourceConfiguration>();
-    configuration->mode = modeFromId(typedParameterString(parameters, "source", "modWheel"));
-    configuration->controller = jlimit(0, 127,
-            typedParameterInt(parameters, "controller", 1));
-    configuration->constant = jlimit(0.f, 1.f,
-            typedParameterFloat(parameters, "constant", 0.5f));
+    return std::make_shared<ModulationSourceConfiguration>(
+            buildConfiguration(parameters, {}, "modWheel"));
+}
+
+ModulationSourceConfiguration ModulationSource::buildConfiguration(
+        const std::vector<NodeParameter>& parameters,
+        const String& prefix,
+        const String& defaultSource) {
+    const String sourceId = prefix.isEmpty() ? "source" : prefix + "Source";
+    const String controllerId = prefix.isEmpty() ? "controller" : prefix + "Controller";
+    const String constantId = prefix.isEmpty() ? "constant" : prefix + "Constant";
+    ModulationSourceConfiguration configuration;
+    configuration.mode = modeFromId(typedParameterString(
+            parameters, sourceId, defaultSource));
+    configuration.controller = jlimit(0, 127,
+            typedParameterInt(parameters, controllerId, 1));
+    configuration.constant = jlimit(0.f, 1.f,
+            typedParameterFloat(parameters, constantId, 0.5f));
     return configuration;
+}
+
+void ModulationSource::renderAudioBlock(
+        const ModulationSourceConfiguration& configuration,
+        const AudioVoiceContext& voice,
+        Buffer<float> values) {
+    PreviewControlContext current = previewContextForVoice(voice);
+    if (configuration.mode == ModulationSourceMode::VoiceTime) {
+        values.ramp(
+                jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),
+                voice.controls.normalizedVoiceTimeIncrement);
+        values.clip(0.f, 1.f);
+        return;
+    }
+
+    const bool timedController = configuration.mode == ModulationSourceMode::ModWheel
+            || configuration.mode == ModulationSourceMode::MidiController
+            || configuration.mode == ModulationSourceMode::ChannelPressure;
+    if (!timedController) {
+        values.set(evaluate(configuration, current));
+        return;
+    }
+
+    size_t offset = 0;
+    for (const auto& event : voice.controlEvents) {
+        const size_t eventOffset = jmin(event.sampleOffset, (size_t) values.size());
+        if (eventOffset > offset) {
+            values.section((int) offset, (int) (eventOffset - offset)).set(
+                    evaluate(configuration, current));
+        }
+
+        if (event.kind == ControlEventKind::ChannelPressure) {
+            current.channelPressure = event.value;
+        } else {
+            current.controllers[(size_t) jlimit(0, 127, event.controller)] = event.value;
+        }
+        offset = eventOffset;
+    }
+
+    if (offset < (size_t) values.size()) {
+        values.section((int) offset, values.size() - (int) offset).set(
+                evaluate(configuration, current));
+    }
 }
 
 std::unique_ptr<NodeAudioProcessor> createModulationSourceAudioProcessor() {

@@ -223,6 +223,8 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "voice", NodeKind::VoiceContext },
         { "modulationSource", NodeKind::ModulationSource },
         { "modulation", NodeKind::ModulationSource },
+        { "modulationTriple", NodeKind::ModulationTriple },
+        { "modTriple", NodeKind::ModulationTriple },
         { "waveSource", NodeKind::WaveSource },
         { "wave", NodeKind::WaveSource },
         { "imageSource", NodeKind::ImageSource },
