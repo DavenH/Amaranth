@@ -352,12 +352,16 @@ void GraphAudioExecutor::prepareExecution(
             plan.maximumInputCount,
             plan.maximumOutputCount,
             spec.maximumFrameCount * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns));
+    processContext.outputs.clear();
+    bufferSlots.clear();
+    if (!workArena.preparePayloadStorage(plan.buffers.size())) {
+        workArena.frameCapacity = 0;
+        jassertfalse;
+        return;
+    }
     bufferSlots.resize(plan.buffers.size());
     for (auto& slot : bufferSlots) {
-        slot.block.samples.reserve(spec.maximumFrameCount);
-        slot.traversalGrid.values.reserve(workArena.gridValueCapacity);
-        slot.secondaryBlock.samples.reserve(spec.maximumFrameCount);
-        slot.secondaryTraversalGrid.values.reserve(workArena.gridValueCapacity);
+        workArena.bind(slot);
     }
     processContext.inputViews.reserve(plan.maximumInputCount);
     processContext.attachments.reserve(plan.maximumAttachmentCount);

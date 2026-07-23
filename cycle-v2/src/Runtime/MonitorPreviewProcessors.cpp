@@ -42,7 +42,7 @@ public:
     PreviewModuleRole role() const override { return PreviewModuleRole::SignalSpy; }
 
     void render(PreviewProcessContext& context) override {
-        if (context.input.grid == nullptr || context.input.grid->empty()) {
+        if (context.input.grid == nullptr || context.input.gridSize == 0) {
             context.primary.clear();
             context.secondary.clear();
             context.gridColumns = 0;
@@ -50,7 +50,7 @@ public:
             return;
         }
 
-        context.primary.assign(context.input.grid->begin(), context.input.grid->end());
+        context.primary.assign(context.input.grid, context.input.grid + context.input.gridSize);
         context.secondary.clear();
         context.gridColumns = context.input.gridColumns;
         context.gridRows = context.input.gridRows;

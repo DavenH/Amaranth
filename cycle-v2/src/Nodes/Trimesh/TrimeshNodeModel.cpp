@@ -170,7 +170,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     blockwiseDsp.setCyclic(cyclic);
     blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
     normalizeBipolarBlock(slice);
-    result.slice = std::move(slice.block.samples);
+    result.slice.assign(slice.block.samples.begin(), slice.block.samples.end());
 
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);

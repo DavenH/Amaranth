@@ -92,7 +92,7 @@ const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const Strin
     return *found;
 }
 
-const std::vector<float>& samples(const SignalPayload& payload) {
+const SignalBuffer& samples(const SignalPayload& payload) {
     return payload.block.samples;
 }
 

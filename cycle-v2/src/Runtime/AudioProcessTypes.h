@@ -1,15 +1,19 @@
 #pragma once
 
 #include "../Graph/NodeGraph.h"
+#include "SignalBuffer.h"
 
+#include <limits>
 #include <vector>
+
+#include <Array/ScopedAlloc.h>
 
 namespace CycleV2 {
 
 struct PublishedNodeConfiguration;
 
 struct SignalBlock {
-    std::vector<float> samples;
+    SignalBuffer samples;
 };
 
 using AudioProcessBlock = SignalBlock;
@@ -54,7 +58,7 @@ struct TraversalGridMetadata {
 };
 
 struct SignalTraversalGrid {
-    std::vector<float> values;
+    SignalBuffer values;
     TraversalGridMetadata metadata;
     size_t columns {};
     size_t rows {};
@@ -131,6 +135,36 @@ struct AudioProcessWorkArena {
         gridValueCapacity = maxGridValues;
     }
 
+    bool preparePayloadStorage(size_t payloadCount) {
+        constexpr size_t maximumAllocation = (size_t) std::numeric_limits<int>::max();
+        if (payloadCount > maximumAllocation / 2) {
+            return false;
+        }
+
+        const size_t channelCount = payloadCount * 2;
+        if ((frameCapacity != 0 && channelCount > maximumAllocation / frameCapacity)
+                || (gridValueCapacity != 0
+                        && channelCount > maximumAllocation / gridValueCapacity)) {
+            return false;
+        }
+
+        const size_t blockValues = channelCount * frameCapacity;
+        const size_t gridValues = channelCount * gridValueCapacity;
+
+        blockMemory.resize((int) blockValues);
+        gridMemory.resize((int) gridValues);
+        blockMemory.resetPlacement();
+        gridMemory.resetPlacement();
+        return true;
+    }
+
+    void bind(SignalPayload& payload) {
+        payload.block.samples.bind(blockMemory.place((int) frameCapacity));
+        payload.secondaryBlock.samples.bind(blockMemory.place((int) frameCapacity));
+        payload.traversalGrid.values.bind(gridMemory.place((int) gridValueCapacity));
+        payload.secondaryTraversalGrid.values.bind(gridMemory.place((int) gridValueCapacity));
+    }
+
     void reserve(SignalPayload& payload) const {
         payload.block.samples.reserve(frameCapacity);
         payload.traversalGrid.values.reserve(gridValueCapacity);
@@ -147,6 +181,9 @@ struct AudioProcessWorkArena {
     void reserve(std::vector<SignalPayload>& payloads) const {
         payloads.reserve(outputCapacity);
     }
+
+    ScopedAlloc<float> blockMemory;
+    ScopedAlloc<float> gridMemory;
 };
 
 struct AudioProcessContext {
