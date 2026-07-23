@@ -2,15 +2,14 @@
 
 ## Status
 
-Implemented (2026-07-14).
+Partially implemented (audited 2026-07-23).
 
-The migration is complete for the current Cycle 2 node set. Audio and preview
-roles use registered concrete factories, configurations are published before
-processing, routing and stable output slots are compiled, and the production
-executor uses retained per-voice processors with preallocated payload storage.
-Owning payloads remain as a compatibility surface for diagnostic execution and
-direct processor tests; the realtime executor exposes non-owning views into
-their prepared storage and does not populate the legacy parameter path.
+Concrete module factories, published configurations, compiled routing, stable
+output slots, retained per-voice processors, and allocation-free representative
+execution are implemented for the current Cycle 2 node set. The arena-backed
+payload-view migration and realtime enforcement described below are not
+complete. Realtime slots still use owning `std::vector<float>` payloads whose
+capacity is reserved during preparation.
 
 Depends on `cycle-v2-node-definition-and-graph-model.md` for authoritative node
 definitions and typed configuration inputs. Complements:
@@ -293,6 +292,8 @@ searches of node IDs on the audio thread.
 
 ## Completion Evidence
 
+Implemented:
+
 - `FixedRoleProcessor` and `FixedPreviewProcessor` were replaced by cohesive
   concrete processors and explicit factory registration tables.
 - Preview definitions declare `AuthoritativeModel`, `RuntimeTap`,
@@ -313,3 +314,22 @@ searches of node IDs on the audio thread.
   configuration revision behavior, authoritative preview sharing, and zero
   `operator new` allocations at both maximum and shorter prepared block sizes.
 - The complete `CycleV2_tests` target passes after the migration.
+
+Remaining:
+
+- `AudioProcessWorkArena` records capacities but does not own the aligned graph,
+  traversal-grid, and scratch arenas specified by this design.
+- `SignalPayload`, `SignalBlock`, and traversal grids retain owning vectors in
+  realtime slots. `NodeProcessView`, `SignalPayloadView`,
+  `AudioVoiceContextView`, and `NodeScratchArena` have not been introduced.
+- Realtime processing still uses allocation-capable vector operations whose
+  safety depends on previously reserved capacity rather than APIs that cannot
+  allocate.
+- Lock instrumentation and removal of the legacy owning-payload processing
+  surface remain incomplete.
+
+Live host audio is a separate integration boundary. Cycle 2 currently executes
+graphs for previews and offline automation capture; the standalone application
+does not connect `GraphAudioExecutor` to an audio-device callback, and no Cycle
+2 plugin callback target exists. That work is not a completion criterion for
+this node-module boundary, but it is required before Cycle 2 has live playback.

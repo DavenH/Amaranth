@@ -1,5 +1,28 @@
 # Refactor Notes
 
+## Cycle V2 Realtime Payload Storage And Host Audio
+
+Status: open after the 2026-07-23 runtime-boundary audit.
+
+The authoritative runtime is `GraphAudioExecutor`: it owns compiled routing,
+retained per-node/per-voice processors, and prepared vector-backed payload
+slots. Representative steady-state execution performs no `operator new`, but
+`AudioProcessWorkArena` is capacity metadata rather than the aligned arena
+described by `cycle-v2-node-module-runtime.md`.
+
+The next storage slice should preserve compiled routing, processor identity,
+DSP configuration, and node behavior unchanged. It should translate owning
+realtime payload vectors into aligned arena ownership with non-owning
+`Buffer<float>` process views, then delete allocation-capable vector mutation
+from the realtime API. Diagnostic and preview results may remain value types
+outside that boundary.
+
+Live host audio is a later integration slice. The current standalone app is a
+node workspace, and automation audio capture renders offline. Connect an
+immutable prepared plan to a JUCE audio/MIDI callback only after the arena/view
+boundary is explicit; do not embed device lifecycle or MIDI voice allocation in
+`GraphAudioExecutor`.
+
 ## Cycle V2 JSON Graph and Typed Node Models
 
 Status: Production refactor complete; native verification blocked (2026-07-22).
