@@ -2,7 +2,8 @@
 
 ## Status
 
-Implemented on 2026-07-22.
+In progress: the source/control runtime is implemented; compact single-source
+and bundled triple-source authoring UX is being added.
 
 This design extends the implemented contracts in:
 
@@ -149,6 +150,47 @@ mesh interpolation, envelope rasterization, smoothing, or playback behavior.
   Envelope's inconsistent dynamic omission.
 
 ## Product Semantics
+
+### Compact and triple-source authoring extension
+
+The single Modulation node is a one-row canvas node. Its selected source is the
+dominant label; `Modulation` is a compact type badge rather than the main
+content. Source-specific details such as `CC 74` or a constant value remain
+visible without opening the editor.
+
+Add a distinct `modulationTriple` authoring node with three vertically stacked
+source rows and three ordinary mono `ControlSignal` outputs:
+
+```text
+yellow -> yellow
+red    -> red
+blue   -> blue
+```
+
+The legacy defaults are retained: yellow is `voiceTime`, red is `keyScale`, and
+blue is `modWheel`. Each row otherwise has the same source, controller, and
+constant choices as a single Modulation node. The implementation reuses the
+single-source evaluator and event-span renderer; it must not add a triplet
+signal domain, three-channel control payload, destination-side unpacker, or
+second routing topology.
+
+On the canvas, the three outputs share a yellow/red/blue pie socket. Trilinear
+Mesh presents a corresponding composite input target. One drag between these
+composite targets performs a compound authoring gesture which creates or
+replaces the three normal graph edges. The graph compiler, serializer, audio
+executor, and destination processors continue to see independent edges.
+
+When the matching yellow/red/blue edges connect the same triple source and
+destination, the scene coalesces them into one visible cable with pie endpoints.
+Selection and deletion apply to the visual bundle as a unit. Raw graph
+inspection and persistence continue to expose all three constituent edges.
+Individual single-source routing remains available through the existing
+yellow/red/blue destination ports; the composite target is authoring and
+presentation metadata only.
+
+Envelope bundling is not part of this extension. Its red and blue inputs remain
+individually routable because a three-axis gesture would conceal the unused
+yellow source and provide less visual benefit than the Trilinear Mesh case.
 
 ### Modulation node
 
