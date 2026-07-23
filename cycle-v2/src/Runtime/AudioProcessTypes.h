@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Graph/NodeGraph.h"
+#include "PreparedVector.h"
 #include "SignalBuffer.h"
 
 #include <limits>
@@ -196,12 +197,12 @@ struct AudioProcessContext {
     bool captureTraversalGrid { true };
     const std::vector<NodeParameter>* parameterView {};
     std::vector<NodeParameter> parameters;
-    std::vector<SignalPayload*> inputViews;
-    std::vector<SignalPayload> inputs;
-    std::vector<AudioProcessAttachment> attachments;
-    std::vector<AudioOutputPort> outputPorts;
-    std::vector<SignalPayload*> outputViews;
-    std::vector<SignalPayload> outputs;
+    PreparedVector<SignalPayload*> inputViews;
+    PreparedVector<SignalPayload> inputs;
+    PreparedVector<AudioProcessAttachment> attachments;
+    PreparedVector<AudioOutputPort> outputPorts;
+    PreparedVector<SignalPayload*> outputViews;
+    PreparedVector<SignalPayload> outputs;
 };
 
 }

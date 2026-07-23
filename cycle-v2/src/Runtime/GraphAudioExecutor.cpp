@@ -30,7 +30,6 @@ GraphAudioResult GraphAudioExecutor::process(
         AudioProcessTiming timing,
         AudioVoiceContext voice) const {
     return processInternal(
-            graph,
             plan,
             frameCount,
             timing,
@@ -68,7 +67,7 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, voice.voiceIndex });
     GraphAudioResultView result;
     processInternal(
-            graph, plan, frameCount, {}, voice, true, nullptr,
+            plan, frameCount, {}, voice, true, nullptr,
             &dirtyNodes, cancellationCheck, &result);
     return result;
 }
@@ -89,14 +88,12 @@ size_t GraphAudioExecutor::diagnosticProcessCount(const String& nodeId) const {
 }
 
 GraphAudioOutputView GraphAudioExecutor::processRealtime(
-        const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
         GraphProcessObserver* observer) const {
     processInternal(
-            graph,
             plan,
             frameCount,
             timing,
@@ -107,7 +104,6 @@ GraphAudioOutputView GraphAudioExecutor::processRealtime(
 }
 
 GraphAudioResult GraphAudioExecutor::processInternal(
-        const NodeGraph& graph,
         const GraphExecutionPlan& plan,
         size_t frameCount,
         AudioProcessTiming timing,
@@ -195,9 +191,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         context.configuration = &step.configuration;
         context.captureTraversalGrid = captureDiagnostics;
         context.parameterView = nullptr;
-        context.parameters.clear();
         context.inputViews.assign(workArena.inputCapacity, nullptr);
-        context.inputs.clear();
         context.attachments.clear();
         context.attachments.reserve(attachmentCapacity);
         context.outputPorts.clear();
@@ -353,6 +347,8 @@ void GraphAudioExecutor::prepareExecution(
             plan.maximumOutputCount,
             spec.maximumFrameCount * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns));
     processContext.outputs.clear();
+    processContext.parameters.clear();
+    processContext.inputs.clear();
     bufferSlots.clear();
     if (!workArena.preparePayloadStorage(plan.buffers.size())) {
         workArena.frameCapacity = 0;
@@ -363,11 +359,11 @@ void GraphAudioExecutor::prepareExecution(
     for (auto& slot : bufferSlots) {
         workArena.bind(slot);
     }
-    processContext.inputViews.reserve(plan.maximumInputCount);
-    processContext.attachments.reserve(plan.maximumAttachmentCount);
-    processContext.outputPorts.reserve(plan.maximumOutputCount);
-    processContext.outputViews.reserve(plan.maximumOutputCount);
-    processContext.outputs.reserve(plan.maximumOutputCount);
+    processContext.inputViews.prepare(plan.maximumInputCount);
+    processContext.attachments.prepare(plan.maximumAttachmentCount);
+    processContext.outputPorts.prepare(plan.maximumOutputCount);
+    processContext.outputViews.prepare(plan.maximumOutputCount);
+    processContext.outputs.prepare(plan.maximumOutputCount);
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
     preparedVoice.voiceIndex = voiceIndex;
     preparedVoice.plan = &plan;
