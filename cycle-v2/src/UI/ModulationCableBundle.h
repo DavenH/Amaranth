@@ -12,6 +12,8 @@ struct ModulationCableBundleRoute {
 };
 
 struct ModulationCableBundle {
+    static constexpr float socketDiameter = 10.5f;
+
     static String portId();
     static PortAddress sourceAddress(const Node& node);
     static PortAddress destinationAddress(const Node& node);
@@ -30,6 +32,7 @@ struct ModulationCableBundle {
     static std::optional<std::vector<int>> bundleBeginningAt(
             const NodeGraph& graph,
             int edgeIndex);
+    static bool hidesIndividualPort(const Node& node, const Port& port);
     static Point<float> worldCentre(const Node& node, bool input);
 };
 

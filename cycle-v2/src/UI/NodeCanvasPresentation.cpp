@@ -650,7 +650,9 @@ void NodeCanvasPresentation::paintNode(
     };
 
     for (const auto& port : node.inputs) {
-        paintPort(port);
+        if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+            paintPort(port);
+        }
     }
 
     for (const auto& port : node.outputs) {
@@ -662,7 +664,7 @@ void NodeCanvasPresentation::paintNode(
                 graphics,
                 frame.viewport.toScreen(
                         ModulationCableBundle::worldCentre(node, true)),
-                17.f * scale,
+                ModulationCableBundle::socketDiameter * scale,
                 false);
     }
 }

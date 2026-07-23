@@ -146,44 +146,13 @@ void paintSignalCable(
                     PathStrokeType::rounded));
 }
 
-void paintModulationBundleCable(
-        Graphics& graphics,
-        const Path& cable,
-        const NodeCableStyle& style,
-        float scale) {
-    graphics.setColour(kCanvasBackground.withAlpha(0.82f));
-    graphics.strokePath(
-            cable,
-            PathStrokeType(
-                    (style.selected ? 12.f : 10.f) * scale,
-                    PathStrokeType::curved,
-                    PathStrokeType::rounded));
-
-    const MorphDimension dimensions[] {
-            MorphDimension::Yellow,
-            MorphDimension::Red,
-            MorphDimension::Blue
-    };
-    const float widths[] { 7.f, 5.f, 3.f };
-    for (int index = 0; index < 3; ++index) {
-        graphics.setColour(colourForMorphDimension(dimensions[index]).withAlpha(
-                style.selected ? 0.98f : 0.88f));
-        graphics.strokePath(
-                cable,
-                PathStrokeType(
-                        widths[index] * scale,
-                        PathStrokeType::curved,
-                        PathStrokeType::rounded));
-    }
-}
-
 void paintEndpoints(
         Graphics& graphics,
         const NodeSceneEdge& edge,
         const NodeCableStyle& style,
         float scale) {
     if (style.modulationBundle) {
-        const float size = (style.selected ? 16.f : 14.f) * scale;
+        const float size = (style.selected ? 14.f : 12.f) * scale;
         paintModulationPie(graphics, edge.source, size, true);
         paintModulationPie(graphics, edge.destination, size, false);
         return;
@@ -240,9 +209,7 @@ void NodeCableRenderer::paint(
         float zoom) {
     const float scale = scaleForZoom(zoom);
 
-    if (style.modulationBundle) {
-        paintModulationBundleCable(graphics, edge.cablePath, style, scale);
-    } else if (style.attachment) {
+    if (style.attachment) {
         paintAttachmentCable(graphics, edge.cablePath, style, scale);
     } else {
         paintSignalCable(graphics, edge.cablePath, style, scale);
@@ -282,8 +249,8 @@ void NodeCableRenderer::paintPending(
     graphics.fillEllipse(destinationMarker.reduced(2.f * scale));
 
     if (connection.modulationBundle) {
-        paintModulationPie(graphics, connection.source, 14.f * scale, true);
-        paintModulationPie(graphics, connection.destination, 14.f * scale, false);
+        paintModulationPie(graphics, connection.source, 12.f * scale, true);
+        paintModulationPie(graphics, connection.destination, 12.f * scale, false);
     }
 }
 

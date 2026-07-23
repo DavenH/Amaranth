@@ -148,6 +148,12 @@ std::optional<std::vector<int>> ModulationCableBundle::bundleBeginningAt(
     return indices;
 }
 
+bool ModulationCableBundle::hidesIndividualPort(const Node& node, const Port& port) {
+    return node.kind == NodeKind::TrilinearMesh
+            && port.input
+            && (port.id == "red" || port.id == "blue");
+}
+
 Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {
     return {
             input ? node.bounds.getX() : node.bounds.getRight(),

@@ -463,6 +463,19 @@ TEST_CASE("Matching triple routes coalesce into one canvas cable",
                 return target.portId == ModulationCableBundle::portId();
             });
     REQUIRE(bundleTargetCount == 2);
+    const auto hasMeshInputTarget = [&](const String& portId) {
+        return std::any_of(
+                snapshot.targets.begin(),
+                snapshot.targets.end(),
+                [&](const NodeSceneTarget& target) {
+                    return target.kind == NodeSceneTargetKind::InputPort
+                            && target.nodeId == "mesh"
+                            && target.portId == portId;
+                });
+    };
+    REQUIRE(hasMeshInputTarget("yellow"));
+    REQUIRE_FALSE(hasMeshInputTarget("red"));
+    REQUIRE_FALSE(hasMeshInputTarget("blue"));
 }
 
 TEST_CASE("Modulation triple exposes the shared hosted editor",

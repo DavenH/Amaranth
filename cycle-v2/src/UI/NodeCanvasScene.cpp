@@ -157,6 +157,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
 
         auto appendPorts = [&](const std::vector<Port>& ports, NodeSceneTargetKind kind) {
             for (const auto& port : ports) {
+                if (ModulationCableBundle::hidesIndividualPort(node, port)) {
+                    continue;
+                }
                 const auto centre = viewport.toScreen(portWorldCentre(node, port));
                 const float size = 8.8f * viewport.getZoom() / 0.58f;
                 current.targets.push_back({
@@ -179,7 +182,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             const bool input = node.kind == NodeKind::TrilinearMesh;
             const auto centre = viewport.toScreen(
                     ModulationCableBundle::worldCentre(node, input));
-            const float size = 17.f * viewport.getZoom() / 0.58f;
+            const float size = ModulationCableBundle::socketDiameter
+                    * viewport.getZoom() / 0.58f;
             current.targets.push_back({
                     input ? NodeSceneTargetKind::InputPort : NodeSceneTargetKind::OutputPort,
                     (input ? "input:" : "output:") + node.id + ".modulationBundle",

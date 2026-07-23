@@ -6,6 +6,8 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr int kSourceMenuWidth = 166;
+
 String parameterId(const String& prefix, const String& name) {
     if (prefix.isEmpty()) {
         return name;
@@ -116,7 +118,7 @@ public:
         if (axisLabel.isNotEmpty()) {
             area.removeFromLeft(30);
         }
-        source.setBounds(area.removeFromLeft(jmax(130, area.getWidth() * 3 / 5)).reduced(2, 8));
+        source.setBounds(area.removeFromLeft(jmin(kSourceMenuWidth, area.getWidth())).reduced(2, 8));
         controller.setBounds(area.reduced(4, 8));
         constant.setBounds(area.reduced(4, 8));
     }
