@@ -89,6 +89,11 @@ public:
             const String& nodeId,
             uint64_t expectedRevision,
             NodeModelStatePtr model) const;
+    GraphEditResult replaceTransientNodeModel(
+            NodeGraph& graph,
+            const String& nodeId,
+            uint64_t expectedRevision,
+            NodeModelStatePtr model) const;
     GraphEditResult setNodeEditorState(
             NodeGraph& graph,
             const String& nodeId,

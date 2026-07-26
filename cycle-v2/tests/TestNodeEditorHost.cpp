@@ -449,12 +449,30 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
             "shape",
             CurveNodeModelState::copyOf(model, model.revision()),
             curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.25f, 1.f },
+            { 2, 1.f, 0.75f, 1.f }
+    }));
+    model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            CurveNodeModelState::copyOf(model, model.revision()),
+            curveControls(*document.graph().findNode("shape"))));
     REQUIRE(presentation.scheduledRefreshes == 0);
-    REQUIRE(presentation.repaints == 1);
+    REQUIRE(presentation.repaints == 2);
     commands.commitCurveTransaction();
 
     REQUIRE(presentation.scheduledRefreshes == 1);
-    REQUIRE(presentation.repaints == 2);
+    REQUIRE(presentation.repaints == 3);
+    const auto* committed = dynamic_cast<const CurveNodeModelState*>(
+            document.graph().findNode("shape")->model.get());
+    REQUIRE(committed != nullptr);
+    REQUIRE(committed->flatCurve() != nullptr);
+    REQUIRE(committed->flatCurve()->getVertices()
+            == std::vector<FlatCurveVertex> {
+                    { 1, 0.f, 0.25f, 1.f },
+                    { 2, 1.f, 0.75f, 1.f }
+            });
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE_FALSE(document.canUndo());
