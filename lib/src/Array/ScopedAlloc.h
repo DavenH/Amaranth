@@ -1,5 +1,8 @@
 #pragma once
+
 #include <ostream>
+#include <utility>
+
 #include "Buffer.h"
 #include "JuceHeader.h"
 #include "VecOps.h"
@@ -11,43 +14,55 @@ class ScopedAlloc : public Buffer<T> {
 public:
     explicit ScopedAlloc(int size);
 
-    ScopedAlloc() {
-        placementPos = 0;
-        alive = false;
+    ScopedAlloc() = default;
+
+    ScopedAlloc(const ScopedAlloc&) = delete;
+    ScopedAlloc& operator=(const ScopedAlloc&) = delete;
+
+    ScopedAlloc(ScopedAlloc&& other) noexcept :
+            Buffer<T>(other.ptr, other.sz)
+        ,   alive(other.alive)
+        ,   placementPos(other.placementPos) {
+        other.ptr = nullptr;
+        other.sz = 0;
+        other.alive = false;
+        other.placementPos = 0;
     }
 
-    virtual ~ScopedAlloc() { clear(); }
-
-    ScopedAlloc& takeOwnershipFrom(ScopedAlloc&& copy) noexcept {
-        if (this->ptr == copy.ptr) {
+    ScopedAlloc& operator=(ScopedAlloc&& other) noexcept {
+        if (this == &other) {
             return *this;
         }
 
         clear();
 
-        this->ptr = copy.ptr;
-        this->sz = copy.sz;
-        alive = this->ptr != 0 && this->sz > 0;
+        this->ptr = other.ptr;
+        this->sz = other.sz;
+        alive = other.alive;
+        placementPos = other.placementPos;
 
-        copy.ptr = 0;
-        copy.sz = 0;
-        copy.alive = false;
+        other.ptr = nullptr;
+        other.sz = 0;
+        other.alive = false;
+        other.placementPos = 0;
 
         return *this;
     }
 
-    ScopedAlloc(const ScopedAlloc& copy) {
-        throw std::logic_error("ScopedAlloc: copy constructor not allowed");
+    ~ScopedAlloc() override {
+        clear();
+    }
+
+    ScopedAlloc& takeOwnershipFrom(ScopedAlloc&& other) noexcept {
+        return operator=(std::move(other));
     }
 
     void resetPlacement() { placementPos = 0; }
-    bool resize(int size);
+
+    // Invalidates Buffer views into the current allocation when the size changes.
+    bool resize(int size) override;
 
     void clear() {
-        if (this->sz == 0) {
-            return;
-        }
-
         if (this->ptr != nullptr) {
             jassert(alive);
             VecOps::deallocate(this->ptr);
@@ -67,7 +82,7 @@ public:
         return buff;
     }
 
-    bool ensureSize(int size, bool andCopyExisting = false) {
+    bool ensureSize(int size, bool = false) {
         jassert(size >= 0);
         placementPos = 0;
 

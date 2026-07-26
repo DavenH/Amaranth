@@ -71,7 +71,8 @@ const SignalPayload& outputForPort(const NodeAudioResult& node, const String& po
     return found->second;
 }
 
-float absoluteSum(const std::vector<float>& values) {
+template<typename Values>
+float absoluteSum(const Values& values) {
     float sum = 0.f;
 
     for (const float value : values) {
@@ -81,7 +82,8 @@ float absoluteSum(const std::vector<float>& values) {
     return sum;
 }
 
-float absoluteDifferenceSum(const std::vector<float>& left, const std::vector<float>& right) {
+template<typename LeftValues, typename RightValues>
+float absoluteDifferenceSum(const LeftValues& left, const RightValues& right) {
     REQUIRE(left.size() == right.size());
 
     float sum = 0.f;

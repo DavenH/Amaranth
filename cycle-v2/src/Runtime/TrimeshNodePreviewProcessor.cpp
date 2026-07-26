@@ -43,7 +43,8 @@ PortDomain primaryOutputDomain(const std::vector<PreviewOutputPort>& outputPorts
     return outputPorts.front().domain;
 }
 
-void normalizeBipolarValues(std::vector<float>& values) {
+template<typename Values>
+void normalizeBipolarValues(Values& values) {
     if (values.empty()) {
         return;
     }
@@ -109,8 +110,10 @@ private:
             return false;
         }
 
-        context.primary = context.capturedOutput->traversalGrid.values;
-        context.secondary = context.capturedOutput->block.samples;
+        const auto& grid = context.capturedOutput->traversalGrid.values;
+        const auto& samples = context.capturedOutput->block.samples;
+        context.primary.assign(grid.begin(), grid.end());
+        context.secondary.assign(samples.begin(), samples.end());
         normalizeBipolarValues(context.primary);
         normalizeBipolarValues(context.secondary);
         context.gridColumns = context.capturedOutput->traversalGrid.columns;
@@ -136,7 +139,7 @@ private:
                 ChannelLayout::LinkedStereo,
                 slice);
         normalizeBipolarValues(slice.block.samples);
-        context.secondary = std::move(slice.block.samples);
+        context.secondary.assign(slice.block.samples.begin(), slice.block.samples.end());
     }
 
     static void renderGrid(

@@ -268,8 +268,21 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
         if (!parameterResult.succeeded()) {
             return parameterResult;
         }
-        auto modelResult = GraphEditor().replaceNodeModel(
-                graph, publication.nodeId, publication.expectedRevision, publication.model);
+        const Node* durableNode = document.graph().findNode(publication.nodeId);
+        const uint64_t durableRevision = durableNode != nullptr && durableNode->model != nullptr
+                ? durableNode->model->revision()
+                : 0;
+        const bool replacesTransientSnapshot = transientEdit.has_value()
+                && currentRevision > durableRevision
+                && publication.model->revision() == currentRevision;
+        GraphEditResult modelResult;
+        if (replacesTransientSnapshot) {
+            modelResult = GraphEditor().replaceTransientNodeModel(
+                    graph, publication.nodeId, currentRevision, publication.model);
+        } else {
+            modelResult = GraphEditor().replaceNodeModel(
+                    graph, publication.nodeId, publication.expectedRevision, publication.model);
+        }
         modelResult.changes.parameterImpacts = modelResult.changes.parameterImpacts
                 | parameterResult.changes.parameterImpacts;
         if (typedModel->editorJSON().getDynamicObject() != nullptr) {

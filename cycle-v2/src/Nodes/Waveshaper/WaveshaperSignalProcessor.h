@@ -36,7 +36,7 @@ public:
 
 private:
     Oversampler oversampler { 16 };
-    std::vector<float> oversampleMemory;
+    ScopedAlloc<float> oversampleMemory;
     float preGain { 1.f };
     float postGain { 1.f };
     int oversampleFactor { 1 };

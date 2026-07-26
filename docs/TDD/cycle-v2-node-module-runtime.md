@@ -2,15 +2,12 @@
 
 ## Status
 
-Implemented (2026-07-14).
+Complete (implemented 2026-07-23).
 
-The migration is complete for the current Cycle 2 node set. Audio and preview
-roles use registered concrete factories, configurations are published before
-processing, routing and stable output slots are compiled, and the production
-executor uses retained per-voice processors with preallocated payload storage.
-Owning payloads remain as a compatibility surface for diagnostic execution and
-direct processor tests; the realtime executor exposes non-owning views into
-their prepared storage and does not populate the legacy parameter path.
+Concrete module factories, published configurations, compiled routing, stable
+arena-backed output slots, retained per-voice processors, optional diagnostics,
+and allocation- and lock-free representative realtime execution are
+implemented for the current Cycle 2 node set.
 
 Depends on `cycle-v2-node-definition-and-graph-model.md` for authoritative node
 definitions and typed configuration inputs. Complements:
@@ -293,6 +290,8 @@ searches of node IDs on the audio thread.
 
 ## Completion Evidence
 
+Implemented:
+
 - `FixedRoleProcessor` and `FixedPreviewProcessor` were replaced by cohesive
   concrete processors and explicit factory registration tables.
 - Preview definitions declare `AuthoritativeModel`, `RuntimeTap`,
@@ -311,5 +310,28 @@ searches of node IDs on the audio thread.
 - Tests cover compiled slot/lifetime routing, fan-out storage identity,
   optional observation, plan replacement, independent and alternating voices,
   configuration revision behavior, authoritative preview sharing, and zero
-  `operator new` allocations at both maximum and shorter prepared block sizes.
+  `operator new` allocations at maximum, shorter, and one-sample prepared block
+  sizes.
+- `AudioProcessWorkArena` owns aligned `ScopedAlloc<float>` arenas for block and
+  traversal-grid storage. Realtime `SignalBuffer` instances are non-owning
+  views into those arenas; diagnostic copies retain normal deep value
+  semantics.
+- `PreparedVector` provides the bounded process-context input, attachment,
+  output-port, output-view, and output collections. Its prepared operations
+  overwrite constructed storage or change an active count and cannot grow the
+  underlying allocation.
+- Concrete processors retain and prepare their own bounded scratch according
+  to their domain lifecycle. This is the implemented equivalent of the
+  illustrative shared `NodeScratchArena`, without moving domain scratch
+  ownership into the executor.
+- The realtime entry point accepts only the compiled execution plan, timing,
+  and a const voice view. It performs no live graph or parameter lookup.
+- macOS tests interpose `pthread_mutex_lock` while realtime processing and
+  verify zero lock acquisitions alongside the allocation counter.
 - The complete `CycleV2_tests` target passes after the migration.
+
+Live host audio is a separate integration boundary. Cycle 2 currently executes
+graphs for previews and offline automation capture; the standalone application
+does not connect `GraphAudioExecutor` to an audio-device callback, and no Cycle
+2 plugin callback target exists. That work is not a completion criterion for
+this node-module boundary, but it is required before Cycle 2 has live playback.

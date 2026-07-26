@@ -883,6 +883,9 @@ TEST_CASE("Audio process work arena reserves block and traversal-grid storage", 
 
     AudioProcessWorkArena arena;
     arena.prepare(8, 1, 1, 64);
+    REQUIRE(arena.preparePayloadStorage(1));
+    SignalPayload preparedOutput;
+    arena.bind(preparedOutput);
 
     AudioProcessContext context;
     context.frameCount = 8;
@@ -890,10 +893,38 @@ TEST_CASE("Audio process work arena reserves block and traversal-grid storage", 
     context.outputPorts = {
             { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
     };
+    context.outputViews = { &preparedOutput };
     processor->process(context);
 
+    REQUIRE(output(context).block.samples.isBound());
+    REQUIRE(output(context).traversalGrid.values.isBound());
     REQUIRE(output(context).block.samples.capacity() >= 8);
     REQUIRE(output(context).traversalGrid.values.capacity() >= 64);
+}
+
+TEST_CASE("Signal buffers preserve value semantics outside realtime storage", "[cycle-v2][runtime]") {
+    SignalBuffer source { 1.f, 2.f, 3.f };
+    SignalBuffer copy = source;
+    copy[0] = 4.f;
+
+    REQUIRE(source == std::vector<float> { 1.f, 2.f, 3.f });
+    REQUIRE(copy == std::vector<float> { 4.f, 2.f, 3.f });
+
+    ScopedAlloc<float> storage(4);
+    SignalBuffer realtime;
+    realtime.bind(storage);
+    realtime.assign(source.begin(), source.end());
+    REQUIRE(realtime.isBound());
+    REQUIRE(realtime.data() == storage.get());
+
+    SignalBuffer diagnosticCopy = realtime;
+    REQUIRE_FALSE(diagnosticCopy.isBound());
+    REQUIRE(diagnosticCopy == source);
+
+    SignalBuffer moved = std::move(realtime);
+    REQUIRE(moved.isBound());
+    REQUIRE(moved.data() == storage.get());
+    REQUIRE(realtime.empty());
 }
 
 TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][runtime]") {
@@ -1194,7 +1225,8 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
 
         REQUIRE(output(context).channelLayout == layout);
         if (reference.empty()) {
-            reference = output(context).block.samples;
+            const auto& samples = output(context).block.samples;
+            reference.assign(samples.begin(), samples.end());
         } else {
             REQUIRE(output(context).block.samples == reference);
         }

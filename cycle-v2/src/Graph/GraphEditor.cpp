@@ -461,6 +461,37 @@ GraphEditResult GraphEditor::replaceNodeModel(
     return result;
 }
 
+GraphEditResult GraphEditor::replaceTransientNodeModel(
+        NodeGraph& graph,
+        const String& nodeId,
+        uint64_t expectedRevision,
+        NodeModelStatePtr model) const {
+    Node* node = findMutableNode(graph, nodeId);
+    if (node == nullptr) {
+        return { GraphEditCode::MissingNode, nodeId, {} };
+    }
+    if (model == nullptr) {
+        return { GraphEditCode::InvalidTypedSnapshot, nodeId, {} };
+    }
+
+    const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
+    if (currentRevision != expectedRevision || model->revision() != currentRevision) {
+        return { GraphEditCode::StaleRevision, nodeId, {} };
+    }
+    if (node->model != nullptr && node->model->schemaId() != model->schemaId()) {
+        return { GraphEditCode::WrongNodeKind, nodeId, {} };
+    }
+
+    GraphEditResult result;
+    result.nodeId = nodeId;
+    result.changed = graph.replaceNodeModel(nodeId, std::move(model));
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.parameterImpacts = ParameterImpact::Presentation
+            | ParameterImpact::Preview
+            | ParameterImpact::DspConfiguration;
+    return result;
+}
+
 GraphEditResult GraphEditor::setNodeEditorState(
         NodeGraph& graph,
         const String& nodeId,

@@ -388,7 +388,8 @@ TEST_CASE("Spy preview processor requires a traversal grid", "[cycle-v2][runtime
 
     PreviewProcessContext gridContext;
     const std::vector<float> inputGrid { 0.f, 0.25f, 0.5f, 0.75f };
-    gridContext.input.grid = &inputGrid;
+    gridContext.input.grid = inputGrid.data();
+    gridContext.input.gridSize = inputGrid.size();
     gridContext.input.gridColumns = 2;
     gridContext.input.gridRows = 2;
     gridContext.domain = PortDomain::SpectralMagnitudeSignal;

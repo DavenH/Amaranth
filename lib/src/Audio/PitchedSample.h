@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include "JuceHeader.h"
+
+#include "../Array/ScopedAlloc.h"
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
@@ -95,5 +97,10 @@ public:
     Range<float> veloRange;
 
 private:
+    void copyAudio(const Buffer<float>& source);
+    void copyAudio(AudioBuffer<float>& source);
+
+    ScopedAlloc<float> audioMemory;
+
     JUCE_LEAK_DETECTOR(PitchedSample)
 };

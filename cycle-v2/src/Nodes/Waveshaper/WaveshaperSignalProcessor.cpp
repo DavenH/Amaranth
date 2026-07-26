@@ -47,7 +47,8 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
 }
 
 void WaveshaperSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
-    oversampleMemory.resize(spec.maximumFrameCount * 8);
+    oversampleMemory.resize((int) (spec.maximumFrameCount * 8));
+    oversampler.setMemoryBuffer(oversampleMemory);
 }
 
 void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -71,10 +72,11 @@ void WaveshaperSignalProcessor::beginBlock(size_t frameCount) {
     }
 
     const size_t requiredSize = frameCount * (size_t) oversampleFactor;
-    if (oversampleMemory.size() < requiredSize) {
-        oversampleMemory.resize(requiredSize);
+    if ((size_t) oversampleMemory.size() < requiredSize) {
+        jassertfalse;
+        useOversampling = false;
+        return;
     }
-    oversampler.setMemoryBuffer({ oversampleMemory.data(), (int) oversampleMemory.size() });
 }
 
 void WaveshaperSignalProcessor::beginTraversalGrid(size_t, size_t) {

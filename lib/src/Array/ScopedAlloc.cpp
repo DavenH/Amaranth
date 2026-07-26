@@ -10,9 +10,9 @@ ScopedAlloc<T>::ScopedAlloc(int size) :  \
     jassert(size >= 0);                  \
     size         = jmax(0, size);        \
     Buffer::sz   = size;                 \
-    Buffer::ptr  = VecOps::allocate<T>(size); \
+    Buffer::ptr  = size > 0 ? VecOps::allocate<T>(size) : nullptr; \
     placementPos = 0;                    \
-    alive        = true;                 \
+    alive        = Buffer::ptr != nullptr; \
 }
 
 #define resizeIpp(T)                     \
@@ -24,8 +24,8 @@ bool ScopedAlloc<T>::resize(int size) {  \
         return false;                    \
     clear();                             \
     Buffer::sz  = size;                  \
-    Buffer::ptr = VecOps::allocate<T>(size); \
-    alive       = true;                  \
+    Buffer::ptr = size > 0 ? VecOps::allocate<T>(size) : nullptr; \
+    alive       = Buffer::ptr != nullptr; \
     return true;                         \
 }
 
