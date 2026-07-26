@@ -164,7 +164,7 @@ void paintTripleModulationNode(
             graphics,
             frame.viewport.toScreen(
                     ModulationCableBundle::worldCentre(node, false)),
-            17.f * scale,
+            ModulationCableBundle::socketDiameter * scale,
             true);
 }
 
@@ -512,7 +512,8 @@ void NodeCanvasPresentation::paintPendingConnection(
                 source,
                 destination,
                 colourForDomain(PortDomain::ControlSignal),
-                true
+                true,
+                node->kind != NodeKind::Envelope
         }, frame.viewport.getZoom());
         return;
     }
@@ -659,13 +660,14 @@ void NodeCanvasPresentation::paintNode(
         paintPort(port);
     }
 
-    if (node.kind == NodeKind::TrilinearMesh) {
+    if (ModulationCableBundle::supportsDestination(node)) {
         NodeCableRenderer::paintModulationSocket(
                 graphics,
                 frame.viewport.toScreen(
                         ModulationCableBundle::worldCentre(node, true)),
                 ModulationCableBundle::socketDiameter * scale,
-                false);
+                false,
+                ModulationCableBundle::destinationIncludesYellow(node));
     }
 }
 

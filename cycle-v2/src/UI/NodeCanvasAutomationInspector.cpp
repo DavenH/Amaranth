@@ -513,6 +513,9 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         target->setProperty("destPortId", edge.destPortId);
         target->setProperty("modulationBundle", sceneEdge.modulationBundle);
         target->setProperty("bundleEdgeCount", (int) sceneEdge.edgeIndices.size());
+        target->setProperty(
+                "destinationBundleIncludesYellow",
+                sceneEdge.destinationBundleIncludesYellow);
         targets.add(target);
     }
 

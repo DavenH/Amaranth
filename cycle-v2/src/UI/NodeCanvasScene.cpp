@@ -178,8 +178,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (node.kind != NodeKind::ModulationTriple) {
             appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
         }
-        if (node.kind == NodeKind::ModulationTriple || node.kind == NodeKind::TrilinearMesh) {
-            const bool input = node.kind == NodeKind::TrilinearMesh;
+        if (node.kind == NodeKind::ModulationTriple
+                || ModulationCableBundle::supportsDestination(node)) {
+            const bool input = node.kind != NodeKind::ModulationTriple;
             const auto centre = viewport.toScreen(
                     ModulationCableBundle::worldCentre(node, input));
             const float size = ModulationCableBundle::socketDiameter
@@ -201,7 +202,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
         const auto bundle = ModulationCableBundle::bundleBeginningAt(graph, edgeIndex);
         const auto bundleIndices = ModulationCableBundle::edgeIndices(graph, edgeIndex);
-        if (bundleIndices.size() == 3 && !bundle.has_value()) {
+        if (bundleIndices.size() > 1 && !bundle.has_value()) {
             continue;
         }
         const Node* sourceNode = findNode(graph, edge.sourceNodeId);
@@ -247,7 +248,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 std::move(visiblePath),
                 std::move(hitPath),
                 destinationPort != nullptr,
-                isBundle
+                isBundle,
+                !isBundle || ModulationCableBundle::destinationIncludesYellow(*destinationNode)
         });
     }
 

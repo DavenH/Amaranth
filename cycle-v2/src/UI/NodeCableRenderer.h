@@ -21,6 +21,7 @@ struct PendingNodeConnection {
     Point<float> destination;
     Colour colour;
     bool modulationBundle {};
+    bool destinationBundleIncludesYellow { true };
 };
 
 class NodeCableRenderer {
@@ -40,7 +41,8 @@ public:
             Graphics& graphics,
             Point<float> centre,
             float diameter,
-            bool output);
+            bool output,
+            bool yellowEnabled = true);
 };
 
 }

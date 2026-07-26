@@ -473,9 +473,65 @@ TEST_CASE("Matching triple routes coalesce into one canvas cable",
                             && target.portId == portId;
                 });
     };
-    REQUIRE(hasMeshInputTarget("yellow"));
+    REQUIRE_FALSE(hasMeshInputTarget("yellow"));
     REQUIRE_FALSE(hasMeshInputTarget("red"));
     REQUIRE_FALSE(hasMeshInputTarget("blue"));
+}
+
+TEST_CASE("Envelope coalesces the red and blue triple routes with yellow disabled",
+        "[cycle-v2][modulation][triple][envelope][ui]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            { 10.f, 20.f }));
+    graph.addNode(factory.createNode(
+            NodeKind::Envelope,
+            "envelope",
+            { 420.f, 20.f }));
+    const Node* triple = graph.findNode("triple");
+    const Node* envelope = graph.findNode("envelope");
+    REQUIRE(triple != nullptr);
+    REQUIRE(envelope != nullptr);
+
+    const PortAddress source = ModulationCableBundle::sourceAddress(*triple);
+    const PortAddress destination = ModulationCableBundle::destinationAddress(*envelope);
+    const auto routes = ModulationCableBundle::routes(graph, source, destination);
+    REQUIRE(routes.size() == 2);
+    REQUIRE(routes[0].source.portId == "red");
+    REQUIRE(routes[0].destination.portId == "red");
+    REQUIRE(routes[1].source.portId == "blue");
+    REQUIRE(routes[1].destination.portId == "blue");
+    REQUIRE(ModulationCableBundle::canConnect(graph, source, destination));
+    for (const auto& route : routes) {
+        REQUIRE(GraphEditor().connect(graph, route.source, route.destination).succeeded());
+    }
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport);
+    REQUIRE(snapshot.edges.size() == 1);
+    REQUIRE(snapshot.edges.front().modulationBundle);
+    REQUIRE(snapshot.edges.front().edgeIndices.size() == 2);
+    REQUIRE_FALSE(snapshot.edges.front().destinationBundleIncludesYellow);
+
+    const auto envelopeInputCount = std::count_if(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.kind == NodeSceneTargetKind::InputPort
+                        && target.nodeId == "envelope";
+            });
+    REQUIRE(envelopeInputCount == 1);
+    REQUIRE(std::any_of(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.nodeId == "envelope"
+                        && target.portId == ModulationCableBundle::portId();
+            }));
 }
 
 TEST_CASE("Modulation triple exposes the shared hosted editor",

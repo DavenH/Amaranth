@@ -144,6 +144,44 @@ TEST_CASE("Bundled modulation connection and deletion are single undoable gestur
     REQUIRE(document.graph().getEdges().size() == 3);
 }
 
+TEST_CASE("Envelope modulation bundle authors red and blue as one gesture",
+        "[cycle-v2][canvas][authoring][modulation][envelope]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::Envelope,
+            "envelope",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto connected = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "envelope", ModulationCableBundle::portId(), true });
+    REQUIRE(connected.succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getEdges()[0].sourcePortId == "red");
+    REQUIRE(document.graph().getEdges()[0].destPortId == "red");
+    REQUIRE(document.graph().getEdges()[1].sourcePortId == "blue");
+    REQUIRE(document.graph().getEdges()[1].destPortId == "blue");
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
+
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
+}
+
 TEST_CASE("Effect parameter edits request an open-editor rebind",
         "[cycle-v2][canvas][authoring][effects]") {
     NodeGraph graph;

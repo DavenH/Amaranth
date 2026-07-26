@@ -12,7 +12,8 @@ void paintModulationPie(
         Graphics& graphics,
         Point<float> centre,
         float diameter,
-        bool output) {
+        bool output,
+        bool yellowEnabled) {
     const Rectangle<float> bounds(diameter, diameter);
     const auto placed = bounds.withCentre(centre);
     graphics.setColour(kCanvasBackground.withAlpha(0.96f));
@@ -31,7 +32,9 @@ void paintModulationPie(
                 -MathConstants<float>::halfPi + segment * (float) index,
                 -MathConstants<float>::halfPi + segment * (float) (index + 1),
                 0.f);
-        graphics.setColour(colourForMorphDimension(dimensions[index]));
+        const bool enabled = index != 0 || yellowEnabled;
+        graphics.setColour(colourForMorphDimension(dimensions[index]).withAlpha(
+                enabled ? 1.f : 0.18f));
         graphics.fillPath(wedge);
     }
 
@@ -153,8 +156,13 @@ void paintEndpoints(
         float scale) {
     if (style.modulationBundle) {
         const float size = (style.selected ? 14.f : 12.f) * scale;
-        paintModulationPie(graphics, edge.source, size, true);
-        paintModulationPie(graphics, edge.destination, size, false);
+        paintModulationPie(graphics, edge.source, size, true, true);
+        paintModulationPie(
+                graphics,
+                edge.destination,
+                size,
+                false,
+                edge.destinationBundleIncludesYellow);
         return;
     }
 
@@ -249,8 +257,13 @@ void NodeCableRenderer::paintPending(
     graphics.fillEllipse(destinationMarker.reduced(2.f * scale));
 
     if (connection.modulationBundle) {
-        paintModulationPie(graphics, connection.source, 12.f * scale, true);
-        paintModulationPie(graphics, connection.destination, 12.f * scale, false);
+        paintModulationPie(graphics, connection.source, 12.f * scale, true, true);
+        paintModulationPie(
+                graphics,
+                connection.destination,
+                12.f * scale,
+                false,
+                connection.destinationBundleIncludesYellow);
     }
 }
 
@@ -258,8 +271,9 @@ void NodeCableRenderer::paintModulationSocket(
         Graphics& graphics,
         Point<float> centre,
         float diameter,
-        bool output) {
-    paintModulationPie(graphics, centre, diameter, output);
+        bool output,
+        bool yellowEnabled) {
+    paintModulationPie(graphics, centre, diameter, output, yellowEnabled);
 }
 
 }

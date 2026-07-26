@@ -21,6 +21,14 @@ bool isAxisEdge(const Edge& edge) {
                 || edge.sourcePortId == "blue");
 }
 
+bool destinationSupportsAxis(const Node& node, const String& axis) {
+    if (node.kind == NodeKind::TrilinearMesh) {
+        return axis == "yellow" || axis == "red" || axis == "blue";
+    }
+    return node.kind == NodeKind::Envelope
+            && (axis == "red" || axis == "blue");
+}
+
 }
 
 String ModulationCableBundle::portId() {
@@ -56,7 +64,16 @@ bool ModulationCableBundle::isDestination(
     return node != nullptr
             && address.input
             && isAddress(address)
-            && node->kind == NodeKind::TrilinearMesh;
+            && supportsDestination(*node);
+}
+
+bool ModulationCableBundle::supportsDestination(const Node& node) {
+    return node.kind == NodeKind::TrilinearMesh
+            || node.kind == NodeKind::Envelope;
+}
+
+bool ModulationCableBundle::destinationIncludesYellow(const Node& node) {
+    return node.kind == NodeKind::TrilinearMesh;
 }
 
 std::vector<ModulationCableBundleRoute> ModulationCableBundle::routes(
@@ -68,10 +85,15 @@ std::vector<ModulationCableBundleRoute> ModulationCableBundle::routes(
     if (!isSource(graph, source) || !isDestination(graph, destination)) {
         return {};
     }
+    const Node* destinationNode = nodeFor(graph, destination);
+    jassert(destinationNode != nullptr);
 
     std::vector<ModulationCableBundleRoute> result;
     result.reserve(kAxes.size());
     for (const char* axis : kAxes) {
+        if (!destinationSupportsAxis(*destinationNode, axis)) {
+            continue;
+        }
         result.push_back({
                 { source.nodeId, axis, false },
                 { destination.nodeId, axis, true }
@@ -86,7 +108,7 @@ bool ModulationCableBundle::canConnect(
         const PortAddress& second) {
     NodeGraph candidate = graph;
     const auto bundleRoutes = routes(graph, first, second);
-    if (bundleRoutes.size() != kAxes.size()) {
+    if (bundleRoutes.empty()) {
         return false;
     }
 
@@ -112,13 +134,17 @@ std::vector<int> ModulationCableBundle::edgeIndices(
     if (source == nullptr
             || destination == nullptr
             || source->kind != NodeKind::ModulationTriple
-            || destination->kind != NodeKind::TrilinearMesh
-            || !isAxisEdge(selected)) {
+            || !supportsDestination(*destination)
+            || !isAxisEdge(selected)
+            || !destinationSupportsAxis(*destination, selected.destPortId)) {
         return { edgeIndex };
     }
 
     std::vector<int> result;
     for (const char* axis : kAxes) {
+        if (!destinationSupportsAxis(*destination, axis)) {
+            continue;
+        }
         const auto found = std::find_if(
                 edges.begin(),
                 edges.end(),
@@ -141,7 +167,7 @@ std::optional<std::vector<int>> ModulationCableBundle::bundleBeginningAt(
         const NodeGraph& graph,
         int edgeIndex) {
     auto indices = edgeIndices(graph, edgeIndex);
-    if (indices.size() != kAxes.size()
+    if (indices.size() < 2
             || *std::min_element(indices.begin(), indices.end()) != edgeIndex) {
         return std::nullopt;
     }
@@ -149,9 +175,7 @@ std::optional<std::vector<int>> ModulationCableBundle::bundleBeginningAt(
 }
 
 bool ModulationCableBundle::hidesIndividualPort(const Node& node, const Port& port) {
-    return node.kind == NodeKind::TrilinearMesh
-            && port.input
-            && (port.id == "red" || port.id == "blue");
+    return port.input && destinationSupportsAxis(node, port.id);
 }
 
 Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {

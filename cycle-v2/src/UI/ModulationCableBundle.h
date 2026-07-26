@@ -20,6 +20,8 @@ struct ModulationCableBundle {
     static bool isAddress(const PortAddress& address);
     static bool isSource(const NodeGraph& graph, const PortAddress& address);
     static bool isDestination(const NodeGraph& graph, const PortAddress& address);
+    static bool supportsDestination(const Node& node);
+    static bool destinationIncludesYellow(const Node& node);
     static std::vector<ModulationCableBundleRoute> routes(
             const NodeGraph& graph,
             const PortAddress& first,

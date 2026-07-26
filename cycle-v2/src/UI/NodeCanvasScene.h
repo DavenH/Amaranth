@@ -50,6 +50,7 @@ struct NodeSceneEdge {
     juce::Path hitPath;
     bool destinationPortLike { true };
     bool modulationBundle {};
+    bool destinationBundleIncludesYellow { true };
 };
 
 struct NodeCanvasSceneSnapshot {

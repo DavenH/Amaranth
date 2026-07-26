@@ -809,21 +809,24 @@ shared with the single source. No preview role, triplet payload, destination
 adapter, smoothing path, or mesh/Envelope algorithm was added.
 
 The canvas-only `ModulationCableBundle` recognizes a pseudo composite
-authoring address for Modulation Triple output and Trilinear Mesh input. One
-gesture validates three normal `GraphEditor` connections, executes them in one
-compound undo transaction, and leaves three ordinary edges in the graph.
-Complete matching yellow/red/blue edge sets are inferred at scene-build time
-and coalesced into one cable target. No bundle identifier or presentation
-metadata is serialized. Deletion applies to all three inferred edges in one
-undoable gesture; cable splicing is intentionally disabled for a bundle
-because it would be ambiguous by axis.
+authoring address for Modulation Triple output and the two morph destination
+profiles. One Trilinear Mesh gesture validates and creates three ordinary
+yellow/red/blue `GraphEditor` connections. One Envelope gesture validates and
+creates the ordinary red/blue connections while leaving yellow unused. Both
+execute in one compound undo transaction. Complete matching edge sets are
+inferred at scene-build time and coalesced into one cable target. No bundle
+identifier or presentation metadata is serialized. Deletion applies to every
+inferred edge in one undoable gesture; cable splicing is intentionally disabled
+for a bundle because it would be ambiguous by axis.
 
-The visible bundle is one curved path with nested yellow, red, and blue bands
-and pie-chart endpoints. Trilinear Mesh retains its individual axis targets for
-single-source routes. The compact single-source node is fixed at 48 pixels
-high and makes the selected source its dominant label. The triple is fixed at
-126 pixels high with separate yellow, red, and blue source rows and the legacy
-defaults `voiceTime`, `keyScale`, and `modWheel`.
+The visible bundle uses the canonical control-cable path and stroke with
+pie-chart endpoints. Individual morph-axis sockets are hidden on Trilinear Mesh
+and Envelope while their ordinary graph ports remain authoritative. The
+Envelope destination pie renders yellow disabled. The compact single-source
+node is fixed at 48 pixels high and makes the selected source its dominant
+label. The triple is fixed at 126 pixels high with separate yellow, red, and
+blue source rows and the legacy defaults `voiceTime`, `keyScale`, and
+`modWheel`.
 
 The extension adds 1,059 and removes 230 production/resource lines, for a net
 increase of 829. The largest new files are:
@@ -844,8 +847,8 @@ New compatibility branches are limited to:
 - Modulation Triple definition, palette alias/entry, view module, editor
   registration, and compact canvas dispatch;
 - Modulation Triple audio configuration and processor factory registration;
-- the bundle helper's exact Modulation Triple source and Trilinear Mesh
-  destination predicates; and
+- the bundle helper's exact Modulation Triple source plus Trilinear Mesh and
+  Envelope destination profiles; and
 - scene/presentation branches which create and paint the composite targets.
 
 The bundle helper is a stable UI authoring/presentation boundary. It translates
@@ -854,16 +857,17 @@ edges; it contains no graph execution or signal behavior.
 
 Verification evidence:
 
-- focused `[modulation]`: 194 assertions in 29 test cases, including the
+- focused `[modulation]`: 227 assertions in 31 test cases, including the
   prepared-graph no-allocation boundary with a Modulation Triple;
-- full `CycleV2_tests`: 4,854 assertions in 352 test cases;
+- full `CycleV2_tests`: 4,891 assertions in 354 test cases;
 - compact-source fixture: 17 commands, no failures, 48-pixel node height;
-- triple fixture: 17 commands, no failures, 126-pixel node height, three
-  persisted edges after save/reload;
+- triple fixture: 18 commands, no failures, 126-pixel node height, with the
+  three-edge Trilinear Mesh route and two-edge Envelope route persisted after
+  save/reload;
 - Standalone Debug build completed with `--parallel 10`;
-- external screen capture visually confirmed the stacked labels, composite
-  sockets, and one coalesced cable at
-  `/private/tmp/cycle-v2-modulation-triple-screen.png`;
+- external screen capture visually confirmed the full Trilinear Mesh pie, the
+  disabled-yellow Envelope pie, hidden individual axis sockets, and canonical
+  coalesced cables at `/private/tmp/cycle-v2-modulation-envelope-visual.png`;
 - `git diff --check` passed; and
 - the modified DSP files contain no scalar `std::<math>` hot loop.
 
