@@ -3,6 +3,8 @@
 #include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "../Nodes/Control/ModulationSource.h"
+#include "../Nodes/Control/ModulationTriple.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
@@ -70,6 +72,14 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         Factory factory;
     };
     static const Registration registrations[] {
+        { AudioModuleRole::ModulationSource, [](AudioModuleRole, const auto& values, const auto&) {
+            return std::shared_ptr<const INodeDspConfiguration>(
+                    ModulationSource::buildConfiguration(values));
+        } },
+        { AudioModuleRole::ModulationTriple, [](AudioModuleRole, const auto& values, const auto&) {
+            return std::shared_ptr<const INodeDspConfiguration>(
+                    buildModulationTripleConfiguration(values));
+        } },
         { AudioModuleRole::WaveSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
             auto configuration = std::make_shared<SourceNodeConfiguration>();
             configuration->processorRole = roleToUse;

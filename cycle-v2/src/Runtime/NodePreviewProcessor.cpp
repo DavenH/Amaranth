@@ -27,6 +27,7 @@ std::unique_ptr<NodePreviewProcessor> NodePreviewProcessorFactory::create(
             { PreviewModuleRole::OutputMeters, createOutputMetersPreviewProcessor },
             { PreviewModuleRole::SignalSpy, createSignalSpyPreviewProcessor },
             { PreviewModuleRole::VoiceContext, createVoiceContextPreviewProcessor },
+            { PreviewModuleRole::ModulationSource, createModulationSourcePreviewProcessor },
             { PreviewModuleRole::Generic, createGenericPreviewProcessor }
     };
 

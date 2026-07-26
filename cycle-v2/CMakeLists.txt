@@ -53,6 +53,7 @@ generate_svg_data(
     NodeIconData
     NodeIconData
     genericProcessor voiceContext waveSource imageSource trilinearMesh
+    modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
     reverb delay equalizer stereoSplit stereoJoin output
 )
@@ -95,6 +96,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MidiControlState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
@@ -109,9 +111,12 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TransformNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodePreviewProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationTriple.cpp"
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAuthoring.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasAutomationController.cpp"
@@ -142,6 +147,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
 )
 
 set(NODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationSource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveEditorPrimitives.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/CurveNodeEditorFactory.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effect2D/EnvelopeEditorComponent.cpp"

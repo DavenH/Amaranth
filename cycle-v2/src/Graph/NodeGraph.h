@@ -24,6 +24,8 @@ enum class PortDomain {
 enum class NodeKind {
     GenericProcessor,
     VoiceContext,
+    ModulationSource,
+    ModulationTriple,
     WaveSource,
     ImageSource,
     TrilinearMesh,

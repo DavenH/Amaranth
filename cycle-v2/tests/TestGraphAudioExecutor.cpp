@@ -293,13 +293,13 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
         "[cycle-v2][runtime][envelope][modulation]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "redControl", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
     graph.addEdge({
-            "redControl", "out", "env", "red", PortDomain::ControlSignal, false
+            "redControl", "value", "env", "red", PortDomain::ControlSignal, false
     });
     graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
     graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
@@ -859,10 +859,20 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
 }
 
 TEST_CASE("Prepared graph audio processing performs no allocations or locks",
-        "[cycle-v2][runtime][realtime]") {
-    const NodeGraph graph = NodeGraph::createDemoGraph();
+        "[cycle-v2][runtime][realtime][modulation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "allocationTriple",
+            {}));
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
+    REQUIRE(std::any_of(
+            compileResult.plan.steps.begin(),
+            compileResult.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "allocationTriple";
+            }));
 
     GraphAudioExecutor executor;
     AudioExecutionSpec spec;

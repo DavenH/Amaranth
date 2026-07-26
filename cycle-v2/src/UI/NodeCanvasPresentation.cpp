@@ -2,6 +2,7 @@
 
 #include "NodeCableRenderer.h"
 #include "NodeCanvasGlRenderer.h"
+#include "ModulationCableBundle.h"
 #include "NodeViewModule.h"
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
@@ -25,6 +26,146 @@ constexpr float kCableReferenceZoom = 0.58f;
 
 float portScale(float zoom) {
     return zoom / kCableReferenceZoom;
+}
+
+String modulationParameterId(const String& prefix, const String& name) {
+    if (prefix.isEmpty()) {
+        return name;
+    }
+    return prefix + name.substring(0, 1).toUpperCase() + name.substring(1);
+}
+
+String modulationSourceLabel(const Node& node, const String& prefix = {}) {
+    const String source = parameterValueForNode(
+            node,
+            modulationParameterId(prefix, "source"),
+            "modWheel");
+    if (source == "voiceTime") {
+        return "Voice Time";
+    }
+    if (source == "velocity") {
+        return "Velocity";
+    }
+    if (source == "inverseVelocity") {
+        return "1-Velocity";
+    }
+    if (source == "keyScale") {
+        return "Key Scale";
+    }
+    if (source == "channelPressure") {
+        return "Pressure";
+    }
+    if (source == "midiCC") {
+        return "CC " + parameterValueForNode(
+                node,
+                modulationParameterId(prefix, "controller"),
+                "1");
+    }
+    if (source == "constant") {
+        return parameterValueForNode(
+                node,
+                modulationParameterId(prefix, "constant"),
+                "0.5");
+    }
+    return "Mod Wheel";
+}
+
+void paintModulationShell(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        float corner,
+        bool selected) {
+    graphics.setColour(kNodeBackground);
+    graphics.fillRoundedRectangle(bounds, corner);
+    graphics.setColour(kNodeBorder);
+    graphics.drawRoundedRectangle(bounds, corner, 1.2f);
+    if (selected) {
+        graphics.setColour(Colours::white.withAlpha(0.86f));
+        graphics.drawRoundedRectangle(bounds.expanded(2.f), corner + 2.f, 2.f);
+    }
+}
+
+void paintSingleModulationNode(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node,
+        Rectangle<float> bounds,
+        float zoom,
+        float scale) {
+    paintModulationShell(graphics, bounds, 8.f * scale, node.id == frame.selectedNodeId);
+    const Rectangle<float> badge = bounds.removeFromLeft(52.f * zoom);
+    graphics.setColour(kNodeHeader);
+    graphics.fillRoundedRectangle(badge, 8.f * scale);
+    graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - 8.f * scale));
+    graphics.setColour(kMutedText);
+    graphics.setFont(FontOptions(10.f * zoom, Font::bold));
+    graphics.drawText("MOD", badge, Justification::centred);
+
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(17.f * zoom, Font::bold));
+    graphics.drawText(
+            modulationSourceLabel(node),
+            bounds.reduced(14.f * zoom, 2.f * zoom),
+            Justification::centredLeft);
+
+    const Point<float> centre {
+            frame.viewport.toScreen(node.bounds).getRight(),
+            frame.viewport.toScreen(node.bounds).getCentreY()
+    };
+    const float diameter = 8.4f * scale;
+    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.fillEllipse(Rectangle<float>(diameter, diameter).withCentre(centre));
+    graphics.setColour(colourForDomain(PortDomain::ControlSignal));
+    graphics.drawEllipse(Rectangle<float>(diameter, diameter).withCentre(centre), 1.2f * scale);
+}
+
+void paintTripleModulationNode(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node,
+        Rectangle<float> bounds,
+        float zoom,
+        float scale) {
+    paintModulationShell(graphics, bounds, 8.f * scale, node.id == frame.selectedNodeId);
+    const String prefixes[] { "yellow", "red", "blue" };
+    const MorphDimension dimensions[] {
+            MorphDimension::Yellow,
+            MorphDimension::Red,
+            MorphDimension::Blue
+    };
+    const float rowHeight = bounds.getHeight() / 3.f;
+    for (int row = 0; row < 3; ++row) {
+        Rectangle<float> rowBounds(
+                bounds.getX(),
+                bounds.getY() + rowHeight * (float) row,
+                bounds.getWidth(),
+                rowHeight);
+        graphics.setColour(colourForMorphDimension(dimensions[row]).withAlpha(0.88f));
+        graphics.fillRoundedRectangle(rowBounds.removeFromLeft(6.f * zoom), 3.f * scale);
+        graphics.setFont(FontOptions(12.f * zoom, Font::bold));
+        graphics.drawText(prefixes[row].substring(0, 1).toUpperCase(),
+                rowBounds.removeFromLeft(30.f * zoom), Justification::centred);
+        graphics.setColour(kText);
+        graphics.setFont(FontOptions(16.f * zoom, Font::bold));
+        graphics.drawText(
+                modulationSourceLabel(node, prefixes[row]),
+                rowBounds.reduced(6.f * zoom, 2.f * zoom),
+                Justification::centredLeft);
+        if (row < 2) {
+            graphics.setColour(kNodeBorder.withAlpha(0.72f));
+            graphics.drawHorizontalLine(
+                    roundToInt(rowBounds.getBottom()),
+                    bounds.getX() + 10.f * zoom,
+                    bounds.getRight() - 12.f * zoom);
+        }
+    }
+
+    NodeCableRenderer::paintModulationSocket(
+            graphics,
+            frame.viewport.toScreen(
+                    ModulationCableBundle::worldCentre(node, false)),
+            ModulationCableBundle::socketDiameter * scale,
+            true);
 }
 
 Colour displayColour(const Node& node, const Port& port) {
@@ -341,7 +482,8 @@ void NodeCanvasPresentation::paintEdges(
                 edge.attachment,
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
-                sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex
+                sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
+                sceneEdge.modulationBundle
         }, zoom);
     }
 }
@@ -355,6 +497,26 @@ void NodeCanvasPresentation::paintPendingConnection(
 
     const auto& pending = *frame.pendingConnection;
     const Node* node = findNode(frame.graph, pending.source.nodeId);
+    if (node != nullptr && ModulationCableBundle::isAddress(pending.source)) {
+        const Point<float> start = frame.viewport.toScreen(
+                ModulationCableBundle::worldCentre(*node, pending.source.input));
+        const Point<float> source = pending.source.input ? pending.pointer : start;
+        const Point<float> destination = pending.source.input ? start : pending.pointer;
+        NodeCableRenderer::paintPending(graphics, {
+                NodeCanvasScene::cablePath(
+                        source,
+                        destination,
+                        PortSide::Right,
+                        PortSide::Left,
+                        frame.viewport.getZoom()),
+                source,
+                destination,
+                colourForDomain(PortDomain::ControlSignal),
+                true,
+                node->kind != NodeKind::Envelope
+        }, frame.viewport.getZoom());
+        return;
+    }
     const Port* port = node == nullptr ? nullptr : findPort(*node, pending.source);
     if (node == nullptr || port == nullptr) {
         return;
@@ -414,6 +576,15 @@ void NodeCanvasPresentation::paintNode(
     const float scale = portScale(zoom);
     const float corner = 8.f * scale;
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+    if (node.kind == NodeKind::ModulationSource) {
+        paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
+        return;
+    }
+    if (node.kind == NodeKind::ModulationTriple) {
+        paintTripleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
+        return;
+    }
+
     Rectangle<float> body = nodeBounds;
     const Rectangle<float> header = body.removeFromTop(42.f * zoom);
 
@@ -433,7 +604,6 @@ void NodeCanvasPresentation::paintNode(
     graphics.setFont(FontOptions(15.f * zoom, Font::bold));
     graphics.setColour(kText);
     graphics.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
-
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {
         paintOperationAction(
@@ -481,11 +651,23 @@ void NodeCanvasPresentation::paintNode(
     };
 
     for (const auto& port : node.inputs) {
-        paintPort(port);
+        if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+            paintPort(port);
+        }
     }
 
     for (const auto& port : node.outputs) {
         paintPort(port);
+    }
+
+    if (ModulationCableBundle::supportsDestination(node)) {
+        NodeCableRenderer::paintModulationSocket(
+                graphics,
+                frame.viewport.toScreen(
+                        ModulationCableBundle::worldCentre(node, true)),
+                ModulationCableBundle::socketDiameter * scale,
+                false,
+                ModulationCableBundle::destinationIncludesYellow(node));
     }
 }
 

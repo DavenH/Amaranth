@@ -171,6 +171,8 @@ public:
             return "Voice Context";
         case PreviewModuleRole::SignalSpy:
             return "Signal Spy";
+        case PreviewModuleRole::ModulationSource:
+            return "Modulation Source";
         case PreviewModuleRole::Generic:
             return "Generic";
         case PreviewModuleRole::None:
@@ -521,6 +523,11 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         target->setProperty("sourcePortId", edge.sourcePortId);
         target->setProperty("destNodeId", edge.destNodeId);
         target->setProperty("destPortId", edge.destPortId);
+        target->setProperty("modulationBundle", sceneEdge.modulationBundle);
+        target->setProperty("bundleEdgeCount", (int) sceneEdge.edgeIndices.size());
+        target->setProperty(
+                "destinationBundleIncludesYellow",
+                sceneEdge.destinationBundleIncludesYellow);
         targets.add(target);
     }
 

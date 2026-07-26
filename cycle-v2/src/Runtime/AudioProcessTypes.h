@@ -4,6 +4,7 @@
 #include "PreparedVector.h"
 #include "SignalBuffer.h"
 
+#include <array>
 #include <limits>
 #include <vector>
 
@@ -114,9 +115,34 @@ struct NoteLifecycleEvent {
     int voiceIndex {};
 };
 
+enum class ControlEventKind {
+    Controller,
+    ChannelPressure
+};
+
+struct TimedControlEvent {
+    ControlEventKind kind { ControlEventKind::Controller };
+    size_t sampleOffset {};
+    int controller {};
+    float value {};
+};
+
+struct AudioVoiceControls {
+    int noteNumber { 60 };
+    int lowestNote { 0 };
+    int highestNote { 127 };
+    float velocity { 1.f };
+    float normalizedVoiceTime {};
+    float normalizedVoiceTimeIncrement {};
+    float channelPressure {};
+    std::array<float, 128> controllers {};
+};
+
 struct AudioVoiceContext {
     int voiceIndex {};
     std::vector<NoteLifecycleEvent> events;
+    AudioVoiceControls controls;
+    std::vector<TimedControlEvent> controlEvents;
 };
 
 struct AudioProcessWorkArena {

@@ -1,4 +1,5 @@
 #include "NodeCanvasScene.h"
+#include "ModulationCableBundle.h"
 #include "NodeViewModule.h"
 
 #include <algorithm>
@@ -89,6 +90,13 @@ juce::Path buildCablePath(
 }
 
 juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port& port) {
+    if (node.kind == NodeKind::ModulationSource) {
+        return {
+                port.input ? node.bounds.getX() : node.bounds.getRight(),
+                node.bounds.getCentreY()
+        };
+    }
+
     if (port.side == PortSide::Top || port.side == PortSide::Bottom) {
         const int index = portIndexOnSide(node, port);
         const int count = juce::jmax(1, portCountOnSide(node, port.side));
@@ -149,6 +157,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
 
         auto appendPorts = [&](const std::vector<Port>& ports, NodeSceneTargetKind kind) {
             for (const auto& port : ports) {
+                if (ModulationCableBundle::hidesIndividualPort(node, port)) {
+                    continue;
+                }
                 const auto centre = viewport.toScreen(portWorldCentre(node, port));
                 const float size = 8.8f * viewport.getZoom() / 0.58f;
                 current.targets.push_back({
@@ -164,11 +175,36 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             }
         };
         appendPorts(node.inputs, NodeSceneTargetKind::InputPort);
-        appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
+        if (node.kind != NodeKind::ModulationTriple) {
+            appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
+        }
+        if (node.kind == NodeKind::ModulationTriple
+                || ModulationCableBundle::supportsDestination(node)) {
+            const bool input = node.kind != NodeKind::ModulationTriple;
+            const auto centre = viewport.toScreen(
+                    ModulationCableBundle::worldCentre(node, input));
+            const float size = ModulationCableBundle::socketDiameter
+                    * viewport.getZoom() / 0.58f;
+            current.targets.push_back({
+                    input ? NodeSceneTargetKind::InputPort : NodeSceneTargetKind::OutputPort,
+                    (input ? "input:" : "output:") + node.id + ".modulationBundle",
+                    node.id,
+                    ModulationCableBundle::portId(),
+                    {},
+                    juce::Rectangle<float>(size, size).withCentre(centre).expanded(10.f),
+                    -1,
+                    20000 + zOrder++
+            });
+        }
     }
 
     for (int edgeIndex = 0; edgeIndex < (int) graph.getEdges().size(); ++edgeIndex) {
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
+        const auto bundle = ModulationCableBundle::bundleBeginningAt(graph, edgeIndex);
+        const auto bundleIndices = ModulationCableBundle::edgeIndices(graph, edgeIndex);
+        if (bundleIndices.size() > 1 && !bundle.has_value()) {
+            continue;
+        }
         const Node* sourceNode = findNode(graph, edge.sourceNodeId);
         const Node* destinationNode = findNode(graph, edge.destNodeId);
         if (sourceNode == nullptr || destinationNode == nullptr) {
@@ -180,13 +216,18 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             continue;
         }
 
-        const auto source = viewport.toScreen(portWorldCentre(*sourceNode, *sourcePort));
+        const bool isBundle = bundle.has_value();
+        const auto source = viewport.toScreen(isBundle
+                ? ModulationCableBundle::worldCentre(*sourceNode, false)
+                : portWorldCentre(*sourceNode, *sourcePort));
         const auto attachmentCentre = NodeViewModuleRegistry::instance()
                 .moduleFor(destinationNode->kind).attachmentWorldCentre(*destinationNode, edge.destPortId);
         if (destinationPort == nullptr && !attachmentCentre.has_value()) {
             continue;
         }
-        const auto destination = viewport.toScreen(destinationPort != nullptr
+        const auto destination = viewport.toScreen(isBundle
+                ? ModulationCableBundle::worldCentre(*destinationNode, true)
+                : destinationPort != nullptr
                 ? portWorldCentre(*destinationNode, *destinationPort)
                 : *attachmentCentre);
         const PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
@@ -201,11 +242,14 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 .createStrokedPath(hitPath, visiblePath);
         current.edges.push_back({
                 edgeIndex,
+                isBundle ? *bundle : std::vector<int> { edgeIndex },
                 source,
                 destination,
                 std::move(visiblePath),
                 std::move(hitPath),
-                destinationPort != nullptr
+                destinationPort != nullptr,
+                isBundle,
+                !isBundle || ModulationCableBundle::destinationIncludesYellow(*destinationNode)
         });
     }
 

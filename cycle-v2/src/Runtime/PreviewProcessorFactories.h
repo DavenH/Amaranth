@@ -19,6 +19,7 @@ std::unique_ptr<NodePreviewProcessor> createEqualizerPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createOutputMetersPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createSignalSpyPreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createVoiceContextPreviewProcessor();
+std::unique_ptr<NodePreviewProcessor> createModulationSourcePreviewProcessor();
 std::unique_ptr<NodePreviewProcessor> createGenericPreviewProcessor();
 
 }

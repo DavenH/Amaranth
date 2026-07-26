@@ -2,6 +2,7 @@
 
 #include "NodeEditorHost.h"
 
+#include "ModulationNodeEditors.h"
 #include "NodeParameterValue.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Effects/EffectPlotPalette.h"
@@ -814,6 +815,12 @@ const NodeEditorFactoryRegistry& NodeEditorFactoryRegistry::instance() {
 }
 
 NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
+    factories.emplace_back(
+            NodeKind::ModulationSource,
+            createModulationNodeEditorFactory());
+    factories.emplace_back(
+            NodeKind::ModulationTriple,
+            createModulationNodeEditorFactory());
     factories.emplace_back(NodeKind::Envelope, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::GuideCurve, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());

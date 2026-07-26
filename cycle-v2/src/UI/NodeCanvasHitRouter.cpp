@@ -129,6 +129,9 @@ int NodeCanvasHitRouter::spliceTargetEdgeAt(
         const String& nodeId) const {
     const auto& edges = graph.getEdges();
     for (auto sceneEdge = scene.edges.rbegin(); sceneEdge != scene.edges.rend(); ++sceneEdge) {
+        if (sceneEdge->modulationBundle) {
+            continue;
+        }
         const int edgeIndex = sceneEdge->edgeIndex;
 
         if (edgeIndex < 0 || edgeIndex >= (int) edges.size()) {

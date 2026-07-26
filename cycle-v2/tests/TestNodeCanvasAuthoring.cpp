@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/UI/ModulationCableBundle.h"
 #include "../src/UI/NodeCanvasAuthoring.h"
 
 using namespace CycleV2;
@@ -133,6 +134,79 @@ TEST_CASE("Hosted effect editors open without requiring a compact preview",
     REQUIRE(authoring.session().expandedNodeId == "reverb");
     REQUIRE(authoring.openEditor("delay").succeeded);
     REQUIRE(authoring.session().expandedNodeId == "delay");
+}
+
+TEST_CASE("Bundled modulation connection and deletion are single undoable gestures",
+        "[cycle-v2][canvas][authoring][modulation]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto connected = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "mesh", ModulationCableBundle::portId(), true });
+    REQUIRE(connected.succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+
+    const auto removed = authoring.deleteEdge(0);
+    REQUIRE(removed.succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 3);
+}
+
+TEST_CASE("Envelope modulation bundle authors red and blue as one gesture",
+        "[cycle-v2][canvas][authoring][modulation][envelope]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::Envelope,
+            "envelope",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto connected = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "envelope", ModulationCableBundle::portId(), true });
+    REQUIRE(connected.succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
+    REQUIRE(document.graph().getEdges()[0].sourcePortId == "red");
+    REQUIRE(document.graph().getEdges()[0].destPortId == "red");
+    REQUIRE(document.graph().getEdges()[1].sourcePortId == "blue");
+    REQUIRE(document.graph().getEdges()[1].destPortId == "blue");
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
+
+    REQUIRE(authoring.deleteEdge(0).succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 2);
 }
 
 TEST_CASE("Effect parameter edits request an open-editor rebind",

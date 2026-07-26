@@ -1,4 +1,5 @@
 #include "NodeCanvasInteraction.h"
+#include "ModulationCableBundle.h"
 
 #include <limits>
 
@@ -112,6 +113,11 @@ std::optional<float> bestSnapDelta(
 bool canConnect(const NodeGraph& graph, const PortAddress& source, const PortAddress& target) {
     if (source.input == target.input) {
         return false;
+    }
+
+    if (ModulationCableBundle::isAddress(source)
+            || ModulationCableBundle::isAddress(target)) {
+        return ModulationCableBundle::canConnect(graph, source, target);
     }
 
     NodeGraph candidate = graph;

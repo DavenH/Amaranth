@@ -48,6 +48,8 @@ String labelForAudioModuleRole(AudioModuleRole role) {
     switch (role) {
         case AudioModuleRole::None:              return "None";
         case AudioModuleRole::VoiceContext:      return "Voice Context";
+        case AudioModuleRole::ModulationSource:  return "Modulation Source";
+        case AudioModuleRole::ModulationTriple:  return "Modulation Triple";
         case AudioModuleRole::WaveSource:        return "Wave Source";
         case AudioModuleRole::ImageSource:       return "Image Source";
         case AudioModuleRole::MeshSource:        return "Mesh Source";
@@ -74,6 +76,7 @@ String labelForPreviewModuleRole(PreviewModuleRole role) {
     switch (role) {
         case PreviewModuleRole::None:              return "None";
         case PreviewModuleRole::VoiceContext:      return "Voice Context";
+        case PreviewModuleRole::ModulationSource:  return "Modulation Source";
         case PreviewModuleRole::Waveform:          return "Waveform";
         case PreviewModuleRole::Image:             return "Image";
         case PreviewModuleRole::MeshSurface:       return "Mesh Surface";

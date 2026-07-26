@@ -1,5 +1,24 @@
 # Refactor Notes
 
+## Cycle V2 concrete editor registry decomposition
+
+`cycle-v2/src/UI/ConcreteNodeEditors.cpp` remains 844 lines after the
+Modulation editor was extracted into its own cohesive translation unit. The
+remaining file mixes effect parameter editors, curve editor adapters, and the
+Trilinear Mesh editor adapter.
+
+Suggested direction:
+
+- extract the effect parameter editor and its factory;
+- move curve and Trilinear Mesh editor adapters beside their domain editor
+  implementations; and
+- leave `ConcreteNodeEditors.cpp` as a small registry assembly point, or replace
+  it with domain factory registration.
+
+This is not required for modulation bundle behavior; the current work reduced
+the file by approximately 160 lines and did not add another concrete editor to
+it.
+
 ## Cycle V2 Realtime Payload Storage And Host Audio
 
 Status: open after the 2026-07-23 runtime-boundary audit.

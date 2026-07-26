@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+struct PreviewControlContext;
+
 struct NodePreviewResult {
     String nodeId;
     PreviewModuleRole role { PreviewModuleRole::None };
@@ -40,6 +42,10 @@ struct GraphPreviewResult {
 class GraphPreviewExecutor {
 public:
     GraphPreviewResult render(const GraphExecutionPlan& plan, size_t pointCount) const;
+    GraphPreviewResult render(
+            const GraphExecutionPlan& plan,
+            size_t pointCount,
+            const PreviewControlContext& controlContext) const;
     GraphPreviewResult render(
             const GraphExecutionPlan& plan,
             const GraphAudioResult& audioResult,

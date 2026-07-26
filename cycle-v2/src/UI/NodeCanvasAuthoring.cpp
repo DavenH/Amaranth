@@ -1,9 +1,12 @@
-#include "NodeCanvasAuthoring.h"
-
-#include "NodeViewModule.h"
-
+#include <algorithm>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
+
+#include "NodeCanvasAuthoring.h"
+
+#include "ModulationCableBundle.h"
+#include "NodeViewModule.h"
 
 namespace CycleV2 {
 
@@ -224,6 +227,29 @@ void NodeCanvasAuthoring::commitNodeMoveGesture() {
 NodeCanvasAuthoringResult NodeCanvasAuthoring::connectPorts(
         const PortAddress& source,
         const PortAddress& destination) {
+    const auto bundleRoutes = ModulationCableBundle::routes(
+            document.graph(),
+            source,
+            destination);
+    if (!bundleRoutes.empty()) {
+        if (!ModulationCableBundle::canConnect(document.graph(), source, destination)) {
+            return {};
+        }
+
+        commands.beginCompoundEdit();
+        GraphEditResult edit;
+        for (const auto& route : bundleRoutes) {
+            edit = commands.connect(route.source, route.destination);
+        }
+        commands.commitCompoundEdit();
+        return graphEditResult(
+                edit,
+                "Connected modulation bundle " + source.nodeId
+                        + " -> " + destination.nodeId,
+                destination.input ? destination.nodeId : source.nodeId,
+                { true });
+    }
+
     const auto edit = commands.connect(source, destination);
     return graphEditResult(
             edit,
@@ -249,7 +275,14 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteEdge(int edgeIndex) {
         return {};
     }
 
-    const auto edit = commands.removeEdgeAt((size_t) edgeIndex);
+    auto indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
+    std::sort(indices.begin(), indices.end(), std::greater<int>());
+    commands.beginCompoundEdit();
+    GraphEditResult edit;
+    for (const int index : indices) {
+        edit = commands.removeEdgeAt((size_t) index);
+    }
+    commands.commitCompoundEdit();
     return graphEditResult(edit, "Edge deleted: " + String(edgeIndex), {}, { true });
 }
 

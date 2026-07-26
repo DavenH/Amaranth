@@ -200,6 +200,22 @@ bool NodeEditorCommandService::setNodeParameterValue(
     return true;
 }
 
+bool NodeEditorCommandService::setNodeParameterText(
+        const String& nodeId,
+        const String& parameterId,
+        const String& label,
+        const String& value) {
+    const auto result = commands.setNodeParameter(nodeId, parameterId, label, value);
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(false);
+    return true;
+}
+
 bool NodeEditorCommandService::publishCurveState(
         const String& nodeId,
         NodeModelStatePtr model,

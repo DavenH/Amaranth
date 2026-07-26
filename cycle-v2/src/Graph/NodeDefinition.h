@@ -11,6 +11,8 @@ namespace CycleV2 {
 enum class AudioModuleRole {
     None,
     VoiceContext,
+    ModulationSource,
+    ModulationTriple,
     WaveSource,
     ImageSource,
     MeshSource,
@@ -34,6 +36,7 @@ enum class AudioModuleRole {
 enum class PreviewModuleRole {
     None,
     VoiceContext,
+    ModulationSource,
     Waveform,
     Image,
     MeshSurface,

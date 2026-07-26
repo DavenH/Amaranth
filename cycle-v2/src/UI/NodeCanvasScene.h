@@ -43,11 +43,14 @@ struct NodeSceneTarget {
 
 struct NodeSceneEdge {
     int edgeIndex { -1 };
+    std::vector<int> edgeIndices;
     juce::Point<float> source;
     juce::Point<float> destination;
     juce::Path cablePath;
     juce::Path hitPath;
     bool destinationPortLike { true };
+    bool modulationBundle {};
+    bool destinationBundleIncludesYellow { true };
 };
 
 struct NodeCanvasSceneSnapshot {
