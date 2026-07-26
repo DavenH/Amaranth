@@ -857,9 +857,9 @@ edges; it contains no graph execution or signal behavior.
 
 Verification evidence:
 
-- focused `[modulation]`: 227 assertions in 31 test cases, including the
-  prepared-graph no-allocation boundary with a Modulation Triple;
-- full `CycleV2_tests`: 4,891 assertions in 354 test cases;
+- focused `[modulation]`: 225 assertions in 31 test cases, including the
+  prepared-graph no-allocation/no-lock boundary with a Modulation Triple;
+- full `CycleV2_tests`: 4,950 assertions in 358 test cases;
 - compact-source fixture: 17 commands, no failures, 48-pixel node height;
 - triple fixture: 18 commands, no failures, 126-pixel node height, with the
   three-edge Trilinear Mesh route and two-edge Envelope route persisted after

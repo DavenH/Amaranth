@@ -84,6 +84,14 @@ inline void copyBlockExpandingScalars(
     copyBlockExpandingScalars({ dest.data(), (int) dest.size() }, source, frameCount);
 }
 
+inline void copyBlockExpandingScalars(
+        SignalBuffer& dest,
+        const SignalBlock& source,
+        size_t frameCount) {
+    dest.resize(frameCount);
+    copyBlockExpandingScalars({ dest.data(), (int) dest.size() }, source, frameCount);
+}
+
 inline void copyPayloadBlockExpandingScalars(
         SignalPayload& dest,
         const SignalPayload& source,

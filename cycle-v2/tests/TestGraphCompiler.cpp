@@ -182,30 +182,6 @@ TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2]
             != first.plan.steps.front().configuration.value);
 }
 
-TEST_CASE("Failed node configuration construction retains the last valid publication", "[cycle-v2][graph][configuration]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 0.f, 0.f }));
-    GraphCompiler compiler;
-
-    const auto valid = compiler.compile(graph);
-    REQUIRE(valid.succeeded());
-    REQUIRE(valid.plan.steps.front().configuration.isValid());
-
-    for (auto& parameter : graph.findNodeForEditing("env")->parameters) {
-        if (parameter.id == CurveNodeModelCodec::snapshotParameterId()) {
-            parameter.value = "not an envelope snapshot";
-        }
-    }
-    const auto invalid = compiler.compile(graph);
-
-    REQUIRE(invalid.succeeded());
-    REQUIRE(invalid.plan.steps.front().configuration.revision
-            == valid.plan.steps.front().configuration.revision);
-    REQUIRE(invalid.plan.steps.front().configuration.value
-            == valid.plan.steps.front().configuration.value);
-}
-
 TEST_CASE("Compiler declares IFFT carry-buffer latency", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

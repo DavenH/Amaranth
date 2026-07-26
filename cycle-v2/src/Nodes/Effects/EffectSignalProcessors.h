@@ -61,7 +61,8 @@ class IrSignalProcessor :
         public IUnarySignalOperation {
 public:
     static std::shared_ptr<const IrConfiguration> buildConfiguration(
-            const std::vector<NodeParameter>& parameters);
+            const std::vector<NodeParameter>& parameters,
+            const NodeModelStatePtr& model = {});
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);

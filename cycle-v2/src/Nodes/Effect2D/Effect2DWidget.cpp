@@ -109,11 +109,11 @@ String Effect2DWidget::serializedMeshState() {
     return controller->serializedMeshState();
 }
 
-String Effect2DWidget::serializedModelSnapshot() {
-    return controller->serializedModelSnapshot();
+NodeModelStatePtr Effect2DWidget::modelPublication() {
+    return controller->modelPublication();
 }
 
-String Effect2DWidget::prepareModelPublication(uint64_t currentRevision) {
+NodeModelStatePtr Effect2DWidget::prepareModelPublication(uint64_t currentRevision) {
     return controller->prepareModelPublication(currentRevision);
 }
 

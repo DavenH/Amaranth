@@ -28,11 +28,11 @@ public:
 
     bool save(const juce::File& destination);
     bool load(const juce::File& source);
-    bool loadXml(const juce::String& xml, bool recordUndo = true);
-    juce::String toXml() const;
+    bool loadJson(const juce::String& json, bool recordUndo = true);
+    juce::String toJson() const;
     bool undo();
     bool redo();
-    void recordExternalChange(juce::String beforeXml, GraphChangeSet change = {});
+    void recordExternalChange(juce::String beforeJson, GraphChangeSet change = {});
     bool canUndo() const { return !undoHistory.empty(); }
     bool canRedo() const { return !redoHistory.empty(); }
     void setListener(Listener listenerToUse) { listener = std::move(listenerToUse); }
@@ -41,9 +41,9 @@ private:
     friend class GraphCommandDispatcher;
 
     NodeGraph& graphForCommand() { return currentGraph; }
-    void recordBeforeChange(juce::String xml);
+    void recordBeforeChange(juce::String json);
     void publishChange(GraphChangeSet change);
-    bool restoreXml(const juce::String& xml);
+    bool restoreJson(const juce::String& json);
 
     static constexpr size_t maximumHistoryDepth = 64;
 

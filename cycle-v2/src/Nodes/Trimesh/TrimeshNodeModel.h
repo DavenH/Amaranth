@@ -108,7 +108,7 @@ public:
     uint64_t getRevision() const { return revision; }
     const TrimeshDerivedRevisions& getDerivedRevisions() const { return revisions; }
     Mesh& getMeshForPanel() { return mesh(); }
-    String currentMeshState();
+    Mesh& currentMesh() { return mesh(); }
 
 private:
     Mesh& mesh();
@@ -116,7 +116,6 @@ private:
     Vertex* vertexAtIndex(int vertexIndex);
     Vertex* selectedVertex();
     static int vertexValueIndex(const String& parameterId);
-    bool applyTopologySnapshot(const String& snapshot);
     void bumpMeshContentRevision();
     void bumpMorphRevision();
     void bumpPrimaryAxisRevision();
@@ -125,11 +124,11 @@ private:
     void clearMesh();
 
     std::unique_ptr<Mesh> ownedMesh;
-    String topologySnapshot;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
     int selectedVertexIndex { -1 };
     uint64_t revision {};
+    uint64_t appliedModelRevision {};
     TrimeshDerivedRevisions revisions;
 };
 

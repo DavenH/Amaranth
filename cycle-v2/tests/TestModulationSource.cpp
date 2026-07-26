@@ -50,7 +50,8 @@ std::vector<float> renderAudio(
     auto context = processContext(frameCount, voice);
     processor->process(context);
     REQUIRE(context.outputs.size() == 1);
-    return context.outputs.front().block.samples;
+    const auto& samples = context.outputs.front().block.samples;
+    return { samples.begin(), samples.end() };
 }
 
 }
@@ -279,7 +280,9 @@ TEST_CASE("Modulation nodes compile, fan out, and round-trip as graph routes",
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
     const GraphSerializer serializer;
-    const NodeGraph restored = serializer.fromValueTree(serializer.toValueTree(graph));
+    const GraphLoadResult loaded = serializer.loadJsonString(serializer.toJsonString(graph));
+    REQUIRE(loaded.succeeded());
+    const NodeGraph& restored = loaded.graph;
     REQUIRE(restored.getEdges().size() == 2);
     const Node* source = restored.findNode("cc");
     REQUIRE(source != nullptr);

@@ -1,7 +1,6 @@
 #include "PreparedTrimeshTopology.h"
 
 #include "TrimeshMeshFactory.h"
-#include "TrimeshMeshState.h"
 
 namespace CycleV2 {
 
@@ -13,28 +12,12 @@ PreparedTrimeshTopology::~PreparedTrimeshTopology() {
     }
 }
 
-Mesh& PreparedTrimeshTopology::mesh(const std::vector<NodeParameter>& parameters) {
-    const String serializedState = typedParameterString(
-            parameters,
-            TrimeshMeshState::parameterId(),
-            {});
-    if (preparedMesh == nullptr || serializedState != appliedState) {
-        rebuild(serializedState);
+Mesh& PreparedTrimeshTopology::mesh() {
+    if (preparedMesh == nullptr) {
+        preparedMesh = TrimeshMeshFactory::createDefaultMesh(name);
     }
 
     return *preparedMesh;
-}
-
-void PreparedTrimeshTopology::rebuild(const String& serializedState) {
-    if (preparedMesh != nullptr) {
-        preparedMesh->destroy();
-    }
-
-    preparedMesh = TrimeshMeshFactory::createDefaultMesh(name);
-    if (serializedState.isNotEmpty()) {
-        TrimeshMeshState::apply(serializedState, *preparedMesh);
-    }
-    appliedState = serializedState;
 }
 
 }

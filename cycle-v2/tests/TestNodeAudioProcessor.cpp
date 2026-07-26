@@ -95,11 +95,7 @@ TEST_CASE("Envelope preparation request exchange never mixes concurrent fields",
 
 TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot ownership",
         "[cycle-v2][runtime][envelope][exchange]") {
-    const std::vector<NodeParameter> parameters {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot",
-                    CurveNodeModelCodec::defaultSnapshot(NodeKind::Envelope) },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", "1" }
-    };
+    const std::vector<NodeParameter> parameters;
     const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
     REQUIRE(configuration != nullptr);
     PreparedEnvelopeExchange exchange;
@@ -125,21 +121,19 @@ TEST_CASE("Prepared Envelope exchange rejects stale notes and bounds slot owners
 namespace {
 
 std::vector<NodeParameter> curveParameters(std::vector<FlatCurveVertex> vertices) {
+    (void) vertices;
+    return {};
+}
+
+NodeModelStatePtr curveModel(std::vector<FlatCurveVertex> vertices) {
     FlatCurveModel model;
     REQUIRE(model.replaceVertices(std::move(vertices)));
-    return {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) }
-    };
+    return CurveNodeModelState::copyOf(model, model.revision());
 }
 
 std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {
-    EnvelopeNodeModel model;
-    REQUIRE(EnvelopeMeshState::apply(payload, model.getMesh()));
-    return {
-            { CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", model.snapshot() },
-            { CurveNodeModelCodec::revisionParameterId(), "Curve Model Revision", String((int64) model.revision()) }
-    };
+    (void) payload;
+    return {};
 }
 
 SignalPayload payload(std::initializer_list<float> samples) {
@@ -200,13 +194,15 @@ void prepareProcessor(
         AudioModuleRole role,
         const AudioProcessContext& context,
         size_t maximumFrameCount = 0,
-        uint64_t revision = 1) {
+        uint64_t revision = 1,
+        NodeModelStatePtr model = {}) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
     spec.sampleRate = context.timing.sampleRate;
     spec.bpm = context.timing.bpm;
     spec.beatsPerMeasure = context.timing.beatsPerMeasure;
-    const auto configuration = NodeDspConfigurationFactory().create(role, context.parameters, spec);
+    const auto configuration = NodeDspConfigurationFactory().create(
+            role, context.parameters, std::move(model), spec);
     REQUIRE(configuration != nullptr);
     processor.adoptConfiguration({ revision, "test-configuration", configuration });
     processor.prepareExecution(spec);
@@ -887,6 +883,9 @@ TEST_CASE("Audio process work arena reserves block and traversal-grid storage", 
 
     AudioProcessWorkArena arena;
     arena.prepare(8, 1, 1, 64);
+    REQUIRE(arena.preparePayloadStorage(1));
+    SignalPayload preparedOutput;
+    arena.bind(preparedOutput);
 
     AudioProcessContext context;
     context.frameCount = 8;
@@ -894,10 +893,38 @@ TEST_CASE("Audio process work arena reserves block and traversal-grid storage", 
     context.outputPorts = {
             { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
     };
+    context.outputViews = { &preparedOutput };
     processor->process(context);
 
+    REQUIRE(output(context).block.samples.isBound());
+    REQUIRE(output(context).traversalGrid.values.isBound());
     REQUIRE(output(context).block.samples.capacity() >= 8);
     REQUIRE(output(context).traversalGrid.values.capacity() >= 64);
+}
+
+TEST_CASE("Signal buffers preserve value semantics outside realtime storage", "[cycle-v2][runtime]") {
+    SignalBuffer source { 1.f, 2.f, 3.f };
+    SignalBuffer copy = source;
+    copy[0] = 4.f;
+
+    REQUIRE(source == std::vector<float> { 1.f, 2.f, 3.f });
+    REQUIRE(copy == std::vector<float> { 4.f, 2.f, 3.f });
+
+    ScopedAlloc<float> storage(4);
+    SignalBuffer realtime;
+    realtime.bind(storage);
+    realtime.assign(source.begin(), source.end());
+    REQUIRE(realtime.isBound());
+    REQUIRE(realtime.data() == storage.get());
+
+    SignalBuffer diagnosticCopy = realtime;
+    REQUIRE_FALSE(diagnosticCopy.isBound());
+    REQUIRE(diagnosticCopy == source);
+
+    SignalBuffer moved = std::move(realtime);
+    REQUIRE(moved.isBound());
+    REQUIRE(moved.data() == storage.get());
+    REQUIRE(realtime.empty());
 }
 
 TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][runtime]") {
@@ -984,6 +1011,10 @@ TEST_CASE("Unprepared configured effects bypass without realtime reconstruction"
 
 TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
+    const auto shapedModel = curveModel({
+            { 1, 0.0625f, 0.875f, 1.f },
+            { 2, 0.9375f, 0.875f, 1.f }
+    });
 
     AudioProcessContext defaultContext;
     defaultContext.frameCount = 3;
@@ -999,12 +1030,8 @@ TEST_CASE("Waveshaper processor uses persisted FX rasterizer vertices", "[cycle-
     shapedContext.inputs = {
             gridPayload({ -0.5f, 0.f, 0.5f }, 1, 3)
     };
-    shapedContext.parameters = curveParameters({
-            { 1, 0.0625f, 0.875f, 1.f },
-            { 2, 0.9375f, 0.875f, 1.f }
-    });
     auto shapedProcessor = factory.create(AudioModuleRole::Waveshaper);
-    prepareProcessor(*shapedProcessor, AudioModuleRole::Waveshaper, shapedContext);
+    prepareProcessor(*shapedProcessor, AudioModuleRole::Waveshaper, shapedContext, 0, 1, shapedModel);
     shapedProcessor->process(shapedContext);
 
     REQUIRE(output(shapedContext).traversalGrid.isValid());
@@ -1198,7 +1225,8 @@ TEST_CASE("IR processor preserves the graph channel policy", "[cycle-v2][runtime
 
         REQUIRE(output(context).channelLayout == layout);
         if (reference.empty()) {
-            reference = output(context).block.samples;
+            const auto& samples = output(context).block.samples;
+            reference.assign(samples.begin(), samples.end());
         } else {
             REQUIRE(output(context).block.samples == reference);
         }
@@ -1210,6 +1238,13 @@ TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cyc
     auto wholeProcessor = factory.create(AudioModuleRole::ImpulseResponse);
     auto splitProcessor = factory.create(AudioModuleRole::ImpulseResponse);
     std::vector<NodeParameter> parameters = curveParameters({
+            { 1, 0.f, 0.5f, 1.f },
+            { 2, 0.0625f, 0.95f, 0.35f },
+            { 3, 0.125f, 0.3f, 0.45f },
+            { 4, 0.1875f, 0.55f, 0.7f },
+            { 5, 1.f, 0.5f, 1.f }
+    });
+    const auto model = curveModel({
             { 1, 0.f, 0.5f, 1.f },
             { 2, 0.0625f, 0.95f, 0.35f },
             { 3, 0.125f, 0.3f, 0.45f },
@@ -1228,14 +1263,14 @@ TEST_CASE("IR processor is split-block equivalent and preserves its tail", "[cyc
     whole.frameCount = wholeInput.size();
     whole.inputs = { payload(wholeInput) };
     whole.parameters = parameters;
-    prepareProcessor(*wholeProcessor, AudioModuleRole::ImpulseResponse, whole);
+    prepareProcessor(*wholeProcessor, AudioModuleRole::ImpulseResponse, whole, 0, 1, model);
     wholeProcessor->process(whole);
 
     AudioProcessContext firstHalf;
     firstHalf.frameCount = 64;
     firstHalf.inputs = { payload(std::vector<float>(wholeInput.begin(), wholeInput.begin() + 64)) };
     firstHalf.parameters = parameters;
-    prepareProcessor(*splitProcessor, AudioModuleRole::ImpulseResponse, firstHalf);
+    prepareProcessor(*splitProcessor, AudioModuleRole::ImpulseResponse, firstHalf, 0, 1, model);
     splitProcessor->process(firstHalf);
 
     AudioProcessContext secondHalf;

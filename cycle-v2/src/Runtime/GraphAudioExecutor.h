@@ -77,7 +77,6 @@ public:
     void clearIncrementalCache() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
     GraphAudioOutputView processRealtime(
-            const NodeGraph& graph,
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing,
@@ -145,7 +144,6 @@ private:
             const NodeAudioProcessorFactory& factory) const;
     void removeUnreferencedProcessors() const;
     GraphAudioResult processInternal(
-            const NodeGraph& graph,
             const GraphExecutionPlan& plan,
             size_t frameCount,
             AudioProcessTiming timing,

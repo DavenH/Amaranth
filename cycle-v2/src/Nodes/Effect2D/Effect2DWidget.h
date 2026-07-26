@@ -34,8 +34,8 @@ public:
     var automationState() const;
     std::vector<CurvePreviewVertex> previewVertices();
     String serializedMeshState();
-    String serializedModelSnapshot();
-    String prepareModelPublication(uint64_t currentRevision);
+    NodeModelStatePtr modelPublication();
+    NodeModelStatePtr prepareModelPublication(uint64_t currentRevision);
     uint64_t modelRevision() const;
     uint64_t contentRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;

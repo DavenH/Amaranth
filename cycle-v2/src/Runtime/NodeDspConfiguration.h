@@ -78,11 +78,19 @@ public:
     String keyFor(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,
+            const NodeModelStatePtr& model,
             const AudioExecutionSpec& spec) const;
     std::shared_ptr<const INodeDspConfiguration> create(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,
+            const NodeModelStatePtr& model,
             const AudioExecutionSpec& spec) const;
+    std::shared_ptr<const INodeDspConfiguration> create(
+            AudioModuleRole role,
+            const std::vector<NodeParameter>& parameters,
+            const AudioExecutionSpec& spec) const {
+        return create(role, parameters, {}, spec);
+    }
 };
 
 }

@@ -182,22 +182,20 @@ void CurveExpandedEditorComponent::publishCurrentState() {
 bool CurveExpandedEditorComponent::publishModelState() {
     const uint64_t currentRevision = transactionActive
             ? transactionBaseRevision
-            : CurveNodeModelCodec::revisionFromParameters(node.parameters);
-    const String snapshot = widget.prepareModelPublication(currentRevision);
+            : (node.model != nullptr ? node.model->revision() : 0);
+    const auto publication = widget.prepareModelPublication(currentRevision);
     const auto controls = editorControls();
-    if (!delegate->publishEffect2DState(snapshot, widget.modelRevision(), controls)) {
+    if (publication == nullptr || !delegate->publishEffect2DState(publication, controls)) {
         return false;
     }
     node.parameters = controls;
-    node.parameters.push_back({ CurveNodeModelCodec::snapshotParameterId(), "Curve Model Snapshot", snapshot });
-    node.parameters.push_back({ CurveNodeModelCodec::revisionParameterId(),
-            "Curve Model Revision", String((int64_t) widget.modelRevision()) });
+    node.model = std::move(publication);
     return true;
 }
 
 void CurveExpandedEditorComponent::beginTransaction() {
     if (!transactionActive && delegate != nullptr) {
-        transactionBaseRevision = CurveNodeModelCodec::revisionFromParameters(node.parameters);
+        transactionBaseRevision = node.model != nullptr ? node.model->revision() : 0;
         delegate->beginEffect2DTransaction();
         transactionActive = true;
         transientStateChanged = false;

@@ -21,8 +21,9 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.outputs.size() == 1);
     REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
     REQUIRE(node.bounds.getWidth() == 295.2f);
-    REQUIRE(parameterValueForNode(node, CurveNodeModelCodec::snapshotParameterId()).isNotEmpty());
-    REQUIRE(parameterValueForNode(node, "envelope.snapshot").isEmpty());
+    REQUIRE(node.model != nullptr);
+    REQUIRE(node.model->schemaId() == "envelope");
+    REQUIRE(node.model->revision() == 1);
     REQUIRE(parameterValueForNode(node, "dynamic") == "0");
 }
 

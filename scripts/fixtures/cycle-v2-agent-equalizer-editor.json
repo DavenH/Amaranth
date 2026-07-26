@@ -87,7 +87,7 @@
     },
     {
       "command": "saveGraph",
-      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+      "path": "/private/tmp/cycle-v2-equalizer-editor.cyclegraph"
     },
     {
       "command": "screenshot",
@@ -96,7 +96,7 @@
     },
     {
       "command": "openGraph",
-      "path": "/private/tmp/cycle-v2-equalizer-editor.xml"
+      "path": "/private/tmp/cycle-v2-equalizer-editor.cyclegraph"
     },
     {
       "command": "openNodeEditor",

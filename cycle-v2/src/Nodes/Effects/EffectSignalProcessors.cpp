@@ -22,7 +22,8 @@ constexpr float kIrPadding = 0.0625f;
 }
 
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        const NodeModelStatePtr& model) {
     auto result = std::make_shared<IrConfiguration>();
     result->enabled = typedParameterBool(parameters, "enabled", true);
     const float highPass = parameterFloat(parameters, "highPass", 0.5f);
@@ -32,6 +33,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             "CycleV2IrConfiguration",
             NodeKind::ImpulseResponse,
             parameters,
+            model,
             FXRasterizer::Bipolar);
     if (!curve.prepare()) {
         return {};

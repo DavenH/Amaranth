@@ -5,6 +5,7 @@
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Graph/NodeDefinition.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
@@ -218,10 +219,10 @@ TEST_CASE("Node canvas scene invalidates only for relevant revisions", "[cycle-v
 
 TEST_CASE("Graph document rejects failed loads without replacing active state", "[cycle-v2][canvas][document]") {
     GraphDocument document(NodeGraph::createDemoGraph());
-    const String before = document.toXml();
+    const String before = document.toJson();
 
-    REQUIRE_FALSE(document.loadXml("<not-a-graph/>", true));
-    REQUIRE(document.toXml() == before);
+    REQUIRE_FALSE(document.loadJson("<not-a-graph/>", true));
+    REQUIRE(document.toJson() == before);
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -270,7 +271,7 @@ TEST_CASE("Canvas and automation command requests share the same dispatcher", "[
 
     REQUIRE(canvasCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
     REQUIRE(automationCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
-    REQUIRE(canvasDocument.toXml() == automationDocument.toXml());
+    REQUIRE(canvasDocument.toJson() == automationDocument.toJson());
 }
 
 TEST_CASE("Graph presentation schedules work from semantic change impacts", "[cycle-v2][canvas][presentation]") {
@@ -307,12 +308,46 @@ TEST_CASE("Graph presentation rejects stale revision results", "[cycle-v2][canva
     REQUIRE(presentation.snapshot().graphRevision == 7);
 }
 
+TEST_CASE("Typed model edits refresh configuration without topology compilation",
+        "[cycle-v2][canvas][presentation]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    const size_t compilationCount = presentation.compilationCount();
+    const uint64_t configurationRevision =
+            presentation.compileResult().plan.steps.front().configuration.revision;
+
+    const auto current = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            document.graph().findNode("shape")->model);
+    FlatCurveModel edited;
+    REQUIRE(current != nullptr);
+    REQUIRE(current->flatCurve() != nullptr);
+    REQUIRE(edited.copyFrom(*current->flatCurve()));
+    auto vertices = edited.getVertices();
+    vertices.front().y += 0.01f;
+    REQUIRE(edited.replaceVertices(std::move(vertices)));
+    REQUIRE(commands.replaceNodeModel(
+            "shape",
+            current->revision(),
+            CurveNodeModelState::copyOf(edited, current->revision() + 1)).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.compilationCount() == compilationCount);
+    REQUIRE(presentation.compileResult().plan.steps.front().configuration.revision
+            == configurationRevision + 1);
+}
+
 TEST_CASE("Graph presentation preserves configuration revision history across recompiles",
         "[cycle-v2][canvas][presentation]") {
     const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("resources")
             .getChildFile("default.cyclegraph");
-    NodeGraph graph = GraphSerializer().fromXmlString(defaultGraph.loadFileAsString());
+    NodeGraph graph = GraphSerializer().fromJsonString(defaultGraph.loadFileAsString());
     GraphNodeFactory factory;
     graph.replaceNodeParameters("waveshaper",
             factory.createNode(NodeKind::Waveshaper, "defaults", {}).parameters);

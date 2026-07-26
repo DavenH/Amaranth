@@ -18,7 +18,8 @@ float cycle1GainForParameter(float value) {
 }
 
 std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildConfiguration(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        const NodeModelStatePtr& model) {
     auto result = std::make_shared<WaveshaperConfiguration>();
     result->enabled = typedParameterBool(parameters, "enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
@@ -26,6 +27,7 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
             "CycleV2WaveshaperConfiguration",
             NodeKind::Waveshaper,
             parameters,
+            model,
             FXRasterizer::Unipolar);
     if (!curve.prepare()) {
         return {};
@@ -45,7 +47,8 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
 }
 
 void WaveshaperSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
-    oversampleMemory.resize(spec.maximumFrameCount * 8);
+    oversampleMemory.resize((int) (spec.maximumFrameCount * 8));
+    oversampler.setMemoryBuffer(oversampleMemory);
 }
 
 void WaveshaperSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& published) {
@@ -69,10 +72,11 @@ void WaveshaperSignalProcessor::beginBlock(size_t frameCount) {
     }
 
     const size_t requiredSize = frameCount * (size_t) oversampleFactor;
-    if (oversampleMemory.size() < requiredSize) {
-        oversampleMemory.resize(requiredSize);
+    if ((size_t) oversampleMemory.size() < requiredSize) {
+        jassertfalse;
+        useOversampling = false;
+        return;
     }
-    oversampler.setMemoryBuffer({ oversampleMemory.data(), (int) oversampleMemory.size() });
 }
 
 void WaveshaperSignalProcessor::beginTraversalGrid(size_t, size_t) {

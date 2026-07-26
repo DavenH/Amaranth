@@ -58,7 +58,7 @@ public:
             juce::String& value) const;
 
     juce::var exportState(const NodeCanvasAutomationPresentation& state) const;
-    juce::String exportGraphXml() const;
+    juce::String exportGraphJson() const;
     juce::var inspectNodeControls(
             const juce::String& nodeId,
             const NodeCanvasAutomationPresentation& state) const;

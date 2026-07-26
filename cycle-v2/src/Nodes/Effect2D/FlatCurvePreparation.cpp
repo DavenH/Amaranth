@@ -12,9 +12,11 @@ FlatCurvePreparation::FlatCurvePreparation(
         const String& name,
         NodeKind nodeKind,
         const std::vector<NodeParameter>& parametersToPrepare,
+        NodeModelStatePtr modelToPrepare,
         FXRasterizer::ScalingType scaling) :
         kind        (nodeKind)
     ,   parameters  (parametersToPrepare)
+    ,   model       (std::move(modelToPrepare))
     ,   mesh        (name + "Mesh")
     ,   rasterizer  (nullptr, name + "Rasterizer") {
     rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
@@ -27,7 +29,19 @@ FlatCurvePreparation::~FlatCurvePreparation() {
 }
 
 bool FlatCurvePreparation::prepare() {
-    const auto vertices = CurveNodeModelCodec::flatVerticesFromParameters(parameters, kind);
+    if (model == nullptr) {
+        model = CurveNodeDomainCodec(kind).createDefault();
+    }
+    const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(model);
+    const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
+    if (curve == nullptr) {
+        return false;
+    }
+    std::vector<Effect2DVertexState> vertices;
+    vertices.reserve(curve->getVertices().size());
+    for (const auto& vertex : curve->getVertices()) {
+        vertices.push_back({ vertex.x, vertex.y, vertex.curve });
+    }
     if (vertices.empty()) {
         return false;
     }

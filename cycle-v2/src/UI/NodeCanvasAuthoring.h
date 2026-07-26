@@ -61,7 +61,7 @@ public:
     NodeCanvasAuthoringResult loadSnapshot(const File& file);
     NodeCanvasAuthoringResult undo();
     NodeCanvasAuthoringResult redo();
-    NodeCanvasAuthoringResult restoreGraphXml(const String& xml, const String& statusMessage);
+    NodeCanvasAuthoringResult restoreGraphJson(const String& json, const String& statusMessage);
 
     NodeCanvasAuthoringResult openEditor(const String& nodeId);
     NodeCanvasAuthoringResult addNode(NodeKind kind, Point<float> position);

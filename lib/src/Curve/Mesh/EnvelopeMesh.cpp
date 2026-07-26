@@ -186,6 +186,22 @@ bool EnvelopeMesh::readJSON(const var& object) {
     return true;
 }
 
+bool EnvelopeMesh::equals(const EnvelopeMesh& other) const {
+    if (!Mesh::equals(other)) {
+        return false;
+    }
+    auto indices = [](const auto& cubesToFind, const auto& allCubes) {
+        std::vector<size_t> result;
+        for (const auto* cube : cubesToFind) {
+            result.push_back((size_t) std::distance(
+                    allCubes.begin(), std::find(allCubes.begin(), allCubes.end(), cube)));
+        }
+        return result;
+    };
+    return indices(loopCubes, cubes) == indices(other.loopCubes, other.cubes)
+            && indices(sustainCubes, cubes) == indices(other.sustainCubes, other.cubes);
+}
+
 void EnvelopeMesh::setSustainToLast() {
     sustainCubes.insert(cubes.back());
 }

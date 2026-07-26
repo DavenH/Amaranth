@@ -256,6 +256,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 latencyCyclesForNode(node),
                 transformModeForNode(node),
                 node.parameters,
+                node.model,
                 {},
                 std::move(inputs),
                 buildStepOutputs(
@@ -514,7 +515,7 @@ void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps
     const AudioExecutionSpec spec;
 
     for (auto& step : steps) {
-        const String key = configurationFactory.keyFor(step.audioRole, step.parameters, spec);
+        const String key = configurationFactory.keyFor(step.audioRole, step.parameters, step.model, spec);
         auto found = std::find_if(configurations.begin(), configurations.end(), [&](const auto& entry) {
             return entry.nodeId == step.nodeId;
         });
@@ -525,7 +526,7 @@ void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps
         }
 
         step.configuration = found->publisher.publish(key, [&]() {
-            return configurationFactory.create(step.audioRole, step.parameters, spec);
+            return configurationFactory.create(step.audioRole, step.parameters, step.model, spec);
         });
     }
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "../../Graph/NodeDefinition.h"
 #include "Effect2DMeshState.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
@@ -64,6 +65,10 @@ public:
     bool synchronizeFromMesh(Vertex* selectedVertex);
     bool loadSnapshot(const String& snapshot);
     String snapshot() const;
+    bool readJSON(const var& value);
+    var writeJSON() const;
+    bool copyFrom(const FlatCurveModel& other);
+    bool equals(const FlatCurveModel& other) const;
 
     const Mesh& getMesh() const { return mesh; }
     Mesh& getMesh() { return mesh; }
@@ -102,6 +107,10 @@ public:
     bool syncFromNode(const Node& node);
     bool synchronizeFromMesh(VertCube* selectedCube);
     String snapshot() const;
+    bool readJSON(const var& value);
+    var writeJSON() const;
+    bool copyFrom(const EnvelopeNodeModel& other);
+    bool equals(const EnvelopeNodeModel& other) const;
     bool selectCube(std::optional<EnvelopeCubeId> cubeId);
 
     EnvelopeMesh& getMesh() { return mesh; }
@@ -121,7 +130,6 @@ public:
     bool blueLinked { true };
 
 private:
-    bool applyEnvelopePayload(const String& payload);
     EnvelopeCubeId nextIdentity() const;
     void rebuildIdentityMap();
 
@@ -131,7 +139,7 @@ private:
     std::unordered_map<VertCube*, EnvelopeCubeId> identitiesByCube;
     std::unordered_map<EnvelopeCubeId, VertCube*> cubesByIdentity;
     EnvelopeCubeId nextCubeIdentity { 1 };
-    String committedPayload;
+    EnvelopeMesh committedMesh { "CycleV2EnvelopeCommittedModel" };
     uint64_t modelRevision { 1 };
 };
 
@@ -165,17 +173,62 @@ struct GuideCurveNodeModel {
     void syncFromNode(const Node& node);
 };
 
-class CurveNodeModelCodec {
+class CurveNodeModelState : public NodeModelState {
 public:
-    static String snapshotParameterId();
-    static String revisionParameterId();
-    static String defaultSnapshot(NodeKind kind);
-    static String snapshotFromParameters(const std::vector<NodeParameter>& parameters);
-    static uint64_t revisionFromParameters(const std::vector<NodeParameter>& parameters);
-    static std::vector<Effect2DVertexState> flatVerticesFromParameters(
-            const std::vector<NodeParameter>& parameters,
-            NodeKind kind);
-    static String envelopePayloadFromParameters(const std::vector<NodeParameter>& parameters);
+    static std::shared_ptr<const CurveNodeModelState> copyOf(
+            const FlatCurveModel& model,
+            uint64_t revision,
+            var editorState = {});
+    static std::shared_ptr<const CurveNodeModelState> copyOf(
+            const EnvelopeNodeModel& model,
+            uint64_t revision,
+            var editorState = {});
+
+    String schemaId() const override;
+    int schemaVersion() const override;
+    uint64_t revision() const override;
+    var writeJSON() const override;
+    bool equals(const NodeModelState& other) const override;
+
+    const FlatCurveModel* flatCurve() const { return flatCurveState.get(); }
+    const EnvelopeNodeModel* envelope() const { return envelopeState.get(); }
+    const var& editorJSON() const { return editorState; }
+
+private:
+    friend class CurveNodeDomainCodec;
+
+    CurveNodeModelState(
+            String schema,
+            int version,
+            uint64_t revision,
+            std::shared_ptr<const FlatCurveModel> modelState,
+            var editorState = {});
+    CurveNodeModelState(
+            String schema,
+            int version,
+            uint64_t revision,
+            std::shared_ptr<const EnvelopeNodeModel> modelState,
+            var editorState = {});
+
+    String schema;
+    int version {};
+    uint64_t modelRevision {};
+    std::shared_ptr<const FlatCurveModel> flatCurveState;
+    std::shared_ptr<const EnvelopeNodeModel> envelopeState;
+    var editorState;
+};
+
+class CurveNodeDomainCodec : public NodeModelCodec {
+public:
+    explicit CurveNodeDomainCodec(NodeKind kindToUse);
+
+    String schemaId() const override;
+    int currentVersion() const override;
+    NodeModelStatePtr createDefault() const override;
+    NodeModelStatePtr readJSON(const var& value, String& error) const override;
+
+private:
+    NodeKind kind;
 };
 
 }

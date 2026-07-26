@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <vector>
 #include <App/Doc/Savable.h>
 
@@ -21,11 +22,15 @@ public:
     void twin(float padLeft, float padRight);
 
     virtual void destroy();
-    virtual void deepCopy(Mesh* mesh);
+    virtual void deepCopy(const Mesh* mesh);
+    [[nodiscard]] bool equals(const Mesh& other) const;
     void writeXML(XmlElement* element) const override;
     bool readXML(const XmlElement* element) override;
     var writeJSON() const override;
     bool readJSON(const var& object) override;
+
+    static void resetJsonReadCount() { jsonReadCount.store(0, std::memory_order_relaxed); }
+    static uint64_t getJsonReadCount() { return jsonReadCount.load(std::memory_order_relaxed); }
 
     vector<Vertex*>& getVerts()   { return verts; }
     vector<VertCube*>& getCubes() { return cubes; }
@@ -73,6 +78,8 @@ public:
     }
 
 protected:
+    static inline std::atomic<uint64_t> jsonReadCount {};
+
     int version;
     String name;
 

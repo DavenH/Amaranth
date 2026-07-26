@@ -342,6 +342,7 @@ var Mesh::writeJSON() const {
 }
 
 bool Mesh::readJSON(const var& object) {
+    jsonReadCount.fetch_add(1, std::memory_order_relaxed);
     const Array<var>* vertexArray = PresetJson::getArray(PresetJson::property(object, "vertices"));
     const Array<var>* cubeArray = PresetJson::getArray(PresetJson::property(object, "cubes"));
 
@@ -497,12 +498,48 @@ void Mesh::updateToVersion(double newVersion) {
     }
 }
 
-void Mesh::deepCopy(Mesh* mesh) {
+void Mesh::deepCopy(const Mesh* mesh) {
     destroy();
 
     std::unique_ptr<XmlElement> elem(new XmlElement("TopElement"));
     mesh->writeXML(elem.get());
     readXML(elem.get());
+}
+
+bool Mesh::equals(const Mesh& other) const {
+    if (name != other.name || version != other.version
+            || verts.size() != other.verts.size()
+            || cubes.size() != other.cubes.size()) {
+        return false;
+    }
+    for (size_t index = 0; index < verts.size(); ++index) {
+        for (int dimension = 0; dimension < Vertex::numElements; ++dimension) {
+            if (verts[index]->values[dimension] != other.verts[index]->values[dimension]) {
+                return false;
+            }
+        }
+    }
+    for (size_t cubeIndex = 0; cubeIndex < cubes.size(); ++cubeIndex) {
+        for (int vertexIndex = 0; vertexIndex < (int) VertCube::numVerts; ++vertexIndex) {
+            const auto lhsVertex = std::find(
+                    verts.begin(), verts.end(), cubes[cubeIndex]->getVertex(vertexIndex));
+            const auto rhsVertex = std::find(
+                    other.verts.begin(), other.verts.end(),
+                    other.cubes[cubeIndex]->getVertex(vertexIndex));
+            if (lhsVertex - verts.begin() != rhsVertex - other.verts.begin()) {
+                return false;
+            }
+        }
+        for (int dimension = 0; dimension < Vertex::numElements; ++dimension) {
+            if (cubes[cubeIndex]->guideCurveAt(dimension)
+                            != other.cubes[cubeIndex]->guideCurveAt(dimension)
+                    || cubes[cubeIndex]->guideCurveGainAt(dimension)
+                            != other.cubes[cubeIndex]->guideCurveGainAt(dimension)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 void Mesh::twin(float padLeft, float padRight) {

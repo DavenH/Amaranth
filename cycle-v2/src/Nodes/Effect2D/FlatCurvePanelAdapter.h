@@ -23,12 +23,11 @@ public:
     Vertex* selectedMeshVertex() const { return model.selectedMeshVertex(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
-    String serializedModelSnapshot(Vertex* selectedVertex, uint64_t publicationRevision);
+    NodeModelStatePtr modelPublication(Vertex* selectedVertex, uint64_t publicationRevision);
     std::vector<CurvePreviewVertex> previewVertices();
     bool registerMeshEdit();
 
     const String& lastNodeId() const { return syncedNodeId; }
-    const String& lastModelSnapshot() const { return syncedModelSnapshot; }
     const String& lastMeshState() const { return syncedMeshState; }
 
 private:
@@ -37,7 +36,7 @@ private:
     NodeKind nodeKind;
     FlatCurveModel model { "CycleV2FlatCurve" };
     String syncedNodeId;
-    String syncedModelSnapshot;
+    uint64_t syncedModelRevision {};
     String syncedMeshState;
 };
 

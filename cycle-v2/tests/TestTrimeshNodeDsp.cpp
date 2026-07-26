@@ -27,6 +27,12 @@ using namespace CycleV2;
 
 namespace {
 
+var selectedVertexEditorState(int vertexId) {
+    auto state = std::make_unique<DynamicObject>();
+    state->setProperty("selectedVertexId", vertexId);
+    return var(state.release());
+}
+
 class RecordingTrimeshControlsDelegate final : public TrimeshControlsDelegate {
 public:
     void setTrimeshPrimaryAxis(const String& axis) override { primaryAxis = axis; }
@@ -99,16 +105,16 @@ TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
     source->getVerts()[3]->values[Vertex::Amp] = 0.137f;
     source->getCubes()[1]->guideCurveChans[Vertex::Amp] = 7;
     source->getCubes()[1]->guideCurveGains[Vertex::Amp] = 0.73f;
-    const String snapshot = TrimeshMeshState::serialize(*source);
+    const var snapshot = source->writeJSON();
 
     Mesh restored("RestoredTrimesh");
-    REQUIRE(TrimeshMeshState::apply(snapshot, restored));
+    REQUIRE(restored.readJSON(snapshot));
     REQUIRE(restored.getNumVerts() == source->getNumVerts());
     REQUIRE(restored.getNumCubes() == source->getNumCubes());
     REQUIRE(restored.getVerts()[3]->values[Vertex::Amp] == Catch::Approx(0.137f));
     REQUIRE(restored.getCubes()[1]->guideCurveChans[Vertex::Amp] == 7);
     REQUIRE(restored.getCubes()[1]->guideCurveGains[Vertex::Amp] == Catch::Approx(0.73f));
-    REQUIRE(TrimeshMeshState::serialize(restored) == snapshot);
+    REQUIRE(JSON::toString(restored.writeJSON(), false) == JSON::toString(snapshot, false));
 
     restored.destroy();
     source->destroy();
@@ -118,11 +124,18 @@ TEST_CASE("Invalid Trimesh topology snapshots do not partially mutate the mesh",
         "[cycle-v2][nodes][trimesh][topology]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh("StableTrimesh");
     REQUIRE(mesh != nullptr);
-    const String before = TrimeshMeshState::serialize(*mesh);
-    const String invalid = R"({"name":"invalid","version":2,"vertices":[],"cubes":[{"vertexIds":[99]}]})";
+    const var before = mesh->writeJSON();
+    const var invalid = JSON::parse(R"({"name":"invalid","version":2,"vertices":[],"cubes":[{"vertexIds":[99]}]})");
 
-    REQUIRE_FALSE(TrimeshMeshState::apply(invalid, *mesh));
-    REQUIRE(TrimeshMeshState::serialize(*mesh) == before);
+    auto wrapper = std::make_unique<DynamicObject>();
+    wrapper->setProperty("schema", "trimesh");
+    wrapper->setProperty("version", 2);
+    wrapper->setProperty("revision", 2);
+    wrapper->setProperty("mesh", invalid);
+    String error;
+    REQUIRE(TrimeshNodeModelCodec().readJSON(var(wrapper.release()), error) == nullptr);
+    REQUIRE(error.isNotEmpty());
+    REQUIRE(JSON::toString(mesh->writeJSON(), false) == JSON::toString(before, false));
     mesh->destroy();
 }
 
@@ -389,7 +402,7 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     model.syncFromNode(node);
     const TrimeshDerivedRevisions initial = model.getDerivedRevisions();
 
-    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", "2" });
+    node.editorState = selectedVertexEditorState(2);
     model.syncFromNode(node);
     const TrimeshDerivedRevisions selected = model.getDerivedRevisions();
 
@@ -417,11 +430,7 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
 
     auto editedMesh = TrimeshMeshFactory::createDefaultMesh("RevisionMesh");
     editedMesh->getVerts()[2]->values[Vertex::Amp] = 0.17f;
-    node.parameters.push_back({
-            TrimeshMeshState::parameterId(),
-            "Mesh Topology",
-            TrimeshMeshState::serialize(*editedMesh)
-    });
+    node.model = TrimeshNodeModelState::copyOf(*editedMesh, 2);
     editedMesh->destroy();
     model.syncFromNode(node);
     const TrimeshDerivedRevisions edited = model.getDerivedRevisions();
@@ -445,7 +454,7 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     authored->getVerts()[0]->values[Vertex::Phase] = 0.22f;
     authored->getVerts()[2]->values[Vertex::Amp] = 0.77f;
     authored->getVerts()[2]->values[Vertex::Curve] = 0.88f;
-    const String topology = TrimeshMeshState::serialize(*authored);
+    const auto topology = TrimeshNodeModelState::copyOf(*authored, 2);
     authored->destroy();
     Node node {
             "mesh",
@@ -453,12 +462,11 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
             "Trilinear Mesh",
             {},
             {},
-            {
-                    { "selectedVertexIndex", "Selected Vertex", "0" },
-                    { TrimeshMeshState::parameterId(), "Mesh Topology", topology }
-            },
             {},
-            {}
+            {},
+            {},
+            topology,
+            selectedVertexEditorState(0)
     };
     TrimeshNodeModel model;
 
@@ -479,7 +487,7 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     REQUIRE(model.getVertexParametersForIndex(-1).empty());
     REQUIRE(model.getVertexParametersForIndex(999).empty());
 
-    node.parameters[0].value = "2";
+    node.editorState = selectedVertexEditorState(2);
     model.syncFromNode(node);
     const auto secondVertexParameters = model.getSelectedVertexParameters();
 
@@ -548,7 +556,7 @@ TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-
 
     REQUIRE(vertexIndex >= 0);
 
-    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", String(vertexIndex) });
+    node.editorState = selectedVertexEditorState(vertexIndex);
     model.syncFromNode(node);
     REQUIRE(model.getSelectedVertexIndex() == vertexIndex);
 
@@ -579,7 +587,7 @@ TEST_CASE("Trimesh node model resolves a default selected vertex for parameter e
     REQUIRE(resolvedVertexIndex >= 0);
     REQUIRE(model.getSelectedVertexIndex() == -1);
 
-    node.parameters.push_back({ "selectedVertexIndex", "Selected Vertex", String(resolvedVertexIndex) });
+    node.editorState = selectedVertexEditorState(resolvedVertexIndex);
     model.syncFromNode(node);
 
     REQUIRE(model.getResolvedSelectedVertexIndex() == resolvedVertexIndex);

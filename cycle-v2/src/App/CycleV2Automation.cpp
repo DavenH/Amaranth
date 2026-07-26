@@ -853,16 +853,16 @@ var CycleV2Automation::inspectTargets(const var& commandValue) const {
 
 var CycleV2Automation::exportGraph(const var& commandValue) const {
     const File path(stringProperty(commandValue, "path"));
-    const String xml = workspace.exportGraphXml();
+    const String json = workspace.exportGraphJson();
 
     if (path == File()) {
         var data = makeObject();
-        objectFor(data)->setProperty("xml", xml);
+        objectFor(data)->setProperty("json", json);
         return okResult("exportGraph", data);
     }
 
     path.getParentDirectory().createDirectory();
-    if (!path.replaceWithText(xml)) {
+    if (!path.replaceWithText(json)) {
         return failedResult("exportGraph", "Could not write graph: " + path.getFullPathName());
     }
 

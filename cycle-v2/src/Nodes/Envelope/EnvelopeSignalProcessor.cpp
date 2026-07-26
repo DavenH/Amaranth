@@ -10,7 +10,7 @@ namespace {
 
 std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         const String& name,
-        const String& snapshot,
+        const EnvelopeMesh& meshState,
         float red,
         float blue,
         float level,
@@ -24,9 +24,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
                 delete mesh;
             });
 
-    if (!EnvelopeMeshState::apply(snapshot, *result->mesh)) {
-        return {};
-    }
+    result->mesh->deepCopy(&meshState);
 
     result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
@@ -43,7 +41,6 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->blueMorph = blue;
     result->logarithmic = logarithmic;
     result->dynamicWhileLive = dynamicWhileLive;
-    result->meshSnapshot = snapshot;
     return result;
 }
 
@@ -54,15 +51,23 @@ EnvelopeSignalProcessor::EnvelopeSignalProcessor() {
 }
 
 std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfiguration(
-        const std::vector<NodeParameter>& parameters) {
+        const std::vector<NodeParameter>& parameters,
+        const NodeModelStatePtr& model) {
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
 
-    const String snapshot = CurveNodeModelCodec::envelopePayloadFromParameters(parameters);
+    const NodeModelStatePtr modelToUse = model != nullptr
+            ? model
+            : CurveNodeDomainCodec(NodeKind::Envelope).createDefault();
+    const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(modelToUse);
+    const EnvelopeNodeModel* envelope = typedModel != nullptr ? typedModel->envelope() : nullptr;
+    if (envelope == nullptr) {
+        return {};
+    }
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
-            snapshot,
+            envelope->getMesh(),
             parameterFloat(parameters, "red", 0.5f),
             parameterFloat(parameters, "blue", 0.5f),
             parameterFloat(parameters, "level", 1.f),
@@ -121,7 +126,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDyn
         float blue) {
     return prepareEnvelopeConfiguration(
             "CycleV2DynamicEnvelope",
-            base.meshSnapshot,
+            *base.mesh,
             red,
             blue,
             base.level,

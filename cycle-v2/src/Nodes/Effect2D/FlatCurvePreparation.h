@@ -13,6 +13,7 @@ public:
             const String& name,
             NodeKind kind,
             const std::vector<NodeParameter>& parameters,
+            NodeModelStatePtr model,
             FXRasterizer::ScalingType scaling);
     ~FlatCurvePreparation();
 
@@ -22,6 +23,7 @@ public:
 private:
     NodeKind kind;
     const std::vector<NodeParameter>& parameters;
+    NodeModelStatePtr model;
     Mesh mesh;
     FXRasterizer rasterizer;
 };

@@ -101,12 +101,14 @@ void addAudioTraversalGridToContext(
     const SignalPayload* input = inputPayloadForStep(step, audioIndex, result);
     if (input == nullptr || !input->traversalGrid.isValid()) {
         context.input.grid = nullptr;
+        context.input.gridSize = 0;
         context.input.gridColumns = 0;
         context.input.gridRows = 0;
         return;
     }
 
-    context.input.grid = &input->traversalGrid.values;
+    context.input.grid = input->traversalGrid.values.data();
+    context.input.gridSize = input->traversalGrid.values.size();
     context.input.gridColumns = input->traversalGrid.columns;
     context.input.gridRows = input->traversalGrid.rows;
     context.input.domain = input->traversalGrid.metadata.valueDomain;
@@ -218,8 +220,10 @@ GraphPreviewResult renderPreview(
         }
 
         context.input.summary = inputPreview.primary;
-        if (step.previewRole != PreviewModuleRole::SignalSpy) {
-            context.input.grid = inputPreview.primary;
+        if (step.previewRole != PreviewModuleRole::SignalSpy
+                && inputPreview.primary != nullptr) {
+            context.input.grid = inputPreview.primary->data();
+            context.input.gridSize = inputPreview.primary->size();
             context.input.gridColumns = inputPreview.gridColumns;
             context.input.gridRows = inputPreview.gridRows;
             context.input.domain = inputPreview.domain;
@@ -284,7 +288,9 @@ void appendProbePreviews(
         preview.probeId = probe.id;
         preview.connected = connected;
         if (connected) {
-            preview.values = payload->traversalGrid.values;
+            preview.values.assign(
+                    payload->traversalGrid.values.begin(),
+                    payload->traversalGrid.values.end());
             preview.gridColumns = payload->traversalGrid.columns;
             preview.gridRows = payload->traversalGrid.rows;
             preview.domain = payload->traversalGrid.metadata.valueDomain;

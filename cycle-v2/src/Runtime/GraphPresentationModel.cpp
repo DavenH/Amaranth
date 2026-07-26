@@ -417,11 +417,13 @@ void GraphPresentationModel::refreshConfigurations(
             continue;
         }
         step.parameters = node->parameters;
-        const String key = configurationFactory.keyFor(step.audioRole, step.parameters, spec);
+        const String key = configurationFactory.keyFor(
+                step.audioRole, step.parameters, node->model, spec);
         if (step.configuration.key == key) {
             continue;
         }
-        auto value = configurationFactory.create(step.audioRole, step.parameters, spec);
+        auto value = configurationFactory.create(
+                step.audioRole, step.parameters, node->model, spec);
         if (value != nullptr) {
             step.configuration = {
                     step.configuration.revision + 1,
@@ -454,6 +456,9 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         nodeFingerprint.add(nodeId);
         for (const auto& parameter : node->parameters) {
             nodeFingerprint.add(parameter.id).add(parameter.value);
+        }
+        if (node->model != nullptr) {
+            nodeFingerprint.add(node->model->schemaId()).add(node->model->revision());
         }
         effectiveFingerprint = nodeFingerprint.value();
     }

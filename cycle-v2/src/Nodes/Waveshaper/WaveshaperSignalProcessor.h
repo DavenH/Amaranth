@@ -23,7 +23,8 @@ class WaveshaperSignalProcessor :
         public IUnarySignalOperation {
 public:
     static std::shared_ptr<const WaveshaperConfiguration> buildConfiguration(
-            const std::vector<NodeParameter>& parameters);
+            const std::vector<NodeParameter>& parameters,
+            const NodeModelStatePtr& model = {});
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);
@@ -35,7 +36,7 @@ public:
 
 private:
     Oversampler oversampler { 16 };
-    std::vector<float> oversampleMemory;
+    ScopedAlloc<float> oversampleMemory;
     float preGain { 1.f };
     float postGain { 1.f };
     int oversampleFactor { 1 };

@@ -15,7 +15,7 @@ public:
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
     var exportAutomationState() const;
-    String exportGraphXml() const;
+    String exportGraphJson() const;
     NodeCanvas& getCanvas() { return canvas; }
     bool openNodeEditorForAutomation(const String& nodeId);
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);

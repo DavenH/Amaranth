@@ -19,7 +19,8 @@ struct PreviewOutputPort {
 
 struct PreviewInputView {
     const std::vector<float>* summary {};
-    const std::vector<float>* grid {};
+    const float* grid {};
+    size_t gridSize {};
     size_t gridColumns {};
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };

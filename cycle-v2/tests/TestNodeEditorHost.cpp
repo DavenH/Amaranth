@@ -80,7 +80,7 @@ private:
 
 class NullCommands final : public NodeEditorCommands {
 public:
-    bool publishCurveState(const String&, const String&, uint64_t,
+    bool publishCurveState(const String&, NodeModelStatePtr,
             const std::vector<NodeParameter>&) override { return true; }
     void beginCurveTransaction() override {}
     void commitCurveTransaction() override {}
@@ -149,8 +149,7 @@ public:
     void repaintEffect2DEditorOpenGL() override { events.add("repaint"); }
 
     bool publishEffect2DState(
-            const String&,
-            uint64_t,
+            NodeModelStatePtr,
             const std::vector<NodeParameter>&) override {
         events.add("publish");
         return true;
@@ -263,15 +262,7 @@ TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics
 }
 
 std::vector<NodeParameter> curveControls(const Node& node) {
-    std::vector<NodeParameter> controls;
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id != CurveNodeModelCodec::snapshotParameterId()
-                && parameter.id != CurveNodeModelCodec::revisionParameterId()) {
-            controls.push_back(parameter);
-        }
-    }
-
-    return controls;
+    return node.parameters;
 }
 
 }
@@ -391,7 +382,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(snapshotObject != nullptr);
     REQUIRE((int) snapshotObject->getProperty("nodeCount") == 1);
     REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
-    REQUIRE(inspector.exportGraphXml() == document.toXml());
+    REQUIRE(inspector.exportGraphJson() == document.toJson());
 
     REQUIRE(editorStats.creations == 0);
     REQUIRE(previewResources.findTrimeshWidget("mesh") == nullptr);
@@ -451,22 +442,37 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
             { 1, 0.f, 0.f, 1.f },
             { 2, 1.f, 1.f, 1.f }
     }));
-    model.setPublicationRevision(
-            CurveNodeModelCodec::revisionFromParameters(
-                    document.graph().findNode("shape")->parameters) + 1);
+    model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
 
     commands.beginCurveTransaction();
     REQUIRE(commands.publishCurveState(
             "shape",
-            model.snapshot(),
-            model.revision(),
+            CurveNodeModelState::copyOf(model, model.revision()),
+            curveControls(*document.graph().findNode("shape"))));
+    REQUIRE(model.replaceVertices({
+            { 1, 0.f, 0.25f, 1.f },
+            { 2, 1.f, 0.75f, 1.f }
+    }));
+    model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+    REQUIRE(commands.publishCurveState(
+            "shape",
+            CurveNodeModelState::copyOf(model, model.revision()),
             curveControls(*document.graph().findNode("shape"))));
     REQUIRE(presentation.scheduledRefreshes == 0);
-    REQUIRE(presentation.repaints == 1);
+    REQUIRE(presentation.repaints == 2);
     commands.commitCurveTransaction();
 
     REQUIRE(presentation.scheduledRefreshes == 1);
-    REQUIRE(presentation.repaints == 2);
+    REQUIRE(presentation.repaints == 3);
+    const auto* committed = dynamic_cast<const CurveNodeModelState*>(
+            document.graph().findNode("shape")->model.get());
+    REQUIRE(committed != nullptr);
+    REQUIRE(committed->flatCurve() != nullptr);
+    REQUIRE(committed->flatCurve()->getVertices()
+            == std::vector<FlatCurveVertex> {
+                    { 1, 0.f, 0.25f, 1.f },
+                    { 2, 1.f, 0.75f, 1.f }
+            });
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE_FALSE(document.canUndo());

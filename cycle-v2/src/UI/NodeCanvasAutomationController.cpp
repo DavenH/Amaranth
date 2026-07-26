@@ -155,8 +155,8 @@ var NodeCanvasAutomationController::exportState(
     return inspector.exportState(state);
 }
 
-String NodeCanvasAutomationController::exportGraphXml() const {
-    return inspector.exportGraphXml();
+String NodeCanvasAutomationController::exportGraphJson() const {
+    return inspector.exportGraphJson();
 }
 
 var NodeCanvasAutomationController::inspectNodeControls(
