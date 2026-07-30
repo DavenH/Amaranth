@@ -3,6 +3,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/UnisonCore.h>
 #include <Audio/PluginProcessor.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Util/Arithmetic.h>
@@ -526,7 +527,7 @@ void SynthesizerVoice::handleSustainPedal(int midiChannel, bool isDown) {
 }
 
 float SynthesizerVoice::getEffectiveLevel() {
-    float unisonScale = powf(2.f, -(unison->getOrder(true) - 1) * 0.14f);
+    float unisonScale = CycleDsp::UnisonCore::voiceLevelScale(unison->getOrder(true));
     //	float subVelocity = getObj(MorphPanel).isCurrentModMappingVelocity() ? 0.7 * velocity + 0.3 * sqrtf(velocity) : velocity;
 
     return velocity * unisonScale;
