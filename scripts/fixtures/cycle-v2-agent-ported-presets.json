@@ -1,0 +1,62 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 27
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 41
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openGraph",
+      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/african-horn.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 22
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 37
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openGraph",
+      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 23
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 36
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    }
+  ],
+  "quit": true
+}

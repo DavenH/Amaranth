@@ -224,9 +224,12 @@ TEST_CASE("Graph JSON rejects incomplete model arrays", "[cycle-v2][graph]") {
 TEST_CASE("Every bundled graph is canonical JSON and compiles", "[cycle-v2][graph]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     for (const String& name : {
+                String("african-horn.cyclegraph"),
+                String("baroque-flute.cyclegraph"),
                 String("default.cyclegraph"),
-                String("with-spies.cyclegraph"),
-                String("fft-sawtooth.cyclegraph") }) {
+                String("fft-sawtooth.cyclegraph"),
+                String("stengah.cyclegraph"),
+                String("with-spies.cyclegraph") }) {
         const File file = resource(name);
         REQUIRE(file.existsAsFile());
         const String encoded = file.loadFileAsString();

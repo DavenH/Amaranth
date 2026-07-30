@@ -1099,6 +1099,22 @@ Acceptance:
 - graph diagnostics are visible and actionable,
 - automation fixtures cover common editing flows.
 
+Current inspection fixtures:
+
+- `baroque-flute.cyclegraph`, `african-horn.cyclegraph`, and
+  `stengah.cyclegraph` preserve the Cycle 1 mesh, curve, envelope, modulation,
+  and effect-editor state in native Cycle 2 graph resources.
+- Supported fixed-flow processing is expressed with native source, transform,
+  effect, envelope, and output nodes. The sources have unison disabled, so the
+  resources do not require a temporary unison representation.
+- Guide curves and pitch/scratch envelopes remain visible but disconnected
+  where Cycle 2 lacks the Cycle 1 dimension-specific guide binding or
+  pitch/scratch routing contract. Do not approximate those bindings with the
+  generic scratch attachment port.
+- `cycle-v2-agent-ported-presets.json` opens all three resources and asserts
+  their graph identity and successful compilation. General Cycle 1 preset
+  import remains an incomplete Milestone 9 item.
+
 ## Test Plan
 
 ### Unit Tests
