@@ -430,7 +430,11 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 TEST_CASE("Every effect view exposes both its compact preview and hosted editor",
         "[cycle-v2][canvas][view][effects]") {
     const auto& registry = NodeViewModuleRegistry::instance();
-    for (const NodeKind kind : { NodeKind::Reverb, NodeKind::Delay, NodeKind::Equalizer }) {
+    for (const NodeKind kind : {
+            NodeKind::Unison,
+            NodeKind::Reverb,
+            NodeKind::Delay,
+            NodeKind::Equalizer }) {
         const auto& module = registry.moduleFor(kind);
         REQUIRE(module.capabilities().previewable);
         REQUIRE(module.capabilities().hostedEditor);

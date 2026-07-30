@@ -629,7 +629,8 @@ void NodeCanvasPresentation::paintNode(
                 preview,
                 profileFor(frame, node),
                 zoom,
-                true
+                true,
+                frame.unisonPreviewContext
         });
     }
 

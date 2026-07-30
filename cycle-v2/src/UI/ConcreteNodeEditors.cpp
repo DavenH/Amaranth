@@ -201,7 +201,15 @@ public:
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f, Font::bold));
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
-        if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
+        if (kind == NodeKind::Unison && node.id.isNotEmpty()) {
+            const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
+            paintUnisonPhasePreview(
+                    graphics,
+                    response,
+                    node,
+                    1.f,
+                    resources.unisonPreviewContext());
+        } else if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             graphics.setColour(EffectPlotPalette::insetBackground);
             graphics.fillRoundedRectangle(response, 6.f);
@@ -228,7 +236,9 @@ public:
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
         int y = kind == NodeKind::Equalizer
                 ? 242
-                : (kind == NodeKind::Reverb || kind == NodeKind::Delay ? 216 : 56);
+                : (kind == NodeKind::Unison
+                        || kind == NodeKind::Reverb
+                        || kind == NodeKind::Delay ? 216 : 56);
         if (kind == NodeKind::Equalizer) {
             gainHeader.setBounds(38, y - 18, (getWidth() - 76) / 2, 18);
             frequencyHeader.setBounds(
@@ -353,7 +363,13 @@ private:
         control->readout.setColour(Label::textColourId, Colour(0xffeef2f6));
         control->slider.setSliderStyle(Slider::LinearHorizontal);
         control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-        control->slider.setRange(0.0, 1.0, 0.0001);
+        if (kind == NodeKind::Unison && id == "order") {
+            control->slider.setRange(1.0, CycleDsp::maximumUnisonOrder, 1.0);
+        } else if (kind == NodeKind::Unison && id == "width") {
+            control->slider.setRange(0.0, CycleDsp::maximumUnisonDetuneCents, 0.1);
+        } else {
+            control->slider.setRange(0.0, 1.0, 0.0001);
+        }
         control->slider.setDoubleClickReturnValue(true, defaultValue);
         control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
         control->slider.setPanCycle(kind == NodeKind::Delay && id == "spinIters");
@@ -395,7 +411,7 @@ private:
             } else {
                 commands.setNodeParameterValue(node.id, raw->id, raw->name, value);
             }
-            if (kind == NodeKind::Equalizer) {
+            if (kind == NodeKind::Equalizer || kind == NodeKind::Unison) {
                 repaint();
             }
         };
@@ -410,7 +426,13 @@ private:
     }
 
     void createControls() {
-        if (kind == NodeKind::Reverb) {
+        if (kind == NodeKind::Unison) {
+            addControl("order", "Voices", 1.f);
+            addControl("width", "Detune", 35.f);
+            addControl("panSpread", "Pan Spread", 1.f);
+            addControl("phase", "Phase", 0.5f);
+            addControl("jitter", "Jitter", 0.5f);
+        } else if (kind == NodeKind::Reverb) {
             addControl("size", "Size", 0.5f);
             addControl("damp", "Damping", 0.2f);
             addControl("width", "Width", 1.f);
@@ -475,7 +497,14 @@ private:
     void updateReadout(Control& control) {
         const float value = (float) control.slider.getValue();
         String text;
-        if (kind == NodeKind::Reverb && control.id == "size") {
+        if (kind == NodeKind::Unison && control.id == "order") {
+            const int voices = roundToInt(value);
+            text = String(voices) + (voices == 1 ? " voice" : " voices");
+        } else if (kind == NodeKind::Unison && control.id == "width") {
+            text = String(value, 1) + " cents";
+        } else if (kind == NodeKind::Unison && control.id == "phase") {
+            text = String(value, 2) + " cycles";
+        } else if (kind == NodeKind::Reverb && control.id == "size") {
             text = String(CycleDsp::reverbKernelSeconds(value, 44100.0), 2) + " s";
         } else if (kind == NodeKind::Delay && control.id == "time") {
             text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
@@ -497,6 +526,9 @@ private:
     }
 
     String title() const {
+        if (kind == NodeKind::Unison) {
+            return "UNISON";
+        }
         if (kind == NodeKind::Reverb) {
             return "REVERB";
         }
@@ -826,6 +858,7 @@ NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::Waveshaper, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::TrilinearMesh, std::make_unique<TrimeshNodeEditorFactory>());
+    factories.emplace_back(NodeKind::Unison, std::make_unique<EffectNodeEditorFactory>());
     factories.emplace_back(NodeKind::Reverb, std::make_unique<EffectNodeEditorFactory>());
     factories.emplace_back(NodeKind::Delay, std::make_unique<EffectNodeEditorFactory>());
     factories.emplace_back(NodeKind::Equalizer, std::make_unique<EffectNodeEditorFactory>());

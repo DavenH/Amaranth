@@ -53,8 +53,9 @@ or approximate them in Cycle V2 UI code.
 - frequency and signed wrapped phase-drift calculations for a MIDI note,
   detune in cents, initial phase, and elapsed seconds.
 
-The core is immutable and allocation-free. It owns no UI, singleton, pending
-action, graph, or audio-thread state.
+The group-layout core is immutable and allocation-free. Preview path splitting
+returns bounded geometry outside the audio thread. The core owns no UI,
+singleton, pending action, graph, or audio-thread state.
 
 Cycle 1 keeps its existing `Unison` class as the UI/action/thread adapter.
 `Unison` translates its parameter storage into shared-core inputs and copies
@@ -184,7 +185,7 @@ voice values and shared trajectory slope/wrap helpers.
 - Node-definition, codec, compiler, configuration, registry, palette, and
   editor tests cover the new kind without broad generic fallbacks.
 - Pixel or path-level tests prove zero detune is horizontal, opposite detunes
-  slope oppositely, wraps are discontinuity-free, bypass is greyscale, and
+  slope oppositely, wraps have no vertical bridge, bypass is greyscale, and
   pitch/duration changes are observable.
 - Focused automation covers add, connect, open, edit, bypass, save, reopen, and
   preview publication.
@@ -192,6 +193,37 @@ voice values and shared trajectory slope/wrap helpers.
   per-bin, or per-pixel loops where `Buffer`/`VecOps` applies.
 - Standalone Debug and focused Catch2 tests pass; UI capture logs contain no
   assertion, crash, or suspicious runtime failure.
+
+## Implementation Evidence
+
+Slices 1 through 4 are implemented for group mode:
+
+- commit `9278d180` extracted the exact Cycle 1 jitter table, group layout,
+  parameter mappings, individual detune mapping, level compensation, and phase
+  trajectory into `CycleDsp::UnisonCore`; Cycle 1 consumes that shared core;
+- Cycle V2 has a serializable `Unison` node, immutable configuration, explicit
+  voice-domain ports and runtime role, palette/icon registration, compact
+  preview, and hosted effect-style editor;
+- compact and expanded previews render analytically split phase paths from the
+  shared configuration at the supplied preview MIDI note and voice duration;
+- focused Catch2 coverage exercises shared golden values, wrap boundaries,
+  pitch/duration scaling, node compilation, configuration publication, effect
+  rendering, registry coverage, and editor registration;
+- `cycle-v2-agent-unison-editor.json` covers add, edit, bypass, save, reopen,
+  and editor persistence. The OS-level capture
+  `/private/tmp/cycle-v2-unison-editor-os.png` verifies the OpenGL presentation.
+
+The focused automation completed successfully. Its filtered launch log
+contained only the pre-existing JUCE Settings assertions already recorded in
+`docs/TDD/ui-bugs.md`; it contained no Unison-specific assertion, crash, or
+suspicious runtime failure.
+
+Slices 5 and 6 remain open. Cycle V2 currently has neither executable
+oscillator context nor a voice-lane fanout/sum contract to which the shared
+configuration can be adapted. Implementing audible behavior inside the current
+passthrough node would necessarily approximate Cycle 1 as a post-mix chorus,
+which violates the negative boundary above. Individual mode likewise waits on
+structured per-voice node state rather than flattened generic parameters.
 
 ## Completion Criteria
 

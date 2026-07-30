@@ -91,3 +91,30 @@ TEST_CASE("Unison phase trajectories reflect pitch detune duration and wrapping"
     REQUIRE_THAT(CycleDsp::UnisonCore::wrapSignedPhase(0.5), WithinAbs(-0.5, 0.000001));
     REQUIRE_THAT(CycleDsp::UnisonCore::wrapSignedPhase(-0.5), WithinAbs(-0.5, 0.000001));
 }
+
+TEST_CASE("Unison phase segments split exactly at positive and negative wraps",
+        "[unison][dsp][preview]") {
+    const CycleDsp::UnisonPhaseTrajectory upward { 0.4f, 0.2 };
+    const CycleDsp::UnisonPhaseTrajectory downward { -0.4f, -0.2 };
+
+    const auto rising = CycleDsp::UnisonCore::phaseSegments(upward, 1.0);
+    const auto falling = CycleDsp::UnisonCore::phaseSegments(downward, 1.0);
+
+    REQUIRE(rising.size() == 2);
+    REQUIRE_THAT(rising[0].endSeconds, WithinAbs(0.5, 0.000001));
+    REQUIRE_THAT(rising[0].endPhaseCycles, WithinAbs(0.5, 0.000001));
+    REQUIRE_THAT(rising[1].startPhaseCycles, WithinAbs(-0.5, 0.000001));
+    REQUIRE_THAT(rising[1].endPhaseCycles, WithinAbs(-0.4, 0.000001));
+
+    REQUIRE(falling.size() == 2);
+    REQUIRE_THAT(falling[0].endSeconds, WithinAbs(0.5, 0.000001));
+    REQUIRE_THAT(falling[0].endPhaseCycles, WithinAbs(-0.5, 0.000001));
+    REQUIRE_THAT(falling[1].startPhaseCycles, WithinAbs(0.5, 0.000001));
+    REQUIRE_THAT(falling[1].endPhaseCycles, WithinAbs(0.4, 0.000001));
+
+    const CycleDsp::UnisonPhaseTrajectory exactBoundary { 0.25f, 0.5 };
+    const auto exact = CycleDsp::UnisonCore::phaseSegments(exactBoundary, 0.5);
+    REQUIRE(exact.size() == 1);
+    REQUIRE_THAT(exact.front().endSeconds, WithinAbs(0.5, 0.000001));
+    REQUIRE_THAT(exact.front().endPhaseCycles, WithinAbs(0.5, 0.000001));
+}

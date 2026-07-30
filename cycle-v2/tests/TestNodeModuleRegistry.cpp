@@ -60,6 +60,9 @@ TEST_CASE("Node module registry marks Cycle 1 adapter-backed modules", "[cycle-v
             == "cycle/src/Inter/EnvelopeInter2D.cpp");
     REQUIRE(registry.descriptorFor(NodeKind::ImpulseResponse).cycle1AdapterBacked);
     REQUIRE(registry.descriptorFor(NodeKind::Waveshaper).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::Unison).cycle1AdapterBacked);
+    REQUIRE(registry.descriptorFor(NodeKind::Unison).cycle1Reference
+            == "cycle/src/Audio/Effects/Unison.cpp");
     REQUIRE(registry.descriptorFor(NodeKind::Delay).cycle1AdapterBacked);
     REQUIRE(registry.descriptorFor(NodeKind::Delay).cycle1Reference
             == "cycle/src/Audio/Effects/Delay.cpp");

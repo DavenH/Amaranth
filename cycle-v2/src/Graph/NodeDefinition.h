@@ -24,6 +24,7 @@ enum class AudioModuleRole {
     GuideCurve,
     ImpulseResponse,
     Waveshaper,
+    Unison,
     Reverb,
     Delay,
     Equalizer,

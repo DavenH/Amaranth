@@ -129,6 +129,7 @@ private:
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     SignalProbeRailState probeRailState;
+    UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
     bool resizingProbeRail {};
     float probeRailResizeStartHeight {};
@@ -196,6 +197,10 @@ private:
             Graphics& graphics,
             const Node& node,
             Rectangle<float> bounds) override;
+    UnisonPreviewContext unisonPreviewContext() const override {
+        return globalUnisonPreviewContext;
+    }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };
 

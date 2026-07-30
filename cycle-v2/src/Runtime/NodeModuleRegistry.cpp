@@ -61,6 +61,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::GuideCurve:        return "Guide Curve";
         case AudioModuleRole::ImpulseResponse:   return "Impulse Response";
         case AudioModuleRole::Waveshaper:        return "Waveshaper";
+        case AudioModuleRole::Unison:            return "Unison";
         case AudioModuleRole::Reverb:            return "Reverb";
         case AudioModuleRole::Delay:             return "Delay";
         case AudioModuleRole::Equalizer:         return "Equalizer";

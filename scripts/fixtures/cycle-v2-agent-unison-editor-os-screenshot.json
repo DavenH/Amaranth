@@ -1,0 +1,12 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "unison", "x": 540, "y": 280 },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "order", "label": "Voices", "value": "7" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "width", "label": "Detune", "value": "18" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "phase", "label": "Phase", "value": "0.35" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "jitter", "label": "Jitter", "value": "0.2" },
+    { "command": "openNodeEditor", "nodeId": "unison", "waitForIdle": true, "idleDelayMs": 500 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

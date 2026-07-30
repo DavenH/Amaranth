@@ -242,6 +242,7 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "impulseResponse", NodeKind::ImpulseResponse },
         { "ir", NodeKind::ImpulseResponse },
         { "waveshaper", NodeKind::Waveshaper },
+        { "unison", NodeKind::Unison },
         { "reverb", NodeKind::Reverb },
         { "delay", NodeKind::Delay },
         { "equalizer", NodeKind::Equalizer },

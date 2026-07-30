@@ -91,6 +91,48 @@ UnisonPhaseTrajectory UnisonCore::phaseTrajectory(
     };
 }
 
+std::vector<UnisonPhaseSegment> UnisonCore::phaseSegments(
+        const UnisonPhaseTrajectory& trajectory,
+        double durationSeconds) {
+    const double duration = std::max(0.0, durationSeconds);
+    const double startPhase = wrapSignedPhase(trajectory.initialPhaseCycles);
+    const double drift = trajectory.driftCyclesPerSecond;
+    if (duration == 0.0 || drift == 0.0) {
+        return {{ 0.0, startPhase, duration, startPhase }};
+    }
+
+    std::vector<UnisonPhaseSegment> segments;
+    const double endPhase = startPhase + duration * drift;
+    double segmentStartSeconds = 0.0;
+    double segmentStartPhase = startPhase;
+    double boundary = drift > 0.0
+            ? std::floor(startPhase + 0.5) + 0.5
+            : std::ceil(startPhase - 0.5) - 0.5;
+    while ((drift > 0.0 && boundary <= endPhase)
+            || (drift < 0.0 && boundary >= endPhase)) {
+        const double boundarySeconds = (boundary - startPhase) / drift;
+        const double boundaryPhase = drift > 0.0 ? 0.5 : -0.5;
+        segments.push_back({
+                segmentStartSeconds,
+                segmentStartPhase,
+                boundarySeconds,
+                boundaryPhase
+        });
+        segmentStartSeconds = boundarySeconds;
+        segmentStartPhase = -boundaryPhase;
+        boundary += drift > 0.0 ? 1.0 : -1.0;
+    }
+    if (segmentStartSeconds < duration || segments.empty()) {
+        segments.push_back({
+                segmentStartSeconds,
+                segmentStartPhase,
+                duration,
+                wrapSignedPhase(endPhase)
+        });
+    }
+    return segments;
+}
+
 double UnisonCore::frequencyForMidiNote(int midiNote, float detuneCents) {
     constexpr int midiA = 69;
     return 440.0 * std::pow(

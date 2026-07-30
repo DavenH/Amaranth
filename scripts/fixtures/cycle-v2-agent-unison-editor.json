@@ -1,0 +1,23 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "unison", "x": 540, "y": 280 },
+    { "command": "openNodeEditor", "nodeId": "unison", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.kind", "equals": "UNISON" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1 voice" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.1.readout", "equals": "35.0 cents" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "order", "label": "Voices", "value": "5" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "width", "label": "Detune", "value": "12.5" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "phase", "label": "Phase", "value": "0" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "jitter", "label": "Jitter", "value": "0" },
+    { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "enabled", "label": "Enabled", "value": "0" },
+    { "command": "assertNodeParameter", "nodeId": "unison", "parameterId": "order", "equals": "5" },
+    { "command": "saveGraph", "path": "/private/tmp/cycle-v2-unison-editor.cyclegraph" },
+    { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-unison-editor.png" },
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-unison-editor.cyclegraph" },
+    { "command": "assertNodeParameter", "nodeId": "unison", "parameterId": "width", "equals": "12.5" },
+    { "command": "openNodeEditor", "nodeId": "unison", "waitForIdle": true, "idleDelayMs": 250 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "5 voices" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.1.readout", "equals": "12.5 cents" }
+  ],
+  "quit": true
+}

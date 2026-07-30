@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 24h38" stroke="#8793a1" stroke-width="1.2" opacity="0.70"/>
+    <path d="M5 24l10-11 12 22 11-22 5 8"
+          stroke="#35d6d2" stroke-width="2.2"/>
+    <path d="M5 24l9 8 11-16 10 18 8-10"
+          stroke="#63aeb2" stroke-width="1.8" opacity="0.88"/>
+    <path d="M5 24l12-5 9 10 9-10 8 5"
+          stroke="#8793a1" stroke-width="1.5" opacity="0.82"/>
+  </g>
+</svg>

@@ -2,6 +2,7 @@
 
 #include "NodePreviewResources.h"
 
+#include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Trimesh/TrimeshRenderProfile.h"
 #include "../Runtime/GraphPreviewExecutor.h"
 
@@ -14,6 +15,7 @@ struct NodePreviewRenderRequest {
     TrimeshRenderProfile profile;
     float zoom {};
     bool cache { true };
+    UnisonPreviewContext unisonContext;
 };
 
 class NodePreviewRenderer {

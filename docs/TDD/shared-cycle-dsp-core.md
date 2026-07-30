@@ -655,6 +655,9 @@ Complete one module end-to-end before starting the next:
 - [x] Extract application-neutral E3 grid rendering behind explicit mesh,
   resolution, morph axis, and output-column inputs.
 - [ ] Characterize, extract, migrate, and test Equalizer, Phaser, Chorus, and Unison.
+  Unison group layout, parameter mappings, level compensation, and preview
+  phase trajectories are shared and migrated; audible oscillator/voice-lane
+  execution and structured individual mode remain open.
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.

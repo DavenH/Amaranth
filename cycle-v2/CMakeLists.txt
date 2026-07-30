@@ -55,7 +55,7 @@ generate_svg_data(
     genericProcessor voiceContext waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
-    reverb delay equalizer stereoSplit stereoJoin output
+    unison reverb delay equalizer stereoSplit stereoJoin output
 )
 
 file(GLOB_RECURSE APP_SOURCES
@@ -199,6 +199,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSliceRenderer2D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNode.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/WaveshaperSignalProcessor.cpp"
 )
 

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <vector>
 
 namespace CycleDsp {
 
@@ -38,6 +39,13 @@ struct UnisonPhaseTrajectory {
     double phaseAt(double seconds) const;
 };
 
+struct UnisonPhaseSegment {
+    double startSeconds {};
+    double startPhaseCycles {};
+    double endSeconds {};
+    double endPhaseCycles {};
+};
+
 class UnisonCore {
 public:
     static int orderFromUnitValue(double unitValue);
@@ -49,6 +57,9 @@ public:
             int midiNote,
             float detuneCents,
             float initialPhaseCycles);
+    static std::vector<UnisonPhaseSegment> phaseSegments(
+            const UnisonPhaseTrajectory& trajectory,
+            double durationSeconds);
 
     static double frequencyForMidiNote(int midiNote, float detuneCents = 0.f);
     static double wrapSignedPhase(double cycles);
