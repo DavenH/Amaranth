@@ -36,6 +36,7 @@ private:
     var runCommand(const var& commandValue);
     var handleSessionRequest(const var& request);
     void startSessionServer();
+    File resolveCommandPath(const String& path) const;
     var snapshotState() const;
     var inspectTargets(const var& commandValue) const;
     var exportGraph(const var& commandValue) const;

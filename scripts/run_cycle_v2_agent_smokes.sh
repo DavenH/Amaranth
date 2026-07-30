@@ -19,6 +19,7 @@ fixtures=(
     opengl-diagnostics=scripts/fixtures/cycle-v2-agent-opengl-diagnostics.json
     menu-palette=scripts/fixtures/cycle-v2-agent-menu-palette.json
     audio-capture=scripts/fixtures/cycle-v2-agent-audio-capture.json
+    ported-presets=scripts/fixtures/cycle-v2-agent-ported-presets.json
 )
 
 if [[ "$RUN_OS_SCREENSHOT" == "1" ]]; then

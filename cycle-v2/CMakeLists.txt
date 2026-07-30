@@ -253,7 +253,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${CANVAS_ARCHITECTURE_SOURCES} ${TEST_SOURCES})
+        add_executable(${PROJECT_NAME}_tests
+            ${GRAPH_SOURCES}
+            ${RUNTIME_SOURCES}
+            ${NODE_SOURCES}
+            ${CANVAS_ARCHITECTURE_SOURCES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
+            ${TEST_SOURCES}
+        )
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1

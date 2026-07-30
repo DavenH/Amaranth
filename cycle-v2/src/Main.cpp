@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "App/CycleV2Automation.h"
+#include "App/GraphFileHistory.h"
 #include "UI/NodeWorkspace.h"
 #include "incl/JucePluginDefines.h"
 
@@ -45,7 +46,9 @@ public:
         };
 
         explicit MainWindow(const String& name) :
-                DocumentWindow(name, Colour(0xff101318), allButtons) {
+                DocumentWindow(name, Colour(0xff101318), allButtons)
+            ,   properties(createProperties())
+            ,   fileHistory(*properties) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
             workspace = new CycleV2::NodeWorkspace();
@@ -100,6 +103,12 @@ public:
 
             if (menuIndex == 0) {
                 menu.addCommandItem(&commandManager, CommandOpenGraph);
+
+                PopupMenu recentMenu;
+                if (fileHistory.addRecentMenuItems(recentMenu) > 0) {
+                    menu.addSubMenu("Open Recent", recentMenu);
+                }
+
                 menu.addSeparator();
                 menu.addCommandItem(&commandManager, CommandSaveGraph);
                 menu.addCommandItem(&commandManager, CommandSaveGraphAs);
@@ -108,7 +117,11 @@ public:
             return menu;
         }
 
-        void menuItemSelected(int, int) override {}
+        void menuItemSelected(int menuItemId, int) override {
+            if (fileHistory.isRecentMenuItem(menuItemId)) {
+                openGraphFile(fileHistory.fileForMenuItem(menuItemId));
+            }
+        }
 
         ApplicationCommandTarget* getNextCommandTarget() override {
             return nullptr;
@@ -121,17 +134,17 @@ public:
         void getCommandInfo(CommandID commandID, ApplicationCommandInfo& result) override {
             switch (commandID) {
                 case CommandOpenGraph:
-                    result.setInfo("Open Graph...", "Open a Cycle V2 graph file", "File", 0);
+                    result.setInfo("Open Preset...", "Open a Cycle V2 preset", "File", 0);
                     result.addDefaultKeypress('o', ModifierKeys::commandModifier);
                     break;
 
                 case CommandSaveGraph:
-                    result.setInfo("Save Graph", "Save the current Cycle V2 graph", "File", 0);
+                    result.setInfo("Save Preset", "Save the current Cycle V2 preset", "File", 0);
                     result.addDefaultKeypress('s', ModifierKeys::commandModifier);
                     break;
 
                 case CommandSaveGraphAs:
-                    result.setInfo("Save Graph As...", "Save the current Cycle V2 graph to a new file", "File", 0);
+                    result.setInfo("Save Preset As...", "Save the current Cycle V2 preset to a new file", "File", 0);
                     result.addDefaultKeypress('s', ModifierKeys::commandModifier | ModifierKeys::shiftModifier);
                     break;
 
@@ -160,15 +173,61 @@ public:
         }
 
     private:
+        static std::unique_ptr<PropertiesFile> createProperties() {
+            PropertiesFile::Options options;
+            options.applicationName = "CycleV2";
+            options.folderName = "Amaranth Audio/Cycle V2";
+            options.filenameSuffix = ".settings";
+            options.osxLibrarySubFolder = "Application Support";
+            options.storageFormat = PropertiesFile::storeAsXML;
+            return std::make_unique<PropertiesFile>(options);
+        }
+
+        File repositoryPresetDirectory() const {
+          #if defined(CYCLE_V2_SOURCE_DIR)
+            return File(CYCLE_V2_SOURCE_DIR).getChildFile("content").getChildFile("presets");
+          #else
+            return {};
+          #endif
+        }
+
         File defaultGraphDirectory() const {
-            return currentGraphFile == File()
-                    ? File::getSpecialLocation(File::userDocumentsDirectory)
-                    : currentGraphFile.getParentDirectory();
+            File fallback = repositoryPresetDirectory();
+
+            if (!fallback.isDirectory()) {
+                fallback = File::getSpecialLocation(File::userDocumentsDirectory);
+            }
+
+            return fileHistory.initialOpenDirectory(fallback);
+        }
+
+        bool openGraphFile(const File& file) {
+            if (file == File() || workspace == nullptr
+                    || !workspace->loadGraphFromFile(file)) {
+                return false;
+            }
+
+            currentGraphFile = file;
+            fileHistory.recordOpened(file);
+            menuItemsChanged();
+            return true;
+        }
+
+        bool saveGraphFile(const File& file) {
+            if (file == File() || workspace == nullptr
+                    || !workspace->saveGraphToFile(file)) {
+                return false;
+            }
+
+            currentGraphFile = file;
+            fileHistory.recordSaved(file);
+            menuItemsChanged();
+            return true;
         }
 
         void chooseOpenGraph() {
             fileChooser = std::make_unique<FileChooser>(
-                    "Open Cycle V2 graph",
+                    "Open Cycle V2 preset",
                     defaultGraphDirectory(),
                     "*.cyclegraph");
 
@@ -180,10 +239,7 @@ public:
                         }
 
                         const File file = chooser.getResult();
-                        if (file != File() && safeThis->workspace != nullptr
-                                && safeThis->workspace->loadGraphFromFile(file)) {
-                            safeThis->currentGraphFile = file;
-                        }
+                        safeThis->openGraphFile(file);
 
                         safeThis->fileChooser = nullptr;
                     });
@@ -195,9 +251,7 @@ public:
                 return;
             }
 
-            if (workspace != nullptr) {
-                workspace->saveGraphToFile(currentGraphFile);
-            }
+            saveGraphFile(currentGraphFile);
         }
 
         void chooseSaveGraphAs() {
@@ -205,7 +259,7 @@ public:
                     ? defaultGraphDirectory().getChildFile("Untitled.cyclegraph")
                     : currentGraphFile;
             fileChooser = std::make_unique<FileChooser>(
-                    "Save Cycle V2 graph",
+                    "Save Cycle V2 preset",
                     initialFile,
                     "*.cyclegraph");
 
@@ -224,10 +278,7 @@ public:
                                 file = file.withFileExtension("cyclegraph");
                             }
 
-                            if (safeThis->workspace != nullptr
-                                    && safeThis->workspace->saveGraphToFile(file)) {
-                                safeThis->currentGraphFile = file;
-                            }
+                            safeThis->saveGraphFile(file);
                         }
 
                         safeThis->fileChooser = nullptr;
@@ -235,6 +286,8 @@ public:
         }
 
         ApplicationCommandManager commandManager;
+        std::unique_ptr<PropertiesFile> properties;
+        CycleV2::GraphFileHistory fileHistory;
         CycleV2::NodeWorkspace* workspace {};
         std::unique_ptr<CycleV2::CycleV2Automation> automation;
         std::unique_ptr<FileChooser> fileChooser;

@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/baroque-flute.cyclegraph"
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
     },
     {
       "command": "assertState",
@@ -21,7 +21,7 @@
     },
     {
       "command": "openGraph",
-      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/african-horn.cyclegraph"
+      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
     },
     {
       "command": "assertState",
@@ -40,7 +40,7 @@
     },
     {
       "command": "openGraph",
-      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/stengah.cyclegraph"
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
     },
     {
       "command": "assertState",

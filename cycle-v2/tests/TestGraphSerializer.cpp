@@ -25,6 +25,17 @@ File resource(const String& name) {
   #endif
 }
 
+File contentPreset(const String& name) {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    return File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile(name);
+  #else
+    return File();
+  #endif
+}
+
 }
 
 TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
@@ -221,16 +232,19 @@ TEST_CASE("Graph JSON rejects incomplete model arrays", "[cycle-v2][graph]") {
     REQUIRE(result.graph.getNodes().empty());
 }
 
-TEST_CASE("Every bundled graph is canonical JSON and compiles", "[cycle-v2][graph]") {
+TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][graph]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
-    for (const String& name : {
-                String("african-horn.cyclegraph"),
-                String("baroque-flute.cyclegraph"),
-                String("default.cyclegraph"),
-                String("fft-sawtooth.cyclegraph"),
-                String("stengah.cyclegraph"),
-                String("with-spies.cyclegraph") }) {
-        const File file = resource(name);
+    Array<File> graphs {
+            contentPreset("african-horn.cyclegraph"),
+            contentPreset("baroque-flute.cyclegraph"),
+            contentPreset("stengah.cyclegraph"),
+            resource("default.cyclegraph"),
+            resource("fft-sawtooth.cyclegraph"),
+            resource("with-spies.cyclegraph")
+    };
+
+    for (const File& file : graphs) {
+        const String name = file.getFileName();
         REQUIRE(file.existsAsFile());
         const String encoded = file.loadFileAsString();
         const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);

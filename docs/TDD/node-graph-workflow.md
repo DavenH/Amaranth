@@ -1101,19 +1101,31 @@ Acceptance:
 
 Current inspection fixtures:
 
-- `baroque-flute.cyclegraph`, `african-horn.cyclegraph`, and
-  `stengah.cyclegraph` preserve the Cycle 1 mesh, curve, envelope, modulation,
-  and effect-editor state in native Cycle 2 graph resources.
+- `content/presets/baroque-flute.cyclegraph`,
+  `content/presets/african-horn.cyclegraph`, and
+  `content/presets/stengah.cyclegraph` preserve the Cycle 1 mesh, curve,
+  envelope, modulation, and effect-editor state in native Cycle 2 preset files.
 - Supported fixed-flow processing is expressed with native source, transform,
   effect, envelope, and output nodes. The sources have unison disabled, so the
-  resources do not require a temporary unison representation.
+  presets do not require a temporary unison representation.
 - Guide curves and pitch/scratch envelopes remain visible but disconnected
   where Cycle 2 lacks the Cycle 1 dimension-specific guide binding or
   pitch/scratch routing contract. Do not approximate those bindings with the
   generic scratch attachment port.
-- `cycle-v2-agent-ported-presets.json` opens all three resources and asserts
+- `cycle-v2-agent-ported-presets.json` opens all three preset files and asserts
   their graph identity and successful compilation. General Cycle 1 preset
   import remains an incomplete Milestone 9 item.
+
+Current file workflow:
+
+- Cycle 2 owns recent-graph and last-open-directory persistence at the
+  application boundary. Successful opens update both values; successful saves
+  update the recent list without changing the last-open directory.
+- The File menu exposes the persisted recent list and routes those selections
+  through the same graph-loading operation as the chooser.
+- Automation command paths are resolved relative to their fixture file.
+  Repository fixtures must use relative paths rather than checkout-specific
+  absolute paths.
 
 ## Test Plan
 
