@@ -16,6 +16,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 500.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 620.f, 520.f }));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 500.f, 300.f }));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", { 200.f, 300.f }));
     graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, false });
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -39,6 +40,20 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(action->kind == CanvasNodeActionKind::CycleOperationLayout);
     REQUIRE(action->nodeId == "multiply");
     REQUIRE(router.hoverTextFor(viewport, {}, actionPoint).contains("port layout"));
+
+    const Node* envelope = graph.findNode("envelope");
+    REQUIRE(envelope != nullptr);
+    Rectangle<float> envelopePreview = envelope->bounds.withTrimmedTop(42.f).reduced(8.f);
+    const Rectangle<float> purposeRow = envelopePreview.removeFromBottom(20.f).reduced(3.f, 1.f);
+    const Point<float> pitchPoint {
+            purposeRow.getX() + purposeRow.getWidth() * 0.5f,
+            purposeRow.getCentreY()
+    };
+    const auto purposeAction = router.nodeActionAt(viewport, pitchPoint);
+    REQUIRE(purposeAction.has_value());
+    REQUIRE(purposeAction->kind == CanvasNodeActionKind::SetEnvelopePurpose);
+    REQUIRE(purposeAction->value == "pitch");
+    REQUIRE(router.hoverTextFor(viewport, {}, pitchPoint).contains("pitch"));
 
     NodeCanvasScene sceneBuilder;
     const auto& scene = sceneBuilder.build(graph, viewport, 1, 1);
