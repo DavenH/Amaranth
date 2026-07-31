@@ -8,6 +8,7 @@
 #include "../Graph/GraphCommandDispatcher.h"
 #include "../Graph/GraphDocument.h"
 #include "../Graph/NodeGraph.h"
+#include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Trimesh/TrimeshRenderProfile.h"
 #include "../Runtime/NodeUpdateGraph.h"
 
@@ -122,6 +123,7 @@ public:
             Graphics& graphics,
             const Node& node,
             Rectangle<float> bounds) = 0;
+    virtual UnisonPreviewContext unisonPreviewContext() const { return {}; }
 };
 
 struct NodeEditorContext {

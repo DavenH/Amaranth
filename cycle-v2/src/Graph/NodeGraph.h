@@ -37,6 +37,7 @@ enum class NodeKind {
     GuideCurve,
     ImpulseResponse,
     Waveshaper,
+    Unison,
     Reverb,
     Delay,
     Equalizer,

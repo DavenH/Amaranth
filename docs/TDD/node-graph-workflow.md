@@ -422,8 +422,15 @@ fan-out/fan-in voice lanes.
 
 ### Cycle Frame Model
 
-Cycle graph execution is cycle-oriented. A cycle buffer is a power-of-two
-period, matching Cycle 1.x oscillator and FFT processing.
+The original assumption that all graph execution is cycle-oriented is refined
+by `cycle-v2-oscillator-region-compilation.md`. Oscillator subgraphs execute in
+cycle or spectral-frame coordinates; independently materialized oscillator
+regions then meet in ordinary sample-block processing. Signal domain and
+execution coordinate are separate compiler properties.
+
+A spectral cycle frame is a power-of-two period, matching Cycle 1.x oscillator
+and FFT processing. A time-only chained oscillator may instead produce
+variable-length cycles independently per Unison lane.
 
 FFT nodes always consume one cycle of `TimeSignal` content and produce one
 cycle worth of spectral magnitude and phase content. They should not introduce
@@ -440,6 +447,12 @@ mode is cyclic. Optional overlap modes may be added:
 Any node that introduces acyclic carry or latency must declare that latency in
 its node schema and compiled execution plan. Downstream zero-latency paths
 should remain the default.
+
+Ordinary block Add and Multiply may combine non-pitch-aligned oscillators after
+each oscillator region has materialized and folded its Unison lanes. Cycle-
+coordinate arithmetic before materialization requires a proven common cycle
+clock. Mixed-strategy block merges require compiler-planned latency
+compensation.
 
 ## Node Editor UI
 

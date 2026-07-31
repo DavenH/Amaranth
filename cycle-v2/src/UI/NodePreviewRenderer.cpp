@@ -587,6 +587,10 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     String signature = nodeSignature(request.node, request.profile.getDomain());
+    if (request.node.kind == NodeKind::Unison) {
+        signature += "|previewNote:" + String(request.unisonContext.midiNote)
+                + "|voiceDuration:" + String(request.unisonContext.voiceDurationSeconds, 6);
+    }
     if (request.runtimeResult != nullptr) {
         signature += "|runtime:" + runtimeSignature(*request.runtimeResult);
     }
@@ -778,6 +782,15 @@ void NodePreviewRenderer::paintQualitative(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     const NodeKind kind = request.node.kind;
+    if (kind == NodeKind::Unison) {
+        paintUnisonPhasePreview(
+                graphics,
+                request.area,
+                request.node,
+                request.zoom,
+                request.unisonContext);
+        return;
+    }
     if (paintEffectCompactPreview(graphics, request.area, request.node, request.zoom)) {
         return;
     }

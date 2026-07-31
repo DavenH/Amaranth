@@ -1,15 +1,16 @@
+#include <Curve/Mesh/Mesh.h>
+
 #include "NodeDspConfiguration.h"
 
-#include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
-#include "../Nodes/Effects/EffectSignalProcessors.h"
-#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/Control/ModulationSource.h"
 #include "../Nodes/Control/ModulationTriple.h"
+#include "../Nodes/Effects/EffectSignalProcessors.h"
+#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
-
-#include <Curve/Mesh/Mesh.h>
+#include "../Nodes/Unison/UnisonNode.h"
+#include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
 namespace CycleV2 {
 
@@ -133,6 +134,10 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         { AudioModuleRole::Equalizer, [](AudioModuleRole, const auto& values, const auto&) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     EqualizerSignalProcessor::buildConfiguration(values));
+        } },
+        { AudioModuleRole::Unison, [](AudioModuleRole, const auto& values, const auto&) {
+            return std::shared_ptr<const INodeDspConfiguration>(
+                    buildUnisonNodeConfiguration(values));
         } },
         { AudioModuleRole::Envelope, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(

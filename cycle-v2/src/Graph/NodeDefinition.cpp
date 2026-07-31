@@ -1,13 +1,14 @@
-#include "NodeDefinition.h"
-
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-
+#include <Audio/CycleDsp/UnisonCore.h>
 #include <Audio/CycleDsp/IrModel.h>
 
 #include <algorithm>
 #include <climits>
 #include <cmath>
+
+#include "NodeDefinition.h"
+
+#include "../Nodes/Effect2D/CurveNodeModels.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 
 namespace CycleV2 {
 
@@ -437,6 +438,26 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
                     .presentation({ 154.f, 174.f })
+                    .finish(),
+            buildDefinition(definition("unison", NodeKind::Unison, "Unison", "voice spread", "unison",
+                    { input("context", "Context", PortDomain::DomainContext) },
+                    { output("context", "Context", PortDomain::DomainContext) }, {
+                            boolean("enabled", "Enabled", true, dsp | presentation),
+                            integer("order", "Voices", 1, 1, CycleDsp::maximumUnisonOrder,
+                                    dsp | preview | presentation),
+                            number("width", "Detune", 35.f, 0.f,
+                                    CycleDsp::maximumUnisonDetuneCents,
+                                    dsp | preview | presentation),
+                            number("panSpread", "Pan Spread", 1.f, 0.f, 1.f,
+                                    dsp | presentation),
+                            number("phase", "Phase", 0.5f, 0.f, 1.f,
+                                    dsp | preview | presentation),
+                            number("jitter", "Jitter", 0.5f, 0.f, 1.f,
+                                    dsp | preview | presentation)
+                    }))
+                    .runtime(AudioModuleRole::Unison, PreviewModuleRole::None,
+                            "cycle/src/Audio/Effects/Unison.cpp")
+                    .presentation({ 230.f, 112.f })
                     .finish(),
             buildDefinition(definition("reverb", NodeKind::Reverb, "Reverb", "space", "reverb",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },

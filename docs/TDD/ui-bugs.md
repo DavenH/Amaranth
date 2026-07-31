@@ -74,7 +74,7 @@ Context:
   failed `TestGraphPreviewExecutor.cpp:441`: `aliasedInputCount` was 0 rather
   than 8 in `Graph preview address lookup scales with compiled inputs`.
 - The same run failed `TestNodeCanvasArchitecture.cpp:334`: the rich mesh view
-  width was 972 rather than the expected 1080.
+  width was 972 rather than the expected 1080. Daven: That's probably just because of the spy bar though.
 - The focused Reverb preview suite passes. Neither failure exercises the
   spectral mapping or Reverb rendering path modified in that work.
 

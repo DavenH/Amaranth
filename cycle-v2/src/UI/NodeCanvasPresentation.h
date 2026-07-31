@@ -46,6 +46,7 @@ struct NodeCanvasPresentationFrame {
     bool openGLUnderlay { true };
     Rectangle<float> workspaceBounds;
     SignalProbeRailState probeRailState;
+    UnisonPreviewContext unisonPreviewContext;
 };
 
 struct NodePortPresentation {

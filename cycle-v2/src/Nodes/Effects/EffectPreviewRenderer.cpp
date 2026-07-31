@@ -1,14 +1,15 @@
-#include "EffectPreviewRenderer.h"
-
-#include "EffectPlotPalette.h"
-
-#include "../../UI/NodeParameterValue.h"
-
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include <cmath>
+
+#include "EffectPreviewRenderer.h"
+
+#include "EffectPlotPalette.h"
+
+#include "../Unison/UnisonNode.h"
+#include "../../UI/NodeParameterValue.h"
 
 namespace CycleV2 {
 
@@ -57,6 +58,10 @@ void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, fl
     }
 }
 
+float unisonPhaseY(Rectangle<float> area, double phaseCycles) {
+    return area.getCentreY() - (float) phaseCycles * area.getHeight();
+}
+
 void paintDelayAxes(
         Graphics& graphics,
         Rectangle<float> plot,
@@ -97,6 +102,100 @@ void paintBeatGrid(
     }
 }
 
+}
+
+std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
+        const Node& node,
+        const UnisonPreviewContext& context) {
+    const auto configuration = buildUnisonNodeConfiguration(node.parameters);
+    std::vector<UnisonPreviewPath> paths;
+    paths.reserve((size_t) configuration->layout.order);
+    for (int index = 0; index < configuration->layout.order; ++index) {
+        const auto& voice = configuration->layout[index];
+        const auto trajectory = CycleDsp::UnisonCore::phaseTrajectory(
+                context.midiNote,
+                voice.detuneCents,
+                voice.phaseCycles);
+        paths.push_back({
+                index,
+                voice.detuneCents,
+                CycleDsp::UnisonCore::phaseSegments(
+                        trajectory,
+                        context.voiceDurationSeconds)
+        });
+    }
+    return paths;
+}
+
+void paintUnisonPhasePreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        float zoom,
+        const UnisonPreviewContext& context) {
+    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const Rectangle<float> background = contentArea(area);
+    const Rectangle<float> plot = background.reduced(5.f);
+    const auto stateColour = [enabled](Colour colour) {
+        return EffectPlotPalette::forEnabledState(colour, enabled);
+    };
+
+    graphics.setColour(stateColour(EffectPlotPalette::background));
+    graphics.fillRoundedRectangle(background, 4.f);
+    graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.22f)));
+    graphics.fillRect(plot.getX(), plot.getY(), plot.getWidth(), 1.f);
+    graphics.fillRect(plot.getX(), plot.getBottom() - 1.f, plot.getWidth(), 1.f);
+    graphics.setColour(stateColour(EffectPlotPalette::grid.withAlpha(0.58f)));
+    graphics.fillRect(plot.getX(), plot.getCentreY() - 0.5f, plot.getWidth(), 1.f);
+
+    const double duration = jmax(0.000001, context.voiceDurationSeconds);
+    const auto paths = makeUnisonPreviewPaths(node, context);
+    for (const auto& voice : paths) {
+        const float voiceUnit = paths.size() > 1
+                ? (float) voice.voiceIndex / (float) (paths.size() - 1)
+                : 0.5f;
+        const Colour laser = EffectPlotPalette::accent.interpolatedWith(
+                Colour(0xffffb45e),
+                voiceUnit * 0.42f);
+        Path path;
+        for (const auto& segment : voice.segments) {
+            const Point<float> start {
+                    plot.getX() + (float) (segment.startSeconds / duration) * plot.getWidth(),
+                    unisonPhaseY(plot, segment.startPhaseCycles)
+            };
+            const Point<float> end {
+                    plot.getX() + (float) (segment.endSeconds / duration) * plot.getWidth(),
+                    unisonPhaseY(plot, segment.endPhaseCycles)
+            };
+            path.startNewSubPath(start);
+            path.lineTo(end);
+        }
+        graphics.setColour(stateColour(laser.withAlpha(0.16f)));
+        graphics.strokePath(
+                path,
+                PathStrokeType(jmax(2.8f, 4.f * zoom), PathStrokeType::curved));
+        graphics.setColour(stateColour(laser.withAlpha(0.94f)));
+        graphics.strokePath(
+                path,
+                PathStrokeType(jmax(1.f, 1.35f * zoom), PathStrokeType::curved));
+    }
+
+    if (area.getWidth() >= 260.f && area.getHeight() >= 100.f) {
+        const String note = MidiMessage::getMidiNoteName(
+                context.midiNote,
+                true,
+                true,
+                3);
+        graphics.setColour(stateColour(EffectPlotPalette::label.withAlpha(0.70f)));
+        graphics.setFont(FontOptions(10.f));
+        graphics.drawText(
+                note + "  ·  " + String(context.voiceDurationSeconds, 2) + " s",
+                plot.getX(),
+                plot.getY() + 4.f,
+                plot.getWidth() - 5.f,
+                13.f,
+                Justification::centredRight);
+    }
 }
 
 void paintDelayPingPreview(
@@ -286,6 +385,19 @@ bool paintEffectCompactPreview(
         float zoom) {
     if (node.kind == NodeKind::Reverb) {
         paintReverb(graphics, area, node, zoom);
+        return true;
+    }
+
+    if (node.kind == NodeKind::Unison) {
+        Node displayNode = node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "order") {
+                    parameter.value = "5";
+                }
+            }
+        }
+        paintUnisonPhasePreview(graphics, area, displayNode, zoom);
         return true;
     }
 

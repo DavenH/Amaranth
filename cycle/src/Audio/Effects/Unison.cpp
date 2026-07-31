@@ -1,4 +1,6 @@
 #include <Obj/Ref.h>
+#include <Audio/CycleDsp/UnisonCore.h>
+
 #include "JuceHeader.h"
 #include "Unison.h"
 #include "../../Audio/SynthAudioSource.h"
@@ -27,24 +29,6 @@ Unison::Unison(SingletonRepo* repo) : Effect(repo, "Unison")
         group.groupModeOrder = 1;
     }
 
-    double tempJitters[maxUnisonOrder - 1][maxUnisonOrder] =
-    {
-        {  0.001, -0.001 },
-        { -0.108, -0.061,  0.163 },
-        {  0.023, -0.067, -0.124,  0.168 },
-        { -0.135,  0.094,  0.022, -0.122,  0.143 },
-        { -0.076, -0.111,  0.123, -0.093,  0.178, -0.062 },
-        {  0.061, -0.066,  0.056, -0.083,  0.215,  0.123, -0.018 },
-        { -0.013, -0.061,  0.115,  0.231, -0.024, -0.172,  0.156,  0.155 },
-        {  0.023, -0.065, -0.128,  0.169, -0.127,  0.149, -0.103, -0.062,  0.163 },
-        { -0.068,  0.054, -0.086,  0.212,  0.126, -0.014,  0.023, -0.063, -0.128, 0.163 },
-    };
-
-    for (int i = 0; i < maxUnisonOrder - 1; ++i) {
-        for (int j = 0; j < i + 2; ++j) {
-            jitters[i][j] = tempJitters[i][j];
-        }
-    }
 }
 
 void Unison::setUI(UnisonUI* comp) {
@@ -79,25 +63,20 @@ void Unison::updateTunings(bool isAudio, bool force) {
     jassert(group.voices.size() >= order);
 
     if (isGroupMode() || force) {
-        if (order == 1) {
-            group.voices.front().fine = 0.;
-        } else {
-            int minOrder = jmin<int>(maxUnisonOrder, order);
-            float increment = 1 / float(minOrder - 1);
-            int jitterIdx = minOrder - 2;
-
-            // don't touch the single mode voices above size of jitter array
-            for (int i = 0; i < minOrder; ++i) {
-                UnivoiceData& data = group.voices[i];
-
-                data.finePct = ((2 * increment * i - 1) - group.jitterScale * jitters[jitterIdx][i]);
-                data.finePct = 0.5f * (data.finePct + 1.f);
-                data.fine = group.width * (data.finePct * 2 - 1.f);
-            }
+        CycleDsp::UnisonGroupConfiguration configuration;
+        configuration.order = order;
+        configuration.detuneWidthCents = group.width;
+        configuration.jitter = group.jitterScale;
+        const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+        for (int i = 0; i < layout.order; ++i) {
+            group.voices[i].finePct = layout[i].detunePosition;
+            group.voices[i].fine = layout[i].detuneCents;
         }
     } else {
         for (int i = 0; i < order; ++i) {
-            group.voices[i].fine = (2 * group.voices[i].finePct - 1) * group.width;
+            group.voices[i].fine = CycleDsp::UnisonCore::detuneCentsFromPosition(
+                    group.voices[i].finePct,
+                    group.width);
         }
     }
 }
@@ -109,23 +88,12 @@ void Unison::updatePanning(bool isAudio, bool force) {
     jassert(group.voices.size() >= order);
 
     if (isGroupMode() || force) {
-        if (order == 1) {
-            group.voices.front().pan = 0.5;
-            return;
-        }
-
-        if (order % 2 == 1) {
-            int i = 0;
-            for (; i < order / 2; ++i)
-                group.voices[i].pan = 0.5f + group.panScale * 0.5f * cos(M_PI * i);
-
-            for (; i < order; ++i)
-                group.voices[i].pan = 0.5f - group.panScale * 0.5f * cos(M_PI * i);
-
-            group.voices[order / 2].pan = 0.5;
-        } else {
-            for (int i = 0; i < order; ++i)
-                group.voices[i].pan = 0.5f + group.panScale * 0.5f * cos(M_PI * i);
+        CycleDsp::UnisonGroupConfiguration configuration;
+        configuration.order = order;
+        configuration.panSpread = group.panScale;
+        const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+        for (int i = 0; i < layout.order; ++i) {
+            group.voices[i].pan = layout[i].pan;
         }
     }
 }
@@ -137,28 +105,19 @@ void Unison::updatePhases(bool isAudio, bool force) {
     jassert(group.voices.size() >= order);
 
     if (isGroupMode() || force) {
-        if (order == 1) {
-            group.voices.front().phase = 0.;
-        } else {
-            int minOrder = jmin<int>(maxUnisonOrder, order);
-            float increment = 1 / float(minOrder);
-            int jitterIdx = minOrder - 2;
-
-            for (int i = 0; i < jmin<int>(order, maxUnisonOrder); ++i) {
-                float phase = group.phaseScale * ((double(i) - (order - 1) * 0.5) * increment +
-                                                  group.jitterScale * jitters[jitterIdx][i]);
-                if (phase < 0) {
-                    phase += 1;
-                }
-
-                group.voices[i].phase = phase;
-            }
+        CycleDsp::UnisonGroupConfiguration configuration;
+        configuration.order = order;
+        configuration.phaseSpread = group.phaseScale;
+        configuration.jitter = group.jitterScale;
+        const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+        for (int i = 0; i < layout.order; ++i) {
+            group.voices[i].phase = layout[i].phaseCycles;
         }
     }
 }
 
 int Unison::calcOrder(double value) {
-    return jmin<int>(maxUnisonOrder, int(maxUnisonOrder * value + 1.));
+    return CycleDsp::UnisonCore::orderFromUnitValue(value);
 }
 
 bool Unison::isEnabled() const {
@@ -344,7 +303,9 @@ bool Unison::doParamChange(int index, double value, bool doFurtherUpdate) {
 
                 case Fine: {
                     data.finePct = value;
-                    data.fine = group.width * (2.f * value - 1);
+                    data.fine = CycleDsp::UnisonCore::detuneCentsFromPosition(
+                            value,
+                            group.width);
                     break;
                 }
 
@@ -419,7 +380,9 @@ void Unison::syncParamsFromUI() {
 
         UnivoiceData& data = group->voices[uniIndex];
         data.finePct = getUIKnobValue(Fine);
-        data.fine    = group->width * (2.f * data.finePct - 1.f);
+        data.fine    = CycleDsp::UnisonCore::detuneCentsFromPosition(
+                data.finePct,
+                group->width);
         data.pan     = getUIKnobValue(Pan);
         data.phase   = getUIKnobValue(Phase);
     }
@@ -489,7 +452,9 @@ void Unison::setVoiceData(int unisonIdx, float fine, float pan, float phase) {
 
         UnivoiceData& data = group.voices[unisonIdx];
         data = UnivoiceData(pan, fine, phase);
-        data.fine = group.width * (2.f * data.finePct - 1.f);
+        data.fine = CycleDsp::UnisonCore::detuneCentsFromPosition(
+                data.finePct,
+                group.width);
 
         if (!isGroupMode()) {
             group.groupModeOrder = group.voices.size();

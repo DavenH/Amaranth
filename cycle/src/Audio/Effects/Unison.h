@@ -1,7 +1,10 @@
 #pragma once
 
 #include <vector>
+
+#include <Audio/CycleDsp/UnisonCore.h>
 #include <Thread/PendingAction.h>
+
 #include "AudioEffect.h"
 
 using std::vector;
@@ -12,7 +15,7 @@ class Unison :
     public Effect
 {
 public:
-    enum { maxUnisonOrder = 10 };
+    enum { maxUnisonOrder = CycleDsp::maximumUnisonOrder };
 
     struct UnivoiceData
     {
@@ -123,6 +126,4 @@ private:
 
     ParamGroup graphicParams;
     ParamGroup audioParams;
-
-    double jitters[maxUnisonOrder - 1][maxUnisonOrder];
 };

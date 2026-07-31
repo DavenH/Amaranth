@@ -634,7 +634,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             spliceTargetEdgeIndex,
             kUseGlCanvasUnderlay,
             workspace,
-            probeRailState
+            probeRailState,
+            globalUnisonPreviewContext
     };
 }
 
@@ -1076,7 +1077,8 @@ void NodeCanvas::paintNodePreview(
                     ? TrimeshRenderProfile::fromDomain(result->domain)
                     : TrimeshRenderProfile::fromDomain(PortDomain::ControlSignal),
             1.f,
-            true
+            true,
+            globalUnisonPreviewContext
     });
 }
 

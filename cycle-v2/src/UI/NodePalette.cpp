@@ -44,6 +44,7 @@ const NodePalette::Entry kControlEntries[] = {
 const NodePalette::Entry kFxEntries[] = {
         { NodeKind::ImpulseResponse, "IR" },
         { NodeKind::Waveshaper, "Waveshaper" },
+        { NodeKind::Unison, "Unison" },
         { NodeKind::Reverb, "Reverb" },
         { NodeKind::Delay, "Delay" },
         { NodeKind::Equalizer, "EQ" }

@@ -1,9 +1,31 @@
 #pragma once
 
+#include <Audio/CycleDsp/UnisonCore.h>
+
 #include "../../Graph/NodeGraph.h"
 
 namespace CycleV2 {
 
+struct UnisonPreviewContext {
+    int midiNote { 60 };
+    double voiceDurationSeconds { 1.0 };
+};
+
+struct UnisonPreviewPath {
+    int voiceIndex {};
+    float detuneCents {};
+    std::vector<CycleDsp::UnisonPhaseSegment> segments;
+};
+
+std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
+        const Node& node,
+        const UnisonPreviewContext& context = {});
+void paintUnisonPhasePreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        float zoom,
+        const UnisonPreviewContext& context = {});
 bool paintEffectCompactPreview(
         Graphics& graphics,
         Rectangle<float> area,
