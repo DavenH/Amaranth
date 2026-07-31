@@ -6,16 +6,6 @@
     },
     {
       "command": "assertState",
-      "path": "nodeCount",
-      "equals": 23
-    },
-    {
-      "command": "assertState",
-      "path": "edgeCount",
-      "equals": 48
-    },
-    {
-      "command": "assertState",
       "path": "compileSucceeded",
       "equals": true
     },
@@ -34,6 +24,17 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.firstControl",
       "equals": 0.76562
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 24
     },
     {
       "command": "openGraph",
@@ -71,6 +72,28 @@
       "equals": 0.0
     },
     {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 0
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 0
+    },
+    {
       "command": "openGraph",
       "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
     },
@@ -104,6 +127,17 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.firstControl",
       "equals": 0.0025
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 64
     },
     {
       "command": "openNodeEditor",

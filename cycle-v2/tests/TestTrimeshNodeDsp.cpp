@@ -493,6 +493,25 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     REQUIRE(secondVertexParameters[5].value == Catch::Approx(0.88f));
 }
 
+TEST_CASE("Trimesh node model replaces equal-revision snapshots from another document",
+        "[cycle-v2][nodes][trimesh][presets]") {
+    auto populated = TrimeshMeshFactory::createDefaultMesh("PopulatedPresetMesh");
+    Mesh empty("EmptyPresetMesh");
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "phaseLayer1", {});
+    node.model = TrimeshNodeModelState::copyOf(*populated, 1);
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    REQUIRE(model.getMeshForPanel().getNumVerts() == populated->getNumVerts());
+
+    node.model = TrimeshNodeModelState::copyOf(empty, 1);
+    model.syncFromNode(node);
+    REQUIRE(model.getMeshForPanel().getNumVerts() == 0);
+
+    empty.destroy();
+    populated->destroy();
+}
+
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
