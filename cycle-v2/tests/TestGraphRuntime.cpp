@@ -169,9 +169,9 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", {}));
     graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "reverb", "time", "equalizer", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "equalizer", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "reverb", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "equalizer", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;

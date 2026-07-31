@@ -4,6 +4,7 @@
 #include "GraphValidator.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 #include <cmath>
@@ -161,7 +162,36 @@ var edgeToJSON(const Edge& edge) {
     result->setProperty("sourcePortId", edge.sourcePortId);
     result->setProperty("destNodeId", edge.destNodeId);
     result->setProperty("destPortId", edge.destPortId);
+    switch (edge.kind) {
+        case ConnectionKind::Signal:
+            break;
+        case ConnectionKind::ConfigurationAttachment:
+            result->setProperty("connectionKind", "configurationAttachment");
+            break;
+        case ConnectionKind::ProcessingAttachment:
+            result->setProperty("connectionKind", "processingAttachment");
+            break;
+    }
     return var(result.release());
+}
+
+bool connectionKindFromJSON(const var& value, ConnectionKind& result) {
+    if (value.isVoid()) {
+        return false;
+    }
+    if (value.toString() == "signal") {
+        result = ConnectionKind::Signal;
+        return true;
+    }
+    if (value.toString() == "configurationAttachment") {
+        result = ConnectionKind::ConfigurationAttachment;
+        return true;
+    }
+    if (value.toString() == "processingAttachment") {
+        result = ConnectionKind::ProcessingAttachment;
+        return true;
+    }
+    return false;
 }
 
 var probeToJSON(const SignalProbe& probe) {
@@ -247,7 +277,10 @@ void appendCanonicalJSON(const var& value, int depth, String& output);
 
 void appendCanonicalObject(const DynamicObject& object, int depth, String& output) {
     const String compact = singleLineObject(object);
-    if (compact.isNotEmpty() && depth * 4 + compact.length() <= maximumLineLength) {
+    const bool edgeObject = object.hasProperty("sourceNodeId")
+            && object.hasProperty("destNodeId");
+    if (compact.isNotEmpty()
+            && (edgeObject || depth * 4 + compact.length() <= maximumLineLength)) {
         output << compact;
         return;
     }
@@ -385,6 +418,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 
     const auto& registry = NodeDefinitionRegistry::instance();
     std::unordered_set<String, StringHash> nodeIds;
+    std::unordered_set<String, StringHash> legacyEnvelopeIds;
     for (const auto& encodedValue : *encodedNodes) {
         const auto* encoded = encodedValue.getDynamicObject();
         String nodeId;
@@ -440,6 +474,9 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         bool parametersValid = true;
+        if (node.kind == NodeKind::Envelope && !parameters->hasProperty("purpose")) {
+            legacyEnvelopeIds.emplace(nodeId);
+        }
         for (const auto& property : parameters->getProperties()) {
             const auto* parameterDefinition = registry.findParameter(node.kind, property.name.toString());
             String normalized;
@@ -459,6 +496,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         if (!parametersValid) {
             continue;
         }
+        applyEnvelopePurpose(node);
 
         if (definition->modelCodec != nullptr) {
             String error;
@@ -508,9 +546,43 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         edge.domain = guideAttachment
                 ? PortDomain::EnvelopeSignal
                 : resolvedEdgeDomain(*source, *destination);
-        edge.attachment = guideAttachment
-                || destination->purpose == PortPurpose::ScratchAttachment;
+        const ConnectionKind inferredKind = guideAttachment
+                || destination->purpose == PortPurpose::ScratchAttachment
+                ? ConnectionKind::ProcessingAttachment
+                : ConnectionKind::Signal;
+        const var encodedKind = encoded->getProperty("connectionKind");
+        if (!connectionKindFromJSON(encodedKind, edge.kind)) {
+            if (!encodedKind.isVoid()) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge has an invalid connection kind" });
+                continue;
+            }
+            edge.kind = inferredKind;
+        }
         result.graph.addEdge(std::move(edge));
+    }
+
+    for (const auto& nodeId : legacyEnvelopeIds) {
+        Node* envelope = result.graph.findNodeForEditing(nodeId);
+        if (envelope == nullptr) {
+            continue;
+        }
+        EnvelopePurpose purpose = EnvelopePurpose::Control;
+        for (const auto& edge : result.graph.getEdges()) {
+            if (edge.sourceNodeId != nodeId || edge.sourcePortId != "env") {
+                continue;
+            }
+            purpose = edge.isProcessingAttachment()
+                    ? EnvelopePurpose::Scratch
+                    : EnvelopePurpose::Volume;
+            break;
+        }
+        for (auto& parameter : envelope->parameters) {
+            if (parameter.id == "purpose") {
+                parameter.value = envelopePurposeToString(purpose);
+                break;
+            }
+        }
+        applyEnvelopePurpose(*envelope);
     }
 
     std::unordered_set<String, StringHash> probeIds;

@@ -1,12 +1,14 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/NodeEditorHost.h"
@@ -480,6 +482,26 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
+        "[cycle-v2][node-editor-host][envelope][purpose]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    GraphEditor graphEditor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(graphEditor.setNodeParameter(
+            graph, "env", "purpose", "Purpose", "pitch").succeeded());
+
+    Effect2DWidget widget(NodeKind::Envelope);
+    auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*graph.findNode("env"));
+    REQUIRE(editor->automationState().getProperty("purpose", {}).toString() == "Pitch");
+    REQUIRE(editor->automationState().getProperty("polarity", {}).toString() == "bipolar");
+    REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

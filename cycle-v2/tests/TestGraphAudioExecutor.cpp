@@ -5,6 +5,7 @@
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
@@ -12,6 +13,7 @@
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
 
 #include <algorithm>
 #include <atomic>
@@ -22,6 +24,8 @@
 #include <pthread.h>
 #endif
 
+using namespace CycleV2;
+
 namespace {
 
 thread_local bool countRealtimeAllocations = false;
@@ -30,6 +34,17 @@ std::atomic<size_t> realtimeAllocationCount {};
 thread_local bool countRealtimeLocks = false;
 std::atomic<size_t> realtimeLockCount {};
 #endif
+
+void setEnvelopePurpose(NodeGraph& graph, const String& nodeId, EnvelopePurpose purpose) {
+    Node* node = graph.findNodeForEditing(nodeId);
+    REQUIRE(node != nullptr);
+    for (auto& parameter : node->parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = envelopePurposeToString(purpose);
+        }
+    }
+    applyEnvelopePurpose(*node);
+}
 
 }
 
@@ -69,8 +84,6 @@ void operator delete(void* memory) noexcept { std::free(memory); }
 void operator delete[](void* memory) noexcept { std::free(memory); }
 void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
-
-using namespace CycleV2;
 
 namespace {
 
@@ -201,13 +214,14 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 240.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 240.f, 180.f }));
+    setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::Multiply, "mul", { 520.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 760.f, 0.f }));
 
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "env", "env", "mul", "right", PortDomain::EnvelopeSignal, false });
-    graph.addEdge({ "mul", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "env", "env", "mul", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mul", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -295,15 +309,16 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "redControl", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
     graph.addEdge({
-            "redControl", "value", "env", "red", PortDomain::ControlSignal, false
+            "redControl", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
-    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
-    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     Node* envelope = graph.findNodeForEditing("env");
     REQUIRE(envelope != nullptr);
     for (auto& parameter : envelope->parameters) {
@@ -327,16 +342,77 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     REQUIRE(parameterValueForNode(*graph.findNode("env"), "red") == "0.5");
 }
 
+TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and traversal grids",
+        "[cycle-v2][runtime][envelope][logarithmic]") {
+    const auto render = [](bool logarithmic) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+        setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
+        Node* envelope = graph.findNodeForEditing("env");
+        REQUIRE(envelope != nullptr);
+        for (auto& parameter : envelope->parameters) {
+            if (parameter.id == "logarithmic") {
+                parameter.value = logarithmic ? "1" : "0";
+            }
+            if (parameter.id == "level") {
+                parameter.value = "0.75";
+            }
+        }
+
+        const auto compiled = GraphCompiler().compile(graph);
+        REQUIRE(compiled.succeeded());
+        AudioVoiceContext voice;
+        voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        return GraphAudioExecutor().process(graph, compiled.plan, 32, {}, voice);
+    };
+
+    const auto linear = render(false);
+    const auto logarithmic = render(true);
+    const auto& linearEnvelope = findNodeAudio(linear, "env").output;
+    const auto& logarithmicEnvelope = findNodeAudio(logarithmic, "env").output;
+    REQUIRE(linearEnvelope.traversalGrid.isValid());
+    REQUIRE(logarithmicEnvelope.traversalGrid.isValid());
+
+    std::vector<float> expectedAudio(
+            linearEnvelope.block.samples.begin(),
+            linearEnvelope.block.samples.end());
+    Buffer<float> expectedAudioBuffer(expectedAudio.data(), (int) expectedAudio.size());
+    expectedAudioBuffer.mul(1.f / 0.75f);
+    Arithmetic::applyInvLogMapping(expectedAudioBuffer, 30.f);
+    expectedAudioBuffer.mul(0.75f);
+
+    std::vector<float> expectedGrid(
+            linearEnvelope.traversalGrid.values.begin(),
+            linearEnvelope.traversalGrid.values.end());
+    Buffer<float> expectedGridBuffer(expectedGrid.data(), (int) expectedGrid.size());
+    expectedGridBuffer.mul(1.f / 0.75f);
+    Arithmetic::applyInvLogMapping(expectedGridBuffer, 30.f);
+    expectedGridBuffer.mul(0.75f);
+
+    const auto maximumError = [](const auto& actual, const auto& expected) {
+        REQUIRE(actual.size() == expected.size());
+        float result {};
+        for (size_t index = 0; index < expected.size(); ++index) {
+            result = std::max(result, std::abs(actual[index] - expected[index]));
+        }
+        return result;
+    };
+    REQUIRE(maximumError(logarithmicEnvelope.block.samples, expectedAudio) < 0.00001f);
+    REQUIRE(maximumError(logarithmicEnvelope.traversalGrid.values, expectedGrid) < 0.00001f);
+}
+
 TEST_CASE("Graph audio executor applies envelope phase across traversal columns", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 0.f, 180.f }));
+    setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::Multiply, "mul", { 260.f, 0.f }));
 
-    graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "env", "env", "mul", "right", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "env", "env", "mul", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -382,12 +458,13 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "shape", "time", "multiply", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
-    graph.addEdge({ "multiply", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     AudioVoiceContext voice;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
@@ -474,10 +551,10 @@ TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[c
     };
     graph.addNode(mesh);
 
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "operand", "out", "add", "right", PortDomain::ControlSignal, false });
-    graph.addEdge({ "add", "out", "shape", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "shape", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "operand", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "add", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -502,7 +579,7 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.replaceNodeParameters("wave", { { "level", "Level", "0.5" } });
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 0.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -525,8 +602,8 @@ TEST_CASE("Graph audio executor preserves per-node processor state between block
             { "wet", "Wet", "1" }
     });
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
-    graph.addEdge({ "wave", "out", "delay", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "delay", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "delay", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "delay", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -626,7 +703,7 @@ TEST_CASE("Prepared graph audio dispatch remains available for every voice", "[c
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -692,10 +769,10 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 780.f, 0.f }));
-    graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });
-    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
-    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
+    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -741,11 +818,11 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
     REQUIRE(sawtoothMesh.readJSON(sawtoothMeshTopology()));
     graph.replaceNodeModel("saw", TrimeshNodeModelState::copyOf(sawtoothMesh, 2));
     sawtoothMesh.destroy();
-    graph.addEdge({ "voice", "context", "saw", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "saw", "out", "fft", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false });
-    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
-    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "voice", "context", "saw", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "saw", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
+    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({ "sawProbe", "saw", "out", "fft", "time", "Sawtooth", 0.5f, 0 });
     graph.addSignalProbe({ "magnitudeProbe", "fft", "mag", "ifft", "mag", "Magnitude 1/n", 0.5f, 1 });
     graph.addSignalProbe({ "roundTripProbe", "ifft", "time", "out", "time", "FFT round trip", 0.5f, 2 });
@@ -839,7 +916,7 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -901,15 +978,16 @@ TEST_CASE("Dynamic Envelope request and adoption remain allocation-free on the r
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
     graph.addEdge({
-            "redControl", "out", "env", "red", PortDomain::ControlSignal, false
+            "redControl", "out", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
-    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
-    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     Node* envelope = graph.findNodeForEditing("env");
     REQUIRE(envelope != nullptr);
     for (auto& parameter : envelope->parameters) {
@@ -973,9 +1051,9 @@ TEST_CASE("Realtime observation is optional and fan-out shares compiled slot sto
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "wave", "out", "add", "right", PortDomain::TimeSignal, false });
-    graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "add", "right", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());

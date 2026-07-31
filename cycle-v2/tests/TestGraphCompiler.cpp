@@ -141,7 +141,7 @@ TEST_CASE("Compiler indexes both dependency directions and probe addresses",
     graph.addNode(graphNode(
             "sink", { input("in", PortDomain::TimeSignal) }, {}));
     graph.addEdge({
-            "source", "signal", "sink", "in", PortDomain::TimeSignal, false });
+            "source", "signal", "sink", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({ "probe", "source", "signal", "sink", "in", "Probe" });
 
     const auto result = GraphCompiler().compile(graph);
@@ -219,7 +219,7 @@ TEST_CASE("Compiler preserves FFT fixed-window mode", "[cycle-v2][graph]") {
 
 TEST_CASE("Invalid graphs do not compile", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "voice", "context", "multiply", "audio", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "multiply", "audio", PortDomain::DomainContext, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -242,9 +242,9 @@ TEST_CASE("Compiler resolves source domains from voice context parameters", "[cy
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "next", { 760.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
-    graph.addEdge({ "add", "out", "next", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "add", "out", "next", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -271,13 +271,13 @@ TEST_CASE("One spectral voice context resolves magnitude and phase mesh branches
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "phaseB", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "phaseAdd", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addEdge({ "voice", "context", "magnitude", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "voice", "context", "phaseA", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "voice", "context", "phaseB", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "magnitude", "out", "ifft", "mag", PortDomain::ControlSignal, false });
-    graph.addEdge({ "phaseA", "out", "phaseAdd", "left", PortDomain::ControlSignal, false });
-    graph.addEdge({ "phaseB", "out", "phaseAdd", "right", PortDomain::ControlSignal, false });
-    graph.addEdge({ "phaseAdd", "out", "ifft", "phase", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "magnitude", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "phaseA", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "phaseB", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "magnitude", "out", "ifft", "mag", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "phaseA", "out", "phaseAdd", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "phaseB", "out", "phaseAdd", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "phaseAdd", "out", "ifft", "phase", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -298,7 +298,7 @@ TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][gra
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 240.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -323,8 +323,8 @@ TEST_CASE("Compiler resolves mesh output domains from consuming operation contex
     });
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 520.f, 0.f }));
-    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, false });
-    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -343,8 +343,8 @@ TEST_CASE("Compiler rejects processing cycles", "[cycle-v2][graph]") {
             "b",
             { input("in", PortDomain::TimeSignal) },
             { output("out", PortDomain::TimeSignal) }));
-    graph.addEdge({ "a", "out", "b", "in", PortDomain::TimeSignal, false });
-    graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, false });
+    graph.addEdge({ "a", "out", "b", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
 
@@ -360,7 +360,7 @@ TEST_CASE("Compiler assigns output slots and source lifetimes before processing"
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
-    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphCompiler().compile(graph);
     REQUIRE(result.succeeded());

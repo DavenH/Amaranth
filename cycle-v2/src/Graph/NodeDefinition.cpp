@@ -8,6 +8,7 @@
 #include "NodeDefinition.h"
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
 
 namespace CycleV2 {
@@ -378,6 +379,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("red", "Red Morph", PortDomain::ControlSignal),
                       input("blue", "Blue Morph", PortDomain::ControlSignal) },
                     { output("env", "Env", PortDomain::EnvelopeSignal) }, {
+                            choice("purpose", "Purpose", "control", { "control", "volume", "pitch", "scratch" }, graph | dsp | preview | presentation),
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -605,6 +607,7 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
             found->value = parameterDefinition.normalized(found->value);
         }
     }
+    applyEnvelopePurpose(node);
 }
 
 String typedParameterString(

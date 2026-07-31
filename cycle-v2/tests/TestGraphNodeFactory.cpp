@@ -19,7 +19,8 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.inputs[0].side == PortSide::Left);
     REQUIRE(node.inputs[1].side == PortSide::Left);
     REQUIRE(node.outputs.size() == 1);
-    REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(node.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(parameterValueForNode(node, "purpose") == "control");
     REQUIRE(node.bounds.getWidth() == 295.2f);
     REQUIRE(node.model != nullptr);
     REQUIRE(node.model->schemaId() == "envelope");

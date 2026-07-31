@@ -55,7 +55,7 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 80.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
@@ -183,7 +183,7 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "phase"),
             PortDomain::ControlSignal,
-            true
+            ConnectionKind::ProcessingAttachment
     });
     graph.addEdge({
             "guide",
@@ -191,7 +191,7 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
             PortDomain::ControlSignal,
-            true
+            ConnectionKind::ProcessingAttachment
     });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

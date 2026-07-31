@@ -310,7 +310,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1110.11035, "y": 193.10345 },
-            "parameters": { "logarithmic": false, "red": 0.591, "blue": 1.0, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.591, "blue": 1.0, "dynamic": false, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -412,7 +412,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 121.72412, "y": -137.93103 },
-            "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "pitch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1135,7 +1135,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 4.11034, "y": 520.0 },
-            "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -1277,8 +1277,8 @@
         { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "pitchEnvelope", "destPortId": "blue" },
         { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "scratchEnvelope", "destPortId": "red" },
         { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "scratchEnvelope", "destPortId": "blue" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch" }
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment" }
     ],
     "probes": []
 }

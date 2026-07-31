@@ -130,6 +130,16 @@ public:
         return &mesh;
     }
 
+    void setEnvelopeBipolar(bool bipolar) override {
+        if (isCurveBipolar() == bipolar) {
+            return;
+        }
+
+        setCurveBipolar(bipolar);
+        updateEnvelopeBackgroundGrid();
+        Panel2D::repaint();
+    }
+
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) override {
         envelopeLogarithmic = shouldUseLogarithmicScale;
         updateEnvelopeBackgroundGrid();
@@ -378,6 +388,7 @@ public:
 
         root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
+        root->setProperty("bipolar", isCurveBipolar());
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         Array<var> vertexParameters;
         for (const auto& parameter : selectedVertexParameters()) {

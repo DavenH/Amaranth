@@ -274,8 +274,8 @@ TEST_CASE("Modulation nodes compile, fan out, and round-trip as graph routes",
             { "controller", "Controller", "74" },
             { "constant", "Constant", "0.5" }
     });
-    graph.addEdge({ "cc", "value", "env", "red", PortDomain::ControlSignal, false });
-    graph.addEdge({ "cc", "value", "mesh", "blue", PortDomain::ControlSignal, false });
+    graph.addEdge({ "cc", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "cc", "value", "mesh", "blue", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -342,7 +342,7 @@ TEST_CASE("Graph execution delivers per-voice modulation to connected destinatio
             { "constant", "Constant", "0.5" }
     });
     graph.addEdge({
-            "velocity", "value", "env", "red", PortDomain::ControlSignal, false
+            "velocity", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());

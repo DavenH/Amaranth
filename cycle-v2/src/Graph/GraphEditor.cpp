@@ -1,6 +1,7 @@
 #include "GraphEditor.h"
 
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 
 #include <unordered_map>
 
@@ -14,6 +15,38 @@ PortDomain edgeDomainForConnection(const Port& source, const Port& dest) {
     }
 
     return source.domain;
+}
+
+ConnectionKind connectionKindForConnection(const Node& source, const Port& dest) {
+    if (source.kind == NodeKind::Envelope) {
+        return envelopeConnectionKind(envelopePurposeFor(source));
+    }
+    return dest.purpose == PortPurpose::ScratchAttachment
+            ? ConnectionKind::ProcessingAttachment
+            : ConnectionKind::Signal;
+}
+
+std::vector<Edge> outgoingEdges(const NodeGraph& graph, const String& nodeId, const String& portId) {
+    std::vector<Edge> result;
+    for (const auto& edge : graph.getEdges()) {
+        if (edge.sourceNodeId == nodeId && edge.sourcePortId == portId) {
+            result.push_back(edge);
+        }
+    }
+    return result;
+}
+
+std::vector<Edge> applyEnvelopePurposeChange(
+        NodeGraph& graph,
+        Node& node,
+        const String& parameterId) {
+    if (node.kind != NodeKind::Envelope || parameterId != "purpose") {
+        return {};
+    }
+    auto removed = outgoingEdges(graph, node.id, "env");
+    graph.removeEdgesFromOutput(node.id, "env");
+    applyEnvelopePurpose(node);
+    return removed;
 }
 
 struct StringHash {
@@ -69,7 +102,7 @@ GraphEditResult GraphEditor::connect(
             destAddress.nodeId,
             destAddress.portId,
             edgeDomainForConnection(*source, *dest),
-            dest->purpose == PortPurpose::ScratchAttachment
+            connectionKindForConnection(*sourceNode, *dest)
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -110,7 +143,7 @@ GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(
             meshNodeId,
             targetPortId,
             PortDomain::EnvelopeSignal,
-            true
+            ConnectionKind::ProcessingAttachment
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -160,7 +193,7 @@ GraphEditResult GraphEditor::toggleSignalProbe(
     }
 
     const Edge& edge = graph.getEdges()[edgeIndex];
-    if (edge.attachment
+    if (edge.isAttachment()
             || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
@@ -211,7 +244,7 @@ GraphEditResult GraphEditor::reattachSignalProbe(
     }
 
     const Edge& edge = graph.getEdges()[edgeIndex];
-    if (edge.attachment
+    if (edge.isAttachment()
             || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
         return { GraphEditCode::ValidationRejected, probeId, {} };
     }
@@ -345,8 +378,10 @@ GraphEditResult GraphEditor::setNodeParameter(
             }
             parameter.label = resolvedLabel;
             parameter.value = normalizedValue;
+            auto removedEdges = applyEnvelopePurposeChange(graph, *node, parameterId);
             graph.markChanged();
             GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+            result.removedEdges = std::move(removedEdges);
             result.changes.nodeIds.push_back(nodeId);
             result.changes.parameterImpacts = impacts;
             return result;
@@ -354,8 +389,10 @@ GraphEditResult GraphEditor::setNodeParameter(
     }
 
     node->parameters.push_back({ parameterId, resolvedLabel, normalizedValue });
+    auto removedEdges = applyEnvelopePurposeChange(graph, *node, parameterId);
     graph.markChanged();
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+    result.removedEdges = std::move(removedEdges);
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
     return result;
@@ -420,8 +457,19 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     }
 
     node->parameters = std::move(nextParameters);
+    const bool purposeChanged = std::any_of(
+            normalized.begin(),
+            normalized.end(),
+            [](const auto& parameter) {
+                return parameter.id == "purpose";
+            });
+    auto removedEdges = applyEnvelopePurposeChange(
+            graph,
+            *node,
+            purposeChanged ? String("purpose") : String());
     graph.markChanged();
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
+    result.removedEdges = std::move(removedEdges);
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
     return result;

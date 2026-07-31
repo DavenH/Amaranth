@@ -465,7 +465,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolution);
 
         for (const auto& edge : graph.getEdges()) {
-            if (edge.attachment) {
+            if (edge.isAttachment()) {
                 result.plan.attachments.push_back(edge);
             }
         }

@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
@@ -97,6 +99,54 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("voices", {}).isInt());
     REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isString());
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
+}
+
+TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attachments",
+        "[cycle-v2][graph][envelope][purpose][migration]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "legacyControl", {}));
+    graph.addEdge({
+            "scratchEnv",
+            "env",
+            "waveMesh",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment
+    });
+
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    for (auto& node : *nodes) {
+        const String id = node.getProperty("id", {}).toString();
+        if (id == "env" || id == "scratchEnv" || id == "legacyControl") {
+            node.getProperty("parameters", {}).getDynamicObject()->removeProperty("purpose");
+        }
+    }
+
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    const var duplicateEdge = edges->getReference(0).clone();
+    edges->add(duplicateEdge);
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("env")) == EnvelopePurpose::Volume);
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("scratchEnv")) == EnvelopePurpose::Scratch);
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("legacyControl")) == EnvelopePurpose::Control);
+
+    const auto duplicateCount = std::count_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "scratchEnv"
+                        && edge.destNodeId == "waveMesh"
+                        && edge.destPortId == "scratch";
+            });
+    REQUIRE(duplicateCount == 1);
+    const String canonical = serializer.toJsonString(loaded.graph);
+    REQUIRE(serializer.toJsonString(serializer.fromJsonString(canonical)) == canonical);
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
@@ -389,7 +439,7 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
                             && edge.sourcePortId == "guide"
                             && edge.destNodeId == destination
                             && edge.destPortId == port
-                            && edge.attachment;
+                            && edge.isAttachment();
                 });
     };
 

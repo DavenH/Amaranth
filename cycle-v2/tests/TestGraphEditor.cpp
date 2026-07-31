@@ -4,8 +4,108 @@
 
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphCommandDispatcher.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomically",
+        "[cycle-v2][graph][envelope][purpose]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+
+    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "env", "env", false },
+            { "multiply", "right", true }).succeeded());
+    REQUIRE(graph.getEdges().size() == 1);
+
+    const auto changed = editor.setNodeParametersAtomic(graph, "env", {
+            { "purpose", "Purpose", "scratch" },
+            { "logarithmic", "Logarithmic", "1" }
+    });
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.removedEdges.size() == 1);
+    REQUIRE(graph.getEdges().empty());
+    const Node* envelope = graph.findNode("env");
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelopePurposeFor(*envelope) == EnvelopePurpose::Scratch);
+    REQUIRE(envelope->subtitle == "scratch envelope");
+    REQUIRE(envelope->outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(parameterValueForNode(*envelope, "logarithmic") == "0");
+
+    const auto attached = editor.connect(
+            graph,
+            { "env", "env", false },
+            { "mesh", "scratch", true });
+    REQUIRE(attached.succeeded());
+    REQUIRE(graph.getEdges().front().kind == ConnectionKind::ProcessingAttachment);
+}
+
+TEST_CASE("Envelope purpose exposes control volume and pitch domains",
+        "[cycle-v2][graph][envelope][purpose]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+
+    const struct Expected {
+        const char* purpose;
+        PortDomain domain;
+        bool logarithmic;
+    } expected[] {
+            { "control", PortDomain::ControlSignal, true },
+            { "volume", PortDomain::EnvelopeSignal, true },
+            { "pitch", PortDomain::PitchSignal, false },
+            { "scratch", PortDomain::EnvelopeSignal, false }
+    };
+
+    for (const auto& item : expected) {
+        REQUIRE(editor.setNodeParameter(
+                graph,
+                "env",
+                "purpose",
+                "Purpose",
+                item.purpose).succeeded());
+        const Node* envelope = graph.findNode("env");
+        REQUIRE(envelope != nullptr);
+        REQUIRE(envelope->outputs.front().domain == item.domain);
+        REQUIRE(envelopePurposeAllowsLogarithmic(envelopePurposeFor(*envelope)) == item.logarithmic);
+    }
+}
+
+TEST_CASE("Envelope purpose edit restores its removed routing through document undo",
+        "[cycle-v2][graph][envelope][purpose][undo]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    REQUIRE(editor.setNodeParameter(graph, "env", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "env", "env", false },
+            { "multiply", "right", true }).succeeded());
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto changed = commands.setNodeParameter(
+            "env", "purpose", "Purpose", "scratch");
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.removedEdges.size() == 1);
+    REQUIRE(document.graph().getEdges().empty());
+
+    REQUIRE(document.undo());
+    const Node* envelope = document.graph().findNode("env");
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelopePurposeFor(*envelope) == EnvelopePurpose::Volume);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().kind == ConnectionKind::Signal);
+}
 
 TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2][graph][causal]") {
     NodeGraph graph;
@@ -107,7 +207,7 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     REQUIRE(edge.sourceNodeId == "env");
     REQUIRE(edge.destNodeId == "multiply");
     REQUIRE(edge.destPortId == "right");
-    REQUIRE_FALSE(edge.attachment);
+    REQUIRE_FALSE(edge.isAttachment());
 }
 
 TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]") {
@@ -134,7 +234,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
             { "waveMesh", "scratch", true });
 
     REQUIRE(result.succeeded());
-    REQUIRE(graph.getEdges().back().attachment);
+    REQUIRE(graph.getEdges().back().isAttachment());
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
@@ -153,7 +253,7 @@ TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2]
     REQUIRE(GraphValidator().isValid(graph));
 
     const auto& edge = graph.getEdges().back();
-    REQUIRE(edge.attachment);
+    REQUIRE(edge.isAttachment());
     REQUIRE(edge.sourceNodeId == "guide");
     REQUIRE(edge.sourcePortId == "guide");
     REQUIRE(edge.destNodeId == "waveMesh");
@@ -183,7 +283,7 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
     int guideAttachments {};
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment && edge.sourceNodeId == "guide") {
+        if (edge.isAttachment() && edge.sourceNodeId == "guide") {
             ++guideAttachments;
         }
     }
@@ -216,7 +316,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     String attachedGuideId;
 
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment
+        if (edge.isAttachment()
                 && edge.destNodeId == "waveMesh"
                 && edge.destPortId == "guide.vertex.2.amp") {
             ++targetAttachments;
@@ -249,7 +349,7 @@ TEST_CASE("Graph editor splices a node into an edge", "[cycle-v2][graph]") {
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "shape");
 
@@ -269,7 +369,7 @@ TEST_CASE("Graph editor rejects incompatible edge splices", "[cycle-v2][graph]")
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "fft");
 
@@ -287,7 +387,7 @@ TEST_CASE("Graph editor rejects multiply splices on phase edges", "[cycle-v2][gr
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 0.f }));
-    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, false });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
 
     const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "multiply");
 

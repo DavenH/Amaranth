@@ -1,6 +1,7 @@
 #include "GraphValidator.h"
 
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -155,7 +156,7 @@ void GraphValidator::validateEdge(
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
     const Port* dest = findPort(*destNode, edge.destPortId, true);
-    const bool trimeshGuideTarget = edge.attachment
+    const bool trimeshGuideTarget = edge.isProcessingAttachment()
             && dest == nullptr
             && isTrimeshGuideTarget(*destNode, edge.destPortId);
 
@@ -173,7 +174,13 @@ void GraphValidator::validateEdge(
         return;
     }
 
-    if (edge.attachment) {
+    if (edge.isAttachment()) {
+        if (!edge.isProcessingAttachment()) {
+            report(
+                    GraphValidationCode::InvalidAttachmentDestination,
+                    "Unsupported configuration attachment destination: " + edge.destNodeId);
+            return;
+        }
         if (trimeshGuideTarget) {
             if (sourceNode->kind != NodeKind::GuideCurve) {
                 report(
@@ -184,10 +191,11 @@ void GraphValidator::validateEdge(
             return;
         }
 
-        if (source->domain != PortDomain::EnvelopeSignal) {
+        if (sourceNode->kind != NodeKind::Envelope
+                || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch) {
             if (!report(
                         GraphValidationCode::InvalidAttachmentSource,
-                        "Attachments currently require an envelope source: " + edge.sourceNodeId)) {
+                        "Scratch attachments require a scratch-purpose Envelope source: " + edge.sourceNodeId)) {
                 return;
             }
         }
@@ -206,6 +214,29 @@ void GraphValidator::validateEdge(
                 GraphValidationCode::ScratchPortRequiresAttachment,
                 "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id);
         return;
+    }
+
+    if (sourceNode->kind == NodeKind::Envelope) {
+        const EnvelopePurpose purpose = envelopePurposeFor(*sourceNode);
+        if (edge.kind != envelopeConnectionKind(purpose)) {
+            report(
+                    GraphValidationCode::InvalidAttachmentSource,
+                    "Envelope purpose does not match connection kind: " + edge.sourceNodeId);
+            return;
+        }
+        if (purpose == EnvelopePurpose::Volume && destNode->kind != NodeKind::Multiply) {
+            report(
+                    GraphValidationCode::DomainMismatch,
+                    "Volume envelopes can only feed gain/factor operations: " + edge.destNodeId);
+            return;
+        }
+        if (purpose == EnvelopePurpose::Pitch
+                && !(destNode->kind == NodeKind::VoiceContext && dest->id == "pitch")) {
+            report(
+                    GraphValidationCode::PitchRequiresVoiceAwareDestination,
+                    "Pitch envelopes can only feed Voice Context pitch: " + edge.destNodeId);
+            return;
+        }
     }
 
     if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {
@@ -271,7 +302,7 @@ void GraphValidator::validateOperationInputs(
 
         for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
             const Edge& edge = graph.getEdges()[edgeIndex];
-            if (edge.attachment || edge.destNodeId != node.id) {
+            if (edge.isAttachment() || edge.destNodeId != node.id) {
                 continue;
             }
 

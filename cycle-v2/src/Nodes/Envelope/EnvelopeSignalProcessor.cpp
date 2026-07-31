@@ -2,6 +2,8 @@
 
 #include "../Effect2D/CurveNodeModels.h"
 
+#include <Util/Arithmetic.h>
+
 #include <cmath>
 
 namespace CycleV2 {
@@ -297,6 +299,9 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
 
     const auto sampler = current->rasterizer->sampler();
     sampler.sampleAtIntervals(positions, values);
+    if (current->logarithmic) {
+        Arithmetic::applyInvLogMapping(values, 30.f);
+    }
     values.mul(level);
 
     configureTraversalGrid(

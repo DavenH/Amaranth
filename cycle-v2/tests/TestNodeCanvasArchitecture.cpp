@@ -181,7 +181,7 @@ TEST_CASE("Node canvas scene shares geometry with typed hit testing", "[cycle-v2
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 100.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 500.f, 80.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     NodeCanvasViewport viewport;
     viewport.setTransform({ 20.f, 30.f }, 1.f);
@@ -458,7 +458,7 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.vertex.0.red",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;
@@ -483,9 +483,9 @@ TEST_CASE("Cube-component assignments share one attachment cable per node pair",
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;
@@ -503,7 +503,7 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 420.f, 80.f }));
     graph.addEdge({
             "source", "out", "output", "time",
-            PortDomain::TimeSignal, false });
+            PortDomain::TimeSignal, ConnectionKind::Signal });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;

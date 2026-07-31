@@ -59,6 +59,12 @@ enum class PortPurpose {
     ScratchAttachment
 };
 
+enum class ConnectionKind {
+    Signal,
+    ConfigurationAttachment,
+    ProcessingAttachment
+};
+
 enum class PortSide {
     Left,
     Right,
@@ -119,7 +125,10 @@ struct Edge {
     String destNodeId;
     String destPortId;
     PortDomain domain {};
-    bool attachment {};
+    ConnectionKind kind { ConnectionKind::Signal };
+
+    bool isAttachment() const { return kind != ConnectionKind::Signal; }
+    bool isProcessingAttachment() const { return kind == ConnectionKind::ProcessingAttachment; }
 };
 
 struct SignalProbe {
@@ -160,6 +169,7 @@ public:
     void removeNode(const String& nodeId);
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
+    void removeEdgesFromOutput(const String& nodeId, const String& portId);
     bool replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters);
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);

@@ -16,7 +16,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 500.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 620.f, 520.f }));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 500.f, 300.f }));
-    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     RuntimeProcessTrace runtimeTrace;

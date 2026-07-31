@@ -5,6 +5,7 @@
 #include "CurvePanelInfrastructure.h"
 #include "EnvelopePanelAdapter.h"
 #include "FlatCurvePanelAdapter.h"
+#include "../Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -307,9 +308,13 @@ public:
 
     void syncFromNode(const Node& node) override {
         if (!adapter.needsNodeSync(node)) {
+            envelopePanel().setEnvelopeBipolar(
+                    envelopePurposeFor(node) == EnvelopePurpose::Pitch);
             return;
         }
         auto& typedPanel = envelopePanel();
+        typedPanel.setEnvelopeBipolar(
+                envelopePurposeFor(node) == EnvelopePurpose::Pitch);
         panel->clearInteractionState();
         if (adapter.syncFromNode(node)) {
             finishNodeSync(node);

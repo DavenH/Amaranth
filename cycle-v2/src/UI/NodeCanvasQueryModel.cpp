@@ -84,7 +84,7 @@ const NodePreviewResult* NodeCanvasQueryModel::findPreviewResult(const String& n
 }
 
 PortDomain NodeCanvasQueryModel::displayDomainForEdge(const Edge& edge) const {
-    if (edge.attachment) {
+    if (edge.isAttachment()) {
         return edge.domain;
     }
 
@@ -109,7 +109,7 @@ PortDomain NodeCanvasQueryModel::displayDomainForNodeOutput(
     }
 
     for (const auto& edge : graph.getEdges()) {
-        if (!edge.attachment && edge.sourceNodeId == node.id && edge.sourcePortId == portId) {
+        if (!edge.isAttachment() && edge.sourceNodeId == node.id && edge.sourcePortId == portId) {
             return displayDomainForEdge(edge);
         }
     }
@@ -164,7 +164,7 @@ int NodeCanvasQueryModel::attachmentCount() const {
     int count = 0;
 
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment) {
+        if (edge.isAttachment()) {
             ++count;
         }
     }
@@ -232,7 +232,7 @@ String NodeCanvasQueryModel::hoverTextForEdge(const Edge& edge) const {
                 + " -> " + edge.destNodeId + "." + edge.destPortId;
     }
 
-    return String(edge.attachment ? "Attachment" : "Signal")
+    return String(edge.isAttachment() ? "Attachment" : "Signal")
             + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
             + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
             + " -> " + edge.destNodeId + "." + edge.destPortId;

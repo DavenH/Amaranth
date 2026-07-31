@@ -211,7 +211,7 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
 }
 
 PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.attachment ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
+    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
 }
 
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
@@ -479,7 +479,7 @@ void NodeCanvasPresentation::paintEdges(
                 : colourForDomain(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
-                edge.attachment,
+                edge.isAttachment(),
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,

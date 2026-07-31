@@ -29,7 +29,7 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
         bool attached {};
 
         for (const auto& edge : graph.getEdges()) {
-            if (edge.attachment
+            if (edge.isAttachment()
                     && edge.sourceNodeId == node.id
                     && edge.destNodeId == meshNodeId
                     && edge.destPortId == target) {

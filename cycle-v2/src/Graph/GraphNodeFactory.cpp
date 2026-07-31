@@ -2,6 +2,8 @@
 
 #include "NodeDefinition.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
+
 namespace CycleV2 {
 
 Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> position) const {
@@ -25,6 +27,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     if (definition->modelCodec != nullptr) {
         node.model = definition->modelCodec->createDefault();
     }
+    applyEnvelopePurpose(node);
 
     const auto naturalSize = naturalSizeForNode(node);
     node.bounds.setSize(naturalSize.width, naturalSize.height);
