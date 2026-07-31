@@ -1,6 +1,7 @@
 #include "NodeCanvasScene.h"
 #include "ModulationCableBundle.h"
 #include "NodeViewModule.h"
+#include "TrimeshGuideCableBundle.h"
 
 #include <algorithm>
 
@@ -200,9 +201,15 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
 
     for (int edgeIndex = 0; edgeIndex < (int) graph.getEdges().size(); ++edgeIndex) {
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
-        const auto bundle = ModulationCableBundle::bundleBeginningAt(graph, edgeIndex);
-        const auto bundleIndices = ModulationCableBundle::edgeIndices(graph, edgeIndex);
-        if (bundleIndices.size() > 1 && !bundle.has_value()) {
+        const auto modulationBundle = ModulationCableBundle::bundleBeginningAt(graph, edgeIndex);
+        const auto modulationIndices = ModulationCableBundle::edgeIndices(graph, edgeIndex);
+        const auto guideBundle = TrimeshGuideCableBundle::bundleBeginningAt(graph, edgeIndex);
+        const auto guideIndices = TrimeshGuideCableBundle::edgeIndices(graph, edgeIndex);
+        const auto bundleIndices = guideBundle.has_value()
+                ? *guideBundle
+                : modulationIndices;
+        if ((modulationIndices.size() > 1 && !modulationBundle.has_value())
+                || (guideIndices.size() > 1 && !guideBundle.has_value())) {
             continue;
         }
         const Node* sourceNode = findNode(graph, edge.sourceNodeId);
@@ -216,8 +223,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             continue;
         }
 
-        const bool isBundle = bundle.has_value();
-        const auto source = viewport.toScreen(isBundle
+        const bool isModulationBundle = modulationBundle.has_value();
+        const auto source = viewport.toScreen(isModulationBundle
                 ? ModulationCableBundle::worldCentre(*sourceNode, false)
                 : portWorldCentre(*sourceNode, *sourcePort));
         const auto attachmentCentre = NodeViewModuleRegistry::instance()
@@ -225,7 +232,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (destinationPort == nullptr && !attachmentCentre.has_value()) {
             continue;
         }
-        const auto destination = viewport.toScreen(isBundle
+        const auto destination = viewport.toScreen(isModulationBundle
                 ? ModulationCableBundle::worldCentre(*destinationNode, true)
                 : destinationPort != nullptr
                 ? portWorldCentre(*destinationNode, *destinationPort)
@@ -242,14 +249,15 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 .createStrokedPath(hitPath, visiblePath);
         current.edges.push_back({
                 edgeIndex,
-                isBundle ? *bundle : std::vector<int> { edgeIndex },
+                bundleIndices,
                 source,
                 destination,
                 std::move(visiblePath),
                 std::move(hitPath),
                 destinationPort != nullptr,
-                isBundle,
-                !isBundle || ModulationCableBundle::destinationIncludesYellow(*destinationNode)
+                isModulationBundle,
+                !isModulationBundle
+                        || ModulationCableBundle::destinationIncludesYellow(*destinationNode)
         });
     }
 

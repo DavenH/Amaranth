@@ -363,6 +363,9 @@ private:
         }
         root.setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root.setProperty("hasCurrentCube", false);
+        root.setProperty("firstControl", controlA);
+        root.setProperty("secondControl", controlB);
+        root.setProperty("thirdControl", controlC);
         Array<var> parameters;
         for (const auto& parameter : selectedVertexParameters()) {
             auto* encoded = new DynamicObject();

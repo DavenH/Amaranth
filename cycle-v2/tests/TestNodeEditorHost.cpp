@@ -457,6 +457,26 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
     REQUIRE(widget.vertexCountForAutomation() == 55);
     REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
+
+    widget.syncFromNode(*baroqueGuide);
+    REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
+            == Catch::Approx(0.76562));
+    Node revisedGuide = *stengahGuide;
+    for (auto& parameter : revisedGuide.parameters) {
+        if (parameter.id == "dcOffset") {
+            parameter.value = "0.25";
+        } else if (parameter.id == "phase") {
+            parameter.value = "0.75";
+        }
+    }
+    widget.syncFromNode(revisedGuide);
+    const var widgetState = widget.automationState();
+    REQUIRE(static_cast<double>(widgetState.getProperty("firstControl", {}))
+            == Catch::Approx(0.0025));
+    REQUIRE(static_cast<double>(widgetState.getProperty("secondControl", {}))
+            == Catch::Approx(0.25));
+    REQUIRE(static_cast<double>(widgetState.getProperty("thirdControl", {}))
+            == Catch::Approx(0.75));
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
