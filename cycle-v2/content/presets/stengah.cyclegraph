@@ -6,7 +6,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 878.21356, "y": 735.68195 },
+            "position": { "x": 878.21362, "y": 724.43213 },
             "parameters": { "domain": "spectral", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
@@ -351,7 +351,7 @@
             "id": "guide1",
             "kind": "guideCurve",
             "definitionVersion": 1,
-            "position": { "x": 868.45447, "y": 1257.02551 },
+            "position": { "x": 883.01361, "y": 1250.12891 },
             "parameters": { "enabled": true, "noise": 0.0025, "dcOffset": 0.0, "phase": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -1141,7 +1141,7 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 4114.96875, "y": 881.68628 },
+            "position": { "x": 3877.0376, "y": 881.68622 },
             "parameters": {}
         }
     ],
@@ -1190,6 +1190,16 @@
             "anchorDestPortId": "time",
             "label": "Spy 2",
             "tapPosition": 0.50131,
+            "railOrder": 1
+        },
+        {
+            "id": "probe",
+            "sourceNodeId": "equalizer",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.54465,
             "railOrder": 1
         }
     ]
