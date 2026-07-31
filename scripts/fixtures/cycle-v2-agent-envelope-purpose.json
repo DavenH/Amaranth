@@ -1,0 +1,55 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "scratchEnvelope",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purpose",
+      "equals": "Scratch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.polarity",
+      "equals": "unipolar"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "purpose",
+      "label": "Purpose",
+      "value": "pitch",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "purpose",
+      "equals": "pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purpose",
+      "equals": "Pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 31
+    }
+  ],
+  "quit": true
+}

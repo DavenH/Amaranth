@@ -346,6 +346,10 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
 
 TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and traversal grids",
         "[cycle-v2][runtime][envelope][logarithmic]") {
+    struct RenderedEnvelope {
+        GraphAudioResult audio;
+        GraphPreviewResult preview;
+    };
     const auto render = [](bool logarithmic) {
         GraphNodeFactory factory;
         NodeGraph graph;
@@ -361,18 +365,34 @@ TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and trave
                 parameter.value = "0.75";
             }
         }
+        graph.addSignalProbe({
+                "envelopeProbe",
+                "env",
+                "env",
+                {},
+                {},
+                "Envelope",
+                0.5f,
+                0
+        });
 
         const auto compiled = GraphCompiler().compile(graph);
         REQUIRE(compiled.succeeded());
         AudioVoiceContext voice;
         voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
-        return GraphAudioExecutor().process(graph, compiled.plan, 32, {}, voice);
+        auto audio = GraphAudioExecutor().process(graph, compiled.plan, 32, {}, voice);
+        auto preview = GraphPreviewExecutor().render(
+                compiled.plan,
+                audio,
+                graph.getSignalProbes(),
+                32);
+        return RenderedEnvelope { std::move(audio), std::move(preview) };
     };
 
     const auto linear = render(false);
     const auto logarithmic = render(true);
-    const auto& linearEnvelope = findNodeAudio(linear, "env").output;
-    const auto& logarithmicEnvelope = findNodeAudio(logarithmic, "env").output;
+    const auto& linearEnvelope = findNodeAudio(linear.audio, "env").output;
+    const auto& logarithmicEnvelope = findNodeAudio(logarithmic.audio, "env").output;
     REQUIRE(linearEnvelope.traversalGrid.isValid());
     REQUIRE(logarithmicEnvelope.traversalGrid.isValid());
 
@@ -402,6 +422,12 @@ TEST_CASE("Logarithmic Envelope applies the Cycle 1 transform to audio and trave
     };
     REQUIRE(maximumError(logarithmicEnvelope.block.samples, expectedAudio) < 0.00001f);
     REQUIRE(maximumError(logarithmicEnvelope.traversalGrid.values, expectedGrid) < 0.00001f);
+    REQUIRE(logarithmic.preview.nodes.size() == 1);
+    REQUIRE(logarithmic.preview.nodes.front().primary == logarithmicEnvelope.traversalGrid.values);
+    REQUIRE(logarithmic.preview.nodes.front().secondary == logarithmicEnvelope.block.samples);
+    REQUIRE(logarithmic.preview.probes.size() == 1);
+    REQUIRE(logarithmic.preview.probes.front().values == logarithmicEnvelope.traversalGrid.values);
+    REQUIRE(logarithmic.preview.probes.front().values != linear.preview.probes.front().values);
 }
 
 TEST_CASE("Graph audio executor applies envelope phase across traversal columns", "[cycle-v2][runtime]") {

@@ -78,6 +78,30 @@ TEST_CASE("Envelope purpose exposes control volume and pitch domains",
     }
 }
 
+TEST_CASE("Pitch Envelope rejects routing until Voice Context supplies its typed port",
+        "[cycle-v2][graph][envelope][purpose][pitch]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph, "env", "purpose", "Purpose", "pitch").succeeded());
+
+    const auto missingVoicePort = editor.connect(
+            graph,
+            { "env", "env", false },
+            { "voice", "pitch", true });
+    REQUIRE(missingVoicePort.code == GraphEditCode::MissingPort);
+    const auto genericDestination = editor.connect(
+            graph,
+            { "env", "env", false },
+            { "multiply", "right", true });
+    REQUIRE(genericDestination.code == GraphEditCode::ValidationRejected);
+    REQUIRE(graph.getEdges().empty());
+}
+
 TEST_CASE("Envelope purpose edit restores its removed routing through document undo",
         "[cycle-v2][graph][envelope][purpose][undo]") {
     GraphNodeFactory factory;

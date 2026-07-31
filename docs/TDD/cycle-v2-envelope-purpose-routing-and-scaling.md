@@ -2,7 +2,28 @@
 
 ## Status
 
-Proposed.
+In Progress.
+
+Purpose persistence and migration, typed connection kinds, purpose-aware
+presentation and polarity, logarithmic DSP/preview/spy parity, and compiled
+scratch attachments are implemented in `4ad62d36` and `5b5e6b9d`. Scratch
+attachments now change every attached Stengah Trimesh in block audio,
+traversal previews, and spies without realtime graph lookup or allocation.
+
+Three completion boundaries remain and must not be filled with local
+approximations:
+
+- Voice Context still has no typed pitch input or pitch-aware runtime. Pitch
+  Envelope routing therefore remains truthfully rejected as specified below.
+- Trimesh block rendering still selects one morph coordinate for a whole
+  processing block. Sample-accurate scratch traversal depends on the
+  pitch-clocked source scheduling owned by
+  `cycle-v2-oscillator-region-compilation.md`.
+- The expanded Trimesh editor is an authoring view with no published runtime
+  preview input. Compact previews and spies consume the compiled scratch
+  traversal today; displaying that same traversal in the expanded editor
+  requires a shared runtime-preview boundary rather than a second editor-side
+  evaluator.
 
 The pitch connection slice depends on the Voice Context pitch port being
 merged from its current branch. Purpose state, presentation, logarithmic DSP,
@@ -258,20 +279,59 @@ The expected end state deletes:
 
 ## Implementation Slices
 
-1. Add typed four-purpose persistence, canonical migration, purpose-aware
+1. **Complete:** add typed four-purpose persistence, canonical migration, purpose-aware
    presentation, and atomic incompatible-edge removal.
-2. Unify logarithmic audio, traversal-grid, preview, and spy output through the
+2. **Complete:** unify logarithmic audio, traversal-grid, preview, and spy output through the
    shared Cycle 1 transform; add value-level parity tests.
-3. Extract or expose the authoritative scratch-coordinate application rule,
+3. **Partial:** extract or expose the authoritative scratch-coordinate application rule,
    lower scratch processing attachments to immutable target bindings, and
-   implement matching Trimesh audio/preview traversal.
-4. After the Voice Context pitch port merges, enable the typed pitch edge and
+   implement matching Trimesh audio/preview traversal. Immutable binding,
+   block-coordinate audio, traversal preview, spy, and Stengah coverage are
+   complete. Sample-accurate source rendering and expanded-editor publication
+   remain at the boundaries listed in Status.
+4. **Blocked on its declared dependency:** after the Voice Context pitch port merges, enable the typed pitch edge and
    reuse shared pitch sampling/tuning in the compiled voice plan.
-5. Remove transitional connection/output inference and run the architectural
+5. **Partial:** remove transitional connection/output inference and run the architectural
    review required by `docs/TDD/README.md` before marking this implemented.
+   The ambiguous serialized attachment boolean is deleted; the review below
+   records the remaining runtime boundaries.
 
 Each slice receives its own implementation, refactor, style, semantic-test,
 automation, and commit pass.
+
+## Implementation Review
+
+Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
+
+- Production diff: 653 additions and 71 removals across 31 files (582 net).
+- Largest production changes: `TrimeshNodeAudioProcessor.cpp` at 112 additions
+  and 5 removals, `EnvelopePurpose.cpp` at 84 additions, and
+  `GraphSerializer.cpp` at 75 additions and 3 removals. No production file
+  exceeded the design's 150-line review threshold.
+- Type/kind branches: Envelope purpose validation is centralized in
+  `EnvelopePurpose`; graph validation adds one Envelope-purpose branch and the
+  existing Trimesh runtime adds one resolved processing-attachment lookup. No
+  generic flat-curve component gained Envelope state.
+- Mature reuse: logarithmic scaling calls
+  `Arithmetic::applyInvLogMapping(..., 30)`; Cycle 1 and Cycle 2 now call the
+  shared `Rasterization::ScratchPositionPolicy`; Envelope playback remains in
+  the shared playback engine.
+- Deletion status: serialized `bool attachment` has been replaced by
+  `ConnectionKind`; legacy JSON decoding remains intentionally at the codec
+  boundary. UI renderer booleans are derived presentation flags, not graph
+  state. Pitch routing, sample-accurate scratch source scheduling, and expanded
+  runtime-preview publication remain incomplete as listed in Status.
+- Semantic evidence: focused purpose, migration, undo, logarithmic value,
+  scratch traversal, Stengah topology, duplicate-edge, and realtime tests pass.
+  The Stengah UI fixture
+  `scripts/fixtures/cycle-v2-agent-envelope-purpose.json` verifies the visible
+  selector, bipolar/unipolar state, and atomic removal of its three scratch
+  cables.
+- Complexity: purpose and attachment resolution occur during graph edit,
+  validation, compilation, or publication. Realtime processing receives
+  resolved attachment payloads and preallocated traversal morph storage; it
+  performs linear block/grid work without graph search, serialization, mutex
+  acquisition, or allocation.
 
 ## Verification
 
