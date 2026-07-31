@@ -28,7 +28,7 @@ bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
     }
     return node.model != nullptr
             && node.model->schemaId() == "flatCurve"
-            && (syncedNodeId != node.id || syncedModelRevision != node.model->revision());
+            && (syncedNodeId != node.id || syncedModel != node.model);
 }
 
 bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
@@ -41,7 +41,7 @@ bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
         return false;
     }
     syncedNodeId = node.id;
-    syncedModelRevision = node.model->revision();
+    syncedModel = node.model;
     model.selectVertex((uint64_t) (int64) node.editorState.getProperty("selectedVertexId", 0));
     model.setPublicationRevision(node.model->revision());
     syncedMeshState = serializedMeshState();

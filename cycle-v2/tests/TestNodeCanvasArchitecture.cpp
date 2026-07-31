@@ -476,6 +476,25 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
                     snapshot.edges.front().cablePath.getLength() * 0.5f)));
 }
 
+TEST_CASE("Cube-component assignments share one attachment cable per node pair",
+        "[cycle-v2][canvas][scene][attachments]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
+    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
+            PortDomain::ControlSignal, true });
+    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
+            PortDomain::ControlSignal, true });
+
+    NodeCanvasViewport viewport;
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport);
+    REQUIRE(snapshot.edges.size() == 1);
+    REQUIRE(snapshot.edges.front().edgeIndices == std::vector<int> { 0, 1 });
+    REQUIRE_FALSE(snapshot.edges.front().modulationBundle);
+}
+
 TEST_CASE("Cable endpoints follow node movement before a drag transaction commits",
         "[cycle-v2][canvas][scene][cables]") {
     GraphNodeFactory factory;
@@ -555,6 +574,13 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
+
+    voice.parameters = {
+            { "domain", "Start Domain", "spectralPhase" }
+    };
+    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Spectral");
+    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "waveform");
+    voice.parameters.clear();
 
     auto edit = editAt({ 252.f, 59.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Domain);

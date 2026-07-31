@@ -93,12 +93,14 @@ TrimeshNodeModel::~TrimeshNodeModel() {
 }
 
 TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
-        ownedMesh       (std::move(other.ownedMesh))
-    ,   morph           (other.morph)
-    ,   primaryViewAxis (other.primaryViewAxis)
-    ,   selectedVertexIndex (other.selectedVertexIndex)
-    ,   revision        (other.revision)
-    ,   revisions       (other.revisions) {}
+        ownedMesh            (std::move(other.ownedMesh))
+    ,   morph                (other.morph)
+    ,   primaryViewAxis      (other.primaryViewAxis)
+    ,   selectedVertexIndex  (other.selectedVertexIndex)
+    ,   revision             (other.revision)
+    ,   appliedModelRevision (other.appliedModelRevision)
+    ,   appliedModelState    (std::move(other.appliedModelState))
+    ,   revisions            (other.revisions) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
     if (this != &other) {
@@ -108,6 +110,8 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         primaryViewAxis = other.primaryViewAxis;
         selectedVertexIndex = other.selectedVertexIndex;
         revision = other.revision;
+        appliedModelRevision = other.appliedModelRevision;
+        appliedModelState = std::move(other.appliedModelState);
         revisions = other.revisions;
     }
 
@@ -144,9 +148,11 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
 
     const auto typedModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
     if (typedModel != nullptr
-            && typedModel->revision() != appliedModelRevision) {
+            && (typedModel != appliedModelState
+                    || typedModel->revision() != appliedModelRevision)) {
         mesh().deepCopy(&typedModel->mesh());
         appliedModelRevision = typedModel->revision();
+        appliedModelState = typedModel;
         bumpMeshContentRevision();
     }
 }

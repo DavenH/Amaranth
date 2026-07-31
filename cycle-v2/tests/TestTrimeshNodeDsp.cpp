@@ -297,7 +297,6 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -390,7 +389,6 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -459,7 +457,6 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -494,6 +491,25 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     REQUIRE(secondVertexParameters.size() == 6);
     REQUIRE(secondVertexParameters[4].value == Catch::Approx(0.77f));
     REQUIRE(secondVertexParameters[5].value == Catch::Approx(0.88f));
+}
+
+TEST_CASE("Trimesh node model replaces equal-revision snapshots from another document",
+        "[cycle-v2][nodes][trimesh][presets]") {
+    auto populated = TrimeshMeshFactory::createDefaultMesh("PopulatedPresetMesh");
+    Mesh empty("EmptyPresetMesh");
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "phaseLayer1", {});
+    node.model = TrimeshNodeModelState::copyOf(*populated, 1);
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    REQUIRE(model.getMeshForPanel().getNumVerts() == populated->getNumVerts());
+
+    node.model = TrimeshNodeModelState::copyOf(empty, 1);
+    model.syncFromNode(node);
+    REQUIRE(model.getMeshForPanel().getNumVerts() == 0);
+
+    empty.destroy();
+    populated->destroy();
 }
 
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
@@ -533,6 +549,13 @@ TEST_CASE("Trimesh guide attachment target parses and formats vertex fields", "[
     REQUIRE(target.fieldIndex() == 4);
     REQUIRE(TrimeshGuideAttachmentTarget::fields()[(size_t) target.fieldIndex()] == "amp");
     REQUIRE(TrimeshGuideAttachmentTarget::portIdFor(12, "amp") == "guide.vertex.12.amp");
+    const auto cubeTarget = TrimeshGuideAttachmentTarget::parse("guide.cube.4.phase");
+    REQUIRE(cubeTarget.isValid());
+    REQUIRE(cubeTarget.isCubeTarget());
+    REQUIRE(cubeTarget.cubeIndex == 4);
+    REQUIRE(cubeTarget.field == "phase");
+    REQUIRE(TrimeshGuideAttachmentTarget::portIdForCube(4, "phase")
+            == "guide.cube.4.phase");
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.x.amp").isValid());
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.unknown").isValid());
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());
@@ -542,7 +565,6 @@ TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -568,7 +590,6 @@ TEST_CASE("Trimesh node model resolves a default selected vertex for parameter e
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -663,7 +684,6 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -697,7 +717,6 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -723,7 +742,6 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -796,7 +814,6 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -873,7 +890,6 @@ TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},

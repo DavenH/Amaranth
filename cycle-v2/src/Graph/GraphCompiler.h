@@ -121,6 +121,7 @@ struct GraphCompileResult {
 class GraphCompiler {
 public:
     GraphCompileResult compile(const NodeGraph& graph) const;
+    void refreshSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) const;
 
 private:
     struct ConfigurationEntry {

@@ -93,6 +93,28 @@ TEST_CASE("Curve panel adapters synchronize only their typed domain",
     REQUIRE(envelope.lastNodeId() == "env");
 }
 
+TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset changes",
+          "[cycle-v2][curve-panel-adapters][presets]") {
+    const File presetDirectory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content")
+            .getChildFile("presets");
+    const NodeGraph baroque = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
+    const Node* baroqueGuide = baroque.findNode("guide1");
+    const Node* stengahGuide = stengah.findNode("guide1");
+    REQUIRE(baroqueGuide != nullptr);
+    REQUIRE(stengahGuide != nullptr);
+    REQUIRE(baroqueGuide->model->revision() == stengahGuide->model->revision());
+
+    FlatCurvePanelAdapter adapter(NodeKind::GuideCurve);
+    REQUIRE(adapter.syncFromNode(*baroqueGuide));
+    REQUIRE(adapter.mesh().getNumVerts() == 4);
+    REQUIRE(adapter.syncFromNode(*stengahGuide));
+    REQUIRE(adapter.mesh().getNumVerts() == 55);
+}
+
 TEST_CASE("Flat curve models validate atomically and preserve stable selection",
         "[cycle-v2][curve-model]") {
     FlatCurveModel model;

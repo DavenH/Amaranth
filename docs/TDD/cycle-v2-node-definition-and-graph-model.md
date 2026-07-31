@@ -17,6 +17,9 @@ Cycle 2's existing bundled version-1 graphs remain supported.
 - `NodeDefinitionRegistry` is the source of truth for type IDs, display
   metadata, ID prefixes, static ports, parameter schemas, natural-size policy,
   audio/preview roles, and Cycle 1 adapter references.
+- Node display names are immutable type metadata. `Node` does not store a
+  title, graph JSON does not serialize one, and compatibility loads ignore an
+  obsolete `title` property before subsequent saves remove it.
 - Parameter instance values remain text-compatible at the document boundary,
   but all declared values are parsed, constrained, normalized, and assigned
   semantic impacts through `ParameterDefinition`. Runtime readers use the

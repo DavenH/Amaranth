@@ -14,7 +14,6 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     Node node;
     node.id = id;
     node.kind = definition->kind;
-    node.title = definition->displayName;
     node.subtitle = definition->subtitle;
     node.bounds = { position.x, position.y, 240.f, 170.f };
     node.inputs = definition->inputs;

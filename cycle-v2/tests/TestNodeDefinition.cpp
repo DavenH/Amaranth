@@ -35,7 +35,7 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
 
         const Node node = GraphNodeFactory().createNode(definition.kind, "test", {});
         REQUIRE(node.kind == definition.kind);
-        REQUIRE(node.title == definition.displayName);
+        REQUIRE(labelForNodeKind(node.kind) == definition.displayName);
         REQUIRE(node.inputs.size() == definition.inputs.size());
         REQUIRE(node.outputs.size() == definition.outputs.size());
     }

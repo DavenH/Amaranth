@@ -2,7 +2,7 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "/Users/daven/repos/Amaranth/cycle-v2/resources/fft-sawtooth.cyclegraph"
+      "path": "../../cycle-v2/resources/fft-sawtooth.cyclegraph"
     },
     {
       "command": "assertState",

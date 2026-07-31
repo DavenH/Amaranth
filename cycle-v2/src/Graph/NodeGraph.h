@@ -104,7 +104,6 @@ using NodeModelStatePtr = std::shared_ptr<const NodeModelState>;
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
-    String title;
     String subtitle;
     Rectangle<float> bounds;
     std::vector<NodeParameter> parameters;

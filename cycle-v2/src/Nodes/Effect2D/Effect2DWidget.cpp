@@ -1,5 +1,7 @@
 #include "Effect2DWidget.h"
 
+#include "CurveNodeModels.h"
+
 namespace CycleV2 {
 
 Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
@@ -19,7 +21,7 @@ Component* Effect2DWidget::prepareExpandedPanelComponent(
         return nullptr;
     }
 
-    controller->syncFromNode(node);
+    syncFromNode(node);
     return controller->panelHostComponent();
 }
 
@@ -53,8 +55,20 @@ void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
 }
 
 void Effect2DWidget::syncFromNode(const Node& node) {
-    if (node.kind == kind) {
-        controller->syncFromNode(node);
+    if (node.kind != kind) {
+        return;
+    }
+
+    controller->syncFromNode(node);
+    if (kind == NodeKind::GuideCurve) {
+        GuideCurveNodeModel model;
+        model.syncFromNode(node);
+        controller->setControlValues(
+                model.enabled,
+                model.noise,
+                model.dcOffset,
+                model.phase,
+                0);
     }
 }
 

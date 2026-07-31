@@ -1,5 +1,22 @@
 # UI Bug Notes
 
+## Open: Trimesh rasterization ignores attached guide curves
+
+Context:
+
+- Baroque Flute and Stengah preserve their Cycle 1 cube-component guide
+  assignments as `guide.cube.<index>.<field>` attachment edges.
+- The Trimesh editor and preview currently rasterize the base mesh without the
+  attached guide curve. The guide waveform and its noise, DC-offset, and phase
+  controls therefore produce no visible contribution on assigned vertices.
+- Repro: open either preset, inspect a Trimesh node with a guide attachment,
+  then change the attached Guide Curve's noise control. The Trimesh rendering
+  remains unchanged.
+
+Current status: open; route the existing guide provider/snapshot contract into
+Trimesh rasterization and add a focused visual fixture that proves the assigned
+cube component changes without copying Cycle 1 rasterization logic.
+
 ## Open: GuideCurveOffsetSeeds vertical seed contract fails
 
 Context:

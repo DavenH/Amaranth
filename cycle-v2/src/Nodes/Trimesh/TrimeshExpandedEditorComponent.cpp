@@ -86,7 +86,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     g.setColour(kText);
     g.setFont(FontOptions(14.f, Font::bold));
-    g.drawText(node.title, header.reduced(13.f, 4.f), Justification::centredLeft);
+    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
     g.setColour(kMutedText);
     g.setFont(FontOptions(10.f));
     g.drawText("Trilinear Mesh", header.reduced(13.f, 4.f), Justification::centredRight);

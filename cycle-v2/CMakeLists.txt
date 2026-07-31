@@ -132,6 +132,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TrimeshGuideCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
@@ -254,7 +255,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )
 
-        add_executable(${PROJECT_NAME}_tests ${GRAPH_SOURCES} ${RUNTIME_SOURCES} ${NODE_SOURCES} ${CANVAS_ARCHITECTURE_SOURCES} ${TEST_SOURCES})
+        add_executable(${PROJECT_NAME}_tests
+            ${GRAPH_SOURCES}
+            ${RUNTIME_SOURCES}
+            ${NODE_SOURCES}
+            ${CANVAS_ARCHITECTURE_SOURCES}
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
+            ${TEST_SOURCES}
+        )
 
         target_compile_definitions(${PROJECT_NAME}_tests PRIVATE
             BUILD_TESTING=1

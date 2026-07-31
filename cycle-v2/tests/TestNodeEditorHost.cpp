@@ -1,6 +1,9 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
@@ -290,11 +293,16 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     host.appendAutomationState(automation);
     REQUIRE((bool) automation.getProperty("mock"));
 
-    first.title = "Revised";
+    first.subtitle = "Revised";
     REQUIRE(host.bind(&first, { 20, 30, 320, 220 }, 5));
     REQUIRE(stats.creations == 1);
     REQUIRE(stats.bindings == 2);
     REQUIRE(stats.boundNodeId == "curve-a");
+
+    first.parameters.push_back({ "noise", "Noise", "0.25" });
+    REQUIRE(host.bind(&first, { 20, 30, 320, 220 }, 5));
+    REQUIRE(stats.creations == 1);
+    REQUIRE(stats.bindings == 3);
 
     Node second = node("curve-b", NodeKind::Waveshaper);
     REQUIRE(host.bind(&second, { 0, 0, 120, 90 }, 5));
@@ -419,6 +427,59 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     editor.action.onClick();
     REQUIRE(editor.actionPerformed);
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+}
+
+TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
+          "[cycle-v2][node-editor-host][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const File presetDirectory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content")
+            .getChildFile("presets");
+    const NodeGraph baroque = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
+    const Node* baroqueGuide = baroque.findNode("guide1");
+    const Node* stengahGuide = stengah.findNode("guide1");
+    REQUIRE(baroqueGuide != nullptr);
+    REQUIRE(stengahGuide != nullptr);
+
+    Effect2DWidget widget(NodeKind::GuideCurve);
+    auto editor = createCurveNodeEditor(NodeKind::GuideCurve, widget);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*baroqueGuide);
+    REQUIRE(widget.vertexCountForAutomation() == 4);
+    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+            == Catch::Approx(0.76562));
+    editor->setNode(*stengahGuide);
+    REQUIRE(widget.vertexCountForAutomation() == 55);
+    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+            == Catch::Approx(0.0025));
+
+    widget.syncFromNode(*baroqueGuide);
+    REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
+            == Catch::Approx(0.76562));
+    Node revisedGuide = *stengahGuide;
+    for (auto& parameter : revisedGuide.parameters) {
+        if (parameter.id == "dcOffset") {
+            parameter.value = "0.25";
+        } else if (parameter.id == "phase") {
+            parameter.value = "0.75";
+        }
+    }
+    widget.syncFromNode(revisedGuide);
+    const var widgetState = widget.automationState();
+    REQUIRE(static_cast<double>(widgetState.getProperty("firstControl", {}))
+            == Catch::Approx(0.0025));
+    REQUIRE(static_cast<double>(widgetState.getProperty("secondControl", {}))
+            == Catch::Approx(0.25));
+    REQUIRE(static_cast<double>(widgetState.getProperty("thirdControl", {}))
+            == Catch::Approx(0.75));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

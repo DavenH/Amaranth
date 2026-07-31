@@ -28,12 +28,11 @@ Port output(
     return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
 }
 
-Node node(String id, NodeKind kind, String title, String subtitle, Point<float> position,
+Node node(String id, NodeKind kind, String subtitle, Point<float> position,
           std::vector<Port> inputs, std::vector<Port> outputs) {
     Node result {
         std::move(id),
         kind,
-        std::move(title),
         std::move(subtitle),
         { position.x, position.y, 0.f, 0.f },
         {},
@@ -252,7 +251,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "voice",
             NodeKind::VoiceContext,
-            "Voice Context",
             "waveform start / 6 voices",
             { 320.f, 420.f },
             {},
@@ -271,7 +269,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "waveMesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             "waveform operand",
             { 650.f, 420.f },
             {
@@ -286,7 +283,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "fft",
             NodeKind::Fft,
-            String::fromUTF8("Time → Freq"),
             "cycle chunks",
             { 1080.f, 420.f },
             { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -302,7 +298,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "magMesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             "layer operand",
             { 1175.f, 170.f },
             {
@@ -317,7 +312,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "addMag",
             NodeKind::Add,
-            "Add",
             "magnitude layer",
             { 1260.f, 420.f },
             {
@@ -329,7 +323,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "phaseMesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             "phase operand",
             { 1175.f, 760.f },
             {
@@ -344,7 +337,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "addPhase",
             NodeKind::Add,
-            "Add",
             "phase layer",
             { 1260.f, 454.f },
             {
@@ -356,7 +348,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "ifft",
             NodeKind::Ifft,
-            String::fromUTF8("Freq → Time"),
             "cyclic overlap",
             { 1600.f, 420.f },
             {
@@ -381,7 +372,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "multiply",
             NodeKind::Multiply,
-            "Multiply",
             "global volume",
             { 1850.f, 420.f },
             {
@@ -393,7 +383,6 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "out",
             NodeKind::Output,
-            "Output",
             "sink",
             { 2100.f, 420.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
@@ -494,7 +483,7 @@ NodeNaturalSize naturalSizeForNode(const Node& node) {
         return definition->fixedNaturalSize;
     }
 
-    const float titleWidth = (float) node.title.length() * 8.5f;
+    const float titleWidth = (float) labelForNodeKind(node.kind).length() * 8.5f;
     const float subtitleWidth = (float) node.subtitle.length() * 6.0f;
 
     const float headerWidth = titleWidth + subtitleWidth + 72.f;

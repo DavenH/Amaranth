@@ -45,6 +45,9 @@ bool GraphPresentationModel::refresh(
     } else if (hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
     }
+    if (!compile && change.probesChanged) {
+        compiler.refreshSignalProbes(graph, next.compileResult.plan);
+    }
 
     bool previewRendered {};
     const auto request = updateRequest(

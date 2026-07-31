@@ -6,7 +6,6 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "title": "Voice Context",
             "position": { "x": -129.31035, "y": 0.0 },
             "parameters": { "domain": "waveform", "voices": 1, "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
@@ -14,7 +13,6 @@
             "id": "saw",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Trilinear Mesh",
             "position": { "x": 260.0, "y": 0.0 },
             "parameters": { "yellow": 0.12, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow" },
             "model": {
@@ -78,7 +76,6 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "title": "Time → Freq",
             "position": { "x": 635.86206, "y": 0.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
@@ -86,7 +83,6 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "title": "Freq → Time",
             "position": { "x": 1087.58618, "y": 0.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
@@ -94,7 +90,6 @@
             "id": "out",
             "kind": "output",
             "definitionVersion": 1,
-            "title": "Output",
             "position": { "x": 1444.48279, "y": 0.0 },
             "parameters": {}
         }

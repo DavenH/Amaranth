@@ -28,6 +28,12 @@ struct GuideCurveEditorComponent::Impl {
 GuideCurveEditorComponent::GuideCurveEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
+    for (Slider* slider : {
+            &impl->noise.slider,
+            &impl->dcOffset.slider,
+            &impl->phase.slider }) {
+        slider->setRange(0.0, 1.0, 0.00001);
+    }
     bindDiscreteControl(impl->enabled);
     bindContinuousControls({ &impl->noise, &impl->dcOffset, &impl->phase });
 }

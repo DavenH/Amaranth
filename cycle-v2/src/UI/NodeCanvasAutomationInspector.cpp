@@ -355,7 +355,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         auto* nodeObject = new DynamicObject();
         nodeObject->setProperty("id", node.id);
         nodeObject->setProperty("kind", labelForNodeKind(node.kind));
-        nodeObject->setProperty("title", node.title);
+        nodeObject->setProperty("title", labelForNodeKind(node.kind));
         nodeObject->setProperty("subtitle", node.subtitle);
         nodeObject->setProperty("bounds", AutomationValueEncoder::rectangleToVar(node.bounds));
 

@@ -17,7 +17,7 @@ TrimeshGuideAttachmentTarget::fields() {
 }
 
 bool TrimeshGuideAttachmentTarget::isValid() const {
-    return vertexIndex >= 0 && fieldIndex() >= 0;
+    return (vertexIndex >= 0) != (cubeIndex >= 0) && fieldIndex() >= 0;
 }
 
 int TrimeshGuideAttachmentTarget::fieldIndex() const {
@@ -33,22 +33,25 @@ int TrimeshGuideAttachmentTarget::fieldIndex() const {
 }
 
 TrimeshGuideAttachmentTarget TrimeshGuideAttachmentTarget::parse(const juce::String& portId) {
-    if (!portId.startsWith("guide.vertex.")) {
+    const bool cubeTarget = portId.startsWith("guide.cube.");
+    const juce::String prefix = cubeTarget ? "guide.cube." : "guide.vertex.";
+    if (!portId.startsWith(prefix)) {
         return {};
     }
 
-    const juce::String suffix = portId.fromFirstOccurrenceOf("guide.vertex.", false, false);
-    const juce::String vertexIndexText = suffix.upToFirstOccurrenceOf(".", false, false);
+    const juce::String suffix = portId.fromFirstOccurrenceOf(prefix, false, false);
+    const juce::String targetIndexText = suffix.upToFirstOccurrenceOf(".", false, false);
     const juce::String fieldText = suffix.fromFirstOccurrenceOf(".", false, false);
 
-    if (vertexIndexText.isEmpty() || !vertexIndexText.containsOnly("0123456789")) {
+    if (targetIndexText.isEmpty() || !targetIndexText.containsOnly("0123456789")) {
         return {};
     }
 
     TrimeshGuideAttachmentTarget target {
-            vertexIndexText.getIntValue(),
+            cubeTarget ? -1 : targetIndexText.getIntValue(),
             fieldText
     };
+    target.cubeIndex = cubeTarget ? targetIndexText.getIntValue() : -1;
 
     return target.isValid() ? target : TrimeshGuideAttachmentTarget {};
 }
@@ -57,6 +60,12 @@ juce::String TrimeshGuideAttachmentTarget::portIdFor(
         int vertexIndex,
         const juce::String& field) {
     return "guide.vertex." + juce::String(vertexIndex) + "." + field;
+}
+
+juce::String TrimeshGuideAttachmentTarget::portIdForCube(
+        int cubeIndex,
+        const juce::String& field) {
+    return "guide.cube." + juce::String(cubeIndex) + "." + field;
 }
 
 }

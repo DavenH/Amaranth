@@ -21,6 +21,10 @@ bool portamentoEnabled(const Node& node) {
             || parameterValueForNode(node, "portamento", "false") == "true";
 }
 
+bool isSpectral(const Node& node) {
+    return VoiceContextCompactEditor::domain(node).startsWith("spectral");
+}
+
 void drawOctaveSlider(
         Graphics& graphics,
         Rectangle<float> area,
@@ -77,7 +81,7 @@ void drawOctaveSlider(
 void drawSourceSelector(Graphics& graphics, Rectangle<float> area, const Node& node) {
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     Rectangle<float> control = area.reduced(0.f, 2.f);
-    const bool spectral = VoiceContextCompactEditor::domain(node) == "spectral";
+    const bool spectral = isSpectral(node);
     const Colour waveformColour = colourForDomain(PortDomain::TimeSignal);
     const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
     const Colour activeColour = spectral ? spectralColour : waveformColour;
@@ -241,11 +245,11 @@ String VoiceContextCompactEditor::domain(const Node& node) {
 }
 
 String VoiceContextCompactEditor::domainLabel(const Node& node) {
-    return domain(node) == "spectral" ? "Spectral" : "Waveform";
+    return isSpectral(node) ? "Spectral" : "Waveform";
 }
 
 String VoiceContextCompactEditor::nextDomain(const Node& node) {
-    return domain(node) == "spectral" ? "waveform" : "spectral";
+    return isSpectral(node) ? "waveform" : "spectral";
 }
 
 void VoiceContextCompactEditor::paintExpanded(
@@ -293,7 +297,7 @@ void VoiceContextCompactEditor::paintNodeSelector(
         float zoom,
         const Node& node) {
     const Rectangle<float> pill = nodeSelectorBounds(nodeBounds, zoom);
-    const bool spectral = domain(node) == "spectral";
+    const bool spectral = isSpectral(node);
     const float labelWidth = 82.f * zoom;
     const Rectangle<float> waveformLabel(
             pill.getX() - labelWidth - 9.f * zoom,

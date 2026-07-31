@@ -2,11 +2,16 @@
 
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 
+#include <algorithm>
+#include <cmath>
 #include <limits>
 
 using namespace CycleV2;
@@ -20,6 +25,17 @@ GraphLoadResult loadObject(std::unique_ptr<DynamicObject> object) {
 File resource(const String& name) {
   #if defined(CYCLE_V2_SOURCE_DIR)
     return File(String(CYCLE_V2_SOURCE_DIR)).getChildFile("resources").getChildFile(name);
+  #else
+    return File();
+  #endif
+}
+
+File contentPreset(const String& name) {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    return File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile(name);
   #else
     return File();
   #endif
@@ -40,6 +56,20 @@ TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
     REQUIRE_FALSE(encoded.contains("<cycleV2Graph"));
     REQUIRE_FALSE(encoded.contains("&quot;"));
     REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph JSON derives immutable node names from definitions", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    REQUIRE_FALSE(nodes->isEmpty());
+    nodes->getReference(0).getDynamicObject()->setProperty("title", "Preset Override");
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(labelForNodeKind(loaded.graph.getNodes().front().kind) == "Voice Context");
+    REQUIRE_FALSE(serializer.toJsonString(loaded.graph).contains("\"title\""));
 }
 
 TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[cycle-v2][graph]") {
@@ -221,13 +251,19 @@ TEST_CASE("Graph JSON rejects incomplete model arrays", "[cycle-v2][graph]") {
     REQUIRE(result.graph.getNodes().empty());
 }
 
-TEST_CASE("Every bundled graph is canonical JSON and compiles", "[cycle-v2][graph]") {
+TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][graph]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
-    for (const String& name : {
-                String("default.cyclegraph"),
-                String("with-spies.cyclegraph"),
-                String("fft-sawtooth.cyclegraph") }) {
-        const File file = resource(name);
+    Array<File> graphs {
+            contentPreset("african-horn.cyclegraph"),
+            contentPreset("baroque-flute.cyclegraph"),
+            contentPreset("stengah.cyclegraph"),
+            resource("default.cyclegraph"),
+            resource("fft-sawtooth.cyclegraph"),
+            resource("with-spies.cyclegraph")
+    };
+
+    for (const File& file : graphs) {
+        const String name = file.getFileName();
         REQUIRE(file.existsAsFile());
         const String encoded = file.loadFileAsString();
         const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
@@ -236,10 +272,211 @@ TEST_CASE("Every bundled graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
         REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+        REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
         REQUIRE_FALSE(encoded.contains("curve.modelSnapshot"));
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls",
+          "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphSerializer serializer;
+    const NodeGraph african = serializer.fromJsonString(
+            contentPreset("african-horn.cyclegraph").loadFileAsString());
+    const NodeGraph baroque = serializer.fromJsonString(
+            contentPreset("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = serializer.fromJsonString(
+            contentPreset("stengah.cyclegraph").loadFileAsString());
+
+    for (const NodeGraph* graph : { &african, &baroque, &stengah }) {
+        for (const Node& node : graph->getNodes()) {
+            REQUIRE(parameterValueForNode(node, "enabled") != "0");
+        }
+    }
+
+    REQUIRE(african.findNode("waveshaper") == nullptr);
+    REQUIRE(african.findNode("impulseResponse") == nullptr);
+    REQUIRE(african.findNode("equalizer") == nullptr);
+    REQUIRE(african.findNode("reverb") == nullptr);
+    REQUIRE(stengah.findNode("reverb") == nullptr);
+
+    const Node* africanDelay = african.findNode("delay");
+    const Node* baroqueDelay = baroque.findNode("delay");
+    const Node* stengahDelay = stengah.findNode("delay");
+    REQUIRE(africanDelay != nullptr);
+    REQUIRE(baroqueDelay != nullptr);
+    REQUIRE(stengahDelay != nullptr);
+    REQUIRE(parameterValueForNode(*africanDelay, "spin") == "0.692");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "time") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "feedback") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "spinIters") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "spin") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "wet") == "0.5");
+    REQUIRE(parameterValueForNode(*stengahDelay, "time") == "0.584");
+    REQUIRE(parameterValueForNode(*stengahDelay, "spinIters") == "0.644");
+    REQUIRE(parameterValueForNode(*stengahDelay, "spin") == "0.976");
+    REQUIRE(parameterValueForNode(*stengahDelay, "wet") == "0.7");
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("African Horn keeps its populated mesh path in the time domain",
+        "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const String encoded = contentPreset("african-horn.cyclegraph").loadFileAsString();
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+    REQUIRE(loaded.graph.findNode("fft") == nullptr);
+    REQUIRE(loaded.graph.findNode("ifft") == nullptr);
+    REQUIRE(loaded.graph.findNode("magnitudeLayer1") == nullptr);
+    REQUIRE(loaded.graph.findNode("phaseLayer1") == nullptr);
+
+    const auto directTimePath = std::find_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "timeAdd1"
+                        && edge.sourcePortId == "out"
+                        && edge.destNodeId == "delay"
+                        && edge.destPortId == "time";
+            });
+    REQUIRE(directTimePath != loaded.graph.getEdges().end());
+
+    const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    const GraphAudioResult audio = GraphAudioExecutor().process(
+            loaded.graph,
+            compiled.plan,
+            128);
+    REQUIRE(std::any_of(
+            audio.output.block.samples.begin(),
+            audio.output.block.samples.end(),
+            [](float sample) {
+                return std::abs(sample) > 0.001f;
+            }));
+
+    for (const String& nodeId : { String("timeLayer1"), String("timeLayer2") }) {
+        const Node* node = loaded.graph.findNode(nodeId);
+        REQUIRE(node != nullptr);
+        const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+        REQUIRE(model != nullptr);
+        REQUIRE(model->mesh().getNumVerts() > 0);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Baroque Flute preserves every authored guide assignment",
+          "[cycle-v2][graph][presets][guides]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const NodeGraph graph = GraphSerializer().fromJsonString(
+            contentPreset("baroque-flute.cyclegraph").loadFileAsString());
+    const auto hasGuideEdge = [&graph](const String& source,
+                                      const String& destination,
+                                      const String& port) {
+        return std::any_of(graph.getEdges().begin(), graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == source
+                            && edge.sourcePortId == "guide"
+                            && edge.destNodeId == destination
+                            && edge.destPortId == port
+                            && edge.attachment;
+                });
+    };
+
+    for (const int cube : { 1, 3, 4, 5, 6 }) {
+        REQUIRE(hasGuideEdge(
+                "guide2", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
+    }
+    for (const int cube : { 1, 4 }) {
+        REQUIRE(hasGuideEdge(
+                "guide4", "magnitudeLayer2", "guide.cube." + String(cube) + ".amp"));
+    }
+    for (const int cube : { 0, 2 }) {
+        REQUIRE(hasGuideEdge(
+                "guide1", "magnitudeLayer3", "guide.cube." + String(cube) + ".time"));
+    }
+    for (const int cube : { 0, 1 }) {
+        REQUIRE(hasGuideEdge(
+                "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("stengah.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+
+    const Node* voice = loaded.graph.findNode("voice");
+    REQUIRE(voice != nullptr);
+    REQUIRE(parameterValueForNode(*voice, "domain") == "spectral");
+    REQUIRE(loaded.graph.findNode("timeLayer1") == nullptr);
+    REQUIRE(loaded.graph.findNode("fft") == nullptr);
+    REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
+    REQUIRE(loaded.graph.findNode("phaseOp1") == nullptr);
+
+    const auto hasEdge = [&loaded](const String& sourceNodeId,
+                                   const String& sourcePortId,
+                                   const String& destNodeId,
+                                   const String& destPortId) {
+        return std::any_of(loaded.graph.getEdges().begin(), loaded.graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == sourceNodeId
+                            && edge.sourcePortId == sourcePortId
+                            && edge.destNodeId == destNodeId
+                            && edge.destPortId == destPortId;
+                });
+    };
+    REQUIRE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
+    REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
+    REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "magnitudeLayer1", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer1", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer2", "scratch"));
+    REQUIRE(hasEdge("guide1", "guide", "phaseLayer1", "guide.cube.0.amp"));
+    REQUIRE(hasEdge("guide1", "guide", "phaseLayer2", "guide.cube.4.phase"));
+    REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
+    REQUIRE(hasEdge("phaseLayer1", "out", "phaseOp2", "left"));
+
+    const Node* phaseLayer1 = loaded.graph.findNode("phaseLayer1");
+    const Node* phaseLayer2 = loaded.graph.findNode("phaseLayer2");
+    REQUIRE(phaseLayer1 != nullptr);
+    REQUIRE(phaseLayer2 != nullptr);
+    const auto phaseModel1 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer1->model);
+    const auto phaseModel2 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer2->model);
+    REQUIRE(phaseModel1 != nullptr);
+    REQUIRE(phaseModel2 != nullptr);
+    std::vector<VertCube*> phaseCubes1;
+    std::vector<VertCube*> phaseCubes2;
+    phaseModel1->mesh().copyElements(phaseCubes1);
+    phaseModel2->mesh().copyElements(phaseCubes2);
+    REQUIRE(phaseCubes1.size() > 0);
+    REQUIRE(phaseCubes2.size() > 4);
+    REQUIRE(phaseCubes1[0]->guideCurveChans[Vertex::Amp] == 0);
+    REQUIRE(phaseCubes2[4]->guideCurveChans[Vertex::Phase] == 0);
+    REQUIRE(loaded.graph.findNode("guide1") != nullptr);
+    REQUIRE(loaded.graph.findNode("guide2") == nullptr);
+
+    const Node* waveshaper = loaded.graph.findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    const auto waveshaperModel = std::dynamic_pointer_cast<const CurveNodeModelState>(waveshaper->model);
+    REQUIRE(waveshaperModel != nullptr);
+    REQUIRE(waveshaperModel->flatCurve() != nullptr);
+    REQUIRE(waveshaperModel->flatCurve()->getVertices().size() == 6);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

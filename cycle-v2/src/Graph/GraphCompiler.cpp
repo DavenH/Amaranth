@@ -403,27 +403,6 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
     appendEdges(plan.attachments);
 }
 
-void compileSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) {
-    plan.signalProbes.clear();
-    plan.signalProbes.reserve(graph.getSignalProbes().size());
-    for (const auto& probe : graph.getSignalProbes()) {
-        CompiledSignalProbe compiled;
-        compiled.probeId = probe.id;
-        const auto source = plan.dependencyIndex.nodeIndexById.find(probe.sourceNodeId);
-        if (source != plan.dependencyIndex.nodeIndexById.end()) {
-            compiled.sourceStepIndex = source->second;
-            const auto& outputs = plan.steps[static_cast<size_t>(source->second)].outputs;
-            const auto output = std::find_if(outputs.begin(), outputs.end(), [&](const auto& candidate) {
-                return candidate.portId == probe.sourcePortId;
-            });
-            if (output != outputs.end()) {
-                compiled.sourceOutputIndex = static_cast<int>(std::distance(outputs.begin(), output));
-            }
-        }
-        plan.signalProbes.push_back(std::move(compiled));
-    }
-}
-
 std::vector<GraphBufferPlan> buildBufferPlan(
         const NodeGraph& graph,
         const std::vector<Edge>& resolvedEdges,
@@ -500,7 +479,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 moduleRegistry);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
-        compileSignalProbes(graph, result.plan);
+        refreshSignalProbes(graph, result.plan);
         publishConfigurations(result.plan.steps);
     }
 
@@ -509,6 +488,33 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     return result;
+}
+
+void GraphCompiler::refreshSignalProbes(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) const {
+    plan.signalProbes.clear();
+    plan.signalProbes.reserve(graph.getSignalProbes().size());
+    for (const auto& probe : graph.getSignalProbes()) {
+        CompiledSignalProbe compiled;
+        compiled.probeId = probe.id;
+        const auto source = plan.dependencyIndex.nodeIndexById.find(probe.sourceNodeId);
+        if (source != plan.dependencyIndex.nodeIndexById.end()) {
+            compiled.sourceStepIndex = source->second;
+            const auto& outputs = plan.steps[static_cast<size_t>(source->second)].outputs;
+            const auto output = std::find_if(
+                    outputs.begin(),
+                    outputs.end(),
+                    [&](const auto& candidate) {
+                        return candidate.portId == probe.sourcePortId;
+                    });
+            if (output != outputs.end()) {
+                compiled.sourceOutputIndex = static_cast<int>(
+                        std::distance(outputs.begin(), output));
+            }
+        }
+        plan.signalProbes.push_back(std::move(compiled));
+    }
 }
 
 void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps) const {

@@ -1,0 +1,133 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "guide1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.76562
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.firstControl",
+      "equals": 0.76562
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 24
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 12
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 20
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "guide1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.firstControl",
+      "equals": 0.0
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 17
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 34
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "guide1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.0025
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.firstControl",
+      "equals": 0.0025
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.vertexCount",
+      "equals": 64
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexCount",
+      "equals": 6
+    }
+  ],
+  "quit": true
+}

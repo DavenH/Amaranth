@@ -173,15 +173,19 @@ GraphEditResult GraphEditor::toggleSignalProbe(
     }
 
     const String probeId = createUniqueProbeId(graph);
+    int nextRailOrder {};
+    for (const auto& probe : graph.getSignalProbes()) {
+        nextRailOrder = jmax(nextRailOrder, probe.railOrder + 1);
+    }
     graph.addSignalProbe({
             probeId,
             edge.sourceNodeId,
             edge.sourcePortId,
             edge.destNodeId,
             edge.destPortId,
-            "Spy " + String((int) graph.getSignalProbes().size() + 1),
+            "Spy " + String(nextRailOrder + 1),
             jlimit(0.f, 1.f, tapPosition),
-            (int) graph.getSignalProbes().size()
+            nextRailOrder
     });
     return { GraphEditCode::Connected, probeId, {} };
 }

@@ -129,6 +129,7 @@ private:
     int selectedVertexIndex { -1 };
     uint64_t revision {};
     uint64_t appliedModelRevision {};
+    NodeModelStatePtr appliedModelState;
     TrimeshDerivedRevisions revisions;
 };
 

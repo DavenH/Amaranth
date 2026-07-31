@@ -4,6 +4,8 @@
 #include "GraphValidator.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+
 #include <cmath>
 #include <unordered_set>
 
@@ -305,7 +307,6 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         encoded->setProperty("id", node.id);
         encoded->setProperty("kind", registry.typeIdFor(node.kind));
         encoded->setProperty("definitionVersion", definition != nullptr ? definition->version : 1);
-        encoded->setProperty("title", node.title);
         encoded->setProperty("position", positionToJSON(node.bounds.getPosition()));
         if (definition != nullptr) {
             const var portSides = nodePortSideOverrides(node, *definition);
@@ -409,10 +410,6 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
 
         Node node = GraphNodeFactory().createNode(definition->kind, nodeId, {});
-        const var title = encoded->getProperty("title");
-        if (title.isString() && title.toString().isNotEmpty()) {
-            node.title = title.toString();
-        }
         const auto* position = encoded->getProperty("position").getDynamicObject();
         if (position == nullptr) {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' has no valid position" });
@@ -498,13 +495,21 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const Node* sourceNode = result.graph.findNode(edge.sourceNodeId);
         const Node* destinationNode = result.graph.findNode(edge.destNodeId);
         const Port* source = sourceNode != nullptr ? findPort(*sourceNode, edge.sourcePortId, false) : nullptr;
-        const Port* destination = destinationNode != nullptr ? findPort(*destinationNode, edge.destPortId, true) : nullptr;
-        if (source == nullptr || destination == nullptr) {
+        const Port* destination = destinationNode != nullptr
+                ? findPort(*destinationNode, edge.destPortId, true)
+                : nullptr;
+        const bool guideAttachment = destinationNode != nullptr
+                && destinationNode->kind == NodeKind::TrilinearMesh
+                && TrimeshGuideAttachmentTarget::parse(edge.destPortId).isValid();
+        if (source == nullptr || (destination == nullptr && !guideAttachment)) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge references an unknown node or static port" });
             continue;
         }
-        edge.domain = resolvedEdgeDomain(*source, *destination);
-        edge.attachment = destination->purpose == PortPurpose::ScratchAttachment;
+        edge.domain = guideAttachment
+                ? PortDomain::EnvelopeSignal
+                : resolvedEdgeDomain(*source, *destination);
+        edge.attachment = guideAttachment
+                || destination->purpose == PortPurpose::ScratchAttachment;
         result.graph.addEdge(std::move(edge));
     }
 

@@ -3,6 +3,7 @@
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphRuntime.h"
 
@@ -158,4 +159,32 @@ TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",
 
     REQUIRE(presentation.compilationCount() == initialCompilations);
     REQUIRE(presentation.previewRenderCount() == 2);
+}
+
+TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
+        "[cycle-v2][runtime][probe][causal]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", {}));
+    graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "reverb", "time", "equalizer", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "equalizer", "time", "out", "time", PortDomain::TimeSignal, false });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const size_t initialCompilations = presentation.compilationCount();
+
+    REQUIRE(commands.toggleSignalProbe(1, 0.4f).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(commands.toggleSignalProbe(2, 0.6f).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+
+    REQUIRE(presentation.compilationCount() == initialCompilations);
+    REQUIRE(presentation.previewResult().probes.size() == 2);
+    REQUIRE(presentation.previewResult().probes[0].connected);
+    REQUIRE(presentation.previewResult().probes[1].connected);
 }

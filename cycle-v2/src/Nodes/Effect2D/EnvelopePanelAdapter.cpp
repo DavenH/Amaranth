@@ -21,7 +21,7 @@ bool EnvelopePanelAdapter::needsNodeSync(const Node& node) const {
     }
     return node.model != nullptr
             && node.model->schemaId() == "envelope"
-            && (syncedNodeId != node.id || syncedModelRevision != node.model->revision());
+            && (syncedNodeId != node.id || syncedModel != node.model);
 }
 
 bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
@@ -32,7 +32,7 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
         return false;
     }
     syncedNodeId = node.id;
-    syncedModelRevision = node.model->revision();
+    syncedModel = node.model;
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
     syncedMesh.deepCopy(&mesh());

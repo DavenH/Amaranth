@@ -164,7 +164,7 @@ String NodeCanvasHitRouter::hoverTextFor(
 
     if (palette.findKindAt(screenPosition, paletteKind)) {
         const Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
-        return "Create " + node.title + "  /  " + node.subtitle;
+        return "Create " + labelForNodeKind(node.kind) + "  /  " + node.subtitle;
     }
 
     const int paletteSectionIndex = palette.findSectionAt(screenPosition);

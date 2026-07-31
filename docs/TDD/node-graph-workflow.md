@@ -1108,9 +1108,46 @@ Acceptance:
 - save/load graph presets with stable ids and layout,
 - import Cycle 1.x presets without data loss where supported,
 - generate a node graph from a Cycle 1.x preset for inspection,
-- create, delete, connect, disconnect, duplicate, and rename nodes,
+- create, delete, connect, disconnect, and duplicate nodes,
 - graph diagnostics are visible and actionable,
 - automation fixtures cover common editing flows.
+
+Current inspection fixtures:
+
+- `content/presets/baroque-flute.cyclegraph`,
+  `content/presets/african-horn.cyclegraph`, and
+  `content/presets/stengah.cyclegraph` preserve the Cycle 1 mesh, curve,
+  envelope, modulation, and effect-editor state in native Cycle 2 preset files.
+- Supported fixed-flow processing is expressed with native source, transform,
+  effect, envelope, and output nodes. The sources have unison disabled, so the
+  presets do not require a temporary unison representation.
+- Disabled Cycle 1 effects are omitted instead of appearing as inert nodes in
+  the authored graph. Enabled effects retain their exact source parameters.
+- Guide curves with Cycle 1 cube-component assignments have explicit
+  `guide.cube.<index>.<field>` attachment edges. Pitch remains disconnected
+  pending its voice-context contract; scratch attachment edges preserve source
+  topology without approximating the still-missing execution behavior.
+- Stengah's waveshaper retains its six source vertices. Its time layer is also
+  faithful to Cycle 1: that source mesh contains zero vertices and cubes, so
+  the spectral layers construct the preset's initial signal.
+- Pitch profile, scratch-channel selection, voice-context modulation defaults,
+  and stereo spectral-layer pan are designed separately in
+  `cycle-v2-voice-context-and-layer-routing.md`.
+- `cycle-v2-agent-ported-presets.json` opens all three preset files and asserts
+  their graph identity, successful compilation, and guide-control refresh when
+  the same editor identity is reused across files. General Cycle 1 preset import
+  remains an incomplete Milestone 9 item.
+
+Current file workflow:
+
+- Cycle 2 owns recent-graph and last-open-directory persistence at the
+  application boundary. Successful opens update both values; successful saves
+  update the recent list without changing the last-open directory.
+- The File menu exposes the persisted recent list and routes those selections
+  through the same graph-loading operation as the chooser.
+- Automation command paths are resolved relative to their fixture file.
+  Repository fixtures must use relative paths rather than checkout-specific
+  absolute paths.
 
 ## Test Plan
 
@@ -1215,9 +1252,18 @@ Acceptance:
   envelope semantics. ADSR-style controls may appear only as a later preset or
   convenience editing mode over the same point-curve model.
 - Guide curves should be visible as attachments to mesh nodes, with the target
-  scope described more granularly than node-wide attachment. The first Cycle 2
-  slice uses shared `GuideCurve` nodes plus targeted attachment edges whose
-  destination id is `guide.vertex.<index>.<field>`, so one guide curve can be
-  reused by waveform and spectral mesh nodes. A later schema can promote that
-  destination id into a dedicated attachment sub-target field if broader
-  routing needs it.
+  scope described more granularly than node-wide attachment. The initial Cycle
+  2 authoring slice exposed `guide.vertex.<index>.<field>` targets, but the
+  authoritative Cycle 1 contract stores a guide channel on each `VertCube`
+  component (`guideCurveChans[field]`). Those scopes are not interchangeable:
+  a vertex edge cannot faithfully represent a cube-component assignment. The
+  graph now accepts and serializes stable `guide.cube.<index>.<field>` targets;
+  connect those targets to the shared guide snapshot/provider boundary described
+  in `shared-cycle-dsp-core.md`. Retire the provisional vertex target after the
+  remaining manual authoring path has migrated.
+- Stengah is the parity fixture for that work. Its imported mesh snapshots retain
+  guide channel 0 on phase-layer-1 cube 0's amplitude component and phase-layer-2
+  cube 4's phase component. The preset has cube-component edges for both
+  assignments alongside the preserved mesh metadata; its unreferenced second
+  guide is omitted. Baroque Flute likewise exposes all eleven assignments from
+  its embedded cube metadata. Provider-backed sampling remains incomplete.

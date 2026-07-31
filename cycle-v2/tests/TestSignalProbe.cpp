@@ -45,6 +45,26 @@ TEST_CASE("Signal probes toggle once per source output without changing executio
     REQUIRE(graph.getSignalProbes().empty());
 }
 
+TEST_CASE("Signal probe labels and rail positions remain unique after deletion",
+        "[cycle-v2][probe]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "firstWave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "firstOut", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "secondWave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "secondOut", {}));
+    graph.addEdge({ "firstWave", "out", "firstOut", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "secondWave", "out", "secondOut", "time", PortDomain::TimeSignal, false });
+    graph.addSignalProbe({
+            "probe2", "firstWave", "out", "firstOut", "time", "Spy 2", 0.5f, 1
+    });
+
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    REQUIRE(graph.getSignalProbes().size() == 2);
+    REQUIRE(graph.getSignalProbes().back().label == "Spy 3");
+    REQUIRE(graph.getSignalProbes().back().railOrder == 2);
+}
+
 TEST_CASE("Signal probes reject nonsignal cables", "[cycle-v2][probe]") {
     GraphNodeFactory factory;
     NodeGraph graph;

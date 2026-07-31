@@ -581,6 +581,19 @@ CycleV2Automation::~CycleV2Automation() {
     sessionServer = nullptr;
 }
 
+File CycleV2Automation::resolveCommandPath(const String& path) const {
+    const File file(path);
+
+    if (path.isEmpty() || File::isAbsolutePath(path)) {
+        return file;
+    }
+    if (options.scriptFile != File()) {
+        return options.scriptFile.getParentDirectory().getChildFile(path);
+    }
+
+    return File::getCurrentWorkingDirectory().getChildFile(path);
+}
+
 void CycleV2Automation::runScriptAsync() {
     MessageManager::callAsync([safeThis = Component::SafePointer<Component>(&window), this]() {
         if (safeThis == nullptr) {
@@ -852,7 +865,7 @@ var CycleV2Automation::inspectTargets(const var& commandValue) const {
 }
 
 var CycleV2Automation::exportGraph(const var& commandValue) const {
-    const File path(stringProperty(commandValue, "path"));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
     const String json = workspace.exportGraphJson();
 
     if (path == File()) {
@@ -872,7 +885,7 @@ var CycleV2Automation::exportGraph(const var& commandValue) const {
 }
 
 var CycleV2Automation::openGraph(const var& commandValue) {
-    const File path(stringProperty(commandValue, "path"));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
 
     if (!workspace.loadGraphFromFile(path)) {
         return failedResult("openGraph", "Could not open graph: " + path.getFullPathName());
@@ -882,7 +895,7 @@ var CycleV2Automation::openGraph(const var& commandValue) {
 }
 
 var CycleV2Automation::saveGraph(const var& commandValue) {
-    const File path(stringProperty(commandValue, "path"));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
 
     if (!workspace.saveGraphToFile(path)) {
         return failedResult("saveGraph", "Could not save graph: " + path.getFullPathName());
@@ -895,9 +908,9 @@ var CycleV2Automation::saveGraph(const var& commandValue) {
 
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
-    items.add(menuItemToVar("file.openGraph", "File", "Open Graph...", true));
-    items.add(menuItemToVar("file.saveGraph", "File", "Save Graph", true));
-    items.add(menuItemToVar("file.saveGraphAs", "File", "Save Graph As...", true));
+    items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
+    items.add(menuItemToVar("file.saveGraph", "File", "Save Preset", true));
+    items.add(menuItemToVar("file.saveGraphAs", "File", "Save Preset As...", true));
 
     var data = makeObject();
     objectFor(data)->setProperty("items", items);
@@ -960,7 +973,7 @@ var CycleV2Automation::invokePaletteItem(const var& commandValue) {
 
 var CycleV2Automation::captureAudio(const var& commandValue) {
     const int frameCount = jlimit(1, 262144, intProperty(commandValue, "frames", intProperty(commandValue, "samples", 4096)));
-    const File path(stringProperty(commandValue, "path"));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
     var data = workspace.captureAudioForAutomation((size_t) frameCount);
     const auto* dataObject = objectFor(data);
 
@@ -1385,7 +1398,7 @@ var CycleV2Automation::pointer(const var& commandValue) {
 
 var CycleV2Automation::screenshot(const var& commandValue) const {
     const String area = stringProperty(commandValue, "area", "window");
-    const File path(stringProperty(commandValue, "path"));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
     Component* component = componentForArea(area);
 
     if (component == nullptr) {
