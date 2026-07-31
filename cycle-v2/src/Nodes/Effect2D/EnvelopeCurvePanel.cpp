@@ -389,6 +389,8 @@ public:
         root->setProperty("movingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
         root->setProperty("bipolar", isCurveBipolar());
+        root->setProperty("fillBaseline", envelopeFillBaseline());
+        root->setProperty("neutralLineVisible", isCurveBipolar());
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         Array<var> vertexParameters;
         for (const auto& parameter : selectedVertexParameters()) {
@@ -806,6 +808,14 @@ protected:
         gfx->fillRect(0, top, releaseStart, bottom, false);
         gfx->setCurrentColour(0.6f, 0.45f, 0.25f, 0.16f);
         gfx->fillRect(releaseStart, top, right, bottom, false);
+
+        if (isCurveBipolar()) {
+            const float neutral = sy(envelopeFillBaseline());
+            gfx->setCurrentLineWidth(1.5f);
+            gfx->setCurrentColour(0.88f, 0.91f, 0.96f, 0.42f);
+            gfx->drawLine(0.f, neutral, static_cast<float>(right), neutral, false);
+            gfx->setCurrentLineWidth(1.f);
+        }
     }
 
     void drawEnvelopeBounds() {
@@ -854,6 +864,10 @@ protected:
         return 0.76f;
     }
 
+    float envelopeFillBaseline() const {
+        return isCurveBipolar() ? 0.5f : 0.f;
+    }
+
     bool drawEnvelopeCurveAndSections() {
         auto snapshot = envRasterizer.snapshotView();
 
@@ -890,7 +904,7 @@ protected:
         const float loopStart = envelopeLoopStart();
         const float sustain = envelopeReleaseStart();
         const float changePoints[] = { sx(loopStart), sx(sustain) };
-        const float baseY = sy(0.f);
+        const float baseY = sy(envelopeFillBaseline());
         const float baseAlpha = 0.15f;
 
         vector<ColorPos> positions;

@@ -1,5 +1,6 @@
 #include "NodeCanvasAutomationInspector.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "NodeViewModule.h"
 
@@ -357,6 +358,11 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         nodeObject->setProperty("kind", labelForNodeKind(node.kind));
         nodeObject->setProperty("title", labelForNodeKind(node.kind));
         nodeObject->setProperty("subtitle", node.subtitle);
+        if (node.kind == NodeKind::Envelope) {
+            nodeObject->setProperty(
+                    "compactModeLabel",
+                    envelopePurposeLabel(envelopePurposeFor(node)).toUpperCase());
+        }
         nodeObject->setProperty("bounds", AutomationValueEncoder::rectangleToVar(node.bounds));
 
         Array<var> inputs;

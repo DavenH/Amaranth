@@ -510,6 +510,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
 
     Effect2DWidget widget(NodeKind::Envelope);
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    RecordingCurveDelegate delegate;
+    editor->setDelegate(&delegate);
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
@@ -523,6 +525,26 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionRowBounds.getWidth() > 0.f);
     REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
+    REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+    REQUIRE(state.getProperty("dynamicLabel", {}).toString() == "Live Update");
+    REQUIRE(state.getProperty("dynamicTooltip", {}).toString()
+            == "Apply envelope edits to notes that are already playing");
+
+    ComboBox* purposeSelector = nullptr;
+    for (int index = 0; index < editor->getNumChildComponents(); ++index) {
+        if (auto* combo = dynamic_cast<ComboBox*>(editor->getChildComponent(index))) {
+            purposeSelector = combo;
+            break;
+        }
+    }
+    REQUIRE(purposeSelector != nullptr);
+    purposeSelector->setSelectedId(
+            static_cast<int>(EnvelopePurpose::Scratch) + 1,
+            sendNotificationSync);
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("bipolar", {}));
+    purposeSelector->setSelectedId(
+            static_cast<int>(EnvelopePurpose::Pitch) + 1,
+            sendNotificationSync);
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 

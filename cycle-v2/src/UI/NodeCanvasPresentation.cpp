@@ -7,6 +7,7 @@
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/GraphValidator.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 
 #include <cmath>
 
@@ -166,6 +167,25 @@ void paintTripleModulationNode(
                     ModulationCableBundle::worldCentre(node, false)),
             ModulationCableBundle::socketDiameter * scale,
             true);
+}
+
+void paintEnvelopePurposeBadge(
+        Graphics& graphics,
+        const Node& node,
+        Rectangle<float> header,
+        float zoom) {
+    const EnvelopePurpose purpose = envelopePurposeFor(node);
+    const String label = envelopePurposeLabel(purpose).toUpperCase();
+    Rectangle<float> badge = header.reduced(9.f * zoom, 7.f * zoom)
+            .removeFromRight(74.f * zoom);
+    const Colour colour = colourForDomain(envelopeOutputDomain(purpose));
+    graphics.setColour(colour.withAlpha(0.26f));
+    graphics.fillRoundedRectangle(badge, 4.f * zoom);
+    graphics.setColour(colour.withAlpha(0.72f));
+    graphics.drawRoundedRectangle(badge, 4.f * zoom, 0.9f * zoom);
+    graphics.setColour(kText.withAlpha(0.94f));
+    graphics.setFont(FontOptions(9.f * zoom, Font::bold));
+    graphics.drawText(label, badge, Justification::centred);
 }
 
 Colour displayColour(const Node& node, const Port& port) {
@@ -605,6 +625,9 @@ void NodeCanvasPresentation::paintNode(
     graphics.setColour(kText);
     graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
                       Justification::centredLeft);
+    if (node.kind == NodeKind::Envelope) {
+        paintEnvelopePurposeBadge(graphics, node, header, zoom);
+    }
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {
         paintOperationAction(

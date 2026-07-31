@@ -54,6 +54,7 @@ public:
 class EnvelopeCurvePanelController {
 public:
     virtual ~EnvelopeCurvePanelController() = default;
+    virtual void setBipolar(bool bipolar) = 0;
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;
     virtual bool selectedMarkerState(bool loopMarker) const = 0;

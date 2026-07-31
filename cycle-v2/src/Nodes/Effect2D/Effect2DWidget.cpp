@@ -42,6 +42,12 @@ void Effect2DWidget::setControlValues(
     controller->setControlValues(enabled, firstValue, secondValue, thirdValue, menuId);
 }
 
+void Effect2DWidget::setEnvelopeBipolar(bool bipolar) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setBipolar(bipolar);
+    }
+}
+
 void Effect2DWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setLogarithmic(shouldUseLogarithmicScale);

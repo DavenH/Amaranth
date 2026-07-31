@@ -18,6 +18,7 @@ public:
     Component* getExpandedPanelComponentIfCreated();
     void setDelegate(CurvePanelControllerDelegate* delegate);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
+    void setEnvelopeBipolar(bool bipolar);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void syncFromNode(const Node& node);

@@ -35,7 +35,7 @@ struct EnvelopeEditorComponent::Impl {
     TextButton loop { "Loop" };
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
-    TextButton dynamic { "Live" };
+    TextButton dynamic { "Live Update" };
     EnvelopeMorphControls presentation;
 
     int viewAxis {};
@@ -72,6 +72,8 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
     });
     bindDiscreteAction(impl->dynamic, [] {});
+    impl->dynamic.setTooltip(
+            "Apply envelope edits to notes that are already playing");
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
@@ -140,7 +142,7 @@ void EnvelopeEditorComponent::layoutEditor() {
     markerRow.removeFromLeft(8);
     impl->logarithmic.setBounds(markerRow.removeFromLeft(54).reduced(2));
     markerRow.removeFromLeft(8);
-    impl->dynamic.setBounds(markerRow.removeFromLeft(54).reduced(2));
+    impl->dynamic.setBounds(markerRow.removeFromLeft(92).reduced(2));
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -170,6 +172,7 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
             0);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     const auto purpose = static_cast<EnvelopePurpose>(impl->purpose.getSelectedId() - 1);
+    widget.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
     widget.setEnvelopeLogarithmic(
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->logarithmic.getToggleState());
@@ -210,6 +213,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                     : "unipolar");
     state.setProperty("logarithmic", impl->logarithmic.getToggleState());
     state.setProperty("dynamic", impl->dynamic.getToggleState());
+    state.setProperty("dynamicLabel", impl->dynamic.getButtonText());
+    state.setProperty("dynamicTooltip", impl->dynamic.getTooltip());
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));

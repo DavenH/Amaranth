@@ -324,6 +324,10 @@ public:
         }
     }
 
+    void setBipolar(bool bipolar) override {
+        envelopePanel().setEnvelopeBipolar(bipolar);
+    }
+
     void setLogarithmic(bool logarithmic) override {
         if (adapter.logarithmic() != logarithmic) {
             ++publicationRevision;
