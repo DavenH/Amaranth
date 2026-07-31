@@ -2,17 +2,15 @@
 
 ## Status
 
-In progress. Typed attachment routing, the compiled Voice Context boundary,
-configuration-only Unison and Modulation Triple products, Envelope purpose,
-shared pitch-phase integration, and transient Unison editor feedback are
-implemented on `cycle2/voice-context-attachments`.
+Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
+the compiled Voice Context boundary, configuration-only Unison and Modulation
+Triple products, Envelope purpose, runtime modulation defaults, shared
+pitch-phase integration, and transient Unison editor feedback are complete.
 
-The remaining completion work is the runtime default-modulation resolver,
-feeding prepared pitch-envelope playback from an attached Voice Context into
-its Unison preview, compact-selector interaction automation, and the downstream
-oscillator-region lowering specified in
-`cycle-v2-oscillator-region-compilation.md`. The TDD must not be marked
-implemented until those runtime and audible-parity criteria are complete.
+Audible time-only and spectral oscillator lowering is intentionally owned by
+the downstream `cycle-v2-oscillator-region-compilation.md` TDD. It depends on
+this completed configuration boundary and is not a completion criterion of
+this document.
 
 Supersedes the current `Voice Context -> Unison -> source` signal-chain model
 in `cycle-v2-unison-parity.md`. It extends the control-routing contract in
@@ -372,9 +370,10 @@ work.
 - Modulation defaults are evaluated per voice where their source is per voice.
 - No graph traversal, attachment lookup, allocation, serialization, mutex
   wait, or UI publication occurs in a realtime process callback.
-- A Voice Context plan replacement states whether active voices retain or
-  restart pitch-envelope, portamento, and lane state. Parameter-specific
-  adoption policy must be tested rather than inherited accidentally.
+- Oscillator-region lowering must state whether a Voice Context plan
+  replacement makes active voices retain or restart pitch-envelope,
+  portamento, and lane state. That downstream adoption policy must be tested
+  rather than inherited accidentally.
 
 ## Negative Boundaries
 
@@ -409,13 +408,18 @@ work.
    the voice plan and Unison preview trajectory.
 7. Route transient effect-editor snapshots to expanded and compact Unison
    previews so every slider movement is visible.
-8. Implement `cycle-v2-oscillator-region-compilation.md`: partition oscillator
-   regions, lower time-only and spectral Unison strategies, materialize each
-   oscillator block, and prove audible Cycle 1 parity.
 
 Each slice receives its own refactor, style, semantic-test, automation, and
 commit pass. Passing schema tests does not permit a fake runtime adapter to
 survive into the next slice.
+
+## Follow-up Dependency
+
+`cycle-v2-oscillator-region-compilation.md` consumes the compiled Voice Context
+to partition oscillator regions, lower time-only and spectral Unison
+strategies, define active-voice plan adoption, materialize oscillator blocks,
+and prove audible Cycle 1 parity. Those responsibilities remain outside this
+configuration-attachment TDD so that the dependency direction stays explicit.
 
 ## Verification
 
@@ -451,13 +455,14 @@ survive into the next slice.
   colour.
 - Pitch neutral centre and unit-to-semitone endpoints match Cycle 1.
 
-### Voice execution and preview
+### Voice plan and preview
 
 - Unconnected Voice Context inputs produce the documented defaults.
-- Attached pitch changes instantaneous oscillator tuning through the shared
-  mapping without mutating the MIDI note.
-- Unison lanes combine base note, pitch envelope, detune, phase, pan, and gain
-  exactly once.
+- Attached pitch is prepared through the shared Envelope playback engine and
+  changes preview phase through the shared oscillator-tuning mapping without
+  mutating the preview MIDI note.
+- The immutable Unison layout carries detune, phase, pan, and gain exactly once
+  for each downstream lane-state owner.
 - Constant-pitch Unison paths match the existing straight-line golden values.
 - A nonconstant pitch envelope bends/integrates paths and matches sampled audio
   phase within the declared error bound.
@@ -487,5 +492,20 @@ survive into the next slice.
   and layout cores.
 - Unison previews update from every effective slider movement and accurately
   reflect Voice Context note, duration, pitch envelope, and Unison state.
-- Multiple oscillators can share one Voice Context plan without copied
-  configuration or shared mutable oscillator state.
+- The compiled boundary permits multiple oscillator branches to reference one
+  immutable Voice Context plan; oscillator-region lowering owns their separate
+  mutable lane state.
+
+## Implementation Evidence
+
+- `53e2df40` introduces typed attachments, Voice Context compilation,
+  configuration-only Unison and Modulation Triple products, Envelope purpose,
+  serialization migration, and continuous Unison feedback.
+- `d98710f9` resolves per-axis Voice Context modulation defaults while preserving
+  explicit-input precedence.
+- `dd1f691c` makes the compact Envelope purpose selector interactive.
+- `70519e85` prepares attached pitch-envelope playback and supplies it to both
+  compact and expanded Unison previews.
+- Cycle V2 verification passes 5,326 assertions in 383 test cases. The UI
+  regression capture is `/tmp/cycle-v2-voice-context.png`; filtered launch logs
+  are `/tmp/cycle-v2-voice-context-logs.txt`.
