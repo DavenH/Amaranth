@@ -6,6 +6,7 @@
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
@@ -310,6 +311,25 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
     REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
     REQUIRE(hasEdge("phaseLayer1", "out", "phaseOp2", "left"));
+
+    const Node* phaseLayer1 = loaded.graph.findNode("phaseLayer1");
+    const Node* phaseLayer2 = loaded.graph.findNode("phaseLayer2");
+    REQUIRE(phaseLayer1 != nullptr);
+    REQUIRE(phaseLayer2 != nullptr);
+    const auto phaseModel1 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer1->model);
+    const auto phaseModel2 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer2->model);
+    REQUIRE(phaseModel1 != nullptr);
+    REQUIRE(phaseModel2 != nullptr);
+    std::vector<VertCube*> phaseCubes1;
+    std::vector<VertCube*> phaseCubes2;
+    phaseModel1->mesh().copyElements(phaseCubes1);
+    phaseModel2->mesh().copyElements(phaseCubes2);
+    REQUIRE(phaseCubes1.size() > 0);
+    REQUIRE(phaseCubes2.size() > 4);
+    REQUIRE(phaseCubes1[0]->guideCurveChans[Vertex::Amp] == 0);
+    REQUIRE(phaseCubes2[4]->guideCurveChans[Vertex::Phase] == 0);
+    REQUIRE(loaded.graph.findNode("guide1") != nullptr);
+    REQUIRE(loaded.graph.findNode("guide2") != nullptr);
 
     const Node* waveshaper = loaded.graph.findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);
