@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
@@ -298,6 +299,11 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     REQUIRE(stats.bindings == 2);
     REQUIRE(stats.boundNodeId == "curve-a");
 
+    first.parameters.push_back({ "noise", "Noise", "0.25" });
+    REQUIRE(host.bind(&first, { 20, 30, 320, 220 }, 5));
+    REQUIRE(stats.creations == 1);
+    REQUIRE(stats.bindings == 3);
+
     Node second = node("curve-b", NodeKind::Waveshaper);
     REQUIRE(host.bind(&second, { 0, 0, 120, 90 }, 5));
     REQUIRE(stats.creations == 2);
@@ -435,18 +441,22 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
             presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
     const NodeGraph stengah = GraphSerializer().fromJsonString(
             presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
-    const Node* baroqueWaveshaper = baroque.findNode("waveshaper");
-    const Node* stengahWaveshaper = stengah.findNode("waveshaper");
-    REQUIRE(baroqueWaveshaper != nullptr);
-    REQUIRE(stengahWaveshaper != nullptr);
+    const Node* baroqueGuide = baroque.findNode("guide1");
+    const Node* stengahGuide = stengah.findNode("guide1");
+    REQUIRE(baroqueGuide != nullptr);
+    REQUIRE(stengahGuide != nullptr);
 
-    Effect2DWidget widget(NodeKind::Waveshaper);
-    auto editor = createCurveNodeEditor(NodeKind::Waveshaper, widget);
+    Effect2DWidget widget(NodeKind::GuideCurve);
+    auto editor = createCurveNodeEditor(NodeKind::GuideCurve, widget);
     editor->setBounds(0, 0, 640, 400);
-    editor->setNode(*baroqueWaveshaper);
+    editor->setNode(*baroqueGuide);
     REQUIRE(widget.vertexCountForAutomation() == 4);
-    editor->setNode(*stengahWaveshaper);
-    REQUIRE(widget.vertexCountForAutomation() == 6);
+    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+            == Catch::Approx(0.76562));
+    editor->setNode(*stengahGuide);
+    REQUIRE(widget.vertexCountForAutomation() == 55);
+    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+            == Catch::Approx(0.0025));
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

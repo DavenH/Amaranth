@@ -280,6 +280,89 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
   #endif
 }
 
+TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls",
+          "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphSerializer serializer;
+    const NodeGraph african = serializer.fromJsonString(
+            contentPreset("african-horn.cyclegraph").loadFileAsString());
+    const NodeGraph baroque = serializer.fromJsonString(
+            contentPreset("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = serializer.fromJsonString(
+            contentPreset("stengah.cyclegraph").loadFileAsString());
+
+    for (const NodeGraph* graph : { &african, &baroque, &stengah }) {
+        for (const Node& node : graph->getNodes()) {
+            REQUIRE(parameterValueForNode(node, "enabled") != "0");
+        }
+    }
+
+    REQUIRE(african.findNode("waveshaper") == nullptr);
+    REQUIRE(african.findNode("impulseResponse") == nullptr);
+    REQUIRE(african.findNode("equalizer") == nullptr);
+    REQUIRE(african.findNode("reverb") == nullptr);
+    REQUIRE(stengah.findNode("reverb") == nullptr);
+
+    const Node* africanDelay = african.findNode("delay");
+    const Node* baroqueDelay = baroque.findNode("delay");
+    const Node* stengahDelay = stengah.findNode("delay");
+    REQUIRE(africanDelay != nullptr);
+    REQUIRE(baroqueDelay != nullptr);
+    REQUIRE(stengahDelay != nullptr);
+    REQUIRE(parameterValueForNode(*africanDelay, "spin") == "0.692");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "time") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "feedback") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "spinIters") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "spin") == "0.5");
+    REQUIRE(parameterValueForNode(*baroqueDelay, "wet") == "0.5");
+    REQUIRE(parameterValueForNode(*stengahDelay, "time") == "0.584");
+    REQUIRE(parameterValueForNode(*stengahDelay, "spinIters") == "0.644");
+    REQUIRE(parameterValueForNode(*stengahDelay, "spin") == "0.976");
+    REQUIRE(parameterValueForNode(*stengahDelay, "wet") == "0.7");
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Baroque Flute preserves every authored guide assignment",
+          "[cycle-v2][graph][presets][guides]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const NodeGraph graph = GraphSerializer().fromJsonString(
+            contentPreset("baroque-flute.cyclegraph").loadFileAsString());
+    const auto hasGuideEdge = [&graph](const String& source,
+                                      const String& destination,
+                                      const String& port) {
+        return std::any_of(graph.getEdges().begin(), graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == source
+                            && edge.sourcePortId == "guide"
+                            && edge.destNodeId == destination
+                            && edge.destPortId == port
+                            && edge.attachment;
+                });
+    };
+
+    for (const int cube : { 1, 3, 4, 5, 6 }) {
+        REQUIRE(hasGuideEdge(
+                "guide2", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
+    }
+    for (const int cube : { 1, 4 }) {
+        REQUIRE(hasGuideEdge(
+                "guide4", "magnitudeLayer2", "guide.cube." + String(cube) + ".amp"));
+    }
+    for (const int cube : { 0, 2 }) {
+        REQUIRE(hasGuideEdge(
+                "guide1", "magnitudeLayer3", "guide.cube." + String(cube) + ".time"));
+    }
+    for (const int cube : { 0, 1 }) {
+        REQUIRE(hasGuideEdge(
+                "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(
@@ -335,7 +418,7 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(phaseCubes1[0]->guideCurveChans[Vertex::Amp] == 0);
     REQUIRE(phaseCubes2[4]->guideCurveChans[Vertex::Phase] == 0);
     REQUIRE(loaded.graph.findNode("guide1") != nullptr);
-    REQUIRE(loaded.graph.findNode("guide2") != nullptr);
+    REQUIRE(loaded.graph.findNode("guide2") == nullptr);
 
     const Node* waveshaper = loaded.graph.findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);

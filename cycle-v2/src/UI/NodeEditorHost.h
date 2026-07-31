@@ -294,6 +294,7 @@ private:
     String activeNodeId;
     NodeKind activeKind { NodeKind::GenericProcessor };
     uint64_t boundDocumentRevision {};
+    uint64_t boundNodeFingerprint {};
 };
 
 }

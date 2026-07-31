@@ -7,12 +7,12 @@
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 27
+      "equals": 23
     },
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 41
+      "equals": 48
     },
     {
       "command": "assertState",
@@ -21,14 +21,14 @@
     },
     {
       "command": "openNodeEditor",
-      "nodeId": "waveshaper",
+      "nodeId": "guide1",
       "waitForIdle": true,
       "idleDelayMs": 200
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.vertexCount",
-      "equals": 4
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.76562
     },
     {
       "command": "openGraph",
@@ -37,12 +37,12 @@
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 22
+      "equals": 18
     },
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 37
+      "equals": 33
     },
     {
       "command": "assertState",
@@ -51,14 +51,14 @@
     },
     {
       "command": "openNodeEditor",
-      "nodeId": "waveshaper",
+      "nodeId": "guide1",
       "waitForIdle": true,
       "idleDelayMs": 200
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.vertexCount",
-      "equals": 5
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.0
     },
     {
       "command": "openGraph",
@@ -67,17 +67,28 @@
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 19
+      "equals": 17
     },
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 35
+      "equals": 34
     },
     {
       "command": "assertState",
       "path": "compileSucceeded",
       "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "guide1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.noise",
+      "equals": 0.0025
     },
     {
       "command": "openNodeEditor",

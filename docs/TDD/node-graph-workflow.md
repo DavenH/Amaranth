@@ -1108,10 +1108,12 @@ Current inspection fixtures:
 - Supported fixed-flow processing is expressed with native source, transform,
   effect, envelope, and output nodes. The sources have unison disabled, so the
   presets do not require a temporary unison representation.
-- Guide curves and pitch/scratch envelopes remain visible but disconnected
-  where Cycle 2 lacks the Cycle 1 dimension-specific guide binding or
-  pitch/scratch routing contract. Do not approximate those bindings with the
-  generic scratch attachment port.
+- Disabled Cycle 1 effects are omitted instead of appearing as inert nodes in
+  the authored graph. Enabled effects retain their exact source parameters.
+- Guide curves with Cycle 1 cube-component assignments have explicit
+  `guide.cube.<index>.<field>` attachment edges. Pitch remains disconnected
+  pending its voice-context contract; scratch attachment edges preserve source
+  topology without approximating the still-missing execution behavior.
 - Stengah's waveshaper retains its six source vertices. Its time layer is also
   faithful to Cycle 1: that source mesh contains zero vertices and cubes, so
   the spectral layers construct the preset's initial signal.
@@ -1119,8 +1121,9 @@ Current inspection fixtures:
   and stereo spectral-layer pan are designed separately in
   `cycle-v2-voice-context-and-layer-routing.md`.
 - `cycle-v2-agent-ported-presets.json` opens all three preset files and asserts
-  their graph identity and successful compilation. General Cycle 1 preset
-  import remains an incomplete Milestone 9 item.
+  their graph identity, successful compilation, and guide-control refresh when
+  the same editor identity is reused across files. General Cycle 1 preset import
+  remains an incomplete Milestone 9 item.
 
 Current file workflow:
 
@@ -1247,8 +1250,7 @@ Current file workflow:
   remaining manual authoring path has migrated.
 - Stengah is the parity fixture for that work. Its imported mesh snapshots retain
   guide channel 0 on phase-layer-1 cube 0's amplitude component and phase-layer-2
-  cube 4's phase component. The preset also contains two authored guide curves.
-  The preset now has cube-component edges for both assignments alongside the
-  preserved mesh metadata. Guide 2 and all three envelope meshes are correctly
-  unattached because their source data contains no guide-channel assignment.
-  Provider-backed sampling remains incomplete.
+  cube 4's phase component. The preset has cube-component edges for both
+  assignments alongside the preserved mesh metadata; its unreferenced second
+  guide is omitted. Baroque Flute likewise exposes all eleven assignments from
+  its embedded cube metadata. Provider-backed sampling remains incomplete.

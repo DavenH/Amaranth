@@ -1,6 +1,29 @@
 #include "NodeEditorHost.h"
 
+#include "../Runtime/FingerprintBuilder.h"
+
 namespace CycleV2 {
+
+namespace {
+
+uint64_t bindingFingerprint(const Node& node) {
+    FingerprintBuilder fingerprint;
+    fingerprint.add(node.subtitle);
+    for (const auto& parameter : node.parameters) {
+        fingerprint.add(parameter.id).add(parameter.value);
+    }
+    if (node.model != nullptr) {
+        fingerprint
+                .add(node.model->schemaId())
+                .add(static_cast<uint64_t>(node.model->schemaVersion()))
+                .add(node.model->revision())
+                .add(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(node.model.get())));
+    }
+    fingerprint.add(JSON::toString(node.editorState, true));
+    return fingerprint.value();
+}
+
+}
 
 NodeEditorHost::NodeEditorHost(
         Component& parentToUse,
@@ -42,9 +65,13 @@ bool NodeEditorHost::bind(const Node* node, Rectangle<int> bounds, uint64_t docu
         created = true;
     }
 
-    if (created || boundDocumentRevision != documentRevision) {
+    const uint64_t nodeFingerprint = bindingFingerprint(*node);
+    if (created
+            || boundDocumentRevision != documentRevision
+            || boundNodeFingerprint != nodeFingerprint) {
         editor->bind(*node);
         boundDocumentRevision = documentRevision;
+        boundNodeFingerprint = nodeFingerprint;
     }
     editor->component().setBounds(bounds);
     editor->component().setVisible(true);
@@ -72,6 +99,7 @@ void NodeEditorHost::close() {
     editor.reset();
     activeNodeId = {};
     boundDocumentRevision = 0;
+    boundNodeFingerprint = 0;
 }
 
 void NodeEditorHost::detach() {
