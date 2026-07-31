@@ -56,6 +56,8 @@ struct GraphBufferPlan {
     ChannelLayout channelLayout { ChannelLayout::Mono };
     int firstProducerStep { -1 };
     int lastConsumerStep { -1 };
+    DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
+    std::shared_ptr<const INodeDspConfiguration> defaultModulation;
 };
 
 struct GraphDependencyIndex {

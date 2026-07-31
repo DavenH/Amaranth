@@ -552,6 +552,106 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
     return contexts;
 }
 
+const CompiledVoiceContext* voiceContextForNode(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        const Node& node) {
+    for (const auto& edge : plan.signalEdges) {
+        if (edge.destNodeId != node.id || edge.domain != PortDomain::DomainContext) {
+            continue;
+        }
+        const auto found = std::find_if(
+                plan.voiceContexts.begin(),
+                plan.voiceContexts.end(),
+                [&](const CompiledVoiceContext& context) {
+                    return context.nodeId == edge.sourceNodeId;
+                });
+        if (found != plan.voiceContexts.end()) {
+            return &*found;
+        }
+    }
+
+    if (node.kind == NodeKind::Envelope) {
+        for (const auto& edge : plan.signalEdges) {
+            if (edge.sourceNodeId == node.id && edge.destPortId == "pitch") {
+                const auto found = std::find_if(
+                        plan.voiceContexts.begin(),
+                        plan.voiceContexts.end(),
+                        [&](const CompiledVoiceContext& context) {
+                            return context.nodeId == edge.destNodeId;
+                        });
+                if (found != plan.voiceContexts.end()) {
+                    return &*found;
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
+void compileDefaultModulationInputs(
+        const NodeGraph& graph,
+        GraphExecutionPlan& plan) {
+    for (auto& step : plan.steps) {
+        const Node* node = findNode(graph, step.nodeId);
+        if (node == nullptr) {
+            continue;
+        }
+        const CompiledVoiceContext* context = voiceContextForNode(graph, plan, *node);
+        if (context == nullptr) {
+            continue;
+        }
+        for (int portIndex = 0; portIndex < (int) node->inputs.size(); ++portIndex) {
+            const Port& port = node->inputs[(size_t) portIndex];
+            if (port.defaultModulationSlot == DefaultModulationSlot::None) {
+                continue;
+            }
+            const bool explicitInput = std::any_of(
+                    plan.signalEdges.begin(),
+                    plan.signalEdges.end(),
+                    [&](const Edge& edge) {
+                        return edge.destNodeId == node->id && edge.destPortId == port.id;
+                    });
+            if (explicitInput) {
+                continue;
+            }
+            const String sourcePort = "default."
+                    + String((int) port.defaultModulationSlot);
+            const bool bufferExists = std::any_of(
+                    plan.buffers.begin(),
+                    plan.buffers.end(),
+                    [&](const GraphBufferPlan& buffer) {
+                        return buffer.sourceNodeId == context->nodeId
+                                && buffer.sourcePortId == sourcePort;
+                    });
+            if (!bufferExists) {
+                plan.buffers.push_back({
+                        context->nodeId + "." + sourcePort,
+                        context->nodeId,
+                        sourcePort,
+                        PortDomain::ControlSignal,
+                        ChannelLayout::Mono,
+                        -1,
+                        -1,
+                        port.defaultModulationSlot,
+                        context->defaultModulation
+                });
+            }
+            step.inputs.push_back({
+                    context->nodeId,
+                    sourcePort,
+                    port.id,
+                    portIndex,
+                    -1,
+                    -1,
+                    -1,
+                    PortDomain::ControlSignal,
+                    ChannelLayout::Mono
+            });
+        }
+    }
+}
+
 }
 
 bool GraphCompileResult::succeeded() const {
@@ -600,6 +700,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolver,
                 domainResolution,
                 moduleRegistry);
+        compileDefaultModulationInputs(graph, result.plan);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);

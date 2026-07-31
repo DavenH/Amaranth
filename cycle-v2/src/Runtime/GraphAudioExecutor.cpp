@@ -1,5 +1,6 @@
 #include "GraphAudioExecutor.h"
 #include "AudioProcessContextUtils.h"
+#include "../Nodes/Control/ModulationTriple.h"
 
 #include <algorithm>
 #include <unordered_set>
@@ -160,6 +161,27 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         stagedDiagnosticResults.resize(plan.steps.size());
     }
     realtimeOutput = nullptr;
+
+    for (size_t bufferIndex = 0; bufferIndex < plan.buffers.size(); ++bufferIndex) {
+        const auto& buffer = plan.buffers[bufferIndex];
+        if (buffer.defaultModulationSlot == DefaultModulationSlot::None) {
+            continue;
+        }
+        const auto configuration = std::dynamic_pointer_cast<
+                const ModulationTripleConfiguration>(buffer.defaultModulation);
+        if (configuration == nullptr) {
+            continue;
+        }
+        const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
+        SignalPayload& payload = bufferSlots[bufferIndex];
+        payload.domain = PortDomain::ControlSignal;
+        payload.channelLayout = ChannelLayout::Mono;
+        payload.block.samples.resize(frameCount);
+        ModulationSource::renderAudioBlock(
+                configuration->sources[(size_t) sourceIndex],
+                voice,
+                { payload.block.samples.data(), (int) frameCount });
+    }
 
     for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
         if (dirtyNodes != nullptr && cancellationCheck && !cancellationCheck()) {
