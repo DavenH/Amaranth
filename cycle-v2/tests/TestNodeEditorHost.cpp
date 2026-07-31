@@ -203,6 +203,19 @@ Node node(String id, NodeKind kind) {
     return result;
 }
 
+Rectangle<float> rectangleProperty(const var& state, const Identifier& name) {
+    const auto* bounds = state.getProperty(name, {}).getDynamicObject();
+    if (bounds == nullptr) {
+        return {};
+    }
+    return {
+        static_cast<float>(bounds->getProperty("x")),
+        static_cast<float>(bounds->getProperty("y")),
+        static_cast<float>(bounds->getProperty("width")),
+        static_cast<float>(bounds->getProperty("height"))
+    };
+}
+
 TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics",
         "[cycle-v2][canvas][automation]") {
     ScopedJuceInitialiser_GUI juce;
@@ -499,8 +512,17 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
-    REQUIRE(editor->automationState().getProperty("purpose", {}).toString() == "Pitch");
-    REQUIRE(editor->automationState().getProperty("polarity", {}).toString() == "bipolar");
+    const var state = editor->automationState();
+    REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
+    REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
+    const auto purposeBounds = rectangleProperty(state, "purposeBounds");
+    const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
+    const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
+    REQUIRE(purposeBounds.getWidth() > 0.f);
+    REQUIRE(blueMorphBounds.getWidth() > 0.f);
+    REQUIRE(actionRowBounds.getWidth() > 0.f);
+    REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
+    REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 

@@ -31,9 +31,20 @@ Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) co
     return controls.removeFromLeft(328.f);
 }
 
+Rectangle<float> EnvelopeMorphControls::purposeRow(Rectangle<float> controls) const {
+    auto row = railColumn(controls);
+    return row.removeFromTop(32.f);
+}
+
 Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int axis) const {
     auto row = railColumn(controls);
     row.removeFromTop(41.f + 35.f * static_cast<float>(axis));
+    return row.removeFromTop(32.f);
+}
+
+Rectangle<float> EnvelopeMorphControls::actionRow(Rectangle<float> controls) const {
+    auto row = railColumn(controls);
+    row.removeFromTop(154.f);
     return row.removeFromTop(32.f);
 }
 

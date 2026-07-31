@@ -118,6 +118,10 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
 
 void EnvelopeEditorComponent::layoutEditor() {
     const auto controls = editorControlBounds();
+    auto purposeRow = impl->presentation.purposeRow(controls).toNearestInt();
+    impl->purposeLabel.setBounds(purposeRow.removeFromLeft(62));
+    impl->purpose.setBounds(purposeRow.removeFromLeft(172).reduced(2));
+
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
 
@@ -129,14 +133,7 @@ void EnvelopeEditorComponent::layoutEditor() {
     blueRow.removeFromRight(58);
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
-    auto markerRow = impl->presentation.railColumn(controls).toNearestInt();
-    markerRow.removeFromTop(126);
-    auto purposeRow = markerRow.removeFromTop(30);
-    impl->purposeLabel.setBounds(purposeRow.removeFromLeft(62));
-    impl->purpose.setBounds(purposeRow.removeFromLeft(132).reduced(2));
-    markerRow = impl->presentation.railColumn(controls).toNearestInt();
-    markerRow.removeFromTop(160);
-    markerRow = markerRow.removeFromTop(30);
+    auto markerRow = impl->presentation.actionRow(controls).toNearestInt();
     impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2));
     markerRow.removeFromLeft(8);
     impl->sustain.setBounds(markerRow.removeFromLeft(70).reduced(2));
@@ -216,6 +213,15 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));
+    state.setProperty(
+            "purposeBounds",
+            editorBoundsToVar(impl->purpose.getBounds().toFloat()));
+    state.setProperty(
+            "blueMorphBounds",
+            editorBoundsToVar(impl->blueMorph.slider.getBounds().toFloat()));
+    state.setProperty(
+            "actionRowBounds",
+            editorBoundsToVar(impl->presentation.actionRow(editorControlBounds())));
     Array<var> parameterRails;
     const auto parameters = widget.selectedVertexParameters();
     const auto parameterArea = impl->presentation.vertexBounds(editorControlBounds());

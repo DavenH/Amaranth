@@ -21,6 +21,24 @@
       "equals": "unipolar"
     },
     {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purposeBounds.y",
+      "op": "lessThan",
+      "value": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.blueMorphBounds.y",
+      "op": "greaterThan",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.actionRowBounds.y",
+      "op": "greaterThan",
+      "value": 190
+    },
+    {
       "command": "setNodeParameter",
       "nodeId": "scratchEnvelope",
       "parameterId": "purpose",
