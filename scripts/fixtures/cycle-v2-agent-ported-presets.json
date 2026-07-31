@@ -43,12 +43,12 @@
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 18
+      "equals": 12
     },
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 33
+      "equals": 20
     },
     {
       "command": "assertState",
@@ -70,28 +70,6 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.firstControl",
       "equals": 0.0
-    },
-    {
-      "command": "openNodeEditor",
-      "nodeId": "phaseLayer1",
-      "waitForIdle": true,
-      "idleDelayMs": 200
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.vertexCount",
-      "equals": 0
-    },
-    {
-      "command": "openNodeEditor",
-      "nodeId": "magnitudeLayer1",
-      "waitForIdle": true,
-      "idleDelayMs": 200
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.vertexCount",
-      "equals": 0
     },
     {
       "command": "openGraph",

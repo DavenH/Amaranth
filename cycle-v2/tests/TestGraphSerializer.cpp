@@ -4,12 +4,14 @@
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 using namespace CycleV2;
@@ -319,6 +321,55 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
     REQUIRE(parameterValueForNode(*stengahDelay, "spinIters") == "0.644");
     REQUIRE(parameterValueForNode(*stengahDelay, "spin") == "0.976");
     REQUIRE(parameterValueForNode(*stengahDelay, "wet") == "0.7");
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("African Horn keeps its populated mesh path in the time domain",
+        "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const String encoded = contentPreset("african-horn.cyclegraph").loadFileAsString();
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+    REQUIRE(loaded.graph.findNode("fft") == nullptr);
+    REQUIRE(loaded.graph.findNode("ifft") == nullptr);
+    REQUIRE(loaded.graph.findNode("magnitudeLayer1") == nullptr);
+    REQUIRE(loaded.graph.findNode("phaseLayer1") == nullptr);
+
+    const auto directTimePath = std::find_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "timeAdd1"
+                        && edge.sourcePortId == "out"
+                        && edge.destNodeId == "delay"
+                        && edge.destPortId == "time";
+            });
+    REQUIRE(directTimePath != loaded.graph.getEdges().end());
+
+    const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    const GraphAudioResult audio = GraphAudioExecutor().process(
+            loaded.graph,
+            compiled.plan,
+            128);
+    REQUIRE(std::any_of(
+            audio.output.block.samples.begin(),
+            audio.output.block.samples.end(),
+            [](float sample) {
+                return std::abs(sample) > 0.001f;
+            }));
+
+    for (const String& nodeId : { String("timeLayer1"), String("timeLayer2") }) {
+        const Node* node = loaded.graph.findNode(nodeId);
+        REQUIRE(node != nullptr);
+        const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+        REQUIRE(model != nullptr);
+        REQUIRE(model->mesh().getNumVerts() > 0);
+    }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
