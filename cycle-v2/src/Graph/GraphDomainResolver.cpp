@@ -106,11 +106,76 @@ private:
 
             const Node* source = node(edge.sourceNodeId);
             if (source != nullptr && source->kind == NodeKind::VoiceContext) {
-                return voiceContextDomain(*source);
+                const PortDomain domain = voiceContextDomain(*source);
+                if (domain == PortDomain::SpectralMagnitudeSignal
+                        && parameterValueForNode(*source, "domain", "waveform") == "spectral") {
+                    return downstreamSpectralDomain(nodeToResolve);
+                }
+
+                return domain;
             }
         }
 
         return PortDomain::ControlSignal;
+    }
+
+    PortDomain downstreamSpectralDomain(const Node& sourceNode) const {
+        std::deque<size_t> worklist;
+        std::vector<bool> visited(graph.getNodes().size(), false);
+        const size_t sourceIndex = nodeIndex(sourceNode.id);
+        if (sourceIndex < outgoing.size()) {
+            worklist.insert(
+                    worklist.end(),
+                    outgoing[sourceIndex].begin(),
+                    outgoing[sourceIndex].end());
+        }
+
+        PortDomain resolved = PortDomain::ControlSignal;
+        while (!worklist.empty()) {
+            const Edge& edge = edges[worklist.front()];
+            worklist.pop_front();
+
+            const Node* destination = node(edge.destNodeId);
+            if (destination == nullptr) {
+                continue;
+            }
+
+            const Port* destinationPort = findPort(*destination, edge.destPortId, true);
+            if (destinationPort == nullptr) {
+                continue;
+            }
+
+            const PortDomain candidate = destinationPort->domain;
+            if (candidate == PortDomain::SpectralMagnitudeSignal
+                    || candidate == PortDomain::SpectralPhaseSignal) {
+                if (resolved != PortDomain::ControlSignal && resolved != candidate) {
+                    return PortDomain::SpectralMagnitudeSignal;
+                }
+
+                resolved = candidate;
+                continue;
+            }
+
+            if (destination->kind != NodeKind::Add
+                    && destination->kind != NodeKind::Multiply) {
+                continue;
+            }
+
+            const size_t destinationIndex = nodeIndex(destination->id);
+            if (destinationIndex >= outgoing.size() || visited[destinationIndex]) {
+                continue;
+            }
+
+            visited[destinationIndex] = true;
+            worklist.insert(
+                    worklist.end(),
+                    outgoing[destinationIndex].begin(),
+                    outgoing[destinationIndex].end());
+        }
+
+        return resolved == PortDomain::ControlSignal
+                ? PortDomain::SpectralMagnitudeSignal
+                : resolved;
     }
 
     PortDomain firstInputDomain(

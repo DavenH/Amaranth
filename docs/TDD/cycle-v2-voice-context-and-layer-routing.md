@@ -2,8 +2,12 @@
 
 ## Status
 
-Proposed. The imported Stengah graph exposes the missing contracts, but this
-work is not implemented by the preset port.
+In progress. A single spectral Voice Context now types each source mesh from
+its consuming magnitude or phase branch, and Stengah connects that context to
+all three spectral meshes. Stengah also preserves its scratch-envelope
+topology. Scratch execution, inherited morph defaults, envelope profiles, and
+stereo layer panning remain unimplemented. Stengah's authored cube-component
+guide assignments are now also explicit graph attachments.
 
 ## Problem
 
@@ -39,6 +43,15 @@ layers, and its two active phase layers are hard-panned to opposite channels.
 
 ## Proposed Contracts
 
+### Spectral source context
+
+Voice Context selects the spectral family, not magnitude or phase for an
+entire traversal path. Each context-connected mesh resolves its concrete
+spectral domain from its fixed downstream consumer, including through Add and
+Multiply nodes. Explicit legacy `spectralMagnitude` and `spectralPhase` values
+remain readable, but new graphs persist `spectral` and display all three values
+as Spectral in the editor.
+
 ### Voice context defaults
 
 Voice Context gains a composite Modulation Triple input. Its three ordinary
@@ -72,10 +85,11 @@ under the Cycle 1 group/axis rules. The graph representation must preserve both
 the envelope identity and the layer selection; a single generic attachment
 edge without channel and axis semantics is insufficient.
 
-For Stengah, the intended imported state is scratch channel 0 selected by the
-time, spectral-magnitude, and spectral-phase layers. Until that contract exists,
-the scratch node remains visible and disconnected rather than being connected
-to a misleading generic port.
+For Stengah, scratch channel 0 is represented by its scratch Envelope node and
+attachment edges preserve the source-layer selections. The active magnitude
+and phase meshes are connected now even though execution does not yet consume
+the attachment. The missing processor behavior must not be mistaken for absent
+preset topology. The omitted empty time mesh has no attachment target.
 
 ### Spectral layer panning
 
@@ -97,8 +111,8 @@ parity fixture: their imported pan values are 1.0 and 0.0.
 - Do not duplicate the Modulation Triple edges in serialized imported graphs
   once voice-context inheritance exists.
 - Do not approximate spectral panning with a downstream mono balance control.
-- Delete the generic scratch attachment contract after typed scratch-channel
-  routing has migrated all graphs and fixtures.
+- Migrate generic scratch attachment edges to typed scratch-channel routing
+  without losing their source-layer selections.
 - Remove repeated imported morph edges when voice-context defaults and explicit
   override semantics are implemented.
 

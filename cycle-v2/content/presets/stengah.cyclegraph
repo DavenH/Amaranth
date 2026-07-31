@@ -7,7 +7,7 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 120.0, "y": 520.0 },
-            "parameters": { "domain": "spectralPhase", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "spectral", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
@@ -1226,6 +1226,7 @@
         }
     ],
     "edges": [
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer2", "destPortId": "context" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag" },
@@ -1254,7 +1255,12 @@
         { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "pitchEnvelope", "destPortId": "red" },
         { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "pitchEnvelope", "destPortId": "blue" },
         { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "scratchEnvelope", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "scratchEnvelope", "destPortId": "blue" }
+        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "scratchEnvelope", "destPortId": "blue" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer1", "destPortId": "scratch" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer2", "destPortId": "scratch" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer1", "destPortId": "guide.cube.0.amp" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer2", "destPortId": "guide.cube.4.phase" }
     ],
     "probes": []
 }

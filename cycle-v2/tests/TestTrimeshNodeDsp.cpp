@@ -530,6 +530,13 @@ TEST_CASE("Trimesh guide attachment target parses and formats vertex fields", "[
     REQUIRE(target.fieldIndex() == 4);
     REQUIRE(TrimeshGuideAttachmentTarget::fields()[(size_t) target.fieldIndex()] == "amp");
     REQUIRE(TrimeshGuideAttachmentTarget::portIdFor(12, "amp") == "guide.vertex.12.amp");
+    const auto cubeTarget = TrimeshGuideAttachmentTarget::parse("guide.cube.4.phase");
+    REQUIRE(cubeTarget.isValid());
+    REQUIRE(cubeTarget.isCubeTarget());
+    REQUIRE(cubeTarget.cubeIndex == 4);
+    REQUIRE(cubeTarget.field == "phase");
+    REQUIRE(TrimeshGuideAttachmentTarget::portIdForCube(4, "phase")
+            == "guide.cube.4.phase");
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.x.amp").isValid());
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.unknown").isValid());
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());

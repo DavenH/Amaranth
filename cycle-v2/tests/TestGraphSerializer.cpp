@@ -289,7 +289,7 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
 
     const Node* voice = loaded.graph.findNode("voice");
     REQUIRE(voice != nullptr);
-    REQUIRE(parameterValueForNode(*voice, "domain") == "spectralPhase");
+    REQUIRE(parameterValueForNode(*voice, "domain") == "spectral");
     REQUIRE(loaded.graph.findNode("timeLayer1") == nullptr);
     REQUIRE(loaded.graph.findNode("fft") == nullptr);
     REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
@@ -307,8 +307,14 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
                             && edge.destPortId == destPortId;
                 });
     };
+    REQUIRE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "magnitudeLayer1", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer1", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer2", "scratch"));
+    REQUIRE(hasEdge("guide1", "guide", "phaseLayer1", "guide.cube.0.amp"));
+    REQUIRE(hasEdge("guide1", "guide", "phaseLayer2", "guide.cube.4.phase"));
     REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
     REQUIRE(hasEdge("phaseLayer1", "out", "phaseOp2", "left"));
 

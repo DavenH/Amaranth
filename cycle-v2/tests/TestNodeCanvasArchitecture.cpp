@@ -552,6 +552,13 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
 
+    voice.parameters = {
+            { "domain", "Start Domain", "spectralPhase" }
+    };
+    REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Spectral");
+    REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "waveform");
+    voice.parameters.clear();
+
     auto edit = editAt({ 252.f, 59.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
     REQUIRE(edit.value == "spectral");

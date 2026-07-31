@@ -1240,12 +1240,15 @@ Current file workflow:
   2 authoring slice exposed `guide.vertex.<index>.<field>` targets, but the
   authoritative Cycle 1 contract stores a guide channel on each `VertCube`
   component (`guideCurveChans[field]`). Those scopes are not interchangeable:
-  a vertex edge cannot faithfully represent a cube-component assignment. Before
-  imported guide routing is shown or sampled, replace the provisional target
-  with a stable cube-component attachment identity and connect it to the shared
-  guide snapshot/provider boundary described in `shared-cycle-dsp-core.md`.
+  a vertex edge cannot faithfully represent a cube-component assignment. The
+  graph now accepts and serializes stable `guide.cube.<index>.<field>` targets;
+  connect those targets to the shared guide snapshot/provider boundary described
+  in `shared-cycle-dsp-core.md`. Retire the provisional vertex target after the
+  remaining manual authoring path has migrated.
 - Stengah is the parity fixture for that work. Its imported mesh snapshots retain
   guide channel 0 on phase-layer-1 cube 0's amplitude component and phase-layer-2
   cube 4's phase component. The preset also contains two authored guide curves.
-  Do not fabricate vertex-level edges for these assignments; preserve the mesh
-  metadata until the cube-component target and provider are implemented.
+  The preset now has cube-component edges for both assignments alongside the
+  preserved mesh metadata. Guide 2 and all three envelope meshes are correctly
+  unattached because their source data contains no guide-channel assignment.
+  Provider-backed sampling remains incomplete.

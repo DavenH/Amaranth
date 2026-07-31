@@ -4,6 +4,8 @@
 #include "GraphValidator.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+
 #include <cmath>
 #include <unordered_set>
 
@@ -493,13 +495,21 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const Node* sourceNode = result.graph.findNode(edge.sourceNodeId);
         const Node* destinationNode = result.graph.findNode(edge.destNodeId);
         const Port* source = sourceNode != nullptr ? findPort(*sourceNode, edge.sourcePortId, false) : nullptr;
-        const Port* destination = destinationNode != nullptr ? findPort(*destinationNode, edge.destPortId, true) : nullptr;
-        if (source == nullptr || destination == nullptr) {
+        const Port* destination = destinationNode != nullptr
+                ? findPort(*destinationNode, edge.destPortId, true)
+                : nullptr;
+        const bool guideAttachment = destinationNode != nullptr
+                && destinationNode->kind == NodeKind::TrilinearMesh
+                && TrimeshGuideAttachmentTarget::parse(edge.destPortId).isValid();
+        if (source == nullptr || (destination == nullptr && !guideAttachment)) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge references an unknown node or static port" });
             continue;
         }
-        edge.domain = resolvedEdgeDomain(*source, *destination);
-        edge.attachment = destination->purpose == PortPurpose::ScratchAttachment;
+        edge.domain = guideAttachment
+                ? PortDomain::EnvelopeSignal
+                : resolvedEdgeDomain(*source, *destination);
+        edge.attachment = guideAttachment
+                || destination->purpose == PortPurpose::ScratchAttachment;
         result.graph.addEdge(std::move(edge));
     }
 

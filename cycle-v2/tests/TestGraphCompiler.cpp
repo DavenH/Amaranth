@@ -255,6 +255,43 @@ TEST_CASE("Compiler resolves source domains from voice context parameters", "[cy
     REQUIRE(findBuffer(result.plan, "mesh", "out").domain == PortDomain::SpectralMagnitudeSignal);
 }
 
+TEST_CASE("One spectral voice context resolves magnitude and phase mesh branches",
+        "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = {
+            { "domain", "Start Domain", "spectral" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "magnitude", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "phaseA", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "phaseB", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "phaseAdd", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({ "voice", "context", "magnitude", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "phaseA", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "phaseB", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "magnitude", "out", "ifft", "mag", PortDomain::ControlSignal, false });
+    graph.addEdge({ "phaseA", "out", "phaseAdd", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "phaseB", "out", "phaseAdd", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "phaseAdd", "out", "ifft", "phase", PortDomain::ControlSignal, false });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(findBuffer(result.plan, "magnitude", "out").domain
+            == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(findBuffer(result.plan, "phaseA", "out").domain
+            == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findBuffer(result.plan, "phaseB", "out").domain
+            == PortDomain::SpectralPhaseSignal);
+    REQUIRE(findSignalEdge(result.plan, "phaseAdd", "ifft").domain
+            == PortDomain::SpectralPhaseSignal);
+}
+
 TEST_CASE("Compiler keeps wave source fixed in the time domain", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;

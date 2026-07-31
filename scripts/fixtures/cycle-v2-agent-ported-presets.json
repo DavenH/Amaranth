@@ -72,7 +72,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 29
+      "equals": 35
     },
     {
       "command": "assertState",
