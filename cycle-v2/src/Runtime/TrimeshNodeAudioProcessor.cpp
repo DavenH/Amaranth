@@ -1,6 +1,7 @@
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Rasterization/ScratchPositionPolicy.h>
 #include <Obj/MorphPosition.h>
 
 #include "AudioProcessContextUtils.h"
@@ -47,6 +48,47 @@ MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& paramete
     };
 }
 
+Rasterization::ScratchSourceDomain scratchDomainFor(PortDomain domain) {
+    if (domain == PortDomain::TimeSignal) {
+        return Rasterization::ScratchSourceDomain::Time;
+    }
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal) {
+        return Rasterization::ScratchSourceDomain::Spectral;
+    }
+    return Rasterization::ScratchSourceDomain::Unsupported;
+}
+
+const SignalPayload* scratchAttachment(const AudioProcessContext& context) {
+    for (const auto& attachment : context.attachments) {
+        if (attachment.destPortId == "scratch" && attachment.payload != nullptr) {
+            return attachment.payload;
+        }
+    }
+    return nullptr;
+}
+
+float scratchCoordinateForColumn(
+        const SignalPayload& scratch,
+        size_t column,
+        size_t columnCount,
+        float fallback) {
+    if (scratch.traversalGrid.isValid()) {
+        const size_t sourceColumn = std::min(
+                scratch.traversalGrid.columns - 1,
+                column * scratch.traversalGrid.columns / columnCount);
+        return scratch.traversalGrid.values[
+                sourceColumn * scratch.traversalGrid.rows];
+    }
+    if (!scratch.block.samples.empty()) {
+        const size_t sourceSample = std::min(
+                scratch.block.samples.size() - 1,
+                column * scratch.block.samples.size() / columnCount);
+        return scratch.block.samples[sourceSample];
+    }
+    return fallback;
+}
+
 class TrimeshAudioProcessor final : public NodeAudioProcessor {
 public:
     AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
@@ -77,6 +119,9 @@ public:
                 configuration->primaryViewAxis,
                 std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
                 traversalRowsForDomain(preparedDomain, spec.maximumFrameCount));
+        traversalMorphs.resize(std::max(
+                kDefaultTraversalColumns,
+                spec.maximumFrameCount / 2));
     }
 
     void process(AudioProcessContext& context) override {
@@ -119,10 +164,38 @@ public:
                         "primaryAxis",
                         "yellow"));
 
-        renderBlock(context, outputPort, morph, primaryAxis, output);
+        const SignalPayload* scratch = scratchAttachment(context);
+        const auto scratchDomain = scratchDomainFor(outputPort.domain);
+        const bool scratchAppliesToBlock = scratch != nullptr
+                && !scratch->block.samples.empty()
+                && Rasterization::ScratchPositionPolicy::shouldApply(
+                        scratchDomain, primaryAxis);
+        MorphPosition renderMorph = morph;
+        if (scratchAppliesToBlock) {
+            renderMorph = Rasterization::ScratchPositionPolicy::resolve(
+                    morph,
+                    scratchDomain,
+                    primaryAxis,
+                    scratch->block.samples.front());
+        }
+
+        renderBlock(
+                context,
+                outputPort,
+                renderMorph,
+                primaryAxis,
+                scratchAppliesToBlock,
+                output);
 
         if (context.captureTraversalGrid) {
-            renderTraversal(context, outputPort, morph, primaryAxis, output);
+            renderTraversal(
+                    context,
+                    outputPort,
+                    morph,
+                    primaryAxis,
+                    scratch,
+                    scratchDomain,
+                    output);
         }
 
         publishSingleOutput(context, std::move(output));
@@ -162,7 +235,7 @@ private:
         return false;
     }
 
-    Mesh& currentMesh(const std::vector<NodeParameter>&) {
+    Mesh& currentMesh() {
         return configuration != nullptr
                 ? *const_cast<Mesh*>(configuration->mesh.get())
                 : fallbackTopology.mesh();
@@ -173,9 +246,10 @@ private:
             const AudioOutputPort& outputPort,
             const MorphPosition& morph,
             int primaryAxis,
+            bool renderCurrentMorph,
             SignalPayload& output) {
         if (configuration != nullptr) {
-            if (hasConnectedMorphInput(context)) {
+            if (renderCurrentMorph || hasConnectedMorphInput(context)) {
                 trimeshDsp.setMorphPosition(morph);
                 trimeshDsp.renderCycle(
                         context.frameCount,
@@ -211,6 +285,8 @@ private:
             const AudioOutputPort& outputPort,
             const MorphPosition& morph,
             int primaryAxis,
+            const SignalPayload* scratch,
+            Rasterization::ScratchSourceDomain scratchDomain,
             SignalPayload& output) {
         const size_t columnCount = std::max(
                 kDefaultTraversalColumns,
@@ -231,8 +307,38 @@ private:
                         defaultTraversalRowAxisForDomain(output.domain)),
                 context.workArena);
 
-        Mesh& mesh = currentMesh(processParameters(context));
+        Mesh& mesh = currentMesh();
         trimeshGridDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
+        if (scratch != nullptr
+                && Rasterization::ScratchPositionPolicy::shouldApply(
+                        scratchDomain, primaryAxis)
+                && traversalMorphs.size() >= columnCount) {
+            for (size_t column = 0; column < columnCount; ++column) {
+                const MorphPosition columnMorph = TrimeshGridwiseDsp::morphForColumn(
+                        morph,
+                        primaryAxis,
+                        column,
+                        columnCount);
+                traversalMorphs[column] = Rasterization::ScratchPositionPolicy::resolve(
+                        columnMorph,
+                        scratchDomain,
+                        primaryAxis,
+                        scratchCoordinateForColumn(
+                                *scratch,
+                                column,
+                                columnCount,
+                                columnMorph.time.getCurrentValue()));
+            }
+            trimeshGridDsp.renderMorphColumnsInto(
+                    mesh,
+                    traversalMorphs.data(),
+                    primaryAxis,
+                    columnCount,
+                    Buffer<float>(
+                            output.traversalGrid.values.data(),
+                            (int) (columnCount * rowCount)));
+            return;
+        }
         trimeshGridDsp.renderColumnsInto(
                 mesh,
                 morph,
@@ -248,6 +354,7 @@ private:
     SmoothedMorphPosition smoothedMorph;
     TrimeshBlockwiseDsp trimeshDsp;
     TrimeshGridwiseDsp trimeshGridDsp;
+    std::vector<MorphPosition> traversalMorphs;
     PreparedTrimeshTopology fallbackTopology { "CycleV2AudioMesh" };
     std::shared_ptr<const TrimeshConfiguration> configuration;
 };

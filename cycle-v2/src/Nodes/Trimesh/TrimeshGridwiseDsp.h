@@ -40,6 +40,17 @@ public:
             int primaryViewAxis,
             size_t columnCount,
             Buffer<float> destination);
+    bool renderMorphColumnsInto(
+            Mesh& mesh,
+            const MorphPosition* morphs,
+            int primaryViewAxis,
+            size_t columnCount,
+            Buffer<float> destination);
+    static MorphPosition morphForColumn(
+            const MorphPosition& center,
+            int primaryViewAxis,
+            size_t index,
+            size_t columnCount);
     const RenderCounters& counters() const { return renderCounters; }
     void resetCounters() { renderCounters = {}; }
 
@@ -64,12 +75,6 @@ private:
             renderColumn(index, morph);
         }
     }
-
-    static MorphPosition morphForColumn(
-            const MorphPosition& center,
-            int primaryViewAxis,
-            size_t index,
-            size_t columnCount);
 
     TrimeshBlockwiseDsp blockwiseDsp;
     RenderCounters renderCounters;

@@ -88,6 +88,31 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
     return true;
 }
 
+bool TrimeshGridwiseDsp::renderMorphColumnsInto(
+        Mesh& mesh,
+        const MorphPosition* morphs,
+        int primaryViewAxis,
+        size_t columnCount,
+        Buffer<float> destination) {
+    if (morphs == nullptr || columnCount == 0 || destination.empty()
+            || destination.size() % (int) columnCount != 0) {
+        return false;
+    }
+
+    const int rowCount = destination.size() / (int) columnCount;
+    blockwiseDsp.setMesh(&mesh);
+    blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
+    for (size_t index = 0; index < columnCount; ++index) {
+        blockwiseDsp.setMorphPosition(morphs[index]);
+        blockwiseDsp.renderCycleInto(destination.section(
+                (int) index * rowCount,
+                rowCount));
+        ++renderCounters.sliceCount;
+        ++renderCounters.bakeCount;
+    }
+    return true;
+}
+
 MorphPosition TrimeshGridwiseDsp::morphForColumn(
         const MorphPosition& center,
         int primaryViewAxis,

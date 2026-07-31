@@ -4,12 +4,14 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
+#include "../src/Runtime/GraphPreviewExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -887,6 +889,176 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
                         - saw.traversalGrid.values[sample]));
     }
     REQUIRE(maximumReconstructionError < 1.0e-5f);
+}
+
+TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared trajectory",
+        "[cycle-v2][runtime][envelope][scratch][trimesh]") {
+    constexpr size_t frameCount = 64;
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "attachedA", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "attachedB", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unattached", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumeA", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumeB", {}));
+    graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumePeer", {}));
+    setEnvelopePurpose(graph, "scratch", EnvelopePurpose::Scratch);
+
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("ScratchTraversalMesh");
+    const auto meshState = TrimeshNodeModelState::copyOf(*mesh, 2);
+    REQUIRE(graph.replaceNodeModel("attachedA", meshState));
+    REQUIRE(graph.replaceNodeModel("attachedB", meshState));
+    REQUIRE(graph.replaceNodeModel("unattached", meshState));
+    mesh->destroy();
+
+    for (const String& target : { "attachedA", "attachedB", "unattached" }) {
+        REQUIRE(GraphEditor().setNodeParameter(
+                graph, target, "yellow", "Yellow", "0.9").succeeded());
+        graph.addEdge({
+                "voice",
+                "context",
+                target,
+                "context",
+                PortDomain::DomainContext,
+                ConnectionKind::Signal
+        });
+    }
+    graph.addEdge({ "attachedA", "out", "consumeA", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "attachedB", "out", "consumeB", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "unattached", "out", "consumePeer", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    for (const String& target : { "attachedA", "attachedB" }) {
+        graph.addEdge({
+                "scratch",
+                "env",
+                target,
+                "scratch",
+                PortDomain::EnvelopeSignal,
+                ConnectionKind::ProcessingAttachment
+        });
+    }
+    graph.addSignalProbe({
+            "scratchProbe",
+            "attachedA",
+            "out",
+            "consumeA",
+            "in",
+            "Scratch target",
+            0.5f,
+            0
+    });
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    AudioProcessTiming timing;
+    timing.sampleRate = 64.0;
+    GraphAudioExecutor executor;
+    const auto result = executor.process(
+            graph,
+            compiled.plan,
+            frameCount,
+            timing,
+            voice);
+    const auto& first = findNodeAudio(result, "attachedA").output;
+    const auto& second = findNodeAudio(result, "attachedB").output;
+    const auto& peer = findNodeAudio(result, "unattached").output;
+
+    REQUIRE(first.block.samples == second.block.samples);
+    REQUIRE(first.traversalGrid.values == second.traversalGrid.values);
+    float blockDifference = 0.f;
+    for (size_t sample = 0; sample < frameCount; ++sample) {
+        blockDifference += std::abs(first.block.samples[sample] - peer.block.samples[sample]);
+    }
+    float gridDifference = 0.f;
+    for (size_t sample = 0; sample < first.traversalGrid.values.size(); ++sample) {
+        gridDifference += std::abs(
+                first.traversalGrid.values[sample]
+                        - peer.traversalGrid.values[sample]);
+    }
+    REQUIRE(blockDifference > 0.01f);
+    REQUIRE(gridDifference > 0.01f);
+
+    const auto previews = GraphPreviewExecutor().render(
+            compiled.plan,
+            result,
+            graph.getSignalProbes(),
+            frameCount);
+    const auto previewFor = [&](const String& nodeId) -> const NodePreviewResult& {
+        const auto found = std::find_if(
+                previews.nodes.begin(),
+                previews.nodes.end(),
+                [&](const NodePreviewResult& preview) {
+                    return preview.nodeId == nodeId;
+                });
+        REQUIRE(found != previews.nodes.end());
+        return *found;
+    };
+    const auto& attachedPreview = previewFor("attachedA");
+    REQUIRE(attachedPreview.primary == previewFor("attachedB").primary);
+    REQUIRE(attachedPreview.primary != previewFor("unattached").primary);
+    REQUIRE(previews.probes.size() == 1);
+    REQUIRE(previews.probes.front().connected);
+    REQUIRE(previews.probes.front().values == first.traversalGrid.values);
+
+    const auto advanced = executor.process(
+            graph,
+            compiled.plan,
+            frameCount,
+            timing,
+            {});
+    const auto& advancedBlock = findNodeAudio(
+            advanced, "attachedA").output.block.samples;
+    float lifecycleDifference = 0.f;
+    for (size_t sample = 0; sample < frameCount; ++sample) {
+        lifecycleDifference += std::abs(
+                advancedBlock[sample] - first.block.samples[sample]);
+    }
+    REQUIRE(lifecycleDifference > 0.01f);
+}
+
+TEST_CASE("Stengah scratch topology changes every authored source-layer traversal",
+        "[cycle-v2][runtime][envelope][scratch][trimesh][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const NodeGraph attachedGraph = GraphSerializer().fromJsonString(
+            preset.loadFileAsString());
+    NodeGraph fallbackGraph = attachedGraph;
+    fallbackGraph.removeEdgesFromOutput("scratchEnvelope", "env");
+    const auto attachedPlan = GraphCompiler().compile(attachedGraph);
+    const auto fallbackPlan = GraphCompiler().compile(fallbackGraph);
+    REQUIRE(attachedPlan.succeeded());
+    REQUIRE(fallbackPlan.succeeded());
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto attached = GraphAudioExecutor().process(
+            attachedGraph, attachedPlan.plan, 128, {}, voice);
+    const auto fallback = GraphAudioExecutor().process(
+            fallbackGraph, fallbackPlan.plan, 128, {}, voice);
+    for (const String& nodeId : {
+            "magnitudeLayer1",
+            "phaseLayer1",
+            "phaseLayer2" }) {
+        const auto& withScratch = findNodeAudio(attached, nodeId).output.traversalGrid.values;
+        const auto& withoutScratch = findNodeAudio(fallback, nodeId).output.traversalGrid.values;
+        REQUIRE(withScratch.size() == withoutScratch.size());
+        float difference = 0.f;
+        for (size_t sample = 0; sample < withScratch.size(); ++sample) {
+            difference += std::abs(withScratch[sample] - withoutScratch[sample]);
+        }
+        INFO("node: " << nodeId);
+        REQUIRE(difference > 0.01f);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 TEST_CASE("Graph audio executor renders the demo graph through resolved mesh operands", "[cycle-v2][runtime]") {
