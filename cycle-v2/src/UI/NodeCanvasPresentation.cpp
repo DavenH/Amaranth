@@ -639,6 +639,32 @@ void NodeCanvasPresentation::paintNodes(
     }
 }
 
+UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
+        const GraphExecutionPlan& plan,
+        const String& unisonNodeId,
+        UnisonPreviewContext fallback) {
+    const auto attachment = std::find_if(
+            plan.configurationAttachments.begin(),
+            plan.configurationAttachments.end(),
+            [&](const Edge& edge) {
+                return edge.sourceNodeId == unisonNodeId
+                        && edge.attachmentType == AttachmentType::Unison;
+            });
+    if (attachment == plan.configurationAttachments.end()) {
+        return fallback;
+    }
+    const auto context = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& candidate) {
+                return candidate.nodeId == attachment->destNodeId;
+            });
+    if (context != plan.voiceContexts.end()) {
+        fallback.pitchEnvelopeUnitValues = context->pitchEnvelopeUnitValues;
+    }
+    return fallback;
+}
+
 void NodeCanvasPresentation::paintNode(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame,
@@ -703,7 +729,12 @@ void NodeCanvasPresentation::paintNode(
                 profileFor(frame, node),
                 zoom,
                 true,
-                frame.unisonPreviewContext
+                node.kind == NodeKind::Unison
+                        ? unisonPreviewContextFor(
+                                frame.compileResult.plan,
+                                node.id,
+                                frame.unisonPreviewContext)
+                        : frame.unisonPreviewContext
         });
         if (node.kind == NodeKind::Envelope) {
             paintEnvelopePurpose(graphics, preview, node, zoom);

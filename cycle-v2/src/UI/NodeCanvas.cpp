@@ -747,6 +747,13 @@ void NodeCanvas::refreshCompiledStateAsync() {
             });
 }
 
+UnisonPreviewContext NodeCanvas::unisonPreviewContext() const {
+    return NodeCanvasPresentation::unisonPreviewContextFor(
+            presentation.compileResult().plan,
+            expandedNodeId,
+            globalUnisonPreviewContext);
+}
+
 bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;

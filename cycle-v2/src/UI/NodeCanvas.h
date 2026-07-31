@@ -197,9 +197,7 @@ private:
             Graphics& graphics,
             const Node& node,
             Rectangle<float> bounds) override;
-    UnisonPreviewContext unisonPreviewContext() const override {
-        return globalUnisonPreviewContext;
-    }
+    UnisonPreviewContext unisonPreviewContext() const override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

@@ -115,6 +115,28 @@ TEST_CASE("Unison configuration fans out without sharing runtime state",
     REQUIRE(compiled.plan.voiceContexts[0].unison == compiled.plan.voiceContexts[1].unison);
 }
 
+TEST_CASE("Voice Context prepares attached pitch playback for Unison phase preview",
+        "[cycle-v2][unison][graph][preview][voice-context]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "pitch", {}));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "pitch", "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "pitch", "env", false }, { "voice", "pitch", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "unison", "unison", false }, { "voice", "unison", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().pitchEnvelope != nullptr);
+    REQUIRE(compiled.plan.voiceContexts.front().pitchEnvelopeUnitValues.size() == 129);
+}
+
 TEST_CASE("Unison preview paths use pitch duration detune and exact voice phase",
         "[cycle-v2][unison][preview]") {
     Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});

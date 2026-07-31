@@ -89,6 +89,7 @@ struct CompiledVoiceContext {
     int oversampling { 1 };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
+    std::vector<float> pitchEnvelopeUnitValues;
     std::shared_ptr<const INodeDspConfiguration> unison;
     CycleDsp::UnisonVoiceLayout lanes;
 };

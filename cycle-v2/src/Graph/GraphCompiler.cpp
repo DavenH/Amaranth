@@ -545,6 +545,28 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
                         source->parameters,
                         source->model);
+                const auto envelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(
+                        context.pitchEnvelope);
+                if (envelope != nullptr) {
+                    constexpr int previewSamples = 129;
+                    Rasterization::EnvelopePlaybackEngine playback;
+                    playback.ensureVoiceCount(1);
+                    playback.validate(envelope->rasterizer->preparedPlaybackView());
+                    playback.noteOn();
+                    MeshLibrary::EnvProps props;
+                    props.active = true;
+                    playback.renderToBuffer(
+                            envelope->rasterizer->preparedPlaybackView(),
+                            previewSamples,
+                            1.0 / (double) (previewSamples - 1),
+                            Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
+                            props,
+                            1.f);
+                    const Buffer<float> values = playback.output().withSize(previewSamples);
+                    context.pitchEnvelopeUnitValues.assign(
+                            values.get(),
+                            values.get() + previewSamples);
+                }
             }
         }
         contexts.push_back(std::move(context));
