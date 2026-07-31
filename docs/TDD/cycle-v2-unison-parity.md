@@ -74,16 +74,25 @@ Unison is voice-domain configuration, not a post-mix time-domain effect.
 Placing it in the FX palette and giving it an effect-style editor does not
 change that signal contract.
 
-The intended graph shape is:
+The earlier signal-chain shape:
 
 ```text
 Voice Context -> Unison -> voice-aware source/processor
 ```
 
-The node transforms `DomainContext` and publishes a `VoiceControlSignal`
-configuration containing order and per-voice detune, phase, pan, and gain. A
-future compiled voice-lane step fans the downstream voice-aware subgraph out
-once per unison voice and sums the results with the shared level compensation.
+is superseded by `cycle-v2-voice-context-attachments.md`. Unison has no signal
+input and publishes one typed immutable configuration attachment:
+
+```text
+Unison --configuration--> Voice Context --context--> voice-aware sources
+```
+
+Voice Context folds the configuration containing order and per-voice detune,
+phase, pan, and gain into its compiled voice plan. A future compiled voice-lane
+step fans the downstream voice-aware subgraph out once per Unison voice and
+sums the results with the shared level compensation. The current
+`DomainContext` passthrough ports and processor are transitional deletion
+targets, not the stable interface.
 
 The current Cycle V2 Wave source is a placeholder ramp, and `VoiceContext`
 currently supplies ordering without an executable oscillator context.
@@ -153,6 +162,8 @@ voice values and shared trajectory slope/wrap helpers.
 ## Negative Boundaries
 
 - Do not implement Unison as a chorus over an already mixed time buffer.
+- Do not model Unison as a `DomainContext` signal transform or passthrough
+  processor; it is a typed Voice Context configuration attachment.
 - Do not copy Cycle 1's jitter table or group-layout formulas into Cycle V2.
 - Do not make preview note or voice duration node parameters.
 - Do not mutate oscillator/audio history from preview traversal.
@@ -166,14 +177,16 @@ voice values and shared trajectory slope/wrap helpers.
 
 1. Extract and characterize `UnisonCore`; migrate Cycle 1 group calculations.
 2. Add the Cycle V2 Unison node schema, immutable configuration, palette/icon
-   registration, persistence, and graph/runtime contracts.
+   registration, persistence, and transitional graph/runtime contracts.
 3. Add compact and expanded phase-path displays and group-mode controls using
    the shared core.
 4. Add focused numerical, serialization, editor, raster, and automation tests.
-5. Extract the shared oscillator/voice-lane execution substrate, make
+5. Implement the typed Voice Context attachment contract and delete Unison's
+   transitional `DomainContext` ports and passthrough runtime step.
+6. Extract the shared oscillator/voice-lane execution substrate, make
    voice-aware sources consume Unison configuration, and prove Cycle 1/Cycle 2
    audible parity.
-6. Add structured individual-mode voice state and interaction parity.
+7. Add structured individual-mode voice state and interaction parity.
 
 ## Verification
 
