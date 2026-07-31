@@ -32,7 +32,9 @@ voice contexts deterministic and independently testable behavior.
 Envelope nodes have a second ambiguity. One `EnvelopeSignal` output currently
 serves scratch attachment and ordinary control use, while Cycle 1 distinguishes
 scratch, pitch, and volume/control envelope purposes. Cycle V2 needs that
-purpose to be persistent, visible, and part of graph validation.
+purpose to be persistent, visible, and part of graph validation. The complete
+four-purpose contract is defined in
+`cycle-v2-envelope-purpose-routing-and-scaling.md`.
 
 Finally, the current Unison editor repaints on every slider callback but builds
 its plot from the last document-bound node snapshot. During a compound drag,
@@ -195,50 +197,14 @@ they do not search graph ancestry or query a singleton Voice Context.
 
 ## Envelope Purpose
 
-Envelope adds a persistent `purpose` choice with stable values:
+Envelope purpose, migration, presentation, polarity, logarithmic scaling, and
+scratch execution are defined by
+`cycle-v2-envelope-purpose-routing-and-scaling.md`. In particular, the stable
+selector has four purposes: `control`, `volume`, `pitch`, and `scratch`.
 
-- `control`: a generic `ControlSignal` for volume and other modulation;
-- `pitch`: a `PitchSignal` accepted by Voice Context `pitch`;
-- `scratch`: a processing attachment accepted by scratch-capable nodes.
-
-`control` is the default for new and existing ordinary Envelope nodes. During
-canonical migration, a legacy Envelope whose output is already connected as a
-scratch attachment is assigned `scratch`. No saved graph relies on a legacy
-pitch connection because the Voice Context pitch input does not yet exist.
-
-Purpose changes graph semantics, presentation, and DSP configuration. It does
-not duplicate the mesh or replace the shared preparation/playback core. The
-same mature envelope geometry is interpreted through a purpose-specific
-boundary:
-
-- control is unipolar unless a later explicit range node changes it;
-- pitch preserves Cycle 1's neutral centre and authoritative unit-to-semitone
-  mapping;
-- scratch supplies normalized traversal time through the established scratch
-  attachment lifecycle.
-
-Changing purpose atomically removes connections that are incompatible with
-the new purpose in the same undoable graph edit. The edit result lists those
-removed edges for UI/automation diagnostics. Runtime compilation never keeps
-an invalid old connection and never silently reinterprets one cable as a
-different purpose.
-
-### Purpose presentation
-
-Purpose must be obvious without opening the editor:
-
-- compact and expanded views expose a three-stop `Control / Pitch / Scratch`
-  selector;
-- the compact node displays the selected purpose as text plus a distinct icon
-  or badge, not colour alone;
-- the output port type, cable style/colour, subtitle, and accessibility label
-  follow the selected purpose;
-- pitch preview shows its neutral centre reference;
-- scratch preview carries a recognizable traversal/scratch cue;
-- control preview remains the ordinary envelope response.
-
-The selector is a discrete graph-semantic control. Every stop is visible and
-strictly snapped.
+This TDD consumes the `pitch` product after the Voice Context port is
+available. It does not redefine Envelope output semantics or provide a
+temporary generic-control route while that port is absent.
 
 ## Voice Context Presentation
 
@@ -393,8 +359,8 @@ work.
    attachment and remove its runtime signal step.
 4. Add Modulation Triple aggregate attachment output and explicit per-axis
    default-slot metadata; implement override resolution.
-5. Add Envelope purpose state, canonical migration, dynamic output semantics,
-   visible selector/badge, and atomic incompatible-edge removal.
+5. Implement the Envelope purpose and pitch-facing slices from
+   `cycle-v2-envelope-purpose-routing-and-scaling.md`.
 6. Integrate prepared pitch-envelope sampling and shared oscillator tuning into
    the voice plan and Unison preview trajectory.
 7. Route transient effect-editor snapshots to expanded and compact Unison
@@ -431,15 +397,16 @@ survive into the next slice.
 
 ### Envelope purpose
 
-- Control, pitch, and scratch choices round-trip and resolve to their declared
-  connection semantics.
+- Control, volume, pitch, and scratch choices round-trip and resolve to their
+  declared connection semantics.
 - Changing purpose removes incompatible edges atomically and undo restores the
   purpose and edges together.
 - Legacy scratch attachments migrate to scratch; ordinary envelopes migrate to
   control.
 - Compact raster tests distinguish all three purposes without relying only on
   colour.
-- Pitch neutral centre and unit-to-semitone endpoints match Cycle 1.
+- Pitch neutral centre, live `[0.01, 0.99]` clamp, endpoint presentation, and
+  unit-to-semitone mapping match Cycle 1.
 
 ### Voice execution and preview
 

@@ -6,8 +6,10 @@ In progress. A single spectral Voice Context now types each source mesh from
 its consuming magnitude or phase branch, and Stengah connects that context to
 all three spectral meshes. Stengah also preserves its scratch-envelope
 topology. Scratch execution, inherited morph defaults, envelope profiles, and
-stereo layer panning remain unimplemented. Stengah's authored cube-component
-guide assignments are now also explicit graph attachments.
+stereo layer panning remain unimplemented. Envelope purpose, scratch execution,
+polarity, and logarithmic scaling are specified in
+`cycle-v2-envelope-purpose-routing-and-scaling.md`. Stengah's authored
+cube-component guide assignments are now also explicit graph attachments.
 
 ## Problem
 
@@ -66,16 +68,11 @@ serialized implicit edges at every consumer.
 
 ### Envelope profiles and pitch
 
-Envelope gains an explicit semantic profile rather than inferring meaning from
-its title or instance ID. At minimum the profiles are volume, pitch, and
-scratch. The profile owns render scale, neutral value, output domain, legal
-connections, and runtime preparation policy.
-
-Pitch is bipolar around its neutral centre and produces a pitch-control domain.
-It connects only to the Voice Context pitch input. Voice Context applies it in
-the per-voice traversal state before downstream generators and processors run.
-It must not be accepted as an ordinary amplitude envelope or mesh scratch
-attachment.
+Envelope uses the four-purpose Control/Volume/Pitch/Scratch contract in
+`cycle-v2-envelope-purpose-routing-and-scaling.md`. That document owns render
+scale, neutral value, output domain, legal connection kinds, logarithmic DSP,
+and scratch traversal. This routing TDD consumes the resulting typed products;
+it must not infer purpose from an Envelope title or instance ID.
 
 ### Scratch routing
 
