@@ -7,7 +7,7 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 120.0, "y": 520.0 },
-            "parameters": { "domain": "waveform", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "spectralPhase", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
@@ -25,31 +25,6 @@
                 "blueController": 1,
                 "blueConstant": 0.0
             }
-        },
-        {
-            "id": "timeLayer1",
-            "kind": "trilinearMesh",
-            "definitionVersion": 1,
-            "position": { "x": 520.0, "y": 520.0 },
-            "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
-            "model": {
-                "schema": "trimesh",
-                "version": 2,
-                "revision": 1,
-                "mesh": {
-                    "name": "TimeMesh0",
-                    "version": 1,
-                    "vertices": [],
-                    "cubes": []
-                }
-            }
-        },
-        {
-            "id": "fft",
-            "kind": "fft",
-            "definitionVersion": 1,
-            "position": { "x": 1030.0, "y": 520.0 },
-            "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
             "id": "magnitudeLayer1",
@@ -109,13 +84,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "magnitudeOp1",
-            "kind": "add",
-            "definitionVersion": 1,
-            "position": { "x": 1530.0, "y": 390.0 },
-            "parameters": {}
         },
         {
             "id": "phaseLayer1",
@@ -364,13 +332,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "phaseOp1",
-            "kind": "add",
-            "definitionVersion": 1,
-            "position": { "x": 1530.0, "y": 800.0 },
-            "parameters": {}
         },
         {
             "id": "phaseOp2",
@@ -1265,14 +1226,10 @@
         }
     ],
     "edges": [
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context" },
-        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time" },
-        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left" },
-        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right" },
-        { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag" },
-        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "phaseOp1", "destPortId": "left" },
-        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right" },
-        { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "left" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer2", "destPortId": "context" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag" },
+        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "left" },
         { "sourceNodeId": "phaseLayer2", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "right" },
         { "sourceNodeId": "phaseOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time" },
@@ -1283,9 +1240,6 @@
         { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left" },
         { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "output", "destPortId": "time" },
-        { "sourceNodeId": "morph", "sourcePortId": "yellow", "destNodeId": "timeLayer1", "destPortId": "yellow" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "timeLayer1", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "timeLayer1", "destPortId": "blue" },
         { "sourceNodeId": "morph", "sourcePortId": "yellow", "destNodeId": "magnitudeLayer1", "destPortId": "yellow" },
         { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "magnitudeLayer1", "destPortId": "red" },
         { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "magnitudeLayer1", "destPortId": "blue" },

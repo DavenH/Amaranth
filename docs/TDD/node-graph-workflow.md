@@ -1236,9 +1236,16 @@ Current file workflow:
   envelope semantics. ADSR-style controls may appear only as a later preset or
   convenience editing mode over the same point-curve model.
 - Guide curves should be visible as attachments to mesh nodes, with the target
-  scope described more granularly than node-wide attachment. The first Cycle 2
-  slice uses shared `GuideCurve` nodes plus targeted attachment edges whose
-  destination id is `guide.vertex.<index>.<field>`, so one guide curve can be
-  reused by waveform and spectral mesh nodes. A later schema can promote that
-  destination id into a dedicated attachment sub-target field if broader
-  routing needs it.
+  scope described more granularly than node-wide attachment. The initial Cycle
+  2 authoring slice exposed `guide.vertex.<index>.<field>` targets, but the
+  authoritative Cycle 1 contract stores a guide channel on each `VertCube`
+  component (`guideCurveChans[field]`). Those scopes are not interchangeable:
+  a vertex edge cannot faithfully represent a cube-component assignment. Before
+  imported guide routing is shown or sampled, replace the provisional target
+  with a stable cube-component attachment identity and connect it to the shared
+  guide snapshot/provider boundary described in `shared-cycle-dsp-core.md`.
+- Stengah is the parity fixture for that work. Its imported mesh snapshots retain
+  guide channel 0 on phase-layer-1 cube 0's amplitude component and phase-layer-2
+  cube 4's phase component. The preset also contains two authored guide curves.
+  Do not fabricate vertex-level edges for these assignments; preserve the mesh
+  metadata until the cube-component target and provider are implemented.

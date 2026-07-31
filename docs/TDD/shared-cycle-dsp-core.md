@@ -577,6 +577,12 @@ Current status:
   `GuideCurveProvider` adapter, and its audio role currently publishes no
   output. Add that model boundary before signal processing; do not synthesize a
   placeholder curve locally.
+- Imported Cycle 1 meshes already preserve `VertCube::guideCurveChans` metadata.
+  Stengah exercises amplitude and phase assignments to guide channel 0, but the
+  Cycle 2 graph's provisional `guide.vertex.<index>.<field>` attachment target
+  has different semantics. The provider slice must introduce stable
+  cube-component targets and translate those targets to the preserved channel
+  assignments; it must not approximate them with per-vertex edges.
 
 Target:
 

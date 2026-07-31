@@ -39,6 +39,7 @@ void CurveExpandedEditorComponent::setDelegate(CurveExpandedEditorDelegate* next
 
 void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
+    widget.syncFromNode(node);
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
     applyEditorStateToWidget();

@@ -8,6 +8,7 @@
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 
+#include <algorithm>
 #include <limits>
 
 using namespace CycleV2;
@@ -278,18 +279,37 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
   #endif
 }
 
-TEST_CASE("Stengah retains its source mesh content", "[cycle-v2][graph][presets]") {
+TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(
             contentPreset("stengah.cyclegraph").loadFileAsString());
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
     REQUIRE(loaded.succeeded());
 
-    const Node* timeLayer = loaded.graph.findNode("timeLayer1");
-    REQUIRE(timeLayer != nullptr);
-    const auto timeModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(timeLayer->model);
-    REQUIRE(timeModel != nullptr);
-    REQUIRE(timeModel->mesh().getNumVerts() == 0);
-    REQUIRE(timeModel->mesh().getNumCubes() == 0);
+    const Node* voice = loaded.graph.findNode("voice");
+    REQUIRE(voice != nullptr);
+    REQUIRE(parameterValueForNode(*voice, "domain") == "spectralPhase");
+    REQUIRE(loaded.graph.findNode("timeLayer1") == nullptr);
+    REQUIRE(loaded.graph.findNode("fft") == nullptr);
+    REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
+    REQUIRE(loaded.graph.findNode("phaseOp1") == nullptr);
+
+    const auto hasEdge = [&loaded](const String& sourceNodeId,
+                                   const String& sourcePortId,
+                                   const String& destNodeId,
+                                   const String& destPortId) {
+        return std::any_of(loaded.graph.getEdges().begin(), loaded.graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == sourceNodeId
+                            && edge.sourcePortId == sourcePortId
+                            && edge.destNodeId == destNodeId
+                            && edge.destPortId == destPortId;
+                });
+    };
+    REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
+    REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
+    REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
+    REQUIRE(hasEdge("phaseLayer1", "out", "phaseOp2", "left"));
 
     const Node* waveshaper = loaded.graph.findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);

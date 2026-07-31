@@ -36,7 +36,7 @@ private:
     NodeKind nodeKind;
     FlatCurveModel model { "CycleV2FlatCurve" };
     String syncedNodeId;
-    uint64_t syncedModelRevision {};
+    NodeModelStatePtr syncedModel;
     String syncedMeshState;
 };
 

@@ -20,6 +20,17 @@
       "equals": true
     },
     {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexCount",
+      "equals": 4
+    },
+    {
       "command": "openGraph",
       "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
     },
@@ -39,18 +50,29 @@
       "equals": true
     },
     {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexCount",
+      "equals": 5
+    },
+    {
       "command": "openGraph",
       "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
     },
     {
       "command": "assertState",
       "path": "nodeCount",
-      "equals": 23
+      "equals": 19
     },
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 36
+      "equals": 29
     },
     {
       "command": "assertState",

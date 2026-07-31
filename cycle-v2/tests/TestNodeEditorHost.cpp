@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
@@ -419,6 +421,35 @@ TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     editor.action.onClick();
     REQUIRE(editor.actionPerformed);
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+}
+
+TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
+          "[cycle-v2][node-editor-host][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const File presetDirectory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content")
+            .getChildFile("presets");
+    const NodeGraph baroque = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
+    const Node* baroqueWaveshaper = baroque.findNode("waveshaper");
+    const Node* stengahWaveshaper = stengah.findNode("waveshaper");
+    REQUIRE(baroqueWaveshaper != nullptr);
+    REQUIRE(stengahWaveshaper != nullptr);
+
+    Effect2DWidget widget(NodeKind::Waveshaper);
+    auto editor = createCurveNodeEditor(NodeKind::Waveshaper, widget);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*baroqueWaveshaper);
+    REQUIRE(widget.vertexCountForAutomation() == 4);
+    editor->setNode(*stengahWaveshaper);
+    REQUIRE(widget.vertexCountForAutomation() == 6);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

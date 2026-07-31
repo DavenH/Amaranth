@@ -93,6 +93,28 @@ TEST_CASE("Curve panel adapters synchronize only their typed domain",
     REQUIRE(envelope.lastNodeId() == "env");
 }
 
+TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset changes",
+          "[cycle-v2][curve-panel-adapters][presets]") {
+    const File presetDirectory = File(CYCLE_V2_SOURCE_DIR)
+            .getChildFile("content")
+            .getChildFile("presets");
+    const NodeGraph baroque = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
+    const Node* baroqueWaveshaper = baroque.findNode("waveshaper");
+    const Node* stengahWaveshaper = stengah.findNode("waveshaper");
+    REQUIRE(baroqueWaveshaper != nullptr);
+    REQUIRE(stengahWaveshaper != nullptr);
+    REQUIRE(baroqueWaveshaper->model->revision() == stengahWaveshaper->model->revision());
+
+    FlatCurvePanelAdapter adapter(NodeKind::Waveshaper);
+    REQUIRE(adapter.syncFromNode(*baroqueWaveshaper));
+    REQUIRE(adapter.mesh().getNumVerts() == 4);
+    REQUIRE(adapter.syncFromNode(*stengahWaveshaper));
+    REQUIRE(adapter.mesh().getNumVerts() == 6);
+}
+
 TEST_CASE("Flat curve models validate atomically and preserve stable selection",
         "[cycle-v2][curve-model]") {
     FlatCurveModel model;
