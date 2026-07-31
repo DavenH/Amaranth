@@ -7,7 +7,8 @@ Proposed.
 Supersedes the current `Voice Context -> Unison -> source` signal-chain model
 in `cycle-v2-unison-parity.md`. It extends the control-routing contract in
 `cycle-v2-dynamic-envelope-modulation.md` and uses the edit/invalidation model
-in `cycle-v2-causal-update-graph.md`.
+in `cycle-v2-causal-update-graph.md`. Oscillator-region discovery and runtime
+lowering are specified in `cycle-v2-oscillator-region-compilation.md`.
 
 ## Problem
 
@@ -286,6 +287,12 @@ Configuration dependency order is separate from sample/control execution
 order. A configuration attachment must not create a fake buffer or force a
 node into the realtime step list.
 
+The compiled Voice Context is an input to oscillator-region compilation, not
+one monolithic oscillator executor. Each region selects its own time-only or
+spectral strategy while consuming the same resolved note, pitch-envelope,
+modulation, and Unison configuration. Spectral processing in one oscillator
+region must not change the execution strategy of a sibling region.
+
 ## Pitch, Unison, And Preview Accuracy
 
 Voice Context owns the audition context used by voice-related previews:
@@ -392,7 +399,9 @@ work.
    the voice plan and Unison preview trajectory.
 7. Route transient effect-editor snapshots to expanded and compact Unison
    previews so every slider movement is visible.
-8. Extract/complete oscillator-lane execution and prove audible Cycle 1 parity.
+8. Implement `cycle-v2-oscillator-region-compilation.md`: partition oscillator
+   regions, lower time-only and spectral Unison strategies, materialize each
+   oscillator block, and prove audible Cycle 1 parity.
 
 Each slice receives its own refactor, style, semantic-test, automation, and
 commit pass. Passing schema tests does not permit a fake runtime adapter to

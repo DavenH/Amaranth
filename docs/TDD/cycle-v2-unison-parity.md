@@ -89,8 +89,11 @@ Unison --configuration--> Voice Context --context--> voice-aware sources
 
 Voice Context folds the configuration containing order and per-voice detune,
 phase, pan, and gain into its compiled voice plan. A future compiled voice-lane
-step fans the downstream voice-aware subgraph out once per Unison voice and
-sums the results with the shared level compensation. The current
+step follows `cycle-v2-oscillator-region-compilation.md`: time-only regions
+execute their cycle recipe independently per Unison lane, while spectral
+regions calculate one shared fixed cycle frame and reconstruct it independently
+per lane. Each oscillator region folds its lanes with the shared level
+compensation before ordinary block Add or Multiply. The current
 `DomainContext` passthrough ports and processor are transitional deletion
 targets, not the stable interface.
 
@@ -183,9 +186,9 @@ voice values and shared trajectory slope/wrap helpers.
 4. Add focused numerical, serialization, editor, raster, and automation tests.
 5. Implement the typed Voice Context attachment contract and delete Unison's
    transitional `DomainContext` ports and passthrough runtime step.
-6. Extract the shared oscillator/voice-lane execution substrate, make
-   voice-aware sources consume Unison configuration, and prove Cycle 1/Cycle 2
-   audible parity.
+6. Implement the time-only and spectral oscillator-region strategies in
+   `cycle-v2-oscillator-region-compilation.md`, make voice-aware sources consume
+   Unison configuration, and prove Cycle 1/Cycle 2 audible parity.
 7. Add structured individual-mode voice state and interaction parity.
 
 ## Verification
