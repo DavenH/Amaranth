@@ -161,6 +161,8 @@ var edgeToJSON(const Edge& edge) {
     result->setProperty("sourcePortId", edge.sourcePortId);
     result->setProperty("destNodeId", edge.destNodeId);
     result->setProperty("destPortId", edge.destPortId);
+    result->setProperty("connectionKind", idForConnectionKind(edge.connectionKind));
+    result->setProperty("attachmentType", idForAttachmentType(edge.attachmentType));
     return var(result.release());
 }
 
@@ -370,7 +372,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::InvalidSchema, "Root object is not a Cycle V2 graph" });
         return result;
     }
-    if ((int) root->getProperty("formatVersion") != currentFormatVersion) {
+    const int formatVersion = (int) root->getProperty("formatVersion");
+    if (formatVersion < 1 || formatVersion > currentFormatVersion) {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
@@ -478,6 +481,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         node.editorState = editor;
+        registry.normalize(node);
         result.graph.addNode(std::move(node));
     }
 
@@ -505,12 +509,53 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge references an unknown node or static port" });
             continue;
         }
-        edge.domain = guideAttachment
+        const bool legacyScratchAttachment = formatVersion == 1
+                && destination != nullptr
+                && destination->purpose == PortPurpose::ScratchAttachment;
+        edge.domain = guideAttachment || legacyScratchAttachment
                 ? PortDomain::EnvelopeSignal
                 : resolvedEdgeDomain(*source, *destination);
-        edge.attachment = guideAttachment
-                || destination->purpose == PortPurpose::ScratchAttachment;
+        if (formatVersion == 1) {
+            edge.connectionKind = guideAttachment
+                    || destination->purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : ConnectionKind::Signal;
+            edge.attachmentType = guideAttachment
+                    ? AttachmentType::GuideCurve
+                    : (destination->purpose == PortPurpose::ScratchAttachment
+                            ? AttachmentType::ScratchEnvelope
+                            : AttachmentType::None);
+        } else {
+            const auto connectionKind = connectionKindForId(
+                    encoded->getProperty("connectionKind").toString());
+            const auto attachmentType = attachmentTypeForId(
+                    encoded->getProperty("attachmentType").toString());
+            if (!connectionKind.has_value() || !attachmentType.has_value()) {
+                result.issues.push_back({
+                        GraphLoadCode::InvalidGraph,
+                        "Edge has invalid connection or attachment metadata"
+                });
+                continue;
+            }
+            edge.connectionKind = *connectionKind;
+            edge.attachmentType = *attachmentType;
+        }
         result.graph.addEdge(std::move(edge));
+        if (legacyScratchAttachment && sourceNode->kind == NodeKind::Envelope) {
+            Node* envelope = result.graph.findNodeForEditing(sourceNode->id);
+            if (envelope != nullptr) {
+                auto purpose = std::find_if(
+                        envelope->parameters.begin(),
+                        envelope->parameters.end(),
+                        [](const NodeParameter& parameter) {
+                            return parameter.id == "purpose";
+                        });
+                if (purpose != envelope->parameters.end()) {
+                    purpose->value = "scratch";
+                    registry.normalize(*envelope);
+                }
+            }
+        }
     }
 
     std::unordered_set<String, StringHash> probeIds;

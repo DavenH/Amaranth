@@ -57,7 +57,7 @@ public:
         for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
             const Edge& edge = edges[edgeIndex];
             resolution.domains.push_back(edge.domain);
-            if (edge.attachment) {
+            if (edge.isAttachment()) {
                 continue;
             }
 
@@ -201,7 +201,7 @@ private:
 
     PortDomain transferDomain(size_t edgeIndex) const {
         const Edge& edge = edges[edgeIndex];
-        if (edge.attachment) {
+        if (edge.isAttachment()) {
             return edge.domain;
         }
 
@@ -245,7 +245,7 @@ private:
 
     ChannelLayout transferChannelLayout(size_t edgeIndex) const {
         const Edge& edge = edges[edgeIndex];
-        if (edge.attachment) {
+        if (edge.isAttachment()) {
             return ChannelLayout::Mono;
         }
 
@@ -275,7 +275,7 @@ private:
         std::deque<size_t> worklist;
         std::vector<bool> queued(edges.size(), false);
         for (size_t edgeIndex = 0; edgeIndex < edges.size(); ++edgeIndex) {
-            if (!edges[edgeIndex].attachment) {
+            if (!edges[edgeIndex].isAttachment()) {
                 worklist.push_back(edgeIndex);
                 queued[edgeIndex] = true;
             }
@@ -356,7 +356,8 @@ size_t edgeIndexInGraph(const NodeGraph& graph, const Edge& edge) {
                 && candidate.sourcePortId == edge.sourcePortId
                 && candidate.destNodeId == edge.destNodeId
                 && candidate.destPortId == edge.destPortId
-                && candidate.attachment == edge.attachment) {
+                && candidate.connectionKind == edge.connectionKind
+                && candidate.attachmentType == edge.attachmentType) {
             return edgeIndex;
         }
     }
@@ -438,7 +439,7 @@ std::vector<Edge> GraphDomainResolver::resolveSignalEdges(
     for (const auto& nodeId : nodeOrder) {
         for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
             const Edge& edge = graph.getEdges()[edgeIndex];
-            if (edge.attachment || edge.sourceNodeId != nodeId) {
+            if (edge.isAttachment() || edge.sourceNodeId != nodeId) {
                 continue;
             }
 

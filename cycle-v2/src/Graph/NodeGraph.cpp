@@ -15,8 +15,20 @@ Port input(
         PortDomain domain,
         ChannelLayout layout = ChannelLayout::Mono,
         PortPurpose purpose = PortPurpose::Signal,
-        PortSide side = PortSide::Left) {
-    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
+        PortSide side = PortSide::Left,
+        ConnectionKind connectionKind = ConnectionKind::Signal,
+        AttachmentType attachmentType = AttachmentType::None,
+        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None) {
+    return {
+            std::move(id), std::move(label), domain, layout, purpose, true, side,
+            purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : connectionKind,
+            purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : attachmentType,
+            defaultSlot
+    };
 }
 
 Port output(
@@ -253,7 +265,15 @@ NodeGraph NodeGraph::createDemoGraph() {
             NodeKind::VoiceContext,
             "waveform start / 6 voices",
             { 320.f, 420.f },
-            {},
+            {
+                    input("modulation", "Modulation", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
+                    input("unison", "Unison", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
+            },
             {
                     output("context", "Context", PortDomain::DomainContext)
             }));
@@ -367,6 +387,12 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     Node scratchEnvelope = nodeFactory.createNode(NodeKind::Envelope, "scratchEnv", { 320.f, 204.f });
     scratchEnvelope.subtitle = "scratch attachment";
+    for (auto& parameter : scratchEnvelope.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "scratch";
+        }
+    }
+    NodeDefinitionRegistry::instance().normalize(scratchEnvelope);
     graph.addNode(std::move(scratchEnvelope));
 
     graph.addNode(node(
@@ -461,6 +487,60 @@ String labelForChannelLayout(ChannelLayout layout) {
 String labelForNodeKind(NodeKind kind) {
     const auto* definition = NodeDefinitionRegistry::instance().find(kind);
     return definition != nullptr ? definition->displayName : "Unknown";
+}
+
+String idForConnectionKind(ConnectionKind kind) {
+    switch (kind) {
+        case ConnectionKind::Signal:                  return "signal";
+        case ConnectionKind::ConfigurationAttachment: return "configurationAttachment";
+        case ConnectionKind::ProcessingAttachment:    return "processingAttachment";
+    }
+
+    return {};
+}
+
+String idForAttachmentType(AttachmentType type) {
+    switch (type) {
+        case AttachmentType::None:             return "none";
+        case AttachmentType::ScratchEnvelope:  return "scratchEnvelope";
+        case AttachmentType::GuideCurve:       return "guideCurve";
+        case AttachmentType::ModulationTriple: return "modulationTriple";
+        case AttachmentType::Unison:           return "unison";
+    }
+
+    return {};
+}
+
+std::optional<ConnectionKind> connectionKindForId(const String& id) {
+    if (id == "signal") {
+        return ConnectionKind::Signal;
+    }
+    if (id == "configurationAttachment") {
+        return ConnectionKind::ConfigurationAttachment;
+    }
+    if (id == "processingAttachment") {
+        return ConnectionKind::ProcessingAttachment;
+    }
+    return std::nullopt;
+}
+
+std::optional<AttachmentType> attachmentTypeForId(const String& id) {
+    if (id == "none") {
+        return AttachmentType::None;
+    }
+    if (id == "scratchEnvelope") {
+        return AttachmentType::ScratchEnvelope;
+    }
+    if (id == "guideCurve") {
+        return AttachmentType::GuideCurve;
+    }
+    if (id == "modulationTriple") {
+        return AttachmentType::ModulationTriple;
+    }
+    if (id == "unison") {
+        return AttachmentType::Unison;
+    }
+    return std::nullopt;
 }
 
 String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback) {

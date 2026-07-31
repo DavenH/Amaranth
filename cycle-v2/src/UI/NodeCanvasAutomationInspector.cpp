@@ -114,7 +114,9 @@ public:
         object->setProperty("destNodeId", edge.destNodeId);
         object->setProperty("destPortId", edge.destPortId);
         object->setProperty("domain", labelForDomain(edge.domain));
-        object->setProperty("attachment", edge.attachment);
+        object->setProperty("attachment", edge.isAttachment());
+        object->setProperty("connectionKind", idForConnectionKind(edge.connectionKind));
+        object->setProperty("attachmentType", idForAttachmentType(edge.attachmentType));
         return object;
     }
 
@@ -516,7 +518,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         const auto& edge = graphEdges[(size_t) sceneEdge.edgeIndex];
         auto* target = new DynamicObject();
         target->setProperty("id", "edge:" + String(sceneEdge.edgeIndex));
-        target->setProperty("kind", edge.attachment ? "attachmentEdge" : "edge");
+        target->setProperty("kind", edge.isAttachment() ? "attachmentEdge" : "edge");
         target->setProperty("edgeIndex", sceneEdge.edgeIndex);
         target->setProperty("bounds", AutomationValueEncoder::rectangleToVar(sceneEdge.hitPath.getBounds()));
         target->setProperty("sourceNodeId", edge.sourceNodeId);

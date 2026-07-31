@@ -2,7 +2,17 @@
 
 ## Status
 
-Proposed.
+In progress. Typed attachment routing, the compiled Voice Context boundary,
+configuration-only Unison and Modulation Triple products, Envelope purpose,
+shared pitch-phase integration, and transient Unison editor feedback are
+implemented on `cycle2/voice-context-attachments`.
+
+The remaining completion work is the runtime default-modulation resolver,
+feeding prepared pitch-envelope playback from an attached Voice Context into
+its Unison preview, compact-selector interaction automation, and the downstream
+oscillator-region lowering specified in
+`cycle-v2-oscillator-region-compilation.md`. The TDD must not be marked
+implemented until those runtime and audible-parity criteria are complete.
 
 Supersedes the current `Voice Context -> Unison -> source` signal-chain model
 in `cycle-v2-unison-parity.md`. It extends the control-routing contract in

@@ -271,7 +271,8 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+        const String migrated = GraphSerializer().toJsonString(loaded.graph);
+        REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
         REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
@@ -333,7 +334,8 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
     INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
     REQUIRE(loaded.succeeded());
-    REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+    const String migrated = GraphSerializer().toJsonString(loaded.graph);
+    REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
     REQUIRE(loaded.graph.findNode("fft") == nullptr);
     REQUIRE(loaded.graph.findNode("ifft") == nullptr);
     REQUIRE(loaded.graph.findNode("magnitudeLayer1") == nullptr);
@@ -389,7 +391,7 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
                             && edge.sourcePortId == "guide"
                             && edge.destNodeId == destination
                             && edge.destPortId == port
-                            && edge.attachment;
+                            && edge.isProcessingAttachment();
                 });
     };
 

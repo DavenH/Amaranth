@@ -28,6 +28,31 @@ bool isProbeDomain(PortDomain domain) {
             || domain == PortDomain::SpectralPhaseSignal;
 }
 
+void applyEnvelopePurposeSemantics(
+        NodeGraph& graph,
+        Node& node,
+        GraphEditResult& result) {
+    NodeDefinitionRegistry::instance().normalize(node);
+    const Port& output = node.outputs.front();
+    for (size_t index = graph.getEdges().size(); index > 0; --index) {
+        const Edge& edge = graph.getEdges()[index - 1];
+        if (edge.sourceNodeId != node.id || edge.sourcePortId != output.id) {
+            continue;
+        }
+        const bool compatible = edge.connectionKind == output.connectionKind
+                && (output.connectionKind == ConnectionKind::Signal
+                        ? (output.domain == PortDomain::ControlSignal
+                                || edge.domain == output.domain)
+                        : edge.attachmentType == output.attachmentType);
+        if (compatible) {
+            continue;
+        }
+        result.changes.removedEdges.push_back(edge);
+        graph.removeEdgeAt(index - 1);
+    }
+    result.changes.topologyChanged = !result.changes.removedEdges.empty();
+}
+
 }
 
 GraphEditResult GraphEditor::addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const {
@@ -70,6 +95,11 @@ GraphEditResult GraphEditor::connect(
             destAddress.portId,
             edgeDomainForConnection(*source, *dest),
             dest->purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : dest->connectionKind,
+            dest->purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : dest->attachmentType
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -110,7 +140,8 @@ GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(
             meshNodeId,
             targetPortId,
             PortDomain::EnvelopeSignal,
-            true
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -160,7 +191,7 @@ GraphEditResult GraphEditor::toggleSignalProbe(
     }
 
     const Edge& edge = graph.getEdges()[edgeIndex];
-    if (edge.attachment
+    if (edge.isAttachment()
             || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
@@ -211,7 +242,7 @@ GraphEditResult GraphEditor::reattachSignalProbe(
     }
 
     const Edge& edge = graph.getEdges()[edgeIndex];
-    if (edge.attachment
+    if (edge.isAttachment()
             || !isProbeDomain(GraphValidator().resolvedDomainForEdge(graph, edge))) {
         return { GraphEditCode::ValidationRejected, probeId, {} };
     }
@@ -349,6 +380,9 @@ GraphEditResult GraphEditor::setNodeParameter(
             GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
             result.changes.nodeIds.push_back(nodeId);
             result.changes.parameterImpacts = impacts;
+            if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+                applyEnvelopePurposeSemantics(graph, *node, result);
+            }
             return result;
         }
     }
@@ -358,6 +392,9 @@ GraphEditResult GraphEditor::setNodeParameter(
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
+    if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+        applyEnvelopePurposeSemantics(graph, *node, result);
+    }
     return result;
 }
 
@@ -424,6 +461,10 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
+    if (node->kind == NodeKind::Envelope
+            && normalizedIndices.find("purpose") != normalizedIndices.end()) {
+        applyEnvelopePurposeSemantics(graph, *node, result);
+    }
     return result;
 }
 

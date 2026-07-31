@@ -313,7 +313,8 @@ private:
     static bool isRepeatedTimeVector(const SignalTraversalGrid& candidate, const SignalTraversalGrid& target) {
         return candidate.isValid()
                 && candidate.rows == target.rows
-                && candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                && (candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                        || candidate.metadata.valueDomain == PortDomain::ControlSignal)
                 && candidate.metadata.columnAxis == TraversalGridAxis::Repeated
                 && candidate.metadata.rowAxis == TraversalGridAxis::Time
                 && target.metadata.rowAxis == TraversalGridAxis::Time;
@@ -323,7 +324,8 @@ private:
             const SignalTraversalGrid& candidate,
             const SignalTraversalGrid&) {
         return candidate.isValid()
-                && candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                && (candidate.metadata.valueDomain == PortDomain::EnvelopeSignal
+                        || candidate.metadata.valueDomain == PortDomain::ControlSignal)
                 && candidate.metadata.columnAxis == TraversalGridAxis::Time
                 && candidate.metadata.rowAxis == TraversalGridAxis::Repeated;
     }

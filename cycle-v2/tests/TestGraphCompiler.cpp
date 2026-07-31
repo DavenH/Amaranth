@@ -83,6 +83,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.plan.signalEdges.size() == 11);
     REQUIRE(result.plan.buffers.size() == 11);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
+    REQUIRE(result.plan.voiceContexts.size() == 1);
 
     const auto& plan = result.plan;
     REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveMesh"));

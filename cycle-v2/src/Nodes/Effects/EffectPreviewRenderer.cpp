@@ -112,16 +112,22 @@ std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {
         const auto& voice = configuration->layout[index];
-        const auto trajectory = CycleDsp::UnisonCore::phaseTrajectory(
-                context.midiNote,
-                voice.detuneCents,
-                voice.phaseCycles);
         paths.push_back({
                 index,
                 voice.detuneCents,
-                CycleDsp::UnisonCore::phaseSegments(
-                        trajectory,
-                        context.voiceDurationSeconds)
+                context.pitchEnvelopeUnitValues.empty()
+                        ? CycleDsp::UnisonCore::phaseSegments(
+                                CycleDsp::UnisonCore::phaseTrajectory(
+                                        context.midiNote,
+                                        voice.detuneCents,
+                                        voice.phaseCycles),
+                                context.voiceDurationSeconds)
+                        : CycleDsp::UnisonCore::phaseSegmentsForPitchEnvelope(
+                                context.midiNote,
+                                voice.detuneCents,
+                                voice.phaseCycles,
+                                context.voiceDurationSeconds,
+                                context.pitchEnvelopeUnitValues)
         });
     }
     return paths;

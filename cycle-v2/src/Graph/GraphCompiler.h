@@ -5,6 +5,8 @@
 #include "../Runtime/NodeDspConfiguration.h"
 #include "../Runtime/NodeModuleRegistry.h"
 
+#include <Audio/CycleDsp/UnisonCore.h>
+
 #include <unordered_map>
 #include <vector>
 
@@ -75,6 +77,20 @@ struct CompiledSignalProbe {
     int sourceOutputIndex { -1 };
 };
 
+struct CompiledVoiceContext {
+    String nodeId;
+    String startDomain { "waveform" };
+    int polyphony { 1 };
+    int octave {};
+    float pitchSemitones {};
+    bool portamento {};
+    int oversampling { 1 };
+    std::shared_ptr<const INodeDspConfiguration> defaultModulation;
+    std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
+    std::shared_ptr<const INodeDspConfiguration> unison;
+    CycleDsp::UnisonVoiceLayout lanes;
+};
+
 struct GraphExecutionStep {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -106,6 +122,8 @@ struct GraphExecutionPlan {
     std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
+    std::vector<Edge> configurationAttachments;
+    std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<CompiledSignalProbe> signalProbes;
     GraphDependencyIndex dependencyIndex;
 };

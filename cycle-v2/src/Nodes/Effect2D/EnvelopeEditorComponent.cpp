@@ -15,12 +15,18 @@ struct EnvelopeEditorComponent::Impl {
         ,   blueMorph   (owner, "Blue") {
         styleParameterLabel(timeLabel, "Time");
         owner.addAndMakeVisible(timeLabel);
-        for (auto* button : { &loop, &sustain, &logarithmic, &dynamic }) {
+        for (auto* button : {
+                    &loop, &sustain, &logarithmic, &dynamic,
+                    &controlPurpose, &pitchPurpose, &scratchPurpose }) {
             styleParameterButton(*button, button->getButtonText());
             owner.addAndMakeVisible(*button);
         }
         logarithmic.setClickingTogglesState(true);
         dynamic.setClickingTogglesState(true);
+        for (auto* button : { &controlPurpose, &pitchPurpose, &scratchPurpose }) {
+            button->setClickingTogglesState(true);
+            button->setRadioGroupId(1);
+        }
     }
 
     LabeledParameterSlider redMorph;
@@ -30,6 +36,9 @@ struct EnvelopeEditorComponent::Impl {
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
     TextButton dynamic { "Live" };
+    TextButton controlPurpose { "Control" };
+    TextButton pitchPurpose { "Pitch" };
+    TextButton scratchPurpose { "Scratch" };
     EnvelopeMorphControls presentation;
 
     int viewAxis {};
@@ -55,6 +64,9 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
     });
     bindDiscreteAction(impl->dynamic, [] {});
+    bindDiscreteAction(impl->controlPurpose, [] {});
+    bindDiscreteAction(impl->pitchPurpose, [] {});
+    bindDiscreteAction(impl->scratchPurpose, [] {});
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
@@ -103,6 +115,10 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
     auto markerRow = impl->presentation.railColumn(controls).toNearestInt();
+    auto purposeRow = markerRow.removeFromTop(30);
+    impl->controlPurpose.setBounds(purposeRow.removeFromLeft(74).reduced(2));
+    impl->pitchPurpose.setBounds(purposeRow.removeFromLeft(62).reduced(2));
+    impl->scratchPurpose.setBounds(purposeRow.removeFromLeft(74).reduced(2));
     markerRow.removeFromTop(160);
     markerRow = markerRow.removeFromTop(30);
     impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2));
@@ -123,6 +139,10 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     impl->blueLinked = model.blueLinked;
     impl->logarithmic.setToggleState(model.logarithmic, dontSendNotification);
     impl->dynamic.setToggleState(model.dynamicWhileLive, dontSendNotification);
+    const String purpose = parameterValueForNode(node, "purpose", "control");
+    impl->controlPurpose.setToggleState(purpose == "control", dontSendNotification);
+    impl->pitchPurpose.setToggleState(purpose == "pitch", dontSendNotification);
+    impl->scratchPurpose.setToggleState(purpose == "scratch", dontSendNotification);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     widget.setEnvelopeLogarithmic(model.logarithmic);
     impl->loop.setToggleState(widget.selectedEnvelopeMarkerState(true), dontSendNotification);
@@ -142,6 +162,9 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
+    const String purpose = impl->pitchPurpose.getToggleState() ? "pitch"
+            : (impl->scratchPurpose.getToggleState() ? "scratch" : "control");
+    addEditorParameter(result, node, "purpose", "Purpose", purpose);
     addEditorParameter(result, node, "logarithmic", "Logarithmic", impl->logarithmic.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "dynamic", "Dynamic While Live", impl->dynamic.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "red", "Red Morph", String(impl->redMorph.slider.getValue()));
@@ -156,6 +179,10 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("viewAxis", impl->viewAxis);
     state.setProperty("logarithmic", impl->logarithmic.getToggleState());
     state.setProperty("dynamic", impl->dynamic.getToggleState());
+    state.setProperty(
+            "purpose",
+            impl->pitchPurpose.getToggleState() ? "pitch"
+                    : (impl->scratchPurpose.getToggleState() ? "scratch" : "control"));
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));

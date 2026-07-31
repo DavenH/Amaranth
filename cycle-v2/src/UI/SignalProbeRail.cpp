@@ -189,7 +189,7 @@ Colour SignalProbeRail::colourForProbe(
         return kMutedText;
     }
 
-    const PortDomain domain = edge->attachment
+    const PortDomain domain = edge->isAttachment()
             ? edge->domain
             : GraphValidator().resolvedDomainForEdge(graph, *edge);
     return colourForDomain(domain);

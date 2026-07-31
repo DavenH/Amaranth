@@ -1,9 +1,11 @@
 #include <cmath>
+#include <algorithm>
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
@@ -42,10 +44,10 @@ TEST_CASE("Unison node publishes the Cycle 1 group configuration",
     setParameter(node, "phase", "0.5");
     setParameter(node, "jitter", "0.8");
 
-    REQUIRE(node.inputs.size() == 1);
-    REQUIRE(node.inputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(node.inputs.empty());
     REQUIRE(node.outputs.size() == 1);
-    REQUIRE(node.outputs.front().domain == PortDomain::DomainContext);
+    REQUIRE(node.outputs.front().connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(node.outputs.front().attachmentType == AttachmentType::Unison);
 
     const auto configuration = buildUnisonNodeConfiguration(node.parameters);
     REQUIRE(configuration->layout.order == 3);
@@ -61,22 +63,56 @@ TEST_CASE("Unison node publishes the Cycle 1 group configuration",
     REQUIRE(published->role() == AudioModuleRole::Unison);
 }
 
-TEST_CASE("Unison compiles between voice context and a voice-aware source",
+TEST_CASE("Unison compiles as Voice Context configuration without a runtime step",
         "[cycle-v2][unison][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addEdge({ "voice", "context", "unison", "context", PortDomain::DomainContext });
-    graph.addEdge({ "unison", "context", "wave", "context", PortDomain::DomainContext });
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "unison", "unison", false },
+            { "voice", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "wave", "context", true }).succeeded());
 
     const auto compiled = GraphCompiler().compile(graph);
 
     REQUIRE(compiled.succeeded());
-    REQUIRE(compiled.plan.steps.size() == 3);
-    REQUIRE(compiled.plan.steps[1].nodeId == "unison");
-    REQUIRE(compiled.plan.steps[1].audioRole == AudioModuleRole::Unison);
+    REQUIRE(compiled.plan.configurationAttachments.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.size() == 1);
+    REQUIRE(compiled.plan.voiceContexts.front().lanes.order == 1);
+    REQUIRE(std::none_of(
+            compiled.plan.steps.begin(), compiled.plan.steps.end(), [](const auto& step) {
+                return step.nodeId == "unison";
+            }));
+    REQUIRE(std::none_of(
+            compiled.plan.buffers.begin(), compiled.plan.buffers.end(), [](const auto& buffer) {
+                return buffer.sourceNodeId == "unison";
+            }));
+}
+
+TEST_CASE("Unison configuration fans out without sharing runtime state",
+        "[cycle-v2][unison][graph][voice-context]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "second", {}));
+    REQUIRE(GraphEditor().connect(
+            graph, { "unison", "unison", false }, { "first", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "unison", "unison", false }, { "second", "unison", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.configurationAttachments.size() == 2);
+    REQUIRE(compiled.plan.voiceContexts.size() == 2);
+    REQUIRE(compiled.plan.voiceContexts[0].unison == compiled.plan.voiceContexts[1].unison);
 }
 
 TEST_CASE("Unison preview paths use pitch duration detune and exact voice phase",
@@ -117,4 +153,20 @@ TEST_CASE("Bypassed Unison preview retains its configured paths",
     REQUIRE(paths.size() == 10);
     REQUIRE(paths.front().detuneCents < 0.f);
     REQUIRE(paths.back().detuneCents > 0.f);
+}
+
+TEST_CASE("Unison preview bends from the supplied Voice Context pitch trajectory",
+        "[cycle-v2][unison][preview][voice-context]") {
+    Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    setParameter(node, "order", "2");
+    setParameter(node, "width", "5");
+    setParameter(node, "phase", "0");
+    setParameter(node, "jitter", "0");
+
+    const UnisonPreviewContext neutral { 60, 1.0, { 0.5f, 0.5f, 0.5f } };
+    const UnisonPreviewContext rising { 60, 1.0, { 0.5f, 0.75f, 1.f } };
+    const auto neutralPaths = makeUnisonPreviewPaths(node, neutral);
+    const auto risingPaths = makeUnisonPreviewPaths(node, rising);
+
+    REQUIRE(travelledCycles(risingPaths.back()) > travelledCycles(neutralPaths.back()));
 }

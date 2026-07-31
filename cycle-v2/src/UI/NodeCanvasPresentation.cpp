@@ -35,6 +35,77 @@ String modulationParameterId(const String& prefix, const String& name) {
     return prefix + name.substring(0, 1).toUpperCase() + name.substring(1);
 }
 
+void paintEnvelopePurpose(
+        Graphics& graphics,
+        Rectangle<float> preview,
+        const Node& node,
+        float zoom) {
+    const String purpose = parameterValueForNode(node, "purpose", "control");
+    Rectangle<float> selector = preview.removeFromBottom(20.f * zoom).reduced(3.f * zoom, 1.f * zoom);
+    const String labels[] { "Control", "Pitch", "Scratch" };
+    const String values[] { "control", "pitch", "scratch" };
+    const float stopWidth = selector.getWidth() / 3.f;
+    for (int index = 0; index < 3; ++index) {
+        Rectangle<float> stop = selector.removeFromLeft(stopWidth).reduced(1.f * zoom, 0.f);
+        const bool selected = purpose == values[index];
+        graphics.setColour(selected
+                ? colourForDomain(node.outputs.front().domain).withAlpha(0.30f)
+                : kNodeHeader.withAlpha(0.72f));
+        graphics.fillRoundedRectangle(stop, 3.f * zoom);
+        graphics.setColour(selected ? kText : kMutedText.withAlpha(0.72f));
+        graphics.setFont(FontOptions(8.5f * zoom, selected ? Font::bold : Font::plain));
+        graphics.drawText(labels[index], stop, Justification::centred);
+    }
+
+    if (purpose == "pitch") {
+        graphics.setColour(colourForDomain(PortDomain::PitchSignal).withAlpha(0.42f));
+        graphics.drawHorizontalLine(
+                roundToInt(preview.getCentreY()),
+                preview.getX(),
+                preview.getRight());
+    } else if (purpose == "scratch") {
+        graphics.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.72f));
+        graphics.drawText(
+                String::fromUTF8("↔"),
+                preview.removeFromTop(18.f * zoom),
+                Justification::centredRight);
+    }
+}
+
+void paintVoiceAttachmentStatus(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        const NodeGraph& graph,
+        const Node& node,
+        float zoom) {
+    const String portIds[] { "modulation", "pitch", "unison" };
+    const String labels[] { "Mod", "Pitch", "Unison" };
+    Rectangle<float> row = bounds.withTrimmedTop(78.f * zoom).reduced(12.f * zoom, 0.f);
+    row = row.removeFromTop(19.f * zoom);
+    const float width = row.getWidth() / 3.f;
+    for (int index = 0; index < 3; ++index) {
+        const bool connected = std::any_of(
+                graph.getEdges().begin(),
+                graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.destNodeId == node.id && edge.destPortId == portIds[index];
+                });
+        Rectangle<float> status = row.removeFromLeft(width).reduced(2.f * zoom, 0.f);
+        graphics.setColour(connected
+                ? colourForDomain(index == 1
+                        ? PortDomain::PitchSignal
+                        : PortDomain::VoiceControlSignal).withAlpha(0.24f)
+                : kNodeHeader);
+        graphics.fillRoundedRectangle(status, 3.f * zoom);
+        graphics.setColour(connected ? kText : kMutedText.withAlpha(0.78f));
+        graphics.setFont(FontOptions(8.2f * zoom, connected ? Font::bold : Font::plain));
+        graphics.drawText(
+                labels[index] + String(connected ? " linked" : " default"),
+                status,
+                Justification::centred);
+    }
+}
+
 String modulationSourceLabel(const Node& node, const String& prefix = {}) {
     const String source = parameterValueForNode(
             node,
@@ -211,7 +282,7 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
 }
 
 PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.attachment ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
+    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
 }
 
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
@@ -479,7 +550,7 @@ void NodeCanvasPresentation::paintEdges(
                 : colourForDomain(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
-                edge.attachment,
+                edge.isAttachment(),
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
@@ -623,6 +694,7 @@ void NodeCanvasPresentation::paintNode(
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
+        paintVoiceAttachmentStatus(graphics, nodeBounds, frame.graph, node, zoom);
     } else {
         previewRenderer.paint(graphics, {
                 node,
@@ -633,11 +705,24 @@ void NodeCanvasPresentation::paintNode(
                 true,
                 frame.unisonPreviewContext
         });
+        if (node.kind == NodeKind::Envelope) {
+            paintEnvelopePurpose(graphics, preview, node, zoom);
+        }
     }
 
     const auto paintPort = [&](const Port& port) {
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
+        if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
+            const Rectangle<float> socket = location.bounds.reduced(0.5f * scale);
+            graphics.setColour(colour.withAlpha(0.20f));
+            graphics.fillRoundedRectangle(socket.expanded(1.8f * scale), 2.f * scale);
+            graphics.setColour(port.input ? colour : kCanvasBackground.withAlpha(0.92f));
+            graphics.fillRoundedRectangle(socket, 1.5f * scale);
+            graphics.setColour(colour);
+            graphics.drawRoundedRectangle(socket, 1.5f * scale, 1.2f * scale);
+            return;
+        }
         graphics.setColour(colour.withAlpha(0.22f));
         graphics.fillEllipse(location.bounds.expanded(1.4f * scale));
 

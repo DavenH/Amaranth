@@ -465,6 +465,10 @@ void GraphCommandDispatcher::accumulateChange(
             destination.nodeIds.push_back(nodeId);
         }
     }
+    destination.removedEdges.insert(
+            destination.removedEdges.end(),
+            change.removedEdges.begin(),
+            change.removedEdges.end());
     destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
     destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
     destination.probesChanged = destination.probesChanged || change.probesChanged;

@@ -25,6 +25,7 @@ Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> 
     if (definition->modelCodec != nullptr) {
         node.model = definition->modelCodec->createDefault();
     }
+    NodeDefinitionRegistry::instance().normalize(node);
 
     const auto naturalSize = naturalSizeForNode(node);
     node.bounds.setSize(naturalSize.width, naturalSize.height);
@@ -38,7 +39,15 @@ Port GraphNodeFactory::input(
         ChannelLayout layout,
         PortPurpose purpose,
         PortSide side) const {
-    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
+    return {
+            std::move(id), std::move(label), domain, layout, purpose, true, side,
+            purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : ConnectionKind::Signal,
+            purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : AttachmentType::None
+    };
 }
 
 Port GraphNodeFactory::output(

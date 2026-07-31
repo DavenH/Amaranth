@@ -1,5 +1,9 @@
 #include "GraphCompiler.h"
 
+#include "../Nodes/Control/ModulationTriple.h"
+#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "../Nodes/Unison/UnisonNode.h"
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -52,6 +56,9 @@ PortDomain outputPortDomain(
         const std::vector<Edge>& resolvedEdges,
         const Node& node,
         const Port& port) {
+    if (node.kind == NodeKind::Envelope && port.domain == PortDomain::ControlSignal) {
+        return PortDomain::ControlSignal;
+    }
     for (const auto& edge : resolvedEdges) {
         if (edge.sourceNodeId == node.id && edge.sourcePortId == port.id) {
             return edge.domain;
@@ -212,6 +219,18 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
 
         const Node& node = graph.getNodes()[static_cast<size_t>(nodeIndex)];
         const auto descriptor = moduleRegistry.descriptorFor(node.kind);
+        if (!descriptor.executable) {
+            continue;
+        }
+        if (node.kind == NodeKind::ModulationTriple
+                && std::none_of(resolvedEdges.begin(), resolvedEdges.end(), [&](const Edge& edge) {
+                    return edge.sourceNodeId == node.id;
+                })
+                && std::none_of(node.outputs.begin(), node.outputs.end(), [&](const Port& port) {
+                    return graph.findSignalProbeForSource(node.id, port.id) != nullptr;
+                })) {
+            continue;
+        }
         std::vector<GraphStepInput> inputs;
 
         for (const auto& edge : resolvedEdges) {
@@ -401,6 +420,7 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
 
     appendEdges(plan.signalEdges);
     appendEdges(plan.attachments);
+    appendEdges(plan.configurationAttachments);
 }
 
 std::vector<GraphBufferPlan> buildBufferPlan(
@@ -412,6 +432,16 @@ std::vector<GraphBufferPlan> buildBufferPlan(
 
     for (const auto& node : graph.getNodes()) {
         for (const auto& port : node.outputs) {
+            if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
+                continue;
+            }
+            if (node.kind == NodeKind::ModulationTriple
+                    && std::none_of(resolvedEdges.begin(), resolvedEdges.end(), [&](const Edge& edge) {
+                        return edge.sourceNodeId == node.id && edge.sourcePortId == port.id;
+                    })
+                    && graph.findSignalProbeForSource(node.id, port.id) == nullptr) {
+                continue;
+            }
             const PortDomain domain = outputPortDomain(resolvedEdges, node, port);
             if (domain == PortDomain::DomainContext) {
                 continue;
@@ -434,6 +464,92 @@ std::vector<GraphBufferPlan> buildBufferPlan(
     }
 
     return buffers;
+}
+
+std::vector<CompiledVoiceContext> compileVoiceContexts(
+        const NodeGraph& graph,
+        const std::vector<Edge>& configurationAttachments,
+        const std::vector<Edge>& signalEdges) {
+    std::vector<CompiledVoiceContext> contexts;
+    const auto defaultModulation = buildModulationTripleConfiguration({});
+    const auto defaultUnison = buildUnisonNodeConfiguration({});
+    std::vector<std::pair<String, std::shared_ptr<const ModulationTripleConfiguration>>>
+            modulationConfigurations;
+    std::vector<std::pair<String, std::shared_ptr<const UnisonNodeConfiguration>>>
+            unisonConfigurations;
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind != NodeKind::VoiceContext) {
+            continue;
+        }
+
+        CompiledVoiceContext context;
+        context.nodeId = node.id;
+        context.startDomain = parameterValueForNode(node, "domain", "waveform");
+        context.polyphony = typedParameterInt(node.parameters, "voices", 1);
+        context.octave = typedParameterInt(node.parameters, "octave", 0);
+        context.pitchSemitones = typedParameterFloat(node.parameters, "pitch", 0.f);
+        context.portamento = typedParameterBool(node.parameters, "portamento", false);
+        context.oversampling = jmax(
+                1,
+                parameterValueForNode(node, "oversampling", "1x").getIntValue());
+        context.defaultModulation = defaultModulation;
+        auto unison = defaultUnison;
+        context.unison = unison;
+        context.lanes = unison->layout;
+
+        for (const auto& attachment : configurationAttachments) {
+            if (attachment.destNodeId != node.id) {
+                continue;
+            }
+            const Node* source = findNode(graph, attachment.sourceNodeId);
+            if (source == nullptr) {
+                continue;
+            }
+            if (attachment.attachmentType == AttachmentType::ModulationTriple) {
+                auto found = std::find_if(
+                        modulationConfigurations.begin(),
+                        modulationConfigurations.end(),
+                        [&](const auto& entry) { return entry.first == source->id; });
+                if (found == modulationConfigurations.end()) {
+                    modulationConfigurations.push_back({
+                            source->id,
+                            buildModulationTripleConfiguration(source->parameters)
+                    });
+                    found = modulationConfigurations.end() - 1;
+                }
+                context.defaultModulation = found->second;
+            } else if (attachment.attachmentType == AttachmentType::Unison) {
+                auto found = std::find_if(
+                        unisonConfigurations.begin(),
+                        unisonConfigurations.end(),
+                        [&](const auto& entry) { return entry.first == source->id; });
+                if (found == unisonConfigurations.end()) {
+                    unisonConfigurations.push_back({
+                            source->id,
+                            buildUnisonNodeConfiguration(source->parameters)
+                    });
+                    found = unisonConfigurations.end() - 1;
+                }
+                unison = found->second;
+                context.unison = unison;
+                context.lanes = unison->layout;
+            }
+        }
+
+        for (const auto& edge : signalEdges) {
+            if (edge.destNodeId != node.id || edge.destPortId != "pitch") {
+                continue;
+            }
+            const Node* source = findNode(graph, edge.sourceNodeId);
+            if (source != nullptr && source->kind == NodeKind::Envelope) {
+                context.pitchEnvelope = EnvelopeSignalProcessor::buildConfiguration(
+                        source->parameters,
+                        source->model);
+            }
+        }
+        contexts.push_back(std::move(context));
+    }
+    return contexts;
 }
 
 }
@@ -465,10 +581,17 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolution);
 
         for (const auto& edge : graph.getEdges()) {
-            if (edge.attachment) {
+            if (edge.isProcessingAttachment()) {
                 result.plan.attachments.push_back(edge);
+            } else if (edge.isConfigurationAttachment()) {
+                result.plan.configurationAttachments.push_back(edge);
             }
         }
+
+        result.plan.voiceContexts = compileVoiceContexts(
+                graph,
+                result.plan.configurationAttachments,
+                result.plan.signalEdges);
 
         result.plan.steps = buildExecutionSteps(
                 graph,

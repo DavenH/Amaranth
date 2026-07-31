@@ -133,11 +133,55 @@ std::vector<UnisonPhaseSegment> UnisonCore::phaseSegments(
     return segments;
 }
 
+std::vector<UnisonPhaseSegment> UnisonCore::phaseSegmentsForPitchEnvelope(
+        int midiNote,
+        float detuneCents,
+        float initialPhaseCycles,
+        double durationSeconds,
+        const std::vector<float>& unitPitchValues) {
+    if (unitPitchValues.size() < 2) {
+        return phaseSegments(
+                phaseTrajectory(midiNote, detuneCents, initialPhaseCycles),
+                durationSeconds);
+    }
+
+    std::vector<UnisonPhaseSegment> result;
+    const double intervalDuration = std::max(0.0, durationSeconds)
+            / (double) (unitPitchValues.size() - 1);
+    double phase = wrapSignedPhase(initialPhaseCycles);
+    for (size_t index = 0; index + 1 < unitPitchValues.size(); ++index) {
+        const auto driftAt = [&](float unitPitch) {
+            const double pitch = (double) midiNote + pitchSemitonesForUnitValue(unitPitch);
+            return frequencyForMidiPitch(pitch, detuneCents)
+                    - frequencyForMidiPitch(pitch);
+        };
+        const double drift = 0.5
+                * (driftAt(unitPitchValues[index]) + driftAt(unitPitchValues[index + 1]));
+        const auto interval = phaseSegments({ (float) phase, drift }, intervalDuration);
+        const double offset = (double) index * intervalDuration;
+        for (auto segment : interval) {
+            segment.startSeconds += offset;
+            segment.endSeconds += offset;
+            result.push_back(segment);
+        }
+        phase = interval.empty() ? phase : interval.back().endPhaseCycles;
+    }
+    return result;
+}
+
 double UnisonCore::frequencyForMidiNote(int midiNote, float detuneCents) {
+    return frequencyForMidiPitch((double) midiNote, detuneCents);
+}
+
+double UnisonCore::frequencyForMidiPitch(double midiPitch, float detuneCents) {
     constexpr int midiA = 69;
     return 440.0 * std::pow(
             2.0,
-            ((double) midiNote + (double) detuneCents * 0.01 - midiA) / 12.0);
+            (midiPitch + (double) detuneCents * 0.01 - midiA) / 12.0);
+}
+
+double UnisonCore::pitchSemitonesForUnitValue(double unitPitch) {
+    return 12.0 * (unitPitch * 2.0 - 1.0);
 }
 
 double UnisonCore::wrapSignedPhase(double cycles) {

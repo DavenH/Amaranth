@@ -419,7 +419,9 @@ TEST_CASE("Modulation triple definition retains Cycle v1 axis defaults",
             "triple",
             {});
 
-    REQUIRE(triple.outputs.size() == 3);
+    REQUIRE(triple.outputs.size() == 4);
+    REQUIRE(triple.outputs.back().connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(triple.outputs.back().attachmentType == AttachmentType::ModulationTriple);
     REQUIRE(parameterValueForNode(triple, "yellowSource") == "voiceTime");
     REQUIRE(parameterValueForNode(triple, "redSource") == "keyScale");
     REQUIRE(parameterValueForNode(triple, "blueSource") == "modWheel");

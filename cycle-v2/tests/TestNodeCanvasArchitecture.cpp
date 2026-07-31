@@ -483,9 +483,13 @@ TEST_CASE("Cube-component assignments share one attachment cable per node pair",
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;

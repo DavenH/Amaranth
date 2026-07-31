@@ -865,9 +865,13 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
             NodeKind::ModulationTriple,
             "allocationTriple",
             {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "allocationTriple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
-    REQUIRE(std::any_of(
+    REQUIRE_FALSE(std::any_of(
             compileResult.plan.steps.begin(),
             compileResult.plan.steps.end(),
             [](const GraphExecutionStep& step) {

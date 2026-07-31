@@ -16,7 +16,7 @@ PortDomain GraphRenderSemanticResolver::contextDomainForNode(
         const NodeGraph& graph,
         const Node& node) const {
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment || edge.destNodeId != node.id || edge.destPortId != "context") {
+        if (edge.isAttachment() || edge.destNodeId != node.id || edge.destPortId != "context") {
             continue;
         }
 
@@ -39,7 +39,7 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForNodeOutput(
 
     for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
         const Edge& edge = graph.getEdges()[edgeIndex];
-        if (edge.attachment || edge.sourceNodeId != nodeId || edge.sourcePortId != portId) {
+        if (edge.isAttachment() || edge.sourceNodeId != nodeId || edge.sourcePortId != portId) {
             continue;
         }
 

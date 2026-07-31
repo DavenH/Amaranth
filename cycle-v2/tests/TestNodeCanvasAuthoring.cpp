@@ -183,7 +183,8 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "phase"),
             PortDomain::ControlSignal,
-            true
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
     graph.addEdge({
             "guide",
@@ -191,7 +192,8 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
             PortDomain::ControlSignal,
-            true
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

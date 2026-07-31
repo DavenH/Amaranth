@@ -19,12 +19,50 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.inputs[0].side == PortSide::Left);
     REQUIRE(node.inputs[1].side == PortSide::Left);
     REQUIRE(node.outputs.size() == 1);
-    REQUIRE(node.outputs.front().domain == PortDomain::EnvelopeSignal);
+    REQUIRE(node.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(node.outputs.front().connectionKind == ConnectionKind::Signal);
+    REQUIRE(parameterValueForNode(node, "purpose") == "control");
     REQUIRE(node.bounds.getWidth() == 295.2f);
     REQUIRE(node.model != nullptr);
     REQUIRE(node.model->schemaId() == "envelope");
     REQUIRE(node.model->revision() == 1);
     REQUIRE(parameterValueForNode(node, "dynamic") == "0");
+}
+
+TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][graph][voice-context]") {
+    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+
+    REQUIRE(voice.inputs.size() == 3);
+    REQUIRE(voice.inputs[0].id == "modulation");
+    REQUIRE(voice.inputs[0].connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(voice.inputs[0].attachmentType == AttachmentType::ModulationTriple);
+    REQUIRE(voice.inputs[1].domain == PortDomain::PitchSignal);
+    REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
+}
+
+TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",
+        "[cycle-v2][graph][envelope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "envelope", "env", false },
+            { "multiply", "right", true }).succeeded());
+
+    const auto changed = GraphEditor().setNodeParameter(
+            graph, "envelope", "purpose", "Purpose", "pitch");
+
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.changes.topologyChanged);
+    REQUIRE(changed.changes.removedEdges.size() == 1);
+    REQUIRE(graph.getEdges().empty());
+    const Node* envelope = graph.findNode("envelope");
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelope->outputs.front().domain == PortDomain::PitchSignal);
+    REQUIRE(envelope->outputs.front().label == "Pitch");
 }
 
 TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
