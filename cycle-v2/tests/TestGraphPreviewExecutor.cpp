@@ -154,7 +154,6 @@ Node previewNode(String id, NodeKind kind, std::vector<Port> inputs, std::vector
     return {
         id,
         kind,
-        id,
         {},
         {},
         {},

@@ -305,7 +305,6 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         encoded->setProperty("id", node.id);
         encoded->setProperty("kind", registry.typeIdFor(node.kind));
         encoded->setProperty("definitionVersion", definition != nullptr ? definition->version : 1);
-        encoded->setProperty("title", node.title);
         encoded->setProperty("position", positionToJSON(node.bounds.getPosition()));
         if (definition != nullptr) {
             const var portSides = nodePortSideOverrides(node, *definition);
@@ -409,10 +408,6 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
 
         Node node = GraphNodeFactory().createNode(definition->kind, nodeId, {});
-        const var title = encoded->getProperty("title");
-        if (title.isString() && title.toString().isNotEmpty()) {
-            node.title = title.toString();
-        }
         const auto* position = encoded->getProperty("position").getDynamicObject();
         if (position == nullptr) {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' has no valid position" });

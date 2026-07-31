@@ -303,7 +303,6 @@ TEST_CASE("Graph editor rejects incompatible connections", "[cycle-v2][graph]") 
     graph.addNode({
             "pitch",
             NodeKind::GenericProcessor,
-            "Pitch",
             {},
             {},
             {},

@@ -6,7 +6,6 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "title": "Voice Context",
             "position": { "x": 120.0, "y": 520.0 },
             "parameters": { "domain": "waveform", "voices": 6, "octave": 1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
@@ -14,7 +13,6 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "title": "Legacy Morph Controls",
             "position": { "x": 120.0, "y": 80.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
@@ -32,7 +30,6 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Time Layer 1",
             "position": { "x": 520.0, "y": 520.0 },
             "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
@@ -170,7 +167,6 @@
             "id": "timeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Time Layer 2",
             "position": { "x": 850.0, "y": 520.0 },
             "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
@@ -243,7 +239,6 @@
             "id": "timeAdd1",
             "kind": "add",
             "definitionVersion": 1,
-            "title": "Time Add 1",
             "position": { "x": 1030.0, "y": 800.0 },
             "parameters": {}
         },
@@ -251,7 +246,6 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "title": "Time → Freq",
             "position": { "x": 1360.0, "y": 520.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
@@ -259,7 +253,6 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Magnitude Layer 1",
             "position": { "x": 1700.0, "y": 80.0 },
             "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
@@ -278,7 +271,6 @@
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "title": "Magnitude Multiply 1",
             "position": { "x": 1860.0, "y": 390.0 },
             "parameters": {}
         },
@@ -286,7 +278,6 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Phase Layer 1",
             "position": { "x": 1700.0, "y": 1050.0 },
             "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
@@ -305,7 +296,6 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "title": "Phase Add 1",
             "position": { "x": 1860.0, "y": 800.0 },
             "parameters": {}
         },
@@ -313,7 +303,6 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "title": "Freq → Time",
             "position": { "x": 2030.0, "y": 520.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
@@ -321,7 +310,6 @@
             "id": "guide1",
             "kind": "guideCurve",
             "definitionVersion": 1,
-            "title": "Guide 1",
             "position": { "x": 520.0, "y": 1430.0 },
             "parameters": { "enabled": true, "noise": 0.0, "dcOffset": 0.0, "phase": 0.0 },
             "model": {
@@ -385,7 +373,6 @@
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "title": "Volume Envelope",
             "position": { "x": 3970.0, "y": 100.0 },
             "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
             "model": {
@@ -487,7 +474,6 @@
             "id": "pitchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "title": "Pitch Envelope",
             "position": { "x": 520.0, "y": -300.0 },
             "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
             "model": {
@@ -1211,7 +1197,6 @@
             "id": "scratchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "title": "Scratch Envelope",
             "position": { "x": 850.0, "y": -300.0 },
             "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
             "model": {
@@ -1313,7 +1298,6 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "title": "Waveshaper",
             "position": { "x": 2370.0, "y": 520.0 },
             "parameters": { "enabled": false, "pre": 0.48, "post": 0.408, "aaFactor": "1" },
             "model": {
@@ -1338,7 +1322,6 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "title": "IR",
             "position": { "x": 2670.0, "y": 520.0 },
             "parameters": { "enabled": false, "size": 0.14286, "post": 0.428, "highPass": 0.0 },
             "model": {
@@ -1376,7 +1359,6 @@
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "title": "EQ",
             "position": { "x": 2970.0, "y": 520.0 },
             "parameters": {
                 "enabled": false,
@@ -1396,7 +1378,6 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "title": "Delay",
             "position": { "x": 3270.0, "y": 520.0 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.5, "spin": 0.692, "spinIters": 0.5 }
         },
@@ -1404,7 +1385,6 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "title": "Reverb",
             "position": { "x": 3570.0, "y": 520.0 },
             "parameters": { "enabled": false, "size": 0.2, "damp": 0.2, "width": 0.0, "wet": 0.3, "highPass": 0.05 }
         },
@@ -1412,7 +1392,6 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "title": "Apply Volume",
             "position": { "x": 3970.0, "y": 520.0 },
             "parameters": {}
         },
@@ -1420,7 +1399,6 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "title": "Output",
             "position": { "x": 4270.0, "y": 520.0 },
             "parameters": {}
         }

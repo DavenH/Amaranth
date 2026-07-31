@@ -23,7 +23,6 @@ Node graphNode(String id, std::vector<Port> inputs, std::vector<Port> outputs) {
     return {
         id,
         NodeKind::GenericProcessor,
-        id,
         {},
         {},
         {},
@@ -100,7 +99,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(orderIndex(plan, "env") < orderIndex(plan, "multiply"));
     REQUIRE(orderIndex(plan, "multiply") < orderIndex(plan, "out"));
 
-    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, {}, findStep(plan, "voice").parameters, {}, {} },
+    REQUIRE(parameterValueForNode({ "voice", NodeKind::VoiceContext, {}, {}, findStep(plan, "voice").parameters, {}, {} },
             "domain") == "waveform");
     REQUIRE(findStep(plan, "waveMesh").audioRole == AudioModuleRole::MeshSource);
     REQUIRE(findStep(plan, "waveMesh").previewRole == PreviewModuleRole::MeshSurface);
@@ -279,7 +278,6 @@ TEST_CASE("Compiler resolves mesh output domains from consuming operation contex
     graph.addNode({
             "mag",
             NodeKind::GenericProcessor,
-            "Magnitude",
             {},
             {},
             {},

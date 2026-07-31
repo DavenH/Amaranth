@@ -290,7 +290,7 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     host.appendAutomationState(automation);
     REQUIRE((bool) automation.getProperty("mock"));
 
-    first.title = "Revised";
+    first.subtitle = "Revised";
     REQUIRE(host.bind(&first, { 20, 30, 320, 220 }, 5));
     REQUIRE(stats.creations == 1);
     REQUIRE(stats.bindings == 2);

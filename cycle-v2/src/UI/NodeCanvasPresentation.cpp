@@ -603,7 +603,8 @@ void NodeCanvasPresentation::paintNode(
 
     graphics.setFont(FontOptions(15.f * zoom, Font::bold));
     graphics.setColour(kText);
-    graphics.drawText(node.title, header.reduced(13.f * zoom, 4.f * zoom), Justification::centredLeft);
+    graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
+                      Justification::centredLeft);
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {
         paintOperationAction(

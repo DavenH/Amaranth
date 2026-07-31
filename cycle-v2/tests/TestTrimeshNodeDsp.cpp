@@ -297,7 +297,6 @@ TEST_CASE("Trimesh node model renders compact grid data from node parameters", "
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -390,7 +389,6 @@ TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][n
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -459,7 +457,6 @@ TEST_CASE("Trimesh node model applies one complete topology snapshot", "[cycle-v
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -542,7 +539,6 @@ TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -568,7 +564,6 @@ TEST_CASE("Trimesh node model resolves a default selected vertex for parameter e
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -663,7 +658,6 @@ TEST_CASE("Trimesh panel data source adapts node grid data to Panel3D columns", 
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -697,7 +691,6 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -723,7 +716,6 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {
@@ -796,7 +788,6 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},
@@ -873,7 +864,6 @@ TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral
     Node node {
             "mesh",
             NodeKind::TrilinearMesh,
-            "Trilinear Mesh",
             {},
             {},
             {},

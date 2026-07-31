@@ -549,7 +549,6 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
         return;
     }
 
-    node.title = definitionToUse->displayName;
     if (node.subtitle.isEmpty()) {
         node.subtitle = definitionToUse->subtitle;
     }

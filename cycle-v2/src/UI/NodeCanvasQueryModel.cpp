@@ -185,7 +185,7 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
-    String text = node->title + "  /  " + (address.input ? "Input" : "Output")
+    String text = labelForNodeKind(node->kind) + "  /  " + (address.input ? "Input" : "Output")
             + " port " + portDisplayLabel(*port)
             + "  /  " + labelForDomain(port->domain);
 
@@ -201,7 +201,7 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
 }
 
 String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
-    String text = node.title + "  /  " + node.subtitle
+    String text = labelForNodeKind(node.kind) + "  /  " + node.subtitle
             + "  /  inputs " + String((int) node.inputs.size())
             + "  /  outputs " + String((int) node.outputs.size());
     const RuntimeNodeTrace* trace = findRuntimeTrace(node.id);

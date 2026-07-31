@@ -6,7 +6,6 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "title": "Voice Context",
             "position": { "x": 8.05236, "y": 457.91464 },
             "parameters": { "domain": "waveform", "voices": 6, "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
@@ -14,7 +13,6 @@
             "id": "waveMesh",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Trilinear Mesh",
             "position": { "x": 380.61609, "y": 457.91464 },
             "parameters": { "yellow": 0.317, "red": 0.108, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
@@ -139,7 +137,6 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "title": "Time → Freq",
             "position": { "x": 803.99768, "y": 457.91464 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
@@ -147,7 +144,6 @@
             "id": "magMesh",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Trilinear Mesh",
             "position": { "x": 1218.96558, "y": 32.13789 },
             "portSides": {
                 "outputs": { "out": "bottom" }
@@ -275,7 +271,6 @@
             "id": "addMag",
             "kind": "add",
             "definitionVersion": 1,
-            "title": "Add",
             "position": { "x": 1286.96558, "y": 395.99997 },
             "portSides": {
                 "inputs": { "right": "top" }
@@ -286,7 +281,6 @@
             "id": "phaseMesh",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "title": "Trilinear Mesh",
             "position": { "x": 1218.96558, "y": 786.0 },
             "portSides": {
                 "outputs": { "out": "top" }
@@ -414,7 +408,6 @@
             "id": "guide",
             "kind": "guideCurve",
             "definitionVersion": 1,
-            "title": "Guide",
             "position": { "x": 819.05798, "y": 820.0 },
             "parameters": { "enabled": true, "noise": 0.5, "dcOffset": 0.5, "phase": 0.5 },
             "model": {
@@ -438,7 +431,6 @@
             "id": "addPhase",
             "kind": "add",
             "definitionVersion": 1,
-            "title": "Add",
             "position": { "x": 1286.96558, "y": 579.86206 },
             "portSides": {
                 "inputs": { "right": "bottom" }
@@ -449,7 +441,6 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "title": "Freq → Time",
             "position": { "x": 1644.60547, "y": 457.91464 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
@@ -457,7 +448,6 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "title": "Waveshaper",
             "position": { "x": 2009.03223, "y": 457.9147 },
             "parameters": { "enabled": true, "pre": 0.5, "post": 0.5, "aaFactor": "1" },
             "model": {
@@ -484,7 +474,6 @@
             "id": "ir",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "title": "IR",
             "position": { "x": 2354.6665, "y": 457.91464 },
             "parameters": { "enabled": true, "size": 0.0, "post": 0.618, "highPass": 0.0 },
             "model": {
@@ -519,7 +508,6 @@
             "id": "env",
             "kind": "envelope",
             "definitionVersion": 1,
-            "title": "Envelope",
             "position": { "x": 2370.6897, "y": 134.13789 },
             "parameters": { "logarithmic": true, "red": 0.143, "blue": 0.012, "dynamic": false, "level": 1.0 },
             "model": {
@@ -648,7 +636,6 @@
             "id": "scratchEnv",
             "kind": "envelope",
             "definitionVersion": 1,
-            "title": "Envelope",
             "position": { "x": 2.50753, "y": 52.62711 },
             "parameters": { "logarithmic": false, "red": 0.5, "blue": 0.5, "dynamic": false, "level": 1.0 },
             "model": {
@@ -776,7 +763,6 @@
             "id": "multiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "title": "Multiply",
             "position": { "x": 2696.0, "y": 457.9147 },
             "portSides": {
                 "inputs": { "right": "top" }
@@ -787,7 +773,6 @@
             "id": "out",
             "kind": "output",
             "definitionVersion": 1,
-            "title": "Output",
             "position": { "x": 3217.10352, "y": 457.91467 },
             "parameters": {}
         },
@@ -795,7 +780,6 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "title": "Reverb",
             "position": { "x": 2924.41382, "y": 457.91467 },
             "parameters": { "enabled": true, "size": 0.4999, "damp": 1.0, "width": 0.6186, "wet": 0.795, "highPass": 0.0667 }
         }

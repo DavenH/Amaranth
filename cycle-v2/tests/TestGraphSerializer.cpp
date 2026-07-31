@@ -2,6 +2,7 @@
 
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
@@ -51,6 +52,20 @@ TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
     REQUIRE_FALSE(encoded.contains("<cycleV2Graph"));
     REQUIRE_FALSE(encoded.contains("&quot;"));
     REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph JSON derives immutable node names from definitions", "[cycle-v2][graph]") {
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    REQUIRE_FALSE(nodes->isEmpty());
+    nodes->getReference(0).getDynamicObject()->setProperty("title", "Preset Override");
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(labelForNodeKind(loaded.graph.getNodes().front().kind) == "Voice Context");
+    REQUIRE_FALSE(serializer.toJsonString(loaded.graph).contains("\"title\""));
 }
 
 TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[cycle-v2][graph]") {
@@ -253,10 +268,35 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
         REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+        REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
         REQUIRE_FALSE(encoded.contains("curve.modelSnapshot"));
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah retains its source mesh content", "[cycle-v2][graph][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("stengah.cyclegraph").loadFileAsString());
+    REQUIRE(loaded.succeeded());
+
+    const Node* timeLayer = loaded.graph.findNode("timeLayer1");
+    REQUIRE(timeLayer != nullptr);
+    const auto timeModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(timeLayer->model);
+    REQUIRE(timeModel != nullptr);
+    REQUIRE(timeModel->mesh().getNumVerts() == 0);
+    REQUIRE(timeModel->mesh().getNumCubes() == 0);
+
+    const Node* waveshaper = loaded.graph.findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    const auto waveshaperModel = std::dynamic_pointer_cast<const CurveNodeModelState>(waveshaper->model);
+    REQUIRE(waveshaperModel != nullptr);
+    REQUIRE(waveshaperModel->flatCurve() != nullptr);
+    REQUIRE(waveshaperModel->flatCurve()->getVertices().size() == 6);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

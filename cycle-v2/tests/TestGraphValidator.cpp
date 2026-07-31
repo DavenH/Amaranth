@@ -129,7 +129,6 @@ TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][gr
     graph.addNode({
             "time",
             NodeKind::GenericProcessor,
-            "Time",
             {},
             {},
             {},
@@ -138,7 +137,6 @@ TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][gr
     graph.addNode({
             "mag",
             NodeKind::GenericProcessor,
-            "Magnitude",
             {},
             {},
             {},
@@ -199,7 +197,6 @@ TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][gr
     graph.addNode({
             "time",
             NodeKind::GenericProcessor,
-            "Time",
             {},
             {},
             {},
@@ -329,7 +326,6 @@ TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-
     graph.addNode({
             "mag",
             NodeKind::GenericProcessor,
-            "Magnitude",
             {},
             {},
             {},
@@ -488,7 +484,6 @@ TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
     graph.addNode({
             "pitch",
             NodeKind::GenericProcessor,
-            "Pitch",
             {},
             {},
             {},
@@ -516,7 +511,6 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
     graph.addNode({
             "source",
             NodeKind::GenericProcessor,
-            "Source",
             {},
             {},
             {},
@@ -528,7 +522,6 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
     graph.addNode({
             "dest",
             NodeKind::GenericProcessor,
-            "Dest",
             {},
             {},
             {},
@@ -556,7 +549,6 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addNode({
             "source",
             NodeKind::GenericProcessor,
-            "Source",
             {},
             {},
             {},
@@ -566,7 +558,6 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addNode({
             "pitch",
             NodeKind::GenericProcessor,
-            "Pitch",
             {},
             {},
             {},
@@ -576,7 +567,6 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addNode({
             "guide",
             NodeKind::GuideCurve,
-            "Guide",
             {},
             {},
             {},
@@ -586,7 +576,6 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addNode({
             "dest",
             NodeKind::GenericProcessor,
-            "Destination",
             {},
             {},
             {},

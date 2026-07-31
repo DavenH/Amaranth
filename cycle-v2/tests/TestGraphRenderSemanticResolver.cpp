@@ -13,7 +13,6 @@ Node spectralMagnitudeSource(String id) {
     return {
             std::move(id),
             NodeKind::GenericProcessor,
-            "Magnitude",
             {},
             {},
             {},
@@ -26,7 +25,6 @@ Node pitchConsumer(String id) {
     return {
             std::move(id),
             NodeKind::GenericProcessor,
-            "Pitch Consumer",
             {},
             {},
             {},

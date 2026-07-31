@@ -1095,7 +1095,7 @@ Acceptance:
 - save/load graph presets with stable ids and layout,
 - import Cycle 1.x presets without data loss where supported,
 - generate a node graph from a Cycle 1.x preset for inspection,
-- create, delete, connect, disconnect, duplicate, and rename nodes,
+- create, delete, connect, disconnect, and duplicate nodes,
 - graph diagnostics are visible and actionable,
 - automation fixtures cover common editing flows.
 
@@ -1112,6 +1112,12 @@ Current inspection fixtures:
   where Cycle 2 lacks the Cycle 1 dimension-specific guide binding or
   pitch/scratch routing contract. Do not approximate those bindings with the
   generic scratch attachment port.
+- Stengah's waveshaper retains its six source vertices. Its time layer is also
+  faithful to Cycle 1: that source mesh contains zero vertices and cubes, so
+  the spectral layers construct the preset's initial signal.
+- Pitch profile, scratch-channel selection, voice-context modulation defaults,
+  and stereo spectral-layer pan are designed separately in
+  `cycle-v2-voice-context-and-layer-routing.md`.
 - `cycle-v2-agent-ported-presets.json` opens all three preset files and asserts
   their graph identity and successful compilation. General Cycle 1 preset
   import remains an incomplete Milestone 9 item.

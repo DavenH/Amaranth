@@ -56,6 +56,17 @@
       "command": "assertState",
       "path": "compileSucceeded",
       "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexCount",
+      "equals": 6
     }
   ],
   "quit": true

@@ -57,7 +57,7 @@ TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
 TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]") {
     const Node node = GraphNodeFactory().createNode(NodeKind::Fft, "fft", { 0.f, 0.f });
 
-    REQUIRE(node.title == String::fromUTF8("Time → Freq"));
+    REQUIRE(labelForNodeKind(node.kind) == String::fromUTF8("Time → Freq"));
     REQUIRE(node.inputs.size() == 1);
     REQUIRE(node.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(node.inputs.front().channelLayout == ChannelLayout::LinkedStereo);
@@ -69,7 +69,7 @@ TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]")
     REQUIRE(parameterValueForNode(node, "window").isEmpty());
 
     const Node inverse = GraphNodeFactory().createNode(NodeKind::Ifft, "ifft", { 0.f, 0.f });
-    REQUIRE(inverse.title == String::fromUTF8("Freq → Time"));
+    REQUIRE(labelForNodeKind(inverse.kind) == String::fromUTF8("Freq → Time"));
     REQUIRE(parameterValueForNode(inverse, "mode") == "cyclic");
 }
 
@@ -77,7 +77,7 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node add = GraphNodeFactory().createNode(NodeKind::Add, "add", {});
 
-    REQUIRE(mesh.title == "Trilinear Mesh");
+    REQUIRE(labelForNodeKind(mesh.kind) == "Trilinear Mesh");
     REQUIRE(mesh.outputs.size() == 1);
     REQUIRE(mesh.inputs.size() == 5);
     REQUIRE(mesh.inputs[0].domain == PortDomain::DomainContext);
@@ -94,7 +94,7 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
 
     REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
 
-    REQUIRE(add.title == "Add");
+    REQUIRE(labelForNodeKind(add.kind) == "Add");
     REQUIRE(add.inputs.size() == 2);
     REQUIRE(add.outputs.size() == 1);
     REQUIRE(add.inputs[1].side == PortSide::Left);
