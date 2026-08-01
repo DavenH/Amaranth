@@ -145,10 +145,11 @@ Unconnected inputs use explicit defaults:
 - pitch is constant at the Cycle 1 neutral pitch-envelope value;
 - unison is enabled with one centred, zero-detune, zero-phase lane.
 
-Voice Context keeps its existing domain, octave, pitch, portamento,
-oversampling, and polyphony controls until each is migrated to the compiled
-voice plan. The `voices` parameter must be renamed or presented as
-`Polyphony`; it is not Unison order.
+Voice Context keeps domain, octave, pitch, portamento, and oversampling until
+each is migrated to the compiled voice plan. Polyphony is synth-level voice
+allocation and is not a Voice Context property. Unison order remains owned by
+the attached Unison node. Serialized legacy `voices` values are accepted and
+discarded during graph loading rather than retained as hidden node state.
 
 ### Unison node
 
@@ -257,14 +258,18 @@ shows its three inputs as distinct, legible ports. It does not repeat cable
 attachment state as labels or rows: the graph topology already communicates
 which Modulation Triple, pitch Envelope, and Unison nodes are attached.
 
-The Modulation Triple attachment reuses the authoritative yellow/red/blue
-modulation socket from `NodeCableRenderer`. Pitch remains the lime circular
-signal socket. Unison uses the cyan accent of its phase plot in a configuration
-socket. Modulation enters from the top, Pitch from the left, and Unison from the
-bottom so no side-port row approaches or crosses the compact node boundary.
+The inputs form one evenly spaced stack on the left. Modulation Triple reuses
+the authoritative yellow/red/blue modulation socket from `NodeCableRenderer`,
+Pitch uses the lime signal socket, and Unison uses a circular socket with the
+cyan accent of its phase plot. The node height includes margin below the final
+socket instead of allowing the port stack to run through its boundary.
+
+Below the start-domain selector, the compact summary shows effective transpose
+(octave plus pitch), oversampling, and `Glide` only when portamento is enabled.
+It does not show attachment state, Unison parameters, or synth-level polyphony.
 
 The expanded editor presents only Voice Context-owned controls: source domain,
-octave, pitch, polyphony, portamento, and oversampling. It does not embed or
+octave, pitch, portamento, and oversampling. It does not embed or
 navigate redundant attachment rows. Unison retains its own graphic and editor.
 
 ## Compiled Voice Plan
@@ -507,9 +512,9 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
-- Cycle V2 verification passes 5,338 assertions in 384 test cases.
+- Cycle V2 verification passes 5,338 assertions in 385 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
   four-node attachment topology and expanded Voice Context presentation. Its
   reviewed OS-level capture is
-  `/private/tmp/cycle-v2-voice-context-port-semantics-os.png`; filtered launch
-  logs are `/private/tmp/cycle-v2-voice-context-port-semantics-logs.txt`.
+  `/private/tmp/cycle-v2-voice-context-stacked-ports-os.png`; filtered launch
+  logs are `/private/tmp/cycle-v2-voice-context-stacked-ports-logs.txt`.

@@ -84,7 +84,6 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(mesh != nullptr);
     REQUIRE(voice->outputs.size() == 1);
     REQUIRE(voice->outputs.front().domain == PortDomain::DomainContext);
-    REQUIRE(parameterValueForNode(*voice, "voices") == "6");
     REQUIRE(mesh->inputs.size() == 5);
     REQUIRE(mesh->inputs[1].purpose == PortPurpose::ScratchAttachment);
     REQUIRE(mesh->model != nullptr);
@@ -94,9 +93,26 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     const auto* nodes = json.getProperty("nodes", {}).getArray();
     REQUIRE(nodes != nullptr);
     const var voiceJson = nodes->getReference(0);
-    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("voices", {}).isInt());
+    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("octave", {}).isInt());
     REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isString());
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
+}
+
+TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
+        "[cycle-v2][graph][voice-context][migration]") {
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    nodes->getReference(0).getProperty("parameters", {})
+            .getDynamicObject()->setProperty("voices", 6);
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    const Node* voice = loaded.graph.findNode("voice");
+    REQUIRE(voice != nullptr);
+    REQUIRE(parameterValueForNode(*voice, "voices").isEmpty());
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {

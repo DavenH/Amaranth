@@ -36,14 +36,14 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[0].id == "modulation");
     REQUIRE(voice.inputs[0].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[0].attachmentType == AttachmentType::ModulationTriple);
-    REQUIRE(voice.inputs[0].side == PortSide::Top);
+    REQUIRE(voice.inputs[0].side == PortSide::Left);
     REQUIRE(voice.inputs[1].domain == PortDomain::PitchSignal);
     REQUIRE(voice.inputs[1].side == PortSide::Left);
     REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
-    REQUIRE(voice.inputs[2].side == PortSide::Bottom);
+    REQUIRE(voice.inputs[2].side == PortSide::Left);
     REQUIRE(voice.bounds.getWidth() == 250.f);
-    REQUIRE(voice.bounds.getHeight() == 112.f);
+    REQUIRE(voice.bounds.getHeight() == 148.f);
 }
 
 TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",
@@ -163,7 +163,6 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
 
     REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
     REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
-    REQUIRE(parameterValueForNode(voice, "voices") == "1");
     REQUIRE(parameterValueForNode(voice, "octave") == "0");
     REQUIRE(parameterValueForNode(voice, "pitch") == "0");
     REQUIRE(parameterValueForNode(voice, "portamento") == "0");

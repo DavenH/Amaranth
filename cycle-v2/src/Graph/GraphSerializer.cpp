@@ -444,17 +444,21 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
         bool parametersValid = true;
         for (const auto& property : parameters->getProperties()) {
-            const auto* parameterDefinition = registry.findParameter(node.kind, property.name.toString());
+            const String parameterId = property.name.toString();
+            if (node.kind == NodeKind::VoiceContext && parameterId == "voices") {
+                continue;
+            }
+            const auto* parameterDefinition = registry.findParameter(node.kind, parameterId);
             String normalized;
             if (parameterDefinition == nullptr
                     || !parameterFromJSON(property.value, *parameterDefinition, normalized)) {
                 result.issues.push_back({ GraphLoadCode::InvalidParameter,
-                        "Invalid parameter '" + property.name.toString() + "' on node '" + nodeId + "'" });
+                        "Invalid parameter '" + parameterId + "' on node '" + nodeId + "'" });
                 parametersValid = false;
                 break;
             }
             auto found = std::find_if(node.parameters.begin(), node.parameters.end(), [&](const auto& parameter) {
-                return parameter.id == property.name.toString();
+                return parameter.id == parameterId;
             });
             jassert(found != node.parameters.end());
             found->value = parameterDefinition->normalized(normalized);

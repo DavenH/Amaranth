@@ -47,6 +47,26 @@ void paintConfigurationSocket(
     graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
 }
 
+void paintRoundSocket(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        float scale,
+        Colour colour,
+        bool input) {
+    graphics.setColour(colour.withAlpha(0.22f));
+    graphics.fillEllipse(bounds.expanded(1.4f * scale));
+    if (input) {
+        graphics.setColour(colour);
+        graphics.fillEllipse(bounds);
+        return;
+    }
+
+    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.fillEllipse(bounds);
+    graphics.setColour(colour);
+    graphics.drawEllipse(bounds, 1.2f * scale);
+}
+
 void paintAttachmentSocket(
         Graphics& graphics,
         Point<float> centre,
@@ -62,10 +82,18 @@ void paintAttachmentSocket(
         return;
     }
 
-    const Colour colour = port.attachmentType == AttachmentType::Unison
-            ? EffectPlotPalette::accent
-            : fallbackColour;
-    paintConfigurationSocket(graphics, centre, scale, colour, port.input);
+    if (port.attachmentType == AttachmentType::Unison) {
+        const float radius = 6.25f * scale;
+        paintRoundSocket(
+                graphics,
+                Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre),
+                scale,
+                EffectPlotPalette::accent,
+                port.input);
+        return;
+    }
+
+    paintConfigurationSocket(graphics, centre, scale, fallbackColour, port.input);
 }
 
 String modulationParameterId(const String& prefix, const String& name) {
@@ -742,6 +770,7 @@ void NodeCanvasPresentation::paintNode(
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
+        VoiceContextCompactEditor::paintNodeSummary(graphics, nodeBounds, zoom, node);
     } else {
         previewRenderer.paint(graphics, {
                 node,
@@ -774,18 +803,7 @@ void NodeCanvasPresentation::paintNode(
                     colour);
             return;
         }
-        graphics.setColour(colour.withAlpha(0.22f));
-        graphics.fillEllipse(location.bounds.expanded(1.4f * scale));
-
-        if (port.input) {
-            graphics.setColour(colour);
-            graphics.fillEllipse(location.bounds);
-        } else {
-            graphics.setColour(kCanvasBackground.withAlpha(0.92f));
-            graphics.fillEllipse(location.bounds);
-            graphics.setColour(colour);
-            graphics.drawEllipse(location.bounds, 1.2f * scale);
-        }
+        paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
     };
 
     for (const auto& port : node.inputs) {

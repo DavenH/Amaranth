@@ -82,7 +82,6 @@ struct CompiledSignalProbe {
 struct CompiledVoiceContext {
     String nodeId;
     String startDomain { "waveform" };
-    int polyphony { 1 };
     int octave {};
     float pitchSemitones {};
     bool portamento {};

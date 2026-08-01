@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
@@ -140,44 +142,6 @@ void drawSlider(
     graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
 }
 
-void drawIntegerSlider(
-        Graphics& graphics,
-        Rectangle<float> area,
-        const String& label,
-        int value,
-        int minimum,
-        int maximum,
-        Colour colour) {
-    const float trackY = area.getCentreY();
-    Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
-    Rectangle<float> valueArea = area.reduced(2.f, 0.f);
-    Rectangle<float> readout = valueArea.removeFromRight(62.f);
-    valueArea.removeFromRight(8.f);
-    const float normalized = (float) (value - minimum) / (float) (maximum - minimum);
-    const float knobX = jmap(
-            jlimit(0.f, 1.f, normalized),
-            0.f,
-            1.f,
-            valueArea.getX(),
-            valueArea.getRight());
-
-    graphics.setFont(FontOptions(11.f, Font::bold));
-    graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText(label, labelArea, Justification::centredLeft);
-    graphics.setColour(kMutedText.withAlpha(0.30f));
-    graphics.drawLine(
-            Line<float>({ valueArea.getX(), trackY }, { valueArea.getRight(), trackY }),
-            1.4f);
-    graphics.setColour(colour.withAlpha(0.76f));
-    graphics.drawLine(
-            Line<float>({ valueArea.getX(), trackY }, { knobX, trackY }),
-            2.2f);
-    graphics.fillEllipse(Rectangle<float>(8.f, 8.f).withCentre({ knobX, trackY }));
-    graphics.setColour(kText.withAlpha(0.88f));
-    graphics.setFont(FontOptions(10.5f, Font::bold));
-    graphics.drawText(String(value) + " voices", readout, Justification::centredRight);
-}
-
 void drawCheckbox(
         Graphics& graphics,
         Rectangle<float> area,
@@ -269,7 +233,7 @@ void drawStopSlider(
 
 Rectangle<float> VoiceContextCompactEditor::expandedContentBounds(Rectangle<float> panel) {
     panel.removeFromTop(kExpandedHeaderHeight);
-    return panel.removeFromTop(164.f).reduced(24.f, 4.f);
+    return panel.removeFromTop(138.f).reduced(24.f, 4.f);
 }
 
 Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
@@ -291,6 +255,26 @@ String VoiceContextCompactEditor::domainLabel(const Node& node) {
 
 String VoiceContextCompactEditor::nextDomain(const Node& node) {
     return isSpectral(node) ? "waveform" : "spectral";
+}
+
+String VoiceContextCompactEditor::summaryLabel(const Node& node) {
+    const float semitones = 12.f
+            * (float) parameterValueForNode(node, "octave", "0").getIntValue()
+            + parameterValueForNode(node, "pitch", "0").getFloatValue();
+    const int roundedSemitones = roundToInt(semitones);
+    String transpose = std::abs(semitones - (float) roundedSemitones) < 0.001f
+            ? String(roundedSemitones)
+            : String(semitones, 1);
+    if (semitones > 0.f) {
+        transpose = "+" + transpose;
+    }
+
+    String summary = transpose + " st  ·  "
+            + parameterValueForNode(node, "oversampling", "1x");
+    if (portamentoEnabled(node)) {
+        summary += "  ·  Glide";
+    }
+    return summary;
 }
 
 void VoiceContextCompactEditor::paintExpanded(
@@ -333,14 +317,6 @@ void VoiceContextCompactEditor::paintExpanded(
             nextRow(column),
             "Pitch",
             (pitch + 12.f) / 24.f,
-            colour);
-    drawIntegerSlider(
-            graphics,
-            nextRow(column),
-            "Polyphony",
-            parameterValueForNode(node, "voices", "1").getIntValue(),
-            1,
-            64,
             colour);
     drawCheckbox(
             graphics,
@@ -400,6 +376,20 @@ void VoiceContextCompactEditor::paintNodeSelector(
     graphics.fillEllipse(knob.withCentre(knobCentre));
     graphics.setColour(Colours::white.withAlpha(0.30f));
     graphics.drawEllipse(knob.withCentre(knobCentre), zoom);
+}
+
+void VoiceContextCompactEditor::paintNodeSummary(
+        Graphics& graphics,
+        Rectangle<float> nodeBounds,
+        float zoom,
+        const Node& node) {
+    Rectangle<float> summary = nodeBounds
+            .withTrimmedTop(94.f * zoom)
+            .withTrimmedBottom(10.f * zoom)
+            .reduced(16.f * zoom, 0.f);
+    graphics.setColour(kMutedText.withAlpha(0.90f));
+    graphics.setFont(FontOptions(13.f * zoom, Font::bold));
+    graphics.drawText(summaryLabel(node), summary, Justification::centred);
 }
 
 bool VoiceContextCompactEditor::hitNodeSelector(
@@ -463,20 +453,6 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
                         / jmax(1.f, pitchControl.getWidth()));
         const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
         return VoiceContextEdit { VoiceContextEdit::Control::Pitch, String(pitch) };
-    }
-
-    Rectangle<float> polyphonyControl = nextRow(column)
-            .withTrimmedLeft(kLabelWidth)
-            .withTrimmedRight(70.f)
-            .reduced(2.f, 0.f);
-    if (polyphonyControl.expanded(8.f, 4.f).contains(position)) {
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - polyphonyControl.getX())
-                        / jmax(1.f, polyphonyControl.getWidth()));
-        const int voices = jlimit(1, 64, roundToInt(jmap(normalized, 1.f, 64.f)));
-        return VoiceContextEdit { VoiceContextEdit::Control::Polyphony, String(voices) };
     }
 
     Rectangle<float> portamentoControl = nextRow(column).withTrimmedLeft(kLabelWidth);

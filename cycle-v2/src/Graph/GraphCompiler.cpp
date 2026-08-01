@@ -485,7 +485,6 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
         CompiledVoiceContext context;
         context.nodeId = node.id;
         context.startDomain = parameterValueForNode(node, "domain", "waveform");
-        context.polyphony = typedParameterInt(node.parameters, "voices", 1);
         context.octave = typedParameterInt(node.parameters, "octave", 0);
         context.pitchSemitones = typedParameterFloat(node.parameters, "pitch", 0.f);
         context.portamento = typedParameterBool(node.parameters, "portamento", false);

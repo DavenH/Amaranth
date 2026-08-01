@@ -270,8 +270,8 @@ TEST_CASE("Canvas and automation command requests share the same dispatcher", "[
     GraphCommandDispatcher canvasCommands(canvasDocument);
     GraphCommandDispatcher automationCommands(automationDocument);
 
-    REQUIRE(canvasCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
-    REQUIRE(automationCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
+    REQUIRE(canvasCommands.setNodeParameter("voice", "pitch", "Pitch", "4").succeeded());
+    REQUIRE(automationCommands.setNodeParameter("voice", "pitch", "Pitch", "4").succeeded());
     REQUIRE(canvasDocument.toJson() == automationDocument.toJson());
 }
 
@@ -579,12 +579,22 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice) == "0 st  ·  1x");
 
     voice.parameters = {
             { "domain", "Start Domain", "spectralPhase" }
     };
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Spectral");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "waveform");
+    voice.parameters.clear();
+
+    voice.parameters = {
+            { "octave", "Octave", "1" },
+            { "pitch", "Pitch", "-5" },
+            { "portamento", "Portamento", "1" },
+            { "oversampling", "Oversampling", "4x" }
+    };
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice) == "+7 st  ·  4x  ·  Glide");
     voice.parameters.clear();
 
     auto edit = editAt({ 252.f, 59.5f });
@@ -604,20 +614,15 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
 
     edit = editAt({ 112.f, 137.5f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Polyphony);
-    REQUIRE(edit.value == "2");
-    REQUIRE(editAt({ 602.f, 137.5f }).value == "64");
-
-    edit = editAt({ 112.f, 163.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
     REQUIRE(edit.value == "1");
 
-    edit = editAt({ 106.f, 189.5f });
+    edit = editAt({ 106.f, 163.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
     REQUIRE(edit.value == "1x");
-    REQUIRE(editAt({ 294.f, 189.5f }).value == "2x");
-    REQUIRE(editAt({ 484.f, 189.5f }).value == "4x");
-    REQUIRE(editAt({ 672.f, 189.5f }).value == "8x");
+    REQUIRE(editAt({ 294.f, 163.5f }).value == "2x");
+    REQUIRE(editAt({ 484.f, 163.5f }).value == "4x");
+    REQUIRE(editAt({ 672.f, 163.5f }).value == "8x");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

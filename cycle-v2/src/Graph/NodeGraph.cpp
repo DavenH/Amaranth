@@ -263,7 +263,7 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "voice",
             NodeKind::VoiceContext,
-            "waveform start / 6 voices",
+            "waveform start",
             { 320.f, 420.f },
             {
                     input("modulation", "Modulation", PortDomain::VoiceControlSignal,
@@ -279,7 +279,6 @@ NodeGraph NodeGraph::createDemoGraph() {
             }));
     graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" },
-            { "voices", "Voices", "6" },
             { "octave", "Octave", "0" },
             { "pitch", "Pitch", "0" },
             { "portamento", "Portamento", "0" },

@@ -289,16 +289,15 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .finish(),
             buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
                     input("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("unison", "Unison", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
-                            integer("voices", "Polyphony", 1, 1, 64, dsp),
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
@@ -306,7 +305,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 250.f, 112.f })
+                    .presentation({}, { 250.f, 148.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {
