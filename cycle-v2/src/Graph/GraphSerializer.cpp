@@ -235,6 +235,10 @@ bool isScalarJSON(const var& value) {
     return value.getDynamicObject() == nullptr && value.getArray() == nullptr;
 }
 
+bool isRemovedLegacyParameter(NodeKind kind, const String& parameterId) {
+    return kind == NodeKind::Envelope && parameterId == "dynamic";
+}
+
 String scalarToJSON(const var& value) {
     return JSON::toString(value, true, maximumDecimalPlaces);
 }
@@ -478,17 +482,21 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             legacyEnvelopeIds.emplace(nodeId);
         }
         for (const auto& property : parameters->getProperties()) {
-            const auto* parameterDefinition = registry.findParameter(node.kind, property.name.toString());
+            const String parameterId = property.name.toString();
+            if (isRemovedLegacyParameter(node.kind, parameterId)) {
+                continue;
+            }
+            const auto* parameterDefinition = registry.findParameter(node.kind, parameterId);
             String normalized;
             if (parameterDefinition == nullptr
                     || !parameterFromJSON(property.value, *parameterDefinition, normalized)) {
                 result.issues.push_back({ GraphLoadCode::InvalidParameter,
-                        "Invalid parameter '" + property.name.toString() + "' on node '" + nodeId + "'" });
+                        "Invalid parameter '" + parameterId + "' on node '" + nodeId + "'" });
                 parametersValid = false;
                 break;
             }
             auto found = std::find_if(node.parameters.begin(), node.parameters.end(), [&](const auto& parameter) {
-                return parameter.id == property.name.toString();
+                return parameter.id == parameterId;
             });
             jassert(found != node.parameters.end());
             found->value = parameterDefinition->normalized(normalized);

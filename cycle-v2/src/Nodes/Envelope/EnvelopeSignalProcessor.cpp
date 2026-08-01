@@ -16,8 +16,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         float red,
         float blue,
         float level,
-        bool logarithmic,
-        bool dynamicWhileLive) {
+        bool logarithmic) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -42,7 +41,6 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->redMorph = red;
     result->blueMorph = blue;
     result->logarithmic = logarithmic;
-    result->dynamicWhileLive = dynamicWhileLive;
     return result;
 }
 
@@ -73,8 +71,7 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             parameterFloat(parameters, "red", 0.5f),
             parameterFloat(parameters, "blue", 0.5f),
             parameterFloat(parameters, "level", 1.f),
-            parameterFloat(parameters, "logarithmic", 0.f) != 0.f,
-            typedParameterBool(parameters, "dynamic", false));
+            parameterFloat(parameters, "logarithmic", 0.f) != 0.f);
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -86,16 +83,7 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
         return;
     }
 
-    const EnvelopeConfiguration* previous = preparedConfiguration();
-    const bool freezeCurrentMorph = active
-            && previous != nullptr
-            && previous->dynamicWhileLive
-            && !configuration->dynamicWhileLive;
-    if (freezeCurrentMorph) {
-        activeConfiguration = preparedEnvelopes.activeOwnership(activeConfiguration);
-    } else {
-        activeConfiguration = configuration;
-    }
+    activeConfiguration = configuration;
     preparationRequests.reset();
     preparedEnvelopes.reset();
     hasRequestedMorph = false;
@@ -122,18 +110,17 @@ void EnvelopeSignalProcessor::adoptConfiguration(const PublishedNodeConfiguratio
     pendingRevision = published.revision;
 }
 
-std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareDynamicConfiguration(
+std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMorphConfiguration(
         const EnvelopeConfiguration& base,
         float red,
         float blue) {
     return prepareEnvelopeConfiguration(
-            "CycleV2DynamicEnvelope",
+            "CycleV2MorphEnvelope",
             *base.mesh,
             red,
             blue,
             base.level,
-            base.logarithmic,
-            base.dynamicWhileLive);
+            base.logarithmic);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
@@ -143,7 +130,7 @@ bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
         return false;
     }
 
-    auto prepared = prepareDynamicConfiguration(
+    auto prepared = prepareMorphConfiguration(
             *configuration, request.red, request.blue);
     if (prepared == nullptr) {
         return false;
@@ -160,7 +147,8 @@ bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
     return true;
 }
 
-EnvelopeSignalProcessor::DynamicDiagnostics EnvelopeSignalProcessor::dynamicDiagnostics() const {
+EnvelopeSignalProcessor::MorphPreparationDiagnostics
+EnvelopeSignalProcessor::preparationDiagnostics() const {
     return {
             preparationRequests.publicationCount(),
             preparedEnvelopes.preparationCount(),
@@ -204,7 +192,7 @@ void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context
             context.frameCount,
             context.timing.sampleRate);
 
-    if (!configuration->dynamicWhileLive && active && !noteStarts) {
+    if (active && !noteStarts) {
         return;
     }
 
@@ -231,9 +219,8 @@ void EnvelopeSignalProcessor::requestEffectiveMorph(AudioProcessContext& context
             noteStarts ? noteSerial + 1 : noteSerial);
 }
 
-void EnvelopeSignalProcessor::adoptPreparedDynamicEnvelope() {
-    const bool dynamic = configuration != nullptr && configuration->dynamicWhileLive;
-    const auto adoption = preparedEnvelopes.adoptNewest(noteSerial, dynamic);
+void EnvelopeSignalProcessor::adoptPreparedEnvelope() {
+    const auto adoption = preparedEnvelopes.adoptNewest(noteSerial, false);
     if (!adoption.adopted || adoption.configuration == nullptr) {
         return;
     }
@@ -242,7 +229,7 @@ void EnvelopeSignalProcessor::adoptPreparedDynamicEnvelope() {
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
-    adoptPreparedDynamicEnvelope();
+    adoptPreparedEnvelope();
     requestEffectiveMorph(context);
     auto output = makeOutputPayload(context, 0);
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);

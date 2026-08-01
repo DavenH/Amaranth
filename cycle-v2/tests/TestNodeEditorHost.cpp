@@ -526,18 +526,17 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
-    REQUIRE(state.getProperty("dynamicLabel", {}).toString() == "Live Update");
-    REQUIRE(state.getProperty("dynamicTooltip", {}).toString()
-            == "Apply envelope edits to notes that are already playing");
-
     ComboBox* purposeSelector = nullptr;
+    StringArray actionLabels;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* combo = dynamic_cast<ComboBox*>(editor->getChildComponent(index))) {
             purposeSelector = combo;
-            break;
+        } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
+            actionLabels.add(button->getButtonText());
         }
     }
     REQUIRE(purposeSelector != nullptr);
+    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log" }));
     purposeSelector->setSelectedId(
             static_cast<int>(EnvelopePurpose::Scratch) + 1,
             sendNotificationSync);

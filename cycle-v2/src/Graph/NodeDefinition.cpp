@@ -383,7 +383,6 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            boolean("dynamic", "Dynamic While Live", false, dsp | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }))
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Envelope))

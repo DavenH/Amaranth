@@ -19,12 +19,11 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(purposeLabel);
         owner.addAndMakeVisible(purpose);
-        for (auto* button : { &loop, &sustain, &logarithmic, &dynamic }) {
+        for (auto* button : { &loop, &sustain, &logarithmic }) {
             styleParameterButton(*button, button->getButtonText());
             owner.addAndMakeVisible(*button);
         }
         logarithmic.setClickingTogglesState(true);
-        dynamic.setClickingTogglesState(true);
     }
 
     LabeledParameterSlider redMorph;
@@ -35,7 +34,6 @@ struct EnvelopeEditorComponent::Impl {
     TextButton loop { "Loop" };
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
-    TextButton dynamic { "Live Update" };
     EnvelopeMorphControls presentation;
 
     int viewAxis {};
@@ -71,9 +69,6 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
     bindDiscreteAction(impl->logarithmic, [this] {
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
     });
-    bindDiscreteAction(impl->dynamic, [] {});
-    impl->dynamic.setTooltip(
-            "Apply envelope edits to notes that are already playing");
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
@@ -136,13 +131,12 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
     auto markerRow = impl->presentation.actionRow(controls).toNearestInt();
+    markerRow.removeFromLeft(59);
     impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2));
     markerRow.removeFromLeft(8);
     impl->sustain.setBounds(markerRow.removeFromLeft(70).reduced(2));
     markerRow.removeFromLeft(8);
     impl->logarithmic.setBounds(markerRow.removeFromLeft(54).reduced(2));
-    markerRow.removeFromLeft(8);
-    impl->dynamic.setBounds(markerRow.removeFromLeft(92).reduced(2));
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -155,7 +149,6 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     impl->redLinked = model.redLinked;
     impl->blueLinked = model.blueLinked;
     impl->logarithmic.setToggleState(model.logarithmic, dontSendNotification);
-    impl->dynamic.setToggleState(model.dynamicWhileLive, dontSendNotification);
     impl->logarithmic.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     widget.setEnvelopeLogarithmic(model.logarithmic);
@@ -194,7 +187,6 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
             "Logarithmic",
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->logarithmic.getToggleState() ? "1" : "0");
-    addEditorParameter(result, node, "dynamic", "Dynamic While Live", impl->dynamic.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "red", "Red Morph", String(impl->redMorph.slider.getValue()));
     addEditorParameter(result, node, "blue", "Blue Morph", String(impl->blueMorph.slider.getValue()));
     addEditorParameter(result, node, "level", "Level", retainedEditorParameter(node, "level", "1"));
@@ -212,9 +204,6 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                     ? "bipolar"
                     : "unipolar");
     state.setProperty("logarithmic", impl->logarithmic.getToggleState());
-    state.setProperty("dynamic", impl->dynamic.getToggleState());
-    state.setProperty("dynamicLabel", impl->dynamic.getButtonText());
-    state.setProperty("dynamicTooltip", impl->dynamic.getTooltip());
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));

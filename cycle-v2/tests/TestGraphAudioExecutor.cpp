@@ -321,14 +321,6 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
     graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
-    Node* envelope = graph.findNodeForEditing("env");
-    REQUIRE(envelope != nullptr);
-    for (auto& parameter : envelope->parameters) {
-        if (parameter.id == "dynamic") {
-            parameter.value = "1";
-        }
-    }
-
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
     GraphAudioExecutor executor;
@@ -1170,7 +1162,7 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(locks.count() == 0);
 }
 
-TEST_CASE("Dynamic Envelope request and adoption remain allocation-free on the realtime path",
+TEST_CASE("Latched Envelope morph request and adoption remain allocation-free on the realtime path",
         "[cycle-v2][runtime][realtime][envelope][modulation]") {
     GraphNodeFactory factory;
     NodeGraph graph;
@@ -1186,14 +1178,6 @@ TEST_CASE("Dynamic Envelope request and adoption remain allocation-free on the r
     graph.addEdge({ "wave", "out", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
     graph.addEdge({ "multiply", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
-    Node* envelope = graph.findNodeForEditing("env");
-    REQUIRE(envelope != nullptr);
-    for (auto& parameter : envelope->parameters) {
-        if (parameter.id == "dynamic") {
-            parameter.value = "1";
-        }
-    }
-
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
     GraphAudioExecutor executor;

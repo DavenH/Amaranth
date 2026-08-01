@@ -1,5 +1,7 @@
 #include "EnvelopePurpose.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 EnvelopePurpose envelopePurposeFromString(const String& value) {
@@ -60,7 +62,19 @@ EnvelopePurpose envelopePurposeFor(const Node& node) {
 }
 
 void applyEnvelopePurpose(Node& node) {
-    if (node.kind != NodeKind::Envelope || node.outputs.empty()) {
+    if (node.kind != NodeKind::Envelope) {
+        return;
+    }
+
+    node.parameters.erase(
+            std::remove_if(
+                    node.parameters.begin(),
+                    node.parameters.end(),
+                    [](const NodeParameter& parameter) {
+                        return parameter.id == "dynamic";
+                    }),
+            node.parameters.end());
+    if (node.outputs.empty()) {
         return;
     }
 

@@ -121,7 +121,9 @@ TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attac
     for (auto& node : *nodes) {
         const String id = node.getProperty("id", {}).toString();
         if (id == "env" || id == "scratchEnv" || id == "legacyControl") {
-            node.getProperty("parameters", {}).getDynamicObject()->removeProperty("purpose");
+            auto* parameters = node.getProperty("parameters", {}).getDynamicObject();
+            parameters->removeProperty("purpose");
+            parameters->setProperty("dynamic", true);
         }
     }
 
@@ -135,6 +137,16 @@ TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attac
     REQUIRE(envelopePurposeFor(*loaded.graph.findNode("env")) == EnvelopePurpose::Volume);
     REQUIRE(envelopePurposeFor(*loaded.graph.findNode("scratchEnv")) == EnvelopePurpose::Scratch);
     REQUIRE(envelopePurposeFor(*loaded.graph.findNode("legacyControl")) == EnvelopePurpose::Control);
+    for (const String& id : { "env", "scratchEnv", "legacyControl" }) {
+        const Node* envelope = loaded.graph.findNode(id);
+        REQUIRE(envelope != nullptr);
+        REQUIRE(std::none_of(
+                envelope->parameters.begin(),
+                envelope->parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "dynamic";
+                }));
+    }
 
     const auto duplicateCount = std::count_if(
             loaded.graph.getEdges().begin(),

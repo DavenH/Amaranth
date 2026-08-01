@@ -501,7 +501,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1632.0, "y": 159.99994 },
-            "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -628,7 +628,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 290.96552, "y": 76.41379 },
-            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
