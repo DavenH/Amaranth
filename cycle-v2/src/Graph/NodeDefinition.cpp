@@ -298,7 +298,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
-                            integer("voices", "Voices", 1, 1, 64, dsp),
+                            integer("voices", "Polyphony", 1, 1, 64, dsp),
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
@@ -306,7 +306,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 300.f, 128.f })
+                    .presentation({}, { 250.f, 128.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {
@@ -325,7 +325,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                       output("red", "Red", PortDomain::ControlSignal),
                       output("blue", "Blue", PortDomain::ControlSignal),
                       output("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                              ChannelLayout::Mono, PortSide::Right,
+                              ChannelLayout::Mono, PortSide::Bottom,
                               ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple) }, {
                             choice("yellowSource", "Yellow Source", "voiceTime", {
                                     "voiceTime", "velocity", "inverseVelocity", "keyScale",

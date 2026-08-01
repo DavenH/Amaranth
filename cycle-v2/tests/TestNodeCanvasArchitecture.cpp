@@ -9,6 +9,7 @@
 #include "../src/Graph/NodeDefinition.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
+#include "../src/UI/NodeCanvasPresentation.h"
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
@@ -603,14 +604,20 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
 
     edit = editAt({ 112.f, 137.5f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Polyphony);
+    REQUIRE(edit.value == "2");
+    REQUIRE(editAt({ 602.f, 137.5f }).value == "64");
+
+    edit = editAt({ 112.f, 163.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
     REQUIRE(edit.value == "1");
 
-    edit = editAt({ 106.f, 163.5f });
+    edit = editAt({ 106.f, 189.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
     REQUIRE(edit.value == "1x");
-    REQUIRE(editAt({ 389.f, 163.5f }).value == "2x");
-    REQUIRE(editAt({ 672.f, 163.5f }).value == "4x");
+    REQUIRE(editAt({ 294.f, 189.5f }).value == "2x");
+    REQUIRE(editAt({ 484.f, 189.5f }).value == "4x");
+    REQUIRE(editAt({ 672.f, 189.5f }).value == "8x");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,
@@ -619,6 +626,29 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
             voice.bounds,
             1.f,
             selector.getCentre()));
+}
+
+TEST_CASE("Shared Unison preview does not depend on attachment edge order",
+        "[cycle-v2][canvas][voice-context][unison]") {
+    GraphExecutionPlan plan;
+    plan.configurationAttachments = {
+            { "unison", "unison", "first", "unison", PortDomain::VoiceControlSignal,
+                    ConnectionKind::ConfigurationAttachment, AttachmentType::Unison },
+            { "unison", "unison", "second", "unison", PortDomain::VoiceControlSignal,
+                    ConnectionKind::ConfigurationAttachment, AttachmentType::Unison }
+    };
+    CompiledVoiceContext first;
+    first.nodeId = "first";
+    first.pitchEnvelopeUnitValues = { 0.25f, 0.5f };
+    CompiledVoiceContext second;
+    second.nodeId = "second";
+    second.pitchEnvelopeUnitValues = { 0.75f, 1.f };
+    plan.voiceContexts = { first, second };
+    const UnisonPreviewContext fallback { 60, 1.0, { 0.5f } };
+
+    REQUIRE(NodeCanvasPresentation::unisonPreviewContextFor(
+            plan, "unison", fallback).pitchEnvelopeUnitValues
+            == fallback.pitchEnvelopeUnitValues);
 }
 
 TEST_CASE("Transform editor exposes FFT and IFFT mode semantics through one geometry contract",

@@ -140,8 +140,8 @@ void paintUnisonPhasePreview(
         float zoom,
         const UnisonPreviewContext& context) {
     const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
-    const Rectangle<float> background = contentArea(area);
-    const Rectangle<float> plot = background.reduced(5.f);
+    const Rectangle<float> background = area.reduced(1.f);
+    const Rectangle<float> plot = background.reduced(4.f);
     const auto stateColour = [enabled](Colour colour) {
         return EffectPlotPalette::forEnabledState(colour, enabled);
     };

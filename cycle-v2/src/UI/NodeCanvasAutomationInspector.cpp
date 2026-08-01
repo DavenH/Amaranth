@@ -253,9 +253,11 @@ public:
         return "trimeshControl";
     }
 
-    static Rectangle<float> expandedEditorBounds(const Component& canvas, const Node& node) {
+    static Rectangle<float> expandedEditorBounds(
+            Rectangle<float> canvasContentBounds,
+            const Node& node) {
         return NodeViewModuleRegistry::instance().moduleFor(node.kind).expandedEditorBounds(
-                canvas.getLocalBounds().toFloat(), kExpandedEditorMinMargin);
+                canvasContentBounds, kExpandedEditorMinMargin);
     }
 
     static Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
@@ -263,12 +265,15 @@ public:
                 .withCentre({ panel.getRight() - 22.f, panel.getY() + kExpandedEditorHeaderHeight * 0.5f });
     }
 
-    static void addExpandedEditorTargets(Array<var>& targets, const Node& node, const Component& canvas,
-                                         const NodeEditorHost& editorHost) {
+    static void addExpandedEditorTargets(
+            Array<var>& targets,
+            const Node& node,
+            Rectangle<float> canvasContentBounds,
+            const NodeEditorHost& editorHost) {
         const Component* editorComponent = editorHost.component();
         Rectangle<float> panel = editorComponent != nullptr
                 ? editorComponent->getBounds().toFloat()
-                : expandedEditorBounds(canvas, node);
+                : expandedEditorBounds(canvasContentBounds, node);
         targets.add(pointerTargetToVar("expanded:" + node.id, "expandedEditor", panel, node.id));
         targets.add(pointerTargetToVar("expanded:" + node.id + ".close", "expandedCloseButton",
                                        expandedEditorCloseButton(panel), node.id));
@@ -535,7 +540,11 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
 
     const Node* expandedNode = context.document.graph().findNode(state.expandedNodeId);
     if (expandedNode != nullptr) {
-        AutomationValueEncoder::addExpandedEditorTargets(targets, *expandedNode, context.canvas, context.editorHost);
+        AutomationValueEncoder::addExpandedEditorTargets(
+                targets,
+                *expandedNode,
+                state.canvasContentBounds,
+                context.editorHost);
     }
 
     for (auto& targetValue : targets) {

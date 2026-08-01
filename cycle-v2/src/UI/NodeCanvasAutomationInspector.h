@@ -17,6 +17,7 @@ struct NodeCanvasAutomationPresentation {
     int selectedEdgeIndex { -1 };
     ProbeRefreshMode probeRefreshMode { ProbeRefreshMode::OnGestureCommit };
     juce::Rectangle<float> probeRefreshModeBounds;
+    juce::Rectangle<float> canvasContentBounds;
 };
 
 struct NodeCanvasAutomationContext {

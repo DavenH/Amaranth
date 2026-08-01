@@ -17,6 +17,9 @@ public:
             kind(kindToUse),
             viewCapabilities(std::move(capabilitiesToUse)),
             attachmentResolver(std::move(attachmentResolverToUse)) {
+        if (viewCapabilities.hostedEditor) {
+            viewCapabilities.expandedEditor = true;
+        }
     }
 
     std::optional<Point<float>> attachmentWorldCentre(
@@ -82,11 +85,13 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::ModulationTriple, modulation);
 
     NodeViewCapabilities voice = preview;
+    voice.expandedEditor = true;
     voice.expandedEditorBlocksCanvas = false;
-    voice.expandedEditorSize = Point<float>(334.f, 208.f);
+    voice.expandedEditorSize = Point<float>(440.f, 230.f);
     add(NodeKind::VoiceContext, voice);
 
     NodeViewCapabilities transform = preview;
+    transform.expandedEditor = true;
     transform.expandedEditorBlocksCanvas = false;
     transform.expandedEditorSize = Point<float>(360.f, 144.f);
     add(NodeKind::Fft, transform);

@@ -6,9 +6,12 @@ namespace {
 
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
+const Colour kPanelBackground { 0xff11161c };
+const Colour kPanelBorder { 0xff34404d };
 constexpr float kLabelWidth = 78.f;
 constexpr float kRowHeight = 23.f;
 constexpr float kRowGap = 3.f;
+constexpr float kExpandedHeaderHeight = 44.f;
 
 Rectangle<float> nextRow(Rectangle<float>& column) {
     Rectangle<float> row = column.removeFromTop(kRowHeight);
@@ -137,6 +140,44 @@ void drawSlider(
     graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
 }
 
+void drawIntegerSlider(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const String& label,
+        int value,
+        int minimum,
+        int maximum,
+        Colour colour) {
+    const float trackY = area.getCentreY();
+    Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
+    Rectangle<float> valueArea = area.reduced(2.f, 0.f);
+    Rectangle<float> readout = valueArea.removeFromRight(62.f);
+    valueArea.removeFromRight(8.f);
+    const float normalized = (float) (value - minimum) / (float) (maximum - minimum);
+    const float knobX = jmap(
+            jlimit(0.f, 1.f, normalized),
+            0.f,
+            1.f,
+            valueArea.getX(),
+            valueArea.getRight());
+
+    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.setColour(kMutedText.withAlpha(0.76f));
+    graphics.drawText(label, labelArea, Justification::centredLeft);
+    graphics.setColour(kMutedText.withAlpha(0.30f));
+    graphics.drawLine(
+            Line<float>({ valueArea.getX(), trackY }, { valueArea.getRight(), trackY }),
+            1.4f);
+    graphics.setColour(colour.withAlpha(0.76f));
+    graphics.drawLine(
+            Line<float>({ valueArea.getX(), trackY }, { knobX, trackY }),
+            2.2f);
+    graphics.fillEllipse(Rectangle<float>(8.f, 8.f).withCentre({ knobX, trackY }));
+    graphics.setColour(kText.withAlpha(0.88f));
+    graphics.setFont(FontOptions(10.5f, Font::bold));
+    graphics.drawText(String(value) + " voices", readout, Justification::centredRight);
+}
+
 void drawCheckbox(
         Graphics& graphics,
         Rectangle<float> area,
@@ -227,8 +268,8 @@ void drawStopSlider(
 }
 
 Rectangle<float> VoiceContextCompactEditor::expandedContentBounds(Rectangle<float> panel) {
-    panel.removeFromTop(30.f);
-    return panel.reduced(26.f, 18.f);
+    panel.removeFromTop(kExpandedHeaderHeight);
+    return panel.removeFromTop(164.f).reduced(24.f, 4.f);
 }
 
 Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
@@ -256,6 +297,22 @@ void VoiceContextCompactEditor::paintExpanded(
         Graphics& graphics,
         Rectangle<float> panel,
         const Node& node) {
+    graphics.setColour(kPanelBackground);
+    graphics.fillRoundedRectangle(panel, 10.f);
+    graphics.setColour(kPanelBorder);
+    graphics.drawRoundedRectangle(panel.reduced(0.5f), 10.f, 1.f);
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(17.f, Font::bold));
+    graphics.drawText("VOICE CONTEXT", panel.reduced(18.f, 0.f).removeFromTop(42.f),
+            Justification::centredLeft);
+    graphics.setColour(kMutedText.withAlpha(0.72f));
+    graphics.setFont(FontOptions(18.f));
+    graphics.drawText(
+            String::fromUTF8("×"),
+            Rectangle<float>(22.f, 22.f).withCentre(
+                    { panel.getRight() - 18.f, panel.getY() + 15.f }),
+            Justification::centred);
+
     Rectangle<float> column = expandedContentBounds(panel);
     const Colour colour = colourForDomain(PortDomain::PitchSignal);
     const float pitch = parameterValueForNode(node, "pitch", "0").getFloatValue();
@@ -277,6 +334,14 @@ void VoiceContextCompactEditor::paintExpanded(
             "Pitch",
             (pitch + 12.f) / 24.f,
             colour);
+    drawIntegerSlider(
+            graphics,
+            nextRow(column),
+            "Polyphony",
+            parameterValueForNode(node, "voices", "1").getIntValue(),
+            1,
+            64,
+            colour);
     drawCheckbox(
             graphics,
             nextRow(column),
@@ -286,7 +351,7 @@ void VoiceContextCompactEditor::paintExpanded(
             graphics,
             nextRow(column),
             "Oversampling",
-            { "1x", "2x", "4x" },
+            { "1x", "2x", "4x", "8x" },
             parameterValueForNode(node, "oversampling", "1x"),
             colour);
 }
@@ -400,6 +465,20 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
         return VoiceContextEdit { VoiceContextEdit::Control::Pitch, String(pitch) };
     }
 
+    Rectangle<float> polyphonyControl = nextRow(column)
+            .withTrimmedLeft(kLabelWidth)
+            .withTrimmedRight(70.f)
+            .reduced(2.f, 0.f);
+    if (polyphonyControl.expanded(8.f, 4.f).contains(position)) {
+        const float normalized = jlimit(
+                0.f,
+                1.f,
+                (position.x - polyphonyControl.getX())
+                        / jmax(1.f, polyphonyControl.getWidth()));
+        const int voices = jlimit(1, 64, roundToInt(jmap(normalized, 1.f, 64.f)));
+        return VoiceContextEdit { VoiceContextEdit::Control::Polyphony, String(voices) };
+    }
+
     Rectangle<float> portamentoControl = nextRow(column).withTrimmedLeft(kLabelWidth);
     if (portamentoControl.expanded(6.f, 4.f).contains(position)) {
         return VoiceContextEdit {
@@ -417,8 +496,9 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
                 1.f,
                 (position.x - oversamplingControl.getX())
                         / jmax(1.f, oversamplingControl.getWidth()));
-        const int stop = jlimit(0, 2, roundToInt(normalized * 2.f));
-        const String value = stop == 0 ? "1x" : (stop == 1 ? "2x" : "4x");
+        const int stop = jlimit(0, 3, roundToInt(normalized * 3.f));
+        const String values[] { "1x", "2x", "4x", "8x" };
+        const String value = values[stop];
         return VoiceContextEdit { VoiceContextEdit::Control::Oversampling, value };
     }
 

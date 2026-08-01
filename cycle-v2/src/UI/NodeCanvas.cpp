@@ -27,8 +27,8 @@ const Colour kCanvasGridMajor  { 0x2f5b6370 };
 const Colour kCanvasGridMinor  { 0x182f363f };
 constexpr bool kUseGlCanvasUnderlay = true;
 
-bool hasHostedEditor(NodeKind kind) {
-    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().hostedEditor;
+bool hasExpandedEditor(NodeKind kind) {
+    return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().expandedEditor;
 }
 
 GraphDocument createStartupDocument() {
@@ -104,8 +104,13 @@ NodeCanvas::~NodeCanvas() {
 
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = queries.findNode(expandedNodeId);
-    ignoreUnused(expandedNode);
     canvasPresentation.paint(g, presentationFrame());
+    if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
+        VoiceContextCompactEditor::paintExpanded(
+                g,
+                editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
+                *expandedNode);
+    }
 }
 
 void NodeCanvas::resized() {
@@ -324,7 +329,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         selectedEdgeIndex = -1;
         interaction.beginNodeDrag(hitNode->id, hitNode->bounds);
 
-        if (event.getNumberOfClicks() >= 2 && hasHostedEditor(hitNode->kind)) {
+        if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
         }
 
@@ -796,7 +801,8 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             probeRailState.refreshMode,
             SignalProbeRail::refreshModeBoundsFor(
                     getLocalBounds().toFloat(),
-                    probeRailState)
+                    probeRailState),
+            canvasContentBounds()
     };
 }
 

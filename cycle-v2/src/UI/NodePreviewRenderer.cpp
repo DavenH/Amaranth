@@ -548,6 +548,10 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
         return nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
     }
 
+    if (node.kind == NodeKind::Unison) {
+        return nodeBounds.withTrimmedTop(42.f * zoom).reduced(3.f * zoom);
+    }
+
     if (node.kind == NodeKind::Waveshaper) {
         const float size = jmin(preview.getWidth(), preview.getHeight());
         return Rectangle<float>(size, size).withCentre(preview.getCentre());

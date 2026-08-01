@@ -28,6 +28,24 @@ float portScale(float zoom) {
     return zoom / kCableReferenceZoom;
 }
 
+void paintConfigurationSocket(
+        Graphics& graphics,
+        Point<float> centre,
+        float scale,
+        Colour colour,
+        bool input) {
+    const Rectangle<float> socket = Rectangle<float>(12.5f * scale, 12.5f * scale)
+            .withCentre(centre);
+    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(socket.expanded(2.f * scale), 2.5f * scale);
+    graphics.setColour(colour.withAlpha(0.26f));
+    graphics.fillRoundedRectangle(socket.expanded(1.f * scale), 2.f * scale);
+    graphics.setColour(input ? colour : kCanvasBackground.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(socket, 1.8f * scale);
+    graphics.setColour(colour);
+    graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
+}
+
 String modulationParameterId(const String& prefix, const String& name) {
     if (prefix.isEmpty()) {
         return name;
@@ -69,40 +87,6 @@ void paintEnvelopePurpose(
                 String::fromUTF8("↔"),
                 preview.removeFromTop(18.f * zoom),
                 Justification::centredRight);
-    }
-}
-
-void paintVoiceAttachmentStatus(
-        Graphics& graphics,
-        Rectangle<float> bounds,
-        const NodeGraph& graph,
-        const Node& node,
-        float zoom) {
-    const String portIds[] { "modulation", "pitch", "unison" };
-    const String labels[] { "Mod", "Pitch", "Unison" };
-    Rectangle<float> row = bounds.withTrimmedTop(78.f * zoom).reduced(12.f * zoom, 0.f);
-    row = row.removeFromTop(19.f * zoom);
-    const float width = row.getWidth() / 3.f;
-    for (int index = 0; index < 3; ++index) {
-        const bool connected = std::any_of(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return edge.destNodeId == node.id && edge.destPortId == portIds[index];
-                });
-        Rectangle<float> status = row.removeFromLeft(width).reduced(2.f * zoom, 0.f);
-        graphics.setColour(connected
-                ? colourForDomain(index == 1
-                        ? PortDomain::PitchSignal
-                        : PortDomain::VoiceControlSignal).withAlpha(0.24f)
-                : kNodeHeader);
-        graphics.fillRoundedRectangle(status, 3.f * zoom);
-        graphics.setColour(connected ? kText : kMutedText.withAlpha(0.78f));
-        graphics.setFont(FontOptions(8.2f * zoom, connected ? Font::bold : Font::plain));
-        graphics.drawText(
-                labels[index] + String(connected ? " linked" : " default"),
-                status,
-                Justification::centred);
     }
 }
 
@@ -237,6 +221,21 @@ void paintTripleModulationNode(
                     ModulationCableBundle::worldCentre(node, false)),
             ModulationCableBundle::socketDiameter * scale,
             true);
+
+    const auto attachment = std::find_if(
+            node.outputs.begin(),
+            node.outputs.end(),
+            [](const Port& port) {
+                return port.connectionKind == ConnectionKind::ConfigurationAttachment;
+            });
+    if (attachment != node.outputs.end()) {
+        paintConfigurationSocket(
+                graphics,
+                frame.viewport.toScreen(NodeCanvasScene::portWorldCentre(node, *attachment)),
+                scale,
+                colourForDomain(attachment->domain),
+                false);
+    }
 }
 
 Colour displayColour(const Node& node, const Port& port) {
@@ -643,16 +642,17 @@ UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
         const GraphExecutionPlan& plan,
         const String& unisonNodeId,
         UnisonPreviewContext fallback) {
-    const auto attachment = std::find_if(
-            plan.configurationAttachments.begin(),
-            plan.configurationAttachments.end(),
-            [&](const Edge& edge) {
-                return edge.sourceNodeId == unisonNodeId
-                        && edge.attachmentType == AttachmentType::Unison;
-            });
-    if (attachment == plan.configurationAttachments.end()) {
+    std::vector<const Edge*> attachments;
+    for (const auto& edge : plan.configurationAttachments) {
+        if (edge.sourceNodeId == unisonNodeId
+                && edge.attachmentType == AttachmentType::Unison) {
+            attachments.push_back(&edge);
+        }
+    }
+    if (attachments.size() != 1) {
         return fallback;
     }
+    const Edge* attachment = attachments.front();
     const auto context = std::find_if(
             plan.voiceContexts.begin(),
             plan.voiceContexts.end(),
@@ -720,7 +720,6 @@ void NodeCanvasPresentation::paintNode(
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
-        paintVoiceAttachmentStatus(graphics, nodeBounds, frame.graph, node, zoom);
     } else {
         previewRenderer.paint(graphics, {
                 node,
@@ -745,13 +744,12 @@ void NodeCanvasPresentation::paintNode(
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
         if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
-            const Rectangle<float> socket = location.bounds.reduced(0.5f * scale);
-            graphics.setColour(colour.withAlpha(0.20f));
-            graphics.fillRoundedRectangle(socket.expanded(1.8f * scale), 2.f * scale);
-            graphics.setColour(port.input ? colour : kCanvasBackground.withAlpha(0.92f));
-            graphics.fillRoundedRectangle(socket, 1.5f * scale);
-            graphics.setColour(colour);
-            graphics.drawRoundedRectangle(socket, 1.5f * scale, 1.2f * scale);
+            paintConfigurationSocket(
+                    graphics,
+                    location.centre,
+                    scale,
+                    colour,
+                    port.input);
             return;
         }
         graphics.setColour(colour.withAlpha(0.22f));
@@ -794,7 +792,9 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
         const Node& node,
         const Port& port) {
     const Point<float> centre = viewport.toScreen(NodeCanvasScene::portWorldCentre(node, port));
-    const float radius = 4.2f * portScale(viewport.getZoom());
+    const float radius = (port.connectionKind == ConnectionKind::ConfigurationAttachment
+            ? 6.25f
+            : 4.2f) * portScale(viewport.getZoom());
     return {
             Rectangle<float>(centre.x - radius, centre.y - radius, radius * 2.f, radius * 2.f),
             centre

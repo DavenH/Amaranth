@@ -39,6 +39,8 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[1].domain == PortDomain::PitchSignal);
     REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
+    REQUIRE(voice.bounds.getWidth() == 250.f);
+    REQUIRE(voice.bounds.getHeight() == 128.f);
 }
 
 TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",
@@ -202,10 +204,6 @@ TEST_CASE("Graph node factory creates stereo split and join nodes", "[cycle-v2][
 TEST_CASE("Graph node factory sizes nodes from their content", "[cycle-v2][graph]") {
     const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node env = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
-    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
-
-    REQUIRE(voice.bounds.getWidth() >= 300.f);
-    REQUIRE(voice.bounds.getHeight() >= 128.f);
     REQUIRE(mesh.bounds.getWidth() >= 280.f);
     REQUIRE(mesh.bounds.getHeight() >= 250.f);
     REQUIRE(env.bounds.getWidth() >= 240.f);

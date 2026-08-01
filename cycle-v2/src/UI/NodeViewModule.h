@@ -12,6 +12,7 @@ namespace CycleV2 {
 struct NodeViewCapabilities {
     bool previewable {};
     bool hostedEditor {};
+    bool expandedEditor {};
     bool expandedEditorBlocksCanvas { true };
     bool operationLayoutControl {};
     bool outputSideControl {};

@@ -13,6 +13,7 @@ struct VoiceContextEdit {
         Domain,
         Octave,
         Pitch,
+        Polyphony,
         Portamento,
         Oversampling
     };
@@ -30,7 +31,10 @@ public:
     static String domainLabel(const Node& node);
     static String nextDomain(const Node& node);
 
-    static void paintExpanded(Graphics& graphics, Rectangle<float> panel, const Node& node);
+    static void paintExpanded(
+            Graphics& graphics,
+            Rectangle<float> panel,
+            const Node& node);
     static void paintNodeSelector(
             Graphics& graphics,
             Rectangle<float> nodeBounds,

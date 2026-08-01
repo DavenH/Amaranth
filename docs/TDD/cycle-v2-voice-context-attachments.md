@@ -5,7 +5,8 @@
 Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
 the compiled Voice Context boundary, configuration-only Unison and Modulation
 Triple products, Envelope purpose, runtime modulation defaults, shared
-pitch-phase integration, and transient Unison editor feedback are complete.
+pitch-phase integration, transient Unison editor feedback, and the focused
+Voice Context presentation are complete.
 
 Audible time-only and spectral oscillator lowering is intentionally owned by
 the downstream `cycle-v2-oscillator-region-compilation.md` TDD. It depends on
@@ -250,21 +251,14 @@ strictly snapped.
 
 ## Voice Context Presentation
 
-The compact Voice Context must explain its scope rather than appear as an
-empty source node. It shows:
+The compact Voice Context keeps the established start-domain selector and
+shows its three inputs as distinct, legible ports. It does not repeat cable
+attachment state as labels or rows: the graph topology already communicates
+which Modulation Triple, pitch Envelope, and Unison nodes are attached.
 
-- start domain and the existing octave/pitch controls;
-- polyphony and oversampling in terse form;
-- one labelled status for each of Modulation, Pitch, and Unison, distinguishing
-  the explicit attachment from its default;
-- attachment ports with a visual treatment distinct from sample/control
-  signal ports.
-
-The expanded editor keeps those statuses near the controls they affect and
-offers navigation to an attached node without embedding or duplicating that
-node's editor. Unison retains its own graphic and editor. The Voice Context may
-show a small summary such as `5× · ±18 cents`, but it must not acquire a second
-copy of the Unison sliders or phase visualization.
+The expanded editor presents only Voice Context-owned controls: source domain,
+octave, pitch, polyphony, portamento, and oversampling. It does not embed or
+navigate redundant attachment rows. Unison retains its own graphic and editor.
 
 ## Compiled Voice Plan
 
@@ -506,6 +500,9 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
-- Cycle V2 verification passes 5,326 assertions in 383 test cases. The UI
-  regression capture is `/tmp/cycle-v2-voice-context.png`; filtered launch logs
-  are `/tmp/cycle-v2-voice-context-logs.txt`.
+- Cycle V2 verification passes 5,335 assertions in 384 test cases.
+- `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
+  four-node attachment topology and expanded Voice Context presentation. Its
+  reviewed OS-level capture is
+  `/private/tmp/cycle-v2-voice-context-attachments-os.png`; filtered launch logs
+  are `/private/tmp/cycle-v2-voice-context-attachments-logs.txt`.

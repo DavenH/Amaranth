@@ -156,13 +156,19 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 zOrder++
         });
 
-        auto appendPorts = [&](const std::vector<Port>& ports, NodeSceneTargetKind kind) {
+        auto appendPorts = [&](const std::vector<Port>& ports,
+                NodeSceneTargetKind kind,
+                bool configurationOnly = false) {
             for (const auto& port : ports) {
-                if (ModulationCableBundle::hidesIndividualPort(node, port)) {
+                if (ModulationCableBundle::hidesIndividualPort(node, port)
+                        || (configurationOnly
+                            && port.connectionKind != ConnectionKind::ConfigurationAttachment)) {
                     continue;
                 }
                 const auto centre = viewport.toScreen(portWorldCentre(node, port));
-                const float size = 8.8f * viewport.getZoom() / 0.58f;
+                const float size = (port.connectionKind == ConnectionKind::ConfigurationAttachment
+                        ? 12.5f
+                        : 8.8f) * viewport.getZoom() / 0.58f;
                 current.targets.push_back({
                         kind,
                         (port.input ? "input:" : "output:") + node.id + "." + port.id,
@@ -176,9 +182,10 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             }
         };
         appendPorts(node.inputs, NodeSceneTargetKind::InputPort);
-        if (node.kind != NodeKind::ModulationTriple) {
-            appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
-        }
+        appendPorts(
+                node.outputs,
+                NodeSceneTargetKind::OutputPort,
+                node.kind == NodeKind::ModulationTriple);
         if (node.kind == NodeKind::ModulationTriple
                 || ModulationCableBundle::supportsDestination(node)) {
             const bool input = node.kind != NodeKind::ModulationTriple;

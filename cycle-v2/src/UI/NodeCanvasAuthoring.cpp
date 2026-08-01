@@ -29,7 +29,7 @@ bool outputSideControlSupported(NodeKind kind) {
 
 bool hasEditor(NodeKind kind) {
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(kind).capabilities();
-    return capabilities.previewable || capabilities.hostedEditor;
+    return capabilities.expandedEditor;
 }
 
 String parameterValue(const Node& node, const String& parameterId) {
@@ -511,6 +511,9 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::applyVoiceContextEdit(
         case VoiceContextEdit::Control::Pitch:
             return setVoiceContextParameter(nodeId, "pitch", "Pitch", edit.value,
                     "Pitch: " + edit.value);
+        case VoiceContextEdit::Control::Polyphony:
+            return setVoiceContextParameter(nodeId, "voices", "Polyphony", edit.value,
+                    "Polyphony: " + edit.value);
         case VoiceContextEdit::Control::Portamento:
             return setVoiceContextParameter(nodeId, "portamento", "Portamento", edit.value,
                     edit.value == "1" ? "Portamento on" : "Portamento off");
