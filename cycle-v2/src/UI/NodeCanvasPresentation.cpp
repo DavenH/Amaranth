@@ -7,6 +7,7 @@
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/GraphValidator.h"
+#include "../Nodes/Effects/EffectPlotPalette.h"
 
 #include <cmath>
 
@@ -44,6 +45,27 @@ void paintConfigurationSocket(
     graphics.fillRoundedRectangle(socket, 1.8f * scale);
     graphics.setColour(colour);
     graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
+}
+
+void paintAttachmentSocket(
+        Graphics& graphics,
+        Point<float> centre,
+        float scale,
+        const Port& port,
+        Colour fallbackColour) {
+    if (port.attachmentType == AttachmentType::ModulationTriple) {
+        NodeCableRenderer::paintModulationSocket(
+                graphics,
+                centre,
+                14.f * scale,
+                !port.input);
+        return;
+    }
+
+    const Colour colour = port.attachmentType == AttachmentType::Unison
+            ? EffectPlotPalette::accent
+            : fallbackColour;
+    paintConfigurationSocket(graphics, centre, scale, colour, port.input);
 }
 
 String modulationParameterId(const String& prefix, const String& name) {
@@ -229,12 +251,12 @@ void paintTripleModulationNode(
                 return port.connectionKind == ConnectionKind::ConfigurationAttachment;
             });
     if (attachment != node.outputs.end()) {
-        paintConfigurationSocket(
+        paintAttachmentSocket(
                 graphics,
                 frame.viewport.toScreen(NodeCanvasScene::portWorldCentre(node, *attachment)),
                 scale,
-                colourForDomain(attachment->domain),
-                false);
+                *attachment,
+                colourForDomain(attachment->domain));
     }
 }
 
@@ -744,12 +766,12 @@ void NodeCanvasPresentation::paintNode(
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
         if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
-            paintConfigurationSocket(
+            paintAttachmentSocket(
                     graphics,
                     location.centre,
                     scale,
-                    colour,
-                    port.input);
+                    port,
+                    colour);
             return;
         }
         graphics.setColour(colour.withAlpha(0.22f));

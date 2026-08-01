@@ -36,11 +36,14 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[0].id == "modulation");
     REQUIRE(voice.inputs[0].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[0].attachmentType == AttachmentType::ModulationTriple);
+    REQUIRE(voice.inputs[0].side == PortSide::Top);
     REQUIRE(voice.inputs[1].domain == PortDomain::PitchSignal);
+    REQUIRE(voice.inputs[1].side == PortSide::Left);
     REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
+    REQUIRE(voice.inputs[2].side == PortSide::Bottom);
     REQUIRE(voice.bounds.getWidth() == 250.f);
-    REQUIRE(voice.bounds.getHeight() == 128.f);
+    REQUIRE(voice.bounds.getHeight() == 112.f);
 }
 
 TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",

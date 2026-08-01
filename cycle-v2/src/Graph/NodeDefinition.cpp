@@ -289,11 +289,11 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .finish(),
             buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
                     input("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Top,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("unison", "Unison", PortDomain::VoiceControlSignal,
-                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
@@ -306,7 +306,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 250.f, 128.f })
+                    .presentation({}, { 250.f, 112.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {

@@ -6,7 +6,8 @@ Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
 the compiled Voice Context boundary, configuration-only Unison and Modulation
 Triple products, Envelope purpose, runtime modulation defaults, shared
 pitch-phase integration, transient Unison editor feedback, and the focused
-Voice Context presentation are complete.
+Voice Context presentation are complete. The compact input sockets make
+Modulation Triple, Pitch, and Unison visually and spatially distinct.
 
 Audible time-only and spectral oscillator lowering is intentionally owned by
 the downstream `cycle-v2-oscillator-region-compilation.md` TDD. It depends on
@@ -256,6 +257,12 @@ shows its three inputs as distinct, legible ports. It does not repeat cable
 attachment state as labels or rows: the graph topology already communicates
 which Modulation Triple, pitch Envelope, and Unison nodes are attached.
 
+The Modulation Triple attachment reuses the authoritative yellow/red/blue
+modulation socket from `NodeCableRenderer`. Pitch remains the lime circular
+signal socket. Unison uses the cyan accent of its phase plot in a configuration
+socket. Modulation enters from the top, Pitch from the left, and Unison from the
+bottom so no side-port row approaches or crosses the compact node boundary.
+
 The expanded editor presents only Voice Context-owned controls: source domain,
 octave, pitch, polyphony, portamento, and oversampling. It does not embed or
 navigate redundant attachment rows. Unison retains its own graphic and editor.
@@ -500,9 +507,9 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
-- Cycle V2 verification passes 5,335 assertions in 384 test cases.
+- Cycle V2 verification passes 5,338 assertions in 384 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
   four-node attachment topology and expanded Voice Context presentation. Its
   reviewed OS-level capture is
-  `/private/tmp/cycle-v2-voice-context-attachments-os.png`; filtered launch logs
-  are `/private/tmp/cycle-v2-voice-context-attachments-logs.txt`.
+  `/private/tmp/cycle-v2-voice-context-port-semantics-os.png`; filtered launch
+  logs are `/private/tmp/cycle-v2-voice-context-port-semantics-logs.txt`.
