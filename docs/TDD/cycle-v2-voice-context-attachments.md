@@ -258,15 +258,15 @@ shows its three inputs as distinct, legible ports. It does not repeat cable
 attachment state as labels or rows: the graph topology already communicates
 which Modulation Triple, pitch Envelope, and Unison nodes are attached.
 
-The inputs form one evenly spaced stack on the left. Modulation Triple reuses
-the authoritative yellow/red/blue modulation socket from `NodeCableRenderer`,
-Pitch uses the lime signal socket, and Unison uses a circular socket with the
-cyan accent of its phase plot. The node height includes margin below the final
-socket instead of allowing the port stack to run through its boundary.
+The inputs form one evenly spaced stack on the left. Socket geometry, colour,
+semantic icons, and the reserved interior icon gutter follow
+`cycle-v2-port-icon-presentation.md`. The node height accommodates the complete
+port stack instead of allowing ports to run through its boundary.
 
-Below the start-domain selector, the compact summary shows effective transpose
-(octave plus pitch), oversampling, and `Glide` only when portamento is enabled.
-It does not show attachment state, Unison parameters, or synth-level polyphony.
+Below the start-domain selector, the compact summary shows octave, voice
+length, and glide using complete, immediately understandable labels and units.
+It does not show attachment state, Unison parameters, oversampling, or
+synth-level polyphony.
 
 The expanded editor presents only Voice Context-owned controls: source domain,
 octave, pitch, portamento, and oversampling. It does not embed or
