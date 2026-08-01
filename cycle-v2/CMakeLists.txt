@@ -58,6 +58,14 @@ generate_svg_data(
     unison reverb delay equalizer stereoSplit stereoJoin output
 )
 
+generate_svg_data(
+    ENVELOPE_PURPOSE_ICON
+    envelope-icons
+    EnvelopePurposeIconData
+    EnvelopePurposeIconData
+    control volume pitch scratch
+)
+
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
@@ -66,8 +74,10 @@ file(GLOB_RECURSE APP_SOURCES
 list(APPEND APP_SOURCES
     ${PALETTE_ICON_FILES}
     ${NODE_ICON_FILES}
+    ${ENVELOPE_PURPOSE_ICON_FILES}
     "${PALETTE_ICON_DATA_HEADER}"
     "${NODE_ICON_DATA_HEADER}"
+    "${ENVELOPE_PURPOSE_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
@@ -115,6 +125,7 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationNodeEditors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ConcreteNodeEditors.cpp"

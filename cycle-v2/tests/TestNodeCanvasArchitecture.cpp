@@ -1,12 +1,15 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <set>
+
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Graph/NodeDefinition.h"
+#include "../src/UI/EnvelopePurposeIconRenderer.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCableRenderer.h"
@@ -131,6 +134,33 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     for (const auto& definition : NodeDefinitionRegistry::instance().definitions()) {
         INFO("Missing or invalid icon for node type " << definition.typeId);
         REQUIRE(NodePaletteEntryIconRenderer::hasIcon(definition.kind));
+    }
+}
+
+TEST_CASE("Every Envelope purpose has a parseable compact icon",
+        "[cycle-v2][canvas][envelope][icons]") {
+    Image blank(Image::ARGB, 24, 24, true);
+    const uint64_t blankChecksum = imageChecksum(blank);
+    std::set<uint64_t> checksums;
+
+    for (const EnvelopePurpose purpose : {
+            EnvelopePurpose::Control,
+            EnvelopePurpose::Volume,
+            EnvelopePurpose::Pitch,
+            EnvelopePurpose::Scratch }) {
+        INFO("Missing or invalid Envelope purpose icon for "
+                << envelopePurposeToString(purpose));
+        REQUIRE(EnvelopePurposeIconRenderer::hasIcon(purpose));
+
+        Image rendered(Image::ARGB, 24, 24, true);
+        Graphics graphics(rendered);
+        EnvelopePurposeIconRenderer::paint(
+                graphics,
+                purpose,
+                rendered.getBounds().toFloat());
+        const uint64_t checksum = imageChecksum(rendered);
+        REQUIRE(checksum != blankChecksum);
+        REQUIRE(checksums.emplace(checksum).second);
     }
 }
 

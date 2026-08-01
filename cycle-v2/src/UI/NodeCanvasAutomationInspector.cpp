@@ -360,8 +360,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         nodeObject->setProperty("subtitle", node.subtitle);
         if (node.kind == NodeKind::Envelope) {
             nodeObject->setProperty(
-                    "compactModeLabel",
-                    envelopePurposeLabel(envelopePurposeFor(node)).toUpperCase());
+                    "compactPurposeIcon",
+                    envelopePurposeToString(envelopePurposeFor(node)));
         }
         nodeObject->setProperty("bounds", AutomationValueEncoder::rectangleToVar(node.bounds));
 

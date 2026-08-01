@@ -80,8 +80,8 @@
     },
     {
       "command": "assertState",
-      "path": "nodes.10.compactModeLabel",
-      "equals": "PITCH"
+      "path": "nodes.10.compactPurposeIcon",
+      "equals": "pitch"
     },
     {
       "command": "assertState",
