@@ -16,6 +16,13 @@ struct ChainedRasterizationRequest {
     int noiseSeed {};
 };
 
+struct FixedFrameRasterizationRequest {
+    Mesh* mesh {};
+    MorphPosition morph { 0.5f, 0.5f, 0.5f };
+    float phaseCycles {};
+    int noiseSeed {};
+};
+
 class OscillatorLaneRasterizer {
 public:
     static void prime(
@@ -24,6 +31,10 @@ public:
     static void render(
             Rasterization::VoiceRasterizer& rasterizer,
             const ChainedRasterizationRequest& request,
+            Buffer<float> output);
+    static bool renderFixedFrame(
+            Rasterization::VoiceRasterizer& rasterizer,
+            const FixedFrameRasterizationRequest& request,
             Buffer<float> output);
 };
 

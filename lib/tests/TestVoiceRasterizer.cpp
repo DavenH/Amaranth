@@ -176,6 +176,72 @@ TEST_CASE("Oscillator lane facade primes and samples the mature chained rasteriz
     mesh.destroy();
 }
 
+TEST_CASE("Oscillator lane facade preserves the mature fixed-frame transition",
+        "[rasterization][voice][oscillator-lane][spectral-frame]") {
+    CurveTableScope curveTable;
+    Mesh mesh("OscillatorFixedFrameMesh");
+    addVoiceCube(mesh, 0.10f, 0.60f, 0.20f, 0.80f, 0.35f);
+    addVoiceCube(mesh, 0.55f, 0.95f, 0.80f, 0.30f, 0.55f);
+
+    Rasterization::VoiceCycleState expectedState;
+    Rasterization::VoiceCycleState actualState;
+    Rasterization::VoiceRasterizer expectedRasterizer;
+    Rasterization::VoiceRasterizer actualRasterizer;
+    const auto preparation = Rasterization::VoiceRasterizerPreparation::forMesh(mesh);
+    expectedRasterizer.prepare(preparation, { &expectedState });
+    actualRasterizer.prepare(preparation, { &actualState });
+    const MorphPosition morph(0.5f, 0.5f, 0.5f);
+    constexpr int frameSize = 128;
+    constexpr double interval = 1.0 / (double) frameSize;
+    std::array<float, frameSize> expected {};
+    std::array<float, frameSize> actual {};
+
+    expectedRasterizer.setMesh(&mesh);
+    expectedRasterizer.setMorphPosition(morph);
+    expectedRasterizer.setNoiseSeed(11);
+    expectedRasterizer.setWrapsEnds(true);
+    expectedRasterizer.setInterceptPadding((float) interval * 2.f);
+    expectedRasterizer.renderOrdinary(&mesh, 0.15f);
+    const auto sampler = expectedRasterizer.sampler();
+    REQUIRE(sampler.isSampleable());
+    if (expectedRasterizer.doesIntegralSampling()) {
+        sampler.samplePerfectly(
+                interval,
+                Buffer<float>(expected.data(), frameSize),
+                0.0);
+    } else {
+        sampler.sampleWithInterval(
+                Buffer<float>(expected.data(), frameSize),
+                interval,
+                0.0);
+    }
+
+    const CycleDsp::FixedFrameRasterizationRequest request {
+            &mesh,
+            morph,
+            0.15f,
+            11
+    };
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            actualRasterizer,
+            request,
+            Buffer<float>(actual.data(), frameSize)));
+    REQUIRE(actual == expected);
+
+    size_t allocationCount = 0;
+    {
+        ScopedVoiceRenderAllocationCount allocations;
+        REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+                actualRasterizer,
+                request,
+                Buffer<float>(actual.data(), frameSize)));
+        allocationCount = allocations.count();
+    }
+    REQUIRE(allocationCount == 0);
+
+    mesh.destroy();
+}
+
 TEST_CASE("Voice rendering selects each result without publishing", "[rasterization][voice]") {
     CurveTableScope curveTable;
     Mesh mesh("VoiceRenderBoundaryMesh");

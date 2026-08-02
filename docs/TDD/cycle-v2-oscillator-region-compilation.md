@@ -35,6 +35,12 @@ Implemented compiler foundation:
   Note-on and retrigger reset lane/rasterizer history before activating the
   region, Reset clears and silences it, and NoteOff leaves oscillator history
   running for the voice envelope's release contract.
+- the mature Cycle 1 fixed-frame time-mesh transition (ordinary
+  `VoiceRasterizer` traversal, intercept padding, integral/interval sampling)
+  is exposed beside the chained transition in `OscillatorLaneRasterizer`, and
+  Cycle 1's spectral voice consumes the shared facade. This is the
+  authoritative frame-generation boundary for the upcoming Cycle V2 shared
+  spectral recipe; it is not the normalized blockwise preview renderer.
 
 The shared spectral strategy, multiple-region materialization and block
 arithmetic, latency compensation, spectral tail handling, and placeholder

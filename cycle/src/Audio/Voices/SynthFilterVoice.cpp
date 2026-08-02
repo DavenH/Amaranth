@@ -1,6 +1,7 @@
 #include <Algo/Oversampler.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Definitions.h>
 #include <Util/LogRegions.h>
 
@@ -104,7 +105,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
     }
 
     if (parent->flags.haveTime) {
-        doFwdFFT = calcTimeDomain(group, samplingSize, oversampleFactor);
+        doFwdFFT = calcTimeDomain(group, samplingSize);
         channelCount = noteState.isStereo ? 2 : 1;
 
         if (doFwdFFT && oversampleFactor > 1) {
@@ -162,8 +163,7 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
     jassert(fabsf(accumBufs[1].front()) < 1000);
 }
 
-bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor) {
-    double deltaPow2 = 1 / double(noteState.nextPow2);
+bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSize) {
     bool requireFwdFFT = false;
 
     Buffer timeBuf(rastBuffer, samplingSize);
@@ -178,22 +178,19 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
             continue;
         }
 
-        double samplingDelta = oversampleFactor == 1 ? deltaPow2 : deltaPow2 / double(oversampleFactor);
-
         MorphPosition position = props.pos[parent->voiceIndex];
         position.time = getScratchTime(props.scratchChan, frame.frontier);
+        const bool rendered = CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+                timeRasterizer,
+                {
+                        layer.mesh,
+                        position,
+                        0.f,
+                        random.nextInt(GuideCurvePanel::tableSize)
+                },
+                timeBuf);
 
-        timeRasterizer.setMorphPosition(position);
-        timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-        timeRasterizer.setInterceptPadding((float) samplingDelta * 2);
-        timeRasterizer.renderOrdinary(layer.mesh, 0.f);
-
-        auto sampler = timeRasterizer.sampler();
-        if (sampler.isSampleable()) {
-            timeRasterizer.doesIntegralSampling() ?
-                    sampler.samplePerfectly(samplingDelta, timeBuf, 0.) :
-                    sampler.sampleWithInterval(timeBuf, samplingDelta, 0.);
-
+        if (rendered) {
             float layerPan = props.pan;
             noteState.isStereo |= fabsf(layerPan - 0.5f) > 0.03f;
 
