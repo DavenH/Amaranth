@@ -42,6 +42,20 @@ String parameterValue(const Node& node, const String& parameterId) {
     return {};
 }
 
+float snapPanValue(float value) {
+    const float normalized = jlimit(0.f, 1.f, value);
+    if (normalized <= 0.05f) {
+        return 0.f;
+    }
+    if (normalized >= 0.45f && normalized <= 0.55f) {
+        return 0.5f;
+    }
+    if (normalized >= 0.95f) {
+        return 1.f;
+    }
+    return normalized;
+}
+
 }
 
 NodeCanvasAuthoring::NodeCanvasAuthoring(
@@ -613,7 +627,7 @@ bool NodeCanvasAuthoring::updateSpectralPanGesture(float value) {
         return false;
     }
 
-    const String normalized = String(jlimit(0.f, 1.f, value), 6);
+    const String normalized = String(snapPanValue(value), 6);
     const auto result = commands.setNodeParameter(
             spectralPanGestureNodeId,
             "pan",

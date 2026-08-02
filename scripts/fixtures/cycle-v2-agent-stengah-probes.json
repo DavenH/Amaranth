@@ -61,8 +61,8 @@
       "event": "drag",
       "targetId": "node:magnitudeLayer1Process",
       "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 2.2,
-      "targetY": 0.5,
+      "targetX": 0.5,
+      "targetY": -2.5,
       "downTargetX": 0.5,
       "downTargetY": 0.5
     },
@@ -71,8 +71,8 @@
       "event": "up",
       "targetId": "node:magnitudeLayer1Process",
       "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 2.2,
-      "targetY": 0.5,
+      "targetX": 0.5,
+      "targetY": -2.5,
       "downTargetX": 0.5,
       "downTargetY": 0.5,
       "waitForIdle": true,
@@ -83,6 +83,41 @@
       "nodeId": "magnitudeLayer1Process",
       "parameterId": "pan",
       "equals": "1.000000"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.9,
+      "targetY": 0.3,
+      "downTargetX": 0.5,
+      "downTargetY": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.9,
+      "targetY": 0.3,
+      "downTargetX": 0.5,
+      "downTargetY": 0.05,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.5.bounds.x",
+      "op": "greaterThan",
+      "value": 1650
     },
     {
       "command": "assertState",

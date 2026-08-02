@@ -698,12 +698,14 @@ void NodeCanvasPresentation::paintNode(
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
-                nodeBounds.reduced(4.f * zoom),
+                nodeBounds.reduced(10.f * zoom),
                 profileFor(frame, node),
                 zoom,
                 true,
                 frame.unisonPreviewContext
         });
+        graphics.setColour(kNodeBorder.withAlpha(0.7f));
+        graphics.drawEllipse(nodeBounds.reduced(2.f * zoom), 1.2f * scale);
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
             graphics.drawEllipse(nodeBounds.expanded(2.f * zoom), 2.f * scale);

@@ -148,10 +148,12 @@ phase formulas; flat FFT/IFFT, probes, and traversal payloads preserve both chan
 and the oscillator-region slot graph reconstructs distinct left and right
 frames before existing Unison materialization. Parameter changes invalidate DSP
 state without changing graph topology.
-The Channel palette names the operation Pan. Its dial body captures horizontal
-drag gestures before cable-port hit testing; the sockets remain available only
-at the dial edges. The Stengah automation fixture proves a dial drag changes
-the parameter without changing edge count.
+The Channel palette names the operation Pan. Its inner dial uses conventional
+vertical knob dragging, while its visible outer ring retains ordinary node
+movement. Cable sockets remain available at the left and right edges. The
+Stengah automation fixture proves both gestures and verifies that a dial drag
+does not change edge count. Pan gestures snap within 5% of hard left, centre,
+and hard right.
 
 ## Boundaries And End State
 

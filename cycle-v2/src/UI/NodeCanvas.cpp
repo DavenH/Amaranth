@@ -33,6 +33,12 @@ bool hasExpandedEditor(NodeKind kind) {
     return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().expandedEditor;
 }
 
+Rectangle<float> inlinePanDialBounds(
+        const NodeCanvasViewport& viewport,
+        const Node& node) {
+    return viewport.toScreen(node.bounds).reduced(10.f * viewport.getZoom());
+}
+
 GraphDocument createStartupDocument() {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
@@ -153,7 +159,14 @@ void NodeCanvas::mouseMove(const MouseEvent& event) {
         hovered = canvasPresentation.probeRail().markerProbeAt(event.position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
-    setMouseCursor(MouseCursor::NormalCursor);
+    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
+    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
+        setMouseCursor(inlinePanDialBounds(viewport, *inlinePan).contains(event.position)
+                ? MouseCursor::UpDownResizeCursor
+                : MouseCursor::DraggingHandCursor);
+    } else {
+        setMouseCursor(MouseCursor::NormalCursor);
+    }
     requestCanvasRepaint();
 }
 
@@ -332,8 +345,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
     const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        const Rectangle<float> nodeBounds = viewport.toScreen(inlinePan->bounds);
-        const Rectangle<float> dial = nodeBounds.reduced(4.f * viewport.getZoom());
+        const Rectangle<float> dial = inlinePanDialBounds(viewport, *inlinePan);
         if (dial.contains(event.position)
                 && authoring.beginSpectralPanGesture(inlinePan->id)) {
             draggingSpectralPanNodeId = inlinePan->id;
@@ -406,7 +418,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
                 0.f,
                 1.f,
                 spectralPanDragStartValue
-                        + event.getOffsetFromDragStart().x / 120.f);
+                        - event.getOffsetFromDragStart().y / 120.f);
         authoring.updateSpectralPanGesture(value);
         requestCanvasRepaint();
         return;

@@ -55,8 +55,8 @@ TEST_CASE("Pan presents as an inline cable control", "[cycle-v2][graph][definiti
     const Node node = GraphNodeFactory().createNode(NodeKind::SpectralLayer, "layer", {});
 
     REQUIRE(labelForNodeKind(node.kind) == "Pan");
-    REQUIRE(node.bounds.getWidth() == 64.f);
-    REQUIRE(node.bounds.getHeight() == 64.f);
+    REQUIRE(node.bounds.getWidth() == 72.f);
+    REQUIRE(node.bounds.getHeight() == 72.f);
     REQUIRE(NodeCanvasScene::portWorldCentre(node, node.inputs.front()).getY()
             == node.bounds.getCentreY());
     REQUIRE(NodeCanvasScene::portWorldCentre(node, node.outputs.front()).getY()

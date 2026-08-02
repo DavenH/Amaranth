@@ -360,8 +360,18 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
 
     REQUIRE(authoring.beginSpectralPanGesture("pan"));
+    REQUIRE(authoring.updateSpectralPanGesture(0.47f));
+    REQUIRE(typedParameterFloat(
+            document.graph().findNode("pan")->parameters,
+            "pan",
+            0.f) == 0.5f);
+    REQUIRE(authoring.updateSpectralPanGesture(0.03f));
+    REQUIRE(typedParameterFloat(
+            document.graph().findNode("pan")->parameters,
+            "pan",
+            1.f) == 0.f);
     REQUIRE(authoring.updateSpectralPanGesture(0.75f));
-    REQUIRE(authoring.updateSpectralPanGesture(1.f));
+    REQUIRE(authoring.updateSpectralPanGesture(0.97f));
     REQUIRE(typedParameterFloat(
             document.graph().findNode("pan")->parameters,
             "pan",
