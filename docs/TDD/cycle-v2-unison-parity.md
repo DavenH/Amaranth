@@ -253,11 +253,17 @@ the mature rasterizer independently for every configured lane, preserves
 split-block continuity and low-note cycle capacity, and folds the result with
 the shared pan and level contracts. Multi-operation Trimesh recipes also apply
 vectorized Add and Multiply in cycle coordinates before lane folding. Shared
-spectral-frame reconstruction, independent oscillator-region materialization,
-and spectral latency/tail parity remain open. Time-only lane and rasterizer
-state now reset at the exact NoteOn/Reset sample offset, while NoteOff leaves
-the oscillator running for envelope-controlled release. Full audible parity is
-not yet claimed.
+fixed-frame rasterization now prepares Trimesh, FFT, IFFT, Add, and Multiply
+recipes without realtime topology search, allocation, or transform locking.
+Cycle 1's cyclic-frame phase rotation, interpolation, and half-frame crossfade
+are also extracted into a shared lane renderer consumed by Cycle 1; the
+extraction corrects the legacy full-frame/half-frame vector-size mismatch while
+preserving the intended first-half crossfade contract. Cycle 2 spectral lane
+reconstruction, independent oscillator-region materialization, and spectral
+latency/tail parity remain open. Time-only lane and rasterizer state now reset
+at the exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator
+running for envelope-controlled release. Full audible parity is not yet
+claimed.
 
 ## Completion Criteria
 
