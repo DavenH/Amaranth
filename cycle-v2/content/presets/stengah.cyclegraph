@@ -13,7 +13,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 488.46347, "y": 724.43213 },
+            "position": { "x": 488.46356, "y": 656.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -773,7 +773,7 @@
             "id": "pitchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 473.26355, "y": 915.68622 },
+            "position": { "x": 473.26355, "y": 826.43213 },
             "parameters": { "purpose": "pitch", "logarithmic": false, "red": 0.552, "blue": 0.413, "level": 0.0 },
             "model": {
                 "schema": "envelope",
@@ -952,15 +952,15 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 2616.78076, "y": 622.0 },
-            "parameters": { "enabled": true, "pre": 0.916, "post": 0.392, "aaFactor": "2" },
+            "parameters": { "enabled": true, "pre": 0.626, "post": 0.757, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 33,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 33,
                     "vertices": [
                         { "id": 1, "x": 0.0625, "y": 0.0625, "curve": 0.0 },
                         { "id": 2, "x": 0.125, "y": 0.125, "curve": 1.0 },
@@ -970,7 +970,8 @@
                         { "id": 6, "x": 0.21408, "y": 0.87359, "curve": 0.06364 }
                     ]
                 }
-            }
+            },
+            "editor": { "selectedVertexId": 3 }
         },
         {
             "id": "impulseResponse",
@@ -1113,7 +1114,7 @@
             "parameters": {
                 "enabled": true,
                 "band1Gain": 0.516,
-                "band2Gain": 0.40601,
+                "band2Gain": 0.4701,
                 "band3Gain": 0.5,
                 "band4Gain": 0.56,
                 "band5Gain": 0.476,
@@ -1171,16 +1172,6 @@
     ],
     "probes": [
         {
-            "id": "probe2",
-            "sourceNodeId": "waveshaper",
-            "sourcePortId": "time",
-            "anchorDestNodeId": "impulseResponse",
-            "anchorDestPortId": "time",
-            "label": "Spy 2",
-            "tapPosition": 0.50131,
-            "railOrder": 1
-        },
-        {
             "id": "probe",
             "sourceNodeId": "equalizer",
             "sourcePortId": "time",
@@ -1189,6 +1180,66 @@
             "label": "Spy 2",
             "tapPosition": 0.54465,
             "railOrder": 1
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "waveshaper",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "impulseResponse",
+            "anchorDestPortId": "time",
+            "label": "Spy 3",
+            "tapPosition": 0.4782,
+            "railOrder": 2
+        },
+        {
+            "id": "probe3",
+            "sourceNodeId": "magnitudeLayer1",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+            "anchorDestPortId": "mag",
+            "label": "Spy 4",
+            "tapPosition": 0.54791,
+            "railOrder": 3
+        },
+        {
+            "id": "probe4",
+            "sourceNodeId": "ifft",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "volumeMultiply",
+            "anchorDestPortId": "right",
+            "label": "Spy 5",
+            "tapPosition": 0.70364,
+            "railOrder": 4
+        },
+        {
+            "id": "probe5",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "waveshaper",
+            "anchorDestPortId": "time",
+            "label": "Spy 6",
+            "tapPosition": 0.55481,
+            "railOrder": 5
+        },
+        {
+            "id": "probe6",
+            "sourceNodeId": "phaseOp2",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+            "anchorDestPortId": "phase",
+            "label": "Spy 7",
+            "tapPosition": 0.62786,
+            "railOrder": 6
+        },
+        {
+            "id": "probe7",
+            "sourceNodeId": "phaseLayer2",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "phaseOp2",
+            "anchorDestPortId": "right",
+            "label": "Spy 8",
+            "tapPosition": 0.50795,
+            "railOrder": 7
         }
     ]
 }
