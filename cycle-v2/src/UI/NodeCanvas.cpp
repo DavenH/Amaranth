@@ -983,6 +983,17 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
     return automation.captureAudio(frameCount);
 }
 
+bool NodeCanvas::copyAudioPlan(
+        GraphExecutionPlan& plan,
+        uint64_t& revision) const {
+    if (!presentation.compileResult().succeeded()) {
+        return false;
+    }
+    plan = presentation.compileResult().plan;
+    revision = presentation.revision();
+    return true;
+}
+
 File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")

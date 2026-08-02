@@ -91,7 +91,7 @@ Context:
 Current status: open; isolate the broad UI test that adds an already-parented
 component and capture its exact call site.
 
-## Open: Cycle v2 automation screenshots append to existing PNG files
+## Addressed: Cycle v2 automation screenshots appended to existing PNG files
 
 Context:
 
@@ -99,7 +99,9 @@ Context:
 - Image viewers consequently decode the oldest frame, which can make visual-regression review appear stale even though the report says the screenshot succeeded.
 - Reproduced on 2026-07-22 with `scripts/fixtures/cycle-v2-agent-screenshot.json` and `/private/tmp/cycle-v2-agent-canvas.png`; moving the old output away before capture produced the current frame.
 
-Current status: open; automation screenshot output should truncate or replace its target atomically.
+Current status: addressed by deleting the exact destination before opening the
+new screenshot stream. Offline and live WAV automation artifacts now use the
+same replacement behavior.
 
 ## Open: Trilinear mesh 2D rasterization changes when primary view axis changes
 

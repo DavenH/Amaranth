@@ -78,6 +78,7 @@ public:
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
+    bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
 
     void paint(Graphics& g) override;
     void resized() override;

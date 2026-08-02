@@ -47,6 +47,7 @@ private:
     var listPaletteItems() const;
     var invokePaletteItem(const var& commandValue);
     var captureAudio(const var& commandValue);
+    var captureLiveAudio(const var& commandValue);
     var openNodeEditor(const var& commandValue);
     var addNode(const var& commandValue);
     var inspectPointerTargets() const;

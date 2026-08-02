@@ -2,9 +2,50 @@
 
 namespace CycleV2 {
 
-NodeWorkspace::NodeWorkspace() {
+namespace {
+
+var rectangleToVar(Rectangle<float> bounds) {
+    auto* object = new DynamicObject();
+    object->setProperty("x", bounds.getX());
+    object->setProperty("y", bounds.getY());
+    object->setProperty("width", bounds.getWidth());
+    object->setProperty("height", bounds.getHeight());
+    return var(object);
+}
+
+var pointerTarget(const String& id, const String& kind, Rectangle<float> bounds) {
+    auto* object = new DynamicObject();
+    object->setProperty("id", id);
+    object->setProperty("kind", kind);
+    object->setProperty("bounds", rectangleToVar(bounds));
+    return var(object);
+}
+
+}
+
+NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
+        audioEngine(engine)
+    ,   keyboard(keyboardState, engine) {
     setOpaque(true);
     addAndMakeVisible(canvas);
+    addAndMakeVisible(keyboard);
+    addAndMakeVisible(octaveDown);
+    addAndMakeVisible(octaveUp);
+    addAndMakeVisible(audioStatus);
+
+    octaveDown.setTooltip("Lower keyboard by one octave");
+    octaveUp.setTooltip("Raise keyboard by one octave");
+    octaveDown.onClick = [this] { keyboard.shiftOctave(-1); };
+    octaveUp.onClick = [this] { keyboard.shiftOctave(1); };
+    audioStatus.setJustificationType(Justification::centred);
+    audioStatus.setInterceptsMouseClicks(false, false);
+    startTimerHz(30);
+    timerCallback();
+}
+
+NodeWorkspace::~NodeWorkspace() {
+    stopTimer();
+    keyboard.releaseAllNotes();
 }
 
 bool NodeWorkspace::saveGraphToFile(const File& file) {
@@ -12,11 +53,16 @@ bool NodeWorkspace::saveGraphToFile(const File& file) {
 }
 
 bool NodeWorkspace::loadGraphFromFile(const File& file) {
+    keyboard.releaseAllNotes();
     return canvas.loadGraphFromFile(file);
 }
 
 var NodeWorkspace::exportAutomationState() const {
-    return canvas.exportAutomationState();
+    var state = canvas.exportAutomationState();
+    if (auto* object = state.getDynamicObject()) {
+        object->setProperty("performance", performanceStateForAutomation());
+    }
+    return state;
 }
 
 String NodeWorkspace::exportGraphJson() const {
@@ -94,7 +140,34 @@ var NodeWorkspace::inspectNodeControlsForAutomation(const String& nodeId) const 
 }
 
 var NodeWorkspace::inspectPointerTargetsForAutomation() const {
-    return canvas.inspectPointerTargetsForAutomation();
+    var result = canvas.inspectPointerTargetsForAutomation();
+    auto* resultObject = result.getDynamicObject();
+    if (resultObject == nullptr) {
+        return result;
+    }
+    Array<var>* targets = resultObject->getProperty("targets").getArray();
+    if (targets == nullptr) {
+        return result;
+    }
+
+    const Rectangle<float> keyboardBounds = keyboard.getBounds().toFloat();
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.OctaveDown",
+            "performanceOctave",
+            octaveDown.getBounds().toFloat()));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.OctaveUp",
+            "performanceOctave",
+            octaveUp.getBounds().toFloat()));
+    for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 12; ++note) {
+        targets->add(pointerTarget(
+                "PerformanceKeyboard.Note" + String(note),
+                "performanceKey",
+                keyboard.noteBounds(note).translated(
+                        keyboardBounds.getX(),
+                        keyboardBounds.getY())));
+    }
+    return result;
 }
 
 var NodeWorkspace::inspectOpenGLDiagnosticsForAutomation() const {
@@ -105,8 +178,120 @@ var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
     return canvas.captureAudioForAutomation(frameCount);
 }
 
+var NodeWorkspace::performanceStateForAutomation() const {
+    const auto status = audioEngine.status();
+    auto* object = new DynamicObject();
+    object->setProperty("visible", keyboard.isVisible());
+    object->setProperty("baseNote", keyboard.baseNote());
+    object->setProperty("highestNote", keyboard.baseNote() + 12);
+    object->setProperty("heldNote", keyboard.heldNote());
+    object->setProperty("heldVelocity", keyboard.heldVelocity());
+    object->setProperty("audioDeviceReady", status.deviceReady);
+    object->setProperty("deviceName", status.deviceName);
+    object->setProperty("deviceError", status.error);
+    object->setProperty("sampleRate", status.sampleRate);
+    object->setProperty("blockSize", status.blockSize);
+    object->setProperty("callbackCount", (int64) status.renderer.callbackCount);
+    object->setProperty("graphRevision", (int64) status.renderer.graphRevision);
+    object->setProperty("activeVoiceCount", (int) status.renderer.activeVoiceCount);
+    object->setProperty("droppedMidiEvents", (int) status.renderer.droppedMidiEvents);
+    object->setProperty("peak", status.renderer.peak);
+    object->setProperty("rms", status.renderer.rms);
+    return var(object);
+}
+
+bool NodeWorkspace::performancePointerDownForAutomation(
+        int noteNumber,
+        float velocity) {
+    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 12) {
+        return false;
+    }
+    if (keyboard.heldNote() >= 0) {
+        keyboardState.noteOff(1, keyboard.heldNote(), velocity);
+    }
+    keyboardState.noteOn(1, noteNumber, jlimit(0.05f, 1.f, velocity));
+    return true;
+}
+
+bool NodeWorkspace::performancePointerDragForAutomation(
+        int noteNumber,
+        float velocity) {
+    if (keyboard.heldNote() == noteNumber) {
+        return true;
+    }
+    return performancePointerDownForAutomation(noteNumber, velocity);
+}
+
+bool NodeWorkspace::performancePointerUpForAutomation() {
+    if (keyboard.heldNote() < 0) {
+        return false;
+    }
+    keyboardState.noteOff(1, keyboard.heldNote(), 0.f);
+    return true;
+}
+
+StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(
+        int durationMs) {
+    return audioEngine.captureLiveAudio(durationMs);
+}
+
 void NodeWorkspace::resized() {
     canvas.setBounds(getLocalBounds());
+    constexpr int keyboardWidth = 520;
+    constexpr int keyboardHeight = 92;
+    constexpr int statusHeight = 24;
+    constexpr int buttonWidth = 32;
+    constexpr int margin = 18;
+    const int totalWidth = keyboardWidth + buttonWidth * 2 + 12;
+    Rectangle<int> strip(
+            (getWidth() - totalWidth) / 2,
+            getHeight() - keyboardHeight - statusHeight - margin,
+            totalWidth,
+            keyboardHeight + statusHeight);
+    audioStatus.setBounds(strip.removeFromTop(statusHeight));
+    octaveDown.setBounds(strip.removeFromLeft(buttonWidth).reduced(2));
+    octaveUp.setBounds(strip.removeFromRight(buttonWidth).reduced(2));
+    strip.reduce(6, 0);
+    keyboard.setBounds(strip);
+}
+
+void NodeWorkspace::timerCallback() {
+    const auto status = audioEngine.status();
+    if (previousDeviceReady && !status.deviceReady) {
+        keyboard.releaseAllNotes();
+    }
+    previousDeviceReady = status.deviceReady;
+    const String nextStatus = !status.deviceReady
+            ? "Audio device unavailable"
+            : status.renderer.graphRevision == 0
+                    ? "Preparing audio"
+                    : "Audio ready";
+    if (audioStatus.getText() != nextStatus) {
+        audioStatus.setText(nextStatus, dontSendNotification);
+    }
+
+    GraphExecutionPlan plan;
+    uint64_t revision {};
+    if (!canvas.copyAudioPlan(plan, revision)) {
+        if (status.deviceReady) {
+            audioStatus.setText("Graph cannot play", dontSendNotification);
+        }
+        return;
+    }
+    if (revision == publishedPlanRevision
+            && status.preparationRevision == publishedDevicePreparationRevision) {
+        return;
+    }
+    if (publishedPlanRevision != 0 && revision != publishedPlanRevision) {
+        keyboard.releaseAllNotes();
+    }
+    if (audioEngine.publishGraph(std::move(plan), revision)) {
+        publishedPlanRevision = revision;
+        publishedDevicePreparationRevision = status.preparationRevision;
+        if (status.deviceReady) {
+            audioStatus.setText("Audio ready", dontSendNotification);
+        }
+    }
 }
 
 }

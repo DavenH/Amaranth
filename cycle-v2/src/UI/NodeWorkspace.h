@@ -2,15 +2,20 @@
 
 #include <JuceHeader.h>
 
+#include "../App/StandaloneAudioEngine.h"
 #include "NodeCanvas.h"
+#include "PerformanceKeyboard.h"
 
 namespace CycleV2 {
 
 using namespace juce;
 
-class NodeWorkspace : public Component {
+class NodeWorkspace :
+        public Component
+    ,   private Timer {
 public:
-    NodeWorkspace();
+    explicit NodeWorkspace(StandaloneAudioEngine& audioEngine);
+    ~NodeWorkspace() override;
 
     bool saveGraphToFile(const File& file);
     bool loadGraphFromFile(const File& file);
@@ -42,11 +47,27 @@ public:
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
+    var performanceStateForAutomation() const;
+    bool performancePointerDownForAutomation(int noteNumber, float velocity);
+    bool performancePointerDragForAutomation(int noteNumber, float velocity);
+    bool performancePointerUpForAutomation();
+    StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);
 
     void resized() override;
 
 private:
+    void timerCallback() override;
+
+    StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;
+    MidiKeyboardState keyboardState;
+    PerformanceKeyboard keyboard;
+    TextButton octaveDown { "-" };
+    TextButton octaveUp { "+" };
+    Label audioStatus;
+    uint64_t publishedPlanRevision {};
+    uint64_t publishedDevicePreparationRevision {};
+    bool previousDeviceReady {};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeWorkspace)
 };

@@ -1,0 +1,102 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "performance.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 60
+    },
+    {
+      "command": "assertState",
+      "path": "performance.highestNote",
+      "equals": 72
+    },
+    {
+      "command": "assertState",
+      "path": "performance.audioDeviceReady",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 500,
+      "path": "/private/tmp/cycle-v2-performance-keyboard-live.wav",
+      "peakGreaterThan": 0.00001,
+      "rmsGreaterThan": 0.000001,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": 60
+    },
+    {
+      "command": "assertState",
+      "path": "performance.activeVoiceCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "performance.peak",
+      "op": "greaterThan",
+      "value": 0.00001
+    },
+    {
+      "command": "assertState",
+      "path": "performance.rms",
+      "op": "greaterThan",
+      "value": 0.000001
+    },
+    {
+      "command": "screenshot",
+      "area": "workspace",
+      "path": "/private/tmp/cycle-v2-performance-keyboard.png"
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note62",
+      "downTargetId": "PerformanceKeyboard.Note60",
+      "event": "drag",
+      "targetY": 0.85,
+      "downTargetY": 0.85
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": 62
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note62",
+      "downTargetId": "PerformanceKeyboard.Note60",
+      "event": "up",
+      "targetY": 0.85,
+      "downTargetY": 0.85
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": -1
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 8000
+    },
+    {
+      "command": "assertState",
+      "path": "performance.activeVoiceCount",
+      "equals": 0
+    }
+  ],
+  "quit": true
+}

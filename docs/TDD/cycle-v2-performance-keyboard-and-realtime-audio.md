@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-08-02).
+Implemented (2026-08-02).
 
 ## Problem
 
@@ -591,3 +591,79 @@ acceptance sequence passes.
 - The stable end state has one graph compiler/publication path, one MIDI
   ingress, one voice allocator, one graph DSP renderer, and distinct adapters
   for UI MIDI, hardware MIDI, and standalone device output.
+
+## Implementation Review
+
+The completed implementation follows the ownership in this design. The
+keyboard is workspace chrome and reuses `AmaranthMidiKeyboard`,
+`MidiKeyboardState`, and JUCE key geometry and drag handling. It adds no node
+kind, ports, graph branches, serialization, or copied key hit-testing. The
+widget only translates keyboard-state notifications to a `MidiEventSink`.
+
+The shared queue contains 512 events and uses a bounded multi-producer,
+single-consumer ring. UI and hardware messages retain source, channel, MIDI
+data, monotonic timestamp, and sequence. A fixed 1,024-entry renderer-side
+scheduling buffer orders timestamp/sequence pairs, clamps late messages to the
+block start, and retains future messages for later callbacks. Queue overflow
+drops the newest event, increments the diagnostic counter, and requests
+source-scoped all-notes-off recovery. The live fixture measured zero drops.
+
+The renderer owns eight stable voice slots. An idle slot is preferred; the
+oldest voice is reset and stolen when all slots are active. Repeated note-offs
+release the oldest matching outstanding source/channel/note identity.
+`GraphAudioExecutor`, prepared oscillator regions, and `MidiControlState` are
+reused as the render and controller authorities. Envelope playback gained only
+a narrow active-tail query through `NodeAudioProcessor`; its playback
+algorithm was not copied or replaced. Released voices return to idle when that
+authoritative processor state reports no active tail, rather than after a UI
+timer or fixed release duration.
+
+Each immutable prepared generation owns its execution plan and the executor
+prepared for every stable voice index. Preparation and non-realtime servicing
+run outside the callback. The callback adopts a complete pending pointer only
+at a block boundary, resets voices under the documented replacement policy,
+and publishes the previous generation to a retirement slot. The message-thread
+timer reclaims retired ownership, so plan and processor destruction do not run
+on the audio thread. Failed graph publication leaves the previous prepared
+generation owned while the workspace reports that the current graph cannot
+play.
+
+The production diff added 1,611 lines and removed 9 lines under `cycle-v2/src`
+before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 188
+additions and 3 removals. The slight increase over the estimate is the bounded
+live-callback capture and semantic automation surface required to distinguish
+device output from offline rendering. No production implementation exceeds
+350 added lines, and the audit found no new `NodeKind` switch or compatibility
+adapter.
+
+Realtime instrumentation covers a prepared graph render and the complete
+voice-mixing path. Both report zero allocations and zero lock acquisitions.
+The hot-loop audit found no scalar `std::<math>` operation inside a
+per-sample/bin/pixel loop; `Buffer` operations perform clearing, summation,
+headroom, clipping, norms, and peak reduction. The remaining `std::isfinite`
+checks run once per output channel and `std::sqrt` once per rendered block or
+non-realtime capture result.
+
+## Verification
+
+- `CycleV2_tests`: 435 test cases and 6,653 assertions passed.
+- Focused audio-device/realtime suite: 4 test cases and 28 assertions passed.
+- Focused keyboard suite: 2 test cases and 17 assertions passed.
+- Standalone Debug and test targets built with `--parallel 10`.
+- `git diff --check` passed. `clang-tidy` was unavailable in the configured
+  environment.
+- The focused fixture passed every keyboard, device, voice, output-level,
+  drag, release, and eventual-idle assertion on `MacBook Pro Speakers` at
+  44,100 Hz with a 512-frame device block.
+- Its 500 ms callback capture contains 22,050 frames from callbacks 45-88,
+  with peak `0.0704063` and RMS `0.0332317`. The report records
+  `source: audioDeviceCallback`, graph revision 2, and zero dropped events.
+- Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-report-final.json`,
+  `/private/tmp/cycle-v2-performance-keyboard-live.wav`, and
+  `/private/tmp/cycle-v2-performance-keyboard.png`.
+
+The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
+and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did
+not interrupt device startup, callbacks, rendering, capture, or clean fixture
+completion.
