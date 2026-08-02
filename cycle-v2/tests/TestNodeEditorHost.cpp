@@ -1,20 +1,25 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeEditors.h"
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
+#include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeEditorHost.h"
 #include "../src/UI/NodeParameterValue.h"
 #include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex.h>
 
 using namespace CycleV2;
 using namespace juce;
@@ -200,6 +205,19 @@ Node node(String id, NodeKind kind) {
     result.id = std::move(id);
     result.kind = kind;
     return result;
+}
+
+Rectangle<float> rectangleProperty(const var& state, const Identifier& name) {
+    const auto* bounds = state.getProperty(name, {}).getDynamicObject();
+    if (bounds == nullptr) {
+        return {};
+    }
+    return {
+        static_cast<float>(bounds->getProperty("x")),
+        static_cast<float>(bounds->getProperty("y")),
+        static_cast<float>(bounds->getProperty("width")),
+        static_cast<float>(bounds->getProperty("height"))
+    };
 }
 
 TEST_CASE("Node canvas automation controller routes aliases and owns diagnostics",
@@ -481,6 +499,194 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
+        "[cycle-v2][node-editor-host][envelope][purpose]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    GraphEditor graphEditor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(graphEditor.setNodeParameter(
+            graph, "env", "purpose", "Purpose", "pitch").succeeded());
+    EnvelopeNodeModel envelopeModel;
+    for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
+        for (int index = 0; index < (int) VertCube::numVerts; ++index) {
+            cube->getVertex(index)->values[Vertex::Amp] = 0.5f;
+        }
+    }
+    REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
+    REQUIRE(graph.replaceNodeModel(
+            "env",
+            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
+
+    Effect2DWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(*graph.findNode("env"));
+    auto panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("bipolar", {}));
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
+
+    auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    RecordingCurveDelegate delegate;
+    editor->setDelegate(&delegate);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*graph.findNode("env"));
+    const var state = editor->automationState();
+    REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
+    REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
+    const auto purposeBounds = rectangleProperty(state, "purposeBounds");
+    const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
+    const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
+    REQUIRE(purposeBounds.getWidth() > 0.f);
+    REQUIRE(blueMorphBounds.getWidth() > 0.f);
+    REQUIRE(actionRowBounds.getWidth() > 0.f);
+    REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
+    REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
+    panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("bipolar", {}));
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
+    EnvelopePurposeSelector* modeSelector = nullptr;
+    Button* pitchMode = nullptr;
+    Button* scratchMode = nullptr;
+    ImageButton* loopMarker = nullptr;
+    ImageButton* sustainMarker = nullptr;
+    ImageButton* fitVertical = nullptr;
+    ImageButton* fullVertical = nullptr;
+    StringArray actionLabels;
+    for (int index = 0; index < editor->getNumChildComponents(); ++index) {
+        if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
+            modeSelector = selector;
+            for (int option = 0; option < selector->getNumChildComponents(); ++option) {
+                auto* button = dynamic_cast<Button*>(selector->getChildComponent(option));
+                if (button != nullptr && button->getName() == "Pitch envelope mode") {
+                    pitchMode = button;
+                } else if (button != nullptr && button->getName() == "Scratch envelope mode") {
+                    scratchMode = button;
+                }
+            }
+        } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
+            actionLabels.add(button->getButtonText());
+        } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
+            if (button->getName() == "Set selected vertex as loop start") {
+                loopMarker = button;
+            } else if (button->getName() == "Set selected vertex as sustain point") {
+                sustainMarker = button;
+            } else if (button->getName() == "Fit envelope vertical range") {
+                fitVertical = button;
+            } else if (button->getName() == "Show full envelope vertical range") {
+                fullVertical = button;
+            }
+        }
+    }
+    REQUIRE(modeSelector != nullptr);
+    REQUIRE(modeSelector->getNumChildComponents() == 4);
+    REQUIRE(pitchMode != nullptr);
+    REQUIRE(scratchMode != nullptr);
+    REQUIRE(loopMarker != nullptr);
+    REQUIRE(sustainMarker != nullptr);
+    REQUIRE(fitVertical != nullptr);
+    REQUIRE(fullVertical != nullptr);
+    REQUIRE(actionLabels == StringArray({ "Log" }));
+    REQUIRE(loopMarker->getNormalImage().isValid());
+    REQUIRE(sustainMarker->getNormalImage().isValid());
+    REQUIRE_FALSE(loopMarker->isEnabled());
+    REQUIRE_FALSE(sustainMarker->isEnabled());
+    REQUIRE(loopMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
+    REQUIRE(sustainMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
+    const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
+    const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
+    const auto modeBounds = rectangleProperty(state, "modeBounds");
+    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Mode");
+    REQUIRE(state.getProperty("vertexModeLabel", {}).toString() == "Vertex");
+    REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
+    REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
+    REQUIRE(modeBounds == purposeBounds);
+    const var modeOptions = state.getProperty("modeOptions", {});
+    REQUIRE(modeOptions.isArray());
+    REQUIRE(modeOptions.getArray()->size() == 4);
+    REQUIRE(fitBounds.getWidth() == Catch::Approx(28.f));
+    REQUIRE(fullBounds.getWidth() == Catch::Approx(28.f));
+    REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
+    REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
+    REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
+    const auto markerGroupBounds = rectangleProperty(state, "vertexModeGroupBounds");
+    const auto logarithmicBounds = rectangleProperty(state, "logarithmicBounds");
+    const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
+    REQUIRE(markerGroupBounds.getRight() < logarithmicBounds.getX());
+    REQUIRE(logarithmicBounds.getRight() < rangeGroupBounds.getX());
+    const auto parameterRails = state.getProperty("vertexParameterRails", {});
+    REQUIRE(parameterRails.isArray());
+    REQUIRE(parameterRails.getArray()->size() >= 2);
+    const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
+    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
+    const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
+    const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
+    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(33.54f).margin(0.02f));
+    REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
+
+    VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
+    REQUIRE(selectedCube != nullptr);
+    REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
+    REQUIRE(envelopeModel.selectedCubeId().has_value());
+    Node selectedNode = *graph.findNode("env");
+    selectedNode.model = CurveNodeModelState::copyOf(
+            envelopeModel, selectedNode.model->revision() + 1);
+    auto* selectedEditorState = new DynamicObject();
+    selectedEditorState->setProperty(
+            "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
+    selectedNode.editorState = var(selectedEditorState);
+    editor->setNode(selectedNode);
+    const var selectedState = editor->automationState();
+    REQUIRE((bool) selectedState.getProperty("loopEnabled", {}));
+    REQUIRE((bool) selectedState.getProperty("sustainEnabled", {}));
+    REQUIRE(loopMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
+    REQUIRE(sustainMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
+
+    fullVertical->onClick();
+    panelState = widget.automationState();
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {}))
+            == Catch::Approx(1.0));
+    fitVertical->onClick();
+    panelState = widget.automationState();
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
+    REQUIRE_FALSE(delegate.events.contains("publish"));
+    scratchMode->onClick();
+    REQUIRE(modeSelector->purpose() == EnvelopePurpose::Scratch);
+    REQUIRE(scratchMode->getToggleState());
+    REQUIRE_FALSE(pitchMode->getToggleState());
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("bipolar", {}));
+    pitchMode->onClick();
+    REQUIRE(modeSelector->purpose() == EnvelopePurpose::Pitch);
+    REQUIRE(pitchMode->getToggleState());
+    REQUIRE_FALSE(scratchMode->getToggleState());
+    REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+}
+
+TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
+        "[cycle-v2][node-editor-host][envelope][logarithmic][grid]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    GraphEditor graphEditor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(graphEditor.setNodeParameter(
+            graph, "env", "logarithmic", "Logarithmic", "1").succeeded());
+
+    Effect2DWidget widget(NodeKind::Envelope);
+    auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*graph.findNode("env"));
+
+    const var panelState = widget.automationState();
+    REQUIRE((int) panelState.getProperty("horizontalMinorGridLineCount", {}) == 12);
+    REQUIRE((int) panelState.getProperty("horizontalMajorGridLineCount", {}) == 4);
+    REQUIRE(static_cast<double>(panelState.getProperty("minorGridBrightness", {}))
+            == Catch::Approx(0.085 * 1.2));
+    REQUIRE(static_cast<double>(panelState.getProperty("majorGridBrightness", {}))
+            == Catch::Approx(0.14));
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

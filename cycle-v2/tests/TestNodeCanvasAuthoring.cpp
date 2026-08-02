@@ -55,7 +55,7 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 80.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
@@ -170,6 +170,37 @@ TEST_CASE("Bundled modulation connection and deletion are single undoable gestur
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 3);
+}
+
+TEST_CASE("Modulation triple default attachment is one undoable side-socket gesture",
+        "[cycle-v2][canvas][authoring][modulation][voice-context]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            {}));
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::VoiceContext,
+            "voice",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto connected = authoring.connectPorts(
+            { "triple", ModulationCableBundle::portId(), false },
+            { "voice", "modulation", true });
+
+    REQUIRE(connected.succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().attachmentType
+            == AttachmentType::ModulationTriple);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getEdges().empty());
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(document.graph().getEdges().size() == 1);
 }
 
 TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",

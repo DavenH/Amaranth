@@ -5,6 +5,7 @@
 #include "CurvePanelInfrastructure.h"
 #include "EnvelopePanelAdapter.h"
 #include "FlatCurvePanelAdapter.h"
+#include "../Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -54,7 +55,7 @@ public:
     }
 
     void renderPreview(Rectangle<float> bounds, float scaleFactor) override {
-        host->renderPreview(bounds, scaleFactor);
+        host->renderPreview(bounds, scaleFactor, preservesInteractivePreviewZoom());
     }
 
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const override {
@@ -81,6 +82,9 @@ public:
             object->setProperty("modelRevision", (int64) publicationRevision);
             object->setProperty("domainModel", domainModelName());
             object->setProperty("curveResizeCursor", host->usesCursor(MouseCursor::UpDownResizeCursor));
+            object->setProperty(
+                    "previewPreservesInteractiveZoom",
+                    preservesInteractivePreviewZoom());
         }
         return state;
     }
@@ -145,6 +149,7 @@ protected:
     virtual void applyDomainControlValues(float, float) {}
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
+    virtual bool preservesInteractivePreviewZoom() const { return false; }
 
     bool notifyMeshEdited() {
         if (controllerDelegate == nullptr || !registerMeshEdit()) {
@@ -306,17 +311,27 @@ public:
     }
 
     void syncFromNode(const Node& node) override {
+        const EnvelopePurpose purpose = envelopePurposeFor(node);
+        auto& typedPanel = envelopePanel();
+        typedPanel.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
         if (!adapter.needsNodeSync(node)) {
             return;
         }
-        auto& typedPanel = envelopePanel();
+
         panel->clearInteractionState();
         if (adapter.syncFromNode(node)) {
             finishNodeSync(node);
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
+            if (purpose == EnvelopePurpose::Pitch) {
+                typedPanel.fitEnvelopeVerticalRange();
+            }
         } else {
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
         }
+    }
+
+    void setBipolar(bool bipolar) override {
+        envelopePanel().setEnvelopeBipolar(bipolar);
     }
 
     void setLogarithmic(bool logarithmic) override {
@@ -333,6 +348,18 @@ public:
         }
         adapter.setAxisLinks(redLinked, blueLinked);
         envelopePanel().setEnvelopeAxisLinks(redLinked, blueLinked);
+    }
+
+    void fitVerticalRange() override {
+        envelopePanel().fitEnvelopeVerticalRange();
+    }
+
+    void resetVerticalRange() override {
+        envelopePanel().resetEnvelopeVerticalRange();
+    }
+
+    bool hasSingleSelectedVertex() override {
+        return envelopePanel().hasSingleSelectedEnvelopeVertex();
     }
 
     bool selectedMarkerState(bool loopMarker) const override {
@@ -393,6 +420,10 @@ private:
 
     String domainModelName() const override {
         return "envelope";
+    }
+
+    bool preservesInteractivePreviewZoom() const override {
+        return true;
     }
 
     EnvelopeCurvePanelContract& envelopePanel() {

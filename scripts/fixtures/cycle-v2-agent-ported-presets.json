@@ -48,7 +48,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 20
+      "equals": 12
     },
     {
       "command": "assertState",
@@ -83,7 +83,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 34
+      "equals": 20
     },
     {
       "command": "assertState",

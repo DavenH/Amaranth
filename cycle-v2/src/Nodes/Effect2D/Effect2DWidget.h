@@ -18,8 +18,11 @@ public:
     Component* getExpandedPanelComponentIfCreated();
     void setDelegate(CurvePanelControllerDelegate* delegate);
     void setControlValues(bool enabled, float firstValue, float secondValue, float thirdValue, int menuId);
+    void setEnvelopeBipolar(bool bipolar);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
+    void fitEnvelopeVerticalRange();
+    void resetEnvelopeVerticalRange();
     void syncFromNode(const Node& node);
     void renderExpandedPanelOpenGL(
             const Node& node,
@@ -40,6 +43,7 @@ public:
     uint64_t contentRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    bool hasSingleSelectedEnvelopeVertex();
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
     void toggleSelectedEnvelopeMarker(bool loopMarker);
 

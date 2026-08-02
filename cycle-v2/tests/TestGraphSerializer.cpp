@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
@@ -98,6 +101,67 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
 }
 
+TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attachments",
+        "[cycle-v2][graph][envelope][purpose][migration]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "legacyControl", {}));
+    graph.addEdge({
+            "scratchEnv",
+            "env",
+            "waveMesh",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    for (auto& node : *nodes) {
+        const String id = node.getProperty("id", {}).toString();
+        if (id == "env" || id == "scratchEnv" || id == "legacyControl") {
+            auto* parameters = node.getProperty("parameters", {}).getDynamicObject();
+            parameters->removeProperty("purpose");
+            parameters->setProperty("dynamic", true);
+        }
+    }
+
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    const var duplicateEdge = edges->getReference(0).clone();
+    edges->add(duplicateEdge);
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("env")) == EnvelopePurpose::Volume);
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("scratchEnv")) == EnvelopePurpose::Scratch);
+    REQUIRE(envelopePurposeFor(*loaded.graph.findNode("legacyControl")) == EnvelopePurpose::Control);
+    for (const String& id : { "env", "scratchEnv", "legacyControl" }) {
+        const Node* envelope = loaded.graph.findNode(id);
+        REQUIRE(envelope != nullptr);
+        REQUIRE(std::none_of(
+                envelope->parameters.begin(),
+                envelope->parameters.end(),
+                [](const NodeParameter& parameter) {
+                    return parameter.id == "dynamic";
+                }));
+    }
+
+    const auto duplicateCount = std::count_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "scratchEnv"
+                        && edge.destNodeId == "waveMesh"
+                        && edge.destPortId == "scratch";
+            });
+    REQUIRE(duplicateCount == 1);
+    const String canonical = serializer.toJsonString(loaded.graph);
+    REQUIRE(serializer.toJsonString(serializer.fromJsonString(canonical)) == canonical);
+}
+
 TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
         "[cycle-v2][graph][voice-context][migration]") {
     const GraphSerializer serializer;
@@ -113,6 +177,59 @@ TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
     const Node* voice = loaded.graph.findNode("voice");
     REQUIRE(voice != nullptr);
     REQUIRE(parameterValueForNode(*voice, "voices").isEmpty());
+}
+
+TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",
+        "[cycle-v2][graph][migration]") {
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    for (var& edge : *edges) {
+        auto* object = edge.getDynamicObject();
+        REQUIRE(object != nullptr);
+        object->removeProperty("attachmentType");
+        if (object->getProperty("connectionKind").toString() == "signal") {
+            object->removeProperty("connectionKind");
+        }
+    }
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphValidator().isValid(loaded.graph));
+    REQUIRE(serializer.toJsonString(loaded.graph).contains("\"attachmentType\""));
+}
+
+TEST_CASE("Format one infers typed static configuration attachments",
+        "[cycle-v2][graph][migration][voice-context]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "triple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 1);
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    REQUIRE(edges->size() == 1);
+    auto* edge = edges->getReference(0).getDynamicObject();
+    REQUIRE(edge != nullptr);
+    edge->removeProperty("connectionKind");
+    edge->removeProperty("attachmentType");
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.getEdges().size() == 1);
+    REQUIRE(loaded.graph.getEdges().front().connectionKind
+            == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(loaded.graph.getEdges().front().attachmentType
+            == AttachmentType::ModulationTriple);
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
@@ -314,6 +431,27 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
         for (const Node& node : graph->getNodes()) {
             REQUIRE(parameterValueForNode(node, "enabled") != "0");
         }
+        const auto modulationEdges = std::count_if(
+                graph->getEdges().begin(),
+                graph->getEdges().end(),
+                [](const Edge& edge) {
+                    return edge.sourceNodeId == "morph";
+                });
+        REQUIRE(modulationEdges == 1);
+        const auto modulationAttachment = std::find_if(
+                graph->getEdges().begin(),
+                graph->getEdges().end(),
+                [](const Edge& edge) {
+                    return edge.sourceNodeId == "morph"
+                            && edge.sourcePortId == "modulation"
+                            && edge.destNodeId == "voice"
+                            && edge.destPortId == "modulation";
+                });
+        REQUIRE(modulationAttachment != graph->getEdges().end());
+        REQUIRE(modulationAttachment->connectionKind
+                == ConnectionKind::ConfigurationAttachment);
+        REQUIRE(modulationAttachment->attachmentType
+                == AttachmentType::ModulationTriple);
     }
 
     REQUIRE(african.findNode("waveshaper") == nullptr);

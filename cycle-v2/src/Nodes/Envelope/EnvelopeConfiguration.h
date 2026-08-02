@@ -16,7 +16,6 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     float redMorph { 0.5f };
     float blueMorph { 0.5f };
     bool logarithmic {};
-    bool dynamicWhileLive {};
 };
 
 }

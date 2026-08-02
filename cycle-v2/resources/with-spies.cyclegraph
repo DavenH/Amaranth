@@ -509,7 +509,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2370.6897, "y": 134.13789 },
-            "parameters": { "logarithmic": true, "red": 0.143, "blue": 0.012, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "volume", "logarithmic": true, "red": 0.143, "blue": 0.012, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -637,7 +637,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2.50753, "y": 52.62711 },
-            "parameters": { "logarithmic": false, "red": 0.5, "blue": 0.5, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -786,9 +786,8 @@
     ],
     "edges": [
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "waveMesh", "destPortId": "context" },
-        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "waveMesh", "destPortId": "scratch" },
-        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "magMesh", "destPortId": "scratch" },
-        { "sourceNodeId": "guide", "sourcePortId": "guide", "destNodeId": "phaseMesh", "destPortId": "scratch" },
+        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "waveMesh", "destPortId": "scratch", "connectionKind": "processingAttachment" },
+        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "magMesh", "destPortId": "scratch", "connectionKind": "processingAttachment" },
         { "sourceNodeId": "magMesh", "sourcePortId": "out", "destNodeId": "addMag", "destPortId": "right" },
         { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "addPhase", "destPortId": "left" },
         { "sourceNodeId": "phaseMesh", "sourcePortId": "out", "destNodeId": "addPhase", "destPortId": "right" },

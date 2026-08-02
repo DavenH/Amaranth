@@ -1,0 +1,195 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "scratchEnvelope",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purpose",
+      "equals": "Scratch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeLabel",
+      "equals": "Mode"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeOptions.3.selected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.polarity",
+      "equals": "unipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.fillBaseline",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purposeBounds.y",
+      "op": "lessThan",
+      "value": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.blueMorphBounds.y",
+      "op": "greaterThan",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.actionRowBounds.y",
+      "op": "greaterThan",
+      "value": 190
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.scratch"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "purpose",
+      "equals": "scratch"
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 20
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.pitch",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "purpose",
+      "equals": "pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.purpose",
+      "equals": "Pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeOptions.2.selected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.fillBaseline",
+      "equals": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.neutralLineVisible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.fitVerticalBounds.width",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.fullVerticalBounds.width",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.fitVerticalBounds.y",
+      "op": "greaterThan",
+      "value": 190
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewPreservesInteractiveZoom",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
+      "equals": 230
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.10.compactPurposeIcon",
+      "equals": "pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 17
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.control",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "logarithmic",
+      "label": "Logarithmic",
+      "value": "1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.horizontalMinorGridLineCount",
+      "equals": 12
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.horizontalMajorGridLineCount",
+      "equals": 4
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.minorGridBrightness",
+      "op": "greaterThan",
+      "value": 0.101
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.minorGridBrightness",
+      "op": "lessThan",
+      "value": 0.103
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": true
+}

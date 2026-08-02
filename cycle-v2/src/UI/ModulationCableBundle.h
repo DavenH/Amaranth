@@ -36,6 +36,7 @@ struct ModulationCableBundle {
             const NodeGraph& graph,
             int edgeIndex);
     static bool hidesIndividualPort(const Node& node, const Port& port);
+    static bool usesSharedSourceSocket(const Node& node, const Edge& edge);
     static Point<float> worldCentre(const Node& node, bool input);
 };
 

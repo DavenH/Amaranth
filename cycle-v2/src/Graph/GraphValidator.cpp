@@ -1,6 +1,7 @@
 #include "GraphValidator.h"
 
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -190,7 +191,8 @@ void GraphValidator::validateEdge(
 
     if (edge.isProcessingAttachment()) {
         if (trimeshGuideTarget) {
-            if (sourceNode->kind != NodeKind::GuideCurve) {
+            if (sourceNode->kind != NodeKind::GuideCurve
+                    || edge.attachmentType != AttachmentType::GuideCurve) {
                 report(
                         GraphValidationCode::InvalidAttachmentSource,
                         "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId);
@@ -199,10 +201,12 @@ void GraphValidator::validateEdge(
             return;
         }
 
-        if (source->domain != PortDomain::EnvelopeSignal) {
+        if (sourceNode->kind != NodeKind::Envelope
+                || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch
+                || edge.attachmentType != AttachmentType::ScratchEnvelope) {
             if (!report(
                         GraphValidationCode::InvalidAttachmentSource,
-                        "Attachments currently require an envelope source: " + edge.sourceNodeId)) {
+                        "Scratch attachments require a scratch-purpose Envelope source: " + edge.sourceNodeId)) {
                 return;
             }
         }
@@ -230,6 +234,29 @@ void GraphValidator::validateEdge(
                 GraphValidationCode::ScratchPortRequiresAttachment,
                 "Scratch ports require ProcessingAttachment routing: " + edge.destNodeId + "." + dest->id);
         return;
+    }
+
+    if (sourceNode->kind == NodeKind::Envelope) {
+        const EnvelopePurpose purpose = envelopePurposeFor(*sourceNode);
+        if (edge.connectionKind != envelopeConnectionKind(purpose)) {
+            report(
+                    GraphValidationCode::InvalidAttachmentSource,
+                    "Envelope purpose does not match connection kind: " + edge.sourceNodeId);
+            return;
+        }
+        if (purpose == EnvelopePurpose::Volume && destNode->kind != NodeKind::Multiply) {
+            report(
+                    GraphValidationCode::DomainMismatch,
+                    "Volume envelopes can only feed gain/factor operations: " + edge.destNodeId);
+            return;
+        }
+        if (purpose == EnvelopePurpose::Pitch
+                && !(destNode->kind == NodeKind::VoiceContext && dest->id == "pitch")) {
+            report(
+                    GraphValidationCode::PitchRequiresVoiceAwareDestination,
+                    "Pitch envelopes can only feed Voice Context pitch: " + edge.destNodeId);
+            return;
+        }
     }
 
     if (isFixedWaveContextMismatch(*sourceNode, *destNode, *dest)) {

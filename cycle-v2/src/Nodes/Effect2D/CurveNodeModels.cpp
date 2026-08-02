@@ -426,7 +426,6 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
             && typed->envelope() != nullptr
             && copyFrom(*typed->envelope());
     logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
-    dynamicWhileLive = parameterValueForNode(node, "dynamic", "0").getIntValue() != 0;
     red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
     blue = jlimit(0.f, 1.f, parameterValueForNode(node, "blue", "0.5").getFloatValue());
     return loaded;
@@ -460,7 +459,6 @@ bool EnvelopeNodeModel::copyFrom(const EnvelopeNodeModel& other) {
     cubeIds = other.cubeIds;
     selection = other.selection;
     logarithmic = other.logarithmic;
-    dynamicWhileLive = other.dynamicWhileLive;
     red = other.red;
     blue = other.blue;
     redLinked = other.redLinked;
@@ -477,7 +475,6 @@ bool EnvelopeNodeModel::equals(const EnvelopeNodeModel& other) const {
             && cubeIds == other.cubeIds
             && selection == other.selection
             && logarithmic == other.logarithmic
-            && dynamicWhileLive == other.dynamicWhileLive
             && red == other.red
             && blue == other.blue
             && redLinked == other.redLinked

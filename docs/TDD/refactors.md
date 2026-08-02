@@ -1,5 +1,19 @@
 # Refactor Notes
 
+## Cycle V2 Envelope curve panel decomposition
+
+`cycle-v2/src/Nodes/Effect2D/EnvelopeCurvePanel.cpp` is a cohesive
+Envelope-domain implementation, but it has grown beyond 1,100 lines while
+combining interaction, marker/seam editing, drawing, background-grid policy,
+automation inspection, and vertical view framing.
+
+Extract narrowly owned Envelope presentation helpers without moving behavior
+into the generic flat-curve panel or controller. A useful first boundary is a
+view-presentation object that owns logarithmic grid classification and
+vertical framing over the existing `Panel2D`/`ZoomPanel` implementation. Keep
+mesh interaction, rasterizer ownership, and marker topology in the Envelope
+panel and avoid a node-kind switchboard.
+
 ## Cycle V2 guide attachment target semantics
 
 Status: open after the 2026-07-31 Stengah preset parity inspection.

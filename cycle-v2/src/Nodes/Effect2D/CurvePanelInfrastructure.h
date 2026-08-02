@@ -62,7 +62,7 @@ public:
     Component* component();
     Component* componentIfCreated();
     void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
-    void renderPreview(Rectangle<float> bounds, float scaleFactor);
+    void renderPreview(Rectangle<float> bounds, float scaleFactor, bool preserveInteractiveZoom);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool usesCursor(const MouseCursor& cursor) const;

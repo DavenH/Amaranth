@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <set>
 
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
@@ -9,6 +10,8 @@
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Graph/NodeDefinition.h"
+#include "../src/UI/EnvelopePurposeIconRenderer.h"
+#include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCanvasPresentation.h"
@@ -137,6 +140,63 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
     }
 }
 
+TEST_CASE("Every Envelope purpose has a parseable compact icon",
+        "[cycle-v2][canvas][envelope][icons]") {
+    Image blank(Image::ARGB, 24, 24, true);
+    const uint64_t blankChecksum = imageChecksum(blank);
+    std::set<uint64_t> checksums;
+
+    for (const EnvelopePurpose purpose : kEnvelopePurposes) {
+        INFO("Missing or invalid Envelope purpose icon for "
+                << envelopePurposeToString(purpose));
+        REQUIRE(EnvelopePurposeIconRenderer::hasIcon(purpose));
+
+        Image rendered(Image::ARGB, 24, 24, true);
+        Graphics graphics(rendered);
+        EnvelopePurposeIconRenderer::paint(
+                graphics,
+                purpose,
+                rendered.getBounds().toFloat());
+        const uint64_t checksum = imageChecksum(rendered);
+        REQUIRE(checksum != blankChecksum);
+        REQUIRE(checksums.emplace(checksum).second);
+    }
+}
+
+TEST_CASE("Envelope mode selector presents one contiguous highlighted choice",
+        "[cycle-v2][canvas][envelope][icons][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    REQUIRE(messageLock.lockWasGained());
+    EnvelopePurposeSelector selector;
+    selector.setBounds(0, 0, 148, 28);
+    int changes {};
+    selector.onChange = [&changes](EnvelopePurpose) {
+        ++changes;
+    };
+
+    std::set<uint64_t> selectedChecksums;
+    Rectangle<float> previous;
+    for (const EnvelopePurpose purpose : kEnvelopePurposes) {
+        selector.setPurpose(purpose, sendNotificationSync);
+        REQUIRE(selector.purpose() == purpose);
+        const auto bounds = selector.optionBounds(purpose);
+        REQUIRE(bounds.getHeight() == Catch::Approx(28.f));
+        if (!previous.isEmpty()) {
+            REQUIRE(bounds.getX() == Catch::Approx(previous.getRight()));
+        }
+        previous = bounds;
+
+        const Image rendered = selector.createComponentSnapshot(selector.getLocalBounds());
+        REQUIRE(selectedChecksums.emplace(imageChecksum(rendered)).second);
+    }
+
+    REQUIRE(selector.getNumChildComponents() == 4);
+    REQUIRE(changes == 3);
+    selector.setPurpose(EnvelopePurpose::Scratch, sendNotificationSync);
+    REQUIRE(changes == 3);
+}
+
 TEST_CASE("Node palette hover remains open across its pullout and closes outside",
         "[cycle-v2][canvas][palette]") {
     NodePalette palette;
@@ -184,7 +244,7 @@ TEST_CASE("Node canvas scene shares geometry with typed hit testing", "[cycle-v2
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 100.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 500.f, 80.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     NodeCanvasViewport viewport;
     viewport.setTransform({ 20.f, 30.f }, 1.f);
@@ -461,7 +521,9 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.vertex.0.red",
-            PortDomain::ControlSignal, true });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;
@@ -510,7 +572,7 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 420.f, 80.f }));
     graph.addEdge({
             "source", "out", "output", "time",
-            PortDomain::TimeSignal, false });
+            PortDomain::TimeSignal, ConnectionKind::Signal });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;

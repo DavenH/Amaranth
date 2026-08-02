@@ -2,6 +2,7 @@
 
 #include <App/MeshLibrary.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Rasterization/ScratchPositionPolicy.h>
 #include <Obj/MorphPosition.h>
 #include <Util/CommonEnums.h>
 
@@ -13,13 +14,19 @@ namespace Cycle::Rasterization {
         }
 
         bool shouldUseScratchPosition(int layerGroup, int currentMorphAxis) const {
-            if (layerGroup == LayerGroups::GroupTime && currentMorphAxis != Vertex::Time) {
-                return false;
-            }
+            return ::Rasterization::ScratchPositionPolicy::shouldApply(
+                    scratchDomain(layerGroup), currentMorphAxis);
+        }
 
-            return layerGroup == LayerGroups::GroupTime
-                || layerGroup == LayerGroups::GroupSpect
-                || layerGroup == LayerGroups::GroupPhase;
+        ::Rasterization::ScratchSourceDomain scratchDomain(int layerGroup) const {
+            if (layerGroup == LayerGroups::GroupTime) {
+                return ::Rasterization::ScratchSourceDomain::Time;
+            }
+            if (layerGroup == LayerGroups::GroupSpect
+                    || layerGroup == LayerGroups::GroupPhase) {
+                return ::Rasterization::ScratchSourceDomain::Spectral;
+            }
+            return ::Rasterization::ScratchSourceDomain::Unsupported;
         }
     };
 
@@ -40,9 +47,11 @@ namespace Cycle::Rasterization {
                 return morph;
             }
 
-            if (axisPolicy.shouldUseScratchPosition(context.layerGroup, context.currentMorphAxis)) {
-                morph.time.setValueDirect(context.scratchPosition);
-            }
+            morph = ::Rasterization::ScratchPositionPolicy::resolve(
+                    morph,
+                    axisPolicy.scratchDomain(context.layerGroup),
+                    context.currentMorphAxis,
+                    context.scratchPosition);
 
             return morph;
         }
