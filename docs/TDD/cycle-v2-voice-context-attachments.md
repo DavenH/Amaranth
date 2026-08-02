@@ -281,19 +281,29 @@ The expanded editor presents only Voice Context-owned controls: source domain,
 octave, pitch, portamento, and oversampling. It does not embed or
 navigate redundant attachment rows. Unison retains its own graphic and editor.
 
-It also presents the global preview Voice Length as a continuous 0.25 to 4
-second slider. This is audition context rather than graph configuration: it is
+It also presents the global preview Voice Length with Cycle 1's authoritative
+`exp(8 * unit - 3)` mapping (approximately 0.05 to 148.41 seconds), shared
+through `CycleDsp::voiceLengthSeconds` and its inverse. This is audition context
+rather than graph configuration: it is
 not serialized into the Voice Context node and does not create graph revisions
 or undo entries. Movement updates the compact Voice Context summary and all
 Unison previews immediately. The current duration is shown in seconds beside
-the slider.
+the slider using Cycle 1's rounded value and the compact `s` unit.
 
-Octave, Voice Length, and Pitch share the same down-drag-up interaction
-contract. Octave and Pitch publish one graph undo entry when the gesture ends;
-Voice Length remains global preview state. Voice Length shows labelled duration
-ticks and Pitch shows its current value in semitones. Preview cache invalidation
-is signature-scoped so dragging Voice Length does not discard unrelated node
+Octave, Voice Length, Pitch, and Oversampling share the same down-drag-up
+interaction contract. The graph-backed controls publish one graph undo entry
+when the gesture ends; Voice Length remains global preview state. Voice Length
+shows labelled duration ticks, Octave shows labelled value ticks, and Pitch
+shows its current value in semitones. Preview cache invalidation is
+signature-scoped so dragging Voice Length does not discard unrelated node
 sprites.
+
+The expanded editor uses one three-column control grid: right-aligned names,
+equal-width slider tracks, and left-aligned current values. Domain labels the
+waveform/spectral selector. Oversampling participates in the same draggable,
+single-undo gesture contract as Octave and Pitch, and Portamento follows all
+slider rows. The editor is 20 percent taller than the first Voice Length layout
+so tick labels and rows do not compete vertically.
 
 ## Compiled Voice Plan
 
@@ -537,11 +547,11 @@ configuration-attachment TDD so that the dependency direction stays explicit.
   compact and expanded Unison previews.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
-- Cycle V2 verification passes 5,353 assertions in 388 test cases.
+- Cycle V2 verification passes 5,352 assertions in 388 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
   four-node attachment topology, compact summary, expanded Voice Context
-  presentation, complete Octave/Pitch/Voice Length drag gestures, and their
-  resulting graph or preview state. Filtered launch logs are
-  `/private/tmp/cycle-v2-voice-context-slider-drag-logs.txt`. The reviewed
+  presentation, complete Octave/Pitch/Voice Length/Oversampling drag gestures,
+  and their resulting graph or preview state. Filtered launch logs are
+  `/private/tmp/cycle-v2-voice-context-layout-logs.txt`. The reviewed
   OS-level control capture is
-  `/private/tmp/cycle-v2-voice-context-slider-drag-os.png`.
+  `/private/tmp/cycle-v2-voice-context-layout-os.png`.

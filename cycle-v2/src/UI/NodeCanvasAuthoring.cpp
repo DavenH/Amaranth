@@ -530,7 +530,8 @@ bool NodeCanvasAuthoring::beginVoiceContextSliderGesture(
     const Node* node = findNode(nodeId);
     if (node == nullptr || node->kind != NodeKind::VoiceContext
             || (edit.control != VoiceContextEdit::Control::Octave
-                    && edit.control != VoiceContextEdit::Control::Pitch)) {
+                    && edit.control != VoiceContextEdit::Control::Pitch
+                    && edit.control != VoiceContextEdit::Control::Oversampling)) {
         return false;
     }
 
@@ -552,9 +553,18 @@ bool NodeCanvasAuthoring::updateVoiceContextSliderGesture(const VoiceContextEdit
         return false;
     }
 
-    const bool octave = edit.control == VoiceContextEdit::Control::Octave;
-    const String parameterId = octave ? "octave" : "pitch";
-    const String label = octave ? "Octave" : "Pitch";
+    String parameterId;
+    String label;
+    if (edit.control == VoiceContextEdit::Control::Octave) {
+        parameterId = "octave";
+        label = "Octave";
+    } else if (edit.control == VoiceContextEdit::Control::Pitch) {
+        parameterId = "pitch";
+        label = "Pitch";
+    } else {
+        parameterId = "oversampling";
+        label = "Oversampling";
+    }
     const auto result = commands.setNodeParameter(
             voiceContextGestureNodeId,
             parameterId,

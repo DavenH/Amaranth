@@ -6,8 +6,9 @@
   pointer drag was not routed back to those controls.
 - Voice Length discarded every cached preview sprite for each movement, making
   continuous dragging visibly laggy.
-- The focused Voice Context fixture now drags all three sliders through complete
-  down-drag-up sequences and asserts their resulting graph or preview state.
+- The focused Voice Context fixture now drags Octave, Pitch, Voice Length, and
+  Oversampling through complete down-drag-up sequences and asserts their
+  resulting graph or preview state.
 
 ## Open: Trimesh rasterization ignores attached guide curves
 

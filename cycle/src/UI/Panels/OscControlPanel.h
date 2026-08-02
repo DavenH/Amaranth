@@ -1,11 +1,14 @@
 #pragma once
 
+#include <map>
+
 #include <App/Doc/EditSource.h>
 #include <App/Doc/Savable.h>
 #include <App/SingletonAccessor.h>
-#include <map>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Obj/Ref.h>
 #include <UI/ParameterGroup.h>
+
 #include "JuceHeader.h"
 #include "../TourGuide.h"
 #include "../Widgets/HSlider.h"
@@ -61,8 +64,12 @@ public:
 
     static float scaleVolume	(float val) { return expf(6 * val - 3); }
     static float scaleOctave	(float val) { return (float) ::roundToInt(4 * (val - 0.5f) + 0.5f); }
-    static float scaleSpeed		(float val) { return expf(8 * val - 3); }
-    static float scaleSpeedInv	(float val) { return ((float) log(val) + 3) / 8.f; }
+    static float scaleSpeed(float val) {
+        return (float) CycleDsp::voiceLengthSeconds(val);
+    }
+    static float scaleSpeedInv(float val) {
+        return CycleDsp::voiceLengthUnitValue(val);
+    }
     static float scalePhase		(float val) { return val; }
 //	static float cutoffScale	(float val) { return Arithmetic::invLogMapping((float) getConstant(AmpTension), val); }
 

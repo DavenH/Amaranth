@@ -29,6 +29,7 @@ public:
     static Rectangle<float> octaveControlBounds(Rectangle<float> panel);
     static Rectangle<float> voiceLengthControlBounds(Rectangle<float> panel);
     static Rectangle<float> pitchControlBounds(Rectangle<float> panel);
+    static Rectangle<float> oversamplingControlBounds(Rectangle<float> panel);
     static std::optional<VoiceContextEdit> sliderEditAt(
             VoiceContextEdit::Control control,
             Rectangle<float> panel,

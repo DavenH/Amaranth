@@ -1,9 +1,3 @@
-#include "NodeCanvas.h"
-#include "NodeViewModule.h"
-#include "TransformCompactEditor.h"
-
-#include "../Runtime/GraphAudioExecutor.h"
-
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -11,6 +5,14 @@
 #include <iterator>
 #include <limits>
 #include <utility>
+
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
+#include "NodeCanvas.h"
+#include "NodeViewModule.h"
+#include "TransformCompactEditor.h"
+
+#include "../Runtime/GraphAudioExecutor.h"
 
 namespace CycleV2 {
 
@@ -85,8 +87,8 @@ NodeCanvas::NodeCanvas() :
             ? ProbeRefreshMode::LiveLatest
             : ProbeRefreshMode::OnGestureCommit;
     globalUnisonPreviewContext.voiceDurationSeconds = jlimit(
-            0.25,
-            4.0,
+            CycleDsp::voiceLengthSeconds(0.f),
+            CycleDsp::voiceLengthSeconds(1.f),
             settings.getGlobalSettingValue(
                     AppSettings::PreviewVoiceLengthMilliseconds) / 1000.0);
     probeRailState.expanded = !graph.getSignalProbes().empty();
@@ -227,7 +229,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 draggingVoiceContextSlider = control;
                 setPreviewVoiceLength(click.voiceContextEdit->value.getDoubleValue());
             } else if (control == VoiceContextEdit::Control::Octave
-                    || control == VoiceContextEdit::Control::Pitch) {
+                    || control == VoiceContextEdit::Control::Pitch
+                    || control == VoiceContextEdit::Control::Oversampling) {
                 if (authoring.beginVoiceContextSliderGesture(
                             expandedNode->id,
                             *click.voiceContextEdit)) {
@@ -800,7 +803,10 @@ void NodeCanvas::refreshCompiledStateAsync() {
 }
 
 void NodeCanvas::setPreviewVoiceLength(double seconds) {
-    const double duration = jlimit(0.25, 4.0, seconds);
+    const double duration = jlimit(
+            CycleDsp::voiceLengthSeconds(0.f),
+            CycleDsp::voiceLengthSeconds(1.f),
+            seconds);
     if (std::abs(globalUnisonPreviewContext.voiceDurationSeconds - duration) < 0.0005) {
         return;
     }

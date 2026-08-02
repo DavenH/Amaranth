@@ -318,6 +318,11 @@ public:
                     "pitch",
                     VoiceContextCompactEditor::pitchControlBounds(panel),
                     node.id));
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".oversampling",
+                    "oversampling",
+                    VoiceContextCompactEditor::oversamplingControlBounds(panel),
+                    node.id));
             return;
         }
 

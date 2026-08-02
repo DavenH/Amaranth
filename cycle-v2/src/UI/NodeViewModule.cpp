@@ -87,7 +87,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     NodeViewCapabilities voice = preview;
     voice.expandedEditor = true;
     voice.expandedEditorBlocksCanvas = false;
-    voice.expandedEditorSize = Point<float>(440.f, 230.f);
+    voice.expandedEditorSize = Point<float>(440.f, 276.f);
     add(NodeKind::VoiceContext, voice);
 
     NodeViewCapabilities transform = preview;

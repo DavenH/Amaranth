@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
+
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
@@ -622,9 +624,9 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::VoiceLength);
     REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getX())
-            == Catch::Approx(0.25));
+            == Catch::Approx(std::exp(-3.0)));
     REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
-            == Catch::Approx(4.0));
+            == Catch::Approx(std::exp(5.0)));
 
     const Rectangle<float> pitch = VoiceContextCompactEditor::pitchControlBounds(panel);
     edit = editAt({ pitch.getX(), pitch.getCentreY() });
@@ -639,16 +641,27 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
             panel,
             pitch.getRight())->value == "12");
 
-    edit = editAt({ 112.f, 163.5f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
-    REQUIRE(edit.value == "1");
-
-    edit = editAt({ 106.f, 189.5f });
+    const Rectangle<float> oversampling =
+            VoiceContextCompactEditor::oversamplingControlBounds(panel);
+    edit = editAt({ oversampling.getX(), oversampling.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
     REQUIRE(edit.value == "1x");
-    REQUIRE(editAt({ 294.f, 189.5f }).value == "2x");
-    REQUIRE(editAt({ 484.f, 189.5f }).value == "4x");
-    REQUIRE(editAt({ 672.f, 189.5f }).value == "8x");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Oversampling,
+            panel,
+            oversampling.getCentreX())->value == "4x");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Oversampling,
+            panel,
+            oversampling.getRight())->value == "8x");
+
+    REQUIRE(octave.getWidth() == Catch::Approx(voiceLength.getWidth()));
+    REQUIRE(octave.getWidth() == Catch::Approx(pitch.getWidth()));
+    REQUIRE(octave.getWidth() == Catch::Approx(oversampling.getWidth()));
+
+    edit = editAt({ 112.f, 237.f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
+    REQUIRE(edit.value == "1");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,
