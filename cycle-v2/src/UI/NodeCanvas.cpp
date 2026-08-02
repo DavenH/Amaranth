@@ -304,14 +304,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 }
                 break;
 
-            case CanvasNodeActionKind::SetEnvelopePurpose:
-                applyAuthoringResult(authoring.setNodeParameter(
-                        action->nodeId,
-                        "purpose",
-                        "Purpose",
-                        action->value));
-                requestCanvasRepaint();
-                break;
         }
 
         return;

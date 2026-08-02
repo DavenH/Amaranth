@@ -8,6 +8,7 @@
 #include "NodeDefinition.h"
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Unison/UnisonNode.h"
 
@@ -331,7 +332,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                       output("red", "Red", PortDomain::ControlSignal),
                       output("blue", "Blue", PortDomain::ControlSignal),
                       output("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                              ChannelLayout::Mono, PortSide::Bottom,
+                              ChannelLayout::Mono, PortSide::Right,
                               ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple) }, {
                             choice("yellowSource", "Yellow Source", "voiceTime", {
                                     "voiceTime", "velocity", "inverseVelocity", "keyScale",
@@ -426,12 +427,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
-                            choice("purpose", "Purpose", "control", { "control", "pitch", "scratch" },
+                            choice("purpose", "Purpose", "control",
+                                    { "control", "volume", "pitch", "scratch" },
                                     graph | dsp | preview | presentation),
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            boolean("dynamic", "Dynamic While Live", false, dsp | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }))
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Envelope))
@@ -667,25 +668,7 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
             found->value = parameterDefinition.normalized(found->value);
         }
     }
-
-    if (node.kind == NodeKind::Envelope && !node.outputs.empty()) {
-        auto& envelopeOutput = node.outputs.front();
-        const String purpose = typedParameterString(node.parameters, "purpose", "control");
-        envelopeOutput.connectionKind = purpose == "scratch"
-                ? ConnectionKind::ProcessingAttachment
-                : ConnectionKind::Signal;
-        envelopeOutput.attachmentType = purpose == "scratch"
-                ? AttachmentType::ScratchEnvelope
-                : AttachmentType::None;
-        envelopeOutput.domain = purpose == "pitch"
-                ? PortDomain::PitchSignal
-                : (purpose == "scratch"
-                        ? PortDomain::EnvelopeSignal
-                        : PortDomain::ControlSignal);
-        envelopeOutput.label = purpose == "pitch" ? "Pitch"
-                : (purpose == "scratch" ? "Scratch" : "Control");
-        node.subtitle = envelopeOutput.label.toLowerCase() + " envelope";
-    }
+    applyEnvelopePurpose(node);
 }
 
 String typedParameterString(

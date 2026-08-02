@@ -16,7 +16,7 @@ namespace CycleV2 {
 
 class EnvelopeSignalProcessor {
 public:
-    struct DynamicDiagnostics {
+    struct MorphPreparationDiagnostics {
         uint64_t requests {};
         uint64_t preparations {};
         uint64_t adoptions {};
@@ -34,7 +34,7 @@ public:
     bool serviceNonRealtimePreparation();
 
     void process(AudioProcessContext& context);
-    DynamicDiagnostics dynamicDiagnostics() const;
+    MorphPreparationDiagnostics preparationDiagnostics() const;
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
     }
@@ -42,9 +42,9 @@ public:
 
 private:
     void requestEffectiveMorph(AudioProcessContext& context);
-    void adoptPreparedDynamicEnvelope();
+    void adoptPreparedEnvelope();
     const EnvelopeConfiguration* preparedConfiguration() const;
-    static std::shared_ptr<const EnvelopeConfiguration> prepareDynamicConfiguration(
+    static std::shared_ptr<const EnvelopeConfiguration> prepareMorphConfiguration(
             const EnvelopeConfiguration& base,
             float red,
             float blue);

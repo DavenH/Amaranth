@@ -109,7 +109,9 @@ juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port
         };
     }
 
-    const float y = node.bounds.getY() + 58.f + (float) portIndexOnSide(node, port) * 34.f;
+    const float y = node.bounds.getY()
+            + NodePortGeometry::firstSidePortOffset
+            + (float) portIndexOnSide(node, port) * NodePortGeometry::sidePortSpacing;
     return {
             port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
             y
@@ -184,10 +186,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             }
         };
         appendPorts(node.inputs, NodeSceneTargetKind::InputPort);
-        appendPorts(
-                node.outputs,
-                NodeSceneTargetKind::OutputPort,
-                node.kind == NodeKind::ModulationTriple);
+        if (node.kind != NodeKind::ModulationTriple) {
+            appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
+        }
         if (node.kind == NodeKind::ModulationTriple
                 || ModulationCableBundle::supportsDestination(node)) {
             const bool input = node.kind != NodeKind::ModulationTriple;
@@ -234,7 +235,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         }
 
         const bool isModulationBundle = modulationBundle.has_value();
-        const auto source = viewport.toScreen(isModulationBundle
+        const bool usesSharedModulationSource = isModulationBundle
+                || ModulationCableBundle::usesSharedSourceSocket(*sourceNode, edge);
+        const auto source = viewport.toScreen(usesSharedModulationSource
                 ? ModulationCableBundle::worldCentre(*sourceNode, false)
                 : portWorldCentre(*sourceNode, *sourcePort));
         const auto attachmentCentre = NodeViewModuleRegistry::instance()
@@ -251,7 +254,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         juce::Path visiblePath = cablePath(
                 source,
                 destination,
-                sourcePort->side,
+                usesSharedModulationSource ? PortSide::Right : sourcePort->side,
                 destinationSide,
                 viewport.getZoom());
         juce::Path hitPath;

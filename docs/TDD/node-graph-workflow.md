@@ -661,8 +661,9 @@ Trilinear mesh implementation plan:
 - use Cycle 1.x 2D curve-fill semantics as the parity target: additive spectral
   magnitude is unipolar yellow from zero to the curve, multiplicative or
   subtractive spectral magnitude is bipolar yellow/blue, phase is bipolar
-  yellow/blue, time-domain waveforms are bipolar light grey, and envelope nodes
-  resolve unipolar versus bipolar from their downstream connection role,
+  yellow/blue, time-domain waveforms are bipolar light grey, and Envelope
+  polarity follows its persistent purpose as defined in
+  `cycle-v2-envelope-purpose-routing-and-scaling.md`,
 - treat Cycle 1.x `Waveform2D`, `Spectrum2D`, `WaveformInter2D`,
   `SpectrumInter2D`, `Waveform3D`, `Spectrum3D`, `WaveformInter3D`,
   `SpectrumInter3D`, and `GraphicRasterizer` as parity references and reusable

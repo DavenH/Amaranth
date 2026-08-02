@@ -1,0 +1,72 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "scratchEnvelope",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopEnabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sustainEnabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopTooltip",
+      "equals": "Select one envelope vertex to set the loop start"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:scratchEnvelope.envelopeAction.loop"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopEnabled",
+      "equals": false
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.panel2D",
+      "targetX": 0.02,
+      "targetY": 0.9,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopEnabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sustainEnabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopTooltip",
+      "equals": "Toggle selected vertex as loop start"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-envelope-marker-controls-enabled.png"
+    }
+  ],
+  "quit": true
+}

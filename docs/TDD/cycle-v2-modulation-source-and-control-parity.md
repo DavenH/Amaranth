@@ -19,9 +19,10 @@ Cycle v2 already models modulation destinations as graph inputs. Envelope nodes
 have red and blue `ControlSignal` inputs, and Trilinear Mesh nodes have yellow,
 red, and blue `ControlSignal` inputs. Their audio processors already distinguish
 persistent base values from connected effective values. Realtime Trilinear Mesh
-and Envelope morph positions use per-voice `SmoothedMorphPosition` state, and
-dynamic Envelope preparation is bounded, coalesced, immutable, and adopted
-without resetting playback.
+and Envelope morph positions use per-voice `SmoothedMorphPosition` state.
+Envelope preparation is bounded, coalesced, and immutable; effective Envelope
+morph is currently latched at note-on pending a Voice Context-owned
+live-adoption policy.
 
 The graph has no nodes that publish the performance controls which drove the
 Cycle v1 modulation matrix. A user therefore cannot connect velocity, key
@@ -390,13 +391,11 @@ contract requires direct assignment.
 
 Envelope behavior remains governed by the dynamic-envelope TDD:
 
-- dynamic disabled: effective red/blue are latched for a note;
-- dynamic enabled: smoothed current positions produce thresholded,
-  cadence-bounded, newest-only preparation requests;
+- effective red/blue are latched for a note;
 - preparation and allocation remain off realtime;
-- adoption preserves playback state and uses the established continuity ramp;
-  and
-- volume, pitch, and scratch roles use the same Envelope node behavior.
+- volume, pitch, and scratch roles use the same Envelope node behavior; and
+- any future active-note adoption policy belongs to Voice Context, not an
+  Envelope parameter.
 
 No special source-to-Envelope path may bypass `EnvelopeSignalProcessor`.
 
@@ -687,8 +686,8 @@ The implementation must report:
    context, including voice-time traversal behavior.
 4. **Graph and UI**: register the node, add it under `Control`, provide compact
    editing and iconography, and route through ordinary cables.
-5. **End-to-end parity**: exercise all destination families, dynamic Envelope
-   modes, persistence, and focused agent automation.
+5. **End-to-end parity**: exercise all destination families, per-note Envelope
+   latching, persistence, and focused agent automation.
 6. **Refactor and deletion audit**: inspect diff size and switches, remove
    scaffolding, verify no hidden routing topology exists, run style/clang-tidy
    checks, and record any blocked Cycle v1 import adapter separately.
@@ -704,7 +703,7 @@ its refactor, style, semantic-test, and realtime-boundary evidence is complete.
   to every applicable Trilinear Mesh and Envelope morph input.
 - MIDI/note values are normalized once, preserve within-block event timing,
   and remain correctly scoped across voices and channels.
-- Existing per-voice destination smoothing and dynamic Envelope preparation
+- Existing per-voice destination smoothing and latched Envelope preparation
   are reused without source-specific bypasses.
 - Graphic output is deterministic from an explicit audition context and is
   independent of realtime smoothing and prior audio activity.
@@ -769,10 +768,10 @@ current authoritative extension points and have no transitional deletion
 target.
 
 `TrimeshNodeAudioProcessor`, `EnvelopeSignalProcessor`, and
-`SmoothedMorphPosition` have no production diff in this work. Their established
-absolute-input smoothing, dynamic preparation, adoption, and playback paths
-are reused unchanged. The allocation-instrumented dynamic Envelope test now
-uses a real Modulation node upstream, and ordinary graph-edit tests connect the
+`SmoothedMorphPosition` had no production diff in this work. Their established
+absolute-input smoothing, preparation, and playback paths were reused. The
+allocation-instrumented latched Envelope test uses a real Modulation node
+upstream, and ordinary graph-edit tests connect the
 source to Envelope red/blue plus Trilinear Mesh yellow/red/blue while verifying
 single-input replacement and fan-out.
 

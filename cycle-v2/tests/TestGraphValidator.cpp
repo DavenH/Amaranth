@@ -118,7 +118,7 @@ TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", { 320.f, 0.f }));
-    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
     REQUIRE(labelForDomain(PortDomain::ControlSignal) == "Universal");
@@ -143,8 +143,8 @@ TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][gr
             { { "out", "Out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }
     });
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", { 320.f, 0.f }));
-    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "mag", "out", "add", "right", PortDomain::SpectralMagnitudeSignal, false });
+    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mag", "out", "add", "right", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -162,7 +162,7 @@ TEST_CASE("Multiply rejects spectral phase operations", "[cycle-v2][graph]") {
 
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 320.f, 0.f }));
-    graph.addEdge({ "fft", "phase", "multiply", "left", PortDomain::SpectralPhaseSignal, false });
+    graph.addEdge({ "fft", "phase", "multiply", "left", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -180,7 +180,7 @@ TEST_CASE("Add accepts spectral phase operations", "[cycle-v2][graph]") {
 
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 320.f, 0.f }));
-    graph.addEdge({ "fft", "phase", "add", "left", PortDomain::SpectralPhaseSignal, false });
+    graph.addEdge({ "fft", "phase", "add", "left", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
 }
@@ -206,9 +206,9 @@ TEST_CASE("Operation nodes reject mixed resolved source domains", "[cycle-v2][gr
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, false });
-    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "time", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -232,8 +232,8 @@ TEST_CASE("Context-resolved spectral sources cannot feed time-only transforms", 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -257,8 +257,8 @@ TEST_CASE("Resolved edge domains update while graph is invalid", "[cycle-v2][gra
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const GraphValidator validator;
     const Edge& contextEdge = graph.getEdges()[0];
@@ -289,7 +289,7 @@ TEST_CASE("Edge validation reports specific grammar diagnostics", "[cycle-v2][gr
 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     const auto issue = GraphValidator().validationIssueForEdge(graph, graph.getEdges().front());
 
@@ -313,8 +313,8 @@ TEST_CASE("Context-resolved spectral sources can seed additive spectral graphs",
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
 }
@@ -334,8 +334,8 @@ TEST_CASE("Uncontexted mesh operands inherit operation signal domains", "[cycle-
     });
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, false });
-    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const GraphValidator validator;
 
@@ -350,8 +350,8 @@ TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
     graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
-    graph.addEdge({ "envelope", "env", "add", "left", PortDomain::EnvelopeSignal, false });
-    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+    graph.addEdge({ "envelope", "env", "add", "left", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto resolution = GraphDomainResolver().resolve(graph);
 
@@ -365,8 +365,8 @@ TEST_CASE("Domain resolution terminates deterministically for invalid cycles",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Add, "first", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "second", {}));
-    graph.addEdge({ "first", "out", "second", "left", PortDomain::ControlSignal, false });
-    graph.addEdge({ "second", "out", "first", "left", PortDomain::ControlSignal, false });
+    graph.addEdge({ "first", "out", "second", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "second", "out", "first", "left", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const GraphDomainResolver resolver;
     const auto first = resolver.resolve(graph);
@@ -391,7 +391,7 @@ TEST_CASE("Spectral voice context marks fixed wave sources invalid", "[cycle-v2]
 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -414,7 +414,7 @@ TEST_CASE("Fixed wave source context validity follows voice domain parameter", "
 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     REQUIRE(GraphValidator().isValid(graph));
 
@@ -437,7 +437,7 @@ TEST_CASE("Domain context cannot connect to ordinary universal signal ports", "[
 
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "multiply", "left", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "multiply", "left", PortDomain::DomainContext, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -451,7 +451,7 @@ TEST_CASE("Domain context cannot connect to ordinary universal signal ports", "[
 
 TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "env", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "env", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
 
     auto issues = GraphValidator().validate(graph);
 
@@ -466,7 +466,7 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
 
 TEST_CASE("Trimesh guide targets require guide curve attachment sources", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "env", "env", "waveMesh", "guide.vertex.0.amp", PortDomain::EnvelopeSignal, true });
+    graph.addEdge({ "env", "env", "waveMesh", "guide.vertex.0.amp", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment });
 
     auto issues = GraphValidator().validate(graph);
 
@@ -491,7 +491,7 @@ TEST_CASE("Pitch cannot feed non voice-aware processors", "[cycle-v2][graph]") {
             { { "out", "Pitch", PortDomain::PitchSignal, ChannelLayout::Mono, PortPurpose::Signal, false } }
     });
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "multiply", {}));
-    graph.addEdge({ "pitch", "out", "multiply", "left", PortDomain::PitchSignal, false });
+    graph.addEdge({ "pitch", "out", "multiply", "left", PortDomain::PitchSignal, ConnectionKind::Signal });
 
     auto issues = GraphValidator().validate(graph);
 
@@ -530,7 +530,7 @@ TEST_CASE("Audio signal edges require compatible channel layouts", "[cycle-v2][g
             },
             {}
     });
-    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto issues = GraphValidator().validate(graph);
 
@@ -593,17 +593,17 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
 
-    graph.addEdge({ "missingSource", "out", "dest", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "source", "time", "missingDest", "in", PortDomain::TimeSignal, false });
-    graph.addEdge({ "source", "missing", "dest", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "source", "time", "dest", "missing", PortDomain::TimeSignal, false });
-    graph.addEdge({ "source", "time", "dest", "attachmentTarget", PortDomain::TimeSignal, true });
-    graph.addEdge({ "source", "time", "dest", "scratch", PortDomain::TimeSignal, false });
-    graph.addEdge({ "guide", "curve", "mesh", "guide.vertex.0.amp", PortDomain::TimeSignal, true });
-    graph.addEdge({ "source", "time", "mesh", "guide.vertex.1.amp", PortDomain::TimeSignal, true });
-    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "pitch", "pitch", "dest", "time", PortDomain::PitchSignal, false });
-    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "missingSource", "out", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "source", "time", "missingDest", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "source", "missing", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "source", "time", "dest", "missing", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "source", "time", "dest", "attachmentTarget", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "source", "time", "dest", "scratch", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "guide", "curve", "mesh", "guide.vertex.0.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "source", "time", "mesh", "guide.vertex.1.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "pitch", "pitch", "dest", "time", PortDomain::PitchSignal, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     requireEdgeQueriesMatchBulkValidation(graph);
 

@@ -36,7 +36,8 @@ public:
             juce::Graphics& g,
             juce::Rectangle<float> area,
             const std::vector<TrimeshVertexParameter>& parameters,
-            const std::array<juce::String, 6>& guideAttachmentLabels);
+            const std::array<juce::String, 6>& guideAttachmentLabels,
+            float heightScale = 1.f);
 
     static juce::Rectangle<float> morphCubeBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> sideArea, int axisIndex);
@@ -45,7 +46,8 @@ public:
     static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> vertexParameterRowBounds(
             juce::Rectangle<float> parameterArea,
-            int parameterIndex);
+            int parameterIndex,
+            float heightScale = 1.f);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::Rectangle<float> vertexParameterGuideBounds(juce::Rectangle<float> parameterRow);
 };

@@ -230,6 +230,7 @@ public:
     void removeNode(const String& nodeId);
     void removeEdgeAt(size_t index);
     void removeEdgesToInput(const String& nodeId, const String& portId);
+    void removeEdgesFromOutput(const String& nodeId, const String& portId);
     bool replaceNodeParameters(const String& nodeId, std::vector<NodeParameter> parameters);
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);

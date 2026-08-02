@@ -16,7 +16,7 @@ NodeGraph probeGraph() {
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 400.f, 0.f }));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     return graph;
 }
 
@@ -53,8 +53,8 @@ TEST_CASE("Signal probe labels and rail positions remain unique after deletion",
     graph.addNode(factory.createNode(NodeKind::Output, "firstOut", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "secondWave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "secondOut", {}));
-    graph.addEdge({ "firstWave", "out", "firstOut", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "secondWave", "out", "secondOut", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "firstWave", "out", "firstOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "secondWave", "out", "secondOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({
             "probe2", "firstWave", "out", "firstOut", "time", "Spy 2", 0.5f, 1
     });
@@ -70,7 +70,7 @@ TEST_CASE("Signal probes reject nonsignal cables", "[cycle-v2][probe]") {
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 400.f, 0.f }));
-    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
 
     REQUIRE_FALSE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
     REQUIRE(graph.getSignalProbes().empty());
@@ -110,8 +110,8 @@ TEST_CASE("Signal probe commands reattach remove and restore through undo", "[cy
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "first", { 400.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "second", { 400.f, 240.f }));
-    graph.addEdge({ "wave", "out", "first", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "wave", "out", "second", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "first", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "second", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

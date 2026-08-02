@@ -2,6 +2,8 @@
 
 #include "NodeDefinition.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
+
 namespace CycleV2 {
 
 Node GraphNodeFactory::createNode(NodeKind kind, const String& id, Point<float> position) const {

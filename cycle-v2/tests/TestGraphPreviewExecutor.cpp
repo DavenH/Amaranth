@@ -167,14 +167,14 @@ NodeGraph previewlessChain(size_t processorCount) {
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 100.f, 0.f }));
-    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     String sourceId = "shape";
     String sourcePort = "time";
     for (size_t i = 0; i < processorCount; ++i) {
         const String nodeId = "delay" + String((int) i);
         graph.addNode(factory.createNode(NodeKind::Delay, nodeId, { (float) i * 100.f, 0.f }));
-        graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, false });
+        graph.addEdge({ sourceId, sourcePort, nodeId, "time", PortDomain::TimeSignal, ConnectionKind::Signal });
         sourceId = nodeId;
         sourcePort = "time";
     }
@@ -188,8 +188,8 @@ TEST_CASE("Graph preview executor renders probes from audio traversal grids", "[
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 240.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 760.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
-    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addSignalProbe({ "probe", "mesh", "out", "fft", "time", "Mesh", 0.5f, 0 });
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -280,7 +280,7 @@ TEST_CASE("Graph preview executor renders FFT probe previews from audio traversa
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
-    graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({ "magProbe", "fft", "mag", {}, {}, "Magnitude", 0.5f, 0 });
     graph.addSignalProbe({ "phaseProbe", "fft", "phase", {}, {}, "Phase", 0.5f, 1 });
 
@@ -431,8 +431,8 @@ TEST_CASE("Graph preview executor captures a probe after Reverb", "[cycle-v2][ru
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", { 300.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "out", { 600.f, 0.f }));
-    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "reverb", "time", "out", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "reverb", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -621,8 +621,8 @@ TEST_CASE("Graph preview executor renders preview nodes after non-preview proces
             { { "out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo, PortPurpose::Signal, false } }));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", { 220.f, 0.f }));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", { 440.f, 0.f }));
-    graph.addEdge({ "source", "out", "reverb", "time", PortDomain::TimeSignal, false });
-    graph.addEdge({ "reverb", "time", "waveshaper", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "source", "out", "reverb", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "reverb", "time", "waveshaper", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());

@@ -1,5 +1,6 @@
-#include "PreparedOscillatorRegion.h"
+#include <algorithm>
 
+#include "PreparedOscillatorRegion.h"
 #include "ChainedOscillatorRecipeRenderer.h"
 #include "ChainedOscillatorRegionRuntime.h"
 #include "SpectralOscillatorFrameRenderer.h"
@@ -14,7 +15,7 @@ namespace {
 
 class PreparedChainedOscillatorRegion final : public PreparedOscillatorRegion {
 public:
-    bool replacesDiagnosticProcessors() const override { return true; }
+    bool replacesDiagnosticProcessors() const override { return replaceDiagnostics; }
 
     bool prepare(
             const GraphExecutionPlan& plan,
@@ -22,6 +23,17 @@ public:
             const CompiledVoiceContext& context,
             const AudioExecutionSpec& spec,
             int maximumCycleSamples) {
+        replaceDiagnostics = std::none_of(
+                plan.steps.begin(),
+                plan.steps.end(),
+                [](const GraphExecutionStep& step) {
+                    return std::any_of(
+                            step.attachments.begin(),
+                            step.attachments.end(),
+                            [](const GraphStepAttachment& attachment) {
+                                return attachment.destPortId == "scratch";
+                            });
+                });
         auto preparedRenderer = std::make_unique<ChainedOscillatorRecipeRenderer>();
         if (!preparedRenderer->prepare(plan, region, maximumCycleSamples)
                 || !runtime.prepare(
@@ -56,6 +68,7 @@ public:
     }
 
 private:
+    bool replaceDiagnostics { true };
     ChainedOscillatorRegionRuntime runtime;
     std::unique_ptr<OscillatorCycleRenderer> renderer;
 };

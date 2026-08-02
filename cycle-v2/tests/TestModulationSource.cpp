@@ -12,6 +12,7 @@
 #include "../src/Runtime/MidiControlState.h"
 #include "../src/UI/NodeEditorHost.h"
 #include "../src/UI/ModulationCableBundle.h"
+#include "../src/UI/NodeCanvasInteraction.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeViewModule.h"
 
@@ -274,8 +275,8 @@ TEST_CASE("Modulation nodes compile, fan out, and round-trip as graph routes",
             { "controller", "Controller", "74" },
             { "constant", "Constant", "0.5" }
     });
-    graph.addEdge({ "cc", "value", "env", "red", PortDomain::ControlSignal, false });
-    graph.addEdge({ "cc", "value", "mesh", "blue", PortDomain::ControlSignal, false });
+    graph.addEdge({ "cc", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "cc", "value", "mesh", "blue", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -342,7 +343,7 @@ TEST_CASE("Graph execution delivers per-voice modulation to connected destinatio
             { "constant", "Constant", "0.5" }
     });
     graph.addEdge({
-            "velocity", "value", "env", "red", PortDomain::ControlSignal, false
+            "velocity", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -422,11 +423,117 @@ TEST_CASE("Modulation triple definition retains Cycle v1 axis defaults",
     REQUIRE(triple.outputs.size() == 4);
     REQUIRE(triple.outputs.back().connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(triple.outputs.back().attachmentType == AttachmentType::ModulationTriple);
-    REQUIRE(triple.outputs.back().side == PortSide::Bottom);
+    REQUIRE(triple.outputs.back().side == PortSide::Right);
     REQUIRE(parameterValueForNode(triple, "yellowSource") == "voiceTime");
     REQUIRE(parameterValueForNode(triple, "redSource") == "keyScale");
     REQUIRE(parameterValueForNode(triple, "blueSource") == "modWheel");
     REQUIRE(triple.bounds.getHeight() == 126.f);
+}
+
+TEST_CASE("Modulation triple side socket authors the Voice Context default attachment",
+        "[cycle-v2][modulation][triple][voice-context][ui]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(
+            NodeKind::ModulationTriple,
+            "triple",
+            { 10.f, 20.f }));
+    graph.addNode(factory.createNode(
+            NodeKind::VoiceContext,
+            "voice",
+            { 420.f, 20.f }));
+    const Node* triple = graph.findNode("triple");
+    const Node* voice = graph.findNode("voice");
+    REQUIRE(triple != nullptr);
+    REQUIRE(voice != nullptr);
+
+    const PortAddress source = ModulationCableBundle::sourceAddress(*triple);
+    const PortAddress destination { "voice", "modulation", true };
+    const auto routes = ModulationCableBundle::routes(graph, source, destination);
+
+    REQUIRE(source.portId == ModulationCableBundle::portId());
+    REQUIRE(routes.size() == 1);
+    REQUIRE(routes.front().source.nodeId == source.nodeId);
+    REQUIRE(routes.front().source.portId == "modulation");
+    REQUIRE_FALSE(routes.front().source.input);
+    REQUIRE(routes.front().destination.nodeId == destination.nodeId);
+    REQUIRE(routes.front().destination.portId == destination.portId);
+    REQUIRE(routes.front().destination.input);
+    REQUIRE(ModulationCableBundle::canConnect(graph, source, destination));
+
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 1000.f, 700.f });
+    NodeCanvasScene scene;
+    const auto& snapshot = scene.build(graph, viewport);
+    const auto tripleOutputs = std::count_if(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.kind == NodeSceneTargetKind::OutputPort
+                        && target.nodeId == "triple";
+            });
+    REQUIRE(tripleOutputs == 1);
+    const auto tripleOutput = std::find_if(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.kind == NodeSceneTargetKind::OutputPort
+                        && target.nodeId == "triple";
+            });
+    const auto voiceInput = std::find_if(
+            snapshot.targets.begin(),
+            snapshot.targets.end(),
+            [](const NodeSceneTarget& target) {
+                return target.kind == NodeSceneTargetKind::InputPort
+                        && target.nodeId == "voice"
+                        && target.portId == "modulation";
+            });
+    REQUIRE(tripleOutput != snapshot.targets.end());
+    REQUIRE(voiceInput != snapshot.targets.end());
+    NodeCanvasInteraction interaction;
+    const PortAddress draggedSource {
+            tripleOutput->nodeId,
+            tripleOutput->portId,
+            false
+    };
+    const auto resolvedInput = interaction.connectionTargetAt(
+            graph,
+            snapshot,
+            draggedSource,
+            voiceInput->bounds.getCentre());
+    REQUIRE(resolvedInput.has_value());
+    REQUIRE(resolvedInput->nodeId == "voice");
+    REQUIRE(resolvedInput->portId == "modulation");
+    REQUIRE(resolvedInput->input);
+
+    REQUIRE(GraphEditor().connect(
+            graph,
+            routes.front().source,
+            routes.front().destination).succeeded());
+    REQUIRE(graph.getEdges().size() == 1);
+    REQUIRE(graph.getEdges().front().connectionKind
+            == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(graph.getEdges().front().attachmentType
+            == AttachmentType::ModulationTriple);
+    const auto& connectedSnapshot = scene.build(graph, viewport);
+    REQUIRE(connectedSnapshot.edges.size() == 1);
+    REQUIRE_FALSE(connectedSnapshot.edges.front().modulationBundle);
+    triple = graph.findNode("triple");
+    REQUIRE(triple != nullptr);
+    const Point<float> expectedSource = viewport.toScreen(
+            ModulationCableBundle::worldCentre(*triple, false));
+    REQUIRE(connectedSnapshot.edges.front().source.x == Catch::Approx(expectedSource.x));
+    REQUIRE(connectedSnapshot.edges.front().source.y == Catch::Approx(expectedSource.y));
+
+    const Node standardSource = factory.createNode(
+            NodeKind::WaveSource,
+            "standardSource",
+            { triple->bounds.getX(), triple->bounds.getY() });
+    REQUIRE_FALSE(standardSource.outputs.empty());
+    REQUIRE(ModulationCableBundle::worldCentre(*triple, false).y
+            == Catch::Approx(NodeCanvasScene::portWorldCentre(
+                    standardSource,
+                    standardSource.outputs.front()).y));
 }
 
 TEST_CASE("Matching triple routes coalesce into one canvas cable",
