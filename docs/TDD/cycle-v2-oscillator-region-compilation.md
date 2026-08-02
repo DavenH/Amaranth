@@ -21,11 +21,15 @@ Implemented compiler foundation:
 - a prepared Cycle V2 chained-region runtime owns bounded per-lane clocks and
   cycle buffers, preserves split-block continuity, and folds lanes with the
   shared Cycle 1 pan and level contracts.
+- a direct single-Trimesh `ChainedPerLane` region is prepared off the realtime
+  thread and executes through the mature shared `VoiceRasterizer` transition;
+  its graph-runtime lowering performs no topology search or allocation and
+  preserves contiguous output across arbitrary block partitions.
 
-Cycle V2 graph-region execution, mature Trimesh rendering through that prepared
-runtime, materialization, latency compensation, and placeholder deletion remain
-open. The current plan metadata and prepared primitives do not claim audio
-parity by themselves.
+Multi-operation time regions, the shared spectral strategy, multiple-region
+materialization and block arithmetic, latency compensation, lifecycle
+segmentation, and placeholder deletion remain open. The direct Trimesh slice
+does not claim complete oscillator or Unison audio parity by itself.
 
 Depends on:
 

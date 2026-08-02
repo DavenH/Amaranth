@@ -177,6 +177,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/PreparedTrimeshTopology.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshControlsComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshExpandedEditorComponent.cpp"

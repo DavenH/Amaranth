@@ -2,7 +2,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
+#include <algorithm>
 #include <array>
 
 using namespace CycleV2;
@@ -102,4 +105,39 @@ TEST_CASE("Chained oscillator runtime preserves continuity across split blocks",
     REQUIRE(splitLeft == wholeLeft);
     REQUIRE(splitRight == wholeRight);
     REQUIRE(splitRenderer.renderCounts == wholeRenderer.renderCounts);
+}
+
+TEST_CASE("Trimesh oscillator lanes consume the mature chained VoiceRasterizer",
+        "[cycle-v2][runtime][oscillator-region][unison][trimesh]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("ChainedRegionTrimesh");
+    auto configuration = std::make_shared<TrimeshConfiguration>();
+    configuration->mesh = std::shared_ptr<const Mesh>(mesh.get(), [](const Mesh*) {});
+    configuration->morph = MorphPosition(0.5f, 0.5f, 0.5f);
+    CycleDsp::UnisonGroupConfiguration unison;
+    unison.order = 3;
+    unison.detuneWidthCents = 12.f;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(unison);
+    TrimeshOscillatorCycleRenderer renderer;
+    ChainedOscillatorRegionRuntime runtime;
+    REQUIRE(renderer.prepare(configuration, layout.order));
+    REQUIRE(runtime.prepare(256, 4096, 44100.0, layout));
+
+    std::array<float, 256> left {};
+    std::array<float, 256> right {};
+    REQUIRE(runtime.process(
+            60, 1.f, {},
+            Buffer<float>(left.data(), (int) left.size()),
+            Buffer<float>(right.data(), (int) right.size()),
+            renderer));
+
+    REQUIRE(std::any_of(left.begin(), left.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(std::any_of(right.begin(), right.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(left != right);
+
+    configuration.reset();
+    mesh->destroy();
 }

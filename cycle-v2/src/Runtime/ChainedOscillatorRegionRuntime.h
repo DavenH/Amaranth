@@ -21,6 +21,7 @@ struct ChainedCycleRenderRequest {
 class OscillatorCycleRenderer {
 public:
     virtual ~OscillatorCycleRenderer() = default;
+    virtual void reset() {}
     virtual void renderCycle(
             const ChainedCycleRenderRequest& request,
             Buffer<float> left,

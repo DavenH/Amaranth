@@ -247,8 +247,13 @@ Slice 5 and slice 7 are implemented:
 
 Slice 6 remains in progress. Explicit oscillator regions now compile and the
 Cycle 1 fractional lane clock plus mature chained-rasterizer transition have
-been extracted into shared Cycle DSP primitives consumed by Cycle 1. Cycle V2
-does not yet execute and fold those prepared lanes, so audible parity is not
+been extracted into shared Cycle DSP primitives consumed by Cycle 1. The first
+complete runtime lowering executes a direct time-only Trimesh region through
+the mature rasterizer independently for every configured lane, preserves
+split-block continuity and low-note cycle capacity, and folds the result with
+the shared pan and level contracts. Multi-operation time regions, shared
+spectral-frame reconstruction, independent oscillator-region materialization,
+and lifecycle/latency parity remain open, so full audible parity is not yet
 claimed.
 
 ## Completion Criteria

@@ -1,11 +1,114 @@
 #include "GraphAudioExecutor.h"
 #include "AudioProcessContextUtils.h"
 #include "../Nodes/Control/ModulationTriple.h"
+#include "../Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <unordered_set>
 
 namespace CycleV2 {
+
+namespace {
+
+const CompiledVoiceContext* voiceContextForRegion(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region) {
+    const auto found = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& context) {
+                return context.nodeId == region.voiceContextNodeId;
+            });
+    return found != plan.voiceContexts.end() ? &*found : nullptr;
+}
+
+int maximumCycleSamplesFor(
+        double sampleRate,
+        const CycleDsp::UnisonVoiceLayout& lanes) {
+    float lowestDetune = std::numeric_limits<float>::max();
+    for (int laneIndex = 0; laneIndex < lanes.order; ++laneIndex) {
+        lowestDetune = std::min(lowestDetune, lanes[laneIndex].detuneCents);
+    }
+    const double lowestPitch = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(0.01);
+    const double lowestFrequency = CycleDsp::UnisonCore::frequencyForMidiPitch(
+            lowestPitch,
+            lowestDetune);
+    return (int) std::ceil(sampleRate / lowestFrequency) + 1;
+}
+
+bool isDirectChainedTrimeshRegion(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region) {
+    return region.strategy == OscillatorExecutionStrategy::ChainedPerLane
+            && region.stepIndices.size() == 1
+            && region.stepIndices.front() >= 0
+            && region.stepIndices.front() < (int) plan.steps.size()
+            && plan.steps[(size_t) region.stepIndices.front()].audioRole
+                    == AudioModuleRole::MeshSource;
+}
+
+std::unique_ptr<OscillatorCycleRenderer> createChainedRegionRenderer(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region) {
+    if (!isDirectChainedTrimeshRegion(plan, region)) {
+        return {};
+    }
+    const auto& step = plan.steps[(size_t) region.stepIndices.front()];
+    const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            step.configuration.value);
+    auto renderer = std::make_unique<TrimeshOscillatorCycleRenderer>();
+    return renderer->prepare(configuration, region.laneCount)
+            ? std::unique_ptr<OscillatorCycleRenderer>(std::move(renderer))
+            : std::unique_ptr<OscillatorCycleRenderer> {};
+}
+
+bool beginsNewNote(const AudioVoiceContext& voice) {
+    return std::any_of(voice.events.begin(), voice.events.end(), [](const auto& event) {
+        return event.sampleOffset == 0
+                && (event.type == NoteLifecycleType::NoteOn
+                        || event.type == NoteLifecycleType::Reset);
+    });
+}
+
+template<class PreparedVoiceType>
+bool oscillatorPreparationMatches(
+        const GraphExecutionPlan& plan,
+        const PreparedVoiceType& voice,
+        const AudioExecutionSpec& spec) {
+    if (voice.plan != &plan
+            || voice.maximumFrameCount != spec.maximumFrameCount
+            || voice.sampleRate != spec.sampleRate
+            || voice.oscillatorRegionByStep.size() != plan.steps.size()) {
+        return false;
+    }
+    const auto supportedRegionCount = std::count_if(
+            plan.oscillatorRegions.begin(),
+            plan.oscillatorRegions.end(),
+            [&](const auto& region) {
+                return isDirectChainedTrimeshRegion(plan, region);
+            });
+    if ((size_t) supportedRegionCount != voice.oscillatorRegions.size()) {
+        return false;
+    }
+    return std::all_of(
+            voice.oscillatorRegions.begin(),
+            voice.oscillatorRegions.end(),
+            [&](const auto& prepared) {
+                if (prepared == nullptr
+                        || prepared->planRegionIndex < 0
+                        || prepared->planRegionIndex >= (int) plan.oscillatorRegions.size()) {
+                    return false;
+                }
+                const auto& region = plan.oscillatorRegions[
+                        (size_t) prepared->planRegionIndex];
+                return prepared->configurationRevision == plan.steps[
+                        (size_t) region.materializationStepIndex].configuration.revision;
+            });
+}
+
+}
 
 GraphAudioResult GraphAudioExecutor::process(
         const NodeGraph& graph,
@@ -278,7 +381,38 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        processor->process(context);
+        auto* oscillatorRegion = oscillatorRegionForStep(
+                preparedVoice->second,
+                stepIndex);
+        if (oscillatorRegion != nullptr) {
+            if (beginsNewNote(voice)) {
+                oscillatorRegion->runtime.reset();
+                oscillatorRegion->renderer->reset();
+            }
+            auto output = makeOutputPayload(context, 0);
+            output.domain = PortDomain::TimeSignal;
+            output.channelLayout = ChannelLayout::StereoPair;
+            output.block.samples.resize(frameCount);
+            output.secondaryBlock.samples.resize(frameCount);
+            Buffer<float> pitchEnvelope;
+            if (!oscillatorRegion->pitchEnvelopeUnitValues.empty()) {
+                pitchEnvelope = {
+                        oscillatorRegion->pitchEnvelopeUnitValues.data(),
+                        (int) oscillatorRegion->pitchEnvelopeUnitValues.size()
+                };
+            }
+            const bool rendered = oscillatorRegion->runtime.process(
+                    voice.controls.noteNumber,
+                    voice.controls.velocity,
+                    pitchEnvelope,
+                    { output.block.samples.data(), (int) frameCount },
+                    { output.secondaryBlock.samples.data(), (int) frameCount },
+                    *oscillatorRegion->renderer);
+            jassert(rendered);
+            publishSingleOutput(context, std::move(output));
+        } else {
+            processor->process(context);
+        }
         if (captureDiagnostics) {
             ++diagnosticProcessCounts[stepIndex];
         }
@@ -387,8 +521,14 @@ void GraphAudioExecutor::prepareExecution(
     processContext.outputViews.prepare(plan.maximumOutputCount);
     processContext.outputs.prepare(plan.maximumOutputCount);
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
+    const bool rebuildOscillatorRegions = !oscillatorPreparationMatches(
+            plan,
+            preparedVoice,
+            spec);
     preparedVoice.voiceIndex = voiceIndex;
     preparedVoice.plan = &plan;
+    preparedVoice.maximumFrameCount = spec.maximumFrameCount;
+    preparedVoice.sampleRate = spec.sampleRate;
     preparedVoice.processors.clear();
     preparedVoice.processors.reserve(plan.steps.size());
 
@@ -429,6 +569,44 @@ void GraphAudioExecutor::prepareExecution(
         cached.prepared = true;
         ++cached.preparationCount;
     }
+
+    if (rebuildOscillatorRegions) {
+        preparedVoice.oscillatorRegions.clear();
+        preparedVoice.oscillatorRegionByStep.assign(plan.steps.size(), nullptr);
+        for (int regionIndex = 0; regionIndex < (int) plan.oscillatorRegions.size(); ++regionIndex) {
+            const auto& region = plan.oscillatorRegions[(size_t) regionIndex];
+            auto renderer = createChainedRegionRenderer(plan, region);
+            const auto* compiledContext = voiceContextForRegion(plan, region);
+            if (renderer == nullptr || compiledContext == nullptr) {
+                continue;
+            }
+            auto preparedRegion = std::make_unique<PreparedVoice::OscillatorRegion>();
+            preparedRegion->planRegionIndex = regionIndex;
+            preparedRegion->configurationRevision = plan.steps[
+                    (size_t) region.materializationStepIndex].configuration.revision;
+            preparedRegion->pitchEnvelopeUnitValues = compiledContext->pitchEnvelopeUnitValues;
+            preparedRegion->renderer = std::move(renderer);
+            if (!preparedRegion->runtime.prepare(
+                    spec.maximumFrameCount,
+                    maximumCycleSamplesFor(spec.sampleRate, compiledContext->lanes),
+                    spec.sampleRate,
+                    compiledContext->lanes)) {
+                continue;
+            }
+            preparedVoice.oscillatorRegionByStep[
+                    (size_t) region.materializationStepIndex] = preparedRegion.get();
+            preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
+        }
+    }
+}
+
+GraphAudioExecutor::PreparedVoice::OscillatorRegion*
+GraphAudioExecutor::oscillatorRegionForStep(
+        PreparedVoice& voice,
+        size_t stepIndex) {
+    return stepIndex < voice.oscillatorRegionByStep.size()
+            ? voice.oscillatorRegionByStep[stepIndex]
+            : nullptr;
 }
 
 size_t GraphAudioExecutor::preparationCount(const String& nodeId, int voiceIndex) const {
