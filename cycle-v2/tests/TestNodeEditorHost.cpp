@@ -544,6 +544,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     EnvelopePurposeSelector* modeSelector = nullptr;
     Button* pitchMode = nullptr;
     Button* scratchMode = nullptr;
+    ImageButton* loopMarker = nullptr;
+    ImageButton* sustainMarker = nullptr;
     ImageButton* fitVertical = nullptr;
     ImageButton* fullVertical = nullptr;
     StringArray actionLabels;
@@ -561,7 +563,11 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
             actionLabels.add(button->getButtonText());
         } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
-            if (button->getName() == "Fit envelope vertical range") {
+            if (button->getName() == "Set selected vertex as loop start") {
+                loopMarker = button;
+            } else if (button->getName() == "Set selected vertex as sustain point") {
+                sustainMarker = button;
+            } else if (button->getName() == "Fit envelope vertical range") {
                 fitVertical = button;
             } else if (button->getName() == "Show full envelope vertical range") {
                 fullVertical = button;
@@ -572,22 +578,38 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(modeSelector->getNumChildComponents() == 4);
     REQUIRE(pitchMode != nullptr);
     REQUIRE(scratchMode != nullptr);
+    REQUIRE(loopMarker != nullptr);
+    REQUIRE(sustainMarker != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
-    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log" }));
+    REQUIRE(actionLabels == StringArray({ "Log" }));
+    REQUIRE(loopMarker->getNormalImage().isValid());
+    REQUIRE(sustainMarker->getNormalImage().isValid());
+    REQUIRE_FALSE(loopMarker->isEnabled());
+    REQUIRE_FALSE(sustainMarker->isEnabled());
+    REQUIRE(loopMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
+    REQUIRE(sustainMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
     const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
     const auto modeBounds = rectangleProperty(state, "modeBounds");
     REQUIRE(state.getProperty("modeLabel", {}).toString() == "Mode");
+    REQUIRE(state.getProperty("vertexModeLabel", {}).toString() == "Vertex");
+    REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
+    REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
     REQUIRE(modeBounds == purposeBounds);
     const var modeOptions = state.getProperty("modeOptions", {});
     REQUIRE(modeOptions.isArray());
     REQUIRE(modeOptions.getArray()->size() == 4);
-    REQUIRE(fitBounds.getWidth() == Catch::Approx(24.f));
-    REQUIRE(fullBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE(fitBounds.getWidth() == Catch::Approx(28.f));
+    REQUIRE(fullBounds.getWidth() == Catch::Approx(28.f));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
     REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
+    const auto markerGroupBounds = rectangleProperty(state, "vertexModeGroupBounds");
+    const auto logarithmicBounds = rectangleProperty(state, "logarithmicBounds");
+    const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
+    REQUIRE(markerGroupBounds.getRight() < logarithmicBounds.getX());
+    REQUIRE(logarithmicBounds.getRight() < rangeGroupBounds.getX());
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
@@ -597,6 +619,25 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
     REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(33.54f).margin(0.02f));
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
+
+    VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
+    REQUIRE(selectedCube != nullptr);
+    REQUIRE(envelopeModel.synchronizeFromMesh(selectedCube));
+    REQUIRE(envelopeModel.selectedCubeId().has_value());
+    Node selectedNode = *graph.findNode("env");
+    selectedNode.model = CurveNodeModelState::copyOf(
+            envelopeModel, selectedNode.model->revision() + 1);
+    auto* selectedEditorState = new DynamicObject();
+    selectedEditorState->setProperty(
+            "selectedCubeId", (int64) *envelopeModel.selectedCubeId());
+    selectedNode.editorState = var(selectedEditorState);
+    editor->setNode(selectedNode);
+    const var selectedState = editor->automationState();
+    REQUIRE((bool) selectedState.getProperty("loopEnabled", {}));
+    REQUIRE((bool) selectedState.getProperty("sustainEnabled", {}));
+    REQUIRE(loopMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
+    REQUIRE(sustainMarker->getTooltip().containsIgnoreCase("toggle selected vertex"));
+
     fullVertical->onClick();
     panelState = widget.automationState();
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {}))

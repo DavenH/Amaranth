@@ -59,6 +59,7 @@ protected:
     virtual bool editorMouseDown(Point<float> position);
     virtual bool editorMouseDrag(Point<float> position);
     virtual void editorMouseUp();
+    virtual void syncInteractionControls() {}
 
     Rectangle<float> contentBounds() const;
     void publishCurrentState();

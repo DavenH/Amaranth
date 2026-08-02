@@ -575,6 +575,10 @@ public:
         return cube != nullptr ? cube : state.currentCube;
     }
 
+    bool hasSingleSelectedEnvelopeVertex() override {
+        return getSelected().size() == 1 && selectedEnvelopeCube() != nullptr;
+    }
+
     bool selectedEnvelopeMarkerState(bool loopMarker) const override {
         VertCube* cube = selectedEnvelopeCube();
 

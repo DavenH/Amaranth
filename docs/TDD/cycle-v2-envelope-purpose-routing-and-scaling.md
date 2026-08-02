@@ -218,6 +218,22 @@ refresh the curve rasterizer, request an OpenGL panel repaint, or invalidate
 the node canvas. Selecting a different option remains one discrete undoable
 graph edit through the existing purpose transaction.
 
+Envelope actions are grouped by ownership and interaction scope. Loop and
+Sustain are vertex-marker toggles in one group labeled `Vertex`; they reuse
+Cycle v1 atlas cells `(4, 3)` and `(5, 3)` rather than text buttons. Both are
+disabled until the panel has exactly one selected Envelope vertex. Their
+disabled tooltips explain that a vertex must first be selected, while their
+enabled tooltips describe toggling that selected vertex as the loop start or
+sustain point. Selection changes refresh this transient UI state through the
+Envelope panel/controller contract and do not introduce an editor-side copy of
+selection semantics.
+
+Logarithmic scaling is an Envelope-wide property and appears as its own
+control, outside the vertex-marker group. Fit-to-curve and full-range actions
+form a separate two-icon framing group using their existing Cycle v1 atlas
+icons. The three groups have distinct visual boundaries and do not imply that
+Log or vertical framing operates on the selected vertex.
+
 Purpose, not the current downstream cable, determines the editor range and
 shading:
 

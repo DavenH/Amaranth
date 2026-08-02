@@ -165,6 +165,11 @@ bool Effect2DWidget::setSelectedVertexParameter(const String& parameterId, float
     return controller->setSelectedVertexParameter(parameterId, normalizedValue);
 }
 
+bool Effect2DWidget::hasSingleSelectedEnvelopeVertex() {
+    auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get());
+    return envelope != nullptr && envelope->hasSingleSelectedVertex();
+}
+
 bool Effect2DWidget::selectedEnvelopeMarkerState(bool loopMarker) const {
     const auto* envelope = dynamic_cast<const EnvelopeCurvePanelController*>(controller.get());
     return envelope != nullptr && envelope->selectedMarkerState(loopMarker);

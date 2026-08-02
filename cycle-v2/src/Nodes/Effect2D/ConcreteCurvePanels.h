@@ -50,6 +50,7 @@ public:
     virtual void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) = 0;
     virtual void fitEnvelopeVerticalRange() = 0;
     virtual void resetEnvelopeVerticalRange() = 0;
+    virtual bool hasSingleSelectedEnvelopeVertex() = 0;
     virtual bool selectedEnvelopeMarkerState(bool loopMarker) const = 0;
     virtual void toggleSelectedEnvelopeMarker(bool loopMarker) = 0;
 };

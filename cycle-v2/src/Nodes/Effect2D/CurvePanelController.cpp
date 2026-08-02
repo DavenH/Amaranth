@@ -356,6 +356,10 @@ public:
         envelopePanel().resetEnvelopeVerticalRange();
     }
 
+    bool hasSingleSelectedVertex() override {
+        return envelopePanel().hasSingleSelectedEnvelopeVertex();
+    }
+
     bool selectedMarkerState(bool loopMarker) const override {
         return envelopePanel().selectedEnvelopeMarkerState(loopMarker);
     }

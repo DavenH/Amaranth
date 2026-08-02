@@ -20,11 +20,13 @@ Image cycleV1EnvelopeIcon(int atlasX, int atlasY) {
     return atlas.getClippedImage({ atlasX * 24, atlasY * 24, 24, 24 });
 }
 
-void styleEnvelopeRangeButton(
+void styleCycleV1EnvelopeButton(
         ImageButton& button,
+        int atlasX,
         int atlasY,
-        const String& tooltip) {
-    const Image icon = cycleV1EnvelopeIcon(6, atlasY);
+        const String& tooltip,
+        bool keyboardFocus) {
+    const Image icon = cycleV1EnvelopeIcon(atlasX, atlasY);
     button.setImages(
             false,
             false,
@@ -37,10 +39,10 @@ void styleEnvelopeRangeButton(
             Colours::transparentBlack,
             icon,
             0.86f,
-            Colours::black.withAlpha(0.18f));
+            Colour(0xff5f91e8).withAlpha(0.24f));
     button.setTooltip(tooltip);
     button.setMouseCursor(MouseCursor::PointingHandCursor);
-    button.setWantsKeyboardFocus(false);
+    button.setWantsKeyboardFocus(keyboardFocus);
 }
 
 }
@@ -48,18 +50,27 @@ void styleEnvelopeRangeButton(
 struct EnvelopeEditorComponent::Impl {
     explicit Impl(Component& owner) :
             redMorph    (owner, "Red")
-        ,   blueMorph   (owner, "Blue") {
+        ,   blueMorph   (owner, "Blue")
+        ,   tooltipHost (&owner, 500) {
         styleParameterLabel(timeLabel, "Time");
         styleParameterLabel(modeLabel, "Mode");
+        styleParameterLabel(vertexModeLabel, "Vertex");
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(modeLabel);
         owner.addAndMakeVisible(mode);
-        for (auto* button : { &loop, &sustain, &logarithmic }) {
-            styleParameterButton(*button, button->getButtonText());
-            owner.addAndMakeVisible(*button);
-        }
-        styleEnvelopeRangeButton(fitVertical, 0, "Fit envelope vertical range");
-        styleEnvelopeRangeButton(fullVertical, 1, "Show full envelope vertical range");
+        owner.addAndMakeVisible(vertexModeLabel);
+        styleParameterButton(logarithmic, logarithmic.getButtonText());
+        owner.addAndMakeVisible(logarithmic);
+        styleCycleV1EnvelopeButton(
+                loop, 4, 3, "Select one envelope vertex to set the loop start", true);
+        styleCycleV1EnvelopeButton(
+                sustain, 5, 3, "Select one envelope vertex to set the sustain point", true);
+        styleCycleV1EnvelopeButton(
+                fitVertical, 6, 0, "Fit envelope vertical range", false);
+        styleCycleV1EnvelopeButton(
+                fullVertical, 6, 1, "Show full envelope vertical range", false);
+        owner.addAndMakeVisible(loop);
+        owner.addAndMakeVisible(sustain);
         owner.addAndMakeVisible(fitVertical);
         owner.addAndMakeVisible(fullVertical);
         logarithmic.setClickingTogglesState(true);
@@ -67,11 +78,13 @@ struct EnvelopeEditorComponent::Impl {
 
     LabeledParameterSlider redMorph;
     LabeledParameterSlider blueMorph;
+    TooltipWindow tooltipHost;
     Label timeLabel;
     Label modeLabel;
+    Label vertexModeLabel;
     EnvelopePurposeSelector mode;
-    TextButton loop { "Loop" };
-    TextButton sustain { "Sustain" };
+    ImageButton loop { "Set selected vertex as loop start" };
+    ImageButton sustain { "Set selected vertex as sustain point" };
     TextButton logarithmic { "Log" };
     ImageButton fitVertical { "Fit envelope vertical range" };
     ImageButton fullVertical { "Show full envelope vertical range" };
@@ -97,9 +110,11 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
 
     bindDiscreteAction(impl->loop, [this] {
         widget.toggleSelectedEnvelopeMarker(true);
+        syncInteractionControls();
     });
     bindDiscreteAction(impl->sustain, [this] {
         widget.toggleSelectedEnvelopeMarker(false);
+        syncInteractionControls();
     });
     bindDiscreteAction(impl->logarithmic, [this] {
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
@@ -115,6 +130,20 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
+
+String EnvelopeEditorComponent::getTooltip() {
+    const Point<float> position = getLocalPoint(
+            nullptr, Desktop::getMousePosition()).toFloat();
+    if (!impl->loop.isEnabled()
+            && impl->loop.getBounds().toFloat().contains(position)) {
+        return impl->loop.getTooltip();
+    }
+    if (!impl->sustain.isEnabled()
+            && impl->sustain.getBounds().toFloat().contains(position)) {
+        return impl->sustain.getTooltip();
+    }
+    return {};
+}
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
     auto bounds = contentBounds();
@@ -136,7 +165,9 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             static_cast<float>(impl->blueMorph.slider.getValue()),
             impl->viewAxis,
             impl->redLinked,
-            impl->blueLinked);
+            impl->blueLinked,
+            impl->loop.getToggleState(),
+            impl->sustain.getToggleState());
 
     std::array<String, 6> guides {};
     TrimeshSidePanelRenderer::drawVertexParameters(
@@ -174,17 +205,19 @@ void EnvelopeEditorComponent::layoutEditor() {
     blueRow.removeFromRight(58);
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
-    auto markerRow = impl->presentation.actionRow(controls).toNearestInt();
-    auto rangeActions = markerRow.removeFromRight(56);
-    impl->fitVertical.setBounds(rangeActions.removeFromLeft(24).withSizeKeepingCentre(24, 24));
-    rangeActions.removeFromLeft(8);
-    impl->fullVertical.setBounds(rangeActions.removeFromLeft(24).withSizeKeepingCentre(24, 24));
-    markerRow.removeFromLeft(59);
-    impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2));
-    markerRow.removeFromLeft(8);
-    impl->sustain.setBounds(markerRow.removeFromLeft(70).reduced(2));
-    markerRow.removeFromLeft(8);
-    impl->logarithmic.setBounds(markerRow.removeFromLeft(54).reduced(2));
+    impl->vertexModeLabel.setBounds(
+            impl->presentation.vertexModeLabelBounds(controls).toNearestInt());
+    auto markerGroup = impl->presentation.vertexModeGroupBounds(controls).toNearestInt();
+    const int markerWidth = markerGroup.getWidth() / 2;
+    impl->loop.setBounds(markerGroup.removeFromLeft(markerWidth).reduced(1, 0));
+    impl->sustain.setBounds(markerGroup.reduced(1, 0));
+    impl->logarithmic.setBounds(
+            impl->presentation.logarithmicBounds(controls).toNearestInt());
+
+    auto rangeGroup = impl->presentation.rangeGroupBounds(controls).toNearestInt();
+    const int rangeWidth = rangeGroup.getWidth() / 2;
+    impl->fitVertical.setBounds(rangeGroup.removeFromLeft(rangeWidth).reduced(1, 0));
+    impl->fullVertical.setBounds(rangeGroup.reduced(1, 0));
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -200,8 +233,7 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     impl->logarithmic.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     widget.setEnvelopeLogarithmic(model.logarithmic);
-    impl->loop.setToggleState(widget.selectedEnvelopeMarkerState(true), dontSendNotification);
-    impl->sustain.setToggleState(widget.selectedEnvelopeMarkerState(false), dontSendNotification);
+    syncInteractionControls();
 }
 
 void EnvelopeEditorComponent::applyEditorStateToWidget() {
@@ -294,6 +326,22 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "actionRowBounds",
             editorBoundsToVar(impl->presentation.actionRow(controls)));
+    state.setProperty("vertexModeLabel", "Vertex");
+    state.setProperty(
+            "vertexModeGroupBounds",
+            editorBoundsToVar(impl->presentation.vertexModeGroupBounds(controls)));
+    state.setProperty("loopBounds", editorBoundsToVar(impl->loop.getBounds().toFloat()));
+    state.setProperty("sustainBounds", editorBoundsToVar(impl->sustain.getBounds().toFloat()));
+    state.setProperty("loopEnabled", impl->loop.isEnabled());
+    state.setProperty("sustainEnabled", impl->sustain.isEnabled());
+    state.setProperty("loopTooltip", impl->loop.getTooltip());
+    state.setProperty("sustainTooltip", impl->sustain.getTooltip());
+    state.setProperty(
+            "logarithmicBounds",
+            editorBoundsToVar(impl->logarithmic.getBounds().toFloat()));
+    state.setProperty(
+            "rangeGroupBounds",
+            editorBoundsToVar(impl->presentation.rangeGroupBounds(controls)));
     state.setProperty(
             "fitVerticalBounds",
             editorBoundsToVar(impl->fitVertical.getBounds().toFloat()));
@@ -459,6 +507,24 @@ void EnvelopeEditorComponent::editorMouseUp() {
     impl->draggingMorph = false;
     impl->draggingParameter = false;
     impl->parameterId.clear();
+}
+
+void EnvelopeEditorComponent::syncInteractionControls() {
+    const bool hasSelectedVertex = widget.hasSingleSelectedEnvelopeVertex();
+    impl->loop.setEnabled(hasSelectedVertex);
+    impl->sustain.setEnabled(hasSelectedVertex);
+    impl->loop.setTooltip(hasSelectedVertex
+            ? "Toggle selected vertex as loop start"
+            : "Select one envelope vertex to set the loop start");
+    impl->sustain.setTooltip(hasSelectedVertex
+            ? "Toggle selected vertex as sustain point"
+            : "Select one envelope vertex to set the sustain point");
+    impl->loop.setToggleState(
+            hasSelectedVertex && widget.selectedEnvelopeMarkerState(true),
+            dontSendNotification);
+    impl->sustain.setToggleState(
+            hasSelectedVertex && widget.selectedEnvelopeMarkerState(false),
+            dontSendNotification);
 }
 
 }

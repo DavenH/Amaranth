@@ -282,6 +282,7 @@ void CurveExpandedEditorComponent::persistEffectMeshState() {
 }
 
 void CurveExpandedEditorComponent::repaintCurvePanelController() {
+    syncInteractionControls();
     requestRepaint();
 }
 
@@ -298,6 +299,7 @@ void CurveExpandedEditorComponent::curvePanelControllerEdited() {
 }
 
 void CurveExpandedEditorComponent::commitCurvePanelControllerEdit() {
+    syncInteractionControls();
     commitTransaction();
 }
 

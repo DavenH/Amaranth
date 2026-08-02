@@ -43,6 +43,7 @@ public:
     uint64_t contentRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
+    bool hasSingleSelectedEnvelopeVertex();
     bool selectedEnvelopeMarkerState(bool loopMarker) const;
     void toggleSelectedEnvelopeMarker(bool loopMarker);
 

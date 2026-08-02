@@ -1,10 +1,11 @@
-#include "NodeCanvasAutomationInspector.h"
+#include <array>
+#include <cmath>
+#include <utility>
 
+#include "NodeCanvasAutomationInspector.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "NodeViewModule.h"
-
-#include <cmath>
 
 namespace CycleV2 {
 
@@ -279,15 +280,8 @@ public:
             Array<var>& targets,
             const Node& node,
             Rectangle<float> panel,
-            const NodeEditorHost& editorHost) {
-        DynamicObject editorState;
-        editorHost.appendAutomationState(editorState);
-        const var effect2D = editorState.getProperty("effect2D");
-        const auto* effect2DState = effect2D.getDynamicObject();
-        if (effect2DState == nullptr) {
-            return;
-        }
-        const var options = effect2DState->getProperty("modeOptions");
+            const DynamicObject& effect2DState) {
+        const var options = effect2DState.getProperty("modeOptions");
         if (!options.isArray()) {
             return;
         }
@@ -310,6 +304,49 @@ public:
                     "purpose",
                     mode));
         }
+    }
+
+    static void addEnvelopeActionTargets(
+            Array<var>& targets,
+            const Node& node,
+            Rectangle<float> panel,
+            const DynamicObject& effect2DState) {
+        const std::array<std::pair<const char*, const char*>, 5> actions {{
+            { "loop", "loopBounds" },
+            { "sustain", "sustainBounds" },
+            { "logarithmic", "logarithmicBounds" },
+            { "fitVertical", "fitVerticalBounds" },
+            { "fullVertical", "fullVerticalBounds" }
+        }};
+        for (const auto& [id, boundsProperty] : actions) {
+            const auto bounds = AutomationValueEncoder::rectangleFromVar(
+                    effect2DState.getProperty(boundsProperty)).translated(
+                            panel.getX(), panel.getY());
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".envelopeAction." + id,
+                    "envelopeAction",
+                    bounds,
+                    node.id,
+                    {},
+                    false,
+                    id));
+        }
+    }
+
+    static void addEnvelopeTargets(
+            Array<var>& targets,
+            const Node& node,
+            Rectangle<float> panel,
+            const NodeEditorHost& editorHost) {
+        DynamicObject editorState;
+        editorHost.appendAutomationState(editorState);
+        const var effect2D = editorState.getProperty("effect2D");
+        const auto* effect2DState = effect2D.getDynamicObject();
+        if (effect2DState == nullptr) {
+            return;
+        }
+        addEnvelopeModeTargets(targets, node, panel, *effect2DState);
+        addEnvelopeActionTargets(targets, node, panel, *effect2DState);
     }
 
     static void addExpandedEditorTargets(Array<var>& targets, const Node& node, const Component& canvas,
@@ -346,7 +383,7 @@ public:
         }
 
         if (node.kind == NodeKind::Envelope) {
-            addEnvelopeModeTargets(targets, node, panel, editorHost);
+            addEnvelopeTargets(targets, node, panel, editorHost);
         }
 
         if (!editorHost.panelBoundsForAutomation().isEmpty()) {
