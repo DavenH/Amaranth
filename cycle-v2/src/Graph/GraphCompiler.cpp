@@ -869,6 +869,9 @@ void assignOscillatorRegion(
     region.strategy = spectral
             ? OscillatorExecutionStrategy::SharedSpectralFrame
             : OscillatorExecutionStrategy::ChainedPerLane;
+    region.outputLatencySamples = 0;
+    region.tailPolicy = OscillatorTailPolicy::EnvelopeOwned;
+    region.outputTailSamples = 0;
     region.materializationStepIndex = terminalRegionStep(plan, region, rootIndex);
     const int regionIndex = (int) plan.oscillatorRegions.size();
 
@@ -917,6 +920,19 @@ void compileOscillatorRegions(
         }
         appendUpstreamRegionOperations(plan, contextNodeId, region);
         assignOscillatorRegion(plan, rootIndex, assigned, region);
+        if (region.strategy == OscillatorExecutionStrategy::SharedSpectralFrame) {
+            const auto& materializer = plan.steps[
+                    (size_t) region.materializationStepIndex];
+            if (materializer.transformMode != "cyclic") {
+                issues.push_back({
+                        GraphCompileCode::UnsupportedReconstructionPolicy,
+                        "Oscillator region '" + region.id
+                                + "' requests unsupported reconstruction mode '"
+                                + materializer.transformMode + "'"
+                });
+                return;
+            }
+        }
         plan.oscillatorRegions.push_back(std::move(region));
     }
 

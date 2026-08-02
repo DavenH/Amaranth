@@ -14,7 +14,8 @@ namespace CycleV2 {
 
 enum class GraphCompileCode {
     CycleDetected,
-    AmbiguousVoiceContext
+    AmbiguousVoiceContext,
+    UnsupportedReconstructionPolicy
 };
 
 enum class ExecutionCoordinate {
@@ -38,6 +39,10 @@ enum class OscillatorExecutionStrategy {
 
 enum class SpectralReconstructionPolicy {
     CyclicFrameCrossfade
+};
+
+enum class OscillatorTailPolicy {
+    EnvelopeOwned
 };
 
 struct GraphCompileIssue {
@@ -152,6 +157,8 @@ struct OscillatorRegionPlan {
     int materializationStepIndex { -1 };
     int laneCount { 1 };
     int outputLatencySamples {};
+    OscillatorTailPolicy tailPolicy { OscillatorTailPolicy::EnvelopeOwned };
+    int outputTailSamples {};
 };
 
 struct GraphExecutionPlan {

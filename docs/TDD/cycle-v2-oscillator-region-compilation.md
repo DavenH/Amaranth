@@ -56,6 +56,11 @@ Implemented compiler foundation:
   crossing back into the spectral region. Mixed spectral and chained siblings
   therefore prepare as independent regions, fold their own Unison lanes, and
   meet at ordinary allocation-free sample-block Add or Multiply.
+- the Cycle 1 parity policies explicitly declare zero algorithmic output
+  latency and envelope-owned reconstruction history with no finite region
+  tail. NoteOn and Reset remain sample-exact, while NoteOff keeps cyclic state
+  alive for the envelope. The unimplemented `acyclicCarry`/OLA mode now fails
+  compilation instead of silently running the cyclic policy.
 
 The spectral recipe is a domain executor, not a compatibility copy. Its
 authoritative operations remain `OscillatorLaneRasterizer` for fixed time
@@ -67,8 +72,10 @@ oscillator-region-owned executor; the flat graph processors remain the
 deletion target once every spectral region and preview consumer routes through
 the domain interfaces.
 
-Latency compensation, spectral tail declaration, and placeholder deletion
-remain open. Full oscillator and Unison audio parity is not yet claimed.
+Nonzero latency compensation belongs to the future WindowedOverlapAdd policy;
+the current parity policies require no compensation at mixed-strategy merges.
+Placeholder deletion remains open. Full oscillator and Unison audio parity is
+not yet claimed.
 
 Depends on:
 

@@ -265,10 +265,12 @@ contracts for every Unison lane. The graph executor owns only the prepared
 oscillator-region interface and does not branch into chained or spectral
 algorithms. Sibling spectral and time-only oscillators now materialize and fold
 their lanes independently before allocation-free sample-block Add or Multiply.
-Spectral latency/tail parity remains open. Lane and rasterizer state reset at
-the exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator
-running for envelope-controlled release. Full audible parity is not yet
-claimed.
+Both parity strategies declare zero algorithmic latency and envelope-owned
+history with no finite region tail. Lane and rasterizer state reset at the
+exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator running
+for envelope-controlled release. Unsupported acyclic/OLA reconstruction fails
+compilation instead of falling back to cyclic behavior. Placeholder runtime
+deletion remains open, so full parity is not yet claimed.
 
 ## Completion Criteria
 

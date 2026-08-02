@@ -584,6 +584,64 @@ TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame"
             }));
     REQUIRE(output.payload->block.samples != output.payload->secondaryBlock.samples);
 
+    GraphAudioExecutor delayedExecutor;
+    GraphAudioExecutor freshExecutor;
+    delayedExecutor.prepareExecution(compiled.plan, spec);
+    freshExecutor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext delayedNoteOn = noteOn;
+    delayedNoteOn.events.front().sampleOffset = 73;
+    const auto delayed = delayedExecutor.processRealtime(
+            compiled.plan,
+            256,
+            {},
+            delayedNoteOn);
+    AudioVoiceContext freshNoteOn = noteOn;
+    const auto fresh = freshExecutor.processRealtime(
+            compiled.plan,
+            183,
+            {},
+            freshNoteOn);
+    REQUIRE(std::all_of(
+            delayed.payload->block.samples.begin(),
+            delayed.payload->block.samples.begin() + 73,
+            [](float sample) {
+                return sample == 0.f;
+            }));
+    REQUIRE(std::equal(
+            delayed.payload->block.samples.begin() + 73,
+            delayed.payload->block.samples.end(),
+            fresh.payload->block.samples.begin()));
+
+    AudioVoiceContext noteOff = noteOn;
+    noteOff.events.front() = { NoteLifecycleType::NoteOff, 0, 0 };
+    AudioVoiceContext continuation = noteOn;
+    continuation.events.clear();
+    const auto released = delayedExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            noteOff);
+    const auto continued = freshExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            continuation);
+    REQUIRE(released.payload->block.samples == continued.payload->block.samples);
+
+    AudioVoiceContext reset = continuation;
+    reset.events.push_back({ NoteLifecycleType::Reset, 64, 0 });
+    const auto resetBlock = delayedExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            reset);
+    REQUIRE(std::all_of(
+            resetBlock.payload->block.samples.begin() + 64,
+            resetBlock.payload->block.samples.end(),
+            [](float sample) {
+                return sample == 0.f;
+            }));
+
     GraphAudioExecutor lowNoteExecutor;
     lowNoteExecutor.prepareExecution(compiled.plan, spec);
     noteOn.controls.noteNumber = 0;

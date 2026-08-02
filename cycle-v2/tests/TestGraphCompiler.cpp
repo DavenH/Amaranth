@@ -151,6 +151,9 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(region.strategy == OscillatorExecutionStrategy::SharedSpectralFrame);
     REQUIRE(region.reconstruction == SpectralReconstructionPolicy::CyclicFrameCrossfade);
     REQUIRE(region.laneCount == 1);
+    REQUIRE(region.outputLatencySamples == 0);
+    REQUIRE(region.tailPolicy == OscillatorTailPolicy::EnvelopeOwned);
+    REQUIRE(region.outputTailSamples == 0);
     REQUIRE(region.materializationStepIndex == stepPlanIndex(plan, "ifft"));
     REQUIRE(findStep(plan, "waveMesh").executionCoordinate
             == ExecutionCoordinate::CycleField);
@@ -190,6 +193,9 @@ TEST_CASE("Compiler plans a time-only oscillator region per Unison lane",
     const auto& region = result.plan.oscillatorRegions.front();
     REQUIRE(region.strategy == OscillatorExecutionStrategy::ChainedPerLane);
     REQUIRE(region.laneCount == 4);
+    REQUIRE(region.outputLatencySamples == 0);
+    REQUIRE(region.tailPolicy == OscillatorTailPolicy::EnvelopeOwned);
+    REQUIRE(region.outputTailSamples == 0);
     REQUIRE(region.materializationStepIndex == stepPlanIndex(result.plan, "mesh"));
     REQUIRE(findStep(result.plan, "mesh").ownershipScope
             == RuntimeOwnershipScope::UnisonLane);
@@ -285,6 +291,49 @@ TEST_CASE("Compiler materializes sibling spectral and chained oscillator regions
     REQUIRE(findStep(result.plan, "add").oscillatorRegionIndex == -1);
     REQUIRE(findStep(result.plan, "add").executionCoordinate
             == ExecutionCoordinate::SampleBlock);
+}
+
+TEST_CASE("Compiler rejects unimplemented acyclic spectral reconstruction",
+        "[cycle-v2][graph][oscillator-region][reconstruction]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    Node ifft = factory.createNode(NodeKind::Ifft, "ifft", {});
+    const auto mode = std::find_if(
+            ifft.parameters.begin(),
+            ifft.parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "mode";
+            });
+    REQUIRE(mode != ifft.parameters.end());
+    mode->value = "acyclicCarry";
+    graph.addNode(std::move(ifft));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.compileIssues.size() == 1);
+    REQUIRE(result.compileIssues.front().code
+            == GraphCompileCode::UnsupportedReconstructionPolicy);
+    REQUIRE(result.compileIssues.front().message.contains("acyclicCarry"));
 }
 
 TEST_CASE("Voice Context defaults resolve per axis with explicit override precedence",
