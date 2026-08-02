@@ -20,6 +20,15 @@
 
 namespace CycleV2 {
 
+namespace {
+
+constexpr float kDefaultMinorGridBrightness = 0.085f;
+constexpr float kLogarithmicMinorGridBrightness = kDefaultMinorGridBrightness * 1.2f;
+constexpr int kLogarithmicGridLineCount = 16;
+constexpr int kLogarithmicMajorLineInterval = 4;
+
+}
+
 class EnvelopeCurvePanel final :
         public Panel2D
     ,   public Interactor2D
@@ -87,6 +96,9 @@ public:
         Interactor2D::init();
         updateZoomBounds(true);
         updateEnvelopeBackgroundGrid();
+        if (pendingVerticalFit) {
+            fitEnvelopeVerticalRange();
+        }
     }
 
     void clearInteractionState() override {
@@ -159,6 +171,36 @@ public:
             updateSelectionFrames();
             Panel2D::repaint();
         }
+    }
+
+    void fitEnvelopeVerticalRange() override {
+        if (zoomPanel == nullptr) {
+            pendingVerticalFit = true;
+            return;
+        }
+
+        pendingVerticalFit = false;
+        contractToRange(false);
+        updateEnvelopeBackgroundGrid();
+        Panel2D::repaint();
+    }
+
+    void resetEnvelopeVerticalRange() override {
+        if (zoomPanel == nullptr) {
+            pendingVerticalFit = false;
+            return;
+        }
+
+        zoomPanel->rect.y = zoomPanel->rect.yMinimum;
+        zoomPanel->rect.h = zoomPanel->rect.yMaximum - zoomPanel->rect.yMinimum;
+        zoomPanel->panelZoomChanged(false);
+        updateEnvelopeBackgroundGrid();
+        Panel2D::repaint();
+    }
+
+    void updateBackground(bool verticalOnly) override {
+        ignoreUnused(verticalOnly);
+        updateEnvelopeBackgroundGrid();
     }
 
     void setControlValues(
@@ -391,6 +433,14 @@ public:
         root->setProperty("bipolar", isCurveBipolar());
         root->setProperty("fillBaseline", envelopeFillBaseline());
         root->setProperty("neutralLineVisible", isCurveBipolar());
+        root->setProperty("horizontalMinorGridLineCount", horzMinorLines.size());
+        root->setProperty("horizontalMajorGridLineCount", horzMajorLines.size());
+        root->setProperty("minorGridBrightness", minorBrightness);
+        root->setProperty("majorGridBrightness", majorBrightness);
+        if (zoomPanel != nullptr) {
+            root->setProperty("verticalZoomY", zoomPanel->rect.y);
+            root->setProperty("verticalZoomHeight", zoomPanel->rect.h);
+        }
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         Array<var> vertexParameters;
         for (const auto& parameter : selectedVertexParameters()) {
@@ -738,16 +788,29 @@ protected:
             return;
         }
 
+        minorBrightness = envelopeLogarithmic
+                ? kLogarithmicMinorGridBrightness
+                : kDefaultMinorGridBrightness;
+
         if (envelopeLogarithmic) {
             Panel::updateBackground(false);
-            horzMinorLines.resize(16);
+            const int majorLineCount = kLogarithmicGridLineCount
+                    / kLogarithmicMajorLineInterval;
+            horzMinorLines.resize(kLogarithmicGridLineCount - majorLineCount);
+            horzMajorLines.resize(majorLineCount);
 
             float level = 1.f;
-            for (int i = 0; i < 16; ++i) {
+            int minorIndex = 0;
+            int majorIndex = 0;
+            for (int i = 0; i < kLogarithmicGridLineCount; ++i) {
                 level *= 0.5f;
-                horzMinorLines[i] = Arithmetic::logMapping(30.f, level);
+                const float position = Arithmetic::logMapping(30.f, level);
+                if ((i + 1) % kLogarithmicMajorLineInterval == 0) {
+                    horzMajorLines[majorIndex++] = position;
+                } else {
+                    horzMinorLines[minorIndex++] = position;
+                }
             }
-            horzMajorLines.resize(0);
             triggerPendingScaleUpdate();
         } else {
             Panel::updateBackground(false);
@@ -1100,14 +1163,18 @@ protected:
     TrimeshPanelEnvironment& environment;
     Mesh& mesh;
     EnvelopeMesh& envelopeMesh;
+
     bool enabled { true };
-    float controlA { 0.5f };
-    float controlB { 0.5f };
-    float controlC { 0.5f };
-    int selectedMenuId {};
     bool envelopeLogarithmic {};
     bool envelopeRedLinked { true };
     bool envelopeBlueLinked { true };
+    bool pendingVerticalFit {};
+
+    int selectedMenuId {};
+
+    float controlA { 0.5f };
+    float controlB { 0.5f };
+    float controlC { 0.5f };
 };
 
 std::unique_ptr<EnvelopeCurvePanelContract> createEnvelopeCurvePanel(

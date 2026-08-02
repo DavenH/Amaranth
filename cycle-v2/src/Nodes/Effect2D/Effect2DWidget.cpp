@@ -60,6 +60,18 @@ void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
     }
 }
 
+void Effect2DWidget::fitEnvelopeVerticalRange() {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->fitVerticalRange();
+    }
+}
+
+void Effect2DWidget::resetEnvelopeVerticalRange() {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->resetVerticalRange();
+    }
+}
+
 void Effect2DWidget::syncFromNode(const Node& node) {
     if (node.kind != kind) {
         return;

@@ -16,6 +16,8 @@
 #include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/Vertex.h>
 
 using namespace CycleV2;
 using namespace juce;
@@ -507,6 +509,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     REQUIRE(graphEditor.setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
+    EnvelopeNodeModel envelopeModel;
+    for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
+        for (int index = 0; index < (int) VertCube::numVerts; ++index) {
+            cube->getVertex(index)->values[Vertex::Amp] = 0.5f;
+        }
+    }
+    REQUIRE(envelopeModel.synchronizeFromMesh(nullptr));
+    REQUIRE(graph.replaceNodeModel(
+            "env",
+            CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
 
     Effect2DWidget widget(NodeKind::Envelope);
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
@@ -525,18 +537,37 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionRowBounds.getWidth() > 0.f);
     REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
-    REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+    auto panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("bipolar", {}));
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     ComboBox* purposeSelector = nullptr;
+    TextButton* fitVertical = nullptr;
+    TextButton* fullVertical = nullptr;
     StringArray actionLabels;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* combo = dynamic_cast<ComboBox*>(editor->getChildComponent(index))) {
             purposeSelector = combo;
         } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
             actionLabels.add(button->getButtonText());
+            if (button->getButtonText() == "Fit Y") {
+                fitVertical = button;
+            } else if (button->getButtonText() == "Full Y") {
+                fullVertical = button;
+            }
         }
     }
     REQUIRE(purposeSelector != nullptr);
-    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log" }));
+    REQUIRE(fitVertical != nullptr);
+    REQUIRE(fullVertical != nullptr);
+    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log", "Fit Y", "Full Y" }));
+    fullVertical->onClick();
+    panelState = widget.automationState();
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {}))
+            == Catch::Approx(1.0));
+    fitVertical->onClick();
+    panelState = widget.automationState();
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
+    REQUIRE_FALSE(delegate.events.contains("publish"));
     purposeSelector->setSelectedId(
             static_cast<int>(EnvelopePurpose::Scratch) + 1,
             sendNotificationSync);
@@ -545,6 +576,31 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             static_cast<int>(EnvelopePurpose::Pitch) + 1,
             sendNotificationSync);
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+}
+
+TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
+        "[cycle-v2][node-editor-host][envelope][logarithmic][grid]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    GraphNodeFactory factory;
+    GraphEditor graphEditor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(graphEditor.setNodeParameter(
+            graph, "env", "logarithmic", "Logarithmic", "1").succeeded());
+
+    Effect2DWidget widget(NodeKind::Envelope);
+    auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    editor->setBounds(0, 0, 640, 400);
+    editor->setNode(*graph.findNode("env"));
+
+    const var panelState = widget.automationState();
+    REQUIRE((int) panelState.getProperty("horizontalMinorGridLineCount", {}) == 12);
+    REQUIRE((int) panelState.getProperty("horizontalMajorGridLineCount", {}) == 4);
+    REQUIRE(static_cast<double>(panelState.getProperty("minorGridBrightness", {}))
+            == Catch::Approx(0.085 * 1.2));
+    REQUIRE(static_cast<double>(panelState.getProperty("majorGridBrightness", {}))
+            == Catch::Approx(0.14));
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

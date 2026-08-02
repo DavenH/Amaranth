@@ -19,7 +19,7 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(purposeLabel);
         owner.addAndMakeVisible(purpose);
-        for (auto* button : { &loop, &sustain, &logarithmic }) {
+        for (auto* button : { &loop, &sustain, &logarithmic, &fitVertical, &fullVertical }) {
             styleParameterButton(*button, button->getButtonText());
             owner.addAndMakeVisible(*button);
         }
@@ -34,9 +34,13 @@ struct EnvelopeEditorComponent::Impl {
     TextButton loop { "Loop" };
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
+    TextButton fitVertical { "Fit Y" };
+    TextButton fullVertical { "Full Y" };
     EnvelopeMorphControls presentation;
 
+    EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
     int viewAxis {};
+    bool hasAppliedPurpose {};
     bool redLinked { true };
     bool blueLinked { true };
     bool draggingMorph {};
@@ -69,6 +73,14 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
     bindDiscreteAction(impl->logarithmic, [this] {
         widget.setEnvelopeLogarithmic(impl->logarithmic.getToggleState());
     });
+    impl->fitVertical.onClick = [this] {
+        widget.fitEnvelopeVerticalRange();
+        requestRepaint();
+    };
+    impl->fullVertical.onClick = [this] {
+        widget.resetEnvelopeVerticalRange();
+        requestRepaint();
+    };
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
@@ -116,8 +128,12 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
 void EnvelopeEditorComponent::layoutEditor() {
     const auto controls = editorControlBounds();
     auto purposeRow = impl->presentation.purposeRow(controls).toNearestInt();
-    impl->purposeLabel.setBounds(purposeRow.removeFromLeft(62));
-    impl->purpose.setBounds(purposeRow.removeFromLeft(172).reduced(2));
+    impl->purposeLabel.setBounds(purposeRow.removeFromLeft(56));
+    impl->purpose.setBounds(purposeRow.removeFromLeft(140).reduced(2));
+    purposeRow.removeFromLeft(8);
+    impl->fitVertical.setBounds(purposeRow.removeFromLeft(52).reduced(2));
+    purposeRow.removeFromLeft(6);
+    impl->fullVertical.setBounds(purposeRow.removeFromLeft(56).reduced(2));
 
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
@@ -165,10 +181,17 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
             0);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     const auto purpose = static_cast<EnvelopePurpose>(impl->purpose.getSelectedId() - 1);
+    const bool enteringPitch = purpose == EnvelopePurpose::Pitch
+            && (!impl->hasAppliedPurpose || impl->appliedPurpose != EnvelopePurpose::Pitch);
     widget.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
     widget.setEnvelopeLogarithmic(
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->logarithmic.getToggleState());
+    if (enteringPitch) {
+        widget.fitEnvelopeVerticalRange();
+    }
+    impl->appliedPurpose = purpose;
+    impl->hasAppliedPurpose = true;
 }
 
 std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
@@ -216,6 +239,12 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "actionRowBounds",
             editorBoundsToVar(impl->presentation.actionRow(editorControlBounds())));
+    state.setProperty(
+            "fitVerticalBounds",
+            editorBoundsToVar(impl->fitVertical.getBounds().toFloat()));
+    state.setProperty(
+            "fullVerticalBounds",
+            editorBoundsToVar(impl->fullVertical.getBounds().toFloat()));
     Array<var> parameterRails;
     const auto parameters = widget.selectedVertexParameters();
     const auto parameterArea = impl->presentation.vertexBounds(editorControlBounds());

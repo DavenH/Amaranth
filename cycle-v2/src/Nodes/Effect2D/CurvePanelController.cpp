@@ -344,6 +344,14 @@ public:
         envelopePanel().setEnvelopeAxisLinks(redLinked, blueLinked);
     }
 
+    void fitVerticalRange() override {
+        envelopePanel().fitEnvelopeVerticalRange();
+    }
+
+    void resetVerticalRange() override {
+        envelopePanel().resetEnvelopeVerticalRange();
+    }
+
     bool selectedMarkerState(bool loopMarker) const override {
         return envelopePanel().selectedEnvelopeMarkerState(loopMarker);
     }

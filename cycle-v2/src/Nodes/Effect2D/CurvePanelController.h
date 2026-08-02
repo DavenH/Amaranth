@@ -57,6 +57,8 @@ public:
     virtual void setBipolar(bool bipolar) = 0;
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;
+    virtual void fitVerticalRange() = 0;
+    virtual void resetVerticalRange() = 0;
     virtual bool selectedMarkerState(bool loopMarker) const = 0;
     virtual void toggleSelectedMarker(bool loopMarker) = 0;
 };

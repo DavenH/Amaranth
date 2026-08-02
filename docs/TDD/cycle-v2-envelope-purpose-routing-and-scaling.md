@@ -76,6 +76,11 @@ guessing must not supply that meaning.
   and `[0, 1]` represents `[-12, +12]` semitones. Cycle 1 constrains live
   tuning samples to `[0.01, 0.99]`; the exact endpoints remain visually
   undefined rather than becoming special tuning values.
+- Cycle 1 Envelope vertical framing is `Envelope2D::zoomAndRepaint`, which
+  delegates to the shared `Panel2D::contractToRange` and
+  `ZoomPanel::contractToRange` implementation. The Envelope controls expose
+  both contract-to-range and expand-to-full actions; Cycle V2 reuses that
+  fitter rather than introducing pitch-specific range arithmetic.
 - Cycle 1 scratch lifecycle and per-voice coordinate production are
   `CycleBasedVoice::updateEnvelopes` and `getScratchTime`.
   `cycle/src/Curve/Rasterization/Policies/Graphic/GraphicPolicies.h`,
@@ -205,6 +210,12 @@ shading:
 - changing purpose changes interpretation and presentation without rewriting
   or renormalizing authored Envelope vertices.
 
+Entering pitch mode vertically fits the rendered curve once with the shared
+Cycle 1 range fitter so small deviations around neutral remain comfortable to
+edit. `Fit Y` and `Full Y` are explicit view-only actions in the expanded
+editor; they update presentation state without publishing or serializing a
+graph edit.
+
 This supersedes the older suggestion in `node-graph-workflow.md` that polarity
 be inferred solely from downstream connection role. A disconnected pitch
 Envelope must still be visibly bipolar, and reconnecting an Envelope must not
@@ -230,6 +241,11 @@ Every consumer observes the transformed product:
 - compact and expanded Envelope previews;
 - spy blocks and spy rasterization;
 - offline capture and deterministic test execution.
+
+The logarithmic editor background retains all 16 Cycle 1 halving divisions,
+but promotes every fourth division to the major-line treatment. The remaining
+minor divisions use 120% of the ordinary minor-grid brightness so the dense
+logarithmic spacing remains visible without competing with the major lines.
 
 The current Cycle V2 traversal-grid publication samples the rasterizer
 directly and therefore risks bypassing playback's logarithmic transform. The
@@ -368,6 +384,11 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
 - Pitch shows a neutral centre at `0.5`; intermediate labels match
   `NumberUtils::unitPitchToSemis`, live values use Cycle 1's clamp, and exact
   endpoint presentation remains undefined.
+- Entering pitch vertically fits a narrow curve through the shared Cycle 1
+  range fitter; `Full Y` restores the complete normalized range and `Fit Y`
+  contracts it again without publishing a graph edit.
+- Logarithmic editor grids contain 12 minor and 4 major horizontal divisions,
+  with minor brightness exactly 20% above the ordinary grid.
 - Control, volume, and scratch retain unipolar shading regardless of whether
   they currently have a cable.
 

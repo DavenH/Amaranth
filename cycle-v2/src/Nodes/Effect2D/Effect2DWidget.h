@@ -21,6 +21,8 @@ public:
     void setEnvelopeBipolar(bool bipolar);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
+    void fitEnvelopeVerticalRange();
+    void resetEnvelopeVerticalRange();
     void syncFromNode(const Node& node);
     void renderExpandedPanelOpenGL(
             const Node& node,
