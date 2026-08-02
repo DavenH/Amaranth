@@ -347,6 +347,23 @@ TEST_CASE("Unison editor exposes structured individual voice state",
     REQUIRE((int) effect->getProperty("selectedVoice") == 0);
 }
 
+TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
+        "[cycle-v2][editor][unison][layout]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node unison = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+
+    REQUIRE(host.bind(&unison, { 0, 0, 520, 520 }));
+    Component* jitter = host.component()->findChildWithID("unison.jitter.slider");
+    REQUIRE(jitter != nullptr);
+    REQUIRE(jitter->isVisible());
+    REQUIRE(jitter->getBottom() <= host.component()->getHeight() - 18);
+}
+
 TEST_CASE("Canvas automation inspection is semantic and side effect free",
         "[cycle-v2][canvas][automation]") {
     ScopedJuceInitialiser_GUI juce;

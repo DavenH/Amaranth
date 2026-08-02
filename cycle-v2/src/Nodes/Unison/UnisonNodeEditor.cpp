@@ -111,15 +111,15 @@ public:
         addVoiceButton.setBounds(282, 216, 30, 26);
         removeVoiceButton.setBounds(318, 216, 30, 26);
 
-        int y = 254;
+        int y = 250;
         for (auto& control : controls) {
             if (!control->slider.isVisible()) {
                 continue;
             }
-            control->label.setBounds(18, y, getWidth() - 112, 18);
-            control->readout.setBounds(getWidth() - 110, y, 92, 18);
-            control->slider.setBounds(18, y + 20, getWidth() - 36, 28);
-            y += 58;
+            control->label.setBounds(18, y, getWidth() - 112, 16);
+            control->readout.setBounds(getWidth() - 110, y, 92, 16);
+            control->slider.setBounds(18, y + 18, getWidth() - 36, 24);
+            y += 50;
         }
     }
 
@@ -177,6 +177,7 @@ private:
         control->readout.setJustificationType(Justification::centredRight);
         control->readout.setColour(Label::textColourId, Colour(0xffeef2f6));
         control->slider.setSliderStyle(Slider::LinearHorizontal);
+        control->slider.setComponentID("unison." + id + ".slider");
         control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         if (id == "order") {
             control->slider.setRange(1.0, CycleDsp::maximumUnisonOrder, 1.0);

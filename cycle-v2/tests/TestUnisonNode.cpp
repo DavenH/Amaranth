@@ -114,8 +114,36 @@ TEST_CASE("Individual Unison preview follows the structured voice layout",
     REQUIRE(paths.size() == 2);
     REQUIRE(paths[0].detuneCents == Catch::Approx(-5.f));
     REQUIRE(paths[1].detuneCents == Catch::Approx(5.f));
+    REQUIRE(paths[0].pan == 0.f);
+    REQUIRE(paths[1].pan == 1.f);
     REQUIRE(paths[0].segments.front().startPhaseCycles == Catch::Approx(0.1f));
     REQUIRE(paths[1].segments.front().startPhaseCycles == Catch::Approx(-0.4f));
+}
+
+TEST_CASE("Unison laser colour communicates each voice pan",
+        "[cycle-v2][unison][preview][pan]") {
+    const Colour left = unisonLaserColourForPan(0.f);
+    const Colour centre = unisonLaserColourForPan(0.5f);
+    const Colour right = unisonLaserColourForPan(1.f);
+
+    REQUIRE(left == Colour(0xffff9f43));
+    REQUIRE(centre == Colour(0xffc7c7c7));
+    REQUIRE(right == Colour(0xffa56cff));
+    REQUIRE(centre.getSaturation() == Catch::Approx(0.f));
+
+    Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    setParameter(node, "order", "3");
+    setParameter(node, "panSpread", "0");
+    const auto centred = makeUnisonPreviewPaths(node);
+    REQUIRE(std::all_of(centred.begin(), centred.end(), [](const auto& path) {
+        return path.pan == Catch::Approx(0.5f);
+    }));
+
+    setParameter(node, "panSpread", "1");
+    const auto spread = makeUnisonPreviewPaths(node);
+    REQUIRE(spread[0].pan == Catch::Approx(1.f));
+    REQUIRE(spread[1].pan == Catch::Approx(0.5f));
+    REQUIRE(spread[2].pan == Catch::Approx(0.f));
 }
 
 TEST_CASE("Unison compiles as Voice Context configuration without a runtime step",

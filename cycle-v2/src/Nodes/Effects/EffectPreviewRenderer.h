@@ -15,9 +15,11 @@ struct UnisonPreviewContext {
 struct UnisonPreviewPath {
     int voiceIndex {};
     float detuneCents {};
+    float pan { 0.5f };
     std::vector<CycleDsp::UnisonPhaseSegment> segments;
 };
 
+juce::Colour unisonLaserColourForPan(float pan);
 std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
         const Node& node,
         const UnisonPreviewContext& context = {});
