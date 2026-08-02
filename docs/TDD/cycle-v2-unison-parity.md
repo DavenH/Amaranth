@@ -234,12 +234,22 @@ contained only the pre-existing JUCE Settings assertions already recorded in
 `docs/TDD/ui-bugs.md`; it contained no Unison-specific assertion, crash, or
 suspicious runtime failure.
 
-Slices 5 and 6 remain open. Cycle V2 currently has neither executable
-oscillator context nor a voice-lane fanout/sum contract to which the shared
-configuration can be adapted. Implementing audible behavior inside the current
-passthrough node would necessarily approximate Cycle 1 as a post-mix chorus,
-which violates the negative boundary above. Individual mode likewise waits on
-structured per-voice node state rather than flattened generic parameters.
+Slice 5 and slice 7 are implemented:
+
+- Unison is a typed Voice Context configuration attachment with no transitional
+  signal ports, signal buffer, or passthrough runtime step;
+- individual mode has structured per-voice detune, pan, and phase state with
+  add/remove/select/edit, serialization, preview, and one-gesture undo;
+- group and individual preview trajectories communicate resolved pan using an
+  orange-left, greyscale-centre, purple-right colour mapping;
+- the expanded group editor keeps every control, including Jitter, within the
+  hosted panel at its registered production size.
+
+Slice 6 remains in progress. Explicit oscillator regions now compile and the
+Cycle 1 fractional lane clock plus mature chained-rasterizer transition have
+been extracted into shared Cycle DSP primitives consumed by Cycle 1. Cycle V2
+does not yet execute and fold those prepared lanes, so audible parity is not
+claimed.
 
 ## Completion Criteria
 

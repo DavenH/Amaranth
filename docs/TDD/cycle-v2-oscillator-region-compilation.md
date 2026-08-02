@@ -15,10 +15,13 @@ Implemented compiler foundation:
   reconstruction policy, and chained or shared-spectral strategy;
 - an operation reached by multiple Voice Contexts fails compilation with an
   `AmbiguousVoiceContext` diagnostic.
+- the Cycle 1 fractional lane clock and chained `VoiceRasterizer` priming,
+  sampling, and spillover transition are shared Cycle DSP primitives consumed
+  by the Cycle 1 time-only renderer.
 
-The prepared runtime request/state, mature lane scheduler integration,
-materialization, latency compensation, and placeholder deletion slices remain
-open. The current plan metadata does not claim audio parity by itself.
+Cycle V2 prepared lane ownership, region execution, materialization, latency
+compensation, and placeholder deletion remain open. The current plan metadata
+and shared primitives do not claim audio parity by themselves.
 
 Depends on:
 

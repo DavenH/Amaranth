@@ -5,6 +5,7 @@
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 
 #include <atomic>
 #include <cstdlib>
@@ -121,6 +122,56 @@ TEST_CASE("Shared voice rasterizer builds chained slice intercepts", "[rasteriza
     REQUIRE(intercepts[1].x == Approx(0.35f));
     REQUIRE(intercepts[1].y == Approx(0.f));
     REQUIRE(intercepts[1].shp == Approx(0.35f));
+
+    mesh.destroy();
+}
+
+TEST_CASE("Oscillator lane facade primes and samples the mature chained rasterizer",
+        "[rasterization][voice][oscillator-lane]") {
+    CurveTableScope curveTable;
+    Mesh mesh("OscillatorLaneMesh");
+    addVoiceCube(mesh, 0.10f, 0.60f, 0.20f, 0.80f, 0.35f);
+    addVoiceCube(mesh, 0.55f, 0.95f, 0.80f, 0.30f, 0.55f);
+
+    Rasterization::VoiceCycleState state;
+    Rasterization::VoiceRasterizer rasterizer;
+    rasterizer.prepare(
+            Rasterization::VoiceRasterizerPreparation::forMesh(mesh),
+            { &state });
+    const CycleDsp::ChainedRasterizationRequest request {
+            &mesh,
+            &state,
+            MorphPosition(0.5f, 0.5f, 0.5f),
+            0.2f,
+            0.01,
+            7
+    };
+    std::array<float, 100> samples {};
+
+    CycleDsp::OscillatorLaneRasterizer::prime(rasterizer, request);
+    CycleDsp::OscillatorLaneRasterizer::render(
+            rasterizer,
+            request,
+            Buffer<float>(samples.data(), (int) samples.size()));
+
+    REQUIRE(state.callCount == 2);
+    REQUIRE(rasterizer.diagnostics().capacityFailureCount == 0);
+    REQUIRE(std::any_of(samples.begin(), samples.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(state.spillover > -1.0);
+    REQUIRE(state.spillover < 1.0);
+
+    size_t allocationCount = 0;
+    {
+        ScopedVoiceRenderAllocationCount allocations;
+        CycleDsp::OscillatorLaneRasterizer::render(
+                rasterizer,
+                request,
+                Buffer<float>(samples.data(), (int) samples.size()));
+        allocationCount = allocations.count();
+    }
+    REQUIRE(allocationCount == 0);
 
     mesh.destroy();
 }
