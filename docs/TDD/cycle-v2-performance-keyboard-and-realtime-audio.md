@@ -629,7 +629,7 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 1,758 lines and removed 9 lines under `cycle-v2/src`
+The production diff added 1,766 lines and removed 9 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
 added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 203
 additions and 3 removals. The slight increase over the estimate is the bounded
@@ -668,6 +668,9 @@ non-realtime capture result.
   the established expanded-editor composition path.
   `/private/tmp/cycle-v2-keyboard-node-os.png` verifies the compact node-like
   panel after context startup.
+- A native `cliclick` drag moved the header diagonally through five successive
+  updates without losing mouse ownership. The final state retained graph
+  revision 2, no held note, and no active voice.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

@@ -77,6 +77,22 @@ composition path. The performance fixture asserts the ownership boundary and
 header drag behavior; the OS capture
 `/private/tmp/cycle-v2-keyboard-node-os.png` verifies native composition.
 
+## Addressed: Cycle v2 performance keyboard loses grip while dragging
+
+Context:
+
+- A header drag moved the canvas keyboard briefly, then stopped even though the
+  primary mouse button remained held.
+- `PerformanceKeyboardPanel::mouseDrag` re-evaluated the original mouse-down Y
+  against the component's current coordinate system. Moving the component
+  changed that coordinate, so an initially valid header gesture could fail its
+  own header check partway through the drag.
+
+Current status: addressed by latching header-drag ownership on mouse-down and
+retaining it until mouse-up. The focused fixture performs two consecutive drag
+updates, and a native `cliclick` gesture completed five diagonal movement
+updates without losing grip.
+
 ## Open: Cycle v2 automation launch emits Settings assertions
 
 Context:

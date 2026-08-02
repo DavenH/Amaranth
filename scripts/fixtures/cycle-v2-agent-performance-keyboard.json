@@ -43,6 +43,16 @@
       "command": "pointer",
       "targetId": "PerformanceKeyboard.Header",
       "downTargetId": "PerformanceKeyboard.Header",
+      "event": "drag",
+      "targetX": 0.9,
+      "targetY": 0.8,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Header",
+      "downTargetId": "PerformanceKeyboard.Header",
       "event": "up",
       "targetX": 0.7,
       "downTargetX": 0.3
@@ -51,7 +61,7 @@
       "command": "assertState",
       "path": "performance.moveCount",
       "op": "greaterThan",
-      "value": 0
+      "value": 1
     },
     {
       "command": "pointer",

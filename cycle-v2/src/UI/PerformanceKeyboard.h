@@ -81,6 +81,7 @@ public:
     void resized() override;
     void mouseDown(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
+    void mouseUp(const MouseEvent& event) override;
 
     std::function<void(Point<int>)> onMoved;
 
@@ -92,6 +93,7 @@ private:
     TextButton octaveUp { "+" };
     Label audioStatus;
     ComponentDragger dragger;
+    bool dragGestureActive {};
 };
 
 }
