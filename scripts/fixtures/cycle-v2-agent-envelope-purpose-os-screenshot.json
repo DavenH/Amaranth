@@ -11,11 +11,9 @@
       "idleDelayMs": 200
     },
     {
-      "command": "setNodeParameter",
-      "nodeId": "scratchEnvelope",
-      "parameterId": "purpose",
-      "label": "Purpose",
-      "value": "pitch",
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.pitch",
       "waitForIdle": true,
       "idleDelayMs": 200
     },
@@ -23,6 +21,16 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.polarity",
       "equals": "bipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeLabel",
+      "equals": "Mode"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeOptions.2.selected",
+      "equals": true
     },
     {
       "command": "assertState",

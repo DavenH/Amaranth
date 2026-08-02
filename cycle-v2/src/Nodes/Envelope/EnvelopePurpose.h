@@ -2,6 +2,8 @@
 
 #include "../../Graph/NodeGraph.h"
 
+#include <array>
+
 namespace CycleV2 {
 
 enum class EnvelopePurpose {
@@ -9,6 +11,13 @@ enum class EnvelopePurpose {
     Volume,
     Pitch,
     Scratch
+};
+
+inline constexpr std::array<EnvelopePurpose, 4> kEnvelopePurposes {
+    EnvelopePurpose::Control,
+    EnvelopePurpose::Volume,
+    EnvelopePurpose::Pitch,
+    EnvelopePurpose::Scratch
 };
 
 EnvelopePurpose envelopePurposeFromString(const String& value);

@@ -10,6 +10,7 @@
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Graph/NodeDefinition.h"
 #include "../src/UI/EnvelopePurposeIconRenderer.h"
+#include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCableRenderer.h"
@@ -143,11 +144,7 @@ TEST_CASE("Every Envelope purpose has a parseable compact icon",
     const uint64_t blankChecksum = imageChecksum(blank);
     std::set<uint64_t> checksums;
 
-    for (const EnvelopePurpose purpose : {
-            EnvelopePurpose::Control,
-            EnvelopePurpose::Volume,
-            EnvelopePurpose::Pitch,
-            EnvelopePurpose::Scratch }) {
+    for (const EnvelopePurpose purpose : kEnvelopePurposes) {
         INFO("Missing or invalid Envelope purpose icon for "
                 << envelopePurposeToString(purpose));
         REQUIRE(EnvelopePurposeIconRenderer::hasIcon(purpose));
@@ -162,6 +159,40 @@ TEST_CASE("Every Envelope purpose has a parseable compact icon",
         REQUIRE(checksum != blankChecksum);
         REQUIRE(checksums.emplace(checksum).second);
     }
+}
+
+TEST_CASE("Envelope mode selector presents one contiguous highlighted choice",
+        "[cycle-v2][canvas][envelope][icons][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    REQUIRE(messageLock.lockWasGained());
+    EnvelopePurposeSelector selector;
+    selector.setBounds(0, 0, 148, 28);
+    int changes {};
+    selector.onChange = [&changes](EnvelopePurpose) {
+        ++changes;
+    };
+
+    std::set<uint64_t> selectedChecksums;
+    Rectangle<float> previous;
+    for (const EnvelopePurpose purpose : kEnvelopePurposes) {
+        selector.setPurpose(purpose, sendNotificationSync);
+        REQUIRE(selector.purpose() == purpose);
+        const auto bounds = selector.optionBounds(purpose);
+        REQUIRE(bounds.getHeight() == Catch::Approx(28.f));
+        if (!previous.isEmpty()) {
+            REQUIRE(bounds.getX() == Catch::Approx(previous.getRight()));
+        }
+        previous = bounds;
+
+        const Image rendered = selector.createComponentSnapshot(selector.getLocalBounds());
+        REQUIRE(selectedChecksums.emplace(imageChecksum(rendered)).second);
+    }
+
+    REQUIRE(selector.getNumChildComponents() == 4);
+    REQUIRE(changes == 3);
+    selector.setPurpose(EnvelopePurpose::Scratch, sendNotificationSync);
+    REQUIRE(changes == 3);
 }
 
 TEST_CASE("Node palette hover remains open across its pullout and closes outside",

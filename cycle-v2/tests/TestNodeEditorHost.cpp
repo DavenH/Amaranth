@@ -11,6 +11,7 @@
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
+#include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeEditorHost.h"
 #include "../src/UI/NodeParameterValue.h"
 #include "../src/UI/NodePreviewResources.h"
@@ -540,13 +541,23 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     auto panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
-    ComboBox* purposeSelector = nullptr;
+    EnvelopePurposeSelector* modeSelector = nullptr;
+    Button* pitchMode = nullptr;
+    Button* scratchMode = nullptr;
     ImageButton* fitVertical = nullptr;
     ImageButton* fullVertical = nullptr;
     StringArray actionLabels;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
-        if (auto* combo = dynamic_cast<ComboBox*>(editor->getChildComponent(index))) {
-            purposeSelector = combo;
+        if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
+            modeSelector = selector;
+            for (int option = 0; option < selector->getNumChildComponents(); ++option) {
+                auto* button = dynamic_cast<Button*>(selector->getChildComponent(option));
+                if (button != nullptr && button->getName() == "Pitch envelope mode") {
+                    pitchMode = button;
+                } else if (button != nullptr && button->getName() == "Scratch envelope mode") {
+                    scratchMode = button;
+                }
+            }
         } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
             actionLabels.add(button->getButtonText());
         } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
@@ -557,12 +568,21 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             }
         }
     }
-    REQUIRE(purposeSelector != nullptr);
+    REQUIRE(modeSelector != nullptr);
+    REQUIRE(modeSelector->getNumChildComponents() == 4);
+    REQUIRE(pitchMode != nullptr);
+    REQUIRE(scratchMode != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
     REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log" }));
     const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
+    const auto modeBounds = rectangleProperty(state, "modeBounds");
+    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Mode");
+    REQUIRE(modeBounds == purposeBounds);
+    const var modeOptions = state.getProperty("modeOptions", {});
+    REQUIRE(modeOptions.isArray());
+    REQUIRE(modeOptions.getArray()->size() == 4);
     REQUIRE(fitBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE(fullBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
@@ -585,13 +605,15 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     panelState = widget.automationState();
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     REQUIRE_FALSE(delegate.events.contains("publish"));
-    purposeSelector->setSelectedId(
-            static_cast<int>(EnvelopePurpose::Scratch) + 1,
-            sendNotificationSync);
+    scratchMode->onClick();
+    REQUIRE(modeSelector->purpose() == EnvelopePurpose::Scratch);
+    REQUIRE(scratchMode->getToggleState());
+    REQUIRE_FALSE(pitchMode->getToggleState());
     REQUIRE_FALSE((bool) widget.automationState().getProperty("bipolar", {}));
-    purposeSelector->setSelectedId(
-            static_cast<int>(EnvelopePurpose::Pitch) + 1,
-            sendNotificationSync);
+    pitchMode->onClick();
+    REQUIRE(modeSelector->purpose() == EnvelopePurpose::Pitch);
+    REQUIRE(pitchMode->getToggleState());
+    REQUIRE_FALSE(scratchMode->getToggleState());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
 }
 

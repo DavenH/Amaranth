@@ -15,7 +15,7 @@ public:
 
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
     Rectangle<float> railColumn(Rectangle<float> controls) const;
-    Rectangle<float> purposeRow(Rectangle<float> controls) const;
+    Rectangle<float> modeRow(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> actionRow(Rectangle<float> controls) const;
     Rectangle<float> axisBounds(Rectangle<float> controls, int axis) const;

@@ -32,7 +32,7 @@ Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) co
     return controls.removeFromLeft(328.f);
 }
 
-Rectangle<float> EnvelopeMorphControls::purposeRow(Rectangle<float> controls) const {
+Rectangle<float> EnvelopeMorphControls::modeRow(Rectangle<float> controls) const {
     auto row = railColumn(controls);
     return row.removeFromTop(32.f);
 }

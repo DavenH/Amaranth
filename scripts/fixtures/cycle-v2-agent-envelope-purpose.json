@@ -17,6 +17,16 @@
     },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeLabel",
+      "equals": "Mode"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeOptions.3.selected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
       "path": "expandedNodeControls.effect2D.polarity",
       "equals": "unipolar"
     },
@@ -44,11 +54,28 @@
       "value": 190
     },
     {
-      "command": "setNodeParameter",
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.scratch"
+    },
+    {
+      "command": "assertNodeParameter",
       "nodeId": "scratchEnvelope",
       "parameterId": "purpose",
-      "label": "Purpose",
-      "value": "pitch",
+      "equals": "scratch"
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 34
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.pitch",
       "waitForIdle": true,
       "idleDelayMs": 200
     },
@@ -62,6 +89,11 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.purpose",
       "equals": "Pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.modeOptions.2.selected",
+      "equals": true
     },
     {
       "command": "assertState",
@@ -117,11 +149,9 @@
       "equals": 31
     },
     {
-      "command": "setNodeParameter",
-      "nodeId": "scratchEnvelope",
-      "parameterId": "purpose",
-      "label": "Purpose",
-      "value": "control",
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:scratchEnvelope.envelopeMode.control",
       "waitForIdle": true,
       "idleDelayMs": 100
     },

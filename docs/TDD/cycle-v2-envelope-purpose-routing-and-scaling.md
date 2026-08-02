@@ -196,11 +196,24 @@ its existing voice-time traversal.
 
 ## Polarity And Presentation
 
-The expanded editor exposes a visible, strictly snapped four-stop selector:
-`Control / Volume / Pitch / Scratch`. Compact presentation shows the current
-purpose as text plus an icon or badge; colour alone is insufficient. Output
+The expanded editor exposes a visible, strictly snapped four-stop icon
+selector labeled `Mode`: `Control / Volume / Pitch / Scratch`. It reuses the
+same dedicated icon renderer as compact Envelope nodes. Each option has a
+distinct silhouette and accessible name. The four options form one continuous
+segmented control with a single outer boundary and internal separators; the
+icons have no individual outlines. The selected option receives a highlighted
+cell background, so the selection reads as one viewing lens moving over the
+available modes rather than four unrelated buttons.
+Compact presentation shows the current purpose as text plus an icon or badge;
+colour alone is insufficient. Output
 port domain, connection affordance, cable style, subtitle, tooltip, and
 accessibility label update from the same purpose state.
+
+Mode selection is an inline button interaction, not a popup menu. Hovering an
+option repaints only that lightweight button and must not publish graph state,
+refresh the curve rasterizer, request an OpenGL panel repaint, or invalidate
+the node canvas. Selecting a different option remains one discrete undoable
+graph edit through the existing purpose transaction.
 
 Purpose, not the current downstream cable, determines the editor range and
 shading:
@@ -406,6 +419,9 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
   with minor brightness exactly 20% above the ordinary grid.
 - Control, volume, and scratch retain unipolar shading regardless of whether
   they currently have a cable.
+- The expanded editor labels purpose as `Mode` and presents all four modes as
+  one icon row with a persistent selected highlight. Hovering across the row
+  performs no graph publication or curve/canvas invalidation.
 
 ### Scratch parity
 

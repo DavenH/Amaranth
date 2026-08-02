@@ -243,9 +243,13 @@ void CurveExpandedEditorComponent::bindDiscreteControl(ParameterToggle& control)
 
 void CurveExpandedEditorComponent::bindDiscreteControl(ComboBox& control) {
     control.onChange = [this] {
-        auto noOperation = [] {};
-        performDiscreteEdit(noOperation);
+        publishDiscreteControlChange();
     };
+}
+
+void CurveExpandedEditorComponent::publishDiscreteControlChange() {
+    auto noOperation = [] {};
+    performDiscreteEdit(noOperation);
 }
 
 Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {

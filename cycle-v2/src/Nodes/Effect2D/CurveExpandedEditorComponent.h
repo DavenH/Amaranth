@@ -69,6 +69,7 @@ protected:
     void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
+    void publishDiscreteControlChange();
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {

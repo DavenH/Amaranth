@@ -1,14 +1,14 @@
-#include "CurveNodeEditors.h"
+#include <Binary/Images.h>
 
+#include <array>
+
+#include "CurveNodeEditors.h"
 #include "CurveEditorPrimitives.h"
 #include "CurveNodeModels.h"
 #include "EnvelopeMorphControls.h"
 #include "../Envelope/EnvelopePurpose.h"
 #include "../Trimesh/TrimeshSidePanelRenderer.h"
-
-#include <Binary/Images.h>
-
-#include <array>
+#include "../../UI/EnvelopePurposeSelector.h"
 
 namespace CycleV2 {
 
@@ -50,10 +50,10 @@ struct EnvelopeEditorComponent::Impl {
             redMorph    (owner, "Red")
         ,   blueMorph   (owner, "Blue") {
         styleParameterLabel(timeLabel, "Time");
-        styleParameterLabel(purposeLabel, "Purpose");
+        styleParameterLabel(modeLabel, "Mode");
         owner.addAndMakeVisible(timeLabel);
-        owner.addAndMakeVisible(purposeLabel);
-        owner.addAndMakeVisible(purpose);
+        owner.addAndMakeVisible(modeLabel);
+        owner.addAndMakeVisible(mode);
         for (auto* button : { &loop, &sustain, &logarithmic }) {
             styleParameterButton(*button, button->getButtonText());
             owner.addAndMakeVisible(*button);
@@ -68,8 +68,8 @@ struct EnvelopeEditorComponent::Impl {
     LabeledParameterSlider redMorph;
     LabeledParameterSlider blueMorph;
     Label timeLabel;
-    Label purposeLabel;
-    ComboBox purpose;
+    Label modeLabel;
+    EnvelopePurposeSelector mode;
     TextButton loop { "Loop" };
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
@@ -91,17 +91,9 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(Effect2DWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
-
-    for (const auto purpose : {
-            EnvelopePurpose::Control,
-            EnvelopePurpose::Volume,
-            EnvelopePurpose::Pitch,
-            EnvelopePurpose::Scratch }) {
-        impl->purpose.addItem(
-                envelopePurposeLabel(purpose),
-                static_cast<int>(purpose) + 1);
-    }
-    bindDiscreteControl(impl->purpose);
+    impl->mode.onChange = [this](EnvelopePurpose) {
+        publishDiscreteControlChange();
+    };
 
     bindDiscreteAction(impl->loop, [this] {
         widget.toggleSelectedEnvelopeMarker(true);
@@ -154,7 +146,7 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             guides,
             EnvelopeMorphControls::vertexParameterHeightScale);
 
-    if (impl->purpose.getSelectedId() == static_cast<int>(EnvelopePurpose::Pitch) + 1) {
+    if (impl->mode.purpose() == EnvelopePurpose::Pitch) {
         auto pitchLabels = editorPanelBounds().removeFromRight(48.f);
         graphics.setColour(Colours::white.withAlpha(0.72f));
         graphics.setFont(11.f);
@@ -167,9 +159,9 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
 
 void EnvelopeEditorComponent::layoutEditor() {
     const auto controls = editorControlBounds();
-    auto purposeRow = impl->presentation.purposeRow(controls).toNearestInt();
-    impl->purposeLabel.setBounds(purposeRow.removeFromLeft(56));
-    impl->purpose.setBounds(purposeRow.removeFromLeft(140).reduced(2));
+    auto modeRow = impl->presentation.modeRow(controls).toNearestInt();
+    impl->modeLabel.setBounds(modeRow.removeFromLeft(56));
+    impl->mode.setBounds(modeRow.removeFromLeft(152).reduced(2));
 
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
@@ -199,7 +191,7 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     EnvelopeNodeModel model;
     model.syncFromNode(node);
     const EnvelopePurpose purpose = envelopePurposeFor(node);
-    impl->purpose.setSelectedId(static_cast<int>(purpose) + 1, dontSendNotification);
+    impl->mode.setPurpose(purpose);
     impl->redMorph.slider.setValue(model.red, dontSendNotification);
     impl->blueMorph.slider.setValue(model.blue, dontSendNotification);
     impl->redLinked = model.redLinked;
@@ -220,13 +212,14 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
             0.5f,
             0);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
-    const auto purpose = static_cast<EnvelopePurpose>(impl->purpose.getSelectedId() - 1);
+    const EnvelopePurpose purpose = impl->mode.purpose();
     const bool enteringPitch = purpose == EnvelopePurpose::Pitch
             && (!impl->hasAppliedPurpose || impl->appliedPurpose != EnvelopePurpose::Pitch);
     widget.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
     widget.setEnvelopeLogarithmic(
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->logarithmic.getToggleState());
+    impl->logarithmic.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
     if (enteringPitch) {
         widget.fitEnvelopeVerticalRange();
     }
@@ -236,7 +229,7 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
-    const auto purpose = static_cast<EnvelopePurpose>(impl->purpose.getSelectedId() - 1);
+    const EnvelopePurpose purpose = impl->mode.purpose();
     addEditorParameter(
             result,
             node,
@@ -261,10 +254,12 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
     state.setProperty("viewAxis", impl->viewAxis);
-    state.setProperty("purpose", impl->purpose.getText());
+    state.setProperty("modeLabel", "Mode");
+    state.setProperty("mode", envelopePurposeLabel(impl->mode.purpose()));
+    state.setProperty("purpose", envelopePurposeLabel(impl->mode.purpose()));
     state.setProperty(
             "polarity",
-            impl->purpose.getSelectedId() == static_cast<int>(EnvelopePurpose::Pitch) + 1
+            impl->mode.purpose() == EnvelopePurpose::Pitch
                     ? "bipolar"
                     : "unipolar");
     state.setProperty("logarithmic", impl->logarithmic.getToggleState());
@@ -272,8 +267,27 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(controls)));
     state.setProperty(
+            "modeBounds",
+            editorBoundsToVar(impl->mode.getBounds().toFloat()));
+    state.setProperty(
             "purposeBounds",
-            editorBoundsToVar(impl->purpose.getBounds().toFloat()));
+            editorBoundsToVar(impl->mode.getBounds().toFloat()));
+    Array<var> modeOptions;
+    for (const EnvelopePurpose purpose : kEnvelopePurposes) {
+        auto* option = new DynamicObject();
+        option->setProperty("id", envelopePurposeToString(purpose));
+        option->setProperty("label", envelopePurposeLabel(purpose));
+        option->setProperty("selected", impl->mode.purpose() == purpose);
+        option->setProperty("hovered", impl->mode.isOptionHovered(purpose));
+        option->setProperty(
+                "bounds",
+                editorBoundsToVar(impl->mode.optionBounds(purpose)
+                        .translated(
+                                static_cast<float>(impl->mode.getX()),
+                                static_cast<float>(impl->mode.getY()))));
+        modeOptions.add(option);
+    }
+    state.setProperty("modeOptions", modeOptions);
     state.setProperty(
             "blueMorphBounds",
             editorBoundsToVar(impl->blueMorph.slider.getBounds().toFloat()));
