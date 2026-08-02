@@ -29,7 +29,7 @@ public:
     static String domain(const Node& node);
     static String domainLabel(const Node& node);
     static String nextDomain(const Node& node);
-    static String summaryLabel(const Node& node);
+    static String summaryLabel(const Node& node, double voiceDurationSeconds);
 
     static void paintExpanded(
             Graphics& graphics,
@@ -44,7 +44,8 @@ public:
             Graphics& graphics,
             Rectangle<float> nodeBounds,
             float zoom,
-            const Node& node);
+            const Node& node,
+            double voiceDurationSeconds);
     static bool hitNodeSelector(
             Rectangle<float> nodeBounds,
             float zoom,

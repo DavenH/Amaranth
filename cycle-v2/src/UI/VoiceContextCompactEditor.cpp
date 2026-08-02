@@ -30,6 +30,16 @@ bool isSpectral(const Node& node) {
     return VoiceContextCompactEditor::domain(node).startsWith("spectral");
 }
 
+String durationText(double voiceDurationSeconds) {
+    const double duration = jmax(0.0, voiceDurationSeconds);
+    const int wholeSeconds = roundToInt(duration);
+    const bool isWholeSecond = std::abs(duration - (double) wholeSeconds) < 0.0005;
+    const String value = isWholeSecond
+            ? String(wholeSeconds)
+            : String(duration, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
+    return value + (std::abs(duration - 1.0) < 0.0005 ? " second" : " seconds");
+}
+
 void drawOctaveSlider(
         Graphics& graphics,
         Rectangle<float> area,
@@ -257,24 +267,13 @@ String VoiceContextCompactEditor::nextDomain(const Node& node) {
     return isSpectral(node) ? "waveform" : "spectral";
 }
 
-String VoiceContextCompactEditor::summaryLabel(const Node& node) {
-    const float semitones = 12.f
-            * (float) parameterValueForNode(node, "octave", "0").getIntValue()
-            + parameterValueForNode(node, "pitch", "0").getFloatValue();
-    const int roundedSemitones = roundToInt(semitones);
-    String transpose = std::abs(semitones - (float) roundedSemitones) < 0.001f
-            ? String(roundedSemitones)
-            : String(semitones, 1);
-    if (semitones > 0.f) {
-        transpose = "+" + transpose;
-    }
-
-    String summary = transpose + " st  ·  "
-            + parameterValueForNode(node, "oversampling", "1x");
-    if (portamentoEnabled(node)) {
-        summary += "  ·  Glide";
-    }
-    return summary;
+String VoiceContextCompactEditor::summaryLabel(
+        const Node& node,
+        double voiceDurationSeconds) {
+    const String octave = parameterValueForNode(node, "octave", "0");
+    const String glide = portamentoEnabled(node) ? "on" : "off";
+    return "Octave: " + octave + "  ·  Glide: " + glide
+            + "\nVoice length: " + durationText(voiceDurationSeconds);
 }
 
 void VoiceContextCompactEditor::paintExpanded(
@@ -382,14 +381,25 @@ void VoiceContextCompactEditor::paintNodeSummary(
         Graphics& graphics,
         Rectangle<float> nodeBounds,
         float zoom,
-        const Node& node) {
+        const Node& node,
+        double voiceDurationSeconds) {
     Rectangle<float> summary = nodeBounds
             .withTrimmedTop(94.f * zoom)
             .withTrimmedBottom(10.f * zoom)
             .reduced(16.f * zoom, 0.f);
-    graphics.setColour(kMutedText.withAlpha(0.90f));
-    graphics.setFont(FontOptions(13.f * zoom, Font::bold));
-    graphics.drawText(summaryLabel(node), summary, Justification::centred);
+    StringArray lines;
+    lines.addLines(summaryLabel(node, voiceDurationSeconds));
+    const float lineHeight = summary.getHeight() * 0.5f;
+
+    graphics.setColour(kText.withAlpha(0.90f));
+    graphics.setFont(FontOptions(12.2f * zoom, Font::bold));
+    graphics.drawText(
+            lines[0],
+            summary.removeFromTop(lineHeight),
+            Justification::centred);
+    graphics.setColour(kText.withAlpha(0.82f));
+    graphics.setFont(FontOptions(11.8f * zoom, Font::bold));
+    graphics.drawText(lines[1], summary, Justification::centred);
 }
 
 bool VoiceContextCompactEditor::hitNodeSelector(

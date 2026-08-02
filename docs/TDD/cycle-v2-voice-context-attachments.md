@@ -6,8 +6,10 @@ Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
 the compiled Voice Context boundary, configuration-only Unison and Modulation
 Triple products, Envelope purpose, runtime modulation defaults, shared
 pitch-phase integration, transient Unison editor feedback, and the focused
-Voice Context presentation are complete. The compact input sockets make
-Modulation Triple, Pitch, and Unison visually and spatially distinct.
+Voice Context editor are complete. The compact summary shows its highest-value
+voice properties in explicit language. Shared socket and attachment-icon
+presentation is tracked separately by
+`cycle-v2-port-icon-presentation.md`.
 
 Audible time-only and spectral oscillator lowering is intentionally owned by
 the downstream `cycle-v2-oscillator-region-compilation.md` TDD. It depends on
@@ -263,8 +265,13 @@ semantic icons, and the reserved interior icon gutter follow
 `cycle-v2-port-icon-presentation.md`. The node height accommodates the complete
 port stack instead of allowing ports to run through its boundary.
 
-Below the start-domain selector, the compact summary shows octave, voice
-length, and glide using complete, immediately understandable labels and units.
+Below the start-domain selector, the compact summary uses two lines:
+`Octave: <value> · Glide: <on/off>` and
+`Voice length: <value> <second/seconds>`. It reads voice length from the global
+preview context rather than serializing it as a Voice Context parameter.
+Fractional durations retain only meaningful decimal places.
+
+The summary uses complete, immediately understandable labels and units.
 It does not show attachment state, Unison parameters, oversampling, or
 synth-level polyphony.
 
@@ -512,9 +519,11 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
-- Cycle V2 verification passes 5,338 assertions in 385 test cases.
+- The compact Voice Context summary reads global preview duration and shows
+  octave, glide, and voice length without exposing oversampling or polyphony.
+- Cycle V2 verification passes 5,339 assertions in 385 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
-  four-node attachment topology and expanded Voice Context presentation. Its
-  reviewed OS-level capture is
-  `/private/tmp/cycle-v2-voice-context-stacked-ports-os.png`; filtered launch
-  logs are `/private/tmp/cycle-v2-voice-context-stacked-ports-logs.txt`.
+  four-node attachment topology, compact summary, and expanded Voice Context
+  presentation. Its reviewed OS-level capture is
+  `/private/tmp/cycle-v2-voice-context-summary-os.png`; filtered launch logs
+  are `/private/tmp/cycle-v2-voice-context-summary-logs.txt`.

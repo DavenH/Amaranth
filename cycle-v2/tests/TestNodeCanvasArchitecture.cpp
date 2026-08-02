@@ -579,7 +579,10 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice) == "0 st  ·  1x");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 1.0)
+            == "Octave: 0  ·  Glide: off\nVoice length: 1 second");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 0.25)
+            == "Octave: 0  ·  Glide: off\nVoice length: 0.25 seconds");
 
     voice.parameters = {
             { "domain", "Start Domain", "spectralPhase" }
@@ -594,7 +597,8 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
             { "portamento", "Portamento", "1" },
             { "oversampling", "Oversampling", "4x" }
     };
-    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice) == "+7 st  ·  4x  ·  Glide");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
+            == "Octave: 1  ·  Glide: on\nVoice length: 2 seconds");
     voice.parameters.clear();
 
     auto edit = editAt({ 252.f, 59.5f });
