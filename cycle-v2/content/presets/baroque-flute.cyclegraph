@@ -634,7 +634,7 @@
             "id": "guide1",
             "kind": "guideCurve",
             "definitionVersion": 1,
-            "position": { "x": 1032.30688, "y": 184.78998 },
+            "position": { "x": 1082.30688, "y": -132.45142 },
             "parameters": { "enabled": true, "noise": 0.76562, "dcOffset": 0.0, "phase": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -1192,7 +1192,7 @@
             "id": "scratchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 942.97192, "y": -193.3275 },
+            "position": { "x": 777.45465, "y": 150.80112 },
             "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 0.0 },
             "model": {
                 "schema": "envelope",

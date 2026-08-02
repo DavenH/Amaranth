@@ -951,7 +951,7 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 2646.68286, "y": 881.68622 },
+            "position": { "x": 2625.99316, "y": 881.68622 },
             "parameters": { "enabled": true, "pre": 0.916, "post": 0.392, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
@@ -976,16 +976,16 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 2970.0, "y": 881.68622 },
-            "parameters": { "enabled": true, "size": 0.71429, "post": 0.312, "highPass": 0.0 },
+            "position": { "x": 2963.10352, "y": 881.68622 },
+            "parameters": { "enabled": true, "size": 0.28571, "post": 0.167, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 18,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 18,
                     "vertices": [
                         { "id": 1, "x": 0.06258, "y": 0.80891, "curve": 0.0 },
                         { "id": 2, "x": 0.06276, "y": 1.0, "curve": 0.33988 },
@@ -1102,22 +1102,23 @@
                         { "id": 113, "x": 0.86036, "y": 0.49961, "curve": 0.0 }
                     ]
                 }
-            }
+            },
+            "editor": {}
         },
         {
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 3270.0, "y": 881.68622 },
+            "position": { "x": 2090.68945, "y": 1292.03101 },
             "parameters": {
                 "enabled": true,
                 "band1Gain": 0.516,
-                "band2Gain": 0.416,
+                "band2Gain": 0.40601,
                 "band3Gain": 0.5,
                 "band4Gain": 0.56,
                 "band5Gain": 0.476,
                 "band1Frequency": 0.272,
-                "band2Frequency": 0.42,
+                "band2Frequency": 0.4239,
                 "band3Frequency": 0.712,
                 "band4Frequency": 0.8,
                 "band5Frequency": 0.824
@@ -1127,7 +1128,7 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 3581.54053, "y": 881.68622 },
+            "position": { "x": 2430.68286, "y": 1292.03101 },
             "parameters": { "enabled": true, "time": 0.584, "feedback": 0.5, "wet": 0.7, "spin": 0.976, "spinIters": 0.644 }
         },
         {
@@ -1141,7 +1142,7 @@
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3877.0376, "y": 881.68622 },
+            "position": { "x": 2702.89966, "y": 1292.03101 },
             "parameters": {}
         }
     ],
