@@ -33,6 +33,12 @@ Rectangle<float> PerformanceKeyboard::noteBounds(int noteNumber) const {
     return getRectangleForKey(noteNumber).getIntersection(getLocalBounds().toFloat());
 }
 
+String PerformanceKeyboard::noteLabel(int noteNumber) const {
+    return noteNumber % 12 == 0
+            ? AmaranthMidiKeyboard::getText(noteNumber)
+            : String {};
+}
+
 void PerformanceKeyboard::shiftOctave(int octaveDelta) {
     const int nextStart = jlimit(0, 115, rangeStart + octaveDelta * 12);
     if (nextStart == rangeStart) {
@@ -61,6 +67,36 @@ void PerformanceKeyboard::resized() {
     }
     setKeyWidth((float) getWidth() / (float) whiteKeyCount);
     AmaranthMidiKeyboard::resized();
+}
+
+void PerformanceKeyboard::drawWhiteNote(
+        int midiNoteNumber,
+        Graphics& graphics,
+        Rectangle<float> area,
+        bool isDown,
+        bool isOver,
+        Colour lineColour,
+        Colour textColour) {
+    AmaranthMidiKeyboard::drawWhiteNote(
+            midiNoteNumber,
+            graphics,
+            area,
+            isDown,
+            isOver,
+            lineColour,
+            textColour);
+
+    const String label = noteLabel(midiNoteNumber);
+    if (label.isEmpty()) {
+        return;
+    }
+    const float labelHeight = jlimit(10.f, 14.f, area.getHeight() * 0.2f);
+    const Rectangle<float> labelBounds = area
+            .removeFromBottom(labelHeight + 3.f)
+            .reduced(2.f, 0.f);
+    graphics.setColour(Colours::white.withAlpha(isDown ? 0.92f : 0.72f));
+    graphics.setFont(FontOptions(labelHeight * 0.72f, Font::plain));
+    graphics.drawText(label, labelBounds, Justification::centred, false);
 }
 
 void PerformanceKeyboard::StateListener::handleNoteOn(

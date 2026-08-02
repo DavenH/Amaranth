@@ -19,10 +19,21 @@ public:
     int heldNote() const { return currentHeldNote; }
     float heldVelocity() const { return currentVelocity; }
     Rectangle<float> noteBounds(int noteNumber) const;
+    String noteLabel(int noteNumber) const;
 
     void shiftOctave(int octaveDelta);
     void releaseAllNotes();
     void resized() override;
+
+protected:
+    void drawWhiteNote(
+            int midiNoteNumber,
+            Graphics& graphics,
+            Rectangle<float> area,
+            bool isDown,
+            bool isOver,
+            Colour lineColour,
+            Colour textColour) override;
 
 private:
     class StateListener final : public MidiKeyboardState::Listener {
@@ -70,6 +81,8 @@ public:
     int baseNote() const { return keyboard.baseNote(); }
     int heldNote() const { return keyboard.heldNote(); }
     float heldVelocity() const { return keyboard.heldVelocity(); }
+    String baseNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote()); }
+    String highestNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote() + 12); }
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;

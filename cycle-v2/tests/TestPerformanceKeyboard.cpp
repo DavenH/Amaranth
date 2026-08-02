@@ -34,6 +34,9 @@ TEST_CASE("Performance keyboard emits ordinary MIDI and keeps one octave visible
     keyboard.setBounds(0, 0, 480, 96);
 
     REQUIRE(keyboard.baseNote() == 60);
+    REQUIRE(keyboard.noteLabel(60) == "C3");
+    REQUIRE(keyboard.noteLabel(61).isEmpty());
+    REQUIRE(keyboard.noteLabel(72) == "C4");
     REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(72).isEmpty());
     REQUIRE(keyboard.noteBounds(59).isEmpty());
@@ -63,6 +66,8 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     keyboard.shiftOctave(1);
 
     REQUIRE(keyboard.baseNote() == 72);
+    REQUIRE(keyboard.noteLabel(72) == "C4");
+    REQUIRE(keyboard.noteLabel(84) == "C5");
     REQUIRE(keyboard.heldNote() == -1);
     REQUIRE_FALSE(keyboard.noteBounds(72).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(84).isEmpty());

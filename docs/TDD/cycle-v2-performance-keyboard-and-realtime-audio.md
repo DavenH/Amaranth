@@ -47,6 +47,8 @@ The first UI presents the white and black keys spanning C through the following
 C, thirteen semitone positions in total. Its default range is MIDI 60-72. Note
 names reuse `AmaranthMidiKeyboard::getText` so Cycle's established octave-label
 convention remains consistent.
+The two visible C keys carry small octave labels, such as `C3` and `C4`, so
+transposition is legible without adding another control row.
 The range may be transposed by octave controls without resizing the widget.
 
 ## Goals
@@ -388,6 +390,7 @@ zero-cost when unused. It does not become a parallel renderer.
 - Pointer cancellation, hiding, destruction, device stop, and graph load leave
   no widget-owned note held.
 - Octave controls move the visible range by exactly 12 notes and clamp safely.
+- Octave controls update the labels on both visible C keys immediately.
 - A gesture creates no graph revision, undo entry, compilation, or serialized
   data change.
 - Canvas pan/zoom moves and scales the panel as world-space presentation state;
@@ -629,7 +632,7 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 1,766 lines and removed 9 lines under `cycle-v2/src`
+The production diff added 1,817 lines and removed 9 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
 added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 203
 additions and 3 removals. The slight increase over the estimate is the bounded
@@ -648,9 +651,9 @@ non-realtime capture result.
 
 ## Verification
 
-- `CycleV2_tests`: 436 test cases and 6,660 assertions passed.
+- `CycleV2_tests`: 436 test cases and 6,665 assertions passed.
 - Focused audio-device/realtime suite: 4 test cases and 28 assertions passed.
-- Focused keyboard suite: 3 test cases and 24 assertions passed.
+- Focused keyboard suite: 3 test cases and 29 assertions passed.
 - Standalone Debug and test targets built with `--parallel 10`.
 - `git diff --check` passed. `clang-tidy` was unavailable in the configured
   environment.
@@ -671,6 +674,9 @@ non-realtime capture result.
 - A native `cliclick` drag moved the header diagonally through five successive
   updates without losing mouse ownership. The final state retained graph
   revision 2, no held note, and no active voice.
+- `/private/tmp/cycle-v2-keyboard-label-os.png` verifies the restrained octave
+  labels on the two visible C keys; automation reports `C3` and `C4` for the
+  default range.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

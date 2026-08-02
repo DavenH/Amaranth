@@ -193,6 +193,8 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("visible", keyboard.isVisible());
     object->setProperty("baseNote", keyboard.baseNote());
     object->setProperty("highestNote", keyboard.baseNote() + 12);
+    object->setProperty("baseNoteLabel", keyboard.baseNoteLabel());
+    object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
     object->setProperty("audioDeviceReady", status.deviceReady);
