@@ -16,6 +16,7 @@ public:
     virtual void prepareExecution(const AudioExecutionSpec& spec);
     virtual void adoptConfiguration(const PublishedNodeConfiguration& configuration);
     virtual bool serviceNonRealtimePreparation();
+    virtual bool isVoiceActive() const;
     virtual void process(AudioProcessContext& context) = 0;
 };
 

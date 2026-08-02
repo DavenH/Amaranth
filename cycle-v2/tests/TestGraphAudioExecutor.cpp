@@ -13,6 +13,7 @@
 #include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
+#include "../src/Runtime/RealtimeGraphRenderer.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -1832,6 +1833,32 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
     REQUIRE(maximumOutput.isValid());
     REQUIRE(shorterOutput.isValid());
     REQUIRE(minimumOutput.isValid());
+    REQUIRE(allocations.count() == 0);
+    REQUIRE(locks.count() == 0);
+}
+
+TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
+        "[cycle-v2][runtime][realtime][audio-device]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+    AudioBuffer<float> output(2, 64);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 64, 44100.0, 1.0);
+
+    ScopedRealtimeAllocationCount allocations;
+    ScopedRealtimeLockCount locks;
+    renderer.process(queue, channels, 2, 64, 44100.0, 1.01);
+
     REQUIRE(allocations.count() == 0);
     REQUIRE(locks.count() == 0);
 }

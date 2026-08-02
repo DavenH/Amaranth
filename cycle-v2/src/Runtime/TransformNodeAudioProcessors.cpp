@@ -23,6 +23,10 @@ public:
         return processor.serviceNonRealtimePreparation();
     }
 
+    bool isVoiceActive() const override {
+        return processor.isActive();
+    }
+
     void process(AudioProcessContext& context) override {
         processor.process(context);
     }
