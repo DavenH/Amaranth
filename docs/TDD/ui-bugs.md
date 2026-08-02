@@ -58,6 +58,24 @@ Context:
 Current status: open; reconcile the paired seed test contract with the current
 `GuideCurveOffsetSeeds` representation.
 
+## Addressed: Cycle v2 performance keyboard disappears after OpenGL startup
+
+Context:
+
+- The floating performance keyboard was initially a sibling drawn over a
+  full-workspace `NodeCanvas`.
+- It appeared during startup, then the canvas's attached native OpenGL surface
+  covered it when that context became active. App-side component screenshots
+  still showed the sibling and therefore produced a false-positive visual
+  result.
+- Reproduced on 2026-08-02 with the OS capture
+  `/private/tmp/cycle-v2-keyboard-before-os.png`.
+
+Current status: addressed by reserving a bottom workspace strip outside the
+OpenGL-backed canvas bounds. The performance fixture asserts that the keyboard
+does not intersect the canvas, and the after-fix OS capture verifies native
+window composition.
+
 ## Open: Cycle v2 automation launch emits Settings assertions
 
 Context:

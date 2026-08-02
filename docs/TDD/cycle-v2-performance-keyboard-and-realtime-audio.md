@@ -628,10 +628,10 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 1,611 lines and removed 9 lines under `cycle-v2/src`
+The production diff added 1,634 lines and removed 10 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
-added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 188
-additions and 3 removals. The slight increase over the estimate is the bounded
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 210
+additions and 4 removals. The slight increase over the estimate is the bounded
 live-callback capture and semantic automation surface required to distinguish
 device output from offline rendering. No production implementation exceeds
 350 added lines, and the audit found no new `NodeKind` switch or compatibility
@@ -662,6 +662,10 @@ non-realtime capture result.
 - Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-report-final.json`,
   `/private/tmp/cycle-v2-performance-keyboard-live.wav`, and
   `/private/tmp/cycle-v2-performance-keyboard.png`.
+- A native OS capture caught the OpenGL canvas covering the initial sibling
+  overlay. The final layout reserves a strip outside the OpenGL component;
+  `/private/tmp/cycle-v2-keyboard-after-os.png` verifies that the keyboard
+  remains visible after context startup.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

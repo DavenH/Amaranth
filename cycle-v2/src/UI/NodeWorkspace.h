@@ -53,6 +53,7 @@ public:
     bool performancePointerUpForAutomation();
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);
 
+    void paint(Graphics& graphics) override;
     void resized() override;
 
 private:

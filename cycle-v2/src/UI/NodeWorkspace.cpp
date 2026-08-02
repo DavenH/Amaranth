@@ -4,6 +4,15 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr int performanceKeyboardWidth = 520;
+constexpr int performanceKeyboardHeight = 92;
+constexpr int performanceStatusHeight = 24;
+constexpr int performanceButtonWidth = 32;
+constexpr int performanceMargin = 18;
+constexpr int performanceStripHeight = performanceKeyboardHeight
+        + performanceStatusHeight
+        + performanceMargin;
+
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
     object->setProperty("x", bounds.getX());
@@ -197,6 +206,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("droppedMidiEvents", (int) status.renderer.droppedMidiEvents);
     object->setProperty("peak", status.renderer.peak);
     object->setProperty("rms", status.renderer.rms);
+    object->setProperty(
+            "clearOfOpenGLCanvas",
+            canvas.getBottom() <= keyboard.getY());
     return var(object);
 }
 
@@ -235,22 +247,31 @@ StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(
     return audioEngine.captureLiveAudio(durationMs);
 }
 
+void NodeWorkspace::paint(Graphics& graphics) {
+    graphics.fillAll(Colour(0xff101318));
+    graphics.setColour(Colour(0xff354050));
+    graphics.fillRect(
+            0,
+            jmax(0, getHeight() - performanceStripHeight),
+            getWidth(),
+            1);
+}
+
 void NodeWorkspace::resized() {
-    canvas.setBounds(getLocalBounds());
-    constexpr int keyboardWidth = 520;
-    constexpr int keyboardHeight = 92;
-    constexpr int statusHeight = 24;
-    constexpr int buttonWidth = 32;
-    constexpr int margin = 18;
-    const int totalWidth = keyboardWidth + buttonWidth * 2 + 12;
+    Rectangle<int> canvasBounds = getLocalBounds();
+    Rectangle<int> performanceStrip = canvasBounds.removeFromBottom(performanceStripHeight);
+    performanceStrip.removeFromBottom(performanceMargin);
+    canvas.setBounds(canvasBounds);
+
+    const int totalWidth = performanceKeyboardWidth + performanceButtonWidth * 2 + 12;
     Rectangle<int> strip(
             (getWidth() - totalWidth) / 2,
-            getHeight() - keyboardHeight - statusHeight - margin,
+            performanceStrip.getY(),
             totalWidth,
-            keyboardHeight + statusHeight);
-    audioStatus.setBounds(strip.removeFromTop(statusHeight));
-    octaveDown.setBounds(strip.removeFromLeft(buttonWidth).reduced(2));
-    octaveUp.setBounds(strip.removeFromRight(buttonWidth).reduced(2));
+            performanceStrip.getHeight());
+    audioStatus.setBounds(strip.removeFromTop(performanceStatusHeight));
+    octaveDown.setBounds(strip.removeFromLeft(performanceButtonWidth).reduced(2));
+    octaveUp.setBounds(strip.removeFromRight(performanceButtonWidth).reduced(2));
     strip.reduce(6, 0);
     keyboard.setBounds(strip);
 }
