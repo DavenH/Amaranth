@@ -42,6 +42,12 @@ void Effect2DWidget::setControlValues(
     controller->setControlValues(enabled, firstValue, secondValue, thirdValue, menuId);
 }
 
+void Effect2DWidget::setEnvelopeBipolar(bool bipolar) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setBipolar(bipolar);
+    }
+}
+
 void Effect2DWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setLogarithmic(shouldUseLogarithmicScale);
@@ -51,6 +57,18 @@ void Effect2DWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
 void Effect2DWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setAxisLinks(redLinked, blueLinked);
+    }
+}
+
+void Effect2DWidget::fitEnvelopeVerticalRange() {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->fitVerticalRange();
+    }
+}
+
+void Effect2DWidget::resetEnvelopeVerticalRange() {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->resetVerticalRange();
     }
 }
 
@@ -145,6 +163,11 @@ std::vector<TrimeshVertexParameter> Effect2DWidget::selectedVertexParameters() c
 
 bool Effect2DWidget::setSelectedVertexParameter(const String& parameterId, float normalizedValue) {
     return controller->setSelectedVertexParameter(parameterId, normalizedValue);
+}
+
+bool Effect2DWidget::hasSingleSelectedEnvelopeVertex() {
+    auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get());
+    return envelope != nullptr && envelope->hasSingleSelectedVertex();
 }
 
 bool Effect2DWidget::selectedEnvelopeMarkerState(bool loopMarker) const {

@@ -63,10 +63,13 @@ private:
     std::unique_ptr<Impl> impl;
 };
 
-class EnvelopeEditorComponent final : public CurveExpandedEditorComponent {
+class EnvelopeEditorComponent final : public CurveExpandedEditorComponent,
+                                      public TooltipClient {
 public:
     explicit EnvelopeEditorComponent(Effect2DWidget& widget);
     ~EnvelopeEditorComponent() override;
+
+    String getTooltip() override;
 
 private:
     struct Impl;
@@ -82,6 +85,7 @@ private:
     bool editorMouseDown(Point<float>) override;
     bool editorMouseDrag(Point<float>) override;
     void editorMouseUp() override;
+    void syncInteractionControls() override;
     bool handleAxisMouseDown(Point<float> position, Rectangle<float> controls);
     bool handleVertexParameterMouseDown(Point<float> position, Rectangle<float> controls);
     bool dragMorph(Point<float> position);

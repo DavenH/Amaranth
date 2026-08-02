@@ -301,7 +301,10 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
             | CurvePanelInvalidation::Owner);
 }
 
-void CurvePanelHost::renderPreview(Rectangle<float> bounds, float scaleFactor) {
+void CurvePanelHost::renderPreview(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        bool preserveInteractiveZoom) {
     if (bounds.isEmpty()) {
         renderSurfaceVisible = false;
         return;
@@ -318,7 +321,11 @@ void CurvePanelHost::renderPreview(Rectangle<float> bounds, float scaleFactor) {
     context.callbacks = callbacks();
     panel.setHostContext(context);
     panel.panelResized();
-    delegate.updateCurvePanelZoom(true);
+    if (preserveInteractiveZoom) {
+        panel.getZoomPanel()->rect = interactiveZoom;
+    } else {
+        delegate.updateCurvePanelZoom(true);
+    }
     delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();

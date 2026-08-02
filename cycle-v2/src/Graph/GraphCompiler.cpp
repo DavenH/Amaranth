@@ -573,39 +573,90 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
     return contexts;
 }
 
-const CompiledVoiceContext* voiceContextForNode(
-        const NodeGraph& graph,
-        const GraphExecutionPlan& plan,
-        const Node& node) {
-    for (const auto& edge : plan.signalEdges) {
-        if (edge.destNodeId != node.id || edge.domain != PortDomain::DomainContext) {
-            continue;
+using VoiceContextAssignments = std::vector<std::vector<String>>;
+
+bool mergeVoiceContexts(std::vector<String>& destination, const std::vector<String>& source) {
+    bool changed = false;
+    for (const auto& contextId : source) {
+        if (std::find(destination.begin(), destination.end(), contextId) == destination.end()) {
+            destination.push_back(contextId);
+            changed = true;
         }
-        const auto found = std::find_if(
-                plan.voiceContexts.begin(),
-                plan.voiceContexts.end(),
-                [&](const CompiledVoiceContext& context) {
-                    return context.nodeId == edge.sourceNodeId;
-                });
-        if (found != plan.voiceContexts.end()) {
-            return &*found;
+    }
+    return changed;
+}
+
+VoiceContextAssignments assignVoiceContexts(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan) {
+    VoiceContextAssignments assignments(graph.getNodes().size());
+    for (size_t nodeIndex = 0; nodeIndex < graph.getNodes().size(); ++nodeIndex) {
+        const Node& node = graph.getNodes()[nodeIndex];
+        if (node.kind == NodeKind::VoiceContext) {
+            assignments[nodeIndex].push_back(node.id);
         }
     }
 
-    if (node.kind == NodeKind::Envelope) {
+    bool changed = true;
+    while (changed) {
+        changed = false;
         for (const auto& edge : plan.signalEdges) {
-            if (edge.sourceNodeId == node.id && edge.destPortId == "pitch") {
-                const auto found = std::find_if(
-                        plan.voiceContexts.begin(),
-                        plan.voiceContexts.end(),
-                        [&](const CompiledVoiceContext& context) {
-                            return context.nodeId == edge.destNodeId;
-                        });
-                if (found != plan.voiceContexts.end()) {
-                    return &*found;
-                }
+            const int sourceIndex = indexOfNode(graph.getNodes(), edge.sourceNodeId);
+            const int destinationIndex = indexOfNode(graph.getNodes(), edge.destNodeId);
+            if (sourceIndex < 0 || destinationIndex < 0) {
+                continue;
+            }
+            changed = mergeVoiceContexts(
+                    assignments[(size_t) destinationIndex],
+                    assignments[(size_t) sourceIndex]) || changed;
+
+            const Node& source = graph.getNodes()[(size_t) sourceIndex];
+            if (source.kind == NodeKind::Envelope) {
+                changed = mergeVoiceContexts(
+                        assignments[(size_t) sourceIndex],
+                        assignments[(size_t) destinationIndex]) || changed;
             }
         }
+
+        for (const auto& attachment : plan.attachments) {
+            if (attachment.attachmentType != AttachmentType::ScratchEnvelope) {
+                continue;
+            }
+            const int sourceIndex = indexOfNode(
+                    graph.getNodes(),
+                    attachment.sourceNodeId);
+            const int destinationIndex = indexOfNode(
+                    graph.getNodes(),
+                    attachment.destNodeId);
+            if (sourceIndex >= 0 && destinationIndex >= 0) {
+                changed = mergeVoiceContexts(
+                        assignments[(size_t) sourceIndex],
+                        assignments[(size_t) destinationIndex]) || changed;
+            }
+        }
+    }
+
+    return assignments;
+}
+
+const CompiledVoiceContext* voiceContextForNode(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        const VoiceContextAssignments& assignments,
+        const Node& node) {
+    const int nodeIndex = indexOfNode(graph.getNodes(), node.id);
+    if (nodeIndex < 0 || assignments[(size_t) nodeIndex].size() != 1) {
+        return nullptr;
+    }
+    const String& contextId = assignments[(size_t) nodeIndex].front();
+    const auto found = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& context) {
+                return context.nodeId == contextId;
+            });
+    if (found != plan.voiceContexts.end()) {
+        return &*found;
     }
     return nullptr;
 }
@@ -613,12 +664,17 @@ const CompiledVoiceContext* voiceContextForNode(
 void compileDefaultModulationInputs(
         const NodeGraph& graph,
         GraphExecutionPlan& plan) {
+    const VoiceContextAssignments assignments = assignVoiceContexts(graph, plan);
     for (auto& step : plan.steps) {
         const Node* node = findNode(graph, step.nodeId);
         if (node == nullptr) {
             continue;
         }
-        const CompiledVoiceContext* context = voiceContextForNode(graph, plan, *node);
+        const CompiledVoiceContext* context = voiceContextForNode(
+                graph,
+                plan,
+                assignments,
+                *node);
         if (context == nullptr) {
             continue;
         }

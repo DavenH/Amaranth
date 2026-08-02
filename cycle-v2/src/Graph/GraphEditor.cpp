@@ -1,6 +1,7 @@
 #include "GraphEditor.h"
 
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 
 #include <unordered_map>
 

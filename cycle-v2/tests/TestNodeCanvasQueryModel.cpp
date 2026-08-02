@@ -12,7 +12,7 @@ TEST_CASE("Node canvas queries expose graph execution and presentation semantics
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 40.f }));
     graph.addNode(factory.createNode(NodeKind::Output, "output", { 340.f, 40.f }));
-    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, false });
+    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());

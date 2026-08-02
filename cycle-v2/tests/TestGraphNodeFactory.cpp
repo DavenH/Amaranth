@@ -26,7 +26,7 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.model != nullptr);
     REQUIRE(node.model->schemaId() == "envelope");
     REQUIRE(node.model->revision() == 1);
-    REQUIRE(parameterValueForNode(node, "dynamic") == "0");
+    REQUIRE(parameterValueForNode(node, "dynamic").isEmpty());
 }
 
 TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][graph][voice-context]") {
@@ -85,6 +85,7 @@ TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
     Node envelope;
     envelope.kind = NodeKind::Envelope;
     envelope.id = "saved-envelope";
+    envelope.parameters.push_back({ "dynamic", "Dynamic While Live", "1" });
     Node mesh;
     mesh.kind = NodeKind::TrilinearMesh;
     mesh.id = "saved-mesh";
@@ -100,7 +101,7 @@ TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
     REQUIRE(envelope.inputs.size() == 2);
     REQUIRE(envelope.inputs[0].id == "red");
     REQUIRE(envelope.inputs[1].id == "blue");
-    REQUIRE(parameterValueForNode(envelope, "dynamic") == "0");
+    REQUIRE(parameterValueForNode(envelope, "dynamic").isEmpty());
     REQUIRE(mesh.inputs.size() == 5);
     REQUIRE(mesh.inputs[2].id == "yellow");
     REQUIRE(mesh.inputs[3].id == "red");

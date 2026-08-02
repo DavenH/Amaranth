@@ -91,7 +91,7 @@ Delay spin panning operate on real stereo payloads.
   fixture also verifies its compact and expanded response displays.
 - Standalone Debug builds both Cycle applications, proving Cycle 1 and Cycle 2
   use the extracted Equalizer core.
-- Prepared-graph and dynamic Envelope allocation guards pass with zero
+- Prepared-graph and latched Envelope allocation guards pass with zero
   realtime allocations. Payload grid clearing preserves prepared vector
   capacity for subsequent blocks.
 - Continuous effect gestures produce one undo transaction. Discrete Boolean,

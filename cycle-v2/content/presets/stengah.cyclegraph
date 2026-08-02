@@ -1,19 +1,19 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 1,
+    "formatVersion": 2,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 878.21362, "y": 724.43213 },
-            "parameters": { "domain": "spectral", "voices": 6, "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "spectral", "octave": -1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 488.46347, "y": 751.72339 },
+            "position": { "x": 488.46347, "y": 724.43213 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -344,7 +344,7 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2010.39258, "y": 986.76166 },
+            "position": { "x": 2010.39258, "y": 792.43213 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
@@ -425,8 +425,8 @@
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1993.19263, "y": 690.43213 },
-            "parameters": { "logarithmic": false, "red": 0.37383, "blue": 0.0, "dynamic": false, "level": 1.0 },
+            "position": { "x": 1993.19263, "y": 486.0 },
+            "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -773,8 +773,8 @@
             "id": "pitchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 883.01367, "y": 327.04926 },
-            "parameters": { "logarithmic": false, "red": 0.552, "blue": 0.413, "dynamic": false, "level": 0.0 },
+            "position": { "x": 473.26355, "y": 915.68622 },
+            "parameters": { "purpose": "pitch", "logarithmic": false, "red": 0.552, "blue": 0.413, "level": 0.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -850,7 +850,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 883.01367, "y": 915.68622 },
-            "parameters": { "logarithmic": false, "red": 0.512, "blue": 0.549, "dynamic": false, "level": 1.0 },
+            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.512, "blue": 0.549, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -951,7 +951,7 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 2646.68286, "y": 881.68622 },
+            "position": { "x": 2616.78076, "y": 622.0 },
             "parameters": { "enabled": true, "pre": 0.916, "post": 0.392, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
@@ -976,16 +976,16 @@
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 2970.0, "y": 881.68622 },
-            "parameters": { "enabled": true, "size": 0.71429, "post": 0.312, "highPass": 0.0 },
+            "position": { "x": 2956.19434, "y": 622.0 },
+            "parameters": { "enabled": true, "size": 0.14286, "post": 0.167, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 1,
+                "revision": 18,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 1,
+                    "revision": 18,
                     "vertices": [
                         { "id": 1, "x": 0.06258, "y": 0.80891, "curve": 0.0 },
                         { "id": 2, "x": 0.06276, "y": 1.0, "curve": 0.33988 },
@@ -1102,22 +1102,23 @@
                         { "id": 113, "x": 0.86036, "y": 0.49961, "curve": 0.0 }
                     ]
                 }
-            }
+            },
+            "editor": {}
         },
         {
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 3270.0, "y": 881.68622 },
+            "position": { "x": 2067.65869, "y": 1203.26208 },
             "parameters": {
                 "enabled": true,
                 "band1Gain": 0.516,
-                "band2Gain": 0.416,
+                "band2Gain": 0.40601,
                 "band3Gain": 0.5,
                 "band4Gain": 0.56,
                 "band5Gain": 0.476,
                 "band1Frequency": 0.272,
-                "band2Frequency": 0.42,
+                "band2Frequency": 0.4239,
                 "band3Frequency": 0.712,
                 "band4Frequency": 0.8,
                 "band5Frequency": 0.824
@@ -1127,59 +1128,46 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 3581.54053, "y": 881.68622 },
+            "position": { "x": 2428.37988, "y": 1203.26208 },
             "parameters": { "enabled": true, "time": 0.584, "feedback": 0.5, "wet": 0.7, "spin": 0.976, "spinIters": 0.644 }
         },
         {
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2405.61108, "y": 881.68628 },
+            "position": { "x": 2394.0957, "y": 622.0 },
             "parameters": {}
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3877.0376, "y": 881.68622 },
+            "position": { "x": 2735.14282, "y": 1203.26208 },
             "parameters": {}
         }
     ],
     "edges": [
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer2", "destPortId": "context" },
-        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag" },
-        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "left" },
-        { "sourceNodeId": "phaseLayer2", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "right" },
-        { "sourceNodeId": "phaseOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase" },
-        { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time" },
-        { "sourceNodeId": "equalizer", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time" },
-        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time" },
-        { "sourceNodeId": "morph", "sourcePortId": "yellow", "destNodeId": "magnitudeLayer1", "destPortId": "yellow" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "magnitudeLayer1", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "magnitudeLayer1", "destPortId": "blue" },
-        { "sourceNodeId": "morph", "sourcePortId": "yellow", "destNodeId": "phaseLayer1", "destPortId": "yellow" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "phaseLayer1", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "phaseLayer1", "destPortId": "blue" },
-        { "sourceNodeId": "morph", "sourcePortId": "yellow", "destNodeId": "phaseLayer2", "destPortId": "yellow" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "phaseLayer2", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "phaseLayer2", "destPortId": "blue" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "volumeEnvelope", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "volumeEnvelope", "destPortId": "blue" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "pitchEnvelope", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "pitchEnvelope", "destPortId": "blue" },
-        { "sourceNodeId": "morph", "sourcePortId": "red", "destNodeId": "scratchEnvelope", "destPortId": "red" },
-        { "sourceNodeId": "morph", "sourcePortId": "blue", "destNodeId": "scratchEnvelope", "destPortId": "blue" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer1", "destPortId": "scratch" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer2", "destPortId": "scratch" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer1", "destPortId": "guide.cube.0.amp" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer2", "destPortId": "guide.cube.4.phase" },
-        { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "equalizer", "destPortId": "time" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "waveshaper", "destPortId": "time" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "right" },
-        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "left" }
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer2", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseLayer2", "sourcePortId": "out", "destNodeId": "phaseOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseOp2", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "equalizer", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "phaseLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer1", "destPortId": "guide.cube.0.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer2", "destPortId": "guide.cube.4.phase", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
+        { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "equalizer", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

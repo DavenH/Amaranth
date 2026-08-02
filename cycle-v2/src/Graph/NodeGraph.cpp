@@ -3,6 +3,8 @@
 #include "GraphNodeFactory.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -81,6 +83,18 @@ void NodeGraph::addNode(Node nodeToAdd) {
 }
 
 void NodeGraph::addEdge(Edge edgeToAdd) {
+    const auto duplicate = std::find_if(edges.begin(), edges.end(), [&](const Edge& edge) {
+        return edge.sourceNodeId == edgeToAdd.sourceNodeId
+                && edge.sourcePortId == edgeToAdd.sourcePortId
+                && edge.destNodeId == edgeToAdd.destNodeId
+                && edge.destPortId == edgeToAdd.destPortId
+                && edge.connectionKind == edgeToAdd.connectionKind
+                && edge.attachmentType == edgeToAdd.attachmentType;
+    });
+    if (duplicate != edges.end()) {
+        return;
+    }
+
     edges.push_back(std::move(edgeToAdd));
     ++revision;
 }
@@ -174,6 +188,16 @@ void NodeGraph::removeEdgesToInput(const String& nodeId, const String& portId) {
     const size_t previousEdgeCount = edges.size();
     eraseIf(edges, [&](const Edge& edge) {
         return edge.destNodeId == nodeId && edge.destPortId == portId;
+    });
+    if (edges.size() != previousEdgeCount) {
+        ++revision;
+    }
+}
+
+void NodeGraph::removeEdgesFromOutput(const String& nodeId, const String& portId) {
+    const size_t previousEdgeCount = edges.size();
+    eraseIf(edges, [&](const Edge& edge) {
+        return edge.sourceNodeId == nodeId && edge.sourcePortId == portId;
     });
     if (edges.size() != previousEdgeCount) {
         ++revision;
@@ -381,11 +405,15 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     GraphNodeFactory nodeFactory;
     Node volumeEnvelope = nodeFactory.createNode(NodeKind::Envelope, "env", { 1660.f, 610.f });
-    volumeEnvelope.subtitle = "volume curve";
+    for (auto& parameter : volumeEnvelope.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "volume";
+        }
+    }
+    applyEnvelopePurpose(volumeEnvelope);
     graph.addNode(std::move(volumeEnvelope));
 
     Node scratchEnvelope = nodeFactory.createNode(NodeKind::Envelope, "scratchEnv", { 320.f, 204.f });
-    scratchEnvelope.subtitle = "scratch attachment";
     for (auto& parameter : scratchEnvelope.parameters) {
         if (parameter.id == "purpose") {
             parameter.value = "scratch";
@@ -414,19 +442,21 @@ NodeGraph NodeGraph::createDemoGraph() {
             {}));
 
     graph.edges = {
-            { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, false },
-            { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, true },
-            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, true },
-            { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, false },
-            { "fft", "mag", "addMag", "left", PortDomain::SpectralMagnitudeSignal, false },
-            { "magMesh", "out", "addMag", "right", PortDomain::ControlSignal, false },
-            { "fft", "phase", "addPhase", "left", PortDomain::SpectralPhaseSignal, false },
-            { "phaseMesh", "out", "addPhase", "right", PortDomain::ControlSignal, false },
-            { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, false },
-            { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, false },
-            { "ifft", "time", "multiply", "left", PortDomain::TimeSignal, false },
-            { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, false },
-            { "multiply", "out", "out", "time", PortDomain::TimeSignal, false }
+            { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, ConnectionKind::Signal },
+            { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal,
+                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
+            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal,
+                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
+            { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal },
+            { "fft", "mag", "addMag", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal },
+            { "magMesh", "out", "addMag", "right", PortDomain::ControlSignal, ConnectionKind::Signal },
+            { "fft", "phase", "addPhase", "left", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal },
+            { "phaseMesh", "out", "addPhase", "right", PortDomain::ControlSignal, ConnectionKind::Signal },
+            { "addMag", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal },
+            { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal },
+            { "ifft", "time", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal },
+            { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal },
+            { "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal }
     };
 
     return graph;

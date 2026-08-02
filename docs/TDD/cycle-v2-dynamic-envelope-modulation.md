@@ -2,7 +2,14 @@
 
 ## Status
 
-Implemented.
+In Progress.
+
+The bounded preparation exchange, per-note morph latching, and absolute red/blue
+inputs are implemented. The original Envelope-owned `Dynamic while live`
+policy was removed on 2026-07-31 after ownership review: live adoption is a
+voice traversal policy and may only be exposed through Voice Context (or a
+shared voice-policy object owned by it). Until that contract exists, Envelope
+morph is deliberately latched at note-on.
 
 Depends on the implemented preparation slices of
 `envelope-renderer-playback-separation.md` and
@@ -46,9 +53,10 @@ curve, morph, loop, and scaling semantics to diverge.
 
 - Preserve one authoritative envelope preparation and sampling core.
 - Separate persistent base controls from per-voice effective modulation.
-- Make `Dynamic while live` an explicit envelope policy, defaulting to off.
-- Preserve active note, sustain, loop, and release state when a dynamic
-  envelope replacement is adopted.
+- Keep live-adoption policy out of Envelope authoring state; Voice Context owns
+  any future per-voice live traversal policy.
+- If Voice Context later permits live adoption, preserve active note, sustain,
+  loop, and release state when an envelope replacement is adopted.
 - Keep envelope preparation, allocation, graph mutation, and snapshot
   publication off the realtime audio thread.
 - Let traversal rendering exploit its complete time-axis domain without
@@ -88,13 +96,13 @@ Mesh nodes expose top-side yellow, red, and blue `ControlSignal` inputs under
 the same absolute-position contract. Canonical normalization adds these ports
 to previously saved Cycle v2 nodes without a separate migration layer.
 
-When dynamic playback is disabled, `effectiveMorph` is latched at note-on and
+With the current latched policy, `effectiveMorph` is captured at note-on and
 remains fixed for that note. Changes remain available to the next note.
 
-When dynamic playback is enabled, a meaningful change to `effectiveMorph`
-requests a new immutable prepared envelope. Once ready, the voice adopts it at
-an explicitly defined audio boundary and validates its existing playback state.
-The adoption does not restart the note.
+If Voice Context later enables live adoption, a meaningful change to
+`effectiveMorph` requests a new immutable prepared envelope. Once ready, the
+voice adopts it at an explicitly defined audio boundary and validates its
+existing playback state. The adoption does not restart the note.
 
 ## Target Design
 
@@ -150,26 +158,29 @@ The implementation must state whether adoption occurs at audio-block, waveform-
 cycle, or another boundary. Cycle-boundary adoption is preferred where changing
 the prepared envelope mid-cycle would create an avoidable discontinuity.
 
-## Dynamic Policy
+## Live-Adoption Policy
 
-Add a typed envelope policy equivalent to `Dynamic while live`, default false.
-It belongs to the envelope node/domain configuration, not to the modulation
-matrix adapter.
+Envelope owns its authored geometry and persistent base morph, but it does not
+own the policy for replacing traversal state in an already-active voice. The
+Envelope node therefore has no `dynamic`, `live`, or equivalent serialized/UI
+setting.
 
-The disabled path must not continuously prepare unused envelopes. The enabled
-path should apply a documented change threshold or quantization only if needed
-to bound work; any such policy must be expressed in domain units and tested.
-Silently inheriting GUI slider precision is not acceptable.
+The current behavior latches effective red/blue morph at note-on. Changes
+during an active note do not prepare replacements and become available to the
+next note. This is the safe fallback while Voice Context has no live-adoption
+contract.
 
-Turning dynamic mode on during an active note permits the next effective-morph
-change to prepare and adopt a replacement. Turning it off freezes the most
-recently adopted envelope for existing notes; it must not implicitly restart
-or jump them back to the persistent base morph.
+A future Voice Context policy may permit active voices to adopt newly prepared
+effective morphs. That policy must define scope, adoption boundary,
+continuity, loop/release reconciliation, and request cadence once for the voice
+traversal. Envelope may consume the resolved policy at runtime, but may not
+serialize or present its own competing choice.
 
 ## Audio Semantics
 
 - Note-on latches the initial effective morph and starts one playback state.
-- A dynamic replacement preserves elapsed envelope position where valid.
+- A Voice Context-authorized live replacement preserves elapsed envelope
+  position where valid.
 - If the new end precedes the cursor, validation clamps consistently.
 - If loop bounds change, an active loop cursor is wrapped into the new loop.
 - If the loop becomes invalid, playback leaves looping through the established
@@ -214,7 +225,7 @@ voices whose effective morph actually changes, `n` traversal columns, and `S`
 the total traversal samples.
 
 - unchanged audio processing performs no `R`;
-- a coalesced dynamic update performs at most one useful `R` per distinct
+- a coalesced live-adoption update performs at most one useful `R` per distinct
   effective request eventually adopted, not one `R` per sample;
 - realtime adoption is bounded independently of waveform/intercept vector
   length, apart from selecting an already owned immutable result;
@@ -236,7 +247,7 @@ the total traversal samples.
 - Prepared generations are immutable and remain valid while a newer generation
   is prepared and adopted.
 
-### Dynamic Disabled
+### Current Latched Policy
 
 - Modulation before note-on affects the latched envelope.
 - Modulation during an active note does not change its sampled envelope.
@@ -244,7 +255,7 @@ the total traversal samples.
 - No preparation request is emitted solely because a disabled live value
   changes.
 
-### Dynamic Enabled
+### Future Voice Context Live-Adoption Policy
 
 - A routed red or blue change during sustain eventually changes the active
   envelope without restarting it.
@@ -286,7 +297,8 @@ the total traversal samples.
    stale-result rejection and optional sharing.
 3. Extract or formalize the playback consumer and traversal consumer around the
    common prepared representation.
-4. Add the envelope dynamic policy and persistent serialization/UI control.
+4. Remove the historical Envelope-owned dynamic policy and legacy serialized
+   parameter; define any future live-adoption control on Voice Context.
 5. Define absolute per-voice effective-morph `ControlSignal` inputs supplied by
    graph edges, without coupling them to graph mutations.
 6. Add bounded non-realtime preparation and safe generation adoption.
@@ -296,13 +308,14 @@ the total traversal samples.
 
 ## Completion Criteria
 
-- Red/blue modulation works during playback according to the explicit dynamic
-  policy and does not mutate the graph.
+- Red/blue modulation is latched per note without mutating the graph.
+- If live adoption is added, its policy is owned and serialized by Voice
+  Context rather than Envelope.
 - Audio and graphic consumers use one authoritative envelope preparation and
   sampling implementation.
 - Their lifecycle and optimization policies remain separate and domain-shaped.
-- Dynamic adoption preserves or validly reconciles note, loop, sustain, and
-  release state.
+- Any future Voice Context-authorized live adoption preserves or validly
+  reconciles note, loop, sustain, and release state.
 - Preparation and publication are absent from the realtime audio thread.
 - Modulation bursts cannot create an unbounded work queue.
 - Tests prove product semantics, not merely that callbacks or revisions occur.

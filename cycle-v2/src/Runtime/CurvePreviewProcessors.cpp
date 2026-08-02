@@ -211,6 +211,21 @@ public:
     PreviewModuleRole role() const override { return PreviewModuleRole::Envelope; }
 
     void render(PreviewProcessContext& context) override {
+        if (context.capturedOutput != nullptr
+                && context.capturedOutput->traversalGrid.isValid()) {
+            context.primary.assign(
+                    context.capturedOutput->traversalGrid.values.begin(),
+                    context.capturedOutput->traversalGrid.values.end());
+            context.secondary.assign(
+                    context.capturedOutput->block.samples.begin(),
+                    context.capturedOutput->block.samples.end());
+            context.gridColumns = context.capturedOutput->traversalGrid.columns;
+            context.gridRows = context.capturedOutput->traversalGrid.rows;
+            context.domain = context.capturedOutput->traversalGrid.metadata.valueDomain;
+            context.reusedCapturedTraversal = true;
+            return;
+        }
+
         ensurePreview(context);
 
         for (size_t i = 0; i < context.pointCount; ++i) {

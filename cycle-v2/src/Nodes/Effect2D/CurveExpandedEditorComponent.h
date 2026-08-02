@@ -59,6 +59,7 @@ protected:
     virtual bool editorMouseDown(Point<float> position);
     virtual bool editorMouseDrag(Point<float> position);
     virtual void editorMouseUp();
+    virtual void syncInteractionControls() {}
 
     Rectangle<float> contentBounds() const;
     void publishCurrentState();
@@ -69,6 +70,7 @@ protected:
     void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
+    void publishDiscreteControlChange();
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {

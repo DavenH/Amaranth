@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.8.compactPurposeIcon",
+      "equals": "volume"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.9.compactPurposeIcon",
+      "equals": "pitch"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.10.compactPurposeIcon",
+      "equals": "scratch"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-envelope-compact-preview.png"
+    }
+  ],
+  "quit": true
+}

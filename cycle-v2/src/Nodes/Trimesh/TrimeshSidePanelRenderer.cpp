@@ -512,12 +512,14 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         Graphics& g,
         Rectangle<float> area,
         const std::vector<TrimeshVertexParameter>& parameters,
-        const std::array<String, 6>& guideAttachmentLabels) {
+        const std::array<String, 6>& guideAttachmentLabels,
+        float heightScale) {
     if (area.getHeight() < 28.f) {
         return;
     }
 
-    const float desiredHeight = 30.f + (float) jmax(1, (int) parameters.size()) * 34.f;
+    const float desiredHeight = heightScale
+            * (30.f + (float) jmax(1, (int) parameters.size()) * 34.f);
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
@@ -527,7 +529,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
 
     for (int i = 0; i < (int) parameters.size(); ++i) {
         const auto& parameter = parameters[(size_t) i];
-        const auto row = vertexParameterRowBounds(area, i);
+        const auto row = vertexParameterRowBounds(area, i, heightScale);
         const auto labelBox = vertexLabelBounds(row);
         const auto guideBox = vertexGuideBounds(row);
         const auto rail = vertexParameterRailBounds(row);
@@ -627,12 +629,13 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterPanelBounds(Rectangle<
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
         Rectangle<float> parameterArea,
-        int parameterIndex) {
+        int parameterIndex,
+        float heightScale) {
     auto rows = parameterArea.reduced(8.f, 0.f);
-    const float headerHeight = 30.f;
-    const float gap = 5.f;
+    const float headerHeight = 30.f * heightScale;
+    const float gap = 5.f * heightScale;
     const float rowHeight = jmin(
-            29.f,
+            29.f * heightScale,
             jmax(0.f, (rows.getHeight() - headerHeight - gap * (float) (kVertexParamCount - 1)) / kVertexParamCount));
 
     rows.removeFromTop(headerHeight);

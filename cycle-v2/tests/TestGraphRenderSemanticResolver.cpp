@@ -44,14 +44,14 @@ TEST_CASE("Render semantics resolve additive and multiplicative spectral scale",
     additiveGraph.addNode(spectralMagnitudeSource("mag"));
     additiveGraph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     additiveGraph.addNode(factory.createNode(NodeKind::Add, "add", { 460.f, 0.f }));
-    additiveGraph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, false });
-    additiveGraph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, false });
+    additiveGraph.addEdge({ "mag", "out", "add", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    additiveGraph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     multiplicativeGraph.addNode(spectralMagnitudeSource("mag"));
     multiplicativeGraph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
     multiplicativeGraph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 460.f, 0.f }));
-    multiplicativeGraph.addEdge({ "mag", "out", "multiply", "left", PortDomain::SpectralMagnitudeSignal, false });
-    multiplicativeGraph.addEdge({ "mesh", "out", "multiply", "right", PortDomain::ControlSignal, false });
+    multiplicativeGraph.addEdge({ "mag", "out", "multiply", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    multiplicativeGraph.addEdge({ "mesh", "out", "multiply", "right", PortDomain::ControlSignal, ConnectionKind::Signal });
 
     const NodeRenderSemantic additive = resolver.semanticForNodeOutput(additiveGraph, "mesh", "out");
     const NodeRenderSemantic multiplicative = resolver.semanticForNodeOutput(multiplicativeGraph, "mesh", "out");
@@ -71,7 +71,7 @@ TEST_CASE("Render semantics resolve envelope scale from downstream target", "[cy
 
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 220.f, 0.f }));
     graph.addNode(pitchConsumer("pitch"));
-    graph.addEdge({ "env", "env", "pitch", "pitch", PortDomain::EnvelopeSignal, false });
+    graph.addEdge({ "env", "env", "pitch", "pitch", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
 
     const NodeRenderSemantic semantic = resolver.semanticForNodeOutput(graph, "env", "env");
 
@@ -92,7 +92,7 @@ TEST_CASE("Render semantics use voice context before downstream consumers exist"
 
     graph.addNode(std::move(voice));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 220.f, 0.f }));
-    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, false });
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
 
     const NodeRenderSemantic semantic = resolver.semanticForNodeOutput(graph, "mesh", "out");
 

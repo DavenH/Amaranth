@@ -4,6 +4,7 @@
 #include "GraphValidator.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 #include <cmath>
@@ -207,6 +208,10 @@ bool isScalarJSON(const var& value) {
     return value.getDynamicObject() == nullptr && value.getArray() == nullptr;
 }
 
+bool isRemovedLegacyParameter(NodeKind kind, const String& parameterId) {
+    return kind == NodeKind::Envelope && parameterId == "dynamic";
+}
+
 String scalarToJSON(const var& value) {
     return JSON::toString(value, true, maximumDecimalPlaces);
 }
@@ -249,7 +254,10 @@ void appendCanonicalJSON(const var& value, int depth, String& output);
 
 void appendCanonicalObject(const DynamicObject& object, int depth, String& output) {
     const String compact = singleLineObject(object);
-    if (compact.isNotEmpty() && depth * 4 + compact.length() <= maximumLineLength) {
+    const bool edgeObject = object.hasProperty("sourceNodeId")
+            && object.hasProperty("destNodeId");
+    if (compact.isNotEmpty()
+            && (edgeObject || depth * 4 + compact.length() <= maximumLineLength)) {
         output << compact;
         return;
     }
@@ -388,6 +396,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 
     const auto& registry = NodeDefinitionRegistry::instance();
     std::unordered_set<String, StringHash> nodeIds;
+    std::unordered_set<String, StringHash> legacyEnvelopeIds;
     for (const auto& encodedValue : *encodedNodes) {
         const auto* encoded = encodedValue.getDynamicObject();
         String nodeId;
@@ -443,9 +452,13 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         bool parametersValid = true;
+        if (node.kind == NodeKind::Envelope && !parameters->hasProperty("purpose")) {
+            legacyEnvelopeIds.emplace(nodeId);
+        }
         for (const auto& property : parameters->getProperties()) {
             const String parameterId = property.name.toString();
-            if (node.kind == NodeKind::VoiceContext && parameterId == "voices") {
+            if (isRemovedLegacyParameter(node.kind, parameterId)
+                    || (node.kind == NodeKind::VoiceContext && parameterId == "voices")) {
                 continue;
             }
             const auto* parameterDefinition = registry.findParameter(node.kind, parameterId);
@@ -466,6 +479,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         if (!parametersValid) {
             continue;
         }
+        applyEnvelopePurpose(node);
 
         if (definition->modelCodec != nullptr) {
             String error;
@@ -516,24 +530,40 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const bool legacyScratchAttachment = formatVersion == 1
                 && destination != nullptr
                 && destination->purpose == PortPurpose::ScratchAttachment;
+        const bool typedStaticAttachment = source != nullptr
+                && destination != nullptr
+                && source->connectionKind != ConnectionKind::Signal
+                && source->connectionKind == destination->connectionKind
+                && source->attachmentType != AttachmentType::None
+                && source->attachmentType == destination->attachmentType;
         edge.domain = guideAttachment || legacyScratchAttachment
                 ? PortDomain::EnvelopeSignal
                 : resolvedEdgeDomain(*source, *destination);
+        ConnectionKind inferredConnectionKind = ConnectionKind::Signal;
+        AttachmentType inferredAttachmentType = AttachmentType::None;
+        if (guideAttachment) {
+            inferredConnectionKind = ConnectionKind::ProcessingAttachment;
+            inferredAttachmentType = AttachmentType::GuideCurve;
+        } else if (destination->purpose == PortPurpose::ScratchAttachment) {
+            inferredConnectionKind = ConnectionKind::ProcessingAttachment;
+            inferredAttachmentType = AttachmentType::ScratchEnvelope;
+        } else if (typedStaticAttachment) {
+            inferredConnectionKind = source->connectionKind;
+            inferredAttachmentType = source->attachmentType;
+        }
         if (formatVersion == 1) {
-            edge.connectionKind = guideAttachment
-                    || destination->purpose == PortPurpose::ScratchAttachment
-                    ? ConnectionKind::ProcessingAttachment
-                    : ConnectionKind::Signal;
-            edge.attachmentType = guideAttachment
-                    ? AttachmentType::GuideCurve
-                    : (destination->purpose == PortPurpose::ScratchAttachment
-                            ? AttachmentType::ScratchEnvelope
-                            : AttachmentType::None);
+            edge.connectionKind = inferredConnectionKind;
+            edge.attachmentType = inferredAttachmentType;
         } else {
-            const auto connectionKind = connectionKindForId(
-                    encoded->getProperty("connectionKind").toString());
-            const auto attachmentType = attachmentTypeForId(
-                    encoded->getProperty("attachmentType").toString());
+            const var encodedConnectionKind = encoded->getProperty("connectionKind");
+            const var encodedAttachmentType = encoded->getProperty("attachmentType");
+            const auto connectionKind = encodedConnectionKind.isVoid()
+                    ? std::optional<ConnectionKind>(inferredConnectionKind)
+                    : connectionKindForId(encodedConnectionKind.toString());
+            const auto attachmentType = encodedAttachmentType.isVoid()
+                    && connectionKind == inferredConnectionKind
+                    ? std::optional<AttachmentType>(inferredAttachmentType)
+                    : attachmentTypeForId(encodedAttachmentType.toString());
             if (!connectionKind.has_value() || !attachmentType.has_value()) {
                 result.issues.push_back({
                         GraphLoadCode::InvalidGraph,
@@ -560,6 +590,30 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
                 }
             }
         }
+    }
+
+    for (const auto& nodeId : legacyEnvelopeIds) {
+        Node* envelope = result.graph.findNodeForEditing(nodeId);
+        if (envelope == nullptr) {
+            continue;
+        }
+        EnvelopePurpose purpose = EnvelopePurpose::Control;
+        for (const auto& edge : result.graph.getEdges()) {
+            if (edge.sourceNodeId != nodeId || edge.sourcePortId != "env") {
+                continue;
+            }
+            purpose = edge.isProcessingAttachment()
+                    ? EnvelopePurpose::Scratch
+                    : EnvelopePurpose::Volume;
+            break;
+        }
+        for (auto& parameter : envelope->parameters) {
+            if (parameter.id == "purpose") {
+                parameter.value = envelopePurposeToString(purpose);
+                break;
+            }
+        }
+        applyEnvelopePurpose(*envelope);
     }
 
     std::unordered_set<String, StringHash> probeIds;
