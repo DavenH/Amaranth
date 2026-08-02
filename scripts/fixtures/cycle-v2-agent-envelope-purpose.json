@@ -70,7 +70,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 34
+      "equals": 20
     },
     {
       "command": "pointer",
@@ -146,7 +146,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 31
+      "equals": 17
     },
     {
       "command": "pointer",

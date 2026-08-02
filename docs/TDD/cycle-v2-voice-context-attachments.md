@@ -176,6 +176,12 @@ Modulation Triple retains its yellow, red, and blue `ControlSignal` outputs for
 explicit connections. It additionally exposes one immutable aggregate
 configuration output for the Voice Context `modulation` attachment.
 
+The compact node presents these products through one right-side authoring
+socket. Dropping that socket on a Voice Context modulation input authors the
+single aggregate configuration edge. Dropping it directly on a Trilinear Mesh
+or Envelope remains the explicit per-axis override gesture. The aggregate
+output must not also appear as a second bottom socket.
+
 Using only the aggregate attachment does not schedule the Modulation Triple as
 a three-buffer runtime node. If any explicit yellow/red/blue signal output is
 used, its existing processor may execute for those live outputs. Both products
@@ -512,6 +518,13 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
+- The default-modulation preset slice replaces repeated per-axis edges in the
+  three ported Cycle 1 presets with one typed Modulation Triple attachment to
+  Voice Context. The shared right-side socket authors both that default edge
+  and deliberate explicit per-node bundles without exposing a duplicate bottom
+  socket. Context assignment follows signal flow, Envelope sidechain consumers,
+  and scratch attachment targets so volume and scratch Envelopes inherit the
+  same defaults as context-fed meshes.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
 - Cycle V2 verification passes 5,352 assertions in 388 test cases.

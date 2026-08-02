@@ -31,7 +31,7 @@
     { "command": "addNode", "kind": "unison", "x": 280, "y": 540 },
     { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "order", "label": "Voices", "value": "7" },
     { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "width", "label": "Detune", "value": "18" },
-    { "command": "connectPorts", "sourceNodeId": "modTriple", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation" },
+    { "command": "connectPorts", "sourceNodeId": "modTriple", "sourcePortId": "__modulationBundle", "destNodeId": "voice", "destPortId": "modulation" },
     { "command": "connectPorts", "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch" },
     { "command": "connectPorts", "sourceNodeId": "unison", "sourcePortId": "unison", "destNodeId": "voice", "destPortId": "unison" },
     { "command": "assertState", "path": "compileSucceeded", "equals": true },

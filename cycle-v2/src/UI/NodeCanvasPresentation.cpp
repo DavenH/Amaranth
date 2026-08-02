@@ -237,21 +237,6 @@ void paintTripleModulationNode(
                     ModulationCableBundle::worldCentre(node, false)),
             ModulationCableBundle::socketDiameter * scale,
             true);
-
-    const auto attachment = std::find_if(
-            node.outputs.begin(),
-            node.outputs.end(),
-            [](const Port& port) {
-                return port.connectionKind == ConnectionKind::ConfigurationAttachment;
-            });
-    if (attachment != node.outputs.end()) {
-        paintAttachmentSocket(
-                graphics,
-                frame.viewport.toScreen(NodeCanvasScene::portWorldCentre(node, *attachment)),
-                scale,
-                *attachment,
-                colourForDomain(attachment->domain));
-    }
 }
 
 void paintEnvelopePurposeIcon(

@@ -530,18 +530,27 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const bool legacyScratchAttachment = formatVersion == 1
                 && destination != nullptr
                 && destination->purpose == PortPurpose::ScratchAttachment;
+        const bool typedStaticAttachment = source != nullptr
+                && destination != nullptr
+                && source->connectionKind != ConnectionKind::Signal
+                && source->connectionKind == destination->connectionKind
+                && source->attachmentType != AttachmentType::None
+                && source->attachmentType == destination->attachmentType;
         edge.domain = guideAttachment || legacyScratchAttachment
                 ? PortDomain::EnvelopeSignal
                 : resolvedEdgeDomain(*source, *destination);
-        const ConnectionKind inferredConnectionKind = guideAttachment
-                || destination->purpose == PortPurpose::ScratchAttachment
-                ? ConnectionKind::ProcessingAttachment
-                : ConnectionKind::Signal;
-        const AttachmentType inferredAttachmentType = guideAttachment
-                ? AttachmentType::GuideCurve
-                : (destination->purpose == PortPurpose::ScratchAttachment
-                        ? AttachmentType::ScratchEnvelope
-                        : AttachmentType::None);
+        ConnectionKind inferredConnectionKind = ConnectionKind::Signal;
+        AttachmentType inferredAttachmentType = AttachmentType::None;
+        if (guideAttachment) {
+            inferredConnectionKind = ConnectionKind::ProcessingAttachment;
+            inferredAttachmentType = AttachmentType::GuideCurve;
+        } else if (destination->purpose == PortPurpose::ScratchAttachment) {
+            inferredConnectionKind = ConnectionKind::ProcessingAttachment;
+            inferredAttachmentType = AttachmentType::ScratchEnvelope;
+        } else if (typedStaticAttachment) {
+            inferredConnectionKind = source->connectionKind;
+            inferredAttachmentType = source->attachmentType;
+        }
         if (formatVersion == 1) {
             edge.connectionKind = inferredConnectionKind;
             edge.attachmentType = inferredAttachmentType;

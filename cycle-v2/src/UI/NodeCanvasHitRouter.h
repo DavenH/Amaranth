@@ -14,14 +14,12 @@ namespace CycleV2 {
 enum class CanvasNodeActionKind {
     CycleOperationLayout,
     CycleMeshOutputSide,
-    CycleVoiceDomain,
-    SetEnvelopePurpose
+    CycleVoiceDomain
 };
 
 struct CanvasNodeAction {
     CanvasNodeActionKind kind;
     String nodeId;
-    String value;
 };
 
 class NodeCanvasHitRouter {

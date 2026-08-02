@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
@@ -198,6 +199,37 @@ TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",
     REQUIRE(loaded.succeeded());
     REQUIRE(GraphValidator().isValid(loaded.graph));
     REQUIRE(serializer.toJsonString(loaded.graph).contains("\"attachmentType\""));
+}
+
+TEST_CASE("Format one infers typed static configuration attachments",
+        "[cycle-v2][graph][migration][voice-context]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "triple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 1);
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    REQUIRE(edges->size() == 1);
+    auto* edge = edges->getReference(0).getDynamicObject();
+    REQUIRE(edge != nullptr);
+    edge->removeProperty("connectionKind");
+    edge->removeProperty("attachmentType");
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.getEdges().size() == 1);
+    REQUIRE(loaded.graph.getEdges().front().connectionKind
+            == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(loaded.graph.getEdges().front().attachmentType
+            == AttachmentType::ModulationTriple);
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
@@ -399,6 +431,27 @@ TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls
         for (const Node& node : graph->getNodes()) {
             REQUIRE(parameterValueForNode(node, "enabled") != "0");
         }
+        const auto modulationEdges = std::count_if(
+                graph->getEdges().begin(),
+                graph->getEdges().end(),
+                [](const Edge& edge) {
+                    return edge.sourceNodeId == "morph";
+                });
+        REQUIRE(modulationEdges == 1);
+        const auto modulationAttachment = std::find_if(
+                graph->getEdges().begin(),
+                graph->getEdges().end(),
+                [](const Edge& edge) {
+                    return edge.sourceNodeId == "morph"
+                            && edge.sourcePortId == "modulation"
+                            && edge.destNodeId == "voice"
+                            && edge.destPortId == "modulation";
+                });
+        REQUIRE(modulationAttachment != graph->getEdges().end());
+        REQUIRE(modulationAttachment->connectionKind
+                == ConnectionKind::ConfigurationAttachment);
+        REQUIRE(modulationAttachment->attachmentType
+                == AttachmentType::ModulationTriple);
     }
 
     REQUIRE(african.findNode("waveshaper") == nullptr);

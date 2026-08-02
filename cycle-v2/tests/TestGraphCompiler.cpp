@@ -83,7 +83,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
     REQUIRE(result.plan.signalEdges.size() == 11);
-    REQUIRE(result.plan.buffers.size() == 11);
+    REQUIRE(result.plan.buffers.size() == 13);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
     REQUIRE(result.plan.voiceContexts.size() == 1);
 
@@ -182,6 +182,66 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
             implicit->defaultModulation);
     REQUIRE(configuration != nullptr);
     REQUIRE(configuration->sources[0].constant == Catch::Approx(0.2f));
+}
+
+TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",
+        "[cycle-v2][graph][voice-context][modulation][envelope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node volume = factory.createNode(NodeKind::Envelope, "volume", {});
+    for (auto& parameter : volume.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "volume";
+        }
+    }
+    NodeDefinitionRegistry::instance().normalize(volume);
+    graph.addNode(std::move(volume));
+    Node scratch = factory.createNode(NodeKind::Envelope, "scratch", {});
+    for (auto& parameter : scratch.parameters) {
+        if (parameter.id == "purpose") {
+            parameter.value = "scratch";
+        }
+    }
+    NodeDefinitionRegistry::instance().normalize(scratch);
+    graph.addNode(std::move(scratch));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+
+    GraphEditor editor;
+    REQUIRE(editor.connect(
+            graph,
+            { "triple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "mesh", "out", false },
+            { "multiply", "left", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "volume", "env", false },
+            { "multiply", "right", true }).succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "scratch", "env", false },
+            { "mesh", "scratch", true }).succeeded());
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    const auto defaultInputCount = [](const GraphExecutionStep& step) {
+        return std::count_if(step.inputs.begin(), step.inputs.end(), [](const auto& input) {
+            return input.sourcePortId.startsWith("default.");
+        });
+    };
+    REQUIRE(defaultInputCount(findStep(compiled.plan, "mesh")) == 3);
+    REQUIRE(defaultInputCount(findStep(compiled.plan, "volume")) == 2);
+    REQUIRE(defaultInputCount(findStep(compiled.plan, "scratch")) == 2);
 }
 
 TEST_CASE("Compiler indexes both dependency directions and probe addresses",

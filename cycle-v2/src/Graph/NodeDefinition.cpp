@@ -325,7 +325,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                       output("red", "Red", PortDomain::ControlSignal),
                       output("blue", "Blue", PortDomain::ControlSignal),
                       output("modulation", "Modulation", PortDomain::VoiceControlSignal,
-                              ChannelLayout::Mono, PortSide::Bottom,
+                              ChannelLayout::Mono, PortSide::Right,
                               ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple) }, {
                             choice("yellowSource", "Yellow Source", "voiceTime", {
                                     "voiceTime", "velocity", "inverseVelocity", "keyScale",

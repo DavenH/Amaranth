@@ -8,6 +8,7 @@ namespace CycleV2 {
 namespace {
 
 constexpr const char* kBundlePortId = "__modulationBundle";
+constexpr const char* kAttachmentPortId = "modulation";
 const std::array<const char*, 3> kAxes { "yellow", "red", "blue" };
 
 const Node* nodeFor(const NodeGraph& graph, const PortAddress& address) {
@@ -27,6 +28,12 @@ bool destinationSupportsAxis(const Node& node, const String& axis) {
     }
     return node.kind == NodeKind::Envelope
             && (axis == "red" || axis == "blue");
+}
+
+bool isVoiceContextDestination(const Node& node, const PortAddress& address) {
+    return node.kind == NodeKind::VoiceContext
+            && address.input
+            && address.portId == kAttachmentPortId;
 }
 
 }
@@ -63,8 +70,8 @@ bool ModulationCableBundle::isDestination(
     const Node* node = nodeFor(graph, address);
     return node != nullptr
             && address.input
-            && isAddress(address)
-            && supportsDestination(*node);
+            && ((isAddress(address) && supportsDestination(*node))
+                || isVoiceContextDestination(*node, address));
 }
 
 bool ModulationCableBundle::supportsDestination(const Node& node) {
@@ -87,6 +94,13 @@ std::vector<ModulationCableBundleRoute> ModulationCableBundle::routes(
     }
     const Node* destinationNode = nodeFor(graph, destination);
     jassert(destinationNode != nullptr);
+
+    if (isVoiceContextDestination(*destinationNode, destination)) {
+        return {{
+                { source.nodeId, kAttachmentPortId, false },
+                { destination.nodeId, kAttachmentPortId, true }
+        }};
+    }
 
     std::vector<ModulationCableBundleRoute> result;
     result.reserve(kAxes.size());
@@ -176,6 +190,11 @@ std::optional<std::vector<int>> ModulationCableBundle::bundleBeginningAt(
 
 bool ModulationCableBundle::hidesIndividualPort(const Node& node, const Port& port) {
     return port.input && destinationSupportsAxis(node, port.id);
+}
+
+bool ModulationCableBundle::usesSharedSourceSocket(const Node& node, const Edge& edge) {
+    return node.kind == NodeKind::ModulationTriple
+            && edge.sourcePortId == kAttachmentPortId;
 }
 
 Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {
