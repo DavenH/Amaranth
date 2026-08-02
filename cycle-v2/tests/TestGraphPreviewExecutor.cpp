@@ -360,6 +360,36 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
   #endif
 }
 
+TEST_CASE("Stengah renders connected nonzero signal probes", "[cycle-v2][runtime][probe][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    const NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
+    const auto result = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            40);
+
+    REQUIRE(result.probes.size() == graph.getSignalProbes().size());
+    for (const auto& probe : result.probes) {
+        INFO("probe id: " << probe.probeId);
+        REQUIRE(probe.connected);
+        REQUIRE(absoluteSum(probe.values) > 0.01f);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Bundled FFT diagnostic graph preserves its sawtooth probe through IFFT",
         "[cycle-v2][runtime][fft][probe]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

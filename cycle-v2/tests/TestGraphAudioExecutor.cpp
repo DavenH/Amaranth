@@ -282,6 +282,39 @@ TEST_CASE("Incremental graph audio reuses unaffected branch outputs", "[cycle-v2
     CHECK(executor.diagnosticProcessCount("unchanged") == 1);
 }
 
+TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream nodes",
+        "[cycle-v2][runtime][causal]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    const auto first = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "wave", "shape", "equalizer" });
+    REQUIRE(first.nodes.size() == 3);
+    REQUIRE(first.nodes[1]->output.traversalGrid.isValid());
+    REQUIRE(first.nodes[2]->output.traversalGrid.isValid());
+
+    const auto second = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "shape", "equalizer" });
+    REQUIRE(second.nodes.size() == 3);
+    REQUIRE(second.nodes[1]->output.traversalGrid.isValid());
+    REQUIRE(second.nodes[2]->output.traversalGrid.isValid());
+}
+
 TEST_CASE("Incremental graph audio stops between obsolete dirty nodes",
         "[cycle-v2][runtime][causal][cancellation]") {
     GraphNodeFactory factory;

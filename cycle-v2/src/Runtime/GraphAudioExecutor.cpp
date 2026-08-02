@@ -363,24 +363,33 @@ void GraphAudioExecutor::prepareExecution(
         const AudioExecutionSpec& spec,
         int voiceIndex) const {
     NodeAudioProcessorFactory factory;
-    workArena.prepare(
-            spec.maximumFrameCount,
-            plan.maximumInputCount,
-            plan.maximumOutputCount,
-            spec.maximumFrameCount * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns));
+    const size_t gridValueCapacity = spec.maximumFrameCount
+            * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns);
+    const bool workspaceMatches = workArena.frameCapacity == spec.maximumFrameCount
+            && workArena.inputCapacity == plan.maximumInputCount
+            && workArena.outputCapacity == plan.maximumOutputCount
+            && workArena.gridValueCapacity == gridValueCapacity
+            && bufferSlots.size() == plan.buffers.size();
+    if (!workspaceMatches) {
+        workArena.prepare(
+                spec.maximumFrameCount,
+                plan.maximumInputCount,
+                plan.maximumOutputCount,
+                gridValueCapacity);
+        bufferSlots.clear();
+        if (!workArena.preparePayloadStorage(plan.buffers.size())) {
+            workArena.frameCapacity = 0;
+            jassertfalse;
+            return;
+        }
+        bufferSlots.resize(plan.buffers.size());
+        for (auto& slot : bufferSlots) {
+            workArena.bind(slot);
+        }
+    }
     processContext.outputs.clear();
     processContext.parameters.clear();
     processContext.inputs.clear();
-    bufferSlots.clear();
-    if (!workArena.preparePayloadStorage(plan.buffers.size())) {
-        workArena.frameCapacity = 0;
-        jassertfalse;
-        return;
-    }
-    bufferSlots.resize(plan.buffers.size());
-    for (auto& slot : bufferSlots) {
-        workArena.bind(slot);
-    }
     processContext.inputViews.prepare(plan.maximumInputCount);
     processContext.attachments.prepare(plan.maximumAttachmentCount);
     processContext.outputPorts.prepare(plan.maximumOutputCount);
