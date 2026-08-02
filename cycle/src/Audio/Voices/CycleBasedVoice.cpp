@@ -1,5 +1,6 @@
 #include <Algo/Resampler.h>
 #include <Audio/PluginProcessor.h>
+#include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Util/Arithmetic.h>
@@ -297,8 +298,6 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
     ensureOversampleBufferSize(numSamples);
 
     bool unisonEnabled = unison == nullptr ? false : unison->isEnabled();
-    double dperiod = 0;
-
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         VoiceParameterGroup& group = groups[i];
 
@@ -317,17 +316,20 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
 
             updateChainAngleDelta(group, unisonEnabled);
 
-            dperiod = 1. / group.angleDelta;
-            int floorCume = int(group.cumePos);
-            float nextCume = group.cumePos + dperiod;
-            int floorNextCume = int(nextCume);
-
-            group.samplesThisCycle = floorNextCume - floorCume;
+            CycleDsp::ChainedCycleState cycleState {
+                    group.cumePos,
+                    group.sampledFrontier,
+                    group.samplesThisCycle
+            };
+            CycleDsp::OscillatorLaneCore::advanceChainedCycle(
+                    cycleState,
+                    group.angleDelta);
+            group.samplesThisCycle = cycleState.samplesThisCycle;
 
             calcCycle(group);
 
-            group.cumePos = nextCume;
-            group.sampledFrontier = floorNextCume;
+            group.cumePos = cycleState.cumulativePosition;
+            group.sampledFrontier = cycleState.sampledFrontier;
 
             int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
@@ -342,8 +344,6 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
     ensureOversampleBufferSize(numSamples);
 
     bool unisonEnabled = unison == nullptr ? false : unison->isEnabled();
-    double dperiod = 0;
-
     VoiceParameterGroup& group = groups.front();
     noteState.numUnisonVoices = 1;
 
@@ -362,17 +362,20 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
 
         updateChainAngleDelta(group, unisonEnabled);
 
-        dperiod = 1. / group.angleDelta;
-
-        int floorCume = int(group.cumePos);
-        float nextCume = group.cumePos + dperiod;
-        int floorNextCume = int(nextCume);
-        group.samplesThisCycle = floorNextCume - floorCume;
+        CycleDsp::ChainedCycleState cycleState {
+                group.cumePos,
+                group.sampledFrontier,
+                group.samplesThisCycle
+        };
+        CycleDsp::OscillatorLaneCore::advanceChainedCycle(
+                cycleState,
+                group.angleDelta);
+        group.samplesThisCycle = cycleState.samplesThisCycle;
 
         calcCycle(group);
 
-        group.cumePos = nextCume;
-        group.sampledFrontier = floorNextCume;
+        group.cumePos = cycleState.cumulativePosition;
+        group.sampledFrontier = cycleState.sampledFrontier;
 
         int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
