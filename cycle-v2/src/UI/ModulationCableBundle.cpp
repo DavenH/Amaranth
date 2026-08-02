@@ -200,7 +200,9 @@ bool ModulationCableBundle::usesSharedSourceSocket(const Node& node, const Edge&
 Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {
     return {
             input ? node.bounds.getX() : node.bounds.getRight(),
-            node.bounds.getCentreY()
+            input
+                    ? node.bounds.getCentreY()
+                    : node.bounds.getY() + NodePortGeometry::firstSidePortOffset
     };
 }
 

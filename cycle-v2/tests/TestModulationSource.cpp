@@ -524,6 +524,16 @@ TEST_CASE("Modulation triple side socket authors the Voice Context default attac
             ModulationCableBundle::worldCentre(*triple, false));
     REQUIRE(connectedSnapshot.edges.front().source.x == Catch::Approx(expectedSource.x));
     REQUIRE(connectedSnapshot.edges.front().source.y == Catch::Approx(expectedSource.y));
+
+    const Node standardSource = factory.createNode(
+            NodeKind::WaveSource,
+            "standardSource",
+            { triple->bounds.getX(), triple->bounds.getY() });
+    REQUIRE_FALSE(standardSource.outputs.empty());
+    REQUIRE(ModulationCableBundle::worldCentre(*triple, false).y
+            == Catch::Approx(NodeCanvasScene::portWorldCentre(
+                    standardSource,
+                    standardSource.outputs.front()).y));
 }
 
 TEST_CASE("Matching triple routes coalesce into one canvas cable",

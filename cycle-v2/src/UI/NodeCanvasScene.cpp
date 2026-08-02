@@ -109,7 +109,9 @@ juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port
         };
     }
 
-    const float y = node.bounds.getY() + 58.f + (float) portIndexOnSide(node, port) * 34.f;
+    const float y = node.bounds.getY()
+            + NodePortGeometry::firstSidePortOffset
+            + (float) portIndexOnSide(node, port) * NodePortGeometry::sidePortSpacing;
     return {
             port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
             y
