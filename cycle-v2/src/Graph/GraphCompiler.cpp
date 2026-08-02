@@ -525,7 +525,7 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 if (found == unisonConfigurations.end()) {
                     unisonConfigurations.push_back({
                             source->id,
-                            buildUnisonNodeConfiguration(source->parameters)
+                            buildUnisonNodeConfiguration(source->parameters, source->model)
                     });
                     found = unisonConfigurations.end() - 1;
                 }

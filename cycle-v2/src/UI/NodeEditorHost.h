@@ -25,6 +25,9 @@ public:
             const String& nodeId,
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) = 0;
+    virtual bool publishNodeModel(const String&, NodeModelStatePtr) { return false; }
+    virtual void beginNodeModelEdit() {}
+    virtual void endNodeModelEdit() {}
     virtual bool beginNodeParameterEdit(
             const String& nodeId,
             const String& parameterId,
@@ -183,6 +186,9 @@ public:
             const String& nodeId,
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
+    bool publishNodeModel(const String& nodeId, NodeModelStatePtr model) override;
+    void beginNodeModelEdit() override;
+    void endNodeModelEdit() override;
     bool beginNodeParameterEdit(
             const String& nodeId,
             const String& parameterId,

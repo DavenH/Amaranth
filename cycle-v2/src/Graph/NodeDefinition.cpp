@@ -1,5 +1,5 @@
-#include <Audio/CycleDsp/UnisonCore.h>
 #include <Audio/CycleDsp/IrModel.h>
+#include <Audio/CycleDsp/UnisonCore.h>
 
 #include <algorithm>
 #include <climits>
@@ -9,6 +9,7 @@
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
+#include "../Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {
 
@@ -483,6 +484,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             ChannelLayout::Mono, PortSide::Right,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::Unison) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
+                            choice("mode", "Mode", "group", { "group", "individual" },
+                                    dsp | preview | presentation),
                             integer("order", "Voices", 1, 1, CycleDsp::maximumUnisonOrder,
                                     dsp | preview | presentation),
                             number("width", "Detune", 35.f, 0.f,
@@ -495,6 +498,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("jitter", "Jitter", 0.5f, 0.f, 1.f,
                                     dsp | preview | presentation)
                     }))
+                    .model(std::make_shared<UnisonNodeModelCodec>())
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
                     .presentation({ 230.f, 112.f })

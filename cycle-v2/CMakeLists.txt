@@ -201,6 +201,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNode.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/WaveshaperSignalProcessor.cpp"
 )
 

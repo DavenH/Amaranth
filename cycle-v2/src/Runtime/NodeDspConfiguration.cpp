@@ -135,9 +135,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             return std::shared_ptr<const INodeDspConfiguration>(
                     EqualizerSignalProcessor::buildConfiguration(values));
         } },
-        { AudioModuleRole::Unison, [](AudioModuleRole, const auto& values, const auto&) {
+        { AudioModuleRole::Unison, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
-                    buildUnisonNodeConfiguration(values));
+                    buildUnisonNodeConfiguration(values, modelState));
         } },
         { AudioModuleRole::Envelope, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(

@@ -107,7 +107,7 @@ void paintBeatGrid(
 std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
         const Node& node,
         const UnisonPreviewContext& context) {
-    const auto configuration = buildUnisonNodeConfiguration(node.parameters);
+    const auto configuration = buildUnisonNodeConfiguration(node.parameters, node.model);
     std::vector<UnisonPreviewPath> paths;
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {

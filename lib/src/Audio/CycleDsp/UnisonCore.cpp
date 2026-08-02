@@ -45,7 +45,10 @@ float UnisonCore::voiceLevelScale(int order) {
 UnisonVoiceLayout UnisonCore::makeGroupLayout(
         const UnisonGroupConfiguration& configuration) {
     UnisonVoiceLayout layout;
-    layout.order = configuration.enabled ? constrainedOrder(configuration.order) : 1;
+    if (!configuration.enabled) {
+        return layout;
+    }
+    layout.order = constrainedOrder(configuration.order);
     if (layout.order == 1) {
         return layout;
     }
@@ -73,6 +76,32 @@ UnisonVoiceLayout UnisonCore::makeGroupLayout(
         voice.phaseCycles = configuration.phaseSpread
                 * (((float) index - (float) (layout.order - 1) * 0.5f) * phaseIncrement
                         + configuration.jitter * jitter);
+        if (voice.phaseCycles < 0.f) {
+            voice.phaseCycles += 1.f;
+        }
+    }
+    return layout;
+}
+
+UnisonVoiceLayout UnisonCore::makeIndividualLayout(
+        const UnisonIndividualConfiguration& configuration) {
+    UnisonVoiceLayout layout;
+    if (!configuration.enabled) {
+        return layout;
+    }
+    layout.order = constrainedOrder(configuration.order);
+    for (int index = 0; index < layout.order; ++index) {
+        UnisonVoice& voice = layout.voices[(size_t) index];
+        voice.detunePosition = std::clamp(
+                configuration.detunePositions[(size_t) index],
+                0.f,
+                1.f);
+        voice.detuneCents = detuneCentsFromPosition(
+                voice.detunePosition,
+                configuration.detuneWidthCents);
+        voice.pan = std::clamp(configuration.pans[(size_t) index], 0.f, 1.f);
+        voice.phaseCycles = wrapSignedPhase(
+                configuration.phaseCycles[(size_t) index]);
         if (voice.phaseCycles < 0.f) {
             voice.phaseCycles += 1.f;
         }

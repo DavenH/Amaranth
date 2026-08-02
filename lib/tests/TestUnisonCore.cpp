@@ -71,6 +71,41 @@ TEST_CASE("Unison parameter mappings retain Cycle 1 endpoints", "[unison][mappin
             WithinAbs(0.41754395, 0.000001));
 }
 
+TEST_CASE("Individual Unison layout preserves Cycle 1 voice state", "[unison][individual]") {
+    CycleDsp::UnisonIndividualConfiguration configuration;
+    configuration.order = 3;
+    configuration.detuneWidthCents = 70.f;
+    configuration.detunePositions[0] = 0.f;
+    configuration.detunePositions[1] = 0.25f;
+    configuration.detunePositions[2] = 1.f;
+    configuration.pans[0] = 0.f;
+    configuration.pans[1] = 0.5f;
+    configuration.pans[2] = 1.f;
+    configuration.phaseCycles[0] = 0.f;
+    configuration.phaseCycles[1] = 0.25f;
+    configuration.phaseCycles[2] = 1.f;
+
+    const auto layout = CycleDsp::UnisonCore::makeIndividualLayout(configuration);
+
+    REQUIRE(layout.order == 3);
+    REQUIRE(layout[0].detuneCents == -70.f);
+    REQUIRE(layout[1].detuneCents == -35.f);
+    REQUIRE(layout[2].detuneCents == 70.f);
+    REQUIRE(layout[0].pan == 0.f);
+    REQUIRE(layout[1].pan == 0.5f);
+    REQUIRE(layout[2].pan == 1.f);
+    REQUIRE(layout[0].phaseCycles == 0.f);
+    REQUIRE(layout[1].phaseCycles == 0.25f);
+    REQUIRE(layout[2].phaseCycles == 0.f);
+
+    configuration.enabled = false;
+    const auto bypassed = CycleDsp::UnisonCore::makeIndividualLayout(configuration);
+    REQUIRE(bypassed.order == 1);
+    REQUIRE(bypassed[0].detuneCents == 0.f);
+    REQUIRE(bypassed[0].pan == 0.5f);
+    REQUIRE(bypassed[0].phaseCycles == 0.f);
+}
+
 TEST_CASE("Unison phase trajectories reflect pitch detune duration and wrapping",
         "[unison][dsp][preview]") {
     const auto flat = CycleDsp::UnisonCore::phaseTrajectory(60, 0.f, 0.f);
