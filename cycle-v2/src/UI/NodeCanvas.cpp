@@ -1006,6 +1006,26 @@ Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) co
     return viewport.toWorld(canvasPosition);
 }
 
+std::optional<Rectangle<float>> NodeCanvas::performanceKeyboardBounds() const {
+    return commands.editingGraph().getPerformanceKeyboardBounds();
+}
+
+void NodeCanvas::beginPerformanceKeyboardMove() {
+    commands.beginCompoundEdit();
+}
+
+void NodeCanvas::movePerformanceKeyboard(Rectangle<float> worldBounds) {
+    commands.setPerformanceKeyboardBounds(worldBounds);
+}
+
+void NodeCanvas::endPerformanceKeyboardMove() {
+    commands.commitCompoundEdit();
+}
+
+void NodeCanvas::storePerformanceKeyboardBounds(Rectangle<float> worldBounds) {
+    commands.setPerformanceKeyboardBounds(worldBounds);
+}
+
 File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")

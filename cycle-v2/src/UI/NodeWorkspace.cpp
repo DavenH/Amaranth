@@ -4,9 +4,18 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float performanceKeyboardWorldWidth = 620.f;
+constexpr float performanceKeyboardWorldWidth = 496.f;
 constexpr float performanceKeyboardWorldHeight = 184.f;
 constexpr float performanceKeyboardWorldMargin = 36.f;
+
+Rectangle<float> normalizedPerformanceKeyboardBounds(Rectangle<float> bounds) {
+    return {
+            bounds.getX(),
+            bounds.getY(),
+            performanceKeyboardWorldWidth,
+            performanceKeyboardWorldHeight
+    };
+}
 
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
@@ -33,10 +42,19 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     setOpaque(true);
     addAndMakeVisible(canvas);
     canvas.addAndMakeVisible(keyboard);
+    keyboard.onMoveStarted = [this] {
+        performanceMoveActive = true;
+        canvas.beginPerformanceKeyboardMove();
+    };
     keyboard.onMoved = [this](Point<int> canvasPosition) {
         performanceWorldBounds.setPosition(
                 canvas.worldPositionForOverlay(canvasPosition.toFloat()));
+        canvas.movePerformanceKeyboard(performanceWorldBounds);
         ++performanceMoveCount;
+    };
+    keyboard.onMoveEnded = [this] {
+        canvas.endPerformanceKeyboardMove();
+        performanceMoveActive = false;
     };
     startTimerHz(30);
     timerCallback();
@@ -44,16 +62,30 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
+    if (performanceMoveActive) {
+        canvas.endPerformanceKeyboardMove();
+    }
     keyboard.releaseAllNotes();
 }
 
 bool NodeWorkspace::saveGraphToFile(const File& file) {
+    if (!performanceWorldBounds.isEmpty()) {
+        canvas.storePerformanceKeyboardBounds(performanceWorldBounds);
+    }
     return canvas.saveGraphToFile(file);
 }
 
 bool NodeWorkspace::loadGraphFromFile(const File& file) {
     keyboard.releaseAllNotes();
-    return canvas.loadGraphFromFile(file);
+    if (!canvas.loadGraphFromFile(file)) {
+        return false;
+    }
+    const auto storedBounds = canvas.performanceKeyboardBounds();
+    performanceWorldBounds = storedBounds.has_value()
+            ? normalizedPerformanceKeyboardBounds(*storedBounds)
+            : Rectangle<float> {};
+    layoutPerformanceKeyboard();
+    return true;
 }
 
 var NodeWorkspace::exportAutomationState() const {
@@ -212,6 +244,13 @@ var NodeWorkspace::performanceStateForAutomation() const {
             "hostedByCanvas",
             keyboard.getParentComponent() == &canvas);
     object->setProperty("moveCount", (int64) performanceMoveCount);
+    object->setProperty("worldX", performanceWorldBounds.getX());
+    object->setProperty("worldY", performanceWorldBounds.getY());
+    object->setProperty("worldWidth", performanceWorldBounds.getWidth());
+    object->setProperty("worldHeight", performanceWorldBounds.getHeight());
+    object->setProperty(
+            "presetPositionStored",
+            canvas.performanceKeyboardBounds().has_value());
     return var(object);
 }
 
@@ -261,6 +300,15 @@ void NodeWorkspace::timerCallback() {
         keyboard.releaseAllNotes();
     }
     previousDeviceReady = status.deviceReady;
+    if (!performanceMoveActive) {
+        const auto storedBounds = canvas.performanceKeyboardBounds();
+        const Rectangle<float> normalizedBounds = storedBounds.has_value()
+                ? normalizedPerformanceKeyboardBounds(*storedBounds)
+                : Rectangle<float> {};
+        if (!normalizedBounds.isEmpty() && normalizedBounds != performanceWorldBounds) {
+            performanceWorldBounds = normalizedBounds;
+        }
+    }
     const String nextStatus = !status.deviceReady
             ? "Audio device unavailable"
             : status.renderer.graphRevision == 0
@@ -296,6 +344,12 @@ void NodeWorkspace::timerCallback() {
 void NodeWorkspace::layoutPerformanceKeyboard() {
     if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) {
         return;
+    }
+    if (performanceWorldBounds.isEmpty()) {
+        const auto storedBounds = canvas.performanceKeyboardBounds();
+        if (storedBounds.has_value()) {
+            performanceWorldBounds = normalizedPerformanceKeyboardBounds(*storedBounds);
+        }
     }
     if (performanceWorldBounds.isEmpty()) {
         const Rectangle<float> visibleWorld = canvas.visibleWorldBoundsForOverlay();

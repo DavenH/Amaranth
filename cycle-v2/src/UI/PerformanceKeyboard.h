@@ -97,6 +97,8 @@ public:
     void mouseUp(const MouseEvent& event) override;
 
     std::function<void(Point<int>)> onMoved;
+    std::function<void()> onMoveStarted;
+    std::function<void()> onMoveEnded;
 
 private:
     int headerHeight() const;

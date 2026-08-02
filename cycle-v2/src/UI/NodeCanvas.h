@@ -82,6 +82,11 @@ public:
     Rectangle<float> visibleWorldBoundsForOverlay() const;
     Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
     Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
+    std::optional<Rectangle<float>> performanceKeyboardBounds() const;
+    void beginPerformanceKeyboardMove();
+    void movePerformanceKeyboard(Rectangle<float> worldBounds);
+    void endPerformanceKeyboardMove();
+    void storePerformanceKeyboardBounds(Rectangle<float> worldBounds);
 
     void paint(Graphics& g) override;
     void resized() override;

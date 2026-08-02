@@ -204,11 +204,17 @@ void PerformanceKeyboardPanel::resized() {
 }
 
 void PerformanceKeyboardPanel::mouseDown(const MouseEvent& event) {
+    if (dragGestureActive && onMoveEnded) {
+        onMoveEnded();
+    }
     dragGestureActive = event.position.y <= (float) headerHeight();
     if (!dragGestureActive) {
         return;
     }
     dragger.startDraggingComponent(this, event);
+    if (onMoveStarted) {
+        onMoveStarted();
+    }
 }
 
 void PerformanceKeyboardPanel::mouseDrag(const MouseEvent& event) {
@@ -222,6 +228,9 @@ void PerformanceKeyboardPanel::mouseDrag(const MouseEvent& event) {
 }
 
 void PerformanceKeyboardPanel::mouseUp(const MouseEvent&) {
+    if (dragGestureActive && onMoveEnded) {
+        onMoveEnded();
+    }
     dragGestureActive = false;
 }
 

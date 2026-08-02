@@ -26,13 +26,17 @@ running.
 
 Add a compact **Performance Keyboard** panel to the canvas presentation layer.
 It looks and moves like a node, but it is not a `NodeGraph` node and does not
-participate in the graph document.
+participate in graph topology or DSP execution. Its world-space bounds are
+presentation metadata in the preset so authors can place it without obscuring
+nodes and retain that layout when the preset is reopened.
 
 This ownership is intentional:
 
 - the keyboard has no ports and does not participate in graph topology;
-- showing, moving, or playing it must not change the graph revision, preset,
-  undo history, compilation, or DSP configuration;
+- showing or playing it must not change the graph revision, preset, undo
+  history, compilation, or DSP configuration;
+- moving it is one undoable preset-layout edit, but must not trigger graph
+  compilation or alter topology;
 - it must remain immediately playable without expansion; and
 - the same keyboard should audition whichever graph is currently active.
 
@@ -165,10 +169,11 @@ reports. It renders keyboard state obtained from `MidiKeyboardState` and emits
 MIDI messages through the sink.
 
 The initial placement is near the bottom-centre of the visible canvas, with a
-compact node frame and enough margin that the first and last key can be hit
-reliably. A header drag moves the panel without creating a graph command. Exact
-dimensions are shared by world-to-canvas layout, hit testing, and automation
-target inspection.
+compact 496-by-184 world-unit frame and enough margin that the first and last
+key can be hit reliably. A header drag moves the panel through the normal
+compound layout-command boundary so the complete gesture is one undoable
+edit. Exact dimensions are shared by world-to-canvas layout, hit testing, and
+automation target inspection.
 
 ### Interaction Contract
 
@@ -348,10 +353,18 @@ Application shutdown and device restart use this order:
 
 ## Persistence
 
-The keyboard is application chrome, so graph JSON stores none of its state.
+Graph JSON stores the keyboard's world-space bounds under optional root-level
+`presentation.performanceKeyboardBounds` metadata. This metadata is outside
+the node and edge collections, is ignored by `GraphCompiler`, and is absent in
+older presets. Missing metadata therefore uses the default placement. A header
+drag updates the bounds as one undoable layout edit and marks the document
+dirty; saving and reopening must restore the exact placement without adding a
+node, edge, or execution step.
+
 Application properties may store visibility, base octave, MIDI input choices,
-and JUCE audio device setup. They must not store pressed notes, active voices,
-queue contents, controller state, or prepared graph data.
+and JUCE audio device setup. Neither preset nor application state may store
+pressed notes, active voices, queue contents, controller state, or prepared
+graph data.
 
 Opening or saving a graph while a note is held cannot serialize the gesture.
 Loading a different graph releases active notes before adopting the new
@@ -391,10 +404,11 @@ zero-cost when unused. It does not become a parallel renderer.
   no widget-owned note held.
 - Octave controls move the visible range by exactly 12 notes and clamp safely.
 - Octave controls update the labels on both visible C keys immediately.
-- A gesture creates no graph revision, undo entry, compilation, or serialized
-  data change.
-- Canvas pan/zoom moves and scales the panel as world-space presentation state;
-  header dragging moves it without a graph edit.
+- A key-playing gesture creates no graph revision, undo entry, compilation, or
+  serialized data change.
+- Canvas pan/zoom moves and scales the panel as world-space presentation state.
+- One header drag creates one undoable layout edit, persists the final
+  world-space bounds, and creates no node, edge, or compile-plan step.
 
 ### MIDI Ingress And Voices
 
@@ -491,8 +505,11 @@ The feature is complete only when all of the following are true:
 - Realtime instrumentation proves no allocation, lock, graph mutation,
   compilation, preparation, UI access, or retired-object destruction occurs in
   the callback.
-- Keyboard gestures and application settings do not alter preset JSON, graph
-  revisions, or undo history.
+- Key-playing gestures and application settings do not alter preset JSON,
+  graph revisions, or undo history. Moving the panel alters only its preset
+  presentation bounds as one undoable layout edit.
+- Saving and reopening a moved panel restores its world-space placement; the
+  keyboard remains absent from graph topology and the compiled execution plan.
 - Device or graph failure is visible and cannot be mistaken for successful
   playback.
 
@@ -504,7 +521,8 @@ callback evidence must pass before that manual check is reported as successful.
 ## Negative Architecture Boundaries
 
 - Do not add `NodeKind::Keyboard`, a palette entry, graph ports, graph edges, or
-  keyboard serialization.
+  keyboard domain-state serialization. Only presentation bounds belong in the
+  preset.
 - Do not make `NodeWorkspace`, `NodeCanvas`, or `MainWindow` implement synth
   voice allocation or DSP.
 - Do not call `GraphPresentationModel::captureAudio` from a key gesture.
@@ -601,8 +619,10 @@ acceptance sequence passes.
 The completed implementation follows the ownership in this design. The
 keyboard is a presentation-only canvas child and reuses `AmaranthMidiKeyboard`,
 `MidiKeyboardState`, and JUCE key geometry and drag handling. It adds no node
-kind, ports, graph branches, serialization, or copied key hit-testing. The
-widget only translates keyboard-state notifications to a `MidiEventSink`.
+kind, ports, graph branches, domain-state serialization, or copied key
+hit-testing. Only its world-space bounds use the existing graph-document
+serialization and compound layout-command boundaries. The widget only
+translates keyboard-state notifications to a `MidiEventSink`.
 
 The shared queue contains 512 events and uses a bounded multi-producer,
 single-consumer ring. UI and hardware messages retain source, channel, MIDI
@@ -632,13 +652,13 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 1,817 lines and removed 9 lines under `cycle-v2/src`
+The production diff added 2,005 lines and removed 10 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
-added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 203
-additions and 3 removals. The slight increase over the estimate is the bounded
-live-callback capture and semantic automation surface required to distinguish
-device output from offline rendering. No production implementation exceeds
-350 added lines, and the audit found no new `NodeKind` switch or compatibility
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 260
+additions and 4 removals. The slight increase over the estimate is the bounded
+live-callback capture, semantic automation surface, and preset-layout boundary
+required for complete acceptance. No production implementation exceeds 350
+added lines, and the audit found no new `NodeKind` switch or compatibility
 adapter.
 
 Realtime instrumentation covers a prepared graph render and the complete
@@ -651,9 +671,9 @@ non-realtime capture result.
 
 ## Verification
 
-- `CycleV2_tests`: 436 test cases and 6,665 assertions passed.
+- `CycleV2_tests`: 438 test cases and 6,686 assertions passed.
 - Focused audio-device/realtime suite: 4 test cases and 28 assertions passed.
-- Focused keyboard suite: 3 test cases and 29 assertions passed.
+- Focused keyboard suite: 5 test cases and 50 assertions passed.
 - Standalone Debug and test targets built with `--parallel 10`.
 - `git diff --check` passed. `clang-tidy` was unavailable in the configured
   environment.
@@ -666,6 +686,15 @@ non-realtime capture result.
 - Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-node-drag-report.json`,
   `/private/tmp/cycle-v2-performance-keyboard-live.wav`, and
   `/private/tmp/cycle-v2-performance-keyboard.png`.
+- The persistence fixture completed 28 commands without failure, saved
+  `/private/tmp/cycle-v2-performance-keyboard-position.cyclegraph`, and verified
+  the dragged 496-by-184 world bounds. The saved preset contains the bounds as
+  presentation metadata while retaining its original 15 nodes and 15 edges.
+  Serializer coverage proves exact reload and an unchanged compile-plan step
+  count; command coverage proves the complete drag is one undoable edit. A
+  second app session reopened that saved preset and matched the stored X, Y,
+  width, and height in five automation commands without failure; its report is
+  `/private/tmp/cycle-v2-performance-keyboard-reload-report.json`.
 - A native OS capture caught the OpenGL canvas covering the initial workspace
   sibling. The final panel is a child of the OpenGL-attached canvas, matching
   the established expanded-editor composition path.
@@ -677,6 +706,8 @@ non-realtime capture result.
 - `/private/tmp/cycle-v2-keyboard-label-os.png` verifies the restrained octave
   labels on the two visible C keys; automation reports `C3` and `C4` for the
   default range.
+- `/private/tmp/cycle-v2-keyboard-narrow-os.png` verifies the final 496-unit
+  width, reduced exactly 20 percent from the previous 620-unit panel.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

@@ -12,6 +12,11 @@
     },
     {
       "command": "assertState",
+      "path": "performance.worldWidth",
+      "equals": 496
+    },
+    {
+      "command": "assertState",
       "path": "performance.baseNote",
       "equals": 60
     },
@@ -72,6 +77,15 @@
       "path": "performance.moveCount",
       "op": "greaterThan",
       "value": 1
+    },
+    {
+      "command": "assertState",
+      "path": "performance.presetPositionStored",
+      "equals": true
+    },
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/cycle-v2-performance-keyboard-position.cyclegraph"
     },
     {
       "command": "pointer",

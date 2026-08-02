@@ -81,6 +81,45 @@ var positionToJSON(Point<float> position) {
     return var(result.release());
 }
 
+var rectangleToJSON(Rectangle<float> bounds) {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("x", bounds.getX());
+    result->setProperty("y", bounds.getY());
+    result->setProperty("width", bounds.getWidth());
+    result->setProperty("height", bounds.getHeight());
+    return var(result.release());
+}
+
+bool rectangleFromJSON(const var& value, Rectangle<float>& bounds) {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr
+            || !object->hasProperty("x")
+            || !object->hasProperty("y")
+            || !object->hasProperty("width")
+            || !object->hasProperty("height")) {
+        return false;
+    }
+    const double x = object->getProperty("x");
+    const double y = object->getProperty("y");
+    const double width = object->getProperty("width");
+    const double height = object->getProperty("height");
+    if (!std::isfinite(x)
+            || !std::isfinite(y)
+            || !std::isfinite(width)
+            || !std::isfinite(height)
+            || width <= 0.
+            || height <= 0.) {
+        return false;
+    }
+    bounds = {
+            (float) x,
+            (float) y,
+            (float) width,
+            (float) height
+    };
+    return true;
+}
+
 String portSideToString(PortSide side) {
     switch (side) {
         case PortSide::Left:   return "left";
@@ -370,6 +409,13 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         probes.add(probeToJSON(probe));
     }
     root->setProperty("probes", var(std::move(probes)));
+    if (graph.getPerformanceKeyboardBounds().has_value()) {
+        auto presentation = std::make_unique<DynamicObject>();
+        presentation->setProperty(
+                "performanceKeyboardBounds",
+                rectangleToJSON(*graph.getPerformanceKeyboardBounds()));
+        root->setProperty("presentation", var(presentation.release()));
+    }
     return var(root.release());
 }
 
@@ -392,6 +438,30 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     if (encodedNodes == nullptr || encodedEdges == nullptr || encodedProbes == nullptr) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema, "Graph nodes, edges, and probes must be arrays" });
         return result;
+    }
+
+    const var presentationValue = root->getProperty("presentation");
+    if (!presentationValue.isVoid()) {
+        const auto* presentation = presentationValue.getDynamicObject();
+        if (presentation == nullptr) {
+            result.issues.push_back({
+                    GraphLoadCode::InvalidSchema,
+                    "Graph presentation metadata is invalid"
+            });
+        } else {
+            const var keyboardValue = presentation->getProperty("performanceKeyboardBounds");
+            if (!keyboardValue.isVoid()) {
+                Rectangle<float> keyboardBounds;
+                if (rectangleFromJSON(keyboardValue, keyboardBounds)) {
+                    result.graph.setPerformanceKeyboardBounds(keyboardBounds);
+                } else {
+                    result.issues.push_back({
+                            GraphLoadCode::InvalidSchema,
+                            "Performance keyboard bounds are invalid"
+                    });
+                }
+            }
+        }
     }
 
     const auto& registry = NodeDefinitionRegistry::instance();

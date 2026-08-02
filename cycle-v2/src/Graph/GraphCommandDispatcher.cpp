@@ -349,6 +349,16 @@ GraphEditResult GraphCommandDispatcher::translateNodes(
     });
 }
 
+GraphEditResult GraphCommandDispatcher::setPerformanceKeyboardBounds(
+        juce::Rectangle<float> bounds) {
+    return apply([&](auto& graph) {
+        GraphEditResult result;
+        result.changed = graph.setPerformanceKeyboardBounds(bounds);
+        result.changes.layoutChanged = result.changed;
+        return result;
+    });
+}
+
 void GraphCommandDispatcher::beginCompoundEdit() {
     if (compoundActive) {
         ++compoundDepth;
