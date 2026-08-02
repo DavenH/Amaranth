@@ -56,6 +56,7 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::WaveSource:        return "Wave Source";
         case AudioModuleRole::ImageSource:       return "Image Source";
         case AudioModuleRole::MeshSource:        return "Mesh Source";
+        case AudioModuleRole::SpectralLayer:     return "Spectral Layer";
         case AudioModuleRole::Fft:               return "FFT";
         case AudioModuleRole::Ifft:              return "IFFT";
         case AudioModuleRole::Add:               return "Add";

@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <memory>
+#include <optional>
 
 #include "../Graph/GraphEditor.h"
 #include "../Graph/GraphCommandDispatcher.h"
@@ -257,6 +258,8 @@ private:
     String activeMeshNodeId;
     bool activeMeshChanged {};
     bool curveTransactionActive {};
+    std::optional<uint64_t> curveTransactionBaseRevision;
+    String curveTransactionNodeId;
     bool curvePublicationPending {};
     String curvePublicationNodeId;
     uint64_t curvePublicationFingerprint {};

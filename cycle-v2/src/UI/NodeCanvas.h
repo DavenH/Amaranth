@@ -129,6 +129,8 @@ private:
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
+    String draggingSpectralPanNodeId;
+    float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;

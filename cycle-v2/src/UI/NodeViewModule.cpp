@@ -112,6 +112,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
                 node.bounds.getY()
         }};
     });
+    add(NodeKind::SpectralLayer, preview);
 
     NodeViewCapabilities operation;
     operation.operationLayoutControl = true;

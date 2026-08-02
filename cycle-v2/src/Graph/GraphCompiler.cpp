@@ -421,6 +421,11 @@ void compileDependencyIndex(GraphExecutionPlan& plan) {
     for (size_t nodeIndex = 0; nodeIndex < index.nodeIds.size(); ++nodeIndex) {
         index.nodeIndexById.emplace(index.nodeIds[nodeIndex], static_cast<int>(nodeIndex));
     }
+    index.stepIndexById.clear();
+    index.stepIndexById.reserve(plan.steps.size());
+    for (size_t stepIndex = 0; stepIndex < plan.steps.size(); ++stepIndex) {
+        index.stepIndexById.emplace(plan.steps[stepIndex].nodeId, static_cast<int>(stepIndex));
+    }
 
     const auto appendEdges = [&](const std::vector<Edge>& edges) {
         for (const auto& edge : edges) {
@@ -1076,8 +1081,8 @@ void GraphCompiler::refreshSignalProbes(
     for (const auto& probe : graph.getSignalProbes()) {
         CompiledSignalProbe compiled;
         compiled.probeId = probe.id;
-        const auto source = plan.dependencyIndex.nodeIndexById.find(probe.sourceNodeId);
-        if (source != plan.dependencyIndex.nodeIndexById.end()) {
+        const auto source = plan.dependencyIndex.stepIndexById.find(probe.sourceNodeId);
+        if (source != plan.dependencyIndex.stepIndexById.end()) {
             compiled.sourceStepIndex = source->second;
             const auto& outputs = plan.steps[static_cast<size_t>(source->second)].outputs;
             const auto output = std::find_if(

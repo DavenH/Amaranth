@@ -52,6 +52,14 @@
 - When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
 - Do not mark a TDD implemented while its principal architecture, deletion targets, negative boundaries, or completion criteria remain unfinished. Use a partial/in-progress status and state the remaining work explicitly.
 
+## Cycle V2 Graph Mutation Rules
+- UI and editor code must express semantic edits through `GraphCommandDispatcher` or a domain command service. It must not mutate `NodeGraph`, call `GraphEditor`, publish document changes, or manage undo directly.
+- `GraphDocument::graph()` is the durable committed graph. `GraphCommandDispatcher::editingGraph()` is the current read view during a gesture and may be transient. Do not use a revision read from `editingGraph()` as a durable concurrency token.
+- A gesture captures its durable base revision once. Every publication in that gesture retains that base; the dispatcher alone translates it to the current transient snapshot and commits or cancels the transaction.
+- Revisions identify immutable model content, not UI events. Parameter-only updates may reuse the current model revision only inside a dispatcher-owned transient edit; equal-revision differences remain conflicts in the durable graph.
+- A successful semantic command must merge every changed field into one `GraphEditResult`/`GraphChangeSet`. Scheduling and repaint decisions must use that consolidated result so parameter-only and model-only edits cannot disappear.
+- Any new live editing path needs a sequence test with at least two updates in one gesture, commit, observable downstream refresh/effect, and undo. Single-update tests do not prove transient revision correctness.
+
 ## Engineering Loop
 
 For every nontrivial implementation, execute these stages in order. Treat each

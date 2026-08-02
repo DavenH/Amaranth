@@ -29,6 +29,7 @@ enum class NodeKind {
     WaveSource,
     ImageSource,
     TrilinearMesh,
+    SpectralLayer,
     Fft,
     Ifft,
     Envelope,

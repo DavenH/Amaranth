@@ -490,7 +490,7 @@ TEST_CASE("Curve state revisions distinguish retries conflicts and stale writes"
     auto publication = publicationFor(*document.graph().findNode("shape"), model.snapshot(), model.revision());
     REQUIRE(commands.publishCurveState(publication).succeeded());
 
-    publication.expectedRevision = model.revision();
+    publication.durableBaseRevision = model.revision();
     const uint64_t documentRevision = document.revision();
     const auto retry = commands.publishCurveState(publication);
     REQUIRE(retry.succeeded());
@@ -506,10 +506,62 @@ TEST_CASE("Curve state revisions distinguish retries conflicts and stale writes"
     }
     REQUIRE(commands.publishCurveState(conflict).code == GraphEditCode::ConflictingRevision);
     auto stale = publication;
-    stale.expectedRevision = 1;
+    stale.durableBaseRevision = 1;
     REQUIRE(commands.publishCurveState(stale).code == GraphEditCode::StaleRevision);
     REQUIRE(document.undo());
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Curve control drag accepts repeated parameter-only transient publications",
+        "[cycle-v2][curve-state][commands][parameters]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const Node* initial = document.graph().findNode("shape");
+    REQUIRE(initial != nullptr);
+    const uint64_t initialRevision = initial->model->revision();
+    auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(initial->model);
+    REQUIRE(model != nullptr);
+    auto publicationModel = CurveNodeModelState::copyOf(
+            *model->flatCurve(),
+            initialRevision + 1,
+            model->editorJSON());
+
+    commands.beginTransientEdit();
+    CurveNodeStatePublication first {
+            initial->id,
+            initialRevision,
+            std::move(publicationModel),
+            curveControls(*initial)
+    };
+    for (auto& control : first.controls) {
+        if (control.id == "post") {
+            control.value = "0.6";
+        }
+    }
+    REQUIRE(commands.publishCurveState(first).succeeded());
+
+    auto second = first;
+    for (auto& control : second.controls) {
+        if (control.id == "post") {
+            control.value = "0.9";
+        }
+    }
+    REQUIRE(commands.publishCurveState(second).succeeded());
+    REQUIRE(commands.transientChanges().parameterImpacts
+            != ParameterImpact::None);
+    commands.commitTransientEdit();
+
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("shape"),
+            "post") == "0.9");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(
+            *document.graph().findNode("shape"),
+            "post") == "0.5");
 }
 
 TEST_CASE("Curve state publication rejects malformed typed and incomplete control state",

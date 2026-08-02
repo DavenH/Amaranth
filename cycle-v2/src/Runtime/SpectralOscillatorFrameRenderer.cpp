@@ -17,6 +17,7 @@ bool isPowerOfTwo(int value) {
 bool supportedRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource
+            || role == AudioModuleRole::SpectralLayer
             || role == AudioModuleRole::Fft
             || role == AudioModuleRole::Ifft
             || role == AudioModuleRole::Add
@@ -50,17 +51,20 @@ bool inputComesFromRegion(
 }
 
 void applySpectralLayer(
-        const TrimeshConfiguration& configuration,
         PortDomain domain,
+        Buffer<float> source,
         Buffer<float> left,
-        Buffer<float> right) {
+        Buffer<float> right,
+        float pan,
+        float range,
+        bool additive) {
     if (domain == PortDomain::SpectralPhaseSignal) {
         CycleDsp::SpectralLayerCore::renderPhaseChannels(
-                left,
+                source,
                 left,
                 right,
-                configuration.pan,
-                configuration.range);
+                pan,
+                range);
         return;
     }
 
@@ -70,12 +74,12 @@ void applySpectralLayer(
     }
 
     CycleDsp::SpectralLayerCore::renderMagnitudeChannels(
-            left,
+            source,
             left,
             right,
-            configuration.pan,
-            configuration.range,
-            configuration.additive);
+            pan,
+            range,
+            additive);
 }
 
 }
@@ -215,6 +219,15 @@ bool SpectralOscillatorFrameRenderer::prepare(
                 break;
             }
             case AudioModuleRole::Fft:      operation.type = OperationType::Fft; break;
+            case AudioModuleRole::SpectralLayer:
+                operation.type = OperationType::SpectralLayer;
+                operation.pan = typedParameterFloat(step.parameters, "pan", 0.5f);
+                operation.range = typedParameterFloat(step.parameters, "range", 0.5f);
+                operation.additive = typedParameterString(
+                        step.parameters,
+                        "mode",
+                        "additive") == "additive";
+                break;
             case AudioModuleRole::Ifft:     operation.type = OperationType::Ifft; break;
             case AudioModuleRole::Add:      operation.type = OperationType::Add; break;
             case AudioModuleRole::Multiply: operation.type = OperationType::Multiply; break;
@@ -290,11 +303,18 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             case OperationType::SpectralTrimesh:
                 operation.spectralRasterizer->renderPreparedInto(leftOutput);
                 leftOutput.mul(operation.configuration->gain);
+                leftOutput.copyTo(rightOutput);
+                break;
+
+            case OperationType::SpectralLayer:
                 applySpectralLayer(
-                        *operation.configuration,
                         operation.outputDomain,
+                        slot(operation.leftInput, 0, count),
                         leftOutput,
-                        rightOutput);
+                        rightOutput,
+                        operation.pan,
+                        operation.range,
+                        operation.additive);
                 break;
 
             case OperationType::Fft: {

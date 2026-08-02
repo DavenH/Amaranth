@@ -124,6 +124,23 @@ TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
     REQUIRE(labelForDomain(PortDomain::ControlSignal) == "Universal");
 }
 
+TEST_CASE("Spectral Layer rejects non-spectral signal domains", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+    graph.addEdge({ "wave", "out", "layer", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+    const auto issues = GraphValidator().validate(graph);
+
+    REQUIRE(std::any_of(
+            issues.begin(),
+            issues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::DomainMismatch;
+            }));
+}
+
 TEST_CASE("Operation nodes reject mixed concrete signal domains", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode({

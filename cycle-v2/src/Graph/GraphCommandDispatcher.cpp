@@ -199,8 +199,21 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
         if (publication.model == nullptr) {
             return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
         }
-        if (publication.expectedRevision != currentRevision
-                || publication.model->revision() < currentRevision) {
+        const Node* durableNode = document.graph().findNode(publication.nodeId);
+        const uint64_t durableRevision = durableNode != nullptr && durableNode->model != nullptr
+                ? durableNode->model->revision()
+                : 0;
+        const bool hasValidTransientBase = transientEdit.has_value()
+                && publication.durableBaseRevision == durableRevision;
+        const bool replacesTransientSnapshot = hasValidTransientBase
+                && currentRevision > durableRevision
+                && publication.model->revision() == currentRevision;
+        if (!hasValidTransientBase
+                && (publication.durableBaseRevision != currentRevision
+                    || publication.model->revision() < currentRevision)) {
+            return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
+        }
+        if (hasValidTransientBase && publication.model->revision() < currentRevision) {
             return GraphEditResult { GraphEditCode::StaleRevision, publication.nodeId, {} };
         }
         const auto* definition = NodeDefinitionRegistry::instance().find(node->kind);
@@ -260,7 +273,7 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
                         [](const NodeParameter& left, const NodeParameter& right) {
                             return left.id == right.id && left.value == right.value;
                         });
-        if (isModelRetry && !controlsMatch) {
+        if (isModelRetry && !controlsMatch && !transientEdit.has_value()) {
             return GraphEditResult { GraphEditCode::ConflictingRevision, publication.nodeId, {} };
         }
 
@@ -268,23 +281,16 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
         if (!parameterResult.succeeded()) {
             return parameterResult;
         }
-        const Node* durableNode = document.graph().findNode(publication.nodeId);
-        const uint64_t durableRevision = durableNode != nullptr && durableNode->model != nullptr
-                ? durableNode->model->revision()
-                : 0;
-        const bool replacesTransientSnapshot = transientEdit.has_value()
-                && currentRevision > durableRevision
-                && publication.model->revision() == currentRevision;
         GraphEditResult modelResult;
         if (replacesTransientSnapshot) {
             modelResult = GraphEditor().replaceTransientNodeModel(
                     graph, publication.nodeId, currentRevision, publication.model);
         } else {
             modelResult = GraphEditor().replaceNodeModel(
-                    graph, publication.nodeId, publication.expectedRevision, publication.model);
+                    graph, publication.nodeId, currentRevision, publication.model);
         }
-        modelResult.changes.parameterImpacts = modelResult.changes.parameterImpacts
-                | parameterResult.changes.parameterImpacts;
+        modelResult.changed = modelResult.changed || parameterResult.changed;
+        accumulateChange(modelResult.changes, parameterResult.changes);
         if (typedModel->editorJSON().getDynamicObject() != nullptr) {
             auto editorResult = GraphEditor().setNodeEditorState(
                     graph, publication.nodeId, typedModel->editorJSON());

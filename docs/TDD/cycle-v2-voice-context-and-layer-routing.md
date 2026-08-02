@@ -5,9 +5,10 @@
 In progress. A single spectral Voice Context now types each source mesh from
 its consuming magnitude or phase branch, and Stengah connects that context to
 all three spectral meshes. Stengah also preserves its scratch-envelope
-topology. Stereo spectral-layer panning is implemented in flat audio and preview
-payloads and the oscillator-region renderer, including exact Stengah phase pan
-and range values. Scratch execution and envelope profiles are implemented;
+topology. Explicit Pan nodes expose stereo panning, range, and
+magnitude mode on the canvas and execute them in flat audio, preview payloads,
+and the oscillator-region renderer, including exact Stengah phase pan and range
+values. Scratch execution and envelope profiles are implemented;
 inherited morph defaults remain incomplete. Envelope purpose, polarity, and
 logarithmic scaling are specified in
 `cycle-v2-envelope-purpose-routing-and-scaling.md`. Stengah's authored
@@ -91,12 +92,13 @@ rendering. The omitted empty time mesh has no attachment target.
 
 ### Spectral layer panning
 
-Layer pan is authored on each mesh layer. Audio execution uses the mature
-`Arithmetic::getPans` contract to distribute each layer into left and right
-spectral contributions. Preview rendering for one selected panel channel uses
-`Arithmetic::getRelativePan` against that panel channel. Unison lane pan remains
-owned by oscillator materialization after spectral reconstruction; it must not
-be folded into the layer parameter or applied twice.
+Layer pan is authored on an explicit Pan node downstream of each
+spectral mesh. Audio execution uses the mature `Arithmetic::getPans` contract
+to distribute each layer into left and right spectral contributions. The node's
+compact canvas surface shows that routing and its range/mode; mesh previews
+remain raw geometry views. Unison lane pan remains owned by oscillator
+materialization after spectral reconstruction; it must not be folded into the
+layer parameter or applied twice.
 
 Magnitude panning must preserve the difference between additive and
 multiplicative layers. Phase panning scales each channel's copy of the layer's
@@ -114,14 +116,16 @@ parity fixture: their imported pan values are 1.0 and 0.0.
 
 The first complete implementation slice is the authored spectral-layer path:
 
-1. Trilinear Mesh nodes persist the complete source-layer parameters required
-   by their resolved spectral domain: pan and range for phase, and pan, range,
-   and additive/multiplicative mode for magnitude.
+1. An explicit Pan node follows each spectral Trilinear Mesh and
+   persists the source-layer processing required by its resolved domain: pan
+   and range for phase, and pan, range, and additive/multiplicative mode for
+   magnitude. The canvas shows those values; Trilinear Mesh owns geometry and
+   traversal only.
 2. Spectral source and arithmetic routes are prepared with two-channel storage
    independent of the current pan value. Changing pan must remain a parameter
    publication and must not require graph recompilation.
-3. Spectral Trilinear Mesh execution produces independent left and right
-   contributions using the Cycle 1 layer formulas. Add and Multiply operate on
+3. Pan execution produces independent left and right contributions
+   from its mono mesh field using the Cycle 1 layer formulas. Add and Multiply operate on
    both channels and preserve the multiplicative neutral value where a layer's
    pan coefficient is below one.
 4. IFFT reconstructs both channel spectra. The spectral frame renderer passes
@@ -134,12 +138,20 @@ The first complete implementation slice is the authored spectral-layer path:
    phase ranges. Golden tests prove the opposing phase contributions survive
    serialization, compilation, preview, IFFT, and oscillator materialization.
 
-Implemented. Spectral Trimesh configuration owns pan, range, and magnitude
-mode; `SpectralLayerCore` is shared with Cycle 1 for the mature magnitude and
-phase formulas; flat FFT/IFFT and traversal payloads preserve both channels;
+Implemented initially with parameters on Trilinear Mesh. That representation
+made the graph look unchanged and hid a real signal-processing stage inside a
+geometry node. The stable end state is an explicit Pan node rendered
+as a cable-inline pan dial rather than a full-size processing panel. Selection
+still exposes its range and magnitude-mode parameters for authoring.
+`SpectralLayerCore` remains shared with Cycle 1 for the mature magnitude and
+phase formulas; flat FFT/IFFT, probes, and traversal payloads preserve both channels;
 and the oscillator-region slot graph reconstructs distinct left and right
-frames before existing Unison materialization. Parameter changes publish new
-DSP configuration without changing graph topology.
+frames before existing Unison materialization. Parameter changes invalidate DSP
+state without changing graph topology.
+The Channel palette names the operation Pan. Its dial body captures horizontal
+drag gestures before cable-port hit testing; the sockets remain available only
+at the dial edges. The Stengah automation fixture proves a dial drag changes
+the parameter without changing edge count.
 
 ## Boundaries And End State
 
@@ -149,6 +161,10 @@ DSP configuration without changing graph topology.
 - Do not duplicate the Modulation Triple edges in serialized imported graphs
   once voice-context inheritance exists.
 - Do not approximate spectral panning with a downstream mono balance control.
+- Do not hide spectral range, magnitude mode, or pan inside Trilinear Mesh;
+  these are signal operations and must remain visible on the canvas.
+- Keep single-control routing operations proportional to their visual payload;
+  Pan occupies a knob-sized interruption in its signal cable.
 - Migrate generic scratch attachment edges to typed scratch-channel routing
   without losing their source-layer selections.
 - Remove repeated imported morph edges when voice-context defaults and explicit

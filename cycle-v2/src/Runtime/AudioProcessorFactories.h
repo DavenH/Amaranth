@@ -9,6 +9,7 @@ namespace CycleV2 {
 std::unique_ptr<NodeAudioProcessor> createWaveSourceAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createImageSourceAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createTrimeshAudioProcessor();
+std::unique_ptr<NodeAudioProcessor> createSpectralLayerAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createAddAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createMultiplyAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createStereoJoinAudioProcessor();

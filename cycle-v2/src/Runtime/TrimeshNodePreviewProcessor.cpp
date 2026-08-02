@@ -1,5 +1,4 @@
 #include <Array/Buffer.h>
-#include <Algo/FFT.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
@@ -105,17 +104,8 @@ public:
 
 private:
     bool reuseCapturedTraversal(PreviewProcessContext& context) const {
-        const bool spectral = context.capturedOutput != nullptr
-                && (context.capturedOutput->domain == PortDomain::SpectralMagnitudeSignal
-                        || context.capturedOutput->domain
-                                == PortDomain::SpectralPhaseSignal);
-        const size_t expectedRows = spectral
-                ? (size_t) RealFftFullPolarSpectrum::binCountForBufferSize(
-                        (int) context.pointCount)
-                : context.pointCount;
         if (context.capturedOutput == nullptr
-                || !context.capturedOutput->traversalGrid.isValid()
-                || context.capturedOutput->traversalGrid.rows != expectedRows) {
+                || !context.capturedOutput->traversalGrid.isValid()) {
             return false;
         }
 
@@ -123,7 +113,6 @@ private:
         const auto& samples = context.capturedOutput->block.samples;
         context.primary.assign(grid.begin(), grid.end());
         context.secondary.assign(samples.begin(), samples.end());
-        normalizeBipolarValues(context.primary);
         normalizeBipolarValues(context.secondary);
         context.gridColumns = context.capturedOutput->traversalGrid.columns;
         context.gridRows = context.capturedOutput->traversalGrid.rows;
@@ -176,7 +165,6 @@ private:
         context.gridRows = context.pointCount;
 
         for (auto column : columns) {
-            normalizeBipolarValues(column.signal.block.samples);
             context.primary.insert(
                     context.primary.end(),
                     column.signal.block.samples.begin(),

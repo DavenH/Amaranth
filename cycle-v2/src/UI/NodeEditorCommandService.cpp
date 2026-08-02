@@ -224,9 +224,24 @@ bool NodeEditorCommandService::publishCurveState(
     if (node == nullptr) {
         return false;
     }
+    uint64_t durableBaseRevision = node->model != nullptr ? node->model->revision() : 0;
+    if (curveTransactionActive) {
+        const Node* durableNode = document.graph().findNode(nodeId);
+        if (durableNode == nullptr || (curveTransactionBaseRevision.has_value()
+                && curveTransactionNodeId != nodeId)) {
+            return false;
+        }
+        if (!curveTransactionBaseRevision.has_value()) {
+            curveTransactionBaseRevision = durableNode->model != nullptr
+                    ? durableNode->model->revision()
+                    : 0;
+            curveTransactionNodeId = nodeId;
+        }
+        durableBaseRevision = *curveTransactionBaseRevision;
+    }
     const auto result = commands.publishCurveState({
             nodeId,
-            node->model != nullptr ? node->model->revision() : 0,
+            durableBaseRevision,
             model,
             controls
     });
@@ -283,12 +298,16 @@ void NodeEditorCommandService::beginCurveTransaction() {
     curvePublicationPending = false;
     curvePublicationNodeId = {};
     curvePublicationFingerprint = 0;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
     commands.beginTransientEdit();
 }
 
 void NodeEditorCommandService::commitCurveTransaction() {
     commands.commitTransientEdit();
     curveTransactionActive = false;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
     if (!curvePublicationPending) {
         return;
     }

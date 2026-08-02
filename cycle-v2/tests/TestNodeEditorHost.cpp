@@ -770,10 +770,16 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
             { 2, 1.f, 0.75f, 1.f }
     }));
     model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+    auto secondControls = curveControls(*document.graph().findNode("shape"));
+    for (auto& control : secondControls) {
+        if (control.id == "post") {
+            control.value = "0.9";
+        }
+    }
     REQUIRE(commands.publishCurveState(
             "shape",
             CurveNodeModelState::copyOf(model, model.revision()),
-            curveControls(*document.graph().findNode("shape"))));
+            secondControls));
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.repaints == 2);
     commands.commitCurveTransaction();
@@ -789,8 +795,10 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
                     { 1, 0.f, 0.25f, 1.f },
                     { 2, 1.f, 0.75f, 1.f }
             });
+    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.9");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
 }
 

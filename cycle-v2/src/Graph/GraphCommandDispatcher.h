@@ -9,7 +9,8 @@ namespace CycleV2 {
 
 struct CurveNodeStatePublication {
     juce::String nodeId;
-    uint64_t expectedRevision {};
+    // Captured once from GraphDocument::graph() when the gesture begins.
+    uint64_t durableBaseRevision {};
     NodeModelStatePtr model;
     std::vector<NodeParameter> controls;
 };

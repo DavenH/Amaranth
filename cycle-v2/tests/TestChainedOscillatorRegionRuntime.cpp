@@ -263,9 +263,9 @@ TEST_CASE("Stengah phase layer pans survive spectral materialization",
             }) > 0.01f);
 
     REQUIRE(GraphEditor().setNodeParameter(
-            graph, "phaseLayer1", "pan", "Layer Pan", "0.0").succeeded());
+            graph, "phaseLayer1Process", "pan", "Layer Pan", "0.0").succeeded());
     REQUIRE(GraphEditor().setNodeParameter(
-            graph, "phaseLayer2", "pan", "Layer Pan", "1.0").succeeded());
+            graph, "phaseLayer2Process", "pan", "Layer Pan", "1.0").succeeded());
     auto swapped = render(graph);
 
     REQUIRE(Buffer<float>(

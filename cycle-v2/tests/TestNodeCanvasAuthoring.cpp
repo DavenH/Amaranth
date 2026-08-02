@@ -348,3 +348,33 @@ TEST_CASE("Voice context sliders publish a single draggable gesture",
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().findNode("voice")->parameters[2].value == "0");
 }
+
+TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
+        "[cycle-v2][canvas][authoring][pan]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::SpectralLayer, "pan", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.beginSpectralPanGesture("pan"));
+    REQUIRE(authoring.updateSpectralPanGesture(0.75f));
+    REQUIRE(authoring.updateSpectralPanGesture(1.f));
+    REQUIRE(typedParameterFloat(
+            document.graph().findNode("pan")->parameters,
+            "pan",
+            0.f) == 1.f);
+    REQUIRE_FALSE(document.canUndo());
+
+    const auto committed = authoring.endSpectralPanGesture();
+    REQUIRE(committed.succeeded);
+    REQUIRE(committed.graphChanged);
+    REQUIRE(document.canUndo());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(typedParameterFloat(
+            document.graph().findNode("pan")->parameters,
+            "pan",
+            0.f) == 0.5f);
+}

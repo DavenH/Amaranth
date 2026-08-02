@@ -168,6 +168,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
     draggingVoiceContextSlider.reset();
+    draggingSpectralPanNodeId = {};
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
 
@@ -329,6 +330,23 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
+    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
+    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
+        const Rectangle<float> nodeBounds = viewport.toScreen(inlinePan->bounds);
+        const Rectangle<float> dial = nodeBounds.reduced(4.f * viewport.getZoom());
+        if (dial.contains(event.position)
+                && authoring.beginSpectralPanGesture(inlinePan->id)) {
+            draggingSpectralPanNodeId = inlinePan->id;
+            spectralPanDragStartValue = typedParameterFloat(
+                    inlinePan->parameters,
+                    "pan",
+                    0.5f);
+            selectedNodeId = inlinePan->id;
+            selectedEdgeIndex = -1;
+            requestCanvasRepaint();
+            return;
+        }
+    }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         interaction.beginConnection(*hitPort, event.position);
         selectedNodeId = hitPort->nodeId;
@@ -382,6 +400,17 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
+
+    if (draggingSpectralPanNodeId.isNotEmpty()) {
+        const float value = jlimit(
+                0.f,
+                1.f,
+                spectralPanDragStartValue
+                        + event.getOffsetFromDragStart().x / 120.f);
+        authoring.updateSpectralPanGesture(value);
+        requestCanvasRepaint();
+        return;
+    }
 
     if (draggingVoiceContextSlider.has_value()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
@@ -446,6 +475,12 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
+    if (draggingSpectralPanNodeId.isNotEmpty()) {
+        draggingSpectralPanNodeId = {};
+        applyAuthoringResult(authoring.endSpectralPanGesture());
+        requestCanvasRepaint();
+        return;
+    }
     if (draggingVoiceContextSlider.has_value()) {
         if (*draggingVoiceContextSlider != VoiceContextEdit::Control::VoiceLength) {
             applyAuthoringResult(authoring.endVoiceContextSliderGesture());

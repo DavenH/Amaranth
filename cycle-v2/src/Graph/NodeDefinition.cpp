@@ -391,10 +391,6 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("pan", "Layer Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("range", "Layer Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            choice("spectralMode", "Magnitude Mode", "additive",
-                                    { "additive", "multiplicative" }, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
                     }))
                     .model(std::make_shared<TrimeshNodeModelCodec>())
@@ -403,9 +399,24 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
                     .presentation({ 260.f, 130.f }, { 286.f, 269.f })
                     .finish(),
+            buildDefinition(definition("spectralLayer", NodeKind::SpectralLayer,
+                    "Pan", "spectral stereo", "pan",
+                    { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
+                    { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
+                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            choice("mode", "Magnitude Mode", "additive",
+                                    { "additive", "multiplicative" }, dsp | preview | presentation)
+                    }))
+                    .execution(NodeExecutionTrait::SpectralTransform)
+                    .runtime(AudioModuleRole::SpectralLayer, PreviewModuleRole::None,
+                            "cycle/src/Audio/Voices/SynthFilterVoice.cpp")
+                    .presentation({}, { 64.f, 64.f })
+                    .finish(),
             buildDefinition(definition("fft", NodeKind::Fft, String::fromUTF8("Time → Freq"), "cycle chunks", "fft",
                     { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-                    { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal), output("phase", "Phase", PortDomain::SpectralPhaseSignal) }, {
+                    { output("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
+                      output("phase", "Phase", PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair) }, {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cycle", { "cycle", "fixedWindow" }, graph | dsp | presentation)
                     }))
@@ -414,7 +425,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({}, { 278.f, 178.f })
                     .finish(),
             buildDefinition(definition("ifft", NodeKind::Ifft, String::fromUTF8("Freq → Time"), "cyclic overlap", "ifft",
-                    { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal), input("phase", "Phase", PortDomain::SpectralPhaseSignal) },
+                    { input("mag", "Mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair),
+                      input("phase", "Phase", PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair) },
                     { output("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cyclic", { "cyclic", "acyclicCarry" }, graph | dsp | presentation)

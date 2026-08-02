@@ -220,12 +220,18 @@ std::vector<float> mappedSurface(
         return surface;
     }
 
-    if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
+    if (meshSurface && (preview.domain == PortDomain::SpectralMagnitudeSignal
+            || preview.domain == PortDomain::SpectralPhaseSignal)) {
+        surface = SpectralPreviewMapping::frequencySurface(
+                surface,
+                preview.gridColumns,
+                preview.gridRows);
+    } else if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
         return SpectralPreviewMapping::magnitudeSurface(
                 surface,
                 preview.gridColumns,
-                preview.gridRows,
-                preview.role == PreviewModuleRole::ReverbSpectrogram ? 50.f : 500.f);
+                preview.gridRows);
     } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
         unwrapPhase(surface, preview.gridColumns, preview.gridRows);
         return SpectralPreviewMapping::phaseSurface(
@@ -235,8 +241,21 @@ std::vector<float> mappedSurface(
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
-    if (preview.domain == PortDomain::TimeSignal) {
+    if (meshSurface) {
         buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+    } else if (preview.domain == PortDomain::TimeSignal) {
+        float minimum {};
+        float maximum {};
+        int minimumIndex {};
+        int maximumIndex {};
+        buffer.getMin(minimum, minimumIndex);
+        buffer.getMax(maximum, maximumIndex);
+        const float peak = jmax(-minimum, maximum);
+        if (peak > 0.f) {
+            buffer.mul(0.48f / peak).add(0.5f).clip(0.f, 1.f);
+        } else {
+            buffer.set(0.5f);
+        }
     } else {
         buffer.clip(0.f, 1.f);
     }
@@ -503,6 +522,33 @@ void drawMathOperationPreview(
             PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 
+void drawSpectralLayerPreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        PortDomain domain) {
+    const float pan = jlimit(0.f, 1.f, nodeParameterValue(node, "pan", "0.5").getFloatValue());
+    const float diameter = jmin(area.getWidth(), area.getHeight());
+    const Rectangle<float> dial(diameter, diameter);
+    const Rectangle<float> bounds = dial.withCentre(area.getCentre());
+    const Point<float> centre = bounds.getCentre();
+    const float stroke = jmax(1.f, diameter * 0.055f);
+    const float radius = diameter * 0.31f;
+    const float angle = MathConstants<float>::pi * (-0.75f + pan * 1.5f);
+    const Point<float> indicator {
+            centre.x + std::sin(angle) * radius,
+            centre.y - std::cos(angle) * radius
+    };
+    const Colour colour = colourForDomain(domain);
+
+    graphics.setColour(Colour(0xff11171d));
+    graphics.fillEllipse(bounds);
+    graphics.setColour(colour.withAlpha(0.88f));
+    graphics.drawEllipse(bounds.reduced(stroke * 0.5f), stroke);
+    graphics.drawLine(Line<float>(centre, indicator), stroke);
+    graphics.fillEllipse(Rectangle<float>(stroke * 1.8f, stroke * 1.8f).withCentre(indicator));
+}
+
 }
 
 NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
@@ -561,18 +607,20 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {
-    if (request.area.getWidth() < 20.f || request.area.getHeight() < 20.f) {
-        return;
-    }
-
-    if (paintAuthoritativeModel(graphics, request)) {
+    const float minimumDimension = request.node.kind == NodeKind::SpectralLayer ? 8.f : 20.f;
+    if (request.area.getWidth() < minimumDimension || request.area.getHeight() < minimumDimension) {
         return;
     }
 
     if (request.runtimeResult != nullptr
-            && request.runtimeResult->role == PreviewModuleRole::SignalSpy
+            && (request.runtimeResult->role == PreviewModuleRole::SignalSpy
+                    || request.runtimeResult->role == PreviewModuleRole::MeshSurface)
             && request.cache
             && paintCachedHeatmap(graphics, request)) {
+        return;
+    }
+
+    if (paintAuthoritativeModel(graphics, request)) {
         return;
     }
 
@@ -676,7 +724,8 @@ bool NodePreviewRenderer::paintRuntimeResult(
         return true;
     }
 
-    if (result.role == PreviewModuleRole::SignalSpy) {
+    if (result.role == PreviewModuleRole::SignalSpy
+            || result.role == PreviewModuleRole::MeshSurface) {
         return drawHeatmap(graphics, request.area, result);
     }
 
@@ -806,6 +855,15 @@ void NodePreviewRenderer::paintQualitative(
 
     if (kind == NodeKind::Add || kind == NodeKind::Multiply) {
         drawMathOperationPreview(graphics, request.area, kind == NodeKind::Multiply, request.zoom);
+        return;
+    }
+
+    if (kind == NodeKind::SpectralLayer) {
+        drawSpectralLayerPreview(
+                graphics,
+                request.area,
+                request.node,
+                request.profile.getDomain());
         return;
     }
 

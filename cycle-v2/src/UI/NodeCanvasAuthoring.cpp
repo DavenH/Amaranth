@@ -595,6 +595,55 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::endVoiceContextSliderGesture() {
     };
 }
 
+bool NodeCanvasAuthoring::beginSpectralPanGesture(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || node->kind != NodeKind::SpectralLayer) {
+        return false;
+    }
+
+    commands.beginCompoundEdit();
+    spectralPanGestureNodeId = nodeId;
+    spectralPanGestureChanged = false;
+    selectNode(nodeId);
+    return true;
+}
+
+bool NodeCanvasAuthoring::updateSpectralPanGesture(float value) {
+    if (spectralPanGestureNodeId.isEmpty()) {
+        return false;
+    }
+
+    const String normalized = String(jlimit(0.f, 1.f, value), 6);
+    const auto result = commands.setNodeParameter(
+            spectralPanGestureNodeId,
+            "pan",
+            "Pan",
+            normalized);
+    spectralPanGestureChanged = spectralPanGestureChanged || result.changed;
+    authoringSession.statusMessage = "Pan: " + normalized;
+    return result.succeeded();
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::endSpectralPanGesture() {
+    if (spectralPanGestureNodeId.isEmpty()) {
+        return {};
+    }
+
+    const String nodeId = std::move(spectralPanGestureNodeId);
+    const bool changed = spectralPanGestureChanged;
+    spectralPanGestureChanged = false;
+    commands.commitCompoundEdit();
+    refreshPresentation();
+    return {
+            true,
+            true,
+            changed,
+            GraphEditCode::Connected,
+            nodeId,
+            { true, false, true }
+    };
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
         const String& nodeId,
         TransformMode mode) {

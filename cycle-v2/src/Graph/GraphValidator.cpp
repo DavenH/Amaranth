@@ -313,6 +313,26 @@ void GraphValidator::validateOperationInputs(
         const GraphDomainResolution& resolution,
         std::vector<GraphValidationIssue>& issues) const {
     for (const auto& node : graph.getNodes()) {
+        if (node.kind == NodeKind::SpectralLayer) {
+            const auto found = std::find_if(
+                    graph.getEdges().begin(),
+                    graph.getEdges().end(),
+                    [&](const Edge& edge) {
+                        return !edge.isAttachment() && edge.destNodeId == node.id;
+                    });
+            if (found != graph.getEdges().end()) {
+                const size_t edgeIndex = (size_t) std::distance(
+                        graph.getEdges().begin(),
+                        found);
+                const PortDomain domain = resolution.domains[edgeIndex];
+                if (domain != PortDomain::SpectralMagnitudeSignal
+                        && domain != PortDomain::SpectralPhaseSignal) {
+                    addIssue(issues, GraphValidationCode::DomainMismatch,
+                            "Pan requires magnitude or phase input: " + node.id);
+                }
+            }
+            continue;
+        }
         if (node.kind != NodeKind::Add && node.kind != NodeKind::Multiply) {
             continue;
         }

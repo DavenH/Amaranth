@@ -92,7 +92,7 @@ juce::Path buildCablePath(
 }
 
 juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port& port) {
-    if (node.kind == NodeKind::ModulationSource) {
+    if (node.kind == NodeKind::ModulationSource || node.kind == NodeKind::SpectralLayer) {
         return {
                 port.input ? node.bounds.getX() : node.bounds.getRight(),
                 node.bounds.getCentreY()
@@ -172,14 +172,16 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 const float size = NodePortGeometry::socketDiameter
                         * viewport.getZoom()
                         / NodePortGeometry::referenceZoom;
+                const float hitPadding = node.kind == NodeKind::SpectralLayer
+                        ? 4.f
+                        : NodePortGeometry::hitPadding;
                 current.targets.push_back({
                         kind,
                         (port.input ? "input:" : "output:") + node.id + "." + port.id,
                         node.id,
                         port.id,
                         {},
-                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(
-                                NodePortGeometry::hitPadding),
+                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(hitPadding),
                         -1,
                         10000 + zOrder++
                 });

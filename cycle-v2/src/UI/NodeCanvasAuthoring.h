@@ -120,6 +120,9 @@ public:
             const VoiceContextEdit& edit);
     bool updateVoiceContextSliderGesture(const VoiceContextEdit& edit);
     NodeCanvasAuthoringResult endVoiceContextSliderGesture();
+    bool beginSpectralPanGesture(const String& nodeId);
+    bool updateSpectralPanGesture(float value);
+    NodeCanvasAuthoringResult endSpectralPanGesture();
     NodeCanvasAuthoringResult setTransformMode(
             const String& nodeId,
             TransformMode mode);
@@ -161,6 +164,8 @@ private:
     String voiceContextGestureNodeId;
     VoiceContextEdit::Control voiceContextGestureControl { VoiceContextEdit::Control::Domain };
     bool voiceContextGestureChanged {};
+    String spectralPanGestureNodeId;
+    bool spectralPanGestureChanged {};
 };
 
 }

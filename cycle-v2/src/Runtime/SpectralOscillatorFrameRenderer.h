@@ -34,6 +34,7 @@ private:
     enum class OperationType {
         TimeTrimesh,
         SpectralTrimesh,
+        SpectralLayer,
         Fft,
         Ifft,
         Add,
@@ -47,6 +48,9 @@ private:
         int rightInput { -1 };
         std::array<int, 2> outputs { -1, -1 };
         std::shared_ptr<const TrimeshConfiguration> configuration;
+        float pan { 0.5f };
+        float range { 0.5f };
+        bool additive { true };
         std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
         std::unique_ptr<Rasterization::VoiceCycleState> timeState;
         std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;

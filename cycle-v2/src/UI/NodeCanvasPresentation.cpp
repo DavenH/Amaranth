@@ -694,68 +694,84 @@ void NodeCanvasPresentation::paintNode(
         return;
     }
 
-    Rectangle<float> body = nodeBounds;
-    const Rectangle<float> header = body.removeFromTop(42.f * zoom);
-
-    graphics.setColour(kNodeBackground);
-    graphics.fillRoundedRectangle(nodeBounds, corner);
-    graphics.setColour(kNodeHeader);
-    graphics.fillRoundedRectangle(header, corner);
-    graphics.fillRect(header.withTrimmedTop(header.getHeight() - corner));
-    graphics.setColour(kNodeBorder);
-    graphics.drawRoundedRectangle(nodeBounds, corner, 1.2f);
-
-    if (node.id == frame.selectedNodeId) {
-        graphics.setColour(Colours::white.withAlpha(0.86f));
-        graphics.drawRoundedRectangle(nodeBounds.expanded(2.f), corner + 2.f, 2.f);
-    }
-
-    graphics.setFont(FontOptions(15.f * zoom, Font::bold));
-    graphics.setColour(kText);
-    graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
-                      Justification::centredLeft);
-    if (node.kind == NodeKind::Envelope) {
-        paintEnvelopePurposeIcon(graphics, node, header, zoom);
-    }
-    const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
-    if (capabilities.operationLayoutControl) {
-        paintOperationAction(
-                graphics,
-                actionButton(nodeBounds, zoom),
-                scale,
-                nextLayout(operationLayout(node)));
-    } else if (capabilities.outputSideControl) {
-        paintOutputAction(
-                graphics,
-                actionButton(nodeBounds, zoom),
-                scale,
-                nextOutputSide(node));
-    }
-
-    const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
-    if (node.kind == NodeKind::VoiceContext) {
-        VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
-        VoiceContextCompactEditor::paintNodeSummary(
-                graphics,
-                nodeBounds,
-                zoom,
-                node,
-                frame.unisonPreviewContext.voiceDurationSeconds);
-    } else {
+    if (node.kind == NodeKind::SpectralLayer) {
         previewRenderer.paint(graphics, {
                 node,
-                previewFor(frame.previewResult, node.id),
-                preview,
+                nullptr,
+                nodeBounds.reduced(4.f * zoom),
                 profileFor(frame, node),
                 zoom,
                 true,
-                node.kind == NodeKind::Unison
-                        ? unisonPreviewContextFor(
-                                frame.compileResult.plan,
-                                node.id,
-                                frame.unisonPreviewContext)
-                        : frame.unisonPreviewContext
+                frame.unisonPreviewContext
         });
+        if (node.id == frame.selectedNodeId) {
+            graphics.setColour(Colours::white.withAlpha(0.86f));
+            graphics.drawEllipse(nodeBounds.expanded(2.f * zoom), 2.f * scale);
+        }
+    } else {
+        Rectangle<float> body = nodeBounds;
+        const Rectangle<float> header = body.removeFromTop(42.f * zoom);
+
+        graphics.setColour(kNodeBackground);
+        graphics.fillRoundedRectangle(nodeBounds, corner);
+        graphics.setColour(kNodeHeader);
+        graphics.fillRoundedRectangle(header, corner);
+        graphics.fillRect(header.withTrimmedTop(header.getHeight() - corner));
+        graphics.setColour(kNodeBorder);
+        graphics.drawRoundedRectangle(nodeBounds, corner, 1.2f);
+
+        if (node.id == frame.selectedNodeId) {
+            graphics.setColour(Colours::white.withAlpha(0.86f));
+            graphics.drawRoundedRectangle(nodeBounds.expanded(2.f), corner + 2.f, 2.f);
+        }
+
+        graphics.setFont(FontOptions(15.f * zoom, Font::bold));
+        graphics.setColour(kText);
+        graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
+                          Justification::centredLeft);
+        if (node.kind == NodeKind::Envelope) {
+            paintEnvelopePurposeIcon(graphics, node, header, zoom);
+        }
+        const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
+        if (capabilities.operationLayoutControl) {
+            paintOperationAction(
+                    graphics,
+                    actionButton(nodeBounds, zoom),
+                    scale,
+                    nextLayout(operationLayout(node)));
+        } else if (capabilities.outputSideControl) {
+            paintOutputAction(
+                    graphics,
+                    actionButton(nodeBounds, zoom),
+                    scale,
+                    nextOutputSide(node));
+        }
+
+        const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
+        if (node.kind == NodeKind::VoiceContext) {
+            VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
+            VoiceContextCompactEditor::paintNodeSummary(
+                    graphics,
+                    nodeBounds,
+                    zoom,
+                    node,
+                    frame.unisonPreviewContext.voiceDurationSeconds);
+        } else {
+            previewRenderer.paint(graphics, {
+                    node,
+                    previewFor(frame.previewResult, node.id),
+                    preview,
+                    profileFor(frame, node),
+                    zoom,
+                    true,
+                    node.kind == NodeKind::Unison
+                            ? unisonPreviewContextFor(
+                                    frame.compileResult.plan,
+                                    node.id,
+                                    frame.unisonPreviewContext)
+                            : frame.unisonPreviewContext
+            });
+        }
     }
 
     const auto paintPort = [&](const Port& port) {

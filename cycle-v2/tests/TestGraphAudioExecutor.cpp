@@ -886,6 +886,39 @@ TEST_CASE("Incremental graph audio reuses unaffected branch outputs", "[cycle-v2
     CHECK(executor.diagnosticProcessCount("unchanged") == 1);
 }
 
+TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream nodes",
+        "[cycle-v2][runtime][causal]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
+    graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
+    graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    GraphAudioExecutor executor;
+    const auto first = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "wave", "shape", "equalizer" });
+    REQUIRE(first.nodes.size() == 3);
+    REQUIRE(first.nodes[1]->output.traversalGrid.isValid());
+    REQUIRE(first.nodes[2]->output.traversalGrid.isValid());
+
+    const auto second = executor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "shape", "equalizer" });
+    REQUIRE(second.nodes.size() == 3);
+    REQUIRE(second.nodes[1]->output.traversalGrid.isValid());
+    REQUIRE(second.nodes[2]->output.traversalGrid.isValid());
+}
+
 TEST_CASE("Incremental graph audio stops between obsolete dirty nodes",
         "[cycle-v2][runtime][causal][cancellation]") {
     GraphNodeFactory factory;
@@ -1717,8 +1750,8 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
         REQUIRE(difference > 0.01f);
     }
 
-    const auto& rightPhase = findNodeAudio(attached, "phaseLayer1").output;
-    const auto& leftPhase = findNodeAudio(attached, "phaseLayer2").output;
+    const auto& rightPhase = findNodeAudio(attached, "phaseLayer1Process").output;
+    const auto& leftPhase = findNodeAudio(attached, "phaseLayer2Process").output;
     REQUIRE(rightPhase.isStereo());
     REQUIRE(leftPhase.isStereo());
     REQUIRE(Buffer<float>(
@@ -1737,29 +1770,64 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
     const auto previews = GraphPreviewExecutor().render(
             attachedPlan.plan,
             attached,
+            attachedGraph.getSignalProbes(),
             128);
-    const auto previewFor = [&](const String& nodeId) -> const NodePreviewResult& {
+    const auto probeFor = [&](const String& probeId)
+            -> const GraphPreviewResult::SignalProbePreview& {
         const auto found = std::find_if(
-                previews.nodes.begin(),
-                previews.nodes.end(),
-                [&](const NodePreviewResult& preview) {
-                    return preview.nodeId == nodeId;
+                previews.probes.begin(),
+                previews.probes.end(),
+                [&](const auto& preview) {
+                    return preview.probeId == probeId;
                 });
-        REQUIRE(found != previews.nodes.end());
+        REQUIRE(found != previews.probes.end());
         return *found;
     };
-    const auto& rightPhasePreview = previewFor("phaseLayer1");
-    const auto& leftPhasePreview = previewFor("phaseLayer2");
-    REQUIRE(std::all_of(
-            rightPhasePreview.primary.begin(),
-            rightPhasePreview.primary.end(),
-            [](float value) { return std::abs(value - 0.5f) < 1.0e-6f; }));
-    REQUIRE(std::any_of(
-            leftPhasePreview.primary.begin(),
-            leftPhasePreview.primary.end(),
-            [](float value) { return std::abs(value - 0.5f) > 0.01f; }));
+    const auto& leftPhaseProbe = probeFor("probe7");
+    REQUIRE(leftPhaseProbe.connected);
+    REQUIRE(leftPhaseProbe.domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(leftPhaseProbe.channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(leftPhaseProbe.values == leftPhase.traversalGrid.values);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah Waveshaper post gain changes stereo traversal and downstream audio",
+        "[cycle-v2][runtime][waveshaper][grid][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph lowGraph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    NodeGraph highGraph = lowGraph;
+    REQUIRE(GraphEditor().setNodeParameter(
+            lowGraph, "waveshaper", "post", "Post", "0").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            highGraph, "waveshaper", "post", "Post", "1").succeeded());
+    const auto lowPlan = GraphCompiler().compile(lowGraph);
+    const auto highPlan = GraphCompiler().compile(highGraph);
+    REQUIRE(lowPlan.succeeded());
+    REQUIRE(highPlan.succeeded());
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto low = GraphAudioExecutor().process(lowGraph, lowPlan.plan, 128, {}, voice);
+    const auto high = GraphAudioExecutor().process(highGraph, highPlan.plan, 128, {}, voice);
+    const auto& lowShape = findNodeAudio(low, "waveshaper").output;
+    const auto& highShape = findNodeAudio(high, "waveshaper").output;
+
+    REQUIRE(lowShape.isStereo());
+    REQUIRE(highShape.isStereo());
+    REQUIRE(lowShape.traversalGrid.isValid());
+    REQUIRE(lowShape.secondaryTraversalGrid.isValid());
+    REQUIRE(lowShape.traversalGrid.values != highShape.traversalGrid.values);
+    REQUIRE(lowShape.secondaryTraversalGrid.values
+            != highShape.secondaryTraversalGrid.values);
+    REQUIRE(low.output.block.samples != high.output.block.samples);
+    REQUIRE(low.output.secondaryBlock.samples != high.output.secondaryBlock.samples);
   #endif
 }
 

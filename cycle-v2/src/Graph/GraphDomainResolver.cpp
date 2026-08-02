@@ -14,6 +14,12 @@ struct StringHash {
     }
 };
 
+bool propagatesUniversalDomain(NodeKind kind) {
+    return kind == NodeKind::Add
+            || kind == NodeKind::Multiply
+            || kind == NodeKind::SpectralLayer;
+}
+
 PortDomain voiceContextDomain(const Node& voiceNode) {
     const String domain = parameterValueForNode(voiceNode, "domain", "waveform");
 
@@ -156,8 +162,7 @@ private:
                 continue;
             }
 
-            if (destination->kind != NodeKind::Add
-                    && destination->kind != NodeKind::Multiply) {
+            if (!propagatesUniversalDomain(destination->kind)) {
                 continue;
             }
 
@@ -223,8 +228,7 @@ private:
             sourceDomain = contextDomain(*sourceNode);
         }
         if (sourceDomain == PortDomain::ControlSignal
-                && (sourceNode->kind == NodeKind::Add
-                        || sourceNode->kind == NodeKind::Multiply)) {
+                && propagatesUniversalDomain(sourceNode->kind)) {
             sourceDomain = firstInputDomain(*sourceNode, true);
         }
         if (sourceDomain != PortDomain::ControlSignal) {
@@ -234,7 +238,7 @@ private:
         if (dest->domain != PortDomain::ControlSignal) {
             return dest->domain;
         }
-        if (destNode->kind == NodeKind::Add || destNode->kind == NodeKind::Multiply) {
+        if (propagatesUniversalDomain(destNode->kind)) {
             const PortDomain operationDomain = firstInputDomain(*destNode, true);
             if (operationDomain != PortDomain::ControlSignal) {
                 return operationDomain;
@@ -259,6 +263,12 @@ private:
         const Port* dest = findPort(*destNode, edge.destPortId, true);
         if (source == nullptr || dest == nullptr) {
             return ChannelLayout::Mono;
+        }
+
+        const PortDomain domain = resolution.domains[edgeIndex];
+        if (domain == PortDomain::SpectralMagnitudeSignal
+                || domain == PortDomain::SpectralPhaseSignal) {
+            return ChannelLayout::StereoPair;
         }
 
         if (dest->domain != PortDomain::ControlSignal) {
