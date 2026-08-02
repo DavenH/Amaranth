@@ -109,7 +109,8 @@ void drawSlider(
         float normalized,
         Colour colour,
         const String& readout = {},
-        std::initializer_list<SliderTick> ticks = {}) {
+        std::initializer_list<SliderTick> ticks = {},
+        bool keepEndpointLabelsInside = false) {
     const float trackY = ticks.size() > 0 ? area.getY() + 7.f : area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     area.removeFromLeft(kColumnGap);
@@ -139,10 +140,10 @@ void drawSlider(
         graphics.drawVerticalLine(roundToInt(x), trackY + 2.f, trackY + 5.f);
         Rectangle<float> tickBounds(x - 22.f, trackY + 5.f, 44.f, 10.f);
         Justification justification = Justification::centred;
-        if (tick.normalized <= 0.f) {
+        if (keepEndpointLabelsInside && tick.normalized <= 0.f) {
             tickBounds.setX(x);
             justification = Justification::centredLeft;
-        } else if (tick.normalized >= 1.f) {
+        } else if (keepEndpointLabelsInside && tick.normalized >= 1.f) {
             tickBounds.setX(x - tickBounds.getWidth());
             justification = Justification::centredRight;
         }
@@ -431,7 +432,8 @@ void VoiceContextCompactEditor::paintExpanded(
                     { CycleDsp::voiceLengthUnitValue(1.0), "1 s" },
                     { CycleDsp::voiceLengthUnitValue(7.0), "7 s" },
                     { 1.f, "148 s" }
-            });
+            },
+            true);
 
     drawSlider(
             graphics,
