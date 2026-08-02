@@ -28,6 +28,7 @@ public:
             int frameSize,
             Buffer<float> left,
             Buffer<float> right);
+    size_t frameRenderCount() const { return renderCount; }
 
 private:
     enum class OperationType {
@@ -58,6 +59,7 @@ private:
     int maximumFrameSize {};
     int slotStride {};
     int outputSlot { -1 };
+    size_t renderCount {};
     std::vector<Operation> operations;
     std::vector<std::unique_ptr<Transform>> transforms;
     ScopedAlloc<float> slotMemory;

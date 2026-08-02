@@ -28,6 +28,10 @@ struct CyclicFrameLaneStateView {
 
 class CyclicFrameLaneRenderer {
 public:
+    static bool makeHalfFrameFades(
+            int frameSize,
+            Buffer<float> fadeIn,
+            Buffer<float> fadeOut);
     static Buffer<float> compose(
             const CyclicFrameCompositionRequest& request,
             CyclicFrameLaneStateView state,

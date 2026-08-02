@@ -6,8 +6,8 @@
 #include <unordered_map>
 
 #include "GraphRuntime.h"
-#include "ChainedOscillatorRegionRuntime.h"
 #include "NodeAudioProcessor.h"
+#include "PreparedOscillatorRegion.h"
 
 namespace CycleV2 {
 
@@ -137,8 +137,7 @@ private:
             int planRegionIndex { -1 };
             std::vector<uint64_t> configurationRevisions;
             std::vector<float> pitchEnvelopeUnitValues;
-            ChainedOscillatorRegionRuntime runtime;
-            std::unique_ptr<OscillatorCycleRenderer> renderer;
+            std::unique_ptr<PreparedOscillatorRegion> processor;
             bool active {};
         };
 

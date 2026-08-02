@@ -258,12 +258,15 @@ recipes without realtime topology search, allocation, or transform locking.
 Cycle 1's cyclic-frame phase rotation, interpolation, and half-frame crossfade
 are also extracted into a shared lane renderer consumed by Cycle 1; the
 extraction corrects the legacy full-frame/half-frame vector-size mismatch while
-preserving the intended first-half crossfade contract. Cycle 2 spectral lane
-reconstruction, independent oscillator-region materialization, and spectral
-latency/tail parity remain open. Time-only lane and rasterizer state now reset
-at the exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator
-running for envelope-controlled release. Full audible parity is not yet
-claimed.
+preserving the intended first-half crossfade contract. Cycle 2 spectral regions
+now render one prepared fixed frame and reconstruct it independently through
+the shared clock, composition, phase, mature Hermite resampling, pan, and level
+contracts for every Unison lane. The graph executor owns only the prepared
+oscillator-region interface and does not branch into chained or spectral
+algorithms. Independent oscillator-region materialization and spectral
+latency/tail parity remain open. Lane and rasterizer state reset at the exact
+NoteOn/Reset sample offset, while NoteOff leaves the oscillator running for
+envelope-controlled release. Full audible parity is not yet claimed.
 
 ## Completion Criteria
 

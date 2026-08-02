@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
@@ -14,6 +15,12 @@ TEST_CASE("Oscillator lane pitch preserves the Cycle 1 angle-delta contract",
 
     REQUIRE_THAT(octave, WithinAbs(middleC * 2.0, 1.0e-12));
     REQUIRE_THAT(detuned, WithinAbs(middleC * 2.0, 1.0e-12));
+    REQUIRE_THAT(
+            CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
+                    60, 0.f, 0.75f, 44100.0),
+            WithinAbs(
+                    CycleDsp::OscillatorLaneCore::angleDelta(66, 0.f, 44100.0),
+                    1.0e-12));
     REQUIRE(CycleDsp::OscillatorLaneCore::angleDelta(60, 0.f, 0.0) == 0.0);
 }
 
@@ -71,6 +78,23 @@ TEST_CASE("Cyclic frame composition preserves the unshifted first cycle",
     REQUIRE(composed.size() == 8);
     for (int i = 0; i < composed.size(); ++i) {
         REQUIRE(composed[i] == previousData[i]);
+    }
+}
+
+TEST_CASE("Cyclic frame fades preserve the Cycle 1 half-frame contract",
+        "[cycle-dsp][oscillator-lane][cyclic-frame]") {
+    float fadeInData[4] {};
+    float fadeOutData[4] {};
+    REQUIRE(CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
+            8,
+            Buffer<float>(fadeInData, 4),
+            Buffer<float>(fadeOutData, 4)));
+
+    REQUIRE(fadeInData[0] == Catch::Approx(0.f).margin(1.0e-6f));
+    REQUIRE(fadeInData[3] == Catch::Approx(1.f).margin(1.0e-6f));
+    for (int i = 0; i < 4; ++i) {
+        REQUIRE(fadeInData[i] + fadeOutData[i]
+                == Catch::Approx(1.f).margin(1.0e-6f));
     }
 }
 

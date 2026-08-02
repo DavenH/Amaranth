@@ -501,6 +501,106 @@ TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison
             }) < 1.0e-5f);
 }
 
+TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][graph][realtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+    setNodeParameter(unison, "order", "3");
+    setNodeParameter(unison, "width", "12");
+    setNodeParameter(unison, "panSpread", "1");
+    setNodeParameter(unison, "phase", "0.25");
+    graph.addNode(std::move(unison));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "unison", "unison", false },
+            { "voice", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "ifft", "time", false },
+            { "output", "time", true }).succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext noteOn;
+    noteOn.controls.noteNumber = 60;
+    noteOn.controls.velocity = 1.f;
+    noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+
+    GraphAudioOutputView output;
+    size_t allocations {};
+    size_t locks {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        ScopedRealtimeLockCount lockCount;
+        output = executor.processRealtime(compiled.plan, 256, {}, noteOn);
+        allocations = allocationCount.count();
+        locks = lockCount.count();
+    }
+    REQUIRE(output.isValid());
+    REQUIRE(allocations == 0);
+    REQUIRE(locks == 0);
+    REQUIRE(output.payload->channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(std::any_of(
+            output.payload->block.samples.begin(),
+            output.payload->block.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+    REQUIRE(std::any_of(
+            output.payload->secondaryBlock.samples.begin(),
+            output.payload->secondaryBlock.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+    REQUIRE(output.payload->block.samples != output.payload->secondaryBlock.samples);
+
+    GraphAudioExecutor lowNoteExecutor;
+    lowNoteExecutor.prepareExecution(compiled.plan, spec);
+    noteOn.controls.noteNumber = 0;
+    const auto lowNote = lowNoteExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            noteOn);
+    REQUIRE(lowNote.isValid());
+    REQUIRE(std::any_of(
+            lowNote.payload->block.samples.begin(),
+            lowNote.payload->block.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+}
+
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

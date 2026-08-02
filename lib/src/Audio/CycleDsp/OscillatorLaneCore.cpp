@@ -2,6 +2,8 @@
 
 #include "UnisonCore.h"
 
+#include <algorithm>
+
 namespace CycleDsp {
 
 double OscillatorLaneCore::angleDelta(
@@ -12,6 +14,21 @@ double OscillatorLaneCore::angleDelta(
         return 0.0;
     }
     return UnisonCore::frequencyForMidiNote(midiNote, detuneCents) / sampleRate;
+}
+
+double OscillatorLaneCore::angleDeltaForPitchUnit(
+        int midiNote,
+        float detuneCents,
+        float pitchUnitValue,
+        double sampleRate) {
+    if (sampleRate <= 0.0) {
+        return 0.0;
+    }
+    const double pitchSemitones = UnisonCore::pitchSemitonesForUnitValue(
+            std::clamp((double) pitchUnitValue, 0.01, 0.99));
+    return UnisonCore::frequencyForMidiPitch(
+            midiNote + pitchSemitones,
+            detuneCents) / sampleRate;
 }
 
 void OscillatorLaneCore::advanceChainedCycle(

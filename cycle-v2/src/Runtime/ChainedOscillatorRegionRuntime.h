@@ -50,10 +50,6 @@ private:
         std::array<ReadWriteBuffer, 2> buffers;
     };
 
-    double angleDeltaFor(
-            int midiNote,
-            const CycleDsp::UnisonVoice& voice,
-            float pitchUnitValue) const;
     bool renderUntilReady(
             int laneIndex,
             int midiNote,

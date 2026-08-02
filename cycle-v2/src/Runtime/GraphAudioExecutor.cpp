@@ -1,6 +1,5 @@
 #include "GraphAudioExecutor.h"
 #include "AudioProcessContextUtils.h"
-#include "ChainedOscillatorRecipeRenderer.h"
 #include "../Nodes/Control/ModulationTriple.h"
 
 #include <algorithm>
@@ -38,16 +37,6 @@ int maximumCycleSamplesFor(
     return (int) std::ceil(sampleRate / lowestFrequency) + 1;
 }
 
-std::unique_ptr<OscillatorCycleRenderer> createChainedRegionRenderer(
-        const GraphExecutionPlan& plan,
-        const OscillatorRegionPlan& region,
-        int maximumCycleSamples) {
-    auto renderer = std::make_unique<ChainedOscillatorRecipeRenderer>();
-    return renderer->prepare(plan, region, maximumCycleSamples)
-            ? std::unique_ptr<OscillatorCycleRenderer>(std::move(renderer))
-            : std::unique_ptr<OscillatorCycleRenderer> {};
-}
-
 template<class PreparedVoiceType>
 bool oscillatorPreparationMatches(
         const GraphExecutionPlan& plan,
@@ -63,7 +52,7 @@ bool oscillatorPreparationMatches(
             plan.oscillatorRegions.begin(),
             plan.oscillatorRegions.end(),
             [&](const auto& region) {
-                return ChainedOscillatorRecipeRenderer::supports(plan, region);
+                return supportsPreparedOscillatorRegion(plan, region);
             });
     if ((size_t) supportedRegionCount != voice.oscillatorRegions.size()) {
         return false;
@@ -371,7 +360,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         auto* oscillatorRegion = oscillatorRegionForStep(
                 preparedVoice->second,
                 stepIndex);
-        if (oscillatorRegion != nullptr) {
+        if (oscillatorRegion != nullptr
+                && (!captureDiagnostics
+                        || oscillatorRegion->processor->replacesDiagnosticProcessors())) {
             auto output = makeOutputPayload(context, 0);
             output.domain = PortDomain::TimeSignal;
             output.channelLayout = ChannelLayout::StereoPair;
@@ -551,11 +542,13 @@ void GraphAudioExecutor::prepareExecution(
             const int maximumCycleSamples = maximumCycleSamplesFor(
                     spec.sampleRate,
                     compiledContext->lanes);
-            auto renderer = createChainedRegionRenderer(
+            auto processor = prepareOscillatorRegion(
                     plan,
                     region,
+                    *compiledContext,
+                    spec,
                     maximumCycleSamples);
-            if (renderer == nullptr) {
+            if (processor == nullptr) {
                 continue;
             }
             auto preparedRegion = std::make_unique<PreparedVoice::OscillatorRegion>();
@@ -566,14 +559,7 @@ void GraphAudioExecutor::prepareExecution(
                         plan.steps[(size_t) operationIndex].configuration.revision);
             }
             preparedRegion->pitchEnvelopeUnitValues = compiledContext->pitchEnvelopeUnitValues;
-            preparedRegion->renderer = std::move(renderer);
-            if (!preparedRegion->runtime.prepare(
-                    spec.maximumFrameCount,
-                    maximumCycleSamples,
-                    spec.sampleRate,
-                    compiledContext->lanes)) {
-                continue;
-            }
+            preparedRegion->processor = std::move(processor);
             preparedVoice.oscillatorRegionByStep[
                     (size_t) region.materializationStepIndex] = preparedRegion.get();
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
@@ -611,21 +597,19 @@ void GraphAudioExecutor::renderOscillatorRegion(
         if (!region.active || count == 0) {
             return;
         }
-        const bool rendered = region.runtime.process(
+        const bool rendered = region.processor->process(
                 voice.controls.noteNumber,
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),
-                right.section((int) start, (int) count),
-                *region.renderer);
+                right.section((int) start, (int) count));
         jassert(rendered);
     };
     const auto applyEvent = [&](const NoteLifecycleEvent& event) {
         if (event.type == NoteLifecycleType::NoteOff) {
             return;
         }
-        region.runtime.reset();
-        region.renderer->reset();
+        region.processor->reset();
         region.active = event.type == NoteLifecycleType::NoteOn;
     };
 

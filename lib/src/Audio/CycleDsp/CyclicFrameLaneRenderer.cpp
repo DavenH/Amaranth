@@ -1,5 +1,7 @@
 #include "CyclicFrameLaneRenderer.h"
 
+#include <Array/VecOps.h>
+
 namespace CycleDsp {
 
 namespace {
@@ -33,6 +35,26 @@ bool validComposition(
             && workspace.previousHalfFrame.size() >= halfSize;
 }
 
+}
+
+bool CyclicFrameLaneRenderer::makeHalfFrameFades(
+        int frameSize,
+        Buffer<float> fadeIn,
+        Buffer<float> fadeOut) {
+    const int halfSize = frameSize / 2;
+    if (frameSize <= 2
+            || (frameSize & (frameSize - 1)) != 0
+            || fadeIn.size() < halfSize
+            || fadeOut.size() < halfSize) {
+        return false;
+    }
+
+    const float pi = MathConstants<float>::pi;
+    auto incoming = fadeIn.withSize(halfSize);
+    incoming.ramp(-0.5f * pi, pi / (float) (halfSize - 1));
+    incoming.sin().add(1.f).mul(0.5f);
+    VecOps::subCRev(incoming, 1.f, fadeOut.withSize(halfSize));
+    return true;
 }
 
 Buffer<float> CyclicFrameLaneRenderer::compose(

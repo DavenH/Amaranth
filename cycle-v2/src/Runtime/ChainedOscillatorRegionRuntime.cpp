@@ -88,17 +88,6 @@ bool ChainedOscillatorRegionRuntime::process(
     return true;
 }
 
-double ChainedOscillatorRegionRuntime::angleDeltaFor(
-        int midiNote,
-        const CycleDsp::UnisonVoice& voice,
-        float pitchUnitValue) const {
-    const double pitchSemitones = CycleDsp::UnisonCore::pitchSemitonesForUnitValue(
-            jlimit(0.01, 0.99, (double) pitchUnitValue));
-    return CycleDsp::UnisonCore::frequencyForMidiPitch(
-            midiNote + pitchSemitones,
-            voice.detuneCents) / sampleRate;
-}
-
 bool ChainedOscillatorRegionRuntime::renderUntilReady(
         int laneIndex,
         int midiNote,
@@ -113,7 +102,11 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
                 ? 0
                 : jlimit(0, pitchEnvelope.size() - 1, (int) relativeFrontier);
         const float pitch = pitchEnvelope.empty() ? 0.5f : pitchEnvelope[pitchIndex];
-        const double angleDelta = angleDeltaFor(midiNote, layout[laneIndex], pitch);
+        const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
+                midiNote,
+                layout[laneIndex].detuneCents,
+                pitch,
+                sampleRate);
         const double cycleStart = lane.clock.cumulativePosition;
         CycleDsp::OscillatorLaneCore::advanceChainedCycle(lane.clock, angleDelta);
         if (lane.clock.samplesThisCycle <= 0

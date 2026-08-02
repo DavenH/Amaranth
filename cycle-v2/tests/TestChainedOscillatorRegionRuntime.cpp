@@ -5,6 +5,7 @@
 
 #include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
 #include "../src/Runtime/SpectralOscillatorFrameRenderer.h"
+#include "../src/Runtime/SpectralOscillatorRegionRuntime.h"
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
@@ -220,4 +221,87 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
                     expected.data(),
                     frameSize
             }) < 1.0e-5f);
+}
+
+TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unison lanes",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][split-block]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto& region = compiled.plan.oscillatorRegions.front();
+
+    CycleDsp::UnisonIndividualConfiguration unison;
+    unison.order = 3;
+    unison.detunePositions[0] = 0.25f;
+    unison.detunePositions[1] = 0.5f;
+    unison.detunePositions[2] = 0.75f;
+    unison.pans[0] = 0.f;
+    unison.pans[1] = 0.5f;
+    unison.pans[2] = 1.f;
+    unison.phaseCycles[0] = 0.1f;
+    unison.phaseCycles[1] = 0.2f;
+    unison.phaseCycles[2] = 0.3f;
+    const auto layout = CycleDsp::UnisonCore::makeIndividualLayout(unison);
+
+    SpectralOscillatorFrameRenderer wholeRenderer;
+    SpectralOscillatorFrameRenderer splitRenderer;
+    REQUIRE(wholeRenderer.prepare(compiled.plan, region, 16384));
+    REQUIRE(splitRenderer.prepare(compiled.plan, region, 16384));
+    SpectralOscillatorRegionRuntime wholeRuntime;
+    SpectralOscillatorRegionRuntime splitRuntime;
+    REQUIRE(wholeRuntime.prepare(128, 4096, 16384, 44100.0, layout));
+    REQUIRE(splitRuntime.prepare(128, 4096, 16384, 44100.0, layout));
+
+    std::array<float, 128> wholeLeft {};
+    std::array<float, 128> wholeRight {};
+    std::array<float, 128> splitLeft {};
+    std::array<float, 128> splitRight {};
+    REQUIRE(wholeRuntime.process(
+            60, 1.f, {},
+            Buffer<float>(wholeLeft.data(), 128),
+            Buffer<float>(wholeRight.data(), 128),
+            wholeRenderer));
+    REQUIRE(splitRuntime.process(
+            60, 1.f, {},
+            Buffer<float>(splitLeft.data(), 37),
+            Buffer<float>(splitRight.data(), 37),
+            splitRenderer));
+    REQUIRE(splitRuntime.process(
+            60, 1.f, {},
+            Buffer<float>(splitLeft.data() + 37, 91),
+            Buffer<float>(splitRight.data() + 37, 91),
+            splitRenderer));
+
+    REQUIRE(wholeRenderer.frameRenderCount() == 1);
+    REQUIRE(splitRenderer.frameRenderCount() == 1);
+    REQUIRE(splitLeft == wholeLeft);
+    REQUIRE(splitRight == wholeRight);
+    REQUIRE(std::any_of(wholeLeft.begin(), wholeLeft.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(std::any_of(wholeRight.begin(), wholeRight.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(wholeLeft != wholeRight);
 }

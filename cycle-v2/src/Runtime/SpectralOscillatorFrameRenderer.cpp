@@ -206,6 +206,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
 }
 
 void SpectralOscillatorFrameRenderer::reset() {
+    renderCount = 0;
     for (auto& operation : operations) {
         if (operation.timeState != nullptr) {
             operation.timeState->reset();
@@ -289,6 +290,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
 
     slot(outputSlot, frameSize).copyTo(left);
     left.copyTo(right);
+    ++renderCount;
     return true;
 }
 
