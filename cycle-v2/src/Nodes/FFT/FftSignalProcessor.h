@@ -3,6 +3,7 @@
 #include "FftBlockwiseDsp.h"
 #include "../../Runtime/AudioProcessContextUtils.h"
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -16,11 +17,12 @@ public:
     void processInverse(AudioProcessContext& context, bool useHalfCycleCarry);
 
 private:
-    FftBlockwiseDsp& blockwiseFor(size_t frameCount);
+    FftBlockwiseDsp& blockwiseFor(size_t frameCount, size_t channel);
     void publishForwardTraversalGrids(
             const SignalPayload& input,
             SignalPayload& magnitude,
             SignalPayload& phase,
+            size_t channel,
             const AudioProcessWorkArena* arena);
     TraversalGridMetadata frequencyMetadataFor(
             const SignalTraversalGrid& inputGrid,
@@ -30,11 +32,13 @@ private:
             const SignalPayload& magnitude,
             const SignalPayload* phase,
             SignalPayload& output,
+            size_t channel,
             bool useHalfCycleCarry,
             const AudioProcessWorkArena* arena);
 
-    FftBlockwiseDsp blockwiseDsp;
-    std::vector<std::unique_ptr<FftBlockwiseDsp>> preparedBlockwiseDsp;
+    std::array<FftBlockwiseDsp, 2> blockwiseDsp;
+    std::array<std::vector<std::unique_ptr<FftBlockwiseDsp>>, 2>
+            preparedBlockwiseDsp;
     FftBlockwiseDsp traversalDsp;
     AudioProcessBlock scratchTimeColumn;
     AudioProcessBlock scratchMagnitudeColumn;

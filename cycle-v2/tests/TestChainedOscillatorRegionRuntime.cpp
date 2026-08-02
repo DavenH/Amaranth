@@ -9,6 +9,7 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
@@ -221,6 +222,67 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
                     expected.data(),
                     frameSize
             }) < 1.0e-5f);
+}
+
+TEST_CASE("Stengah phase layer pans survive spectral materialization",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][pan][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+
+    const auto render = [](const NodeGraph& graphToRender) {
+        const auto compiled = GraphCompiler().compile(graphToRender);
+        REQUIRE(compiled.succeeded());
+        REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+
+        SpectralOscillatorFrameRenderer renderer;
+        REQUIRE(renderer.prepare(
+                compiled.plan,
+                compiled.plan.oscillatorRegions.front(),
+                16384));
+        constexpr int frameSize = 256;
+        std::array<float, frameSize> left {};
+        std::array<float, frameSize> right {};
+        REQUIRE(renderer.renderFrame(
+                frameSize,
+                Buffer<float>(left.data(), frameSize),
+                Buffer<float>(right.data(), frameSize)));
+        return std::pair { left, right };
+    };
+
+    auto authored = render(graph);
+    REQUIRE(Buffer<float>(
+            authored.first.data(),
+            (int) authored.first.size()).normDiffL2({
+                    authored.second.data(),
+                    (int) authored.second.size()
+            }) > 0.01f);
+
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "phaseLayer1", "pan", "Layer Pan", "0.0").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "phaseLayer2", "pan", "Layer Pan", "1.0").succeeded());
+    auto swapped = render(graph);
+
+    REQUIRE(Buffer<float>(
+            authored.first.data(),
+            (int) authored.first.size()).normDiffL2({
+                    swapped.second.data(),
+                    (int) swapped.second.size()
+            }) < 1.0e-5f);
+    REQUIRE(Buffer<float>(
+            authored.second.data(),
+            (int) authored.second.size()).normDiffL2({
+                    swapped.first.data(),
+                    (int) swapped.first.size()
+            }) < 1.0e-5f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }
 
 TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unison lanes",

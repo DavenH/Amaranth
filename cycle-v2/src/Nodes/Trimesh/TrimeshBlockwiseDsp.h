@@ -17,6 +17,9 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
     float gain { 1.f };
+    float pan { 0.5f };
+    float range { 0.5f };
+    bool additive { true };
 };
 
 class TrimeshBlockwiseDsp {

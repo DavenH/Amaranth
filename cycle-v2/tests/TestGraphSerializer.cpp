@@ -612,6 +612,15 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     const Node* phaseLayer2 = loaded.graph.findNode("phaseLayer2");
     REQUIRE(phaseLayer1 != nullptr);
     REQUIRE(phaseLayer2 != nullptr);
+    REQUIRE(parameterValueForNode(*phaseLayer1, "pan") == "1");
+    REQUIRE(parameterValueForNode(*phaseLayer1, "range") == "0.6");
+    REQUIRE(parameterValueForNode(*phaseLayer2, "pan") == "0");
+    REQUIRE(parameterValueForNode(*phaseLayer2, "range") == "0.575");
+    const Node* magnitudeLayer1 = loaded.graph.findNode("magnitudeLayer1");
+    REQUIRE(magnitudeLayer1 != nullptr);
+    REQUIRE(parameterValueForNode(*magnitudeLayer1, "pan") == "0.5");
+    REQUIRE(parameterValueForNode(*magnitudeLayer1, "range") == "0.625");
+    REQUIRE(parameterValueForNode(*magnitudeLayer1, "spectralMode") == "additive");
     const auto phaseModel1 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer1->model);
     const auto phaseModel2 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer2->model);
     REQUIRE(phaseModel1 != nullptr);

@@ -1,4 +1,5 @@
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Rasterization/ScratchPositionPolicy.h>
@@ -139,10 +140,20 @@ public:
                     ChannelLayout::LinkedStereo
             };
         }
+        if (outputPort.domain == PortDomain::SpectralMagnitudeSignal
+                || outputPort.domain == PortDomain::SpectralPhaseSignal) {
+            outputPort.channelLayout = ChannelLayout::StereoPair;
+        }
 
         auto output = makeOutputPayload(context, 0);
         output.domain = outputPort.domain;
         output.channelLayout = outputPort.channelLayout;
+        if (output.isStereo()) {
+            output.secondaryBlock.samples.resize(context.frameCount);
+            if (context.workArena != nullptr) {
+                context.workArena->reserve(output);
+            }
+        }
 
         if (context.frameCount == 0) {
             publishSingleOutput(context, std::move(output));
@@ -190,6 +201,7 @@ public:
                 primaryAxis,
                 scratchAppliesToBlock,
                 output);
+        applySpectralLayer(output, context.frameCount);
         applyGain(output, context.frameCount);
 
         if (context.captureTraversalGrid) {
@@ -201,6 +213,7 @@ public:
                     scratch,
                     scratchDomain,
                     output);
+            applySpectralTraversalLayer(output, context.workArena);
             applyTraversalGain(output);
         }
 
@@ -208,6 +221,66 @@ public:
     }
 
 private:
+    void applySpectralBuffers(
+            PortDomain domain,
+            Buffer<float> left,
+            Buffer<float> right) const {
+        if (domain == PortDomain::SpectralPhaseSignal) {
+            CycleDsp::SpectralLayerCore::renderPhaseChannels(
+                    left,
+                    left,
+                    right,
+                    configuration->pan,
+                    configuration->range);
+        } else if (domain == PortDomain::SpectralMagnitudeSignal) {
+            CycleDsp::SpectralLayerCore::renderMagnitudeChannels(
+                    left,
+                    left,
+                    right,
+                    configuration->pan,
+                    configuration->range,
+                    configuration->additive);
+        }
+    }
+
+    void applySpectralLayer(SignalPayload& output, size_t frameCount) const {
+        if (configuration == nullptr || !output.isStereo()) {
+            return;
+        }
+
+        applySpectralBuffers(
+                output.domain,
+                payloadBuffer(output, frameCount),
+                payloadBuffer(output, 1, frameCount));
+    }
+
+    void applySpectralTraversalLayer(
+            SignalPayload& output,
+            const AudioProcessWorkArena* arena) const {
+        if (configuration == nullptr
+                || !output.isStereo()
+                || !output.traversalGrid.isValid()) {
+            return;
+        }
+
+        configureTraversalGrid(
+                output.secondaryTraversalGrid,
+                output.traversalGrid.columns,
+                output.traversalGrid.rows,
+                output.traversalGrid.metadata,
+                arena);
+        applySpectralBuffers(
+                output.domain,
+                {
+                        output.traversalGrid.values.data(),
+                        (int) output.traversalGrid.values.size()
+                },
+                {
+                        output.secondaryTraversalGrid.values.data(),
+                        (int) output.secondaryTraversalGrid.values.size()
+                });
+    }
+
     void applyGain(SignalPayload& output, size_t frameCount) const {
         if (configuration == nullptr || configuration->gain == 1.f) {
             return;

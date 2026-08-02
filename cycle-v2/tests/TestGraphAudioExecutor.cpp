@@ -1702,9 +1702,62 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
         for (size_t sample = 0; sample < withScratch.size(); ++sample) {
             difference += std::abs(withScratch[sample] - withoutScratch[sample]);
         }
+        const auto& attachedPayload = findNodeAudio(attached, nodeId).output;
+        const auto& fallbackPayload = findNodeAudio(fallback, nodeId).output;
+        if (attachedPayload.isStereo() && fallbackPayload.isStereo()) {
+            const auto& withScratchRight = attachedPayload.secondaryTraversalGrid.values;
+            const auto& withoutScratchRight = fallbackPayload.secondaryTraversalGrid.values;
+            REQUIRE(withScratchRight.size() == withoutScratchRight.size());
+            for (size_t sample = 0; sample < withScratchRight.size(); ++sample) {
+                difference += std::abs(
+                        withScratchRight[sample] - withoutScratchRight[sample]);
+            }
+        }
         INFO("node: " << nodeId);
         REQUIRE(difference > 0.01f);
     }
+
+    const auto& rightPhase = findNodeAudio(attached, "phaseLayer1").output;
+    const auto& leftPhase = findNodeAudio(attached, "phaseLayer2").output;
+    REQUIRE(rightPhase.isStereo());
+    REQUIRE(leftPhase.isStereo());
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(rightPhase.block.samples.data()),
+            (int) rightPhase.block.samples.size()).normL2() < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(rightPhase.secondaryBlock.samples.data()),
+            (int) rightPhase.secondaryBlock.samples.size()).normL2() > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(leftPhase.block.samples.data()),
+            (int) leftPhase.block.samples.size()).normL2() > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(leftPhase.secondaryBlock.samples.data()),
+            (int) leftPhase.secondaryBlock.samples.size()).normL2() < 1.0e-6f);
+
+    const auto previews = GraphPreviewExecutor().render(
+            attachedPlan.plan,
+            attached,
+            128);
+    const auto previewFor = [&](const String& nodeId) -> const NodePreviewResult& {
+        const auto found = std::find_if(
+                previews.nodes.begin(),
+                previews.nodes.end(),
+                [&](const NodePreviewResult& preview) {
+                    return preview.nodeId == nodeId;
+                });
+        REQUIRE(found != previews.nodes.end());
+        return *found;
+    };
+    const auto& rightPhasePreview = previewFor("phaseLayer1");
+    const auto& leftPhasePreview = previewFor("phaseLayer2");
+    REQUIRE(std::all_of(
+            rightPhasePreview.primary.begin(),
+            rightPhasePreview.primary.end(),
+            [](float value) { return std::abs(value - 0.5f) < 1.0e-6f; }));
+    REQUIRE(std::any_of(
+            leftPhasePreview.primary.begin(),
+            leftPhasePreview.primary.end(),
+            [](float value) { return std::abs(value - 0.5f) > 0.01f; }));
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

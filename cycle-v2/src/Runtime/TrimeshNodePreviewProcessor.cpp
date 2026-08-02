@@ -1,4 +1,5 @@
 #include <Array/Buffer.h>
+#include <Algo/FFT.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
@@ -104,9 +105,17 @@ public:
 
 private:
     bool reuseCapturedTraversal(PreviewProcessContext& context) const {
+        const bool spectral = context.capturedOutput != nullptr
+                && (context.capturedOutput->domain == PortDomain::SpectralMagnitudeSignal
+                        || context.capturedOutput->domain
+                                == PortDomain::SpectralPhaseSignal);
+        const size_t expectedRows = spectral
+                ? (size_t) RealFftFullPolarSpectrum::binCountForBufferSize(
+                        (int) context.pointCount)
+                : context.pointCount;
         if (context.capturedOutput == nullptr
                 || !context.capturedOutput->traversalGrid.isValid()
-                || context.capturedOutput->traversalGrid.rows != context.pointCount) {
+                || context.capturedOutput->traversalGrid.rows != expectedRows) {
             return false;
         }
 

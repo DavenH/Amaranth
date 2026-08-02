@@ -109,8 +109,8 @@ public:
     int& 				getScaleFactor() 	{ return scaleFactor; 	}
     CriticalSection& 	getLayerLock() 		{ return layerLock; 	}
 
-    static float calcPhaseOffsetScale(float value) 	{ return expf(5.f * value); }
-    static float calcDynamicRangeScale(float value) { return powf(2, 12 * value - 4); }
+    static float calcPhaseOffsetScale(float value);
+    static float calcDynamicRangeScale(float value);
 
 private:
     enum Knobs { Pan, DynRange };

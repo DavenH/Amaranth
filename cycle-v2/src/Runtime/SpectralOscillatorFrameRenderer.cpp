@@ -1,6 +1,7 @@
 #include "SpectralOscillatorFrameRenderer.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Curve.h>
 
 #include <algorithm>
@@ -46,6 +47,35 @@ bool inputComesFromRegion(
             && input->sourceStepIndex >= 0
             && input->sourceStepIndex < (int) regionSteps.size()
             && regionSteps[(size_t) input->sourceStepIndex];
+}
+
+void applySpectralLayer(
+        const TrimeshConfiguration& configuration,
+        PortDomain domain,
+        Buffer<float> left,
+        Buffer<float> right) {
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        CycleDsp::SpectralLayerCore::renderPhaseChannels(
+                left,
+                left,
+                right,
+                configuration.pan,
+                configuration.range);
+        return;
+    }
+
+    if (domain != PortDomain::SpectralMagnitudeSignal) {
+        left.copyTo(right);
+        return;
+    }
+
+    CycleDsp::SpectralLayerCore::renderMagnitudeChannels(
+            left,
+            left,
+            right,
+            configuration.pan,
+            configuration.range,
+            configuration.additive);
 }
 
 }
@@ -199,7 +229,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
     if (outputSlot < 0 || slotCount <= 0) {
         return false;
     }
-    slotMemory.resize(slotCount * slotStride);
+    slotMemory.resize(2 * slotCount * slotStride);
 
     transforms.clear();
     for (int frameSize = 2; frameSize <= maximumFrameSize; frameSize *= 2) {
@@ -240,7 +270,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
 
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
-        auto output = slot(operation.outputs[0], count);
+        auto leftOutput = slot(operation.outputs[0], 0, count);
+        auto rightOutput = slot(operation.outputs[0], 1, count);
         switch (operation.type) {
             case OperationType::TimeTrimesh:
                 CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
@@ -251,54 +282,70 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                                 0.f,
                                 0
                         },
-                        output);
-                output.mul(operation.configuration->gain);
+                        leftOutput);
+                leftOutput.mul(operation.configuration->gain);
+                leftOutput.copyTo(rightOutput);
                 break;
 
             case OperationType::SpectralTrimesh:
-                operation.spectralRasterizer->renderPreparedInto(output);
-                output.mul(operation.configuration->gain);
+                operation.spectralRasterizer->renderPreparedInto(leftOutput);
+                leftOutput.mul(operation.configuration->gain);
+                applySpectralLayer(
+                        *operation.configuration,
+                        operation.outputDomain,
+                        leftOutput,
+                        rightOutput);
                 break;
 
             case OperationType::Fft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
-                auto magnitude = slot(operation.outputs[0], binCount);
-                auto phase = slot(operation.outputs[1], binCount);
-                transform->forward(slot(operation.leftInput, frameSize));
-                transform->copyFullPolarSpectrumTo(magnitude, phase);
+                for (int channel = 0; channel < 2; ++channel) {
+                    auto magnitude = slot(operation.outputs[0], channel, binCount);
+                    auto phase = slot(operation.outputs[1], channel, binCount);
+                    transform->forward(slot(operation.leftInput, channel, frameSize));
+                    transform->copyFullPolarSpectrumTo(magnitude, phase);
+                }
                 break;
             }
             case OperationType::Ifft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
-                transform->setFullPolarSpectrum(
-                        slot(operation.leftInput, binCount),
-                        slot(operation.rightInput, binCount));
-                transform->inverse(output);
+                for (int channel = 0; channel < 2; ++channel) {
+                    transform->setFullPolarSpectrum(
+                            slot(operation.leftInput, channel, binCount),
+                            slot(operation.rightInput, channel, binCount));
+                    transform->inverse(slot(operation.outputs[0], channel, frameSize));
+                }
                 break;
             }
 
             case OperationType::Add:
-                slot(operation.leftInput, count).copyTo(output);
-                output.add(slot(operation.rightInput, count));
-                if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
-                    output.threshLT(0.f);
+                for (int channel = 0; channel < 2; ++channel) {
+                    auto output = slot(operation.outputs[0], channel, count);
+                    slot(operation.leftInput, channel, count).copyTo(output);
+                    output.add(slot(operation.rightInput, channel, count));
+                    if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
+                        output.threshLT(0.f);
+                    }
                 }
                 break;
 
             case OperationType::Multiply:
-                slot(operation.leftInput, count).copyTo(output);
-                output.mul(slot(operation.rightInput, count));
-                if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
-                    output.threshLT(0.f);
+                for (int channel = 0; channel < 2; ++channel) {
+                    auto output = slot(operation.outputs[0], channel, count);
+                    slot(operation.leftInput, channel, count).copyTo(output);
+                    output.mul(slot(operation.rightInput, channel, count));
+                    if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
+                        output.threshLT(0.f);
+                    }
                 }
                 break;
         }
     }
 
-    slot(outputSlot, frameSize).copyTo(left);
-    left.copyTo(right);
+    slot(outputSlot, 0, frameSize).copyTo(left);
+    slot(outputSlot, 1, frameSize).copyTo(right);
     ++renderCount;
     return true;
 }
@@ -314,8 +361,12 @@ int SpectralOscillatorFrameRenderer::valueCount(
 
 Buffer<float> SpectralOscillatorFrameRenderer::slot(
         int slotIndex,
+        int channel,
         int valueCount) {
-    return { slotMemory.get() + slotIndex * slotStride, valueCount };
+    return {
+            slotMemory.get() + (2 * slotIndex + channel) * slotStride,
+            valueCount
+    };
 }
 
 Transform* SpectralOscillatorFrameRenderer::transformFor(int frameSize) {

@@ -53,7 +53,7 @@ private:
     };
 
     static int valueCount(PortDomain domain, int frameSize);
-    Buffer<float> slot(int slotIndex, int valueCount);
+    Buffer<float> slot(int slotIndex, int channel, int valueCount);
     Transform* transformFor(int frameSize);
 
     int maximumFrameSize {};

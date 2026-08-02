@@ -31,7 +31,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1356.44141, "y": 520.0 },
-            "parameters": { "yellow": 0.393, "red": 0.359, "blue": 0.0, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 0.393, "red": 0.359, "blue": 0.0, "pan": 0.5, "range": 0.625, "spectralMode": "additive", "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -90,7 +90,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1356.44141, "y": 857.61737 },
-            "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "pan": 1.0, "range": 0.6, "spectralMode": "additive", "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -214,7 +214,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1356.44141, "y": 1169.26208 },
-            "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "pan": 0.0, "range": 0.575, "spectralMode": "additive", "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
                 "version": 2,

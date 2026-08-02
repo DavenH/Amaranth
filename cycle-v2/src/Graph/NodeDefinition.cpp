@@ -391,6 +391,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("pan", "Layer Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            number("range", "Layer Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            choice("spectralMode", "Magnitude Mode", "additive",
+                                    { "additive", "multiplicative" }, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
                     }))
                     .model(std::make_shared<TrimeshNodeModelCodec>())

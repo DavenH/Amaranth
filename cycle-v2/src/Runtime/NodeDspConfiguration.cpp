@@ -36,6 +36,12 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     const String axis = typedParameterString(parameters, "primaryAxis", "yellow");
     configuration->primaryViewAxis = axis == "red" ? Vertex::Red
             : (axis == "blue" ? Vertex::Blue : Vertex::Time);
+    configuration->pan = typedParameterFloat(parameters, "pan", 0.5f);
+    configuration->range = typedParameterFloat(parameters, "range", 0.5f);
+    configuration->additive = typedParameterString(
+            parameters,
+            "spectralMode",
+            "additive") == "additive";
     return configuration;
 }
 
