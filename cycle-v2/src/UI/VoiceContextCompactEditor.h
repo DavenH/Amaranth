@@ -13,6 +13,7 @@ struct VoiceContextEdit {
         Domain,
         Octave,
         Pitch,
+        VoiceLength,
         Portamento,
         Oversampling
     };
@@ -25,6 +26,8 @@ class VoiceContextCompactEditor {
 public:
     static Rectangle<float> expandedContentBounds(Rectangle<float> panel);
     static Rectangle<float> nodeSelectorBounds(Rectangle<float> nodeBounds, float zoom);
+    static Rectangle<float> voiceLengthControlBounds(Rectangle<float> panel);
+    static double voiceLengthAt(Rectangle<float> panel, float positionX);
 
     static String domain(const Node& node);
     static String domainLabel(const Node& node);
@@ -34,7 +37,8 @@ public:
     static void paintExpanded(
             Graphics& graphics,
             Rectangle<float> panel,
-            const Node& node);
+            const Node& node,
+            double voiceDurationSeconds);
     static void paintNodeSelector(
             Graphics& graphics,
             Rectangle<float> nodeBounds,

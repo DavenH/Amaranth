@@ -2,6 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "NodeViewModule.h"
+#include "VoiceContextCompactEditor.h"
 
 #include <cmath>
 
@@ -301,6 +302,15 @@ public:
             return;
         }
 
+        if (node.kind == NodeKind::VoiceContext) {
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".voiceLength",
+                    "voiceLength",
+                    VoiceContextCompactEditor::voiceLengthControlBounds(panel),
+                    node.id));
+            return;
+        }
+
         if (!editorHost.panelBoundsForAutomation().isEmpty()) {
             const Rectangle<float> panelHost =
                     editorHost.panelBoundsForAutomation().translated(panel.getX(), panel.getY());
@@ -330,6 +340,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedNodeId", state.selectedNodeId);
     root->setProperty("expandedNodeId", state.expandedNodeId);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
+    root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());

@@ -511,6 +511,8 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::applyVoiceContextEdit(
         case VoiceContextEdit::Control::Pitch:
             return setVoiceContextParameter(nodeId, "pitch", "Pitch", edit.value,
                     "Pitch: " + edit.value);
+        case VoiceContextEdit::Control::VoiceLength:
+            return {};
         case VoiceContextEdit::Control::Portamento:
             return setVoiceContextParameter(nodeId, "portamento", "Portamento", edit.value,
                     edit.value == "1" ? "Portamento on" : "Portamento off");

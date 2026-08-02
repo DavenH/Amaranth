@@ -42,8 +42,18 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
     REQUIRE(voice.inputs[2].side == PortSide::Left);
-    REQUIRE(voice.bounds.getWidth() == 250.f);
+    REQUIRE(voice.bounds.getWidth() == 280.f);
     REQUIRE(voice.bounds.getHeight() == 148.f);
+}
+
+TEST_CASE("Voice Context normalization preserves its readable preview width",
+        "[cycle-v2][graph][voice-context]") {
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    voice.bounds.setWidth(250.f);
+
+    NodeDefinitionRegistry::instance().normalize(voice);
+
+    REQUIRE(voice.bounds.getWidth() == 280.f);
 }
 
 TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",

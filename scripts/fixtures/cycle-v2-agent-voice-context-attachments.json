@@ -39,6 +39,10 @@
     { "command": "assertState", "path": "edgeCount", "equals": 3 },
     { "command": "openNodeEditor", "nodeId": "voice", "waitForIdle": true, "idleDelayMs": 400 },
     { "command": "inspectTargets", "area": "canvas" },
+    { "command": "pointer", "event": "down", "targetId": "expanded:voice.voiceLength", "targetX": 0.2, "targetY": 0.5 },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:voice.voiceLength", "downTargetId": "expanded:voice.voiceLength", "targetX": 0.9, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5 },
+    { "command": "pointer", "event": "up", "targetId": "expanded:voice.voiceLength", "downTargetId": "expanded:voice.voiceLength", "targetX": 0.9, "targetY": 0.5, "downTargetX": 0.2, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "previewVoiceLengthSeconds", "op": "greaterThan", "value": 3.0 },
     { "command": "screenshot", "area": "window", "path": "/private/tmp/cycle-v2-voice-context-attachments.png" }
   ],
   "quit": false

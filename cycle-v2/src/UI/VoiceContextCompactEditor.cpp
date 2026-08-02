@@ -14,6 +14,11 @@ constexpr float kLabelWidth = 78.f;
 constexpr float kRowHeight = 23.f;
 constexpr float kRowGap = 3.f;
 constexpr float kExpandedHeaderHeight = 44.f;
+constexpr float kSliderReadoutWidth = 76.f;
+
+NormalisableRange<double> voiceLengthRange() {
+    return { 0.25, 4.0, 0.01, 0.5 };
+}
 
 Rectangle<float> nextRow(Rectangle<float>& column) {
     Rectangle<float> row = column.removeFromTop(kRowHeight);
@@ -133,9 +138,14 @@ void drawSlider(
         Rectangle<float> area,
         const String& label,
         float normalized,
-        Colour colour) {
+        Colour colour,
+        const String& readout = {}) {
     const float trackY = area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
+    Rectangle<float> readoutArea;
+    if (readout.isNotEmpty()) {
+        readoutArea = area.removeFromRight(kSliderReadoutWidth);
+    }
     Rectangle<float> valueArea = area.reduced(2.f, 0.f);
     const float left = valueArea.getX();
     const float right = valueArea.getRight();
@@ -150,6 +160,11 @@ void drawSlider(
     graphics.setColour(colour.withAlpha(0.76f));
     graphics.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
     graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+    if (readout.isNotEmpty()) {
+        graphics.setFont(FontOptions(10.5f, Font::bold));
+        graphics.setColour(kText.withAlpha(0.88f));
+        graphics.drawText(readout, readoutArea, Justification::centredRight);
+    }
 }
 
 void drawCheckbox(
@@ -243,7 +258,7 @@ void drawStopSlider(
 
 Rectangle<float> VoiceContextCompactEditor::expandedContentBounds(Rectangle<float> panel) {
     panel.removeFromTop(kExpandedHeaderHeight);
-    return panel.removeFromTop(138.f).reduced(24.f, 4.f);
+    return panel.removeFromTop(164.f).reduced(24.f, 4.f);
 }
 
 Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
@@ -253,6 +268,25 @@ Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
     const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
     return Rectangle<float>(width, 28.f * zoom).withCentre(
             { nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
+}
+
+Rectangle<float> VoiceContextCompactEditor::voiceLengthControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    nextRow(column);
+    return nextRow(column)
+            .withTrimmedLeft(kLabelWidth)
+            .withTrimmedRight(kSliderReadoutWidth)
+            .reduced(2.f, 0.f);
+}
+
+double VoiceContextCompactEditor::voiceLengthAt(Rectangle<float> panel, float positionX) {
+    const Rectangle<float> control = voiceLengthControlBounds(panel);
+    const double normalized = jlimit(
+            0.0,
+            1.0,
+            (double) (positionX - control.getX()) / jmax(1.f, control.getWidth()));
+    return voiceLengthRange().convertFrom0to1(normalized);
 }
 
 String VoiceContextCompactEditor::domain(const Node& node) {
@@ -281,7 +315,8 @@ String VoiceContextCompactEditor::summaryLabel(
 void VoiceContextCompactEditor::paintExpanded(
         Graphics& graphics,
         Rectangle<float> panel,
-        const Node& node) {
+        const Node& node,
+        double voiceDurationSeconds) {
     graphics.setColour(kPanelBackground);
     graphics.fillRoundedRectangle(panel, 10.f);
     graphics.setColour(kPanelBorder);
@@ -312,6 +347,14 @@ void VoiceContextCompactEditor::paintExpanded(
             octaveRow.removeFromLeft(kLabelWidth),
             Justification::centredLeft);
     drawOctaveSlider(graphics, octaveRow.reduced(2.f, 0.f), node, 1.f);
+
+    drawSlider(
+            graphics,
+            nextRow(column),
+            "Voice Length",
+            (float) voiceLengthRange().convertTo0to1(voiceDurationSeconds),
+            colour,
+            durationText(voiceDurationSeconds));
 
     drawSlider(
             graphics,
@@ -445,6 +488,14 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
                 (position.x - left) / jmax(1.f, right - left));
         const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
         return VoiceContextEdit { VoiceContextEdit::Control::Octave, String(octave) };
+    }
+
+    nextRow(column);
+    if (voiceLengthControlBounds(panel).expanded(8.f, 4.f).contains(position)) {
+        return VoiceContextEdit {
+                VoiceContextEdit::Control::VoiceLength,
+                String(voiceLengthAt(panel, position.x), 6)
+        };
     }
 
     Rectangle<float> pitchControl = nextRow(column)

@@ -611,22 +611,30 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(editAt({ 389.f, 85.5f }).value == "0");
     REQUIRE(editAt({ 670.f, 85.5f }).value == "2");
 
-    edit = editAt({ 106.f, 111.5f });
+    const Rectangle<float> voiceLength = VoiceContextCompactEditor::voiceLengthControlBounds(panel);
+    edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
+    REQUIRE(edit.control == VoiceContextEdit::Control::VoiceLength);
+    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getX())
+            == Catch::Approx(0.25));
+    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
+            == Catch::Approx(4.0));
+
+    edit = editAt({ 106.f, 137.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
     REQUIRE(edit.value == "-12");
-    REQUIRE(editAt({ 389.f, 111.5f }).value == "0");
-    REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
+    REQUIRE(editAt({ 389.f, 137.5f }).value == "0");
+    REQUIRE(editAt({ 672.f, 137.5f }).value == "12");
 
-    edit = editAt({ 112.f, 137.5f });
+    edit = editAt({ 112.f, 163.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
     REQUIRE(edit.value == "1");
 
-    edit = editAt({ 106.f, 163.5f });
+    edit = editAt({ 106.f, 189.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
     REQUIRE(edit.value == "1x");
-    REQUIRE(editAt({ 294.f, 163.5f }).value == "2x");
-    REQUIRE(editAt({ 484.f, 163.5f }).value == "4x");
-    REQUIRE(editAt({ 672.f, 163.5f }).value == "8x");
+    REQUIRE(editAt({ 294.f, 189.5f }).value == "2x");
+    REQUIRE(editAt({ 484.f, 189.5f }).value == "4x");
+    REQUIRE(editAt({ 672.f, 189.5f }).value == "8x");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

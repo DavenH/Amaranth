@@ -7,8 +7,9 @@ the compiled Voice Context boundary, configuration-only Unison and Modulation
 Triple products, Envelope purpose, runtime modulation defaults, shared
 pitch-phase integration, transient Unison editor feedback, and the focused
 Voice Context editor are complete. The compact summary shows its highest-value
-voice properties in explicit language. Shared socket and attachment-icon
-presentation is tracked separately by
+voice properties in explicit language, and the expanded editor exposes the
+global preview Voice Length as a continuously updating slider. Shared socket
+and attachment-icon presentation is tracked separately by
 `cycle-v2-port-icon-presentation.md`.
 
 Audible time-only and spectral oscillator lowering is intentionally owned by
@@ -280,6 +281,13 @@ The expanded editor presents only Voice Context-owned controls: source domain,
 octave, pitch, portamento, and oversampling. It does not embed or
 navigate redundant attachment rows. Unison retains its own graphic and editor.
 
+It also presents the global preview Voice Length as a continuous 0.25 to 4
+second slider. This is audition context rather than graph configuration: it is
+not serialized into the Voice Context node and does not create graph revisions
+or undo entries. Movement updates the compact Voice Context summary and all
+Unison previews immediately. The current duration is shown in seconds beside
+the slider.
+
 ## Compiled Voice Plan
 
 Compilation produces an immutable plan per Voice Context:
@@ -522,9 +530,10 @@ configuration-attachment TDD so that the dependency direction stays explicit.
   compact and expanded Unison previews.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
-- Cycle V2 verification passes 5,342 assertions in 386 test cases.
+- Cycle V2 verification passes 5,347 assertions in 387 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
-  four-node attachment topology, compact summary, and expanded Voice Context
-  presentation. Its reviewed OS-level capture is
-  `/private/tmp/cycle-v2-voice-context-summary-os.png`; filtered launch logs
-  are `/private/tmp/cycle-v2-voice-context-summary-logs.txt`.
+  four-node attachment topology, compact summary, expanded Voice Context
+  presentation, and a continuous Voice Length drag whose result is visible in
+  exported preview state. Its reviewed OS-level capture is
+  `/private/tmp/cycle-v2-voice-context-length-os.png`; filtered launch logs
+  are `/private/tmp/cycle-v2-voice-context-length-logs.txt`.

@@ -305,7 +305,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 250.f, 148.f })
+                    .presentation({}, { 280.f, 148.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {
@@ -612,6 +612,10 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
 
     if (node.subtitle.isEmpty()) {
         node.subtitle = definitionToUse->subtitle;
+    }
+    if (node.kind == NodeKind::VoiceContext
+            && node.bounds.getWidth() < definitionToUse->fixedNaturalSize.width) {
+        node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
     }
     for (const auto& canonicalInput : definitionToUse->inputs) {
         auto existing = std::find_if(node.inputs.begin(), node.inputs.end(), [&](const auto& input) {

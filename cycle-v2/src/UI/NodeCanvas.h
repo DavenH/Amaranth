@@ -128,6 +128,7 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
+    bool draggingVoiceLength {};
     SignalProbeRailState probeRailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
@@ -150,6 +151,7 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync();
+    void setPreviewVoiceLength(double seconds);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();

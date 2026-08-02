@@ -41,9 +41,13 @@ Context:
   `Settings.cpp:222` and `Settings.cpp:223`.
 - The assertions occur during standalone launch and are incidental to the
   modulation graph, editor, bundle, and persistence behavior.
+- The Voice Context duration fixture still reproduces the assertions at the
+  shifted source locations `Settings.cpp:223` and `Settings.cpp:224`; all
+  fixture commands and state assertions complete successfully.
 - Repro logs:
   `/private/tmp/cycle-v2-modulation-source-compact-logs.txt` and
-  `/private/tmp/cycle-v2-modulation-triple-logs.txt`.
+  `/private/tmp/cycle-v2-modulation-triple-logs.txt`, plus
+  `/private/tmp/cycle-v2-voice-context-length-logs.txt`.
 
 Current status: open; inspect the settings property access performed during
 standalone initialization.
