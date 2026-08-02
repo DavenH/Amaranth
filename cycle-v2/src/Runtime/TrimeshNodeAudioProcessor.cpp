@@ -49,7 +49,11 @@ MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& paramete
 
 class TrimeshAudioProcessor final : public NodeAudioProcessor {
 public:
-    AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
+    explicit TrimeshAudioProcessor(AudioModuleRole processorRoleToUse) :
+            processorRole(processorRoleToUse) {
+    }
+
+    AudioModuleRole role() const override { return processorRole; }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
         configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(published.value);
@@ -120,9 +124,27 @@ public:
                         "yellow"));
 
         renderBlock(context, outputPort, morph, primaryAxis, output);
+        if (configuration != nullptr && configuration->gain != 1.f) {
+            payloadBuffer(output, context.frameCount).mul(configuration->gain);
+            if (output.isStereo()) {
+                payloadBuffer(output, 1, context.frameCount).mul(configuration->gain);
+            }
+        }
 
         if (context.captureTraversalGrid) {
             renderTraversal(context, outputPort, morph, primaryAxis, output);
+            if (configuration != nullptr && configuration->gain != 1.f) {
+                Buffer<float>(
+                        output.traversalGrid.values.data(),
+                        (int) output.traversalGrid.values.size())
+                        .mul(configuration->gain);
+                if (output.isStereo()) {
+                    Buffer<float>(
+                            output.secondaryTraversalGrid.values.data(),
+                            (int) output.secondaryTraversalGrid.values.size())
+                            .mul(configuration->gain);
+                }
+            }
         }
 
         publishSingleOutput(context, std::move(output));
@@ -244,6 +266,7 @@ private:
     }
 
     bool morphInitialized {};
+    AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     PortDomain preparedDomain { PortDomain::ControlSignal };
     SmoothedMorphPosition smoothedMorph;
     TrimeshBlockwiseDsp trimeshDsp;
@@ -255,7 +278,11 @@ private:
 }
 
 std::unique_ptr<NodeAudioProcessor> createTrimeshAudioProcessor() {
-    return std::make_unique<TrimeshAudioProcessor>();
+    return std::make_unique<TrimeshAudioProcessor>(AudioModuleRole::MeshSource);
+}
+
+std::unique_ptr<NodeAudioProcessor> createWaveSourceAudioProcessor() {
+    return std::make_unique<TrimeshAudioProcessor>(AudioModuleRole::WaveSource);
 }
 
 }

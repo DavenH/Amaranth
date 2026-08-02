@@ -38,6 +38,7 @@ private:
         OperationType type { OperationType::Trimesh };
         int leftInput { -1 };
         int rightInput { -1 };
+        float gain { 1.f };
         std::unique_ptr<TrimeshOscillatorCycleRenderer> trimesh;
     };
 

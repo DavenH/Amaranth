@@ -923,7 +923,8 @@ void compileOscillatorRegions(
         if (region.strategy == OscillatorExecutionStrategy::SharedSpectralFrame) {
             const auto& materializer = plan.steps[
                     (size_t) region.materializationStepIndex];
-            if (materializer.transformMode != "cyclic") {
+            if (materializer.executionTrait == NodeExecutionTrait::OscillatorMaterializer
+                    && materializer.transformMode != "cyclic") {
                 issues.push_back({
                         GraphCompileCode::UnsupportedReconstructionPolicy,
                         "Oscillator region '" + region.id

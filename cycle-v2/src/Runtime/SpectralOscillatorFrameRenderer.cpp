@@ -15,10 +15,16 @@ bool isPowerOfTwo(int value) {
 
 bool supportedRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
+            || role == AudioModuleRole::WaveSource
             || role == AudioModuleRole::Fft
             || role == AudioModuleRole::Ifft
             || role == AudioModuleRole::Add
             || role == AudioModuleRole::Multiply;
+}
+
+bool sourceRole(AudioModuleRole role) {
+    return role == AudioModuleRole::MeshSource
+            || role == AudioModuleRole::WaveSource;
 }
 
 const GraphStepInput* inputForPort(
@@ -69,7 +75,7 @@ bool SpectralOscillatorFrameRenderer::supports(
 
     for (const int stepIndex : region.stepIndices) {
         const auto& step = plan.steps[(size_t) stepIndex];
-        if (step.audioRole == AudioModuleRole::MeshSource) {
+        if (sourceRole(step.audioRole)) {
             continue;
         }
         if (!inputComesFromRegion(inputForPort(step, 0), regionSteps)) {
@@ -136,7 +142,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
         if (operation.outputs[0] < 0
                 || (step.audioRole == AudioModuleRole::Fft
                         && operation.outputs[1] < 0)
-                || (step.audioRole != AudioModuleRole::MeshSource
+                || (!sourceRole(step.audioRole)
                         && operation.leftInput < 0)
                 || ((step.audioRole == AudioModuleRole::Ifft
                             || step.audioRole == AudioModuleRole::Add
@@ -146,7 +152,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
         }
 
         switch (step.audioRole) {
-            case AudioModuleRole::MeshSource: {
+            case AudioModuleRole::MeshSource:
+            case AudioModuleRole::WaveSource: {
                 operation.configuration = std::dynamic_pointer_cast<
                         const TrimeshConfiguration>(step.configuration.value);
                 if (operation.configuration == nullptr
@@ -245,10 +252,12 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                                 0
                         },
                         output);
+                output.mul(operation.configuration->gain);
                 break;
 
             case OperationType::SpectralTrimesh:
                 operation.spectralRasterizer->renderPreparedInto(output);
+                output.mul(operation.configuration->gain);
                 break;
 
             case OperationType::Fft: {

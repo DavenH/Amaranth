@@ -61,6 +61,9 @@ Implemented compiler foundation:
   tail. NoteOn and Reset remain sample-exact, while NoteOff keeps cyclic state
   alive for the envelope. The unimplemented `acyclicCarry`/OLA mode now fails
   compilation instead of silently running the cyclic policy.
+- Wave Source no longer owns placeholder ramp DSP. It publishes the immutable
+  default Trimesh model plus Wave gain and is lowered by the same chained and
+  spectral region renderers as authored Trimesh sources.
 
 The spectral recipe is a domain executor, not a compatibility copy. Its
 authoritative operations remain `OscillatorLaneRasterizer` for fixed time
@@ -74,8 +77,10 @@ the domain interfaces.
 
 Nonzero latency compensation belongs to the future WindowedOverlapAdd policy;
 the current parity policies require no compensation at mixed-strategy merges.
-Placeholder deletion remains open. Full oscillator and Unison audio parity is
-not yet claimed.
+The Wave placeholder deletion and cyclic Unison parity are complete. This
+broader TDD remains in progress while flat diagnostic/preview processors are
+migrated behind the domain interfaces and WindowedOverlapAdd is designed as a
+separate, non-parity reconstruction policy.
 
 Depends on:
 

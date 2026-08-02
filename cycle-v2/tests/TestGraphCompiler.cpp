@@ -336,6 +336,34 @@ TEST_CASE("Compiler rejects unimplemented acyclic spectral reconstruction",
     REQUIRE(result.compileIssues.front().message.contains("acyclicCarry"));
 }
 
+TEST_CASE("Compiler does not require reconstruction policy for spectral analysis",
+        "[cycle-v2][graph][oscillator-region][analysis]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.oscillatorRegions.size() == 1);
+    REQUIRE(result.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    REQUIRE(result.plan.oscillatorRegions.front().materializationStepIndex
+            == stepPlanIndex(result.plan, "fft"));
+    REQUIRE(findStep(result.plan, "fft").executionTrait
+            == NodeExecutionTrait::SpectralTransform);
+}
+
 TEST_CASE("Voice Context defaults resolve per axis with explicit override precedence",
         "[cycle-v2][graph][voice-context][modulation]") {
     GraphNodeFactory factory;

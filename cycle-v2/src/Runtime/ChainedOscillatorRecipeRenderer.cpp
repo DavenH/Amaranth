@@ -8,6 +8,7 @@ namespace {
 
 bool supportedRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
+            || role == AudioModuleRole::WaveSource
             || role == AudioModuleRole::Add
             || role == AudioModuleRole::Multiply;
 }
@@ -51,7 +52,8 @@ bool ChainedOscillatorRecipeRenderer::supports(
 
     for (const int stepIndex : region.stepIndices) {
         const auto& step = plan.steps[(size_t) stepIndex];
-        if (step.audioRole == AudioModuleRole::MeshSource) {
+        if (step.audioRole == AudioModuleRole::MeshSource
+                || step.audioRole == AudioModuleRole::WaveSource) {
             continue;
         }
         const auto* left = inputForPort(step, 0);
@@ -87,13 +89,15 @@ bool ChainedOscillatorRecipeRenderer::prepare(
     for (const int stepIndex : region.stepIndices) {
         const auto& step = plan.steps[(size_t) stepIndex];
         Operation operation;
-        if (step.audioRole == AudioModuleRole::MeshSource) {
+        if (step.audioRole == AudioModuleRole::MeshSource
+                || step.audioRole == AudioModuleRole::WaveSource) {
             const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
                     step.configuration.value);
             operation.trimesh = std::make_unique<TrimeshOscillatorCycleRenderer>();
             if (!operation.trimesh->prepare(configuration, region.laneCount)) {
                 return false;
             }
+            operation.gain = configuration->gain;
         } else {
             operation.type = step.audioRole == AudioModuleRole::Add
                     ? OperationType::Add
@@ -148,6 +152,10 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
         auto outputRight = operationBuffer(operationIndex, 1, request.sampleCount);
         if (operation.trimesh != nullptr) {
             operation.trimesh->renderCycle(request, outputLeft, outputRight);
+            if (operation.gain != 1.f) {
+                outputLeft.mul(operation.gain);
+                outputRight.mul(operation.gain);
+            }
             continue;
         }
 

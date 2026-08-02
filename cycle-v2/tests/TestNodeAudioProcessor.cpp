@@ -245,29 +245,36 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
     REQUIRE(factory.create(AudioModuleRole::None) == nullptr);
 }
 
-TEST_CASE("Source audio processors produce deterministic buffers", "[cycle-v2][runtime]") {
+TEST_CASE("Wave source reuses the default Trimesh renderer", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
-    auto processor = factory.create(AudioModuleRole::WaveSource);
-    REQUIRE(processor != nullptr);
+    auto waveProcessor = factory.create(AudioModuleRole::WaveSource);
+    auto meshProcessor = factory.create(AudioModuleRole::MeshSource);
+    REQUIRE(waveProcessor != nullptr);
+    REQUIRE(meshProcessor != nullptr);
 
-    AudioProcessContext context;
-    context.frameCount = 5;
-    context.outputPorts = {
+    AudioProcessContext waveContext;
+    waveContext.frameCount = 5;
+    waveContext.outputPorts = {
             { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
     };
-    processor->process(context);
+    AudioProcessContext meshContext = waveContext;
+    prepareProcessor(*waveProcessor, AudioModuleRole::WaveSource, waveContext);
+    prepareProcessor(*meshProcessor, AudioModuleRole::MeshSource, meshContext);
+    waveProcessor->process(waveContext);
+    meshProcessor->process(meshContext);
 
-    REQUIRE(output(context).block.samples == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
-    REQUIRE(output(context).traversalGrid.isValid());
-    REQUIRE(output(context).traversalGrid.rows == 5);
-    REQUIRE(output(context).traversalGrid.values.size() == output(context).traversalGrid.columns * 5);
-    REQUIRE(output(context).traversalGrid.metadata.arity == TraversalGridArity::Matrix);
-    REQUIRE(output(context).traversalGrid.metadata.valueDomain == PortDomain::TimeSignal);
-    REQUIRE(output(context).traversalGrid.metadata.columnAxis == TraversalGridAxis::Phase);
-    REQUIRE(output(context).traversalGrid.metadata.rowAxis == TraversalGridAxis::Time);
-    REQUIRE(output(context).traversalGrid.values[0] == Catch::Approx(0.f));
-    REQUIRE(output(context).traversalGrid.values[5] > output(context).traversalGrid.values[0]);
-    REQUIRE(output(context).traversalGrid.values[5] != Catch::Approx(output(context).traversalGrid.values[0]));
+    REQUIRE(output(waveContext).block.samples == output(meshContext).block.samples);
+    REQUIRE(output(waveContext).traversalGrid.values == output(meshContext).traversalGrid.values);
+    REQUIRE(output(waveContext).traversalGrid.isValid());
+    REQUIRE(output(waveContext).traversalGrid.rows == 5);
+    REQUIRE(output(waveContext).traversalGrid.values.size()
+            == output(waveContext).traversalGrid.columns * 5);
+    REQUIRE(output(waveContext).traversalGrid.metadata.arity == TraversalGridArity::Matrix);
+    REQUIRE(output(waveContext).traversalGrid.metadata.valueDomain == PortDomain::TimeSignal);
+    REQUIRE(output(waveContext).traversalGrid.metadata.columnAxis
+            == output(meshContext).traversalGrid.metadata.columnAxis);
+    REQUIRE(output(waveContext).traversalGrid.metadata.rowAxis
+            == output(meshContext).traversalGrid.metadata.rowAxis);
 }
 
 TEST_CASE("Image source publishes a two-dimensional traversal grid", "[cycle-v2][runtime]") {
@@ -294,12 +301,21 @@ TEST_CASE("Image source publishes a two-dimensional traversal grid", "[cycle-v2]
 TEST_CASE("Audio processors read node parameters from process context", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
 
-    AudioProcessContext sourceContext;
-    sourceContext.frameCount = 3;
-    sourceContext.parameters = { { "level", "Level", "0.5" } };
-    factory.create(AudioModuleRole::WaveSource)->process(sourceContext);
+    AudioProcessContext unitySource;
+    unitySource.frameCount = 3;
+    AudioProcessContext quietSource = unitySource;
+    quietSource.parameters = { { "level", "Level", "0.5" } };
+    auto unityProcessor = factory.create(AudioModuleRole::WaveSource);
+    auto quietProcessor = factory.create(AudioModuleRole::WaveSource);
+    prepareProcessor(*unityProcessor, AudioModuleRole::WaveSource, unitySource);
+    prepareProcessor(*quietProcessor, AudioModuleRole::WaveSource, quietSource);
+    unityProcessor->process(unitySource);
+    quietProcessor->process(quietSource);
 
-    REQUIRE(output(sourceContext).block.samples == std::vector<float> { 0.f, 0.25f, 0.5f });
+    for (size_t index = 0; index < output(unitySource).block.samples.size(); ++index) {
+        REQUIRE(output(quietSource).block.samples[index]
+                == Catch::Approx(0.5f * output(unitySource).block.samples[index]));
+    }
 
     AudioProcessContext envelopeContext;
     envelopeContext.frameCount = 4;

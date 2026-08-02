@@ -242,8 +242,8 @@ TEST_CASE("Prepared chained oscillator runtime performs no realtime allocation",
     REQUIRE(allocations == 0);
 }
 
-TEST_CASE("Graph executor audibly renders and folds a chained Trimesh Unison region",
-        "[cycle-v2][runtime][oscillator-region][unison][trimesh][graph]") {
+TEST_CASE("Graph executor audibly renders and folds a chained Wave Unison region",
+        "[cycle-v2][runtime][oscillator-region][unison][wave][graph]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
@@ -252,7 +252,7 @@ TEST_CASE("Graph executor audibly renders and folds a chained Trimesh Unison reg
     setNodeParameter(unison, "width", "12");
     setNodeParameter(unison, "panSpread", "1");
     graph.addNode(std::move(unison));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
     REQUIRE(GraphEditor().connect(
             graph,
@@ -261,10 +261,10 @@ TEST_CASE("Graph executor audibly renders and folds a chained Trimesh Unison reg
     REQUIRE(GraphEditor().connect(
             graph,
             { "voice", "context", false },
-            { "mesh", "context", true }).succeeded());
+            { "wave", "context", true }).succeeded());
     REQUIRE(GraphEditor().connect(
             graph,
-            { "mesh", "out", false },
+            { "wave", "out", false },
             { "output", "time", true }).succeeded());
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -501,8 +501,8 @@ TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison
             }) < 1.0e-5f);
 }
 
-TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame",
-        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][graph][realtime]") {
+TEST_CASE("Graph executor reconstructs a shared spectral Wave Unison frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][wave][graph][realtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
@@ -512,7 +512,7 @@ TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame"
     setNodeParameter(unison, "panSpread", "1");
     setNodeParameter(unison, "phase", "0.25");
     graph.addNode(std::move(unison));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
@@ -523,10 +523,10 @@ TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame"
     REQUIRE(GraphEditor().connect(
             graph,
             { "voice", "context", false },
-            { "mesh", "context", true }).succeeded());
+            { "wave", "context", true }).succeeded());
     REQUIRE(GraphEditor().connect(
             graph,
-            { "mesh", "out", false },
+            { "wave", "out", false },
             { "fft", "time", true }).succeeded());
     REQUIRE(GraphEditor().connect(
             graph,
@@ -828,7 +828,9 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     REQUIRE(result.output.traversalGrid.isValid());
     REQUIRE(result.output.traversalGrid.columns == 8);
     REQUIRE(result.output.traversalGrid.rows == 5);
-    REQUIRE(wave == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(std::any_of(wave.begin(), wave.end(), [](float sample) {
+        return std::abs(sample) > 1.0e-5f;
+    }));
     REQUIRE(findNodeAudio(result, "wave").output.traversalGrid.isValid());
     REQUIRE(samples(findNodeAudio(result, "mul").output) == samples(result.output));
     REQUIRE(findNodeAudio(result, "mul").output.traversalGrid.values
@@ -1026,9 +1028,10 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     const auto shapedNode = samples(findNodeAudio(shaped, "shape").output);
     REQUIRE(shapedNode != initialShape);
     REQUIRE(samples(shaped.output) != initialOutput);
-    REQUIRE(shapedNode[1] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
+    REQUIRE(std::abs(shapedNode[1]) == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
     for (size_t index = 2; index + 1 < shapedNode.size(); ++index) {
-        REQUIRE(shapedNode[index] == Catch::Approx(shapedNode[1]).margin(1.0e-5f));
+        REQUIRE(std::abs(shapedNode[index])
+                == Catch::Approx(std::abs(shapedNode[1])).margin(1.0e-5f));
     }
 
     EnvelopeNodeModel envelopeModel;
@@ -1109,9 +1112,19 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
+    const auto quietResult = GraphAudioExecutor().process(graph, compileResult.plan, 3);
 
-    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f });
+    graph.replaceNodeParameters("wave", { { "level", "Level", "1" } });
+    const auto unityCompileResult = GraphCompiler().compile(graph);
+    REQUIRE(unityCompileResult.succeeded());
+    const auto unityResult = GraphAudioExecutor().process(
+            graph,
+            unityCompileResult.plan,
+            3);
+    for (size_t index = 0; index < samples(unityResult.output).size(); ++index) {
+        REQUIRE(samples(quietResult.output)[index]
+                == Catch::Approx(0.5f * samples(unityResult.output)[index]));
+    }
 }
 
 TEST_CASE("Graph audio executor preserves per-node processor state between blocks", "[cycle-v2][runtime]") {
@@ -1308,6 +1321,7 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     timing.sampleRate = 8.0;
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4, timing, voice);
     const auto& fft = findNodeAudio(result, "fft");
+    const auto& wave = samples(findNodeAudio(result, "wave").output);
 
     REQUIRE(fft.outputs.size() == 2);
     REQUIRE(fft.outputs[0].first == "mag");
@@ -1316,10 +1330,11 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(fft.outputs[1].first == "phase");
     REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(fft.outputs[1].second.traversalGrid.isValid());
-    REQUIRE(samples(result.output)[0] == Catch::Approx(0.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[1] == Catch::Approx(1.f / 3.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[2] == Catch::Approx(2.f / 3.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[3] == Catch::Approx(1.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output).size() == wave.size());
+    for (size_t index = 0; index < wave.size(); ++index) {
+        REQUIRE(samples(result.output)[index]
+                == Catch::Approx(wave[index]).margin(1.0e-5f));
+    }
 }
 
 TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
@@ -1457,7 +1472,13 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
 
     REQUIRE(first.isValid());
     REQUIRE(second.isValid());
-    REQUIRE(second.payload->block.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+    REQUIRE(second.payload->block.samples.size() == 4);
+    REQUIRE(std::any_of(
+            second.payload->block.samples.begin(),
+            second.payload->block.samples.end(),
+            [](float sample) {
+                return std::abs(sample) > 1.0e-5f;
+            }));
 }
 
 TEST_CASE("Prepared graph audio processing performs no allocations or locks",

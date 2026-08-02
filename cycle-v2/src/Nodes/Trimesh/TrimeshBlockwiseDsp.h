@@ -10,11 +10,13 @@ class Mesh;
 namespace CycleV2 {
 
 struct TrimeshConfiguration final : public INodeDspConfiguration {
-    AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
+    AudioModuleRole role() const override { return processorRole; }
 
+    AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     std::shared_ptr<const Mesh> mesh;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
+    float gain { 1.f };
 };
 
 class TrimeshBlockwiseDsp {
