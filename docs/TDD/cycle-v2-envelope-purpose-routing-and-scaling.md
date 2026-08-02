@@ -203,7 +203,10 @@ distinct silhouette and accessible name. The four options form one continuous
 segmented control with a single outer boundary and internal separators; the
 icons have no individual outlines. The selected option receives a highlighted
 cell background, so the selection reads as one viewing lens moving over the
-available modes rather than four unrelated buttons.
+available modes rather than four unrelated buttons. Interior highlights have
+square corners; only a selected end cell inherits the corresponding outer
+corners of the group. Icon artwork is scaled to 85% of its established in-cell
+bounds without shrinking its interaction target.
 Compact presentation shows the current purpose as text plus an icon or badge;
 colour alone is insufficient. Output
 port domain, connection affordance, cable style, subtitle, tooltip, and

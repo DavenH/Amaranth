@@ -10,6 +10,29 @@ const Colour kSelectedFill { 0xff2b415a };
 const Colour kControlFill { 0xff151c24 };
 const Colour kControlBorder { 0xff536171 };
 
+Path selectedCellPath(
+        Rectangle<float> bounds,
+        bool isFirst,
+        bool isLast) {
+    Path result;
+    if (isFirst || isLast) {
+        result.addRoundedRectangle(
+                bounds.getX(),
+                bounds.getY(),
+                bounds.getWidth(),
+                bounds.getHeight(),
+                6.f,
+                6.f,
+                isFirst,
+                isLast,
+                isFirst,
+                isLast);
+    } else {
+        result.addRectangle(bounds);
+    }
+    return result;
+}
+
 }
 
 class EnvelopePurposeSelector::PurposeButton final : public Button {
@@ -28,10 +51,14 @@ public:
     void paintButton(Graphics& graphics, bool highlighted, bool) override {
         const bool selected = getToggleState();
         const float opacity = selected ? 1.f : (highlighted ? 0.94f : 0.62f);
+        auto iconBounds = getLocalBounds().toFloat().reduced(5.f, 3.f);
+        iconBounds = iconBounds.withSizeKeepingCentre(
+                iconBounds.getWidth() * 0.85f,
+                iconBounds.getHeight() * 0.85f);
         EnvelopePurposeIconRenderer::paint(
                 graphics,
                 purposeValue,
-                getLocalBounds().toFloat().reduced(5.f, 3.f),
+                iconBounds,
                 opacity);
     }
 
@@ -85,15 +112,16 @@ void EnvelopePurposeSelector::paint(Graphics& graphics) {
 
     graphics.setColour(kControlFill);
     graphics.fillPath(clip);
-    graphics.saveState();
-    graphics.reduceClipRegion(clip);
-    for (const auto& button : buttons) {
+    for (size_t index = 0; index < buttons.size(); ++index) {
+        const auto& button = buttons[index];
         if (button->purpose() == selectedPurpose) {
             graphics.setColour(kSelectedFill);
-            graphics.fillRect(button->getBounds().toFloat());
+            graphics.fillPath(selectedCellPath(
+                    button->getBounds().toFloat().getIntersection(outer),
+                    index == 0,
+                    index + 1 == buttons.size()));
         }
     }
-    graphics.restoreState();
 
     graphics.setColour(kControlBorder.withAlpha(0.74f));
     for (size_t index = 1; index < buttons.size(); ++index) {
