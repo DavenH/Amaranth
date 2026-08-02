@@ -4,6 +4,8 @@
 
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
 
+#include <functional>
+
 #include "../Runtime/RealtimeMidiEventQueue.h"
 
 namespace CycleV2 {
@@ -59,6 +61,37 @@ private:
     int rangeStart { 60 };
     int currentHeldNote { -1 };
     float currentVelocity {};
+};
+
+class PerformanceKeyboardPanel final : public Component {
+public:
+    PerformanceKeyboardPanel(MidiKeyboardState& state, MidiEventSink& sink);
+
+    int baseNote() const { return keyboard.baseNote(); }
+    int heldNote() const { return keyboard.heldNote(); }
+    float heldVelocity() const { return keyboard.heldVelocity(); }
+    Rectangle<float> noteBounds(int noteNumber) const;
+    Rectangle<float> octaveDownBounds() const;
+    Rectangle<float> octaveUpBounds() const;
+    Rectangle<float> dragHandleBounds() const;
+
+    void releaseAllNotes() { keyboard.releaseAllNotes(); }
+    void setStatus(const String& status);
+    void paint(Graphics& graphics) override;
+    void resized() override;
+    void mouseDown(const MouseEvent& event) override;
+    void mouseDrag(const MouseEvent& event) override;
+
+    std::function<void(Point<int>)> onMoved;
+
+private:
+    int headerHeight() const;
+
+    PerformanceKeyboard keyboard;
+    TextButton octaveDown { "-" };
+    TextButton octaveUp { "+" };
+    Label audioStatus;
+    ComponentDragger dragger;
 };
 
 }

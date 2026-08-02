@@ -994,6 +994,18 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
+Rectangle<float> NodeCanvas::visibleWorldBoundsForOverlay() const {
+    return viewport.toWorld(canvasContentBounds());
+}
+
+Rectangle<int> NodeCanvas::boundsForWorldOverlay(Rectangle<float> worldBounds) const {
+    return viewport.toScreen(worldBounds).toNearestInt();
+}
+
+Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) const {
+    return viewport.toWorld(canvasPosition);
+}
+
 File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")

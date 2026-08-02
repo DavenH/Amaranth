@@ -24,8 +24,9 @@ running.
 
 ## Decision
 
-Add a floating **Performance Keyboard** to the workspace chrome, above the
-canvas but outside the graph document. It is not a graph node.
+Add a compact **Performance Keyboard** panel to the canvas presentation layer.
+It looks and moves like a node, but it is not a `NodeGraph` node and does not
+participate in the graph document.
 
 This ownership is intentional:
 
@@ -150,22 +151,22 @@ GraphDocument -> compile/configure off realtime -> immutable prepared generation
 
 ### Workspace And Widget Ownership
 
-`NodeWorkspace` owns the floating keyboard host and lays it out relative to the
-visible workspace, not canvas world coordinates. Pan and zoom therefore do not
-move or scale the keyboard. The graph canvas remains visible beneath it and
-does not receive pointer gestures captured by a key.
+`NodeWorkspace` owns the keyboard panel and hosts it as an interactive child of
+`NodeCanvas`, following the same OpenGL-safe component-composition boundary as
+expanded node editors. Its bounds are stored in canvas world coordinates, so
+pan and zoom move and scale it with the graph. The graph canvas does not receive
+pointer gestures captured by a key or the panel's drag header.
 
 The host supplies a narrow `MidiEventSink` to the widget. The widget does not
 know about `NodeGraph`, compilation, executors, voices, devices, or automation
 reports. It renders keyboard state obtained from `MidiKeyboardState` and emits
 MIDI messages through the sink.
 
-The initial placement is bottom-centre with a compact background and enough
-margin that the first and last key can be hit reliably. Exact dimensions are a
-shared layout constant used by rendering, hit testing, and automation target
-inspection. If canvas status chrome already occupies that region during
-implementation, place the keyboard in a dedicated bottom performance strip;
-do not put it in world space or overlap graph sockets.
+The initial placement is near the bottom-centre of the visible canvas, with a
+compact node frame and enough margin that the first and last key can be hit
+reliably. A header drag moves the panel without creating a graph command. Exact
+dimensions are shared by world-to-canvas layout, hit testing, and automation
+target inspection.
 
 ### Interaction Contract
 
@@ -389,8 +390,8 @@ zero-cost when unused. It does not become a parallel renderer.
 - Octave controls move the visible range by exactly 12 notes and clamp safely.
 - A gesture creates no graph revision, undo entry, compilation, or serialized
   data change.
-- Canvas pan/zoom and editor expansion do not move, scale, obscure, or disable
-  the floating keyboard.
+- Canvas pan/zoom moves and scales the panel as world-space presentation state;
+  header dragging moves it without a graph edit.
 
 ### MIDI Ingress And Voices
 
@@ -469,8 +470,8 @@ loopback device and records the device name in the report.
 
 The feature is complete only when all of the following are true:
 
-- The Cycle V2 workspace visibly presents a compact MIDI 60-72 keyboard that is
-  playable without adding or expanding a node.
+- The Cycle V2 canvas visibly presents a compact MIDI 60-72 keyboard panel that
+  is playable without adding a connectable graph node or opening an editor.
 - Pressing and holding a visible key produces an ordinary MIDI note-on with the
   correct note and velocity; releasing it produces the matching note-off.
 - That event allocates a synth voice and renders the active compiled graph
@@ -554,7 +555,7 @@ Implementation review must report:
 ## Delivery Slices
 
 1. **Keyboard interaction boundary**: extract/reuse the JUCE keyboard surface,
-   add the floating workspace host and semantic automation targets, and prove
+   add the presentation-only canvas panel and semantic automation targets, and prove
    exact note-on/off/drag/cancel events without graph mutation.
 2. **Realtime ingress and voice owner**: add the bounded shared MIDI queue,
    fixed voice pool, note identity/steal behavior, `MidiControlState`
@@ -595,7 +596,7 @@ acceptance sequence passes.
 ## Implementation Review
 
 The completed implementation follows the ownership in this design. The
-keyboard is workspace chrome and reuses `AmaranthMidiKeyboard`,
+keyboard is a presentation-only canvas child and reuses `AmaranthMidiKeyboard`,
 `MidiKeyboardState`, and JUCE key geometry and drag handling. It adds no node
 kind, ports, graph branches, serialization, or copied key hit-testing. The
 widget only translates keyboard-state notifications to a `MidiEventSink`.
@@ -628,10 +629,10 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 1,634 lines and removed 10 lines under `cycle-v2/src`
+The production diff added 1,758 lines and removed 9 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
-added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 210
-additions and 4 removals. The slight increase over the estimate is the bounded
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 203
+additions and 3 removals. The slight increase over the estimate is the bounded
 live-callback capture and semantic automation surface required to distinguish
 device output from offline rendering. No production implementation exceeds
 350 added lines, and the audit found no new `NodeKind` switch or compatibility
@@ -647,25 +648,26 @@ non-realtime capture result.
 
 ## Verification
 
-- `CycleV2_tests`: 435 test cases and 6,653 assertions passed.
+- `CycleV2_tests`: 436 test cases and 6,660 assertions passed.
 - Focused audio-device/realtime suite: 4 test cases and 28 assertions passed.
-- Focused keyboard suite: 2 test cases and 17 assertions passed.
+- Focused keyboard suite: 3 test cases and 24 assertions passed.
 - Standalone Debug and test targets built with `--parallel 10`.
 - `git diff --check` passed. `clang-tidy` was unavailable in the configured
   environment.
 - The focused fixture passed every keyboard, device, voice, output-level,
   drag, release, and eventual-idle assertion on `MacBook Pro Speakers` at
   44,100 Hz with a 512-frame device block.
-- Its 500 ms callback capture contains 22,050 frames from callbacks 45-88,
+- Its 500 ms callback capture contains 22,050 frames from callbacks 47-90,
   with peak `0.0704063` and RMS `0.0332317`. The report records
   `source: audioDeviceCallback`, graph revision 2, and zero dropped events.
-- Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-report-final.json`,
+- Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-node-drag-report.json`,
   `/private/tmp/cycle-v2-performance-keyboard-live.wav`, and
   `/private/tmp/cycle-v2-performance-keyboard.png`.
-- A native OS capture caught the OpenGL canvas covering the initial sibling
-  overlay. The final layout reserves a strip outside the OpenGL component;
-  `/private/tmp/cycle-v2-keyboard-after-os.png` verifies that the keyboard
-  remains visible after context startup.
+- A native OS capture caught the OpenGL canvas covering the initial workspace
+  sibling. The final panel is a child of the OpenGL-attached canvas, matching
+  the established expanded-editor composition path.
+  `/private/tmp/cycle-v2-keyboard-node-os.png` verifies the compact node-like
+  panel after context startup.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

@@ -71,10 +71,11 @@ Context:
 - Reproduced on 2026-08-02 with the OS capture
   `/private/tmp/cycle-v2-keyboard-before-os.png`.
 
-Current status: addressed by reserving a bottom workspace strip outside the
-OpenGL-backed canvas bounds. The performance fixture asserts that the keyboard
-does not intersect the canvas, and the after-fix OS capture verifies native
-window composition.
+Current status: addressed by hosting the compact node-like panel as a child of
+the OpenGL-attached canvas, reusing the established expanded-editor component
+composition path. The performance fixture asserts the ownership boundary and
+header drag behavior; the OS capture
+`/private/tmp/cycle-v2-keyboard-node-os.png` verifies native composition.
 
 ## Open: Cycle v2 automation launch emits Settings assertions
 

@@ -4,14 +4,9 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr int performanceKeyboardWidth = 520;
-constexpr int performanceKeyboardHeight = 92;
-constexpr int performanceStatusHeight = 24;
-constexpr int performanceButtonWidth = 32;
-constexpr int performanceMargin = 18;
-constexpr int performanceStripHeight = performanceKeyboardHeight
-        + performanceStatusHeight
-        + performanceMargin;
+constexpr float performanceKeyboardWorldWidth = 620.f;
+constexpr float performanceKeyboardWorldHeight = 184.f;
+constexpr float performanceKeyboardWorldMargin = 36.f;
 
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
@@ -37,17 +32,12 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     ,   keyboard(keyboardState, engine) {
     setOpaque(true);
     addAndMakeVisible(canvas);
-    addAndMakeVisible(keyboard);
-    addAndMakeVisible(octaveDown);
-    addAndMakeVisible(octaveUp);
-    addAndMakeVisible(audioStatus);
-
-    octaveDown.setTooltip("Lower keyboard by one octave");
-    octaveUp.setTooltip("Raise keyboard by one octave");
-    octaveDown.onClick = [this] { keyboard.shiftOctave(-1); };
-    octaveUp.onClick = [this] { keyboard.shiftOctave(1); };
-    audioStatus.setJustificationType(Justification::centred);
-    audioStatus.setInterceptsMouseClicks(false, false);
+    canvas.addAndMakeVisible(keyboard);
+    keyboard.onMoved = [this](Point<int> canvasPosition) {
+        performanceWorldBounds.setPosition(
+                canvas.worldPositionForOverlay(canvasPosition.toFloat()));
+        ++performanceMoveCount;
+    };
     startTimerHz(30);
     timerCallback();
 }
@@ -163,11 +153,21 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     targets->add(pointerTarget(
             "PerformanceKeyboard.OctaveDown",
             "performanceOctave",
-            octaveDown.getBounds().toFloat()));
+            keyboard.octaveDownBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
     targets->add(pointerTarget(
             "PerformanceKeyboard.OctaveUp",
             "performanceOctave",
-            octaveUp.getBounds().toFloat()));
+            keyboard.octaveUpBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
+    targets->add(pointerTarget(
+            "PerformanceKeyboard.Header",
+            "performanceDragHandle",
+            keyboard.dragHandleBounds().translated(
+                    keyboardBounds.getX(),
+                    keyboardBounds.getY())));
     for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 12; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
@@ -207,8 +207,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("peak", status.renderer.peak);
     object->setProperty("rms", status.renderer.rms);
     object->setProperty(
-            "clearOfOpenGLCanvas",
-            canvas.getBottom() <= keyboard.getY());
+            "hostedByCanvas",
+            keyboard.getParentComponent() == &canvas);
+    object->setProperty("moveCount", (int64) performanceMoveCount);
     return var(object);
 }
 
@@ -247,33 +248,9 @@ StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(
     return audioEngine.captureLiveAudio(durationMs);
 }
 
-void NodeWorkspace::paint(Graphics& graphics) {
-    graphics.fillAll(Colour(0xff101318));
-    graphics.setColour(Colour(0xff354050));
-    graphics.fillRect(
-            0,
-            jmax(0, getHeight() - performanceStripHeight),
-            getWidth(),
-            1);
-}
-
 void NodeWorkspace::resized() {
-    Rectangle<int> canvasBounds = getLocalBounds();
-    Rectangle<int> performanceStrip = canvasBounds.removeFromBottom(performanceStripHeight);
-    performanceStrip.removeFromBottom(performanceMargin);
-    canvas.setBounds(canvasBounds);
-
-    const int totalWidth = performanceKeyboardWidth + performanceButtonWidth * 2 + 12;
-    Rectangle<int> strip(
-            (getWidth() - totalWidth) / 2,
-            performanceStrip.getY(),
-            totalWidth,
-            performanceStrip.getHeight());
-    audioStatus.setBounds(strip.removeFromTop(performanceStatusHeight));
-    octaveDown.setBounds(strip.removeFromLeft(performanceButtonWidth).reduced(2));
-    octaveUp.setBounds(strip.removeFromRight(performanceButtonWidth).reduced(2));
-    strip.reduce(6, 0);
-    keyboard.setBounds(strip);
+    canvas.setBounds(getLocalBounds());
+    layoutPerformanceKeyboard();
 }
 
 void NodeWorkspace::timerCallback() {
@@ -287,15 +264,14 @@ void NodeWorkspace::timerCallback() {
             : status.renderer.graphRevision == 0
                     ? "Preparing audio"
                     : "Audio ready";
-    if (audioStatus.getText() != nextStatus) {
-        audioStatus.setText(nextStatus, dontSendNotification);
-    }
+    keyboard.setStatus(nextStatus);
+    layoutPerformanceKeyboard();
 
     GraphExecutionPlan plan;
     uint64_t revision {};
     if (!canvas.copyAudioPlan(plan, revision)) {
         if (status.deviceReady) {
-            audioStatus.setText("Graph cannot play", dontSendNotification);
+            keyboard.setStatus("Graph cannot play");
         }
         return;
     }
@@ -310,9 +286,27 @@ void NodeWorkspace::timerCallback() {
         publishedPlanRevision = revision;
         publishedDevicePreparationRevision = status.preparationRevision;
         if (status.deviceReady) {
-            audioStatus.setText("Audio ready", dontSendNotification);
+            keyboard.setStatus("Audio ready");
         }
     }
+}
+
+void NodeWorkspace::layoutPerformanceKeyboard() {
+    if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) {
+        return;
+    }
+    if (performanceWorldBounds.isEmpty()) {
+        const Rectangle<float> visibleWorld = canvas.visibleWorldBoundsForOverlay();
+        performanceWorldBounds = {
+                visibleWorld.getCentreX() - performanceKeyboardWorldWidth * 0.5f,
+                visibleWorld.getBottom()
+                        - performanceKeyboardWorldHeight
+                        - performanceKeyboardWorldMargin,
+                performanceKeyboardWorldWidth,
+                performanceKeyboardWorldHeight
+        };
+    }
+    keyboard.setBounds(canvas.boundsForWorldOverlay(performanceWorldBounds));
 }
 
 }

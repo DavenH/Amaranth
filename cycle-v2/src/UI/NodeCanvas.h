@@ -79,6 +79,9 @@ public:
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
+    Rectangle<float> visibleWorldBoundsForOverlay() const;
+    Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
+    Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
 
     void paint(Graphics& g) override;
     void resized() override;

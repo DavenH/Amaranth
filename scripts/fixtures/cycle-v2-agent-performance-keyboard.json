@@ -7,7 +7,7 @@
     },
     {
       "command": "assertState",
-      "path": "performance.clearOfOpenGLCanvas",
+      "path": "performance.hostedByCanvas",
       "equals": true
     },
     {
@@ -24,6 +24,34 @@
       "command": "assertState",
       "path": "performance.audioDeviceReady",
       "equals": true
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Header",
+      "event": "down",
+      "targetX": 0.3
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Header",
+      "downTargetId": "PerformanceKeyboard.Header",
+      "event": "drag",
+      "targetX": 0.7,
+      "downTargetX": 0.3
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Header",
+      "downTargetId": "PerformanceKeyboard.Header",
+      "event": "up",
+      "targetX": 0.7,
+      "downTargetX": 0.3
+    },
+    {
+      "command": "assertState",
+      "path": "performance.moveCount",
+      "op": "greaterThan",
+      "value": 0
     },
     {
       "command": "pointer",

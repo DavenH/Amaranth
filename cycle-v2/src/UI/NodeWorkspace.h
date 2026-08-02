@@ -53,19 +53,18 @@ public:
     bool performancePointerUpForAutomation();
     StandaloneAudioEngine::LiveCapture captureLiveAudioForAutomation(int durationMs);
 
-    void paint(Graphics& graphics) override;
     void resized() override;
 
 private:
     void timerCallback() override;
+    void layoutPerformanceKeyboard();
 
     StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;
     MidiKeyboardState keyboardState;
-    PerformanceKeyboard keyboard;
-    TextButton octaveDown { "-" };
-    TextButton octaveUp { "+" };
-    Label audioStatus;
+    PerformanceKeyboardPanel keyboard;
+    Rectangle<float> performanceWorldBounds;
+    uint64_t performanceMoveCount {};
     uint64_t publishedPlanRevision {};
     uint64_t publishedDevicePreparationRevision {};
     bool previousDeviceReady {};
