@@ -1,5 +1,6 @@
 #include "NodeCanvasScene.h"
 #include "ModulationCableBundle.h"
+#include "NodePortGeometry.h"
 #include "NodeViewModule.h"
 #include "TrimeshGuideCableBundle.h"
 
@@ -166,16 +167,17 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                     continue;
                 }
                 const auto centre = viewport.toScreen(portWorldCentre(node, port));
-                const float size = (port.connectionKind == ConnectionKind::ConfigurationAttachment
-                        ? 12.5f
-                        : 8.8f) * viewport.getZoom() / 0.58f;
+                const float size = NodePortGeometry::socketDiameter
+                        * viewport.getZoom()
+                        / NodePortGeometry::referenceZoom;
                 current.targets.push_back({
                         kind,
                         (port.input ? "input:" : "output:") + node.id + "." + port.id,
                         node.id,
                         port.id,
                         {},
-                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(10.f),
+                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(
+                                NodePortGeometry::hitPadding),
                         -1,
                         10000 + zOrder++
                 });
@@ -192,14 +194,15 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             const auto centre = viewport.toScreen(
                     ModulationCableBundle::worldCentre(node, input));
             const float size = ModulationCableBundle::socketDiameter
-                    * viewport.getZoom() / 0.58f;
+                    * viewport.getZoom() / NodePortGeometry::referenceZoom;
             current.targets.push_back({
                     input ? NodeSceneTargetKind::InputPort : NodeSceneTargetKind::OutputPort,
                     (input ? "input:" : "output:") + node.id + ".modulationBundle",
                     node.id,
                     ModulationCableBundle::portId(),
                     {},
-                    juce::Rectangle<float>(size, size).withCentre(centre).expanded(10.f),
+                    juce::Rectangle<float>(size, size).withCentre(centre).expanded(
+                            NodePortGeometry::hitPadding),
                     -1,
                     20000 + zOrder++
             });

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../Graph/GraphEditor.h"
-
 #include <optional>
+
+#include "NodePortGeometry.h"
+#include "../Graph/GraphEditor.h"
 
 namespace CycleV2 {
 
@@ -12,7 +13,7 @@ struct ModulationCableBundleRoute {
 };
 
 struct ModulationCableBundle {
-    static constexpr float socketDiameter = 10.5f;
+    static constexpr float socketDiameter = NodePortGeometry::socketDiameter;
 
     static String portId();
     static PortAddress sourceAddress(const Node& node);

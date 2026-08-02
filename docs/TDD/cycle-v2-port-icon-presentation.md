@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed. This document defines the shared preview-node port presentation
-contract. It does not change graph types, connection compatibility, or DSP.
+In progress. The common base socket diameter and independent hit target are
+the first implementation slice. Shared monochrome semantics, icon artwork,
+and reserved icon gutters remain outstanding. This document does not change
+graph types, connection compatibility, or DSP.
 
 ## Problem
 
@@ -90,6 +92,12 @@ The shared primitive replaces the independent socket sizing in
 `NodeCanvasScene` hit testing. Existing node-specific socket painters are
 deletion targets. Composite cable rendering may retain its internal line
 layout, but its endpoint must obey the shared socket contract.
+
+The first slice introduces `NodePortGeometry` as the common owner of the 8.4 px
+reference socket diameter, reference zoom, and independent hit padding.
+Ordinary, Modulation Triple, and Unison sockets, cable endpoints, presentation
+bounds, and scene targets now consume that geometry. Semantic icons and the
+reserved icon gutter remain the next slice.
 
 Preview-node layout exposes reserved left, right, top, and bottom port gutters
 to node content renderers. Voice Context is the first consumer, but the layout

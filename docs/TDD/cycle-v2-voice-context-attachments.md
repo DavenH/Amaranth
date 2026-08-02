@@ -265,11 +265,12 @@ semantic icons, and the reserved interior icon gutter follow
 `cycle-v2-port-icon-presentation.md`. The node height accommodates the complete
 port stack instead of allowing ports to run through its boundary.
 
-Below the start-domain selector, the compact summary uses two lines:
-`Octave: <value> · Glide: <on/off>` and
-`Voice length: <value> <second/seconds>`. It reads voice length from the global
-preview context rather than serializing it as a Voice Context parameter.
-Fractional durations retain only meaningful decimal places.
+Below the start-domain selector, the compact summary uses one restrained line:
+`Octave <value> · <duration> <second/seconds>`, followed by `· Glide` only when
+glide is enabled. It reads voice length from the global preview context rather
+than serializing it as a Voice Context parameter. Fractional durations retain
+only meaningful decimal places. Summary typography matches the
+`Waveform / Spectral` labels instead of shrinking to fit additional prose.
 
 The summary uses complete, immediately understandable labels and units.
 It does not show attachment state, Unison parameters, oversampling, or
@@ -521,7 +522,7 @@ configuration-attachment TDD so that the dependency direction stays explicit.
   compact and expanded Unison previews.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
-- Cycle V2 verification passes 5,339 assertions in 385 test cases.
+- Cycle V2 verification passes 5,342 assertions in 386 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
   four-node attachment topology, compact summary, and expanded Voice Context
   presentation. Its reviewed OS-level capture is

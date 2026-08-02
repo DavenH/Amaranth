@@ -271,9 +271,11 @@ String VoiceContextCompactEditor::summaryLabel(
         const Node& node,
         double voiceDurationSeconds) {
     const String octave = parameterValueForNode(node, "octave", "0");
-    const String glide = portamentoEnabled(node) ? "on" : "off";
-    return "Octave: " + octave + "  ·  Glide: " + glide
-            + "\nVoice length: " + durationText(voiceDurationSeconds);
+    String summary = "Octave " + octave + "  ·  " + durationText(voiceDurationSeconds);
+    if (portamentoEnabled(node)) {
+        summary += "  ·  Glide";
+    }
+    return summary;
 }
 
 void VoiceContextCompactEditor::paintExpanded(
@@ -387,19 +389,12 @@ void VoiceContextCompactEditor::paintNodeSummary(
             .withTrimmedTop(94.f * zoom)
             .withTrimmedBottom(10.f * zoom)
             .reduced(16.f * zoom, 0.f);
-    StringArray lines;
-    lines.addLines(summaryLabel(node, voiceDurationSeconds));
-    const float lineHeight = summary.getHeight() * 0.5f;
-
-    graphics.setColour(kText.withAlpha(0.90f));
-    graphics.setFont(FontOptions(12.2f * zoom, Font::bold));
+    graphics.setColour(kText.withAlpha(0.88f));
+    graphics.setFont(FontOptions(15.1f * zoom, Font::bold));
     graphics.drawText(
-            lines[0],
-            summary.removeFromTop(lineHeight),
+            summaryLabel(node, voiceDurationSeconds),
+            summary,
             Justification::centred);
-    graphics.setColour(kText.withAlpha(0.82f));
-    graphics.setFont(FontOptions(11.8f * zoom, Font::bold));
-    graphics.drawText(lines[1], summary, Justification::centred);
 }
 
 bool VoiceContextCompactEditor::hitNodeSelector(

@@ -3,6 +3,7 @@
 #include "NodeCableRenderer.h"
 #include "NodeCanvasGlRenderer.h"
 #include "ModulationCableBundle.h"
+#include "NodePortGeometry.h"
 #include "NodeViewModule.h"
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
@@ -23,10 +24,8 @@ const Colour kNodeHeader { 0xff202833 };
 const Colour kNodeBorder { 0xff3d4a58 };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kCableReferenceZoom = 0.58f;
-
 float portScale(float zoom) {
-    return zoom / kCableReferenceZoom;
+    return zoom / NodePortGeometry::referenceZoom;
 }
 
 void paintConfigurationSocket(
@@ -35,7 +34,9 @@ void paintConfigurationSocket(
         float scale,
         Colour colour,
         bool input) {
-    const Rectangle<float> socket = Rectangle<float>(12.5f * scale, 12.5f * scale)
+    const Rectangle<float> socket = Rectangle<float>(
+            NodePortGeometry::socketDiameter * scale,
+            NodePortGeometry::socketDiameter * scale)
             .withCentre(centre);
     graphics.setColour(kCanvasBackground.withAlpha(0.96f));
     graphics.fillRoundedRectangle(socket.expanded(2.f * scale), 2.5f * scale);
@@ -77,13 +78,13 @@ void paintAttachmentSocket(
         NodeCableRenderer::paintModulationSocket(
                 graphics,
                 centre,
-                14.f * scale,
+                NodePortGeometry::socketDiameter * scale,
                 !port.input);
         return;
     }
 
     if (port.attachmentType == AttachmentType::Unison) {
-        const float radius = 6.25f * scale;
+        const float radius = NodePortGeometry::socketDiameter * scale * 0.5f;
         paintRoundSocket(
                 graphics,
                 Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre),
@@ -837,9 +838,9 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
         const Node& node,
         const Port& port) {
     const Point<float> centre = viewport.toScreen(NodeCanvasScene::portWorldCentre(node, port));
-    const float radius = (port.connectionKind == ConnectionKind::ConfigurationAttachment
-            ? 6.25f
-            : 4.2f) * portScale(viewport.getZoom());
+    const float radius = NodePortGeometry::socketDiameter
+            * portScale(viewport.getZoom())
+            * 0.5f;
     return {
             Rectangle<float>(centre.x - radius, centre.y - radius, radius * 2.f, radius * 2.f),
             centre
