@@ -29,7 +29,7 @@ TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomi
             { "logarithmic", "Logarithmic", "1" }
     });
     REQUIRE(changed.succeeded());
-    REQUIRE(changed.removedEdges.size() == 1);
+    REQUIRE(changed.changes.removedEdges.size() == 1);
     REQUIRE(graph.getEdges().empty());
     const Node* envelope = graph.findNode("env");
     REQUIRE(envelope != nullptr);
@@ -43,7 +43,8 @@ TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomi
             { "env", "env", false },
             { "mesh", "scratch", true });
     REQUIRE(attached.succeeded());
-    REQUIRE(graph.getEdges().front().kind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(graph.getEdges().front().connectionKind == ConnectionKind::ProcessingAttachment);
+    REQUIRE(graph.getEdges().front().attachmentType == AttachmentType::ScratchEnvelope);
 }
 
 TEST_CASE("Envelope purpose exposes control volume and pitch domains",
@@ -78,7 +79,7 @@ TEST_CASE("Envelope purpose exposes control volume and pitch domains",
     }
 }
 
-TEST_CASE("Pitch Envelope rejects routing until Voice Context supplies its typed port",
+TEST_CASE("Pitch Envelope routes only to the typed Voice Context pitch port",
         "[cycle-v2][graph][envelope][purpose][pitch]") {
     GraphNodeFactory factory;
     GraphEditor editor;
@@ -89,17 +90,19 @@ TEST_CASE("Pitch Envelope rejects routing until Voice Context supplies its typed
     REQUIRE(editor.setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
 
-    const auto missingVoicePort = editor.connect(
+    const auto voicePitch = editor.connect(
             graph,
             { "env", "env", false },
             { "voice", "pitch", true });
-    REQUIRE(missingVoicePort.code == GraphEditCode::MissingPort);
+    REQUIRE(voicePitch.succeeded());
+    REQUIRE(graph.getEdges().size() == 1);
+    REQUIRE(graph.getEdges().front().domain == PortDomain::PitchSignal);
     const auto genericDestination = editor.connect(
             graph,
             { "env", "env", false },
             { "multiply", "right", true });
     REQUIRE(genericDestination.code == GraphEditCode::ValidationRejected);
-    REQUIRE(graph.getEdges().empty());
+    REQUIRE(graph.getEdges().size() == 1);
 }
 
 TEST_CASE("Envelope purpose edit restores its removed routing through document undo",
@@ -120,7 +123,7 @@ TEST_CASE("Envelope purpose edit restores its removed routing through document u
     const auto changed = commands.setNodeParameter(
             "env", "purpose", "Purpose", "scratch");
     REQUIRE(changed.succeeded());
-    REQUIRE(changed.removedEdges.size() == 1);
+    REQUIRE(changed.changes.removedEdges.size() == 1);
     REQUIRE(document.graph().getEdges().empty());
 
     REQUIRE(document.undo());
@@ -128,7 +131,7 @@ TEST_CASE("Envelope purpose edit restores its removed routing through document u
     REQUIRE(envelope != nullptr);
     REQUIRE(envelopePurposeFor(*envelope) == EnvelopePurpose::Volume);
     REQUIRE(document.graph().getEdges().size() == 1);
-    REQUIRE(document.graph().getEdges().front().kind == ConnectionKind::Signal);
+    REQUIRE(document.graph().getEdges().front().connectionKind == ConnectionKind::Signal);
 }
 
 TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2][graph][causal]") {
@@ -258,7 +261,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
             { "waveMesh", "scratch", true });
 
     REQUIRE(result.succeeded());
-    REQUIRE(graph.getEdges().back().isAttachment());
+    REQUIRE(graph.getEdges().back().isProcessingAttachment());
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
@@ -277,7 +280,7 @@ TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2]
     REQUIRE(GraphValidator().isValid(graph));
 
     const auto& edge = graph.getEdges().back();
-    REQUIRE(edge.isAttachment());
+    REQUIRE(edge.isProcessingAttachment());
     REQUIRE(edge.sourceNodeId == "guide");
     REQUIRE(edge.sourcePortId == "guide");
     REQUIRE(edge.destNodeId == "waveMesh");
@@ -307,7 +310,7 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
     int guideAttachments {};
     for (const auto& edge : graph.getEdges()) {
-        if (edge.isAttachment() && edge.sourceNodeId == "guide") {
+        if (edge.isProcessingAttachment() && edge.sourceNodeId == "guide") {
             ++guideAttachments;
         }
     }
@@ -340,7 +343,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     String attachedGuideId;
 
     for (const auto& edge : graph.getEdges()) {
-        if (edge.isAttachment()
+        if (edge.isProcessingAttachment()
                 && edge.destNodeId == "waveMesh"
                 && edge.destPortId == "guide.vertex.2.amp") {
             ++targetAttachments;

@@ -82,6 +82,10 @@ void applyEnvelopePurpose(Node& node) {
     Port& output = node.outputs.front();
     output.domain = envelopeOutputDomain(purpose);
     output.label = envelopePurposeLabel(purpose);
+    output.connectionKind = envelopeConnectionKind(purpose);
+    output.attachmentType = purpose == EnvelopePurpose::Scratch
+            ? AttachmentType::ScratchEnvelope
+            : AttachmentType::None;
     node.subtitle = envelopePurposeLabel(purpose).toLowerCase() + " envelope";
 
     if (envelopePurposeAllowsLogarithmic(purpose)) {

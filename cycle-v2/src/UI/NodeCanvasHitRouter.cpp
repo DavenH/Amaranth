@@ -14,6 +14,24 @@ Rectangle<float> nodeActionBounds(Rectangle<float> nodeBounds, float zoom) {
             .withCentre({ nodeBounds.getRight() - 21.f * zoom, nodeBounds.getY() + 21.f * zoom });
 }
 
+Rectangle<float> envelopePurposeBounds(Rectangle<float> nodeBounds, float zoom) {
+    Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
+    return preview.removeFromBottom(20.f * zoom).reduced(3.f * zoom, 1.f * zoom);
+}
+
+String envelopePurposeAt(
+        Rectangle<float> nodeBounds,
+        float zoom,
+        Point<float> position) {
+    const Rectangle<float> selector = envelopePurposeBounds(nodeBounds, zoom);
+    const int index = jlimit(
+            0,
+            2,
+            (int) ((position.x - selector.getX()) / (selector.getWidth() / 3.f)));
+    const String purposes[] { "control", "pitch", "scratch" };
+    return purposes[index];
+}
+
 bool isOperationNode(NodeKind kind) {
     return NodeViewModuleRegistry::instance()
             .moduleFor(kind)
@@ -41,6 +59,10 @@ std::optional<CanvasNodeActionKind> actionKindForNode(NodeKind kind) {
         return CanvasNodeActionKind::CycleVoiceDomain;
     }
 
+    if (kind == NodeKind::Envelope) {
+        return CanvasNodeActionKind::SetEnvelopePurpose;
+    }
+
     return std::nullopt;
 }
 
@@ -54,6 +76,9 @@ bool actionContains(
                 nodeBounds,
                 zoom,
                 screenPosition);
+    }
+    if (kind == CanvasNodeActionKind::SetEnvelopePurpose) {
+        return envelopePurposeBounds(nodeBounds, zoom).contains(screenPosition);
     }
 
     return nodeActionBounds(nodeBounds, zoom)
@@ -75,6 +100,9 @@ String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryM
                         + "  /  click to switch";
             }
             return {};
+
+        case CanvasNodeActionKind::SetEnvelopePurpose:
+            return "Envelope purpose  /  " + action.value + "  /  click to select";
     }
 
     return {};
@@ -107,7 +135,16 @@ std::optional<CanvasNodeAction> NodeCanvasHitRouter::nodeActionAt(
                         viewport.toScreen(node.bounds),
                         zoom,
                         screenPosition)) {
-            return CanvasNodeAction { *actionKind, node.id };
+            return CanvasNodeAction {
+                    *actionKind,
+                    node.id,
+                    *actionKind == CanvasNodeActionKind::SetEnvelopePurpose
+                            ? envelopePurposeAt(
+                                    viewport.toScreen(node.bounds),
+                                    zoom,
+                                    screenPosition)
+                            : String()
+            };
         }
     }
 

@@ -30,4 +30,7 @@ float delaySnappedUnitValue(
         float sliderWidthPixels,
         float snapDistancePixels = 10.f);
 
+double voiceLengthSeconds(float unitValue);
+float voiceLengthUnitValue(double seconds);
+
 }

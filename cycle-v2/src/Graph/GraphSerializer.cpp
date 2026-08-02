@@ -162,36 +162,9 @@ var edgeToJSON(const Edge& edge) {
     result->setProperty("sourcePortId", edge.sourcePortId);
     result->setProperty("destNodeId", edge.destNodeId);
     result->setProperty("destPortId", edge.destPortId);
-    switch (edge.kind) {
-        case ConnectionKind::Signal:
-            break;
-        case ConnectionKind::ConfigurationAttachment:
-            result->setProperty("connectionKind", "configurationAttachment");
-            break;
-        case ConnectionKind::ProcessingAttachment:
-            result->setProperty("connectionKind", "processingAttachment");
-            break;
-    }
+    result->setProperty("connectionKind", idForConnectionKind(edge.connectionKind));
+    result->setProperty("attachmentType", idForAttachmentType(edge.attachmentType));
     return var(result.release());
-}
-
-bool connectionKindFromJSON(const var& value, ConnectionKind& result) {
-    if (value.isVoid()) {
-        return false;
-    }
-    if (value.toString() == "signal") {
-        result = ConnectionKind::Signal;
-        return true;
-    }
-    if (value.toString() == "configurationAttachment") {
-        result = ConnectionKind::ConfigurationAttachment;
-        return true;
-    }
-    if (value.toString() == "processingAttachment") {
-        result = ConnectionKind::ProcessingAttachment;
-        return true;
-    }
-    return false;
 }
 
 var probeToJSON(const SignalProbe& probe) {
@@ -407,7 +380,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::InvalidSchema, "Root object is not a Cycle V2 graph" });
         return result;
     }
-    if ((int) root->getProperty("formatVersion") != currentFormatVersion) {
+    const int formatVersion = (int) root->getProperty("formatVersion");
+    if (formatVersion < 1 || formatVersion > currentFormatVersion) {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
@@ -483,7 +457,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
         for (const auto& property : parameters->getProperties()) {
             const String parameterId = property.name.toString();
-            if (isRemovedLegacyParameter(node.kind, parameterId)) {
+            if (isRemovedLegacyParameter(node.kind, parameterId)
+                    || (node.kind == NodeKind::VoiceContext && parameterId == "voices")) {
                 continue;
             }
             const auto* parameterDefinition = registry.findParameter(node.kind, parameterId);
@@ -524,6 +499,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         node.editorState = editor;
+        registry.normalize(node);
         result.graph.addNode(std::move(node));
     }
 
@@ -551,22 +527,60 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge references an unknown node or static port" });
             continue;
         }
-        edge.domain = guideAttachment
+        const bool legacyScratchAttachment = formatVersion == 1
+                && destination != nullptr
+                && destination->purpose == PortPurpose::ScratchAttachment;
+        edge.domain = guideAttachment || legacyScratchAttachment
                 ? PortDomain::EnvelopeSignal
                 : resolvedEdgeDomain(*source, *destination);
-        const ConnectionKind inferredKind = guideAttachment
+        const ConnectionKind inferredConnectionKind = guideAttachment
                 || destination->purpose == PortPurpose::ScratchAttachment
                 ? ConnectionKind::ProcessingAttachment
                 : ConnectionKind::Signal;
-        const var encodedKind = encoded->getProperty("connectionKind");
-        if (!connectionKindFromJSON(encodedKind, edge.kind)) {
-            if (!encodedKind.isVoid()) {
-                result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge has an invalid connection kind" });
+        const AttachmentType inferredAttachmentType = guideAttachment
+                ? AttachmentType::GuideCurve
+                : (destination->purpose == PortPurpose::ScratchAttachment
+                        ? AttachmentType::ScratchEnvelope
+                        : AttachmentType::None);
+        if (formatVersion == 1) {
+            edge.connectionKind = inferredConnectionKind;
+            edge.attachmentType = inferredAttachmentType;
+        } else {
+            const var encodedConnectionKind = encoded->getProperty("connectionKind");
+            const var encodedAttachmentType = encoded->getProperty("attachmentType");
+            const auto connectionKind = encodedConnectionKind.isVoid()
+                    ? std::optional<ConnectionKind>(inferredConnectionKind)
+                    : connectionKindForId(encodedConnectionKind.toString());
+            const auto attachmentType = encodedAttachmentType.isVoid()
+                    && connectionKind == inferredConnectionKind
+                    ? std::optional<AttachmentType>(inferredAttachmentType)
+                    : attachmentTypeForId(encodedAttachmentType.toString());
+            if (!connectionKind.has_value() || !attachmentType.has_value()) {
+                result.issues.push_back({
+                        GraphLoadCode::InvalidGraph,
+                        "Edge has invalid connection or attachment metadata"
+                });
                 continue;
             }
-            edge.kind = inferredKind;
+            edge.connectionKind = *connectionKind;
+            edge.attachmentType = *attachmentType;
         }
         result.graph.addEdge(std::move(edge));
+        if (legacyScratchAttachment && sourceNode->kind == NodeKind::Envelope) {
+            Node* envelope = result.graph.findNodeForEditing(sourceNode->id);
+            if (envelope != nullptr) {
+                auto purpose = std::find_if(
+                        envelope->parameters.begin(),
+                        envelope->parameters.end(),
+                        [](const NodeParameter& parameter) {
+                            return parameter.id == "purpose";
+                        });
+                if (purpose != envelope->parameters.end()) {
+                    purpose->value = "scratch";
+                    registry.normalize(*envelope);
+                }
+            }
+        }
     }
 
     for (const auto& nodeId : legacyEnvelopeIds) {

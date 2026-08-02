@@ -9,12 +9,12 @@ presentation and polarity, logarithmic DSP/preview/spy parity, and compiled
 scratch attachments are implemented in `4ad62d36` and `5b5e6b9d`. Scratch
 attachments now change every attached Stengah Trimesh in block audio,
 traversal previews, and spies without realtime graph lookup or allocation.
+The merged Voice Context implementation now supplies the typed pitch input,
+compiled pitch Envelope configuration, and per-voice pitch trajectory.
 
-Three completion boundaries remain and must not be filled with local
+Two completion boundaries remain and must not be filled with local
 approximations:
 
-- Voice Context still has no typed pitch input or pitch-aware runtime. Pitch
-  Envelope routing therefore remains truthfully rejected as specified below.
 - Trimesh block rendering still selects one morph coordinate for a whole
   processing block. Sample-accurate scratch traversal depends on the
   pitch-clocked source scheduling owned by
@@ -25,12 +25,10 @@ approximations:
   requires a shared runtime-preview boundary rather than a second editor-side
   evaluator.
 
-The pitch connection slice depends on the Voice Context pitch port being
-merged from its current branch. Purpose state, presentation, logarithmic DSP,
-and scratch execution can be implemented and tested before that merge. Until
-the port exists, pitch mode must serialize and render truthfully but reject all
-connections; it must not temporarily masquerade as a control or scratch
-envelope.
+Pitch-purpose Envelopes connect only to the Voice Context pitch input and feed
+its shared per-voice tuning path. Pitch curves are fitted before their first
+compact preview on preset load, without requiring the expanded editor to be
+opened as an initialization side effect.
 
 This document is the authoritative Cycle V2 contract for Envelope purpose,
 output grammar, polarity, logarithmic scaling, and scratch traversal. The
@@ -151,11 +149,9 @@ not become an ordinary amplitude/control buffer, and no target discovers it by
 graph proximity.
 
 Pitch uses an ordinary typed signal edge because it is evaluated per voice by
-Voice Context. Once the other branch supplies `VoiceContext.pitch`, a
-pitch-purpose Envelope can connect to that port and no other destination.
-Before the merge, validation reports the missing legal consumer. The eventual
-merge must add this grammar directly rather than a temporary generic-control
-adapter.
+Voice Context. A pitch-purpose Envelope connects to `VoiceContext.pitch` and
+no other destination; the compiler reuses the shared pitch sampling and tuning
+path rather than adapting pitch to generic control.
 
 Volume and control remain distinct even though both produce sample values.
 Volume retains envelope traversal metadata needed by envelope-aware arithmetic
@@ -346,8 +342,8 @@ The expected end state deletes:
    block-coordinate audio, traversal preview, spy, and Stengah coverage are
    complete. Sample-accurate source rendering and expanded-editor publication
    remain at the boundaries listed in Status.
-4. **Blocked on its declared dependency:** after the Voice Context pitch port merges, enable the typed pitch edge and
-   reuse shared pitch sampling/tuning in the compiled voice plan.
+4. **Complete:** enable the typed Voice Context pitch edge and reuse shared
+   pitch sampling/tuning in the compiled voice plan.
 5. **Partial:** remove transitional connection/output inference and run the architectural
    review required by `docs/TDD/README.md` before marking this implemented.
    The ambiguous serialized attachment boolean is deleted; the review below
@@ -376,8 +372,8 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
 - Deletion status: serialized `bool attachment` has been replaced by
   `ConnectionKind`; legacy JSON decoding remains intentionally at the codec
   boundary. UI renderer booleans are derived presentation flags, not graph
-  state. Pitch routing, sample-accurate scratch source scheduling, and expanded
-  runtime-preview publication remain incomplete as listed in Status.
+   state. Sample-accurate scratch source scheduling and expanded runtime-preview
+  publication remain incomplete as listed in Status.
 - Semantic evidence: focused purpose, migration, undo, logarithmic value,
   scratch traversal, Stengah topology, duplicate-edge, and realtime tests pass.
   The Stengah UI fixture
@@ -409,8 +405,7 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
 - Volume connects to envelope-aware gain/factor inputs and does not attach as
   scratch or pitch.
 - Scratch connects only by processing attachment to scratch-capable targets.
-- Pitch is rejected before the Voice Context port exists; after merge, it
-  connects only to that typed port.
+- Pitch connects only to the typed Voice Context pitch port.
 - Invalid edges fail validation before runtime publication and are never
   silently reinterpreted after a purpose change.
 
@@ -428,6 +423,9 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
 - Entering pitch vertically fits a narrow curve through the shared Cycle 1
   range fitter; the Cycle 1 expand glyph restores the complete normalized
   range and its contract glyph fits it again without publishing a graph edit.
+- A pitch Envelope is fitted during node-model synchronization, so its compact
+  preview has the fitted range immediately after preset load and before the
+  expanded editor is opened.
 - The fit/full actions occupy the action row, not the purpose row, and use the
   exact Cycle 1 atlas cells `(6, 0)` and `(6, 1)` at their native 24-pixel size.
 - Compact Envelope previews preserve the expanded panel's current vertical
@@ -468,8 +466,8 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
   through one shared transform.
 - Pitch presentation is bipolar while other modes are unipolar; no polarity is
   inferred from node names or current cables.
-- After the Voice Context branch merges, pitch-purpose Envelopes connect only
-  to its typed pitch input and drive shared per-voice tuning semantics.
+- Pitch-purpose Envelopes connect only to the Voice Context typed pitch input
+  and drive shared per-voice tuning semantics.
 - No copied envelope, logarithmic, pitch, or scratch algorithm; ambiguous
   attachment boolean; ignored semantic control; or purpose-specific logic in
   generic flat-curve infrastructure remains.

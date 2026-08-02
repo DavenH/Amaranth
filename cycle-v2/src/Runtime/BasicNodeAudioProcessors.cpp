@@ -256,10 +256,6 @@ std::unique_ptr<NodeAudioProcessor> createVoiceContextAudioProcessor() {
     return std::make_unique<SilentAudioProcessor>(AudioModuleRole::VoiceContext);
 }
 
-std::unique_ptr<NodeAudioProcessor> createUnisonAudioProcessor() {
-    return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Unison);
-}
-
 std::unique_ptr<NodeAudioProcessor> createGuideCurveAudioProcessor() {
     return std::make_unique<SilentAudioProcessor>(AudioModuleRole::GuideCurve);
 }

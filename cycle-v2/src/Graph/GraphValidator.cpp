@@ -174,15 +174,25 @@ void GraphValidator::validateEdge(
         return;
     }
 
-    if (edge.isAttachment()) {
-        if (!edge.isProcessingAttachment()) {
+    if (edge.isConfigurationAttachment()) {
+        if (source->connectionKind != ConnectionKind::ConfigurationAttachment
+                || dest == nullptr
+                || dest->connectionKind != ConnectionKind::ConfigurationAttachment
+                || source->attachmentType == AttachmentType::None
+                || source->attachmentType != dest->attachmentType
+                || edge.attachmentType != dest->attachmentType) {
             report(
                     GraphValidationCode::InvalidAttachmentDestination,
-                    "Unsupported configuration attachment destination: " + edge.destNodeId);
-            return;
+                    "Configuration attachment types do not match: "
+                            + edge.sourceNodeId + " -> " + edge.destNodeId);
         }
+        return;
+    }
+
+    if (edge.isProcessingAttachment()) {
         if (trimeshGuideTarget) {
-            if (sourceNode->kind != NodeKind::GuideCurve) {
+            if (sourceNode->kind != NodeKind::GuideCurve
+                    || edge.attachmentType != AttachmentType::GuideCurve) {
                 report(
                         GraphValidationCode::InvalidAttachmentSource,
                         "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId);
@@ -192,7 +202,8 @@ void GraphValidator::validateEdge(
         }
 
         if (sourceNode->kind != NodeKind::Envelope
-                || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch) {
+                || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch
+                || edge.attachmentType != AttachmentType::ScratchEnvelope) {
             if (!report(
                         GraphValidationCode::InvalidAttachmentSource,
                         "Scratch attachments require a scratch-purpose Envelope source: " + edge.sourceNodeId)) {
@@ -209,6 +220,15 @@ void GraphValidator::validateEdge(
         return;
     }
 
+    if (dest->connectionKind != ConnectionKind::Signal
+            || source->connectionKind != ConnectionKind::Signal) {
+        report(
+                GraphValidationCode::ScratchPortRequiresAttachment,
+                "Attachment ports require typed attachment routing: "
+                        + edge.sourceNodeId + " -> " + edge.destNodeId);
+        return;
+    }
+
     if (dest->purpose == PortPurpose::ScratchAttachment) {
         report(
                 GraphValidationCode::ScratchPortRequiresAttachment,
@@ -218,7 +238,7 @@ void GraphValidator::validateEdge(
 
     if (sourceNode->kind == NodeKind::Envelope) {
         const EnvelopePurpose purpose = envelopePurposeFor(*sourceNode);
-        if (edge.kind != envelopeConnectionKind(purpose)) {
+        if (edge.connectionKind != envelopeConnectionKind(purpose)) {
             report(
                     GraphValidationCode::InvalidAttachmentSource,
                     "Envelope purpose does not match connection kind: " + edge.sourceNodeId);

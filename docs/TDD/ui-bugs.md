@@ -1,5 +1,15 @@
 # UI Bug Notes
 
+## Addressed: Voice Context sliders only responded to pointer-down
+
+- Octave and Pitch previously applied only the initial pointer-down value;
+  pointer drag was not routed back to those controls.
+- Voice Length discarded every cached preview sprite for each movement, making
+  continuous dragging visibly laggy.
+- The focused Voice Context fixture now drags Octave, Pitch, Voice Length, and
+  Oversampling through complete down-drag-up sequences and asserts their
+  resulting graph or preview state.
+
 ## Open: Trimesh rasterization ignores attached guide curves
 
 Context:
@@ -41,9 +51,13 @@ Context:
   `Settings.cpp:222` and `Settings.cpp:223`.
 - The assertions occur during standalone launch and are incidental to the
   modulation graph, editor, bundle, and persistence behavior.
+- The Voice Context duration fixture still reproduces the assertions at the
+  shifted source locations `Settings.cpp:223` and `Settings.cpp:224`; all
+  fixture commands and state assertions complete successfully.
 - Repro logs:
   `/private/tmp/cycle-v2-modulation-source-compact-logs.txt` and
-  `/private/tmp/cycle-v2-modulation-triple-logs.txt`.
+  `/private/tmp/cycle-v2-modulation-triple-logs.txt`, plus
+  `/private/tmp/cycle-v2-voice-context-length-logs.txt`.
 
 Current status: open; inspect the settings property access performed during
 standalone initialization.

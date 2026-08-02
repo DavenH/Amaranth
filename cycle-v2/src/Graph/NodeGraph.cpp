@@ -17,8 +17,20 @@ Port input(
         PortDomain domain,
         ChannelLayout layout = ChannelLayout::Mono,
         PortPurpose purpose = PortPurpose::Signal,
-        PortSide side = PortSide::Left) {
-    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
+        PortSide side = PortSide::Left,
+        ConnectionKind connectionKind = ConnectionKind::Signal,
+        AttachmentType attachmentType = AttachmentType::None,
+        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None) {
+    return {
+            std::move(id), std::move(label), domain, layout, purpose, true, side,
+            purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : connectionKind,
+            purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : attachmentType,
+            defaultSlot
+    };
 }
 
 Port output(
@@ -76,7 +88,8 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
                 && edge.sourcePortId == edgeToAdd.sourcePortId
                 && edge.destNodeId == edgeToAdd.destNodeId
                 && edge.destPortId == edgeToAdd.destPortId
-                && edge.kind == edgeToAdd.kind;
+                && edge.connectionKind == edgeToAdd.connectionKind
+                && edge.attachmentType == edgeToAdd.attachmentType;
     });
     if (duplicate != edges.end()) {
         return;
@@ -274,15 +287,22 @@ NodeGraph NodeGraph::createDemoGraph() {
     graph.addNode(node(
             "voice",
             NodeKind::VoiceContext,
-            "waveform start / 6 voices",
+            "waveform start",
             { 320.f, 420.f },
-            {},
+            {
+                    input("modulation", "Modulation", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
+                    input("unison", "Unison", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
+            },
             {
                     output("context", "Context", PortDomain::DomainContext)
             }));
     graph.replaceNodeParameters("voice", {
             { "domain", "Start Domain", "waveform" },
-            { "voices", "Voices", "6" },
             { "octave", "Octave", "0" },
             { "pitch", "Pitch", "0" },
             { "portamento", "Portamento", "0" },
@@ -399,7 +419,7 @@ NodeGraph NodeGraph::createDemoGraph() {
             parameter.value = "scratch";
         }
     }
-    applyEnvelopePurpose(scratchEnvelope);
+    NodeDefinitionRegistry::instance().normalize(scratchEnvelope);
     graph.addNode(std::move(scratchEnvelope));
 
     graph.addNode(node(
@@ -423,8 +443,10 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.edges = {
             { "voice", "context", "waveMesh", "context", PortDomain::DomainContext, ConnectionKind::Signal },
-            { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment },
-            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment },
+            { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal,
+                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
+            { "scratchEnv", "env", "magMesh", "scratch", PortDomain::EnvelopeSignal,
+                    ConnectionKind::ProcessingAttachment, AttachmentType::ScratchEnvelope },
             { "waveMesh", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal },
             { "fft", "mag", "addMag", "left", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal },
             { "magMesh", "out", "addMag", "right", PortDomain::ControlSignal, ConnectionKind::Signal },
@@ -494,6 +516,60 @@ String labelForChannelLayout(ChannelLayout layout) {
 String labelForNodeKind(NodeKind kind) {
     const auto* definition = NodeDefinitionRegistry::instance().find(kind);
     return definition != nullptr ? definition->displayName : "Unknown";
+}
+
+String idForConnectionKind(ConnectionKind kind) {
+    switch (kind) {
+        case ConnectionKind::Signal:                  return "signal";
+        case ConnectionKind::ConfigurationAttachment: return "configurationAttachment";
+        case ConnectionKind::ProcessingAttachment:    return "processingAttachment";
+    }
+
+    return {};
+}
+
+String idForAttachmentType(AttachmentType type) {
+    switch (type) {
+        case AttachmentType::None:             return "none";
+        case AttachmentType::ScratchEnvelope:  return "scratchEnvelope";
+        case AttachmentType::GuideCurve:       return "guideCurve";
+        case AttachmentType::ModulationTriple: return "modulationTriple";
+        case AttachmentType::Unison:           return "unison";
+    }
+
+    return {};
+}
+
+std::optional<ConnectionKind> connectionKindForId(const String& id) {
+    if (id == "signal") {
+        return ConnectionKind::Signal;
+    }
+    if (id == "configurationAttachment") {
+        return ConnectionKind::ConfigurationAttachment;
+    }
+    if (id == "processingAttachment") {
+        return ConnectionKind::ProcessingAttachment;
+    }
+    return std::nullopt;
+}
+
+std::optional<AttachmentType> attachmentTypeForId(const String& id) {
+    if (id == "none") {
+        return AttachmentType::None;
+    }
+    if (id == "scratchEnvelope") {
+        return AttachmentType::ScratchEnvelope;
+    }
+    if (id == "guideCurve") {
+        return AttachmentType::GuideCurve;
+    }
+    if (id == "modulationTriple") {
+        return AttachmentType::ModulationTriple;
+    }
+    if (id == "unison") {
+        return AttachmentType::Unison;
+    }
+    return std::nullopt;
 }
 
 String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback) {

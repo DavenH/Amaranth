@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <set>
 
 #include "../src/Graph/GraphCommandDispatcher.h"
@@ -13,6 +14,7 @@
 #include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
+#include "../src/UI/NodeCanvasPresentation.h"
 #include "../src/UI/NodeCableRenderer.h"
 #include "../src/UI/NodeCanvasViewport.h"
 #include "../src/UI/NodePalette.h"
@@ -330,8 +332,8 @@ TEST_CASE("Canvas and automation command requests share the same dispatcher", "[
     GraphCommandDispatcher canvasCommands(canvasDocument);
     GraphCommandDispatcher automationCommands(automationDocument);
 
-    REQUIRE(canvasCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
-    REQUIRE(automationCommands.setNodeParameter("voice", "voices", "Voices", "4").succeeded());
+    REQUIRE(canvasCommands.setNodeParameter("voice", "pitch", "Pitch", "4").succeeded());
+    REQUIRE(automationCommands.setNodeParameter("voice", "pitch", "Pitch", "4").succeeded());
     REQUIRE(canvasDocument.toJson() == automationDocument.toJson());
 }
 
@@ -519,7 +521,9 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.vertex.0.red",
-            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;
@@ -544,9 +548,13 @@ TEST_CASE("Cube-component assignments share one attachment cable per node pair",
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
-            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
     graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
-            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+            PortDomain::ControlSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve });
 
     NodeCanvasViewport viewport;
     NodeCanvasScene scene;
@@ -635,6 +643,10 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 1.0)
+            == "Octave 0  ·  1 second");
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 0.25)
+            == "Octave 0  ·  0.25 seconds");
 
     voice.parameters = {
             { "domain", "Start Domain", "spectralPhase" }
@@ -643,31 +655,75 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "waveform");
     voice.parameters.clear();
 
+    voice.parameters = {
+            { "octave", "Octave", "1" },
+            { "pitch", "Pitch", "-5" },
+            { "portamento", "Portamento", "1" },
+            { "oversampling", "Oversampling", "4x" }
+    };
+    REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
+            == "Octave 1  ·  2 seconds  ·  Glide");
+    voice.parameters.clear();
+
     auto edit = editAt({ 252.f, 59.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
     REQUIRE(edit.value == "spectral");
 
-    edit = editAt({ 108.f, 85.5f });
+    const Rectangle<float> octave = VoiceContextCompactEditor::octaveControlBounds(panel);
+    edit = editAt({ octave.getX(), octave.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
     REQUIRE(edit.value == "-2");
-    REQUIRE(editAt({ 389.f, 85.5f }).value == "0");
-    REQUIRE(editAt({ 670.f, 85.5f }).value == "2");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Octave,
+            panel,
+            octave.getCentreX())->value == "0");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Octave,
+            panel,
+            octave.getRight())->value == "2");
 
-    edit = editAt({ 106.f, 111.5f });
+    const Rectangle<float> voiceLength = VoiceContextCompactEditor::voiceLengthControlBounds(panel);
+    edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
+    REQUIRE(edit.control == VoiceContextEdit::Control::VoiceLength);
+    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getX())
+            == Catch::Approx(std::exp(-3.0)));
+    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
+            == Catch::Approx(std::exp(5.0)));
+
+    const Rectangle<float> pitch = VoiceContextCompactEditor::pitchControlBounds(panel);
+    edit = editAt({ pitch.getX(), pitch.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
     REQUIRE(edit.value == "-12");
-    REQUIRE(editAt({ 389.f, 111.5f }).value == "0");
-    REQUIRE(editAt({ 672.f, 111.5f }).value == "12");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Pitch,
+            panel,
+            pitch.getCentreX())->value == "0");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Pitch,
+            panel,
+            pitch.getRight())->value == "12");
 
-    edit = editAt({ 112.f, 137.5f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
-    REQUIRE(edit.value == "1");
-
-    edit = editAt({ 106.f, 163.5f });
+    const Rectangle<float> oversampling =
+            VoiceContextCompactEditor::oversamplingControlBounds(panel);
+    edit = editAt({ oversampling.getX(), oversampling.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
     REQUIRE(edit.value == "1x");
-    REQUIRE(editAt({ 389.f, 163.5f }).value == "2x");
-    REQUIRE(editAt({ 672.f, 163.5f }).value == "4x");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Oversampling,
+            panel,
+            oversampling.getCentreX())->value == "4x");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Oversampling,
+            panel,
+            oversampling.getRight())->value == "8x");
+
+    REQUIRE(octave.getWidth() == Catch::Approx(voiceLength.getWidth()));
+    REQUIRE(octave.getWidth() == Catch::Approx(pitch.getWidth()));
+    REQUIRE(octave.getWidth() == Catch::Approx(oversampling.getWidth()));
+
+    edit = editAt({ 112.f, 237.f });
+    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
+    REQUIRE(edit.value == "1");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,
@@ -676,6 +732,29 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
             voice.bounds,
             1.f,
             selector.getCentre()));
+}
+
+TEST_CASE("Shared Unison preview does not depend on attachment edge order",
+        "[cycle-v2][canvas][voice-context][unison]") {
+    GraphExecutionPlan plan;
+    plan.configurationAttachments = {
+            { "unison", "unison", "first", "unison", PortDomain::VoiceControlSignal,
+                    ConnectionKind::ConfigurationAttachment, AttachmentType::Unison },
+            { "unison", "unison", "second", "unison", PortDomain::VoiceControlSignal,
+                    ConnectionKind::ConfigurationAttachment, AttachmentType::Unison }
+    };
+    CompiledVoiceContext first;
+    first.nodeId = "first";
+    first.pitchEnvelopeUnitValues = { 0.25f, 0.5f };
+    CompiledVoiceContext second;
+    second.nodeId = "second";
+    second.pitchEnvelopeUnitValues = { 0.75f, 1.f };
+    plan.voiceContexts = { first, second };
+    const UnisonPreviewContext fallback { 60, 1.0, { 0.5f } };
+
+    REQUIRE(NodeCanvasPresentation::unisonPreviewContextFor(
+            plan, "unison", fallback).pitchEnvelopeUnitValues
+            == fallback.pitchEnvelopeUnitValues);
 }
 
 TEST_CASE("Transform editor exposes FFT and IFFT mode semantics through one geometry contract",

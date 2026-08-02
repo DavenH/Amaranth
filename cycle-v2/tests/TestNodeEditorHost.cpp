@@ -9,6 +9,7 @@
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
+#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/EnvelopePurposeSelector.h"
@@ -522,6 +523,11 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
 
     Effect2DWidget widget(NodeKind::Envelope);
+    widget.syncFromNode(*graph.findNode("env"));
+    auto panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("bipolar", {}));
+    REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
+
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     RecordingCurveDelegate delegate;
     editor->setDelegate(&delegate);
@@ -538,7 +544,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionRowBounds.getWidth() > 0.f);
     REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
-    auto panelState = widget.automationState();
+    panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     EnvelopePurposeSelector* modeSelector = nullptr;
@@ -769,6 +775,63 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.rebinds == 1);
+}
+
+TEST_CASE("Unison drag exposes every transient preview before one undoable commit",
+        "[cycle-v2][editor][effects][unison]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    Node unison = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    for (auto& parameter : unison.parameters) {
+        if (parameter.id == "order") {
+            parameter.value = "3";
+        }
+    }
+    graph.addNode(std::move(unison));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    const String originalWidth = nodeParameterValue(
+            *document.graph().findNode("unison"), "width");
+    const uint64_t originalRevision = document.revision();
+    std::vector<float> observedDetunes;
+    const auto observePreview = [&] {
+        const auto paths = makeUnisonPreviewPaths(
+                *dispatcher.editingGraph().findNode("unison"));
+        REQUIRE_FALSE(paths.empty());
+        observedDetunes.push_back(paths.back().detuneCents);
+    };
+
+    REQUIRE(commands.beginNodeParameterEdit(
+            "unison", "width", "Width", originalWidth.getFloatValue()));
+    REQUIRE(commands.updateNodeParameterEditValue(20.f));
+    observePreview();
+    REQUIRE(commands.updateNodeParameterEditValue(40.f));
+    observePreview();
+    REQUIRE(commands.updateNodeParameterEditValue(60.f));
+    observePreview();
+
+    REQUIRE(observedDetunes[0] < observedDetunes[1]);
+    REQUIRE(observedDetunes[1] < observedDetunes[2]);
+    REQUIRE(document.revision() == originalRevision);
+    commands.endNodeParameterEdit();
+
+    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == "60.000000");
+    REQUIRE(presentation.recordedMovements == 3);
+    REQUIRE(presentation.repaints == 3);
+    REQUIRE(presentation.rebinds == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == originalWidth);
+    REQUIRE_FALSE(document.canUndo());
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
+#include "../src/Nodes/Control/ModulationTriple.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 
@@ -83,6 +85,7 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(result.plan.signalEdges.size() == 11);
     REQUIRE(result.plan.buffers.size() == 11);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
+    REQUIRE(result.plan.voiceContexts.size() == 1);
 
     const auto& plan = result.plan;
     REQUIRE(orderIndex(plan, "voice") < orderIndex(plan, "waveMesh"));
@@ -131,6 +134,54 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findBuffer(plan, "phaseMesh", "out").domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").domain == PortDomain::TimeSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
+}
+
+TEST_CASE("Voice Context defaults resolve per axis with explicit override precedence",
+        "[cycle-v2][graph][voice-context][modulation]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    for (auto& parameter : triple.parameters) {
+        if (parameter.id == "yellowSource" || parameter.id == "blueSource") {
+            parameter.value = "constant";
+        } else if (parameter.id == "yellowConstant") {
+            parameter.value = "0.2";
+        } else if (parameter.id == "blueConstant") {
+            parameter.value = "0.8";
+        }
+    }
+    graph.addNode(std::move(triple));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "explicitRed", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(GraphEditor().connect(
+            graph, { "triple", "modulation", false }, { "voice", "modulation", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "voice", "context", false }, { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph, { "explicitRed", "value", false }, { "mesh", "red", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+
+    REQUIRE(compiled.succeeded());
+    const auto& mesh = findStep(compiled.plan, "mesh");
+    REQUIRE(std::count_if(mesh.inputs.begin(), mesh.inputs.end(), [](const auto& input) {
+        return input.sourcePortId.startsWith("default.");
+    }) == 2);
+    REQUIRE(std::any_of(mesh.inputs.begin(), mesh.inputs.end(), [](const auto& input) {
+        return input.destPortId == "red" && input.sourceNodeId == "explicitRed";
+    }));
+    const auto implicit = std::find_if(
+            compiled.plan.buffers.begin(),
+            compiled.plan.buffers.end(),
+            [](const auto& buffer) {
+                return buffer.defaultModulationSlot == DefaultModulationSlot::Yellow;
+            });
+    REQUIRE(implicit != compiled.plan.buffers.end());
+    const auto configuration = std::dynamic_pointer_cast<const ModulationTripleConfiguration>(
+            implicit->defaultModulation);
+    REQUIRE(configuration != nullptr);
+    REQUIRE(configuration->sources[0].constant == Catch::Approx(0.2f));
 }
 
 TEST_CASE("Compiler indexes both dependency directions and probe addresses",

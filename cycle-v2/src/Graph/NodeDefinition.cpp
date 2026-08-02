@@ -27,8 +27,20 @@ Port input(
         PortDomain domain,
         ChannelLayout layout = ChannelLayout::Mono,
         PortPurpose purpose = PortPurpose::Signal,
-        PortSide side = PortSide::Left) {
-    return { std::move(id), std::move(label), domain, layout, purpose, true, side };
+        PortSide side = PortSide::Left,
+        ConnectionKind connectionKind = ConnectionKind::Signal,
+        AttachmentType attachmentType = AttachmentType::None,
+        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None) {
+    return {
+            std::move(id), std::move(label), domain, layout, purpose, true, side,
+            purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : connectionKind,
+            purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : attachmentType,
+            defaultSlot
+    };
 }
 
 Port output(
@@ -36,8 +48,13 @@ Port output(
         String label,
         PortDomain domain,
         ChannelLayout layout = ChannelLayout::Mono,
-        PortSide side = PortSide::Right) {
-    return { std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side };
+        PortSide side = PortSide::Right,
+        ConnectionKind connectionKind = ConnectionKind::Signal,
+        AttachmentType attachmentType = AttachmentType::None) {
+    return {
+            std::move(id), std::move(label), domain, layout, PortPurpose::Signal, false, side,
+            connectionKind, attachmentType
+    };
 }
 
 ParameterDefinition boolean(
@@ -271,10 +288,17 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true))
                     .runtime(AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic)
                     .finish(),
-            buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {},
+            buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
+                    input("modulation", "Modulation", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple),
+                    input("pitch", "Pitch", PortDomain::PitchSignal),
+                    input("unison", "Unison", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
+                    },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
-                            integer("voices", "Voices", 1, 1, 64, dsp),
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
                             number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
                             boolean("portamento", "Portamento", false, dsp | presentation),
@@ -282,7 +306,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     }))
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 300.f, 128.f })
+                    .presentation({}, { 280.f, 148.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {
@@ -299,7 +323,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("modulationTriple", NodeKind::ModulationTriple, "Modulation Triple", "three-axis control", "modTriple", {},
                     { output("yellow", "Yellow", PortDomain::ControlSignal),
                       output("red", "Red", PortDomain::ControlSignal),
-                      output("blue", "Blue", PortDomain::ControlSignal) }, {
+                      output("blue", "Blue", PortDomain::ControlSignal),
+                      output("modulation", "Modulation", PortDomain::VoiceControlSignal,
+                              ChannelLayout::Mono, PortSide::Bottom,
+                              ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple) }, {
                             choice("yellowSource", "Yellow Source", "voiceTime", {
                                     "voiceTime", "velocity", "inverseVelocity", "keyScale",
                                     "modWheel", "channelPressure", "midiCC", "constant"
@@ -343,9 +370,15 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
                     { input("context", "Context", PortDomain::DomainContext),
                       input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
-                      input("yellow", "Yellow Morph", PortDomain::ControlSignal),
-                      input("red", "Red Morph", PortDomain::ControlSignal),
-                      input("blue", "Blue Morph", PortDomain::ControlSignal) },
+                      input("yellow", "Yellow Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow),
+                      input("red", "Red Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -376,10 +409,16 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({}, { 278.f, 178.f })
                     .finish(),
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
-                    { input("red", "Red Morph", PortDomain::ControlSignal),
-                      input("blue", "Blue Morph", PortDomain::ControlSignal) },
-                    { output("env", "Env", PortDomain::EnvelopeSignal) }, {
-                            choice("purpose", "Purpose", "control", { "control", "volume", "pitch", "scratch" }, graph | dsp | preview | presentation),
+                    { input("red", "Red Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red),
+                      input("blue", "Blue Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
+                    { output("env", "Control", PortDomain::ControlSignal) }, {
+                            choice("purpose", "Purpose", "control",
+                                    { "control", "volume", "pitch", "scratch" },
+                                    graph | dsp | preview | presentation),
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -440,9 +479,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
                     .presentation({ 154.f, 174.f })
                     .finish(),
-            buildDefinition(definition("unison", NodeKind::Unison, "Unison", "voice spread", "unison",
-                    { input("context", "Context", PortDomain::DomainContext) },
-                    { output("context", "Context", PortDomain::DomainContext) }, {
+            buildDefinition(definition("unison", NodeKind::Unison, "Unison", "voice spread", "unison", {},
+                    { output("unison", "Unison", PortDomain::VoiceControlSignal,
+                            ChannelLayout::Mono, PortSide::Right,
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             integer("order", "Voices", 1, 1, CycleDsp::maximumUnisonOrder,
                                     dsp | preview | presentation),
@@ -456,7 +496,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("jitter", "Jitter", 0.5f, 0.f, 1.f,
                                     dsp | preview | presentation)
                     }))
-                    .runtime(AudioModuleRole::Unison, PreviewModuleRole::None,
+                    .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
                     .presentation({ 230.f, 112.f })
                     .finish(),
@@ -573,6 +613,10 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
 
     if (node.subtitle.isEmpty()) {
         node.subtitle = definitionToUse->subtitle;
+    }
+    if (node.kind == NodeKind::VoiceContext
+            && node.bounds.getWidth() < definitionToUse->fixedNaturalSize.width) {
+        node.bounds.setWidth(definitionToUse->fixedNaturalSize.width);
     }
     for (const auto& canonicalInput : definitionToUse->inputs) {
         auto existing = std::find_if(node.inputs.begin(), node.inputs.end(), [&](const auto& input) {

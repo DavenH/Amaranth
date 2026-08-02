@@ -30,6 +30,7 @@ enum class GraphEditCode {
 
 struct GraphChangeSet {
     std::vector<String> nodeIds;
+    std::vector<Edge> removedEdges;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};
@@ -44,7 +45,6 @@ struct GraphEditResult {
     std::vector<GraphValidationIssue> validationIssues;
     GraphChangeSet changes;
     bool changed { true };
-    std::vector<Edge> removedEdges;
 
     bool succeeded() const { return code == GraphEditCode::Connected; }
 };

@@ -916,6 +916,7 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
+    graph.addNode(factory.createNode(NodeKind::ModulationSource, "fixedYellow", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "attachedA", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "attachedB", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unattached", {}));
@@ -923,6 +924,10 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumeB", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumePeer", {}));
     setEnvelopePurpose(graph, "scratch", EnvelopePurpose::Scratch);
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "fixedYellow", "source", "Source", "constant").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "fixedYellow", "constant", "Constant", "0.9").succeeded());
 
     auto mesh = TrimeshMeshFactory::createDefaultMesh("ScratchTraversalMesh");
     const auto meshState = TrimeshNodeModelState::copyOf(*mesh, 2);
@@ -942,6 +947,14 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
                 PortDomain::DomainContext,
                 ConnectionKind::Signal
         });
+        graph.addEdge({
+                "fixedYellow",
+                "value",
+                target,
+                "yellow",
+                PortDomain::ControlSignal,
+                ConnectionKind::Signal
+        });
     }
     graph.addEdge({ "attachedA", "out", "consumeA", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "attachedB", "out", "consumeB", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -953,7 +966,8 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
                 target,
                 "scratch",
                 PortDomain::EnvelopeSignal,
-                ConnectionKind::ProcessingAttachment
+                ConnectionKind::ProcessingAttachment,
+                AttachmentType::ScratchEnvelope
         });
     }
     graph.addSignalProbe({
@@ -1132,9 +1146,13 @@ TEST_CASE("Prepared graph audio processing performs no allocations or locks",
             NodeKind::ModulationTriple,
             "allocationTriple",
             {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "allocationTriple", "modulation", false },
+            { "voice", "modulation", true }).succeeded());
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
-    REQUIRE(std::any_of(
+    REQUIRE_FALSE(std::any_of(
             compileResult.plan.steps.begin(),
             compileResult.plan.steps.end(),
             [](const GraphExecutionStep& step) {

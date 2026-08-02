@@ -112,16 +112,22 @@ std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {
         const auto& voice = configuration->layout[index];
-        const auto trajectory = CycleDsp::UnisonCore::phaseTrajectory(
-                context.midiNote,
-                voice.detuneCents,
-                voice.phaseCycles);
         paths.push_back({
                 index,
                 voice.detuneCents,
-                CycleDsp::UnisonCore::phaseSegments(
-                        trajectory,
-                        context.voiceDurationSeconds)
+                context.pitchEnvelopeUnitValues.empty()
+                        ? CycleDsp::UnisonCore::phaseSegments(
+                                CycleDsp::UnisonCore::phaseTrajectory(
+                                        context.midiNote,
+                                        voice.detuneCents,
+                                        voice.phaseCycles),
+                                context.voiceDurationSeconds)
+                        : CycleDsp::UnisonCore::phaseSegmentsForPitchEnvelope(
+                                context.midiNote,
+                                voice.detuneCents,
+                                voice.phaseCycles,
+                                context.voiceDurationSeconds,
+                                context.pitchEnvelopeUnitValues)
         });
     }
     return paths;
@@ -134,8 +140,8 @@ void paintUnisonPhasePreview(
         float zoom,
         const UnisonPreviewContext& context) {
     const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
-    const Rectangle<float> background = contentArea(area);
-    const Rectangle<float> plot = background.reduced(5.f);
+    const Rectangle<float> background = area.reduced(1.f);
+    const Rectangle<float> plot = background.reduced(4.f);
     const auto stateColour = [enabled](Colour colour) {
         return EffectPlotPalette::forEnabledState(colour, enabled);
     };

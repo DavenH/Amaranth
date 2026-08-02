@@ -33,7 +33,6 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::Output, createOutputAudioProcessor },
             { AudioModuleRole::GenericProcessor, createGenericAudioProcessor },
             { AudioModuleRole::VoiceContext, createVoiceContextAudioProcessor },
-            { AudioModuleRole::Unison, createUnisonAudioProcessor },
             { AudioModuleRole::ModulationSource, createModulationSourceAudioProcessor },
             { AudioModuleRole::ModulationTriple, createModulationTripleAudioProcessor },
             { AudioModuleRole::GuideCurve, createGuideCurveAudioProcessor },

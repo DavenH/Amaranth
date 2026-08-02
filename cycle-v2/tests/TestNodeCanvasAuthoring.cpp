@@ -183,7 +183,8 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "phase"),
             PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
     graph.addEdge({
             "guide",
@@ -191,7 +192,8 @@ TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
             "mesh",
             TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
             PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
@@ -286,4 +288,32 @@ TEST_CASE("Node canvas authoring keeps voice parameter and subtitle atomic",
 
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().findNode("voice")->subtitle != "spectral start");
+}
+
+TEST_CASE("Voice context sliders publish a single draggable gesture",
+        "[cycle-v2][canvas][authoring][voice-context]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.beginVoiceContextSliderGesture(
+            "voice",
+            { VoiceContextEdit::Control::Pitch, "-8" }));
+    REQUIRE(authoring.updateVoiceContextSliderGesture(
+            { VoiceContextEdit::Control::Pitch, "3" }));
+    REQUIRE(authoring.updateVoiceContextSliderGesture(
+            { VoiceContextEdit::Control::Pitch, "9" }));
+    REQUIRE(document.graph().findNode("voice")->parameters[2].value == "9");
+    REQUIRE_FALSE(document.canUndo());
+
+    const auto committed = authoring.endVoiceContextSliderGesture();
+    REQUIRE(committed.succeeded);
+    REQUIRE(committed.graphChanged);
+    REQUIRE(document.canUndo());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("voice")->parameters[2].value == "0");
 }

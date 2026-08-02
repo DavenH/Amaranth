@@ -8,7 +8,8 @@ namespace {
 bool isTrimeshGuideAssignment(const NodeGraph& graph, const Edge& edge) {
     const Node* source = graph.findNode(edge.sourceNodeId);
     const Node* destination = graph.findNode(edge.destNodeId);
-    return edge.isAttachment()
+    return edge.isProcessingAttachment()
+            && edge.attachmentType == AttachmentType::GuideCurve
             && source != nullptr
             && source->kind == NodeKind::GuideCurve
             && destination != nullptr

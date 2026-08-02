@@ -65,6 +65,14 @@ enum class ConnectionKind {
     ProcessingAttachment
 };
 
+enum class AttachmentType {
+    None,
+    ScratchEnvelope,
+    GuideCurve,
+    ModulationTriple,
+    Unison
+};
+
 enum class PortSide {
     Left,
     Right,
@@ -78,6 +86,13 @@ enum class MorphDimension {
     Blue
 };
 
+enum class DefaultModulationSlot {
+    None,
+    Yellow,
+    Red,
+    Blue
+};
+
 struct Port {
     String id;
     String label;
@@ -86,6 +101,9 @@ struct Port {
     PortPurpose purpose { PortPurpose::Signal };
     bool input {};
     PortSide side { PortSide::Left };
+    ConnectionKind connectionKind { ConnectionKind::Signal };
+    AttachmentType attachmentType { AttachmentType::None };
+    DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
 };
 
 struct NodeParameter {
@@ -125,10 +143,53 @@ struct Edge {
     String destNodeId;
     String destPortId;
     PortDomain domain {};
-    ConnectionKind kind { ConnectionKind::Signal };
+    ConnectionKind connectionKind { ConnectionKind::Signal };
+    AttachmentType attachmentType { AttachmentType::None };
 
-    bool isAttachment() const { return kind != ConnectionKind::Signal; }
-    bool isProcessingAttachment() const { return kind == ConnectionKind::ProcessingAttachment; }
+    Edge() = default;
+    Edge(
+            String sourceNode,
+            String sourcePort,
+            String destinationNode,
+            String destinationPort,
+            PortDomain edgeDomain,
+            ConnectionKind kind = ConnectionKind::Signal,
+            AttachmentType type = AttachmentType::None)
+        : sourceNodeId(std::move(sourceNode)),
+          sourcePortId(std::move(sourcePort)),
+          destNodeId(std::move(destinationNode)),
+          destPortId(std::move(destinationPort)),
+          domain(edgeDomain),
+          connectionKind(kind),
+          attachmentType(type) {}
+
+    // Transitional source compatibility for graph fixtures. Serialized and
+    // compiled graph state always uses the typed representation above.
+    Edge(
+            String sourceNode,
+            String sourcePort,
+            String destinationNode,
+            String destinationPort,
+            PortDomain edgeDomain,
+            bool processingAttachment)
+        : Edge(
+                std::move(sourceNode),
+                std::move(sourcePort),
+                std::move(destinationNode),
+                std::move(destinationPort),
+                edgeDomain,
+                processingAttachment
+                        ? ConnectionKind::ProcessingAttachment
+                        : ConnectionKind::Signal,
+                processingAttachment ? AttachmentType::ScratchEnvelope : AttachmentType::None) {}
+
+    bool isAttachment() const { return connectionKind != ConnectionKind::Signal; }
+    bool isConfigurationAttachment() const {
+        return connectionKind == ConnectionKind::ConfigurationAttachment;
+    }
+    bool isProcessingAttachment() const {
+        return connectionKind == ConnectionKind::ProcessingAttachment;
+    }
 };
 
 struct SignalProbe {
@@ -191,6 +252,10 @@ Colour colourForMorphDimension(MorphDimension dimension);
 String labelForDomain(PortDomain domain);
 String labelForChannelLayout(ChannelLayout layout);
 String labelForNodeKind(NodeKind kind);
+String idForConnectionKind(ConnectionKind kind);
+String idForAttachmentType(AttachmentType type);
+std::optional<ConnectionKind> connectionKindForId(const String& id);
+std::optional<AttachmentType> attachmentTypeForId(const String& id);
 String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback = {});
 NodeNaturalSize naturalSizeForNode(const Node& node);
 

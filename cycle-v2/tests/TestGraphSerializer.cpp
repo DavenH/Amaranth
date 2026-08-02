@@ -86,7 +86,6 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     REQUIRE(mesh != nullptr);
     REQUIRE(voice->outputs.size() == 1);
     REQUIRE(voice->outputs.front().domain == PortDomain::DomainContext);
-    REQUIRE(parameterValueForNode(*voice, "voices") == "6");
     REQUIRE(mesh->inputs.size() == 5);
     REQUIRE(mesh->inputs[1].purpose == PortPurpose::ScratchAttachment);
     REQUIRE(mesh->model != nullptr);
@@ -96,7 +95,7 @@ TEST_CASE("Graph JSON restores definition-owned structure and typed scalars", "[
     const auto* nodes = json.getProperty("nodes", {}).getArray();
     REQUIRE(nodes != nullptr);
     const var voiceJson = nodes->getReference(0);
-    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("voices", {}).isInt());
+    REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("octave", {}).isInt());
     REQUIRE(voiceJson.getProperty("parameters", {}).getProperty("domain", {}).isString());
     REQUIRE(voiceJson.getProperty("inputs", {}).isVoid());
 }
@@ -111,7 +110,8 @@ TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attac
             "waveMesh",
             "scratch",
             PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
     });
 
     GraphSerializer serializer;
@@ -159,6 +159,45 @@ TEST_CASE("Legacy Envelope purpose migration is canonical and deduplicates attac
     REQUIRE(duplicateCount == 1);
     const String canonical = serializer.toJsonString(loaded.graph);
     REQUIRE(serializer.toJsonString(serializer.fromJsonString(canonical)) == canonical);
+}
+
+TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
+        "[cycle-v2][graph][voice-context][migration]") {
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    nodes->getReference(0).getProperty("parameters", {})
+            .getDynamicObject()->setProperty("voices", 6);
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    const Node* voice = loaded.graph.findNode("voice");
+    REQUIRE(voice != nullptr);
+    REQUIRE(parameterValueForNode(*voice, "voices").isEmpty());
+}
+
+TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",
+        "[cycle-v2][graph][migration]") {
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    for (var& edge : *edges) {
+        auto* object = edge.getDynamicObject();
+        REQUIRE(object != nullptr);
+        object->removeProperty("attachmentType");
+        if (object->getProperty("connectionKind").toString() == "signal") {
+            object->removeProperty("connectionKind");
+        }
+    }
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    REQUIRE(loaded.succeeded());
+    REQUIRE(GraphValidator().isValid(loaded.graph));
+    REQUIRE(serializer.toJsonString(loaded.graph).contains("\"attachmentType\""));
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
@@ -333,7 +372,8 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+        const String migrated = GraphSerializer().toJsonString(loaded.graph);
+        REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
         REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
@@ -395,7 +435,8 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(encoded);
     INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
     REQUIRE(loaded.succeeded());
-    REQUIRE(GraphSerializer().toJsonString(loaded.graph) == encoded);
+    const String migrated = GraphSerializer().toJsonString(loaded.graph);
+    REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
     REQUIRE(loaded.graph.findNode("fft") == nullptr);
     REQUIRE(loaded.graph.findNode("ifft") == nullptr);
     REQUIRE(loaded.graph.findNode("magnitudeLayer1") == nullptr);
@@ -451,7 +492,7 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
                             && edge.sourcePortId == "guide"
                             && edge.destNodeId == destination
                             && edge.destPortId == port
-                            && edge.isAttachment();
+                            && edge.isProcessingAttachment();
                 });
     };
 

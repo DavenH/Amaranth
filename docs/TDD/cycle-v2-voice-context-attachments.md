@@ -2,7 +2,20 @@
 
 ## Status
 
-Proposed.
+Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
+the compiled Voice Context boundary, configuration-only Unison and Modulation
+Triple products, Envelope purpose, runtime modulation defaults, shared
+pitch-phase integration, transient Unison editor feedback, and the focused
+Voice Context editor are complete. The compact summary shows its highest-value
+voice properties in explicit language, and the expanded editor exposes the
+global preview Voice Length as a continuously updating slider. Shared socket
+and attachment-icon presentation is tracked separately by
+`cycle-v2-port-icon-presentation.md`.
+
+Audible time-only and spectral oscillator lowering is intentionally owned by
+the downstream `cycle-v2-oscillator-region-compilation.md` TDD. It depends on
+this completed configuration boundary and is not a completion criterion of
+this document.
 
 Supersedes the current `Voice Context -> Unison -> source` signal-chain model
 in `cycle-v2-unison-parity.md`. It extends the control-routing contract in
@@ -137,10 +150,11 @@ Unconnected inputs use explicit defaults:
 - pitch is constant at the Cycle 1 neutral pitch-envelope value;
 - unison is enabled with one centred, zero-detune, zero-phase lane.
 
-Voice Context keeps its existing domain, octave, pitch, portamento,
-oversampling, and polyphony controls until each is migrated to the compiled
-voice plan. The `voices` parameter must be renamed or presented as
-`Polyphony`; it is not Unison order.
+Voice Context keeps domain, octave, pitch, portamento, and oversampling until
+each is migrated to the compiled voice plan. Polyphony is synth-level voice
+allocation and is not a Voice Context property. Unison order remains owned by
+the attached Unison node. Serialized legacy `voices` values are accepted and
+discarded during graph loading rather than retained as hidden node state.
 
 ### Unison node
 
@@ -208,21 +222,54 @@ temporary generic-control route while that port is absent.
 
 ## Voice Context Presentation
 
-The compact Voice Context must explain its scope rather than appear as an
-empty source node. It shows:
+The compact Voice Context keeps the established start-domain selector and
+shows its three inputs as distinct, legible ports. It does not repeat cable
+attachment state as labels or rows: the graph topology already communicates
+which Modulation Triple, pitch Envelope, and Unison nodes are attached.
 
-- start domain and the existing octave/pitch controls;
-- polyphony and oversampling in terse form;
-- one labelled status for each of Modulation, Pitch, and Unison, distinguishing
-  the explicit attachment from its default;
-- attachment ports with a visual treatment distinct from sample/control
-  signal ports.
+The inputs form one evenly spaced stack on the left. Socket geometry, colour,
+semantic icons, and the reserved interior icon gutter follow
+`cycle-v2-port-icon-presentation.md`. The node height accommodates the complete
+port stack instead of allowing ports to run through its boundary.
 
-The expanded editor keeps those statuses near the controls they affect and
-offers navigation to an attached node without embedding or duplicating that
-node's editor. Unison retains its own graphic and editor. The Voice Context may
-show a small summary such as `5× · ±18 cents`, but it must not acquire a second
-copy of the Unison sliders or phase visualization.
+Below the start-domain selector, the compact summary uses one restrained line:
+`Octave <value> · <duration> <second/seconds>`, followed by `· Glide` only when
+glide is enabled. It reads voice length from the global preview context rather
+than serializing it as a Voice Context parameter. Fractional durations retain
+only meaningful decimal places. Summary typography matches the
+`Waveform / Spectral` labels instead of shrinking to fit additional prose.
+
+The summary uses complete, immediately understandable labels and units.
+It does not show attachment state, Unison parameters, oversampling, or
+synth-level polyphony.
+
+The expanded editor presents only Voice Context-owned controls: source domain,
+octave, pitch, portamento, and oversampling. It does not embed or
+navigate redundant attachment rows. Unison retains its own graphic and editor.
+
+It also presents the global preview Voice Length with Cycle 1's authoritative
+`exp(8 * unit - 3)` mapping (approximately 0.05 to 148.41 seconds), shared
+through `CycleDsp::voiceLengthSeconds` and its inverse. This is audition context
+rather than graph configuration: it is
+not serialized into the Voice Context node and does not create graph revisions
+or undo entries. Movement updates the compact Voice Context summary and all
+Unison previews immediately. The current duration is shown in seconds beside
+the slider using Cycle 1's rounded value and the compact `s` unit.
+
+Octave, Voice Length, Pitch, and Oversampling share the same down-drag-up
+interaction contract. The graph-backed controls publish one graph undo entry
+when the gesture ends; Voice Length remains global preview state. Voice Length
+shows labelled duration ticks, Octave shows labelled value ticks, and Pitch
+shows its current value in semitones. Preview cache invalidation is
+signature-scoped so dragging Voice Length does not discard unrelated node
+sprites.
+
+The expanded editor uses one three-column control grid: right-aligned names,
+equal-width slider tracks, and left-aligned current values. Domain labels the
+waveform/spectral selector. Oversampling participates in the same draggable,
+single-undo gesture contract as Octave and Pitch, and Portamento follows all
+slider rows. The editor is 20 percent taller than the first Voice Length layout
+so tick labels and rows do not compete vertically.
 
 ## Compiled Voice Plan
 
@@ -328,9 +375,10 @@ work.
 - Modulation defaults are evaluated per voice where their source is per voice.
 - No graph traversal, attachment lookup, allocation, serialization, mutex
   wait, or UI publication occurs in a realtime process callback.
-- A Voice Context plan replacement states whether active voices retain or
-  restart pitch-envelope, portamento, and lane state. Parameter-specific
-  adoption policy must be tested rather than inherited accidentally.
+- Oscillator-region lowering must state whether a Voice Context plan
+  replacement makes active voices retain or restart pitch-envelope,
+  portamento, and lane state. That downstream adoption policy must be tested
+  rather than inherited accidentally.
 
 ## Negative Boundaries
 
@@ -365,13 +413,18 @@ work.
    the voice plan and Unison preview trajectory.
 7. Route transient effect-editor snapshots to expanded and compact Unison
    previews so every slider movement is visible.
-8. Implement `cycle-v2-oscillator-region-compilation.md`: partition oscillator
-   regions, lower time-only and spectral Unison strategies, materialize each
-   oscillator block, and prove audible Cycle 1 parity.
 
 Each slice receives its own refactor, style, semantic-test, automation, and
 commit pass. Passing schema tests does not permit a fake runtime adapter to
 survive into the next slice.
+
+## Follow-up Dependency
+
+`cycle-v2-oscillator-region-compilation.md` consumes the compiled Voice Context
+to partition oscillator regions, lower time-only and spectral Unison
+strategies, define active-voice plan adoption, materialize oscillator blocks,
+and prove audible Cycle 1 parity. Those responsibilities remain outside this
+configuration-attachment TDD so that the dependency direction stays explicit.
 
 ## Verification
 
@@ -408,13 +461,14 @@ survive into the next slice.
 - Pitch neutral centre, live `[0.01, 0.99]` clamp, endpoint presentation, and
   unit-to-semitone mapping match Cycle 1.
 
-### Voice execution and preview
+### Voice plan and preview
 
 - Unconnected Voice Context inputs produce the documented defaults.
-- Attached pitch changes instantaneous oscillator tuning through the shared
-  mapping without mutating the MIDI note.
-- Unison lanes combine base note, pitch envelope, detune, phase, pan, and gain
-  exactly once.
+- Attached pitch is prepared through the shared Envelope playback engine and
+  changes preview phase through the shared oscillator-tuning mapping without
+  mutating the preview MIDI note.
+- The immutable Unison layout carries detune, phase, pan, and gain exactly once
+  for each downstream lane-state owner.
 - Constant-pitch Unison paths match the existing straight-line golden values.
 - A nonconstant pitch envelope bends/integrates paths and matches sampled audio
   phase within the declared error bound.
@@ -444,5 +498,27 @@ survive into the next slice.
   and layout cores.
 - Unison previews update from every effective slider movement and accurately
   reflect Voice Context note, duration, pitch envelope, and Unison state.
-- Multiple oscillators can share one Voice Context plan without copied
-  configuration or shared mutable oscillator state.
+- The compiled boundary permits multiple oscillator branches to reference one
+  immutable Voice Context plan; oscillator-region lowering owns their separate
+  mutable lane state.
+
+## Implementation Evidence
+
+- `53e2df40` introduces typed attachments, Voice Context compilation,
+  configuration-only Unison and Modulation Triple products, Envelope purpose,
+  serialization migration, and continuous Unison feedback.
+- `d98710f9` resolves per-axis Voice Context modulation defaults while preserving
+  explicit-input precedence.
+- `dd1f691c` makes the compact Envelope purpose selector interactive.
+- `70519e85` prepares attached pitch-envelope playback and supplies it to both
+  compact and expanded Unison previews.
+- The compact Voice Context summary reads global preview duration and shows
+  octave, glide, and voice length without exposing oversampling or polyphony.
+- Cycle V2 verification passes 5,352 assertions in 388 test cases.
+- `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
+  four-node attachment topology, compact summary, expanded Voice Context
+  presentation, complete Octave/Pitch/Voice Length/Oversampling drag gestures,
+  and their resulting graph or preview state. Filtered launch logs are
+  `/private/tmp/cycle-v2-voice-context-layout-logs.txt`. The reviewed
+  OS-level control capture is
+  `/private/tmp/cycle-v2-voice-context-layout-os.png`.

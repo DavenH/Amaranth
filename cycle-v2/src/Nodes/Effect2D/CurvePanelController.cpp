@@ -311,18 +311,20 @@ public:
     }
 
     void syncFromNode(const Node& node) override {
+        const EnvelopePurpose purpose = envelopePurposeFor(node);
+        auto& typedPanel = envelopePanel();
+        typedPanel.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
         if (!adapter.needsNodeSync(node)) {
-            envelopePanel().setEnvelopeBipolar(
-                    envelopePurposeFor(node) == EnvelopePurpose::Pitch);
             return;
         }
-        auto& typedPanel = envelopePanel();
-        typedPanel.setEnvelopeBipolar(
-                envelopePurposeFor(node) == EnvelopePurpose::Pitch);
+
         panel->clearInteractionState();
         if (adapter.syncFromNode(node)) {
             finishNodeSync(node);
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
+            if (purpose == EnvelopePurpose::Pitch) {
+                typedPanel.fitEnvelopeVerticalRange();
+            }
         } else {
             typedPanel.restoreEnvelopeSelection(adapter.selectedMeshCube());
         }

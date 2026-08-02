@@ -411,6 +411,15 @@ private:
             } else {
                 commands.setNodeParameterValue(node.id, raw->id, raw->name, value);
             }
+            if (const auto* definition = NodeDefinitionRegistry::instance().findParameter(kind, raw->id)) {
+                const String normalized = definition->normalized(String(value, 6));
+                for (auto& parameter : node.parameters) {
+                    if (parameter.id == raw->id) {
+                        parameter.value = normalized;
+                        break;
+                    }
+                }
+            }
             if (kind == NodeKind::Equalizer || kind == NodeKind::Unison) {
                 repaint();
             }

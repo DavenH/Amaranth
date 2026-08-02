@@ -20,12 +20,64 @@ TEST_CASE("Graph node factory creates canonical envelope nodes", "[cycle-v2][gra
     REQUIRE(node.inputs[1].side == PortSide::Left);
     REQUIRE(node.outputs.size() == 1);
     REQUIRE(node.outputs.front().domain == PortDomain::ControlSignal);
+    REQUIRE(node.outputs.front().connectionKind == ConnectionKind::Signal);
     REQUIRE(parameterValueForNode(node, "purpose") == "control");
     REQUIRE(node.bounds.getWidth() == 295.2f);
     REQUIRE(node.model != nullptr);
     REQUIRE(node.model->schemaId() == "envelope");
     REQUIRE(node.model->revision() == 1);
     REQUIRE(parameterValueForNode(node, "dynamic").isEmpty());
+}
+
+TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][graph][voice-context]") {
+    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+
+    REQUIRE(voice.inputs.size() == 3);
+    REQUIRE(voice.inputs[0].id == "modulation");
+    REQUIRE(voice.inputs[0].connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(voice.inputs[0].attachmentType == AttachmentType::ModulationTriple);
+    REQUIRE(voice.inputs[0].side == PortSide::Left);
+    REQUIRE(voice.inputs[1].domain == PortDomain::PitchSignal);
+    REQUIRE(voice.inputs[1].side == PortSide::Left);
+    REQUIRE(voice.inputs[2].connectionKind == ConnectionKind::ConfigurationAttachment);
+    REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
+    REQUIRE(voice.inputs[2].side == PortSide::Left);
+    REQUIRE(voice.bounds.getWidth() == 280.f);
+    REQUIRE(voice.bounds.getHeight() == 148.f);
+}
+
+TEST_CASE("Voice Context normalization preserves its readable preview width",
+        "[cycle-v2][graph][voice-context]") {
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    voice.bounds.setWidth(250.f);
+
+    NodeDefinitionRegistry::instance().normalize(voice);
+
+    REQUIRE(voice.bounds.getWidth() == 280.f);
+}
+
+TEST_CASE("Envelope purpose changes output semantics and removes incompatible edges",
+        "[cycle-v2][graph][envelope]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "envelope", "env", false },
+            { "multiply", "right", true }).succeeded());
+
+    const auto changed = GraphEditor().setNodeParameter(
+            graph, "envelope", "purpose", "Purpose", "pitch");
+
+    REQUIRE(changed.succeeded());
+    REQUIRE(changed.changes.topologyChanged);
+    REQUIRE(changed.changes.removedEdges.size() == 1);
+    REQUIRE(graph.getEdges().empty());
+    const Node* envelope = graph.findNode("envelope");
+    REQUIRE(envelope != nullptr);
+    REQUIRE(envelope->outputs.front().domain == PortDomain::PitchSignal);
+    REQUIRE(envelope->outputs.front().label == "Pitch");
 }
 
 TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
@@ -122,7 +174,6 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
 
     REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
     REQUIRE(parameterValueForNode(voice, "domain") == "waveform");
-    REQUIRE(parameterValueForNode(voice, "voices") == "1");
     REQUIRE(parameterValueForNode(voice, "octave") == "0");
     REQUIRE(parameterValueForNode(voice, "pitch") == "0");
     REQUIRE(parameterValueForNode(voice, "portamento") == "0");
@@ -166,10 +217,6 @@ TEST_CASE("Graph node factory creates stereo split and join nodes", "[cycle-v2][
 TEST_CASE("Graph node factory sizes nodes from their content", "[cycle-v2][graph]") {
     const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node env = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
-    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
-
-    REQUIRE(voice.bounds.getWidth() >= 300.f);
-    REQUIRE(voice.bounds.getHeight() >= 128.f);
     REQUIRE(mesh.bounds.getWidth() >= 280.f);
     REQUIRE(mesh.bounds.getHeight() >= 250.f);
     REQUIRE(env.bounds.getWidth() >= 240.f);

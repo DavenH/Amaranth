@@ -5,6 +5,8 @@
 #include "../Runtime/NodeDspConfiguration.h"
 #include "../Runtime/NodeModuleRegistry.h"
 
+#include <Audio/CycleDsp/UnisonCore.h>
+
 #include <unordered_map>
 #include <vector>
 
@@ -54,6 +56,8 @@ struct GraphBufferPlan {
     ChannelLayout channelLayout { ChannelLayout::Mono };
     int firstProducerStep { -1 };
     int lastConsumerStep { -1 };
+    DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
+    std::shared_ptr<const INodeDspConfiguration> defaultModulation;
 };
 
 struct GraphDependencyIndex {
@@ -73,6 +77,20 @@ struct CompiledSignalProbe {
     String probeId;
     int sourceStepIndex { -1 };
     int sourceOutputIndex { -1 };
+};
+
+struct CompiledVoiceContext {
+    String nodeId;
+    String startDomain { "waveform" };
+    int octave {};
+    float pitchSemitones {};
+    bool portamento {};
+    int oversampling { 1 };
+    std::shared_ptr<const INodeDspConfiguration> defaultModulation;
+    std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
+    std::vector<float> pitchEnvelopeUnitValues;
+    std::shared_ptr<const INodeDspConfiguration> unison;
+    CycleDsp::UnisonVoiceLayout lanes;
 };
 
 struct GraphExecutionStep {
@@ -106,6 +124,8 @@ struct GraphExecutionPlan {
     std::vector<GraphBufferPlan> buffers;
     std::vector<Edge> signalEdges;
     std::vector<Edge> attachments;
+    std::vector<Edge> configurationAttachments;
+    std::vector<CompiledVoiceContext> voiceContexts;
     std::vector<CompiledSignalProbe> signalProbes;
     GraphDependencyIndex dependencyIndex;
 };

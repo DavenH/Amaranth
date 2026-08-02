@@ -17,38 +17,6 @@ PortDomain edgeDomainForConnection(const Port& source, const Port& dest) {
     return source.domain;
 }
 
-ConnectionKind connectionKindForConnection(const Node& source, const Port& dest) {
-    if (source.kind == NodeKind::Envelope) {
-        return envelopeConnectionKind(envelopePurposeFor(source));
-    }
-    return dest.purpose == PortPurpose::ScratchAttachment
-            ? ConnectionKind::ProcessingAttachment
-            : ConnectionKind::Signal;
-}
-
-std::vector<Edge> outgoingEdges(const NodeGraph& graph, const String& nodeId, const String& portId) {
-    std::vector<Edge> result;
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.sourceNodeId == nodeId && edge.sourcePortId == portId) {
-            result.push_back(edge);
-        }
-    }
-    return result;
-}
-
-std::vector<Edge> applyEnvelopePurposeChange(
-        NodeGraph& graph,
-        Node& node,
-        const String& parameterId) {
-    if (node.kind != NodeKind::Envelope || parameterId != "purpose") {
-        return {};
-    }
-    auto removed = outgoingEdges(graph, node.id, "env");
-    graph.removeEdgesFromOutput(node.id, "env");
-    applyEnvelopePurpose(node);
-    return removed;
-}
-
 struct StringHash {
     size_t operator()(const String& value) const {
         return (size_t) value.hashCode64();
@@ -59,6 +27,31 @@ bool isProbeDomain(PortDomain domain) {
     return domain == PortDomain::TimeSignal
             || domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal;
+}
+
+void applyEnvelopePurposeSemantics(
+        NodeGraph& graph,
+        Node& node,
+        GraphEditResult& result) {
+    NodeDefinitionRegistry::instance().normalize(node);
+    const Port& output = node.outputs.front();
+    for (size_t index = graph.getEdges().size(); index > 0; --index) {
+        const Edge& edge = graph.getEdges()[index - 1];
+        if (edge.sourceNodeId != node.id || edge.sourcePortId != output.id) {
+            continue;
+        }
+        const bool compatible = edge.connectionKind == output.connectionKind
+                && (output.connectionKind == ConnectionKind::Signal
+                        ? (output.domain == PortDomain::ControlSignal
+                                || edge.domain == output.domain)
+                        : edge.attachmentType == output.attachmentType);
+        if (compatible) {
+            continue;
+        }
+        result.changes.removedEdges.push_back(edge);
+        graph.removeEdgeAt(index - 1);
+    }
+    result.changes.topologyChanged = !result.changes.removedEdges.empty();
 }
 
 }
@@ -102,7 +95,12 @@ GraphEditResult GraphEditor::connect(
             destAddress.nodeId,
             destAddress.portId,
             edgeDomainForConnection(*source, *dest),
-            connectionKindForConnection(*sourceNode, *dest)
+            dest->purpose == PortPurpose::ScratchAttachment
+                    ? ConnectionKind::ProcessingAttachment
+                    : dest->connectionKind,
+            dest->purpose == PortPurpose::ScratchAttachment
+                    ? AttachmentType::ScratchEnvelope
+                    : dest->attachmentType
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -143,7 +141,8 @@ GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(
             meshNodeId,
             targetPortId,
             PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
     });
 
     auto issues = GraphValidator().validate(candidate);
@@ -378,23 +377,25 @@ GraphEditResult GraphEditor::setNodeParameter(
             }
             parameter.label = resolvedLabel;
             parameter.value = normalizedValue;
-            auto removedEdges = applyEnvelopePurposeChange(graph, *node, parameterId);
             graph.markChanged();
             GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
-            result.removedEdges = std::move(removedEdges);
             result.changes.nodeIds.push_back(nodeId);
             result.changes.parameterImpacts = impacts;
+            if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+                applyEnvelopePurposeSemantics(graph, *node, result);
+            }
             return result;
         }
     }
 
     node->parameters.push_back({ parameterId, resolvedLabel, normalizedValue });
-    auto removedEdges = applyEnvelopePurposeChange(graph, *node, parameterId);
     graph.markChanged();
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
-    result.removedEdges = std::move(removedEdges);
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
+    if (node->kind == NodeKind::Envelope && parameterId == "purpose") {
+        applyEnvelopePurposeSemantics(graph, *node, result);
+    }
     return result;
 }
 
@@ -457,21 +458,14 @@ GraphEditResult GraphEditor::setNodeParametersAtomic(
     }
 
     node->parameters = std::move(nextParameters);
-    const bool purposeChanged = std::any_of(
-            normalized.begin(),
-            normalized.end(),
-            [](const auto& parameter) {
-                return parameter.id == "purpose";
-            });
-    auto removedEdges = applyEnvelopePurposeChange(
-            graph,
-            *node,
-            purposeChanged ? String("purpose") : String());
     graph.markChanged();
     GraphEditResult result { GraphEditCode::Connected, nodeId, {} };
-    result.removedEdges = std::move(removedEdges);
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = impacts;
+    if (node->kind == NodeKind::Envelope
+            && normalizedIndices.find("purpose") != normalizedIndices.end()) {
+        applyEnvelopePurposeSemantics(graph, *node, result);
+    }
     return result;
 }
 

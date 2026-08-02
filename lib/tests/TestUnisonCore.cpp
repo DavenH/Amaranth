@@ -118,3 +118,23 @@ TEST_CASE("Unison phase segments split exactly at positive and negative wraps",
     REQUIRE_THAT(exact.front().endSeconds, WithinAbs(0.5, 0.000001));
     REQUIRE_THAT(exact.front().endPhaseCycles, WithinAbs(0.5, 0.000001));
 }
+
+TEST_CASE("Unison phase integrates the authoritative pitch-envelope mapping",
+        "[unison][dsp][preview]") {
+    const auto neutral = CycleDsp::UnisonCore::phaseSegmentsForPitchEnvelope(
+            60, 5.f, 0.f, 1.0, { 0.5f, 0.5f, 0.5f });
+    const auto rising = CycleDsp::UnisonCore::phaseSegmentsForPitchEnvelope(
+            60, 5.f, 0.f, 1.0, { 0.5f, 0.75f, 1.f });
+
+    REQUIRE(CycleDsp::UnisonCore::pitchSemitonesForUnitValue(0.5) == 0.0);
+    REQUIRE(CycleDsp::UnisonCore::pitchSemitonesForUnitValue(0.0) == -12.0);
+    REQUIRE(CycleDsp::UnisonCore::pitchSemitonesForUnitValue(1.0) == 12.0);
+    const auto travelled = [](const auto& segments) {
+        double result {};
+        for (const auto& segment : segments) {
+            result += std::abs(segment.endPhaseCycles - segment.startPhaseCycles);
+        }
+        return result;
+    };
+    REQUIRE(travelled(rising) > travelled(neutral));
+}

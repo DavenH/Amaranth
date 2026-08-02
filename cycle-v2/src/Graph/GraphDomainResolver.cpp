@@ -356,7 +356,8 @@ size_t edgeIndexInGraph(const NodeGraph& graph, const Edge& edge) {
                 && candidate.sourcePortId == edge.sourcePortId
                 && candidate.destNodeId == edge.destNodeId
                 && candidate.destPortId == edge.destPortId
-                && candidate.kind == edge.kind) {
+                && candidate.connectionKind == edge.connectionKind
+                && candidate.attachmentType == edge.attachmentType) {
             return edgeIndex;
         }
     }
