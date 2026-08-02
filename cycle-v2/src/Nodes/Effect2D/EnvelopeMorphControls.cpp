@@ -1,6 +1,7 @@
 #include "EnvelopeMorphControls.h"
 
 #include "../../Graph/NodeGraph.h"
+#include "../Trimesh/TrimeshSidePanelRenderer.h"
 
 using namespace juce;
 
@@ -62,6 +63,15 @@ Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) 
     controls.reduce(12.f, 8.f);
     controls.removeFromLeft(546.f);
     return controls;
+}
+
+Rectangle<float> EnvelopeMorphControls::vertexParameterRowBounds(
+        Rectangle<float> controls,
+        int parameterIndex) const {
+    return TrimeshSidePanelRenderer::vertexParameterRowBounds(
+            vertexBounds(controls),
+            parameterIndex,
+            vertexParameterHeightScale);
 }
 
 Colour EnvelopeMorphControls::axisColour(int axis) const {

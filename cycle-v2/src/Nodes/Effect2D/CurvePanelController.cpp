@@ -55,7 +55,7 @@ public:
     }
 
     void renderPreview(Rectangle<float> bounds, float scaleFactor) override {
-        host->renderPreview(bounds, scaleFactor);
+        host->renderPreview(bounds, scaleFactor, preservesInteractivePreviewZoom());
     }
 
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const override {
@@ -82,6 +82,9 @@ public:
             object->setProperty("modelRevision", (int64) publicationRevision);
             object->setProperty("domainModel", domainModelName());
             object->setProperty("curveResizeCursor", host->usesCursor(MouseCursor::UpDownResizeCursor));
+            object->setProperty(
+                    "previewPreservesInteractiveZoom",
+                    preservesInteractivePreviewZoom());
         }
         return state;
     }
@@ -146,6 +149,7 @@ protected:
     virtual void applyDomainControlValues(float, float) {}
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
+    virtual bool preservesInteractivePreviewZoom() const { return false; }
 
     bool notifyMeshEdited() {
         if (controllerDelegate == nullptr || !registerMeshEdit()) {
@@ -410,6 +414,10 @@ private:
 
     String domainModelName() const override {
         return "envelope";
+    }
+
+    bool preservesInteractivePreviewZoom() const override {
+        return true;
     }
 
     EnvelopeCurvePanelContract& envelopePanel() {

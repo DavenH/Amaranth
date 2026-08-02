@@ -6,9 +6,44 @@
 #include "../Envelope/EnvelopePurpose.h"
 #include "../Trimesh/TrimeshSidePanelRenderer.h"
 
+#include <Binary/Images.h>
+
 #include <array>
 
 namespace CycleV2 {
+
+namespace {
+
+Image cycleV1EnvelopeIcon(int atlasX, int atlasY) {
+    static const Image atlas = PNGImageFormat::loadFrom(
+            Images::icons_png, Images::icons_pngSize);
+    return atlas.getClippedImage({ atlasX * 24, atlasY * 24, 24, 24 });
+}
+
+void styleEnvelopeRangeButton(
+        ImageButton& button,
+        int atlasY,
+        const String& tooltip) {
+    const Image icon = cycleV1EnvelopeIcon(6, atlasY);
+    button.setImages(
+            false,
+            false,
+            true,
+            icon,
+            0.74f,
+            Colours::transparentBlack,
+            icon,
+            1.f,
+            Colours::transparentBlack,
+            icon,
+            0.86f,
+            Colours::black.withAlpha(0.18f));
+    button.setTooltip(tooltip);
+    button.setMouseCursor(MouseCursor::PointingHandCursor);
+    button.setWantsKeyboardFocus(false);
+}
+
+}
 
 struct EnvelopeEditorComponent::Impl {
     explicit Impl(Component& owner) :
@@ -19,10 +54,14 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(purposeLabel);
         owner.addAndMakeVisible(purpose);
-        for (auto* button : { &loop, &sustain, &logarithmic, &fitVertical, &fullVertical }) {
+        for (auto* button : { &loop, &sustain, &logarithmic }) {
             styleParameterButton(*button, button->getButtonText());
             owner.addAndMakeVisible(*button);
         }
+        styleEnvelopeRangeButton(fitVertical, 0, "Fit envelope vertical range");
+        styleEnvelopeRangeButton(fullVertical, 1, "Show full envelope vertical range");
+        owner.addAndMakeVisible(fitVertical);
+        owner.addAndMakeVisible(fullVertical);
         logarithmic.setClickingTogglesState(true);
     }
 
@@ -34,8 +73,8 @@ struct EnvelopeEditorComponent::Impl {
     TextButton loop { "Loop" };
     TextButton sustain { "Sustain" };
     TextButton logarithmic { "Log" };
-    TextButton fitVertical { "Fit Y" };
-    TextButton fullVertical { "Full Y" };
+    ImageButton fitVertical { "Fit envelope vertical range" };
+    ImageButton fullVertical { "Show full envelope vertical range" };
     EnvelopeMorphControls presentation;
 
     EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
@@ -112,7 +151,8 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             graphics,
             impl->presentation.vertexBounds(controls),
             widget.selectedVertexParameters(),
-            guides);
+            guides,
+            EnvelopeMorphControls::vertexParameterHeightScale);
 
     if (impl->purpose.getSelectedId() == static_cast<int>(EnvelopePurpose::Pitch) + 1) {
         auto pitchLabels = editorPanelBounds().removeFromRight(48.f);
@@ -130,10 +170,6 @@ void EnvelopeEditorComponent::layoutEditor() {
     auto purposeRow = impl->presentation.purposeRow(controls).toNearestInt();
     impl->purposeLabel.setBounds(purposeRow.removeFromLeft(56));
     impl->purpose.setBounds(purposeRow.removeFromLeft(140).reduced(2));
-    purposeRow.removeFromLeft(8);
-    impl->fitVertical.setBounds(purposeRow.removeFromLeft(52).reduced(2));
-    purposeRow.removeFromLeft(6);
-    impl->fullVertical.setBounds(purposeRow.removeFromLeft(56).reduced(2));
 
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
@@ -147,6 +183,10 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
     auto markerRow = impl->presentation.actionRow(controls).toNearestInt();
+    auto rangeActions = markerRow.removeFromRight(56);
+    impl->fitVertical.setBounds(rangeActions.removeFromLeft(24).withSizeKeepingCentre(24, 24));
+    rangeActions.removeFromLeft(8);
+    impl->fullVertical.setBounds(rangeActions.removeFromLeft(24).withSizeKeepingCentre(24, 24));
     markerRow.removeFromLeft(59);
     impl->loop.setBounds(markerRow.removeFromLeft(70).reduced(2));
     markerRow.removeFromLeft(8);
@@ -217,6 +257,7 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
 }
 
 void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const {
+    const auto controls = editorControlBounds();
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
     state.setProperty("viewAxis", impl->viewAxis);
@@ -229,7 +270,7 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("logarithmic", impl->logarithmic.getToggleState());
     state.setProperty(
             "morphPlaneBounds",
-            editorBoundsToVar(impl->presentation.planeBounds(editorControlBounds())));
+            editorBoundsToVar(impl->presentation.planeBounds(controls)));
     state.setProperty(
             "purposeBounds",
             editorBoundsToVar(impl->purpose.getBounds().toFloat()));
@@ -238,18 +279,21 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             editorBoundsToVar(impl->blueMorph.slider.getBounds().toFloat()));
     state.setProperty(
             "actionRowBounds",
-            editorBoundsToVar(impl->presentation.actionRow(editorControlBounds())));
+            editorBoundsToVar(impl->presentation.actionRow(controls)));
     state.setProperty(
             "fitVerticalBounds",
             editorBoundsToVar(impl->fitVertical.getBounds().toFloat()));
     state.setProperty(
             "fullVerticalBounds",
             editorBoundsToVar(impl->fullVertical.getBounds().toFloat()));
+    state.setProperty(
+            "vertexParameterBounds",
+            editorBoundsToVar(impl->presentation.vertexBounds(controls)));
     Array<var> parameterRails;
     const auto parameters = widget.selectedVertexParameters();
-    const auto parameterArea = impl->presentation.vertexBounds(editorControlBounds());
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
-        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, index);
+        const auto row = impl->presentation.vertexParameterRowBounds(
+                controls, index);
         auto* rail = new DynamicObject();
         rail->setProperty("id", parameters[static_cast<size_t>(index)].id);
         rail->setProperty(
@@ -270,9 +314,8 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     }
 
     const auto parameters = widget.selectedVertexParameters();
-    const auto parameterArea = impl->presentation.vertexBounds(controls);
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
-        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, index);
+        const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
         const auto guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
         interactive = interactive || rail.expanded(5.f, 8.f).contains(position);
@@ -325,9 +368,8 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
         Point<float> position,
         Rectangle<float> controls) {
     const auto parameters = widget.selectedVertexParameters();
-    const auto parameterArea = impl->presentation.vertexBounds(controls);
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
-        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, index);
+        const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
         const auto guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
         if (guide.expanded(4.f).contains(position)) {
             PopupMenu menu;
@@ -381,12 +423,13 @@ bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
 
 bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
     const auto parameters = widget.selectedVertexParameters();
-    const auto area = impl->presentation.vertexBounds(editorControlBounds());
+    const auto controls = editorControlBounds();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         if (parameters[static_cast<size_t>(index)].id != impl->parameterId) {
             continue;
         }
-        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(area, index);
+        const auto row = impl->presentation.vertexParameterRowBounds(
+                controls, index);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
         const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         if (parameters[static_cast<size_t>(index)].value != value

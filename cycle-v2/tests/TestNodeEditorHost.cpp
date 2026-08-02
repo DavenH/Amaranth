@@ -541,17 +541,18 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     ComboBox* purposeSelector = nullptr;
-    TextButton* fitVertical = nullptr;
-    TextButton* fullVertical = nullptr;
+    ImageButton* fitVertical = nullptr;
+    ImageButton* fullVertical = nullptr;
     StringArray actionLabels;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* combo = dynamic_cast<ComboBox*>(editor->getChildComponent(index))) {
             purposeSelector = combo;
         } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
             actionLabels.add(button->getButtonText());
-            if (button->getButtonText() == "Fit Y") {
+        } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
+            if (button->getName() == "Fit envelope vertical range") {
                 fitVertical = button;
-            } else if (button->getButtonText() == "Full Y") {
+            } else if (button->getName() == "Show full envelope vertical range") {
                 fullVertical = button;
             }
         }
@@ -559,7 +560,23 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(purposeSelector != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
-    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log", "Fit Y", "Full Y" }));
+    REQUIRE(actionLabels == StringArray({ "Loop", "Sustain", "Log" }));
+    const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
+    const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
+    REQUIRE(fitBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE(fullBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
+    REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
+    REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
+    const auto parameterRails = state.getProperty("vertexParameterRails", {});
+    REQUIRE(parameterRails.isArray());
+    REQUIRE(parameterRails.getArray()->size() >= 2);
+    const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
+    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
+    const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
+    const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
+    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(33.54f).margin(0.02f));
+    REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
     fullVertical->onClick();
     panelState = widget.automationState();
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {}))

@@ -1,0 +1,43 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "scratchEnvelope",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "scratchEnvelope",
+      "parameterId": "purpose",
+      "label": "Purpose",
+      "value": "pitch",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.polarity",
+      "equals": "bipolar"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewPreservesInteractiveZoom",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
+      "equals": 230
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

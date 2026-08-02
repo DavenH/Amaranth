@@ -11,6 +11,7 @@ using juce::Rectangle;
 class EnvelopeMorphControls {
 public:
     static constexpr float controlsHeight = 246.f;
+    static constexpr float vertexParameterHeightScale = 1.15f;
 
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
     Rectangle<float> railColumn(Rectangle<float> controls) const;
@@ -20,6 +21,9 @@ public:
     Rectangle<float> axisBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> linkBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> vertexBounds(Rectangle<float> controls) const;
+    Rectangle<float> vertexParameterRowBounds(
+            Rectangle<float> controls,
+            int parameterIndex) const;
 
     void draw(
             Graphics& graphics,

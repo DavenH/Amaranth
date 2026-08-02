@@ -92,6 +92,22 @@
     },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effect2D.fitVerticalBounds.y",
+      "op": "greaterThan",
+      "value": 190
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewPreservesInteractiveZoom",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
+      "equals": 230
+    },
+    {
+      "command": "assertState",
       "path": "nodes.10.compactPurposeIcon",
       "equals": "pitch"
     },

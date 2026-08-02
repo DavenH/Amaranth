@@ -79,8 +79,10 @@ guessing must not supply that meaning.
 - Cycle 1 Envelope vertical framing is `Envelope2D::zoomAndRepaint`, which
   delegates to the shared `Panel2D::contractToRange` and
   `ZoomPanel::contractToRange` implementation. The Envelope controls expose
-  both contract-to-range and expand-to-full actions; Cycle V2 reuses that
-  fitter rather than introducing pitch-specific range arithmetic.
+  both contract-to-range and expand-to-full actions with atlas cells `(6, 0)`
+  and `(6, 1)` from `Images::icons_png`. Cycle V2 reuses both those exact
+  glyphs and that fitter rather than introducing replacement iconography or
+  pitch-specific range arithmetic.
 - Cycle 1 scratch lifecycle and per-voice coordinate production are
   `CycleBasedVoice::updateEnvelopes` and `getScratchTime`.
   `cycle/src/Curve/Rasterization/Policies/Graphic/GraphicPolicies.h`,
@@ -212,9 +214,16 @@ shading:
 
 Entering pitch mode vertically fits the rendered curve once with the shared
 Cycle 1 range fitter so small deviations around neutral remain comfortable to
-edit. `Fit Y` and `Full Y` are explicit view-only actions in the expanded
-editor; they update presentation state without publishing or serializing a
-graph edit.
+edit. The expanded editor's explicit fit/full actions use the Cycle 1
+contract/expand glyphs in the action row rather than text controls beside the
+purpose selector. They update presentation state without publishing or
+serializing a graph edit. The compact Envelope preview uses the same
+interactive vertical range as the expanded view so the curve's apparent
+vertical framing remains continuous between both presentations.
+
+The Envelope vertex-parameter rows use the shared Trimesh parameter renderer
+with an explicit presentation density of `1.15`. The default Trimesh
+presentation remains unchanged.
 
 This supersedes the older suggestion in `node-graph-workflow.md` that polarity
 be inferred solely from downstream connection role. A disconnected pitch
@@ -385,8 +394,14 @@ Review performed 2026-07-31 against commits `4ad62d36` and `5b5e6b9d`:
   `NumberUtils::unitPitchToSemis`, live values use Cycle 1's clamp, and exact
   endpoint presentation remains undefined.
 - Entering pitch vertically fits a narrow curve through the shared Cycle 1
-  range fitter; `Full Y` restores the complete normalized range and `Fit Y`
-  contracts it again without publishing a graph edit.
+  range fitter; the Cycle 1 expand glyph restores the complete normalized
+  range and its contract glyph fits it again without publishing a graph edit.
+- The fit/full actions occupy the action row, not the purpose row, and use the
+  exact Cycle 1 atlas cells `(6, 0)` and `(6, 1)` at their native 24-pixel size.
+- Compact Envelope previews preserve the expanded panel's current vertical
+  zoom, including fitted pitch ranges, while unrelated curve-node preview
+  framing remains unchanged.
+- Envelope vertex-parameter rows are 15% taller than the shared default.
 - Logarithmic editor grids contain 12 minor and 4 major horizontal divisions,
   with minor brightness exactly 20% above the ordinary grid.
 - Control, volume, and scratch retain unipolar shading regardless of whether
