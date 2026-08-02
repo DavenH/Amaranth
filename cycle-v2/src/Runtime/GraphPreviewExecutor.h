@@ -26,6 +26,7 @@ struct GraphPreviewResult {
         size_t gridRows {};
         PortDomain domain { PortDomain::TimeSignal };
         ChannelLayout channelLayout { ChannelLayout::Mono };
+        PreviewModuleRole sourceRole { PreviewModuleRole::None };
         bool connected {};
     };
 

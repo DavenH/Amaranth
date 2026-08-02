@@ -229,7 +229,16 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
 
-    const auto edit = commands.setNodeParameter("waveshaper", "pre", "Pre", "0.5");
+    const Node* waveshaper = document.graph().findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    const auto currentPre = std::find_if(
+            waveshaper->parameters.begin(),
+            waveshaper->parameters.end(),
+            [](const auto& parameter) { return parameter.id == "pre"; });
+    REQUIRE(currentPre != waveshaper->parameters.end());
+    const String editedPre = currentPre->value == "0.5" ? "0.6" : "0.5";
+    const auto edit = commands.setNodeParameter(
+            "waveshaper", "pre", "Pre", editedPre);
     REQUIRE(edit.succeeded());
     REQUIRE(edit.changed);
 

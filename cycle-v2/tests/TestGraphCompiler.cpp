@@ -269,6 +269,27 @@ TEST_CASE("Compiler indexes both dependency directions and probe addresses",
     CHECK(result.plan.signalProbes.front().sourceOutputIndex == 0);
 }
 
+TEST_CASE("Probe step addresses ignore non-executable topology nodes",
+        "[cycle-v2][graph][runtime][probe]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    graph.addNode(graphNode(
+            "source", {}, { output("signal", PortDomain::TimeSignal) }));
+    graph.addSignalProbe({ "probe", "source", "signal", {}, {}, "Probe" });
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.nodeOrder.size() == 2);
+    REQUIRE(result.plan.steps.size() == 1);
+    CHECK(result.plan.dependencyIndex.nodeIndexById.at("source") == 1);
+    CHECK(result.plan.dependencyIndex.stepIndexById.at("source") == 0);
+    REQUIRE(result.plan.signalProbes.size() == 1);
+    CHECK(result.plan.signalProbes.front().sourceStepIndex == 0);
+    CHECK(result.plan.signalProbes.front().sourceOutputIndex == 0);
+}
+
 TEST_CASE("Compiler publishes stable waveshaper DSP configurations", "[cycle-v2][graph][configuration]") {
     GraphNodeFactory factory;
     NodeGraph graph;

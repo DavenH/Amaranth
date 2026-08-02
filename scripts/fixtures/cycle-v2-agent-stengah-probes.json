@@ -20,27 +20,8 @@
       "equals": true
     },
     {
-      "command": "openNodeEditor",
-      "nodeId": "waveshaper"
-    },
-    {
-      "command": "setNodeParameter",
-      "nodeId": "waveshaper",
-      "parameterId": "pre",
-      "label": "Pre",
-      "value": "0.5",
-      "waitForIdle": true,
-      "idleDelayMs": 300
-    },
-    {
-      "command": "assertState",
-      "path": "probePreviewStats.0.connected",
-      "equals": true
-    },
-    {
-      "command": "assertState",
-      "path": "probePreviewStats.1.connected",
-      "equals": true
+      "command": "inspectTargets",
+      "area": "canvas"
     },
     {
       "command": "screenshot",

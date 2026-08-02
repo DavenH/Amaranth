@@ -219,10 +219,13 @@ bool GraphPresentationModel::executeAsyncProducts(
     previewAudioExecutor.prepareExecution(next.compileResult.plan, spec);
     std::vector<uint8_t> dirtyNodes(next.compileResult.plan.steps.size());
     for (const auto& product : products) {
-        if (product.product == UpdateProduct::PreviewTraversal
-                && product.nodeIndex >= 0
-                && static_cast<size_t>(product.nodeIndex) < dirtyNodes.size()) {
-            dirtyNodes[static_cast<size_t>(product.nodeIndex)] = 1;
+        if (product.product != UpdateProduct::PreviewTraversal) {
+            continue;
+        }
+        const auto step = next.compileResult.plan.dependencyIndex.stepIndexById.find(
+                product.nodeId);
+        if (step != next.compileResult.plan.dependencyIndex.stepIndexById.end()) {
+            dirtyNodes[static_cast<size_t>(step->second)] = 1;
         }
     }
     const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(

@@ -1,5 +1,21 @@
 # UI Bug Notes
 
+## Open: Stengah Waveshaper editor restore crashes on a stale vertex selection
+
+Context:
+
+- Opening the Waveshaper editor from the locally edited Stengah preset crashes
+  while restoring its saved flat-curve selection.
+- The stack reaches `Interactor::getModPosition(bool)` through
+  `FlatCurvePanelBase::restoreFlatSelection`; the saved selected vertex no
+  longer resolves to a valid interactive vertex.
+- Repro artifact: `/private/tmp/cycle-v2-stengah-seven-probes-logs.txt.ips`.
+- This is incidental to the spy-routing defect; the focused spy fixture can edit
+  the Waveshaper parameter without opening its editor.
+
+Current status: open; validate saved selection IDs before restoring selection
+frames and add an editor-open regression for stale model selections.
+
 ## Addressed: Voice Context sliders only responded to pointer-down
 
 - Octave and Pitch previously applied only the initial pointer-down value;
