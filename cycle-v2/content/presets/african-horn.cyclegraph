@@ -1,19 +1,19 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 1,
+    "formatVersion": 2,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": -0.68963, "y": 355.17242 },
-            "parameters": { "domain": "waveform", "voices": 6, "octave": 1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "position": { "x": 146.3212, "y": 343.10345 },
+            "parameters": { "domain": "waveform", "octave": 1, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": -345.51724, "y": 227.10344 },
+            "position": { "x": -271.07373, "y": 275.10342 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -246,7 +246,7 @@
             "id": "guide1",
             "kind": "guideCurve",
             "definitionVersion": 1,
-            "position": { "x": 195.86206, "y": 888.62067 },
+            "position": { "x": 131.1212, "y": 794.92145 },
             "parameters": { "enabled": true, "noise": 0.0, "dcOffset": 0.0, "phase": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -411,7 +411,7 @@
             "id": "pitchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 51.03446, "y": -44.82758 },
+            "position": { "x": -286.27374, "y": 445.10345 },
             "parameters": { "purpose": "pitch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1134,7 +1134,7 @@
             "id": "scratchEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 4.11034, "y": 520.0 },
+            "position": { "x": 131.1212, "y": 520.0 },
             "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1257,18 +1257,19 @@
         }
     ],
     "edges": [
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer2", "destPortId": "context" },
-        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "timeAdd1", "destPortId": "left" },
-        { "sourceNodeId": "timeLayer2", "sourcePortId": "out", "destNodeId": "timeAdd1", "destPortId": "right" },
-        { "sourceNodeId": "timeAdd1", "sourcePortId": "out", "destNodeId": "delay", "destPortId": "time" },
-        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left" },
-        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "output", "destPortId": "time" },
-        { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment" },
-        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.vertex.0.curve", "connectionKind": "processingAttachment" }
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer2", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "timeAdd1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer2", "sourcePortId": "out", "destNodeId": "timeAdd1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeAdd1", "sourcePortId": "out", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.vertex.0.curve", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
+        { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }
