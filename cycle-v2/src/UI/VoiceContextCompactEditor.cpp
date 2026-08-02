@@ -61,10 +61,7 @@ String durationReadout(double voiceDurationSeconds) {
 }
 
 String pitchText(float semitones) {
-    const int rounded = roundToInt(semitones);
-    return String(rounded) + (rounded == 1 || rounded == -1
-            ? " semitone"
-            : " semitones");
+    return String(roundToInt(semitones)) + " semis";
 }
 
 void drawSourceSelector(Graphics& graphics, Rectangle<float> area, const Node& node) {
@@ -109,8 +106,7 @@ void drawSlider(
         float normalized,
         Colour colour,
         const String& readout = {},
-        std::initializer_list<SliderTick> ticks = {},
-        bool keepEndpointLabelsInside = false) {
+        std::initializer_list<SliderTick> ticks = {}) {
     const float trackY = ticks.size() > 0 ? area.getY() + 7.f : area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     area.removeFromLeft(kColumnGap);
@@ -138,19 +134,10 @@ void drawSlider(
         const float x = jmap(tick.normalized, 0.f, 1.f, left, right);
         graphics.setColour(kMutedText.withAlpha(0.75f));
         graphics.drawVerticalLine(roundToInt(x), trackY + 2.f, trackY + 5.f);
-        Rectangle<float> tickBounds(x - 22.f, trackY + 5.f, 44.f, 10.f);
-        Justification justification = Justification::centred;
-        if (keepEndpointLabelsInside && tick.normalized <= 0.f) {
-            tickBounds.setX(x);
-            justification = Justification::centredLeft;
-        } else if (keepEndpointLabelsInside && tick.normalized >= 1.f) {
-            tickBounds.setX(x - tickBounds.getWidth());
-            justification = Justification::centredRight;
-        }
         graphics.drawText(
                 tick.label,
-                tickBounds,
-                justification);
+                Rectangle<float>(x - 22.f, trackY + 5.f, 44.f, 10.f),
+                Justification::centred);
     }
     if (readout.isNotEmpty()) {
         graphics.setFont(FontOptions(10.5f, Font::bold));
@@ -432,8 +419,7 @@ void VoiceContextCompactEditor::paintExpanded(
                     { CycleDsp::voiceLengthUnitValue(1.0), "1 s" },
                     { CycleDsp::voiceLengthUnitValue(7.0), "7 s" },
                     { 1.f, "148 s" }
-            },
-            true);
+            });
 
     drawSlider(
             graphics,
