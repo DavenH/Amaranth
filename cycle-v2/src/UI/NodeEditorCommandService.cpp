@@ -247,6 +247,37 @@ bool NodeEditorCommandService::publishCurveState(
     return true;
 }
 
+bool NodeEditorCommandService::publishNodeModel(
+        const String& nodeId,
+        NodeModelStatePtr model) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || model == nullptr) {
+        return false;
+    }
+    const uint64_t currentRevision = node->model != nullptr ? node->model->revision() : 0;
+    const auto result = commands.replaceNodeModel(nodeId, currentRevision, std::move(model));
+    if (!result.succeeded()) {
+        return false;
+    }
+    if (result.changed) {
+        presentation.recordNodeEditorMovement(
+                nodeId,
+                "model",
+                FingerprintBuilder().add(currentRevision + 1).value());
+        presentation.repaintNodeEditor(false);
+    }
+    return true;
+}
+
+void NodeEditorCommandService::beginNodeModelEdit() {
+    commands.beginTransientEdit();
+}
+
+void NodeEditorCommandService::endNodeModelEdit() {
+    commands.commitTransientEdit();
+    presentation.flushNodeEditorRefresh();
+}
+
 void NodeEditorCommandService::beginCurveTransaction() {
     curveTransactionActive = true;
     curvePublicationPending = false;

@@ -9,6 +9,7 @@ struct NodeModuleDescriptor {
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
     PreviewContract previewContract { PreviewContract::None };
+    NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
     bool executable {};
     bool previewable {};
     bool cycle1AdapterBacked {};

@@ -110,6 +110,16 @@ struct ParameterDefinition {
     String normalized(const String& value) const;
 };
 
+enum class NodeExecutionTrait {
+    ConfigurationOnly,
+    ControlProducer,
+    CycleGenerator,
+    CoordinateTransform,
+    SpectralTransform,
+    OscillatorMaterializer,
+    SampleBlockProcessor
+};
+
 struct NodeDefinition {
     String typeId;
     int version { 1 };
@@ -128,6 +138,7 @@ struct NodeDefinition {
     bool executable {};
     bool previewable {};
     String cycle1Reference;
+    NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
     NodeNaturalSize minimumPreviewSize { 190.f, 76.f };
     NodeNaturalSize fixedNaturalSize;
 };

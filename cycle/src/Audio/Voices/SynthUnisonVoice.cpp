@@ -2,6 +2,7 @@
 #include <Algo/Oversampler.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Util/Arithmetic.h>
 
 #include "SynthesizerVoice.h"
@@ -46,8 +47,12 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
         VoiceParameterGroup& group = groups[i];
         float oscPhase = unison->getPhase(i);
 
-        if (oscPhase < 0.f) oscPhase += 1.f;
-        if (oscPhase > 1.f) oscPhase -= 1.f;
+        if (oscPhase < 0.f) {
+            oscPhase += 1.f;
+        }
+        if (oscPhase > 1.f) {
+            oscPhase -= 1.f;
+        }
 
         for (int meshIdx = 0; meshIdx < group.layerStates.size(); ++meshIdx) {
             CycleState& state = group.layerStates[meshIdx];
@@ -55,23 +60,25 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
 
             state.reset();
 
-            timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-
-            //			modMatrix->route(progress, ModMatrixPanel::VoiceTime, parent->voiceIndex);
             MorphPosition pos = layer.props->pos[parent->voiceIndex];
             pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
 
-            timeRasterizer.setInterceptPadding(group.angleDelta);
-            timeRasterizer.setState(&state);
-            timeRasterizer.setMorphPosition(pos);
-            timeRasterizer.setWrapsEnds(true);
-
             if (cycleCompositeAlgo == Interpolate) {
+                timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
+                timeRasterizer.setInterceptPadding(group.angleDelta);
+                timeRasterizer.setState(&state);
+                timeRasterizer.setMorphPosition(pos);
+                timeRasterizer.setWrapsEnds(true);
                 timeRasterizer.renderOrdinary(layer.mesh, oscPhase);
             } else {
-                // prime rasterizer
-                timeRasterizer.setMesh(layer.mesh);
-                timeRasterizer.renderChained(oscPhase);
+                CycleDsp::OscillatorLaneRasterizer::prime(timeRasterizer, {
+                        layer.mesh,
+                        &state,
+                        pos,
+                        oscPhase,
+                        group.angleDelta,
+                        random.nextInt(GuideCurvePanel::tableSize)
+                });
             }
         }
     }
@@ -102,49 +109,52 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         }
 
         totalPhase = unison->getPhase(group.unisonIndex);
-        if (totalPhase < 0.f) totalPhase += 1.f;
-        if (totalPhase > 1.f) totalPhase -= 1.f;
-
-        timeRasterizer.setState(&state);
+        if (totalPhase < 0.f) {
+            totalPhase += 1.f;
+        }
+        if (totalPhase > 1.f) {
+            totalPhase -= 1.f;
+        }
 
         jassert(! timeRasterizer.doesCalcDepthDimensions());
 
-        double delta, spillover;
+        double delta;
+        Buffer<float> rastBuf(rastBuffer, samplingSize);
 
         MorphPosition pos = layer.props->pos[parent->voiceIndex];
         pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
 
-        timeRasterizer.setMorphPosition(pos);
-        timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
-
         if (cycleCompositeAlgo == Interpolate) {
             delta = 1 / (double) samplingSize;
-            spillover = 0;
             state.advancement = 0.f;
 
+            timeRasterizer.setMorphPosition(pos);
+            timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
             timeRasterizer.setInterceptPadding((float) delta);
+            timeRasterizer.setState(&state);
             timeRasterizer.renderOrdinary(layer.mesh, totalPhase);
+
+            auto sampler = timeRasterizer.sampler();
+            if (sampler.isSampleable()) {
+                state.spillover = sampler.sampleWithInterval(rastBuf, delta, 0.0);
+            } else {
+                rastBuf.zero();
+                state.spillover += samplingSize * delta;
+
+                if (state.spillover > 0.5) {
+                    state.spillover -= 1;
+                }
+            }
         } else {
             delta = group.angleDelta / double(oversampleFactor);
-            spillover = state.spillover; //group.samplingSpillover[0];
-
-            timeRasterizer.setMesh(layer.mesh);
-            timeRasterizer.setInterceptPadding(jmax(-spillover, delta));
-            timeRasterizer.renderChained(totalPhase);
-        }
-
-        Buffer<float> rastBuf(rastBuffer, samplingSize);
-        auto sampler = timeRasterizer.sampler();
-        if (sampler.isSampleable()) {
-            state.spillover = sampler.sampleWithInterval(rastBuf, delta, spillover);
-        } else {
-            rastBuf.zero();
-            double& spillover = state.spillover; //group.samplingSpillover[0];
-            spillover += samplingSize * delta;
-
-            if (spillover > 0.5) {
-                spillover -= 1;
-            }
+            CycleDsp::OscillatorLaneRasterizer::render(timeRasterizer, {
+                    layer.mesh,
+                    &state,
+                    pos,
+                    totalPhase,
+                    delta,
+                    random.nextInt(GuideCurvePanel::tableSize)
+            }, rastBuf);
         }
 
         float totalPan = layer.props->pan;

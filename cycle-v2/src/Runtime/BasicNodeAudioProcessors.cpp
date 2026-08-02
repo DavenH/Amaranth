@@ -13,11 +13,10 @@ namespace {
 
 constexpr size_t kDefaultTraversalColumns = 8;
 
-void publishSourceTraversalGrid(
+void publishImageTraversalGrid(
         SignalPayload& payload,
         size_t columns,
         float level,
-        bool image,
         const AudioProcessWorkArena* arena) {
     if (payload.block.samples.empty()) {
         clearTraversalGrid(payload.traversalGrid);
@@ -33,13 +32,13 @@ void publishSourceTraversalGrid(
                     payload.domain,
                     columns,
                     rows,
-                    image ? TraversalGridAxis::ImageX : TraversalGridAxis::Phase,
-                    image ? TraversalGridAxis::ImageY : TraversalGridAxis::Time),
+                    TraversalGridAxis::ImageX,
+                    TraversalGridAxis::ImageY),
             arena);
 
     const float rowDenominator = rows > 1 ? (float) (rows - 1) : 1.f;
-    const float columnDenominator = columns > (image ? 1u : 0u)
-            ? (float) (columns - (image ? 1u : 0u))
+    const float columnDenominator = columns > 1
+            ? (float) (columns - 1)
             : 1.f;
 
     for (size_t column = 0; column < columns; ++column) {
@@ -47,29 +46,15 @@ void publishSourceTraversalGrid(
 
         for (size_t row = 0; row < rows; ++row) {
             const float rowPosition = (float) row / rowDenominator;
-            if (image) {
-                payload.traversalGrid.values[column * rows + row]
-                        = level * (0.65f * columnPosition + 0.35f * rowPosition);
-                continue;
-            }
-
-            float value = rowPosition + columnPosition;
-            if (value >= 1.f) {
-                value -= 1.f;
-            }
-
-            payload.traversalGrid.values[column * rows + row] = value * level;
+            payload.traversalGrid.values[column * rows + row]
+                    = level * (0.65f * columnPosition + 0.35f * rowPosition);
         }
     }
 }
 
-class SourceAudioProcessor final : public NodeAudioProcessor {
+class ImageSourceAudioProcessor final : public NodeAudioProcessor {
 public:
-    explicit SourceAudioProcessor(bool image) : image(image) {}
-
-    AudioModuleRole role() const override {
-        return image ? AudioModuleRole::ImageSource : AudioModuleRole::WaveSource;
-    }
+    AudioModuleRole role() const override { return AudioModuleRole::ImageSource; }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
         configuration = std::dynamic_pointer_cast<const SourceNodeConfiguration>(published.value);
@@ -97,12 +82,10 @@ public:
         }
 
         if (context.captureTraversalGrid) {
-            publishSourceTraversalGrid(
+            publishImageTraversalGrid(
                     output,
-                    image ? std::max(kDefaultTraversalColumns, context.frameCount)
-                          : kDefaultTraversalColumns,
+                    std::max(kDefaultTraversalColumns, context.frameCount),
                     level,
-                    image,
                     context.workArena);
             if (output.isStereo()) {
                 output.secondaryTraversalGrid = output.traversalGrid;
@@ -113,7 +96,6 @@ public:
     }
 
 private:
-    bool image {};
     std::shared_ptr<const SourceNodeConfiguration> configuration;
 };
 
@@ -123,6 +105,10 @@ public:
             processorRole(role), operation(operation) {}
 
     AudioModuleRole role() const override { return processorRole; }
+
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        processor.prepare(spec.maximumFrameCount);
+    }
 
     void process(AudioProcessContext& context) override {
         auto output = makeOutputPayload(context, 0);
@@ -216,12 +202,8 @@ public:
 
 }
 
-std::unique_ptr<NodeAudioProcessor> createWaveSourceAudioProcessor() {
-    return std::make_unique<SourceAudioProcessor>(false);
-}
-
 std::unique_ptr<NodeAudioProcessor> createImageSourceAudioProcessor() {
-    return std::make_unique<SourceAudioProcessor>(true);
+    return std::make_unique<ImageSourceAudioProcessor>();
 }
 
 std::unique_ptr<NodeAudioProcessor> createAddAudioProcessor() {

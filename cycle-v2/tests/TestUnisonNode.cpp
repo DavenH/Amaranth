@@ -7,6 +7,7 @@
 #include "../src/Graph/GraphCompiler.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
 #include "../src/Runtime/NodeDspConfiguration.h"
@@ -61,6 +62,88 @@ TEST_CASE("Unison node publishes the Cycle 1 group configuration",
             {});
     REQUIRE(published != nullptr);
     REQUIRE(published->role() == AudioModuleRole::Unison);
+}
+
+TEST_CASE("Unison individual voices are structured persistent state",
+        "[cycle-v2][unison][individual][serialization]") {
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    setParameter(node, "mode", "individual");
+    setParameter(node, "width", "70");
+    node.model = UnisonNodeModelState::create({
+            { 0.f, 0.f, 0.1f },
+            { 0.5f, 0.5f, 0.2f },
+            { 1.f, 1.f, 0.3f }
+    }, 4);
+    graph.addNode(node);
+
+    const auto configuration = buildUnisonNodeConfiguration(node.parameters, node.model);
+    REQUIRE(configuration->individualMode);
+    REQUIRE(configuration->layout.order == 3);
+    REQUIRE(configuration->layout[0].detuneCents == -70.f);
+    REQUIRE(configuration->layout[1].detuneCents == 0.f);
+    REQUIRE(configuration->layout[2].detuneCents == 70.f);
+    REQUIRE(configuration->layout[0].pan == 0.f);
+    REQUIRE(configuration->layout[2].pan == 1.f);
+
+    const String encoded = GraphSerializer().toJsonString(graph);
+    const NodeGraph decoded = GraphSerializer().fromJsonString(encoded);
+    const Node* restored = decoded.findNode("unison");
+    REQUIRE(restored != nullptr);
+    REQUIRE(parameterValueForNode(*restored, "mode") == "individual");
+    const auto restoredModel = std::dynamic_pointer_cast<const UnisonNodeModelState>(
+            restored->model);
+    REQUIRE(restoredModel != nullptr);
+    REQUIRE(restoredModel->revision() == 4);
+    REQUIRE(restoredModel->voices().size() == 3);
+    REQUIRE(restoredModel->voices()[2].phaseCycles == Catch::Approx(0.3f));
+}
+
+TEST_CASE("Individual Unison preview follows the structured voice layout",
+        "[cycle-v2][unison][individual][preview]") {
+    Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    setParameter(node, "mode", "individual");
+    setParameter(node, "width", "10");
+    node.model = UnisonNodeModelState::create({
+            { 0.25f, 0.f, 0.1f },
+            { 0.75f, 1.f, 0.6f }
+    }, 2);
+
+    const auto paths = makeUnisonPreviewPaths(node, { 60, 1.0 });
+
+    REQUIRE(paths.size() == 2);
+    REQUIRE(paths[0].detuneCents == Catch::Approx(-5.f));
+    REQUIRE(paths[1].detuneCents == Catch::Approx(5.f));
+    REQUIRE(paths[0].pan == 0.f);
+    REQUIRE(paths[1].pan == 1.f);
+    REQUIRE(paths[0].segments.front().startPhaseCycles == Catch::Approx(0.1f));
+    REQUIRE(paths[1].segments.front().startPhaseCycles == Catch::Approx(-0.4f));
+}
+
+TEST_CASE("Unison laser colour communicates each voice pan",
+        "[cycle-v2][unison][preview][pan]") {
+    const Colour left = unisonLaserColourForPan(0.f);
+    const Colour centre = unisonLaserColourForPan(0.5f);
+    const Colour right = unisonLaserColourForPan(1.f);
+
+    REQUIRE(left == Colour(0xffff9f43));
+    REQUIRE(centre == Colour(0xffc7c7c7));
+    REQUIRE(right == Colour(0xffa56cff));
+    REQUIRE(centre.getSaturation() == Catch::Approx(0.f));
+
+    Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    setParameter(node, "order", "3");
+    setParameter(node, "panSpread", "0");
+    const auto centred = makeUnisonPreviewPaths(node);
+    REQUIRE(std::all_of(centred.begin(), centred.end(), [](const auto& path) {
+        return path.pan == Catch::Approx(0.5f);
+    }));
+
+    setParameter(node, "panSpread", "1");
+    const auto spread = makeUnisonPreviewPaths(node);
+    REQUIRE(spread[0].pan == Catch::Approx(1.f));
+    REQUIRE(spread[1].pan == Catch::Approx(0.5f));
+    REQUIRE(spread[2].pan == Catch::Approx(0.f));
 }
 
 TEST_CASE("Unison compiles as Voice Context configuration without a runtime step",

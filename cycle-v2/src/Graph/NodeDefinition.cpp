@@ -1,5 +1,5 @@
-#include <Audio/CycleDsp/UnisonCore.h>
 #include <Audio/CycleDsp/IrModel.h>
+#include <Audio/CycleDsp/UnisonCore.h>
 
 #include <algorithm>
 #include <climits>
@@ -10,6 +10,7 @@
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
+#include "../Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {
 
@@ -191,6 +192,11 @@ public:
         return *this;
     }
 
+    DefinitionBuilder& execution(NodeExecutionTrait trait) {
+        value.executionTrait = trait;
+        return *this;
+    }
+
     DefinitionBuilder& disablePreview() {
         value.previewable = false;
         return *this;
@@ -304,6 +310,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("portamento", "Portamento", false, dsp | presentation),
                             choice("oversampling", "Oversampling", "1x", { "1x", "2x", "4x", "8x" }, dsp | reset | presentation)
                     }))
+                    .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
                     .presentation({}, { 280.f, 148.f })
@@ -356,6 +363,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp | preview),
                             number("amplitude", "Amplitude", 1.f, 0.f, 1.f, preview)
                     }))
+                    .execution(NodeExecutionTrait::CycleGenerator)
                     .runtime(AudioModuleRole::WaveSource, PreviewModuleRole::Waveform)
                     .presentation({ 220.f, 90.f })
                     .finish(),
@@ -386,6 +394,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
                     }))
                     .model(std::make_shared<TrimeshNodeModelCodec>())
+                    .execution(NodeExecutionTrait::CycleGenerator)
                     .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
                             "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
                     .presentation({ 260.f, 130.f }, { 286.f, 269.f })
@@ -396,6 +405,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cycle", { "cycle", "fixedWindow" }, graph | dsp | presentation)
                     }))
+                    .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
                     .presentation({}, { 278.f, 178.f })
                     .finish(),
@@ -405,6 +415,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cyclic", { "cyclic", "acyclicCarry" }, graph | dsp | presentation)
                     }))
+                    .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
                     .presentation({}, { 278.f, 178.f })
                     .finish(),
@@ -425,6 +436,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }))
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Envelope))
+                    .execution(NodeExecutionTrait::ControlProducer)
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
                             "cycle/src/Inter/EnvelopeInter2D.cpp")
                     .presentation({ 269.2f, 92.f })
@@ -432,12 +444,14 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
+                    .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Add, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
                     .finish(),
             buildDefinition(definition("multiply", NodeKind::Multiply, "Multiply", "operation", "multiply",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
+                    .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
                     .finish(),
@@ -484,6 +498,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             ChannelLayout::Mono, PortSide::Right,
                             ConnectionKind::ConfigurationAttachment, AttachmentType::Unison) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
+                            choice("mode", "Mode", "group", { "group", "individual" },
+                                    dsp | preview | presentation),
                             integer("order", "Voices", 1, 1, CycleDsp::maximumUnisonOrder,
                                     dsp | preview | presentation),
                             number("width", "Detune", 35.f, 0.f,
@@ -496,6 +512,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("jitter", "Jitter", 0.5f, 0.f, 1.f,
                                     dsp | preview | presentation)
                     }))
+                    .model(std::make_shared<UnisonNodeModelCodec>())
+                    .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Unison.cpp")
                     .presentation({ 230.f, 112.f })

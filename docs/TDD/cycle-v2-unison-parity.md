@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+Implemented.
 
 ## Intent
 
@@ -88,21 +88,21 @@ Unison --configuration--> Voice Context --context--> voice-aware sources
 ```
 
 Voice Context folds the configuration containing order and per-voice detune,
-phase, pan, and gain into its compiled voice plan. A future compiled voice-lane
-step follows `cycle-v2-oscillator-region-compilation.md`: time-only regions
+phase, pan, and gain into its compiled voice plan. The compiled voice-lane
+runtime follows `cycle-v2-oscillator-region-compilation.md`: time-only regions
 execute their cycle recipe independently per Unison lane, while spectral
 regions calculate one shared fixed cycle frame and reconstruct it independently
 per lane. Each oscillator region folds its lanes with the shared level
-compensation before ordinary block Add or Multiply. The current
-`DomainContext` passthrough ports and processor are transitional deletion
-targets, not the stable interface.
+compensation before ordinary block Add or Multiply. Unison is a typed
+configuration attachment; it has no `DomainContext` signal port or passthrough
+runtime processor.
 
-The current Cycle V2 Wave source is a placeholder ramp, and `VoiceContext`
-currently supplies ordering without an executable oscillator context.
-Therefore a post-buffer chorus/delay approximation is forbidden. Until the
-shared oscillator/voice-lane substrate consumes `UnisonCore` configuration,
-the node may publish, serialize, edit, preview, and validate the authoritative
-configuration but audible Cycle V2 parity remains incomplete.
+Cycle V2 Wave is a narrow facade over the immutable default Trimesh model. It
+translates Wave level/amplitude into source gain, then both chained and spectral
+oscillator regions use the same mature Trimesh rasterizers as authored Trimesh
+nodes. `VoiceContext` owns the compiled Unison layout, and every oscillator
+region consumes that shared configuration through its prepared lane runtime.
+No post-buffer chorus/delay or locally generated Wave ramp remains.
 
 ## Parameters
 
@@ -171,8 +171,8 @@ voice values and shared trajectory slope/wrap helpers.
 - Do not make preview note or voice duration node parameters.
 - Do not mutate oscillator/audio history from preview traversal.
 - Do not add Unison-specific behavior to `NodeCanvas`.
-- Do not claim audible parity while Wave source and voice-lane execution remain
-  placeholders.
+- Do not introduce a second Wave oscillator algorithm beside the mature
+  Trimesh-backed source path.
 - Do not add individual-mode scaffolding without structured per-voice state and
   complete add/remove/edit/persistence interaction.
 
@@ -234,12 +234,52 @@ contained only the pre-existing JUCE Settings assertions already recorded in
 `docs/TDD/ui-bugs.md`; it contained no Unison-specific assertion, crash, or
 suspicious runtime failure.
 
-Slices 5 and 6 remain open. Cycle V2 currently has neither executable
-oscillator context nor a voice-lane fanout/sum contract to which the shared
-configuration can be adapted. Implementing audible behavior inside the current
-passthrough node would necessarily approximate Cycle 1 as a post-mix chorus,
-which violates the negative boundary above. Individual mode likewise waits on
-structured per-voice node state rather than flattened generic parameters.
+Slice 5 and slice 7 are implemented:
+
+- Unison is a typed Voice Context configuration attachment with no transitional
+  signal ports, signal buffer, or passthrough runtime step;
+- individual mode has structured per-voice detune, pan, and phase state with
+  add/remove/select/edit, serialization, preview, and one-gesture undo;
+- group and individual preview trajectories communicate resolved pan using an
+  orange-left, greyscale-centre, purple-right colour mapping;
+- the expanded group editor keeps every control, including Jitter, within the
+  hosted panel at its registered production size.
+
+Slice 6 is implemented. Explicit oscillator regions compile and the
+Cycle 1 fractional lane clock plus mature chained-rasterizer transition have
+been extracted into shared Cycle DSP primitives consumed by Cycle 1. The first
+complete runtime lowering executes a direct time-only Trimesh region through
+the mature rasterizer independently for every configured lane, preserves
+split-block continuity and low-note cycle capacity, and folds the result with
+the shared pan and level contracts. Multi-operation Trimesh recipes also apply
+vectorized Add and Multiply in cycle coordinates before lane folding. Shared
+fixed-frame rasterization now prepares Trimesh, FFT, IFFT, Add, and Multiply
+recipes without realtime topology search, allocation, or transform locking.
+Cycle 1's cyclic-frame phase rotation, interpolation, and half-frame crossfade
+are also extracted into a shared lane renderer consumed by Cycle 1; the
+extraction corrects the legacy full-frame/half-frame vector-size mismatch while
+preserving the intended first-half crossfade contract. Cycle 2 spectral regions
+now render one prepared fixed frame and reconstruct it independently through
+the shared clock, composition, phase, mature Hermite resampling, pan, and level
+contracts for every Unison lane. The graph executor owns only the prepared
+oscillator-region interface and does not branch into chained or spectral
+algorithms. Sibling spectral and time-only oscillators now materialize and fold
+their lanes independently before allocation-free sample-block Add or Multiply.
+Both parity strategies declare zero algorithmic latency and envelope-owned
+history with no finite region tail. Lane and rasterizer state reset at the
+exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator running
+for envelope-controlled release. Unsupported acyclic/OLA reconstruction fails
+compilation instead of falling back to cyclic behavior. Placeholder runtime
+deletion is complete: Wave publishes an immutable default Trimesh
+configuration, and both oscillator strategies execute it through the mature
+Trimesh paths. Analysis-only spectral graphs remain on the diagnostic
+processors and do not require an IFFT reconstruction policy.
+
+Runtime integration tests execute both chained and shared-spectral Wave Unison
+graphs, assert audible stereo output, lane folding, split-block continuity, and
+zero realtime allocations or transform locks. The direct processor contract
+also proves that Wave and the default Trimesh publish identical block and
+traversal results before Wave gain is applied.
 
 ## Completion Criteria
 

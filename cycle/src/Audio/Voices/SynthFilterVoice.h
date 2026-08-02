@@ -20,7 +20,7 @@ public:
 	~SynthFilterVoice() override = default;
 
 	void calcCycle(VoiceParameterGroup& group) override;
-	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize, int oversampleFactor);
+	bool calcTimeDomain(VoiceParameterGroup& group, int samplingSize);
 	void calcMagnitudeFilters(Buffer<Float32> fftRamp);
 	void calcPhaseDomain(Buffer<float> fftRamp, bool didFwdFFT, bool rightPhasesAreSet, int& channelCount);
 

@@ -2,7 +2,85 @@
 
 ## Status
 
-Proposed.
+In progress.
+
+Implemented compiler foundation:
+
+- node definitions publish declarative execution traits;
+- compiled steps distinguish signal domain, execution coordinate, and runtime
+  ownership scope;
+- cycle-producing branches are partitioned into explicit Voice Context-owned
+  oscillator regions;
+- each region records its Unison lane count, materialization boundary,
+  reconstruction policy, and chained or shared-spectral strategy;
+- an operation reached by multiple Voice Contexts fails compilation with an
+  `AmbiguousVoiceContext` diagnostic.
+- the Cycle 1 fractional lane clock and chained `VoiceRasterizer` priming,
+  sampling, and spillover transition are shared Cycle DSP primitives consumed
+  by the Cycle 1 time-only renderer.
+- a prepared Cycle V2 chained-region runtime owns bounded per-lane clocks and
+  cycle buffers, preserves split-block continuity, and folds lanes with the
+  shared Cycle 1 pan and level contracts.
+- a direct single-Trimesh `ChainedPerLane` region is prepared off the realtime
+  thread and executes through the mature shared `VoiceRasterizer` transition;
+  its graph-runtime lowering performs no topology search or allocation and
+  preserves contiguous output across arbitrary block partitions.
+- prepared chained recipes now route multiple Trimesh cycle fields through
+  vectorized Add and Multiply operations before the region's Unison lanes are
+  folded. The compiler publishes the unique terminal cycle operation as the
+  time-only materialization boundary, and the prepared recipe converts graph
+  step references into compact operation-buffer indices off the realtime
+  thread.
+- oscillator-region lifecycle is segmented at exact event sample offsets.
+  Note-on and retrigger reset lane/rasterizer history before activating the
+  region, Reset clears and silences it, and NoteOff leaves oscillator history
+  running for the voice envelope's release contract.
+- the mature Cycle 1 fixed-frame time-mesh transition (ordinary
+  `VoiceRasterizer` traversal, intercept padding, integral/interval sampling)
+  is exposed beside the chained transition in `OscillatorLaneRasterizer`, and
+  Cycle 1's spectral voice consumes the shared facade. This is the
+  authoritative frame-generation boundary for the upcoming Cycle V2 shared
+  spectral recipe; it is not the normalized blockwise preview renderer.
+- a prepared Cycle V2 spectral recipe now executes fixed time-mesh frames,
+  FFT/IFFT, spectral mesh operands, and vectorized spectral Add/Multiply using
+  compact preallocated slots. Power-of-two transforms are prepared for the
+  bounded note range, and their per-region exclusive ownership disables the
+  legacy shared-instance mutex on the realtime path. A fixed-frame
+  FFT/IFFT identity test proves the recipe consumes the shared mature
+  rasterizer output unchanged.
+- cyclic spectral frames now reconstruct independently through the shared
+  clock, phase/composition core, mature Hermite resampler history, pan, and
+  level contracts for every Unison lane. The frame calculation remains shared
+  and is independent of lane count.
+- explicit spectral materialization prevents sibling time-only discovery from
+  crossing back into the spectral region. Mixed spectral and chained siblings
+  therefore prepare as independent regions, fold their own Unison lanes, and
+  meet at ordinary allocation-free sample-block Add or Multiply.
+- the Cycle 1 parity policies explicitly declare zero algorithmic output
+  latency and envelope-owned reconstruction history with no finite region
+  tail. NoteOn and Reset remain sample-exact, while NoteOff keeps cyclic state
+  alive for the envelope. The unimplemented `acyclicCarry`/OLA mode now fails
+  compilation instead of silently running the cyclic policy.
+- Wave Source no longer owns placeholder ramp DSP. It publishes the immutable
+  default Trimesh model plus Wave gain and is lowered by the same chained and
+  spectral region renderers as authored Trimesh sources.
+
+The spectral recipe is a domain executor, not a compatibility copy. Its
+authoritative operations remain `OscillatorLaneRasterizer` for fixed time
+frames, `Transform` for polar FFT/IFFT, `TrimeshBlockwiseDsp` for the current
+non-cyclic spectral mesh field, and `Buffer` for binary operations. Preparation
+only translates immutable compiled step/output references into compact slot
+indices and exclusive DSP instances. The stable endpoint is this
+oscillator-region-owned executor; the flat graph processors remain the
+deletion target once every spectral region and preview consumer routes through
+the domain interfaces.
+
+Nonzero latency compensation belongs to the future WindowedOverlapAdd policy;
+the current parity policies require no compensation at mixed-strategy merges.
+The Wave placeholder deletion and cyclic Unison parity are complete. This
+broader TDD remains in progress while flat diagnostic/preview processors are
+migrated behind the domain interfaces and WindowedOverlapAdd is designed as a
+separate, non-parity reconstruction policy.
 
 Depends on:
 

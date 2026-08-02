@@ -1,6 +1,7 @@
 #include <App/Doc/Document.h>
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
 #include <Audio/PluginProcessor.h>
 #include <Util/Arithmetic.h>
 
@@ -361,7 +362,6 @@ void SynthAudioSource::calcFades() {
 
     fadeMemory.resize(totalSize);
 
-    const float pi = MathConstants<float>::pi;
     for (int i = 0; i < numOctaves; ++i) {
         int size = 8 << i;
         int half = size / 2;
@@ -369,11 +369,11 @@ void SynthAudioSource::calcFades() {
         fadeIns[i]  = fadeMemory.place(half);
         fadeOuts[i] = fadeMemory.place(half);
 
-        Buffer<float> in  = fadeIns[i];
-
-        in.ramp(-0.5f * pi, pi / float(half - 1)).sin().add(1.f).mul(0.5f);
-
-        VecOps::subCRev(in, 1.f, fadeOuts[i]);
+        const bool generated = CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
+                size,
+                fadeIns[i],
+                fadeOuts[i]);
+        jassert(generated);
     }
 
     Range<int> range(Constants::LowestMidiNote, Constants::HighestMidiNote);

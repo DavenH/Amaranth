@@ -1,4 +1,6 @@
 #include <Algo/Resampler.h>
+#include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
+#include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Audio/PluginProcessor.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Curve/GuideCurveProvider.h>
@@ -297,8 +299,6 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
     ensureOversampleBufferSize(numSamples);
 
     bool unisonEnabled = unison == nullptr ? false : unison->isEnabled();
-    double dperiod = 0;
-
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         VoiceParameterGroup& group = groups[i];
 
@@ -317,17 +317,20 @@ void CycleBasedVoice::renderChainedCycles(int numSamples) {
 
             updateChainAngleDelta(group, unisonEnabled);
 
-            dperiod = 1. / group.angleDelta;
-            int floorCume = int(group.cumePos);
-            float nextCume = group.cumePos + dperiod;
-            int floorNextCume = int(nextCume);
-
-            group.samplesThisCycle = floorNextCume - floorCume;
+            CycleDsp::ChainedCycleState cycleState {
+                    group.cumePos,
+                    group.sampledFrontier,
+                    group.samplesThisCycle
+            };
+            CycleDsp::OscillatorLaneCore::advanceChainedCycle(
+                    cycleState,
+                    group.angleDelta);
+            group.samplesThisCycle = cycleState.samplesThisCycle;
 
             calcCycle(group);
 
-            group.cumePos = nextCume;
-            group.sampledFrontier = floorNextCume;
+            group.cumePos = cycleState.cumulativePosition;
+            group.sampledFrontier = cycleState.sampledFrontier;
 
             int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
@@ -342,8 +345,6 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
     ensureOversampleBufferSize(numSamples);
 
     bool unisonEnabled = unison == nullptr ? false : unison->isEnabled();
-    double dperiod = 0;
-
     VoiceParameterGroup& group = groups.front();
     noteState.numUnisonVoices = 1;
 
@@ -362,17 +363,20 @@ void CycleBasedVoice::renderOverlappedCycles(int numSamples) {
 
         updateChainAngleDelta(group, unisonEnabled);
 
-        dperiod = 1. / group.angleDelta;
-
-        int floorCume = int(group.cumePos);
-        float nextCume = group.cumePos + dperiod;
-        int floorNextCume = int(nextCume);
-        group.samplesThisCycle = floorNextCume - floorCume;
+        CycleDsp::ChainedCycleState cycleState {
+                group.cumePos,
+                group.sampledFrontier,
+                group.samplesThisCycle
+        };
+        CycleDsp::OscillatorLaneCore::advanceChainedCycle(
+                cycleState,
+                group.angleDelta);
+        group.samplesThisCycle = cycleState.samplesThisCycle;
 
         calcCycle(group);
 
-        group.cumePos = nextCume;
-        group.sampledFrontier = floorNextCume;
+        group.cumePos = cycleState.cumulativePosition;
+        group.sampledFrontier = cycleState.sampledFrontier;
 
         int ovspCycleSize = group.samplesThisCycle * oversamplers[0]->getOversampleFactor();
 
@@ -482,8 +486,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
         bool isFirstCycle = false;
         bool doPhaseShift = parent->flags.haveFilter && noteState.numUnisonVoices > 1 && unison->isPhased();
 
-        Buffer<float> cycleSourceBuf, cyclePrevBuf;
-
         noteState.isStereo |= noteState.numUnisonVoices > 1 && unison->isStereo();
 
         long minFrontier = INT_MAX;
@@ -528,9 +530,6 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                 if (i == 0)
                     frame.cumePos = group.cumePos;
 
-                int scaledPhase = int(noteState.nextPow2 * (unison->getPhase(group.unisonIndex))) & (
-                                      noteState.nextPow2 - 1);
-
                 //				dout << "uni vox: " << i << ", " << portionOfNext << ", " << frame.cumePos << ", " << frame.frontier << "\n";
 
                 ++frame.cycleCount;
@@ -539,72 +538,30 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                 Buffer halfBuff(halfBuf.withSize(half));
 
                 for (int c = 0; c < (noteState.isStereo ? 2 : 1); ++c) {
-                    Buffer<float> srcBuffer;
                     Buffer biasedCyc(biasedCycle[c].withSize(noteState.nextPow2));
                     Buffer lerpHalf(group.lastLerpHalf[c].withSize(half));
                     Buffer pastCyc(pastCycle[c].withSize(noteState.nextPow2));
-
-                    // no fading needed on first cycle
-                    if (isFirstCycle && !doPhaseShift) {
-                        srcBuffer = pastCyc;
-                    } else {
-                        biasedCyc.zero();
-
-                        if (doPhaseShift && scaledPhase != 0) {
-                            if (isFirstCycle) {
-                                pastCycle[c]
-                                    .withSize(noteState.nextPow2 - scaledPhase)
-                                    .copyTo(biasedCyc + scaledPhase);
-                                pastCycle[c]
-                                    .section(noteState.nextPow2 - scaledPhase, scaledPhase)
-                                    .copyTo(biasedCyc.withSize(scaledPhase));
-
-                                biasedCyc.copyTo(lerpHalf);
-                            } else {
-                                layerAccumBuffer[c]
-                                    .withSize(noteState.nextPow2 - scaledPhase)
-                                    .copyTo(rastBuffer + scaledPhase);
-                                layerAccumBuffer[c]
-                                    .section(noteState.nextPow2 - scaledPhase, scaledPhase)
-                                    .copyTo(rastBuffer.withSize(scaledPhase));
-                                pastCyc
-                                    .withSize(noteState.nextPow2 - scaledPhase)
-                                    .copyTo(tempBuffer + scaledPhase);
-                                pastCyc
-                                    .section(noteState.nextPow2 - scaledPhase, scaledPhase)
-                                    .copyTo(tempBuffer.withSize(scaledPhase));
-
-                                cycleSourceBuf = rastBuffer.withSize(noteState.nextPow2);
-                                cyclePrevBuf = tempBuffer.withSize(noteState.nextPow2);
-                            }
-                        } else {
-                            cycleSourceBuf = layerAccumBuffer[c].withSize(noteState.nextPow2);
-                            cyclePrevBuf = pastCyc;
-                        }
-
-                        // first cycle given special treatment when it comes to compositing
-                        if (!isFirstCycle) {
-                            if (portionOfNext == 0.f) {
-                                cyclePrevBuf.copyTo(biasedCyc);
-                            } else {
-                                // lerp surrounding cycles
-                                biasedCyc.addProduct(cyclePrevBuf, 1 - portionOfNext);
-                                biasedCyc.addProduct(cycleSourceBuf, portionOfNext);
-                            }
-
-                            // make copy of last composite-cycle's latter half before it is replaced
-                            lerpHalf.copyTo(halfBuff);
-
-                            // store half before we distort it with fades
-                            biasedCyc.copyTo(lerpHalf);
-
-                            // fade in the incoming cycle, fade out the outgoing cycle, removing discontinuities
-                            biasedCyc.mul(audioSource->fadeIns[sizeIndex]);
-                            biasedCyc.addProduct(audioSource->fadeOuts[sizeIndex], halfBuff);
-                        }
-
-                        srcBuffer = biasedCyc;
-                    }
+                    Buffer<float> srcBuffer = CycleDsp::CyclicFrameLaneRenderer::compose(
+                            {
+                                    layerAccumBuffer[c].withSize(noteState.nextPow2),
+                                    pastCyc,
+                                    audioSource->fadeIns[sizeIndex],
+                                    audioSource->fadeOuts[sizeIndex],
+                                    (float) unison->getPhase(group.unisonIndex),
+                                    portionOfNext,
+                                    isFirstCycle,
+                                    doPhaseShift
+                            },
+                            {
+                                    lerpHalf
+                            },
+                            {
+                                    biasedCyc,
+                                    rastBuffer.withSize(noteState.nextPow2),
+                                    tempBuffer.withSize(noteState.nextPow2),
+                                    halfBuff
+                            });
+                    jassert(!srcBuffer.empty());
 
                     switch (resamplingAlgo) {
                         case Resampling::Sinc:

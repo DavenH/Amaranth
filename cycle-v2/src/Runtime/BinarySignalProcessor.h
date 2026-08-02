@@ -23,6 +23,10 @@ enum class BinaryGridOperandMode {
 
 class BinarySignalProcessor {
 public:
+    void prepare(size_t maximumValueCount) {
+        rightOperand.reserve(maximumValueCount);
+    }
+
     void process(
             SignalPayload& output,
             const SignalPayload* left,

@@ -91,7 +91,11 @@ float scratchCoordinateForColumn(
 
 class TrimeshAudioProcessor final : public NodeAudioProcessor {
 public:
-    AudioModuleRole role() const override { return AudioModuleRole::MeshSource; }
+    explicit TrimeshAudioProcessor(AudioModuleRole processorRoleToUse) :
+            processorRole(processorRoleToUse) {
+    }
+
+    AudioModuleRole role() const override { return processorRole; }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
         configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(published.value);
@@ -186,6 +190,7 @@ public:
                 primaryAxis,
                 scratchAppliesToBlock,
                 output);
+        applyGain(output, context.frameCount);
 
         if (context.captureTraversalGrid) {
             renderTraversal(
@@ -196,12 +201,39 @@ public:
                     scratch,
                     scratchDomain,
                     output);
+            applyTraversalGain(output);
         }
 
         publishSingleOutput(context, std::move(output));
     }
 
 private:
+    void applyGain(SignalPayload& output, size_t frameCount) const {
+        if (configuration == nullptr || configuration->gain == 1.f) {
+            return;
+        }
+        payloadBuffer(output, frameCount).mul(configuration->gain);
+        if (output.isStereo()) {
+            payloadBuffer(output, 1, frameCount).mul(configuration->gain);
+        }
+    }
+
+    void applyTraversalGain(SignalPayload& output) const {
+        if (configuration == nullptr || configuration->gain == 1.f) {
+            return;
+        }
+        Buffer<float>(
+                output.traversalGrid.values.data(),
+                (int) output.traversalGrid.values.size())
+                .mul(configuration->gain);
+        if (output.isStereo()) {
+            Buffer<float>(
+                    output.secondaryTraversalGrid.values.data(),
+                    (int) output.secondaryTraversalGrid.values.size())
+                    .mul(configuration->gain);
+        }
+    }
+
     static float absoluteMorphValue(
             AudioProcessContext& context,
             size_t inputIndex,
@@ -350,6 +382,7 @@ private:
     }
 
     bool morphInitialized {};
+    AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     PortDomain preparedDomain { PortDomain::ControlSignal };
     SmoothedMorphPosition smoothedMorph;
     TrimeshBlockwiseDsp trimeshDsp;
@@ -362,7 +395,11 @@ private:
 }
 
 std::unique_ptr<NodeAudioProcessor> createTrimeshAudioProcessor() {
-    return std::make_unique<TrimeshAudioProcessor>();
+    return std::make_unique<TrimeshAudioProcessor>(AudioModuleRole::MeshSource);
+}
+
+std::unique_ptr<NodeAudioProcessor> createWaveSourceAudioProcessor() {
+    return std::make_unique<TrimeshAudioProcessor>(AudioModuleRole::WaveSource);
 }
 
 }

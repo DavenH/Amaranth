@@ -63,6 +63,17 @@ const GraphExecutionStep& findStep(const GraphExecutionPlan& plan, const String&
     return *found;
 }
 
+int stepPlanIndex(const GraphExecutionPlan& plan, const String& nodeId) {
+    const auto found = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [&](const GraphExecutionStep& step) {
+                return step.nodeId == nodeId;
+            });
+    REQUIRE(found != plan.steps.end());
+    return static_cast<int>(std::distance(plan.steps.begin(), found));
+}
+
 const GraphBufferPlan& findBuffer(const GraphExecutionPlan& plan, const String& sourceNodeId, const String& sourcePortId) {
     const auto found = std::find_if(
             plan.buffers.begin(),
@@ -134,6 +145,223 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
     REQUIRE(findBuffer(plan, "phaseMesh", "out").domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").domain == PortDomain::TimeSignal);
     REQUIRE(findBuffer(plan, "ifft", "time").channelLayout == ChannelLayout::LinkedStereo);
+    REQUIRE(plan.oscillatorRegions.size() == 1);
+    const auto& region = plan.oscillatorRegions.front();
+    REQUIRE(region.voiceContextNodeId == "voice");
+    REQUIRE(region.strategy == OscillatorExecutionStrategy::SharedSpectralFrame);
+    REQUIRE(region.reconstruction == SpectralReconstructionPolicy::CyclicFrameCrossfade);
+    REQUIRE(region.laneCount == 1);
+    REQUIRE(region.outputLatencySamples == 0);
+    REQUIRE(region.tailPolicy == OscillatorTailPolicy::EnvelopeOwned);
+    REQUIRE(region.outputTailSamples == 0);
+    REQUIRE(region.materializationStepIndex == stepPlanIndex(plan, "ifft"));
+    REQUIRE(findStep(plan, "waveMesh").executionCoordinate
+            == ExecutionCoordinate::CycleField);
+    REQUIRE(findStep(plan, "fft").executionCoordinate
+            == ExecutionCoordinate::SpectralFrame);
+    REQUIRE(findStep(plan, "magMesh").executionCoordinate
+            == ExecutionCoordinate::SpectralFrame);
+    REQUIRE(findStep(plan, "ifft").executionCoordinate
+            == ExecutionCoordinate::SampleBlock);
+    REQUIRE(findStep(plan, "multiply").executionCoordinate
+            == ExecutionCoordinate::SampleBlock);
+}
+
+TEST_CASE("Compiler plans a time-only oscillator region per Unison lane",
+        "[cycle-v2][graph][oscillator-region][unison]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Unison, "unison", {}));
+    Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    graph.addNode(std::move(mesh));
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph, "unison", "order", "Voices", "4").succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "unison", "unison", false },
+            { "voice", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.oscillatorRegions.size() == 1);
+    const auto& region = result.plan.oscillatorRegions.front();
+    REQUIRE(region.strategy == OscillatorExecutionStrategy::ChainedPerLane);
+    REQUIRE(region.laneCount == 4);
+    REQUIRE(region.outputLatencySamples == 0);
+    REQUIRE(region.tailPolicy == OscillatorTailPolicy::EnvelopeOwned);
+    REQUIRE(region.outputTailSamples == 0);
+    REQUIRE(region.materializationStepIndex == stepPlanIndex(result.plan, "mesh"));
+    REQUIRE(findStep(result.plan, "mesh").ownershipScope
+            == RuntimeOwnershipScope::UnisonLane);
+    REQUIRE(findStep(result.plan, "mesh").executionCoordinate
+            == ExecutionCoordinate::CycleField);
+}
+
+TEST_CASE("Compiler rejects oscillator operations reached by two Voice Contexts",
+        "[cycle-v2][graph][oscillator-region]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "firstVoice", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "secondVoice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "firstMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "secondMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "merge", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "firstVoice", "context", false },
+            { "firstMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "secondVoice", "context", false },
+            { "secondMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "firstMesh", "out", false },
+            { "merge", "left", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "secondMesh", "out", false },
+            { "merge", "right", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.compileIssues.size() == 1);
+    REQUIRE(result.compileIssues.front().code == GraphCompileCode::AmbiguousVoiceContext);
+    REQUIRE(result.compileIssues.front().message.contains("merge"));
+}
+
+TEST_CASE("Compiler materializes sibling spectral and chained oscillator regions before Add",
+        "[cycle-v2][graph][oscillator-region][materialization]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "spectralMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "chainedMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "spectralMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "spectralMesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "chainedMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "ifft", "time", false },
+            { "add", "left", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "chainedMesh", "out", false },
+            { "add", "right", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.oscillatorRegions.size() == 2);
+    REQUIRE(result.plan.oscillatorRegions[0].strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    REQUIRE(result.plan.oscillatorRegions[0].materializationStepIndex
+            == stepPlanIndex(result.plan, "ifft"));
+    REQUIRE(result.plan.oscillatorRegions[1].strategy
+            == OscillatorExecutionStrategy::ChainedPerLane);
+    REQUIRE(result.plan.oscillatorRegions[1].materializationStepIndex
+            == stepPlanIndex(result.plan, "chainedMesh"));
+    REQUIRE(findStep(result.plan, "add").oscillatorRegionIndex == -1);
+    REQUIRE(findStep(result.plan, "add").executionCoordinate
+            == ExecutionCoordinate::SampleBlock);
+}
+
+TEST_CASE("Compiler rejects unimplemented acyclic spectral reconstruction",
+        "[cycle-v2][graph][oscillator-region][reconstruction]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    Node ifft = factory.createNode(NodeKind::Ifft, "ifft", {});
+    const auto mode = std::find_if(
+            ifft.parameters.begin(),
+            ifft.parameters.end(),
+            [](const NodeParameter& parameter) {
+                return parameter.id == "mode";
+            });
+    REQUIRE(mode != ifft.parameters.end());
+    mode->value = "acyclicCarry";
+    graph.addNode(std::move(ifft));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.compileIssues.size() == 1);
+    REQUIRE(result.compileIssues.front().code
+            == GraphCompileCode::UnsupportedReconstructionPolicy);
+    REQUIRE(result.compileIssues.front().message.contains("acyclicCarry"));
+}
+
+TEST_CASE("Compiler does not require reconstruction policy for spectral analysis",
+        "[cycle-v2][graph][oscillator-region][analysis]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.oscillatorRegions.size() == 1);
+    REQUIRE(result.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    REQUIRE(result.plan.oscillatorRegions.front().materializationStepIndex
+            == stepPlanIndex(result.plan, "fft"));
+    REQUIRE(findStep(result.plan, "fft").executionTrait
+            == NodeExecutionTrait::SpectralTransform);
 }
 
 TEST_CASE("Voice Context defaults resolve per axis with explicit override precedence",

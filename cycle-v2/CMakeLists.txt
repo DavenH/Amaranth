@@ -102,6 +102,8 @@ set(GRAPH_SOURCES
 
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
@@ -116,8 +118,11 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeDspConfiguration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TransformNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodePreviewProcessor.cpp"
@@ -189,6 +194,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftGridwiseDsp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/FFT/FftSignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshBlockwiseDsp.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/PreparedTrimeshTopology.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshControlsComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshExpandedEditorComponent.cpp"
@@ -214,6 +220,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/TrimeshWidget.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNode.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/WaveshaperSignalProcessor.cpp"
 )
 

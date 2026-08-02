@@ -7,6 +7,7 @@
 
 #include "GraphRuntime.h"
 #include "NodeAudioProcessor.h"
+#include "PreparedOscillatorRegion.h"
 
 namespace CycleV2 {
 
@@ -132,9 +133,21 @@ private:
     };
 
     struct PreparedVoice {
+        struct OscillatorRegion {
+            int planRegionIndex { -1 };
+            std::vector<uint64_t> configurationRevisions;
+            std::vector<float> pitchEnvelopeUnitValues;
+            std::unique_ptr<PreparedOscillatorRegion> processor;
+            bool active {};
+        };
+
         int voiceIndex {};
         const GraphExecutionPlan* plan {};
+        size_t maximumFrameCount {};
+        double sampleRate {};
         std::vector<NodeAudioProcessor*> processors;
+        std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;
+        std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
 
     CachedProcessor& processorFor(
@@ -143,6 +156,14 @@ private:
             AudioModuleRole role,
             const NodeAudioProcessorFactory& factory) const;
     void removeUnreferencedProcessors() const;
+    static PreparedVoice::OscillatorRegion* oscillatorRegionForStep(
+            PreparedVoice& voice,
+            size_t stepIndex);
+    static void renderOscillatorRegion(
+            PreparedVoice::OscillatorRegion& region,
+            const AudioVoiceContext& voice,
+            size_t frameCount,
+            SignalPayload& output);
     GraphAudioResult processInternal(
             const GraphExecutionPlan& plan,
             size_t frameCount,

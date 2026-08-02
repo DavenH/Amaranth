@@ -16,7 +16,7 @@ namespace CycleV2 {
 
 namespace {
 
-std::shared_ptr<const TrimeshConfiguration> buildTrimeshConfiguration(
+std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model) {
     auto configuration = std::make_shared<TrimeshConfiguration>();
@@ -82,9 +82,10 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     buildModulationTripleConfiguration(values));
         } },
         { AudioModuleRole::WaveSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
-            auto configuration = std::make_shared<SourceNodeConfiguration>();
+            auto configuration = buildTrimeshConfiguration(values, {});
             configuration->processorRole = roleToUse;
-            configuration->level = typedParameterFloat(values, "level", 1.f);
+            configuration->gain = typedParameterFloat(values, "level", 1.f)
+                    * typedParameterFloat(values, "amplitude", 1.f);
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::ImageSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
@@ -135,9 +136,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             return std::shared_ptr<const INodeDspConfiguration>(
                     EqualizerSignalProcessor::buildConfiguration(values));
         } },
-        { AudioModuleRole::Unison, [](AudioModuleRole, const auto& values, const auto&) {
+        { AudioModuleRole::Unison, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
-                    buildUnisonNodeConfiguration(values));
+                    buildUnisonNodeConfiguration(values, modelState));
         } },
         { AudioModuleRole::Envelope, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(

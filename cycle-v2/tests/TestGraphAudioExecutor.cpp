@@ -10,6 +10,7 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 
@@ -18,6 +19,7 @@
 #include <Util/Arithmetic.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdlib>
 #include <new>
@@ -151,6 +153,17 @@ public:
     bool preparedCollections {};
 };
 
+class RealtimeCycleRenderer final : public OscillatorCycleRenderer {
+public:
+    void renderCycle(
+            const ChainedCycleRenderRequest&,
+            Buffer<float> left,
+            Buffer<float> right) override {
+        left.set(0.25f);
+        right.set(0.25f);
+    }
+};
+
 const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const String& nodeId) {
     const auto found = std::find_if(
             result.nodes.begin(),
@@ -177,6 +190,17 @@ const SignalPayload& outputForPort(const NodeAudioResult& result, const String& 
 
     REQUIRE(found != result.outputs.end());
     return found->second;
+}
+
+void setNodeParameter(Node& node, const String& id, const String& value) {
+    const auto found = std::find_if(
+            node.parameters.begin(),
+            node.parameters.end(),
+            [&](const NodeParameter& parameter) {
+                return parameter.id == id;
+            });
+    REQUIRE(found != node.parameters.end());
+    found->value = value;
 }
 
 var sawtoothMeshTopology() {
@@ -207,6 +231,584 @@ var sawtoothMeshTopology() {
     return topology;
 }
 
+}
+
+TEST_CASE("Prepared chained oscillator runtime performs no realtime allocation",
+        "[cycle-v2][runtime][oscillator-region][realtime]") {
+    CycleDsp::UnisonGroupConfiguration configuration;
+    configuration.order = CycleDsp::maximumUnisonOrder;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+    ChainedOscillatorRegionRuntime runtime;
+    REQUIRE(runtime.prepare(128, 2048, 44100.0, layout));
+    std::array<float, 128> left {};
+    std::array<float, 128> right {};
+    RealtimeCycleRenderer renderer;
+
+    size_t allocations {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        REQUIRE(runtime.process(
+                60, 1.f, {},
+                Buffer<float>(left.data(), (int) left.size()),
+                Buffer<float>(right.data(), (int) right.size()),
+                renderer));
+        allocations = allocationCount.count();
+    }
+    REQUIRE(allocations == 0);
+}
+
+TEST_CASE("Graph executor audibly renders and folds a chained Wave Unison region",
+        "[cycle-v2][runtime][oscillator-region][unison][wave][graph]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+    setNodeParameter(unison, "order", "3");
+    setNodeParameter(unison, "width", "12");
+    setNodeParameter(unison, "panSpread", "1");
+    graph.addNode(std::move(unison));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "unison", "unison", false },
+            { "voice", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "wave", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "wave", "out", false },
+            { "output", "time", true }).succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::ChainedPerLane);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 512;
+    spec.sampleRate = 44100.0;
+    GraphAudioExecutor wholeExecutor;
+    GraphAudioExecutor splitExecutor;
+    wholeExecutor.prepareExecution(compiled.plan, spec);
+    splitExecutor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext noteOn;
+    noteOn.controls.noteNumber = 60;
+    noteOn.controls.velocity = 1.f;
+    noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+
+    GraphAudioOutputView wholeView;
+    size_t realtimeAllocations {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        wholeView = wholeExecutor.processRealtime(
+                compiled.plan, 512, {}, noteOn);
+        realtimeAllocations = allocationCount.count();
+    }
+    REQUIRE(wholeView.isValid());
+    REQUIRE(realtimeAllocations == 0);
+    REQUIRE(wholeView.payload->channelLayout == ChannelLayout::StereoPair);
+    const std::vector<float> wholeLeft(
+            wholeView.payload->block.samples.begin(),
+            wholeView.payload->block.samples.end());
+    const std::vector<float> wholeRight(
+            wholeView.payload->secondaryBlock.samples.begin(),
+            wholeView.payload->secondaryBlock.samples.end());
+
+    const auto firstView = splitExecutor.processRealtime(
+            compiled.plan, 200, {}, noteOn);
+    REQUIRE(firstView.isValid());
+    std::vector<float> splitLeft(
+            firstView.payload->block.samples.begin(),
+            firstView.payload->block.samples.end());
+    std::vector<float> splitRight(
+            firstView.payload->secondaryBlock.samples.begin(),
+            firstView.payload->secondaryBlock.samples.end());
+    AudioVoiceContext continuation = noteOn;
+    continuation.events.clear();
+    const auto secondView = splitExecutor.processRealtime(
+            compiled.plan, 312, {}, continuation);
+    REQUIRE(secondView.isValid());
+    splitLeft.insert(
+            splitLeft.end(),
+            secondView.payload->block.samples.begin(),
+            secondView.payload->block.samples.end());
+    splitRight.insert(
+            splitRight.end(),
+            secondView.payload->secondaryBlock.samples.begin(),
+            secondView.payload->secondaryBlock.samples.end());
+
+    REQUIRE(wholeLeft.front() == 0.f);
+    REQUIRE(wholeRight.front() == 0.f);
+    REQUIRE(std::any_of(wholeLeft.begin(), wholeLeft.end(), [](float sample) {
+        return sample != 0.f;
+    }));
+    REQUIRE(wholeLeft != wholeRight);
+    REQUIRE(splitLeft == wholeLeft);
+    REQUIRE(splitRight == wholeRight);
+
+    GraphAudioExecutor lowNoteExecutor;
+    lowNoteExecutor.prepareExecution(compiled.plan, spec);
+    noteOn.controls.noteNumber = 0;
+    const auto lowNoteView = lowNoteExecutor.processRealtime(
+            compiled.plan, 128, {}, noteOn);
+    REQUIRE(lowNoteView.isValid());
+    REQUIRE(std::any_of(
+            lowNoteView.payload->block.samples.begin(),
+            lowNoteView.payload->block.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+
+    GraphAudioExecutor delayedExecutor;
+    GraphAudioExecutor freshExecutor;
+    delayedExecutor.prepareExecution(compiled.plan, spec);
+    freshExecutor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext delayedNoteOn = noteOn;
+    delayedNoteOn.controls.noteNumber = 60;
+    delayedNoteOn.events.front().sampleOffset = 73;
+    const auto delayed = delayedExecutor.processRealtime(
+            compiled.plan, 256, {}, delayedNoteOn);
+    AudioVoiceContext freshNoteOn = delayedNoteOn;
+    freshNoteOn.events.front().sampleOffset = 0;
+    const auto fresh = freshExecutor.processRealtime(
+            compiled.plan, 183, {}, freshNoteOn);
+    REQUIRE(std::all_of(
+            delayed.payload->block.samples.begin(),
+            delayed.payload->block.samples.begin() + 73,
+            [](float sample) {
+                return sample == 0.f;
+            }));
+    REQUIRE(std::equal(
+            delayed.payload->block.samples.begin() + 73,
+            delayed.payload->block.samples.end(),
+            fresh.payload->block.samples.begin()));
+
+    GraphAudioExecutor resetExecutor;
+    GraphAudioExecutor resetReference;
+    resetExecutor.prepareExecution(compiled.plan, spec);
+    resetReference.prepareExecution(compiled.plan, spec);
+    resetExecutor.processRealtime(compiled.plan, 128, {}, freshNoteOn);
+    resetReference.processRealtime(compiled.plan, 128, {}, freshNoteOn);
+    AudioVoiceContext resetEvent = freshNoteOn;
+    resetEvent.events.front() = { NoteLifecycleType::Reset, 64, 0 };
+    const auto resetBlock = resetExecutor.processRealtime(
+            compiled.plan, 128, {}, resetEvent);
+    AudioVoiceContext resetContinuation = freshNoteOn;
+    resetContinuation.events.clear();
+    const auto referenceContinuation = resetReference.processRealtime(
+            compiled.plan, 64, {}, resetContinuation);
+    REQUIRE(std::equal(
+            resetBlock.payload->block.samples.begin(),
+            resetBlock.payload->block.samples.begin() + 64,
+            referenceContinuation.payload->block.samples.begin()));
+    REQUIRE(std::all_of(
+            resetBlock.payload->block.samples.begin() + 64,
+            resetBlock.payload->block.samples.end(),
+            [](float sample) {
+                return sample == 0.f;
+            }));
+}
+
+TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison lanes",
+        "[cycle-v2][runtime][oscillator-region][unison][trimesh][graph]") {
+    const auto makeGraph = [](bool addSecondMesh, NodeKind binaryKind, int order) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+        setNodeParameter(unison, "order", String(order));
+        setNodeParameter(unison, "width", "12");
+        graph.addNode(std::move(unison));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "firstMesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "unison", "unison", false },
+                { "voice", "unison", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "voice", "context", false },
+                { "firstMesh", "context", true }).succeeded());
+        if (!addSecondMesh) {
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "firstMesh", "out", false },
+                    { "output", "time", true }).succeeded());
+            return graph;
+        }
+
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "secondMesh", {}));
+        graph.addNode(factory.createNode(binaryKind, "operation", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "voice", "context", false },
+                { "secondMesh", "context", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "firstMesh", "out", false },
+                { "operation", "left", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "secondMesh", "out", false },
+                { "operation", "right", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "operation", "out", false },
+                { "output", "time", true }).succeeded());
+        return graph;
+    };
+
+    const auto single = GraphCompiler().compile(makeGraph(false, NodeKind::Add, 3));
+    const auto combined = GraphCompiler().compile(makeGraph(true, NodeKind::Add, 3));
+    REQUIRE(single.succeeded());
+    REQUIRE(combined.succeeded());
+    REQUIRE(combined.plan.oscillatorRegions.size() == 1);
+    REQUIRE(combined.plan.oscillatorRegions.front().stepIndices.size() == 3);
+    REQUIRE(combined.plan.steps[(size_t) combined.plan.oscillatorRegions.front()
+                    .materializationStepIndex].nodeId == "operation");
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    const auto render = [&](const GraphExecutionPlan& plan) {
+        GraphAudioExecutor executor;
+        executor.prepareExecution(plan, spec);
+        AudioVoiceContext noteOn;
+        noteOn.controls.noteNumber = 60;
+        noteOn.controls.velocity = 1.f;
+        noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        GraphAudioOutputView output;
+        size_t allocations {};
+        {
+            ScopedRealtimeAllocationCount allocationCount;
+            output = executor.processRealtime(plan, 256, {}, noteOn);
+            allocations = allocationCount.count();
+        }
+        REQUIRE(output.isValid());
+        REQUIRE(allocations == 0);
+        return std::vector<float>(
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+    };
+
+    std::vector<float> expected = render(single.plan);
+    const std::vector<float> actual = render(combined.plan);
+    Buffer<float>(expected.data(), (int) expected.size()).mul(2.f);
+    std::vector<float> actualCopy = actual;
+    REQUIRE(Buffer<float>(actualCopy.data(), (int) actualCopy.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+
+    const auto oneLane = GraphCompiler().compile(makeGraph(false, NodeKind::Multiply, 1));
+    const auto multiplied = GraphCompiler().compile(makeGraph(true, NodeKind::Multiply, 1));
+    REQUIRE(oneLane.succeeded());
+    REQUIRE(multiplied.succeeded());
+    expected = render(oneLane.plan);
+    Buffer<float>(expected.data(), (int) expected.size()).sqr();
+    actualCopy = render(multiplied.plan);
+    REQUIRE(Buffer<float>(actualCopy.data(), (int) actualCopy.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+}
+
+TEST_CASE("Graph executor reconstructs a shared spectral Wave Unison frame",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][wave][graph][realtime]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+    setNodeParameter(unison, "order", "3");
+    setNodeParameter(unison, "width", "12");
+    setNodeParameter(unison, "panSpread", "1");
+    setNodeParameter(unison, "phase", "0.25");
+    graph.addNode(std::move(unison));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "unison", "unison", false },
+            { "voice", "unison", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "wave", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "wave", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "ifft", "time", false },
+            { "output", "time", true }).succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext noteOn;
+    noteOn.controls.noteNumber = 60;
+    noteOn.controls.velocity = 1.f;
+    noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+
+    GraphAudioOutputView output;
+    size_t allocations {};
+    size_t locks {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        ScopedRealtimeLockCount lockCount;
+        output = executor.processRealtime(compiled.plan, 256, {}, noteOn);
+        allocations = allocationCount.count();
+        locks = lockCount.count();
+    }
+    REQUIRE(output.isValid());
+    REQUIRE(allocations == 0);
+    REQUIRE(locks == 0);
+    REQUIRE(output.payload->channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(std::any_of(
+            output.payload->block.samples.begin(),
+            output.payload->block.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+    REQUIRE(std::any_of(
+            output.payload->secondaryBlock.samples.begin(),
+            output.payload->secondaryBlock.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+    REQUIRE(output.payload->block.samples != output.payload->secondaryBlock.samples);
+
+    GraphAudioExecutor delayedExecutor;
+    GraphAudioExecutor freshExecutor;
+    delayedExecutor.prepareExecution(compiled.plan, spec);
+    freshExecutor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext delayedNoteOn = noteOn;
+    delayedNoteOn.events.front().sampleOffset = 73;
+    const auto delayed = delayedExecutor.processRealtime(
+            compiled.plan,
+            256,
+            {},
+            delayedNoteOn);
+    AudioVoiceContext freshNoteOn = noteOn;
+    const auto fresh = freshExecutor.processRealtime(
+            compiled.plan,
+            183,
+            {},
+            freshNoteOn);
+    REQUIRE(std::all_of(
+            delayed.payload->block.samples.begin(),
+            delayed.payload->block.samples.begin() + 73,
+            [](float sample) {
+                return sample == 0.f;
+            }));
+    REQUIRE(std::equal(
+            delayed.payload->block.samples.begin() + 73,
+            delayed.payload->block.samples.end(),
+            fresh.payload->block.samples.begin()));
+
+    AudioVoiceContext noteOff = noteOn;
+    noteOff.events.front() = { NoteLifecycleType::NoteOff, 0, 0 };
+    AudioVoiceContext continuation = noteOn;
+    continuation.events.clear();
+    const auto released = delayedExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            noteOff);
+    const auto continued = freshExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            continuation);
+    REQUIRE(released.payload->block.samples == continued.payload->block.samples);
+
+    AudioVoiceContext reset = continuation;
+    reset.events.push_back({ NoteLifecycleType::Reset, 64, 0 });
+    const auto resetBlock = delayedExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            reset);
+    REQUIRE(std::all_of(
+            resetBlock.payload->block.samples.begin() + 64,
+            resetBlock.payload->block.samples.end(),
+            [](float sample) {
+                return sample == 0.f;
+            }));
+
+    GraphAudioExecutor lowNoteExecutor;
+    lowNoteExecutor.prepareExecution(compiled.plan, spec);
+    noteOn.controls.noteNumber = 0;
+    const auto lowNote = lowNoteExecutor.processRealtime(
+            compiled.plan,
+            128,
+            {},
+            noteOn);
+    REQUIRE(lowNote.isValid());
+    REQUIRE(std::any_of(
+            lowNote.payload->block.samples.begin(),
+            lowNote.payload->block.samples.end(),
+            [](float sample) {
+                return sample != 0.f;
+            }));
+}
+
+TEST_CASE("Independent oscillator regions fold Unison lanes before block arithmetic",
+        "[cycle-v2][runtime][oscillator-region][materialization][unison][graph][realtime]") {
+    const auto makeGraph = [](bool includeSpectral, bool includeChained, NodeKind operationKind) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+        setNodeParameter(unison, "order", "3");
+        setNodeParameter(unison, "width", "12");
+        setNodeParameter(unison, "panSpread", "1");
+        graph.addNode(std::move(unison));
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "unison", "unison", false },
+                { "voice", "unison", true }).succeeded());
+
+        if (includeSpectral) {
+            graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "spectralMesh", {}));
+            graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+            graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "voice", "context", false },
+                    { "spectralMesh", "context", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "spectralMesh", "out", false },
+                    { "fft", "time", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "fft", "mag", false },
+                    { "ifft", "mag", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "fft", "phase", false },
+                    { "ifft", "phase", true }).succeeded());
+        }
+        if (includeChained) {
+            graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "chainedMesh", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "voice", "context", false },
+                    { "chainedMesh", "context", true }).succeeded());
+        }
+
+        if (includeSpectral && includeChained) {
+            graph.addNode(factory.createNode(operationKind, "operation", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "ifft", "time", false },
+                    { "operation", "left", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "chainedMesh", "out", false },
+                    { "operation", "right", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "operation", "out", false },
+                    { "output", "time", true }).succeeded());
+        } else {
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { includeSpectral ? "ifft" : "chainedMesh",
+                            includeSpectral ? "time" : "out",
+                            false },
+                    { "output", "time", true }).succeeded());
+        }
+        return graph;
+    };
+
+    const auto spectral = GraphCompiler().compile(
+            makeGraph(true, false, NodeKind::Add));
+    const auto chained = GraphCompiler().compile(
+            makeGraph(false, true, NodeKind::Add));
+    const auto added = GraphCompiler().compile(
+            makeGraph(true, true, NodeKind::Add));
+    const auto multiplied = GraphCompiler().compile(
+            makeGraph(true, true, NodeKind::Multiply));
+    REQUIRE(spectral.succeeded());
+    REQUIRE(chained.succeeded());
+    REQUIRE(added.succeeded());
+    REQUIRE(multiplied.succeeded());
+    REQUIRE(added.plan.oscillatorRegions.size() == 2);
+    REQUIRE(multiplied.plan.oscillatorRegions.size() == 2);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    const auto render = [&](const GraphExecutionPlan& plan, bool countAllocations) {
+        GraphAudioExecutor executor;
+        executor.prepareExecution(plan, spec);
+        AudioVoiceContext noteOn;
+        noteOn.controls.noteNumber = 60;
+        noteOn.controls.velocity = 1.f;
+        noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        GraphAudioOutputView output;
+        size_t allocations {};
+        {
+            ScopedRealtimeAllocationCount allocationCount;
+            output = executor.processRealtime(plan, 256, {}, noteOn);
+            allocations = allocationCount.count();
+        }
+        REQUIRE(output.isValid());
+        if (countAllocations) {
+            REQUIRE(allocations == 0);
+        }
+        return std::vector<float>(
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+    };
+
+    const auto spectralSamples = render(spectral.plan, false);
+    auto chainedSamples = render(chained.plan, false);
+    auto expected = spectralSamples;
+    Buffer<float>(expected.data(), (int) expected.size()).add({
+            chainedSamples.data(),
+            (int) chainedSamples.size()
+    });
+    auto actual = render(added.plan, true);
+    REQUIRE(Buffer<float>(actual.data(), (int) actual.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+
+    expected = spectralSamples;
+    Buffer<float>(expected.data(), (int) expected.size()).mul({
+            chainedSamples.data(),
+            (int) chainedSamples.size()
+    });
+    actual = render(multiplied.plan, true);
+    REQUIRE(Buffer<float>(actual.data(), (int) actual.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
 }
 
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
@@ -242,7 +844,9 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     REQUIRE(result.output.traversalGrid.isValid());
     REQUIRE(result.output.traversalGrid.columns == 8);
     REQUIRE(result.output.traversalGrid.rows == 5);
-    REQUIRE(wave == std::vector<float> { 0.f, 0.25f, 0.5f, 0.75f, 1.f });
+    REQUIRE(std::any_of(wave.begin(), wave.end(), [](float sample) {
+        return std::abs(sample) > 1.0e-5f;
+    }));
     REQUIRE(findNodeAudio(result, "wave").output.traversalGrid.isValid());
     REQUIRE(samples(findNodeAudio(result, "mul").output) == samples(result.output));
     REQUIRE(findNodeAudio(result, "mul").output.traversalGrid.values
@@ -521,9 +1125,10 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     const auto shapedNode = samples(findNodeAudio(shaped, "shape").output);
     REQUIRE(shapedNode != initialShape);
     REQUIRE(samples(shaped.output) != initialOutput);
-    REQUIRE(shapedNode[1] == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
+    REQUIRE(std::abs(shapedNode[1]) == Catch::Approx(1.f / 6.f).margin(1.0e-5f));
     for (size_t index = 2; index + 1 < shapedNode.size(); ++index) {
-        REQUIRE(shapedNode[index] == Catch::Approx(shapedNode[1]).margin(1.0e-5f));
+        REQUIRE(std::abs(shapedNode[index])
+                == Catch::Approx(std::abs(shapedNode[1])).margin(1.0e-5f));
     }
 
     EnvelopeNodeModel envelopeModel;
@@ -604,9 +1209,19 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 3);
+    const auto quietResult = GraphAudioExecutor().process(graph, compileResult.plan, 3);
 
-    REQUIRE(samples(result.output) == std::vector<float> { 0.f, 0.25f, 0.5f });
+    graph.replaceNodeParameters("wave", { { "level", "Level", "1" } });
+    const auto unityCompileResult = GraphCompiler().compile(graph);
+    REQUIRE(unityCompileResult.succeeded());
+    const auto unityResult = GraphAudioExecutor().process(
+            graph,
+            unityCompileResult.plan,
+            3);
+    for (size_t index = 0; index < samples(unityResult.output).size(); ++index) {
+        REQUIRE(samples(quietResult.output)[index]
+                == Catch::Approx(0.5f * samples(unityResult.output)[index]));
+    }
 }
 
 TEST_CASE("Graph audio executor preserves per-node processor state between blocks", "[cycle-v2][runtime]") {
@@ -803,6 +1418,7 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     timing.sampleRate = 8.0;
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 4, timing, voice);
     const auto& fft = findNodeAudio(result, "fft");
+    const auto& wave = samples(findNodeAudio(result, "wave").output);
 
     REQUIRE(fft.outputs.size() == 2);
     REQUIRE(fft.outputs[0].first == "mag");
@@ -811,10 +1427,11 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     REQUIRE(fft.outputs[1].first == "phase");
     REQUIRE(fft.outputs[1].second.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(fft.outputs[1].second.traversalGrid.isValid());
-    REQUIRE(samples(result.output)[0] == Catch::Approx(0.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[1] == Catch::Approx(1.f / 3.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[2] == Catch::Approx(2.f / 3.f).margin(1.0e-5f));
-    REQUIRE(samples(result.output)[3] == Catch::Approx(1.f).margin(1.0e-5f));
+    REQUIRE(samples(result.output).size() == wave.size());
+    for (size_t index = 0; index < wave.size(); ++index) {
+        REQUIRE(samples(result.output)[index]
+                == Catch::Approx(wave[index]).margin(1.0e-5f));
+    }
 }
 
 TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
@@ -1136,7 +1753,13 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
 
     REQUIRE(first.isValid());
     REQUIRE(second.isValid());
-    REQUIRE(second.payload->block.samples == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+    REQUIRE(second.payload->block.samples.size() == 4);
+    REQUIRE(std::any_of(
+            second.payload->block.samples.begin(),
+            second.payload->block.samples.end(),
+            [](float sample) {
+                return std::abs(sample) > 1.0e-5f;
+            }));
 }
 
 TEST_CASE("Prepared graph audio processing performs no allocations or locks",

@@ -10,6 +10,7 @@
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
+#include "../src/Nodes/Unison/UnisonNode.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/EnvelopePurposeSelector.h"
@@ -332,6 +333,53 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     host.bind(nullptr, {});
     REQUIRE_FALSE(host.hasEditor());
     REQUIRE(stats.destructions == 2);
+}
+
+TEST_CASE("Unison editor exposes structured individual voice state",
+        "[cycle-v2][editor][unison][individual]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node unison = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+    for (auto& parameter : unison.parameters) {
+        if (parameter.id == "mode") {
+            parameter.value = "individual";
+        }
+    }
+    unison.model = UnisonNodeModelState::create({
+            { 0.25f, 0.f, 0.1f },
+            { 0.75f, 1.f, 0.6f }
+    }, 2);
+
+    REQUIRE(host.bind(&unison, { 0, 0, 420, 600 }));
+    DynamicObject automation;
+    host.appendAutomationState(automation);
+    const auto* effect = automation.getProperty("effectParameters")
+            .getDynamicObject();
+    REQUIRE(effect != nullptr);
+    REQUIRE(effect->getProperty("mode").toString() == "individual");
+    REQUIRE((int) effect->getProperty("voiceCount") == 2);
+    REQUIRE((int) effect->getProperty("selectedVoice") == 0);
+}
+
+TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
+        "[cycle-v2][editor][unison][layout]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node unison = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
+
+    REQUIRE(host.bind(&unison, { 0, 0, 520, 520 }));
+    Component* jitter = host.component()->findChildWithID("unison.jitter.slider");
+    REQUIRE(jitter != nullptr);
+    REQUIRE(jitter->isVisible());
+    REQUIRE(jitter->getBottom() <= host.component()->getHeight() - 18);
 }
 
 TEST_CASE("Canvas automation inspection is semantic and side effect free",
@@ -743,6 +791,45 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
             });
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
+    REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Node editor command service publishes model edits as one transaction",
+        "[cycle-v2][editor][model]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Unison, "unison", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    commands.beginNodeModelEdit();
+    REQUIRE(commands.publishNodeModel(
+            "unison",
+            UnisonNodeModelState::create({ {}, {} }, 2)));
+    REQUIRE(commands.publishNodeModel(
+            "unison",
+            UnisonNodeModelState::create({ {}, {}, {} }, 3)));
+    commands.endNodeModelEdit();
+
+    const auto current = std::dynamic_pointer_cast<const UnisonNodeModelState>(
+            document.graph().findNode("unison")->model);
+    REQUIRE(current != nullptr);
+    REQUIRE(current->voices().size() == 3);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    const auto restored = std::dynamic_pointer_cast<const UnisonNodeModelState>(
+            document.graph().findNode("unison")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->voices().size() == 1);
     REQUIRE_FALSE(document.canUndo());
 }
 

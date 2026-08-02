@@ -18,6 +18,21 @@ struct UnisonGroupConfiguration {
     bool enabled { true };
 };
 
+struct UnisonIndividualConfiguration {
+    int order { 1 };
+    float detuneWidthCents { maximumUnisonDetuneCents * 0.5f };
+    std::array<float, maximumUnisonOrder> detunePositions {
+            0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f, 0.5f, 0.5f
+    };
+    std::array<float, maximumUnisonOrder> pans {
+            0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
+            0.5f, 0.5f, 0.5f, 0.5f, 0.5f
+    };
+    std::array<float, maximumUnisonOrder> phaseCycles {};
+    bool enabled { true };
+};
+
 struct UnisonVoice {
     float detunePosition { 0.5f };
     float detuneCents {};
@@ -53,6 +68,8 @@ public:
     static float voiceLevelScale(int order);
 
     static UnisonVoiceLayout makeGroupLayout(const UnisonGroupConfiguration& configuration);
+    static UnisonVoiceLayout makeIndividualLayout(
+            const UnisonIndividualConfiguration& configuration);
     static UnisonPhaseTrajectory phaseTrajectory(
             int midiNote,
             float detuneCents,

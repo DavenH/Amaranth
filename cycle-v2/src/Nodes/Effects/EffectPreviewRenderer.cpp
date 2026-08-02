@@ -104,10 +104,21 @@ void paintBeatGrid(
 
 }
 
+Colour unisonLaserColourForPan(float pan) {
+    const Colour leftPan { 0xffff9f43 };
+    const Colour centrePan { 0xffc7c7c7 };
+    const Colour rightPan { 0xffa56cff };
+    const float position = jlimit(0.f, 1.f, pan);
+    if (position <= 0.5f) {
+        return leftPan.interpolatedWith(centrePan, position * 2.f);
+    }
+    return centrePan.interpolatedWith(rightPan, position * 2.f - 1.f);
+}
+
 std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
         const Node& node,
         const UnisonPreviewContext& context) {
-    const auto configuration = buildUnisonNodeConfiguration(node.parameters);
+    const auto configuration = buildUnisonNodeConfiguration(node.parameters, node.model);
     std::vector<UnisonPreviewPath> paths;
     paths.reserve((size_t) configuration->layout.order);
     for (int index = 0; index < configuration->layout.order; ++index) {
@@ -115,6 +126,7 @@ std::vector<UnisonPreviewPath> makeUnisonPreviewPaths(
         paths.push_back({
                 index,
                 voice.detuneCents,
+                voice.pan,
                 context.pitchEnvelopeUnitValues.empty()
                         ? CycleDsp::UnisonCore::phaseSegments(
                                 CycleDsp::UnisonCore::phaseTrajectory(
@@ -157,12 +169,7 @@ void paintUnisonPhasePreview(
     const double duration = jmax(0.000001, context.voiceDurationSeconds);
     const auto paths = makeUnisonPreviewPaths(node, context);
     for (const auto& voice : paths) {
-        const float voiceUnit = paths.size() > 1
-                ? (float) voice.voiceIndex / (float) (paths.size() - 1)
-                : 0.5f;
-        const Colour laser = EffectPlotPalette::accent.interpolatedWith(
-                Colour(0xffffb45e),
-                voiceUnit * 0.42f);
+        const Colour laser = unisonLaserColourForPan(voice.pan);
         Path path;
         for (const auto& segment : voice.segments) {
             const Point<float> start {
