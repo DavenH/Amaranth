@@ -263,10 +263,12 @@ now render one prepared fixed frame and reconstruct it independently through
 the shared clock, composition, phase, mature Hermite resampling, pan, and level
 contracts for every Unison lane. The graph executor owns only the prepared
 oscillator-region interface and does not branch into chained or spectral
-algorithms. Independent oscillator-region materialization and spectral
-latency/tail parity remain open. Lane and rasterizer state reset at the exact
-NoteOn/Reset sample offset, while NoteOff leaves the oscillator running for
-envelope-controlled release. Full audible parity is not yet claimed.
+algorithms. Sibling spectral and time-only oscillators now materialize and fold
+their lanes independently before allocation-free sample-block Add or Multiply.
+Spectral latency/tail parity remains open. Lane and rasterizer state reset at
+the exact NoteOn/Reset sample offset, while NoteOff leaves the oscillator
+running for envelope-controlled release. Full audible parity is not yet
+claimed.
 
 ## Completion Criteria
 

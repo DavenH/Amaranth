@@ -231,6 +231,62 @@ TEST_CASE("Compiler rejects oscillator operations reached by two Voice Contexts"
     REQUIRE(result.compileIssues.front().message.contains("merge"));
 }
 
+TEST_CASE("Compiler materializes sibling spectral and chained oscillator regions before Add",
+        "[cycle-v2][graph][oscillator-region][materialization]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "spectralMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "chainedMesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "spectralMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "spectralMesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "chainedMesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "ifft", "time", false },
+            { "add", "left", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "chainedMesh", "out", false },
+            { "add", "right", true }).succeeded());
+
+    const auto result = GraphCompiler().compile(graph);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.plan.oscillatorRegions.size() == 2);
+    REQUIRE(result.plan.oscillatorRegions[0].strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    REQUIRE(result.plan.oscillatorRegions[0].materializationStepIndex
+            == stepPlanIndex(result.plan, "ifft"));
+    REQUIRE(result.plan.oscillatorRegions[1].strategy
+            == OscillatorExecutionStrategy::ChainedPerLane);
+    REQUIRE(result.plan.oscillatorRegions[1].materializationStepIndex
+            == stepPlanIndex(result.plan, "chainedMesh"));
+    REQUIRE(findStep(result.plan, "add").oscillatorRegionIndex == -1);
+    REQUIRE(findStep(result.plan, "add").executionCoordinate
+            == ExecutionCoordinate::SampleBlock);
+}
+
 TEST_CASE("Voice Context defaults resolve per axis with explicit override precedence",
         "[cycle-v2][graph][voice-context][modulation]") {
     GraphNodeFactory factory;

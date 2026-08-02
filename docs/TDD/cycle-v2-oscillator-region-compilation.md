@@ -48,6 +48,14 @@ Implemented compiler foundation:
   legacy shared-instance mutex on the realtime path. A fixed-frame
   FFT/IFFT identity test proves the recipe consumes the shared mature
   rasterizer output unchanged.
+- cyclic spectral frames now reconstruct independently through the shared
+  clock, phase/composition core, mature Hermite resampler history, pan, and
+  level contracts for every Unison lane. The frame calculation remains shared
+  and is independent of lane count.
+- explicit spectral materialization prevents sibling time-only discovery from
+  crossing back into the spectral region. Mixed spectral and chained siblings
+  therefore prepare as independent regions, fold their own Unison lanes, and
+  meet at ordinary allocation-free sample-block Add or Multiply.
 
 The spectral recipe is a domain executor, not a compatibility copy. Its
 authoritative operations remain `OscillatorLaneRasterizer` for fixed time
@@ -59,10 +67,8 @@ oscillator-region-owned executor; the flat graph processors remain the
 deletion target once every spectral region and preview consumer routes through
 the domain interfaces.
 
-Per-lane cyclic spectral reconstruction, multiple-region materialization and
-block arithmetic, latency compensation, spectral tail handling, and
-placeholder deletion remain open. The prepared frame recipe alone does not
-claim complete oscillator or Unison audio parity.
+Latency compensation, spectral tail declaration, and placeholder deletion
+remain open. Full oscillator and Unison audio parity is not yet claimed.
 
 Depends on:
 

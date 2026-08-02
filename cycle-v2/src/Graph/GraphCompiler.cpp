@@ -759,6 +759,24 @@ bool appendDownstreamRegionOperations(
                     || containsStep(region.stepIndices, destinationIndex)) {
                 continue;
             }
+            const auto& destination = plan.steps[(size_t) destinationIndex];
+            const bool hasMaterializedInput = std::any_of(
+                    destination.inputs.begin(),
+                    destination.inputs.end(),
+                    [&](const GraphStepInput& input) {
+                        const int inputStepIndex = stepIndexFor(
+                                plan,
+                                input.sourceNodeId);
+                        return inputStepIndex >= 0
+                                && !containsStep(
+                                        region.stepIndices,
+                                        inputStepIndex)
+                                && plan.steps[(size_t) inputStepIndex].executionTrait
+                                        == NodeExecutionTrait::OscillatorMaterializer;
+                    });
+            if (hasMaterializedInput) {
+                continue;
+            }
             if (assigned[(size_t) destinationIndex]) {
                 issues.push_back({
                         GraphCompileCode::AmbiguousVoiceContext,
@@ -787,7 +805,9 @@ void appendUpstreamRegionOperations(
                     || sourceIndex < 0
                     || !containsStep(region.stepIndices, destinationIndex)
                     || containsStep(region.stepIndices, sourceIndex)
-                    || !regionOperation(plan.steps[(size_t) sourceIndex].executionTrait)) {
+                    || !regionOperation(plan.steps[(size_t) sourceIndex].executionTrait)
+                    || plan.steps[(size_t) sourceIndex].executionTrait
+                            == NodeExecutionTrait::OscillatorMaterializer) {
                 continue;
             }
             const String sourceContext = directVoiceContext(plan.steps[(size_t) sourceIndex]);

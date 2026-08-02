@@ -124,6 +124,10 @@ public:
 
     AudioModuleRole role() const override { return processorRole; }
 
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        processor.prepare(spec.maximumFrameCount);
+    }
+
     void process(AudioProcessContext& context) override {
         auto output = makeOutputPayload(context, 0);
         SignalPayload* left = inputAt(context, 0);

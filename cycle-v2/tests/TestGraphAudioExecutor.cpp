@@ -601,6 +601,143 @@ TEST_CASE("Graph executor reconstructs and folds a shared spectral Unison frame"
             }));
 }
 
+TEST_CASE("Independent oscillator regions fold Unison lanes before block arithmetic",
+        "[cycle-v2][runtime][oscillator-region][materialization][unison][graph][realtime]") {
+    const auto makeGraph = [](bool includeSpectral, bool includeChained, NodeKind operationKind) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+        setNodeParameter(unison, "order", "3");
+        setNodeParameter(unison, "width", "12");
+        setNodeParameter(unison, "panSpread", "1");
+        graph.addNode(std::move(unison));
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "unison", "unison", false },
+                { "voice", "unison", true }).succeeded());
+
+        if (includeSpectral) {
+            graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "spectralMesh", {}));
+            graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+            graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "voice", "context", false },
+                    { "spectralMesh", "context", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "spectralMesh", "out", false },
+                    { "fft", "time", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "fft", "mag", false },
+                    { "ifft", "mag", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "fft", "phase", false },
+                    { "ifft", "phase", true }).succeeded());
+        }
+        if (includeChained) {
+            graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "chainedMesh", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "voice", "context", false },
+                    { "chainedMesh", "context", true }).succeeded());
+        }
+
+        if (includeSpectral && includeChained) {
+            graph.addNode(factory.createNode(operationKind, "operation", {}));
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "ifft", "time", false },
+                    { "operation", "left", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "chainedMesh", "out", false },
+                    { "operation", "right", true }).succeeded());
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "operation", "out", false },
+                    { "output", "time", true }).succeeded());
+        } else {
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { includeSpectral ? "ifft" : "chainedMesh",
+                            includeSpectral ? "time" : "out",
+                            false },
+                    { "output", "time", true }).succeeded());
+        }
+        return graph;
+    };
+
+    const auto spectral = GraphCompiler().compile(
+            makeGraph(true, false, NodeKind::Add));
+    const auto chained = GraphCompiler().compile(
+            makeGraph(false, true, NodeKind::Add));
+    const auto added = GraphCompiler().compile(
+            makeGraph(true, true, NodeKind::Add));
+    const auto multiplied = GraphCompiler().compile(
+            makeGraph(true, true, NodeKind::Multiply));
+    REQUIRE(spectral.succeeded());
+    REQUIRE(chained.succeeded());
+    REQUIRE(added.succeeded());
+    REQUIRE(multiplied.succeeded());
+    REQUIRE(added.plan.oscillatorRegions.size() == 2);
+    REQUIRE(multiplied.plan.oscillatorRegions.size() == 2);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    const auto render = [&](const GraphExecutionPlan& plan, bool countAllocations) {
+        GraphAudioExecutor executor;
+        executor.prepareExecution(plan, spec);
+        AudioVoiceContext noteOn;
+        noteOn.controls.noteNumber = 60;
+        noteOn.controls.velocity = 1.f;
+        noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        GraphAudioOutputView output;
+        size_t allocations {};
+        {
+            ScopedRealtimeAllocationCount allocationCount;
+            output = executor.processRealtime(plan, 256, {}, noteOn);
+            allocations = allocationCount.count();
+        }
+        REQUIRE(output.isValid());
+        if (countAllocations) {
+            REQUIRE(allocations == 0);
+        }
+        return std::vector<float>(
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+    };
+
+    const auto spectralSamples = render(spectral.plan, false);
+    auto chainedSamples = render(chained.plan, false);
+    auto expected = spectralSamples;
+    Buffer<float>(expected.data(), (int) expected.size()).add({
+            chainedSamples.data(),
+            (int) chainedSamples.size()
+    });
+    auto actual = render(added.plan, true);
+    REQUIRE(Buffer<float>(actual.data(), (int) actual.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+
+    expected = spectralSamples;
+    Buffer<float>(expected.data(), (int) expected.size()).mul({
+            chainedSamples.data(),
+            (int) chainedSamples.size()
+    });
+    actual = render(multiplied.plan, true);
+    REQUIRE(Buffer<float>(actual.data(), (int) actual.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+}
+
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;
