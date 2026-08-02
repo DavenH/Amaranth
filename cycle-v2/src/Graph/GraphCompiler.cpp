@@ -814,6 +814,31 @@ bool hasSpectralExecution(
             });
 }
 
+int terminalRegionStep(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region,
+        int fallbackStep) {
+    int terminalStep = -1;
+    for (const int stepIndex : region.stepIndices) {
+        const auto& step = plan.steps[(size_t) stepIndex];
+        const bool hasRegionConsumer = std::any_of(
+                plan.signalEdges.begin(),
+                plan.signalEdges.end(),
+                [&](const Edge& edge) {
+                    return edge.sourceNodeId == step.nodeId
+                            && containsStep(region.stepIndices, stepIndexFor(plan, edge.destNodeId));
+                });
+        if (hasRegionConsumer) {
+            continue;
+        }
+        if (terminalStep >= 0) {
+            return fallbackStep;
+        }
+        terminalStep = stepIndex;
+    }
+    return terminalStep >= 0 ? terminalStep : fallbackStep;
+}
+
 void assignOscillatorRegion(
         GraphExecutionPlan& plan,
         int rootIndex,
@@ -824,7 +849,7 @@ void assignOscillatorRegion(
     region.strategy = spectral
             ? OscillatorExecutionStrategy::SharedSpectralFrame
             : OscillatorExecutionStrategy::ChainedPerLane;
-    region.materializationStepIndex = rootIndex;
+    region.materializationStepIndex = terminalRegionStep(plan, region, rootIndex);
     const int regionIndex = (int) plan.oscillatorRegions.size();
 
     for (const int stepIndex : region.stepIndices) {

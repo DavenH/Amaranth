@@ -92,6 +92,7 @@ set(GRAPH_SOURCES
 
 set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/BasicNodeAudioProcessors.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRecipeRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ChainedOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"

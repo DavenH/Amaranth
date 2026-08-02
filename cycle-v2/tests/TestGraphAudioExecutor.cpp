@@ -348,6 +348,110 @@ TEST_CASE("Graph executor audibly renders and folds a chained Trimesh Unison reg
             }));
 }
 
+TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison lanes",
+        "[cycle-v2][runtime][oscillator-region][unison][trimesh][graph]") {
+    const auto makeGraph = [](bool addSecondMesh, NodeKind binaryKind, int order) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        Node unison = factory.createNode(NodeKind::Unison, "unison", {});
+        setNodeParameter(unison, "order", String(order));
+        setNodeParameter(unison, "width", "12");
+        graph.addNode(std::move(unison));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "firstMesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "unison", "unison", false },
+                { "voice", "unison", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "voice", "context", false },
+                { "firstMesh", "context", true }).succeeded());
+        if (!addSecondMesh) {
+            REQUIRE(GraphEditor().connect(
+                    graph,
+                    { "firstMesh", "out", false },
+                    { "output", "time", true }).succeeded());
+            return graph;
+        }
+
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "secondMesh", {}));
+        graph.addNode(factory.createNode(binaryKind, "operation", {}));
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "voice", "context", false },
+                { "secondMesh", "context", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "firstMesh", "out", false },
+                { "operation", "left", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "secondMesh", "out", false },
+                { "operation", "right", true }).succeeded());
+        REQUIRE(GraphEditor().connect(
+                graph,
+                { "operation", "out", false },
+                { "output", "time", true }).succeeded());
+        return graph;
+    };
+
+    const auto single = GraphCompiler().compile(makeGraph(false, NodeKind::Add, 3));
+    const auto combined = GraphCompiler().compile(makeGraph(true, NodeKind::Add, 3));
+    REQUIRE(single.succeeded());
+    REQUIRE(combined.succeeded());
+    REQUIRE(combined.plan.oscillatorRegions.size() == 1);
+    REQUIRE(combined.plan.oscillatorRegions.front().stepIndices.size() == 3);
+    REQUIRE(combined.plan.steps[(size_t) combined.plan.oscillatorRegions.front()
+                    .materializationStepIndex].nodeId == "operation");
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    const auto render = [&](const GraphExecutionPlan& plan) {
+        GraphAudioExecutor executor;
+        executor.prepareExecution(plan, spec);
+        AudioVoiceContext noteOn;
+        noteOn.controls.noteNumber = 60;
+        noteOn.controls.velocity = 1.f;
+        noteOn.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+        GraphAudioOutputView output;
+        size_t allocations {};
+        {
+            ScopedRealtimeAllocationCount allocationCount;
+            output = executor.processRealtime(plan, 256, {}, noteOn);
+            allocations = allocationCount.count();
+        }
+        REQUIRE(output.isValid());
+        REQUIRE(allocations == 0);
+        return std::vector<float>(
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+    };
+
+    std::vector<float> expected = render(single.plan);
+    const std::vector<float> actual = render(combined.plan);
+    Buffer<float>(expected.data(), (int) expected.size()).mul(2.f);
+    std::vector<float> actualCopy = actual;
+    REQUIRE(Buffer<float>(actualCopy.data(), (int) actualCopy.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+
+    const auto oneLane = GraphCompiler().compile(makeGraph(false, NodeKind::Multiply, 1));
+    const auto multiplied = GraphCompiler().compile(makeGraph(true, NodeKind::Multiply, 1));
+    REQUIRE(oneLane.succeeded());
+    REQUIRE(multiplied.succeeded());
+    expected = render(oneLane.plan);
+    Buffer<float>(expected.data(), (int) expected.size()).sqr();
+    actualCopy = render(multiplied.plan);
+    REQUIRE(Buffer<float>(actualCopy.data(), (int) actualCopy.size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-5f);
+}
+
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
     GraphNodeFactory factory;
     NodeGraph graph;

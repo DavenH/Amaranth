@@ -25,11 +25,17 @@ Implemented compiler foundation:
   thread and executes through the mature shared `VoiceRasterizer` transition;
   its graph-runtime lowering performs no topology search or allocation and
   preserves contiguous output across arbitrary block partitions.
+- prepared chained recipes now route multiple Trimesh cycle fields through
+  vectorized Add and Multiply operations before the region's Unison lanes are
+  folded. The compiler publishes the unique terminal cycle operation as the
+  time-only materialization boundary, and the prepared recipe converts graph
+  step references into compact operation-buffer indices off the realtime
+  thread.
 
-Multi-operation time regions, the shared spectral strategy, multiple-region
-materialization and block arithmetic, latency compensation, lifecycle
-segmentation, and placeholder deletion remain open. The direct Trimesh slice
-does not claim complete oscillator or Unison audio parity by itself.
+The shared spectral strategy, multiple-region materialization and block
+arithmetic, latency compensation, lifecycle segmentation, and placeholder
+deletion remain open. The chained implementation does not claim complete
+oscillator or Unison audio parity by itself.
 
 Depends on:
 

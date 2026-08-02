@@ -135,7 +135,7 @@ private:
     struct PreparedVoice {
         struct OscillatorRegion {
             int planRegionIndex { -1 };
-            uint64_t configurationRevision {};
+            std::vector<uint64_t> configurationRevisions;
             std::vector<float> pitchEnvelopeUnitValues;
             ChainedOscillatorRegionRuntime runtime;
             std::unique_ptr<OscillatorCycleRenderer> renderer;

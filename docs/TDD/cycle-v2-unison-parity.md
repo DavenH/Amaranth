@@ -251,7 +251,8 @@ been extracted into shared Cycle DSP primitives consumed by Cycle 1. The first
 complete runtime lowering executes a direct time-only Trimesh region through
 the mature rasterizer independently for every configured lane, preserves
 split-block continuity and low-note cycle capacity, and folds the result with
-the shared pan and level contracts. Multi-operation time regions, shared
+the shared pan and level contracts. Multi-operation Trimesh recipes also apply
+vectorized Add and Multiply in cycle coordinates before lane folding. Shared
 spectral-frame reconstruction, independent oscillator-region materialization,
 and lifecycle/latency parity remain open, so full audible parity is not yet
 claimed.
