@@ -18,10 +18,14 @@ Implemented compiler foundation:
 - the Cycle 1 fractional lane clock and chained `VoiceRasterizer` priming,
   sampling, and spillover transition are shared Cycle DSP primitives consumed
   by the Cycle 1 time-only renderer.
+- a prepared Cycle V2 chained-region runtime owns bounded per-lane clocks and
+  cycle buffers, preserves split-block continuity, and folds lanes with the
+  shared Cycle 1 pan and level contracts.
 
-Cycle V2 prepared lane ownership, region execution, materialization, latency
-compensation, and placeholder deletion remain open. The current plan metadata
-and shared primitives do not claim audio parity by themselves.
+Cycle V2 graph-region execution, mature Trimesh rendering through that prepared
+runtime, materialization, latency compensation, and placeholder deletion remain
+open. The current plan metadata and prepared primitives do not claim audio
+parity by themselves.
 
 Depends on:
 

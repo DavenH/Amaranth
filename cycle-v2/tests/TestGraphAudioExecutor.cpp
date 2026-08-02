@@ -8,12 +8,14 @@
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdlib>
 #include <new>
@@ -136,6 +138,17 @@ public:
     bool preparedCollections {};
 };
 
+class RealtimeCycleRenderer final : public OscillatorCycleRenderer {
+public:
+    void renderCycle(
+            const ChainedCycleRenderRequest&,
+            Buffer<float> left,
+            Buffer<float> right) override {
+        left.set(0.25f);
+        right.set(0.25f);
+    }
+};
+
 const NodeAudioResult& findNodeAudio(const GraphAudioResult& result, const String& nodeId) {
     const auto found = std::find_if(
             result.nodes.begin(),
@@ -192,6 +205,30 @@ var sawtoothMeshTopology() {
     return topology;
 }
 
+}
+
+TEST_CASE("Prepared chained oscillator runtime performs no realtime allocation",
+        "[cycle-v2][runtime][oscillator-region][realtime]") {
+    CycleDsp::UnisonGroupConfiguration configuration;
+    configuration.order = CycleDsp::maximumUnisonOrder;
+    const auto layout = CycleDsp::UnisonCore::makeGroupLayout(configuration);
+    ChainedOscillatorRegionRuntime runtime;
+    REQUIRE(runtime.prepare(128, 2048, 44100.0, layout));
+    std::array<float, 128> left {};
+    std::array<float, 128> right {};
+    RealtimeCycleRenderer renderer;
+
+    size_t allocations {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        REQUIRE(runtime.process(
+                60, 1.f, {},
+                Buffer<float>(left.data(), (int) left.size()),
+                Buffer<float>(right.data(), (int) right.size()),
+                renderer));
+        allocations = allocationCount.count();
+    }
+    REQUIRE(allocations == 0);
 }
 
 TEST_CASE("Graph audio executor renders source through envelope multiply to output", "[cycle-v2][runtime]") {
