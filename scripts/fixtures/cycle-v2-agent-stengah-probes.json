@@ -1,0 +1,32 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.connected",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.1.connected",
+      "equals": true
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-stengah-probes.png"
+    }
+  ]
+}

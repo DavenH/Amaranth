@@ -220,12 +220,18 @@ std::vector<float> mappedSurface(
         return surface;
     }
 
-    if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
+    if (meshSurface && (preview.domain == PortDomain::SpectralMagnitudeSignal
+            || preview.domain == PortDomain::SpectralPhaseSignal)) {
+        surface = SpectralPreviewMapping::frequencySurface(
+                surface,
+                preview.gridColumns,
+                preview.gridRows);
+    } else if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
         return SpectralPreviewMapping::magnitudeSurface(
                 surface,
                 preview.gridColumns,
-                preview.gridRows,
-                preview.role == PreviewModuleRole::ReverbSpectrogram ? 50.f : 500.f);
+                preview.gridRows);
     } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
         unwrapPhase(surface, preview.gridColumns, preview.gridRows);
         return SpectralPreviewMapping::phaseSurface(
@@ -235,8 +241,21 @@ std::vector<float> mappedSurface(
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
-    if (preview.domain == PortDomain::TimeSignal) {
+    if (meshSurface) {
         buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+    } else if (preview.domain == PortDomain::TimeSignal) {
+        float minimum {};
+        float maximum {};
+        int minimumIndex {};
+        int maximumIndex {};
+        buffer.getMin(minimum, minimumIndex);
+        buffer.getMax(maximum, maximumIndex);
+        const float peak = jmax(-minimum, maximum);
+        if (peak > 0.f) {
+            buffer.mul(0.48f / peak).add(0.5f).clip(0.f, 1.f);
+        } else {
+            buffer.set(0.5f);
+        }
     } else {
         buffer.clip(0.f, 1.f);
     }
@@ -565,14 +584,15 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
-    if (paintAuthoritativeModel(graphics, request)) {
+    if (request.runtimeResult != nullptr
+            && (request.runtimeResult->role == PreviewModuleRole::SignalSpy
+                    || request.runtimeResult->role == PreviewModuleRole::MeshSurface)
+            && request.cache
+            && paintCachedHeatmap(graphics, request)) {
         return;
     }
 
-    if (request.runtimeResult != nullptr
-            && request.runtimeResult->role == PreviewModuleRole::SignalSpy
-            && request.cache
-            && paintCachedHeatmap(graphics, request)) {
+    if (paintAuthoritativeModel(graphics, request)) {
         return;
     }
 
@@ -676,7 +696,8 @@ bool NodePreviewRenderer::paintRuntimeResult(
         return true;
     }
 
-    if (result.role == PreviewModuleRole::SignalSpy) {
+    if (result.role == PreviewModuleRole::SignalSpy
+            || result.role == PreviewModuleRole::MeshSurface) {
         return drawHeatmap(graphics, request.area, result);
     }
 

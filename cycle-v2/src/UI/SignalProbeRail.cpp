@@ -393,9 +393,12 @@ void SignalProbeRail::paintRail(
         Node displayNode;
         displayNode.id = "probe-preview-" + probe.id;
         displayNode.kind = NodeKind::GenericProcessor;
+        const PreviewModuleRole displayRole = preview->sourceRole == PreviewModuleRole::MeshSurface
+                ? PreviewModuleRole::MeshSurface
+                : PreviewModuleRole::SignalSpy;
         NodePreviewResult result {
                 displayNode.id,
-                PreviewModuleRole::SignalSpy,
+                displayRole,
                 preview->values,
                 {},
                 preview->gridColumns,

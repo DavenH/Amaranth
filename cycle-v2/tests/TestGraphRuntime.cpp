@@ -4,6 +4,7 @@
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/GraphSerializer.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphRuntime.h"
 
@@ -22,6 +23,20 @@ const RuntimeNodeTrace& findTraceNode(const RuntimeProcessTrace& trace, const St
             });
 
     REQUIRE(found != trace.nodes.end());
+    return *found;
+}
+
+const GraphPreviewResult::SignalProbePreview& findProbePreview(
+        const GraphPreviewResult& result,
+        const String& probeId) {
+    const auto found = std::find_if(
+            result.probes.begin(),
+            result.probes.end(),
+            [&](const auto& preview) {
+                return preview.probeId == probeId;
+            });
+
+    REQUIRE(found != result.probes.end());
     return *found;
 }
 
@@ -193,4 +208,54 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes.size() == 2);
     REQUIRE(presentation.previewResult().probes[0].connected);
     REQUIRE(presentation.previewResult().probes[1].connected);
+}
+
+TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits",
+        "[cycle-v2][runtime][probe][causal][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    GraphDocument document(GraphSerializer().fromJsonString(preset.loadFileAsString()));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
+
+    const Node* waveshaper = document.graph().findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    const auto currentPre = std::find_if(
+            waveshaper->parameters.begin(),
+            waveshaper->parameters.end(),
+            [](const auto& parameter) { return parameter.id == "pre"; });
+    REQUIRE(currentPre != waveshaper->parameters.end());
+    const String editedPre = currentPre->value == "0.5" ? "0.6" : "0.5";
+    const auto edit = commands.setNodeParameter(
+            "waveshaper", "pre", "Pre", editedPre);
+    REQUIRE(edit.succeeded());
+    REQUIRE(edit.changed);
+
+    bool completed {};
+    presentation.refreshAsync(
+            document.graph(),
+            document.revision(),
+            document.lastChange(),
+            [&] { completed = true; });
+    for (int attempt = 0; attempt < 200 && !completed; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(10);
+    }
+
+    REQUIRE(completed);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

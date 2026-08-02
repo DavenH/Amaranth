@@ -16,23 +16,29 @@ std::vector<float> rowsWithoutDc(
         const std::vector<float>& source,
         size_t columns,
         size_t rows,
-        float frequencyTension) {
+        float frequencyTensionScale) {
     if (columns == 0 || rows < 2 || source.size() < columns * rows) {
         return source;
     }
 
     std::vector<float> surface(source.size());
     std::vector<float> sourceRows(rows);
-    Buffer<float> sourceRowPositions(sourceRows.data(), (int) sourceRows.size());
-    sourceRowPositions.ramp(0.f, 1.f / (float) (rows - 1));
-    Arithmetic::applyInvLogMapping(sourceRowPositions, frequencyTension);
-    sourceRowPositions.mul((float) (rows - 2)).add(1.f);
+    const float frequencyTension = (float) rows * frequencyTensionScale;
+    for (size_t row = 0; row < rows; ++row) {
+        const float unit = (float) row / (float) (rows - 1);
+        const float sourceUnit = Arithmetic::invLogMapping(
+                frequencyTension,
+                unit,
+                true);
+        sourceRows[row] = jlimit(1.f, (float) (rows - 1),
+                1.f + sourceUnit * (float) (rows - 2));
+    }
 
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
 
         for (size_t row = 0; row < rows; ++row) {
-            const float position = jlimit(1.f, (float) (rows - 1), sourceRows[row]);
+            const float position = sourceRows[row];
             const size_t rowA = (size_t) position;
             const size_t rowB = std::min(rowA + 1, rows - 1);
             const float amount = position - (float) rowA;
@@ -47,16 +53,24 @@ std::vector<float> rowsWithoutDc(
 
 }
 
+std::vector<float> frequencySurface(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows,
+        float frequencyTensionScale) {
+    return rowsWithoutDc(source, columns, rows, frequencyTensionScale);
+}
+
 std::vector<float> magnitudeSurface(
         const std::vector<float>& source,
         size_t columns,
         size_t rows,
-        float frequencyTension) {
+        float frequencyTensionScale) {
     std::vector<float> surface = rowsWithoutDc(
             source,
             columns,
             rows,
-            frequencyTension);
+            frequencyTensionScale);
 
     if (!surface.empty()) {
         Buffer<float>(surface.data(), (int) surface.size())
@@ -75,7 +89,7 @@ std::vector<float> phaseSurface(
         const std::vector<float>& source,
         size_t columns,
         size_t rows) {
-    std::vector<float> surface = rowsWithoutDc(source, columns, rows, 500.f);
+    std::vector<float> surface = rowsWithoutDc(source, columns, rows, 0.5f);
     if (surface.empty()) {
         return surface;
     }

@@ -270,6 +270,7 @@ void appendProbePreviews(
     for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
         const auto& probe = probes[probeIndex];
         const SignalPayload* payload {};
+        GraphPreviewResult::SignalProbePreview preview;
         if (probeIndex < plan.signalProbes.size()) {
             const auto& address = plan.signalProbes[probeIndex];
             if (address.probeId == probe.id
@@ -280,11 +281,12 @@ void appendProbePreviews(
                         && address.sourceOutputIndex >= 0
                         && static_cast<size_t>(address.sourceOutputIndex) < node->outputs.size()) {
                     payload = &node->outputs[static_cast<size_t>(address.sourceOutputIndex)].second;
+                    preview.sourceRole = plan.steps[
+                            static_cast<size_t>(address.sourceStepIndex)].previewRole;
                 }
             }
         }
         const bool connected = payload != nullptr && payload->traversalGrid.isValid();
-        GraphPreviewResult::SignalProbePreview preview;
         preview.probeId = probe.id;
         preview.connected = connected;
         if (connected) {
@@ -359,8 +361,8 @@ void GraphPreviewExecutor::renderIncremental(
         GraphPreviewResult& result) const {
     std::vector<uint8_t> dirtyMask(plan.steps.size());
     for (const auto& nodeId : dirtyNodeIds) {
-        const auto found = plan.dependencyIndex.nodeIndexById.find(nodeId);
-        if (found != plan.dependencyIndex.nodeIndexById.end()) {
+        const auto found = plan.dependencyIndex.stepIndexById.find(nodeId);
+        if (found != plan.dependencyIndex.stepIndexById.end()) {
             dirtyMask[static_cast<size_t>(found->second)] = 1;
         }
     }

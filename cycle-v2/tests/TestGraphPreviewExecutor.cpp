@@ -225,8 +225,8 @@ TEST_CASE("Trimesh preview reuses a compatible captured traversal", "[cycle-v2][
 
     const auto distinctResolution = GraphPreviewExecutor().render(
             compileResult.plan, audio, 12);
-    REQUIRE(distinctResolution.reusedCapturedTraversalCount == 0);
-    REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 12);
+    REQUIRE(distinctResolution.reusedCapturedTraversalCount == 1);
+    REQUIRE(findPreview(distinctResolution, "mesh").gridRows == 16);
 }
 
 TEST_CASE("Graph preview executor updates mesh spy traversal grids from typed edits", "[cycle-v2][runtime]") {
@@ -355,6 +355,67 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
     REQUIRE(addSpy.gridColumns == addMag.traversalGrid.columns);
     REQUIRE(addSpy.gridRows == addMag.traversalGrid.rows);
     REQUIRE(absoluteDifferenceSum(addSpy.values, addMag.traversalGrid.values) < 1.0e-5f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah spies render the exact output selected by each probe",
+        "[cycle-v2][runtime][probe][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "regressionMagnitude", "magnitudeLayer1", "out", {}, {}, "Magnitude", 0.5f, 2 });
+    graph.addSignalProbe({
+            "regressionIfft", "ifft", "time", {}, {}, "IFFT", 0.5f, 3 });
+    graph.addSignalProbe({
+            "regressionVolume", "volumeMultiply", "out", {}, {}, "Volume", 0.5f, 4 });
+    graph.addSignalProbe({
+            "regressionPhaseOp", "phaseOp2", "out", {}, {}, "Phase Op", 0.5f, 5 });
+    graph.addSignalProbe({
+            "regressionPhaseMesh", "phaseLayer2", "out", {}, {}, "Phase Mesh", 0.5f, 6 });
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
+    const auto result = GraphPreviewExecutor().render(
+            compileResult.plan,
+            audio,
+            graph.getSignalProbes(),
+            40);
+
+    REQUIRE(result.probes.size() == graph.getSignalProbes().size());
+    for (size_t probeIndex = 0; probeIndex < result.probes.size(); ++probeIndex) {
+        const auto& authoredProbe = graph.getSignalProbes()[probeIndex];
+        const auto& probe = result.probes[probeIndex];
+        const auto& expected = outputForPort(
+                findAudio(audio, authoredProbe.sourceNodeId),
+                authoredProbe.sourcePortId);
+        INFO("probe id: " << probe.probeId);
+        INFO("source: " << authoredProbe.sourceNodeId << "." << authoredProbe.sourcePortId);
+        const auto& compiledProbe = compileResult.plan.signalProbes[probeIndex];
+        INFO("compiled source: "
+                << compileResult.plan.steps[static_cast<size_t>(compiledProbe.sourceStepIndex)].nodeId
+                << " output index " << compiledProbe.sourceOutputIndex);
+        REQUIRE(expected.traversalGrid.isValid());
+        REQUIRE(probe.connected);
+        REQUIRE(probe.domain == expected.traversalGrid.metadata.valueDomain);
+        const bool matchesExpectedOutput = probe.values == expected.traversalGrid.values;
+        REQUIRE(matchesExpectedOutput);
+        if (probe.sourceRole == PreviewModuleRole::MeshSurface) {
+            const auto& sourcePreview = findPreview(result, authoredProbe.sourceNodeId);
+            REQUIRE(sourcePreview.primary == probe.values);
+            REQUIRE(sourcePreview.gridColumns == probe.gridColumns);
+            REQUIRE(sourcePreview.gridRows == probe.gridRows);
+        }
+        REQUIRE(absoluteSum(probe.values) > 0.01f);
+    }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

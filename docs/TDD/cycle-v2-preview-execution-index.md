@@ -44,6 +44,9 @@ owner and is not copied merely to propagate its address downstream.
 
 - `GraphCompiler` resolves every input to stable source-step and source-output
   indices alongside its buffer address.
+- Authored-topology indices and executable-step indices are distinct. Dependency
+  traversal retains configuration-only nodes, while audio, preview, and probe
+  addresses use the executable-step index.
 - `GraphPreviewExecutor` indexes captured audio results once, then resolves
   preview and audio inputs by compiled indices without node or port scans.
 - An indexed workspace propagates `PreviewResultView` aliases through
@@ -53,3 +56,14 @@ owner and is not copied merely to propagate its address downstream.
 - Address and alias counters enforce linear scaling through `8/16/32`-node
   previewless chains; existing spy, fan-out, and graph fixtures retain their
   semantic output checks.
+- The Stengah regression checks each probe payload against the exact output it
+  names, including sources after omitted configuration-only topology nodes.
+- Time-domain spy heatmaps auto-level their captured grid so valid low-amplitude
+  signals remain visibly distinct instead of collapsing into a flat midline
+  colour.
+- Trimesh tiles and spies now render the same captured traversal grid through
+  the same domain mapping. Spectral spies apply only the display-axis frequency
+  transform on top of that shared mesh mapping.
+- Frequency rows reuse Cycle's established Spectrum sampler: DC is omitted,
+  tension scales with row count, the low-frequency display offset is retained,
+  and fractional source rows are linearly interpolated.

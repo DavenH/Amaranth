@@ -105,8 +105,7 @@ public:
 private:
     bool reuseCapturedTraversal(PreviewProcessContext& context) const {
         if (context.capturedOutput == nullptr
-                || !context.capturedOutput->traversalGrid.isValid()
-                || context.capturedOutput->traversalGrid.rows != context.pointCount) {
+                || !context.capturedOutput->traversalGrid.isValid()) {
             return false;
         }
 
@@ -114,7 +113,6 @@ private:
         const auto& samples = context.capturedOutput->block.samples;
         context.primary.assign(grid.begin(), grid.end());
         context.secondary.assign(samples.begin(), samples.end());
-        normalizeBipolarValues(context.primary);
         normalizeBipolarValues(context.secondary);
         context.gridColumns = context.capturedOutput->traversalGrid.columns;
         context.gridRows = context.capturedOutput->traversalGrid.rows;
@@ -167,7 +165,6 @@ private:
         context.gridRows = context.pointCount;
 
         for (auto column : columns) {
-            normalizeBipolarValues(column.signal.block.samples);
             context.primary.insert(
                     context.primary.end(),
                     column.signal.block.samples.begin(),

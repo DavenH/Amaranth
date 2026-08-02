@@ -8,6 +8,9 @@
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
 #include "../src/UI/NodePreviewRenderer.h"
+#include "../src/UI/SpectralPreviewMapping.h"
+
+#include <Util/Arithmetic.h>
 
 using namespace CycleV2;
 
@@ -56,6 +59,45 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
     }
 
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
+}
+
+TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
+        "[cycle-v2][runtime][probe][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::SignalSpy;
+    result.primary = { -0.01f, 0.01f, -0.005f, 0.005f };
+    result.gridColumns = 2;
+    result.gridRows = 2;
+    result.domain = PortDomain::TimeSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+
+    REQUIRE(image.isValid());
+    CHECK(image.getPixelAt(0, 1) != image.getPixelAt(0, 0));
+    CHECK(image.getPixelAt(1, 1) != image.getPixelAt(1, 0));
+}
+
+TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic sampler",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    constexpr size_t rows = 9;
+    std::vector<float> source(rows);
+    Buffer<float>(source.data(), (int) source.size()).ramp(0.f, 1.f);
+
+    const auto mapped = SpectralPreviewMapping::frequencySurface(source, 1, rows);
+
+    REQUIRE(mapped.size() == source.size());
+    for (size_t row = 0; row < rows; ++row) {
+        const float unit = (float) row / (float) (rows - 1);
+        const float sourceUnit = Arithmetic::invLogMapping(
+                (float) rows * 0.5f,
+                unit,
+                true);
+        const float sourcePosition = jlimit(
+                1.f,
+                (float) (rows - 1),
+                1.f + sourceUnit * (float) (rows - 2));
+        CHECK(mapped[row] == Catch::Approx(sourcePosition));
+    }
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",
@@ -442,8 +484,8 @@ TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-
     REQUIRE(mesh.gridColumns == 8);
     REQUIRE(mesh.gridRows == 4);
     REQUIRE(mesh.domain == PortDomain::TimeSignal);
-    REQUIRE(mesh.primary[0] >= 0.f);
-    REQUIRE(mesh.primary[0] <= 1.f);
+    REQUIRE(*std::min_element(mesh.primary.begin(), mesh.primary.end()) >= -1.f);
+    REQUIRE(*std::max_element(mesh.primary.begin(), mesh.primary.end()) <= 1.f);
 
     PreviewProcessContext image;
     image.pointCount = 4;

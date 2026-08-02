@@ -100,6 +100,7 @@ struct GraphDependencyIndex {
     std::vector<std::vector<int>> dependents;
     std::vector<std::vector<int>> dependencies;
     std::unordered_map<String, int, StringHash> nodeIndexById;
+    std::unordered_map<String, int, StringHash> stepIndexById;
 };
 
 struct CompiledSignalProbe {
