@@ -144,6 +144,23 @@ int latencyCyclesForNode(const Node& node) {
     return parameterValueForNode(node, "mode", "cyclic") == "acyclicCarry" ? 1 : 0;
 }
 
+ExecutionCoordinate coordinateForTrait(NodeExecutionTrait trait) {
+    switch (trait) {
+        case NodeExecutionTrait::ConfigurationOnly:
+            return ExecutionCoordinate::Configuration;
+        case NodeExecutionTrait::CycleGenerator:
+        case NodeExecutionTrait::CoordinateTransform:
+            return ExecutionCoordinate::CycleField;
+        case NodeExecutionTrait::SpectralTransform:
+            return ExecutionCoordinate::SpectralFrame;
+        case NodeExecutionTrait::OscillatorMaterializer:
+        case NodeExecutionTrait::ControlProducer:
+        case NodeExecutionTrait::SampleBlockProcessor:
+            return ExecutionCoordinate::SampleBlock;
+    }
+    return ExecutionCoordinate::SampleBlock;
+}
+
 std::vector<String> buildNodeOrder(
         const NodeGraph& graph,
         std::vector<GraphCompileIssue>& issues) {
@@ -264,6 +281,10 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
         steps.push_back({
                 node.id,
                 node.kind,
+                descriptor.executionTrait,
+                coordinateForTrait(descriptor.executionTrait),
+                RuntimeOwnershipScope::SynthVoice,
+                -1,
                 node.kind == NodeKind::Output,
                 descriptor.audioRole,
                 descriptor.previewRole,
@@ -673,6 +694,195 @@ void compileDefaultModulationInputs(
     }
 }
 
+bool regionOperation(NodeExecutionTrait trait) {
+    return trait == NodeExecutionTrait::CycleGenerator
+            || trait == NodeExecutionTrait::CoordinateTransform
+            || trait == NodeExecutionTrait::SpectralTransform
+            || trait == NodeExecutionTrait::OscillatorMaterializer;
+}
+
+bool containsStep(const std::vector<int>& steps, int stepIndex) {
+    return std::find(steps.begin(), steps.end(), stepIndex) != steps.end();
+}
+
+String directVoiceContext(const GraphExecutionStep& step) {
+    const auto found = std::find_if(
+            step.inputs.begin(),
+            step.inputs.end(),
+            [](const GraphStepInput& input) {
+                return input.domain == PortDomain::DomainContext;
+            });
+    return found != step.inputs.end() ? found->sourceNodeId : String {};
+}
+
+bool hasSpectralOutput(const GraphExecutionStep& step) {
+    return std::any_of(step.outputs.begin(), step.outputs.end(), [](const auto& output) {
+        return output.domain == PortDomain::SpectralMagnitudeSignal
+                || output.domain == PortDomain::SpectralPhaseSignal;
+    });
+}
+
+int effectiveLaneCount(
+        const std::vector<CompiledVoiceContext>& contexts,
+        const String& contextNodeId) {
+    const auto found = std::find_if(
+            contexts.begin(),
+            contexts.end(),
+            [&](const CompiledVoiceContext& context) {
+                return context.nodeId == contextNodeId;
+            });
+    if (found == contexts.end()) {
+        return 1;
+    }
+    const auto unison = std::dynamic_pointer_cast<const UnisonNodeConfiguration>(found->unison);
+    return unison != nullptr && !unison->isEnabled() ? 1 : found->lanes.order;
+}
+
+bool appendDownstreamRegionOperations(
+        const GraphExecutionPlan& plan,
+        const std::vector<bool>& assigned,
+        OscillatorRegionPlan& region,
+        std::vector<GraphCompileIssue>& issues) {
+    for (size_t cursor = 0; cursor < region.stepIndices.size(); ++cursor) {
+        const int sourceStepIndex = region.stepIndices[cursor];
+        const auto& source = plan.steps[(size_t) sourceStepIndex];
+        if (source.executionTrait == NodeExecutionTrait::OscillatorMaterializer) {
+            continue;
+        }
+        for (const auto& edge : plan.signalEdges) {
+            if (edge.sourceNodeId != source.nodeId) {
+                continue;
+            }
+            const int destinationIndex = stepIndexFor(plan, edge.destNodeId);
+            if (destinationIndex < 0
+                    || !regionOperation(plan.steps[(size_t) destinationIndex].executionTrait)
+                    || containsStep(region.stepIndices, destinationIndex)) {
+                continue;
+            }
+            if (assigned[(size_t) destinationIndex]) {
+                issues.push_back({
+                        GraphCompileCode::AmbiguousVoiceContext,
+                        "Oscillator operation '" + edge.destNodeId
+                                + "' is reached by multiple Voice Contexts"
+                });
+                return false;
+            }
+            region.stepIndices.push_back(destinationIndex);
+        }
+    }
+    return true;
+}
+
+void appendUpstreamRegionOperations(
+        const GraphExecutionPlan& plan,
+        const String& contextNodeId,
+        OscillatorRegionPlan& region) {
+    bool expanded = true;
+    while (expanded) {
+        expanded = false;
+        for (const auto& edge : plan.signalEdges) {
+            const int destinationIndex = stepIndexFor(plan, edge.destNodeId);
+            const int sourceIndex = stepIndexFor(plan, edge.sourceNodeId);
+            if (destinationIndex < 0
+                    || sourceIndex < 0
+                    || !containsStep(region.stepIndices, destinationIndex)
+                    || containsStep(region.stepIndices, sourceIndex)
+                    || !regionOperation(plan.steps[(size_t) sourceIndex].executionTrait)) {
+                continue;
+            }
+            const String sourceContext = directVoiceContext(plan.steps[(size_t) sourceIndex]);
+            if (sourceContext.isNotEmpty() && sourceContext != contextNodeId) {
+                continue;
+            }
+            region.stepIndices.push_back(sourceIndex);
+            expanded = true;
+        }
+    }
+}
+
+bool hasSpectralExecution(
+        const GraphExecutionPlan& plan,
+        const OscillatorRegionPlan& region) {
+    return std::any_of(
+            region.stepIndices.begin(),
+            region.stepIndices.end(),
+            [&](int stepIndex) {
+                const auto& step = plan.steps[(size_t) stepIndex];
+                return step.executionTrait == NodeExecutionTrait::SpectralTransform
+                        || step.executionTrait == NodeExecutionTrait::OscillatorMaterializer
+                        || hasSpectralOutput(step);
+            });
+}
+
+void assignOscillatorRegion(
+        GraphExecutionPlan& plan,
+        int rootIndex,
+        std::vector<bool>& assigned,
+        OscillatorRegionPlan& region) {
+    std::sort(region.stepIndices.begin(), region.stepIndices.end());
+    const bool spectral = hasSpectralExecution(plan, region);
+    region.strategy = spectral
+            ? OscillatorExecutionStrategy::SharedSpectralFrame
+            : OscillatorExecutionStrategy::ChainedPerLane;
+    region.materializationStepIndex = rootIndex;
+    const int regionIndex = (int) plan.oscillatorRegions.size();
+
+    for (const int stepIndex : region.stepIndices) {
+        auto& step = plan.steps[(size_t) stepIndex];
+        assigned[(size_t) stepIndex] = true;
+        step.oscillatorRegionIndex = regionIndex;
+        if (step.executionTrait == NodeExecutionTrait::OscillatorMaterializer) {
+            step.executionCoordinate = ExecutionCoordinate::SampleBlock;
+            step.ownershipScope = RuntimeOwnershipScope::UnisonLane;
+            region.materializationStepIndex = stepIndex;
+        } else if (hasSpectralOutput(step)
+                || step.executionTrait == NodeExecutionTrait::SpectralTransform) {
+            step.executionCoordinate = ExecutionCoordinate::SpectralFrame;
+            step.ownershipScope = RuntimeOwnershipScope::OscillatorRegion;
+        } else {
+            step.executionCoordinate = ExecutionCoordinate::CycleField;
+            step.ownershipScope = spectral
+                    ? RuntimeOwnershipScope::OscillatorRegion
+                    : RuntimeOwnershipScope::UnisonLane;
+        }
+    }
+}
+
+void compileOscillatorRegions(
+        GraphExecutionPlan& plan,
+        std::vector<GraphCompileIssue>& issues) {
+    std::vector<bool> assigned(plan.steps.size());
+    for (int rootIndex = 0; rootIndex < (int) plan.steps.size(); ++rootIndex) {
+        auto& root = plan.steps[(size_t) rootIndex];
+        const String contextNodeId = directVoiceContext(root);
+        if (assigned[(size_t) rootIndex]
+                || root.executionTrait != NodeExecutionTrait::CycleGenerator
+                || contextNodeId.isEmpty()) {
+            continue;
+        }
+
+        OscillatorRegionPlan region;
+        region.id = contextNodeId + ".oscillator." + String(plan.oscillatorRegions.size() + 1);
+        region.voiceContextNodeId = contextNodeId;
+        region.laneCount = effectiveLaneCount(plan.voiceContexts, contextNodeId);
+        region.stepIndices.push_back(rootIndex);
+
+        if (!appendDownstreamRegionOperations(plan, assigned, region, issues)) {
+            return;
+        }
+        appendUpstreamRegionOperations(plan, contextNodeId, region);
+        assignOscillatorRegion(plan, rootIndex, assigned, region);
+        plan.oscillatorRegions.push_back(std::move(region));
+    }
+
+    for (auto& step : plan.steps) {
+        if (step.oscillatorRegionIndex < 0
+                && step.executionTrait == NodeExecutionTrait::CoordinateTransform) {
+            step.executionCoordinate = ExecutionCoordinate::SampleBlock;
+        }
+    }
+}
+
 }
 
 bool GraphCompileResult::succeeded() const {
@@ -722,6 +932,11 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolution,
                 moduleRegistry);
         compileDefaultModulationInputs(graph, result.plan);
+        compileOscillatorRegions(result.plan, result.compileIssues);
+        if (!result.compileIssues.empty()) {
+            result.plan = {};
+            return result;
+        }
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);

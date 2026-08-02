@@ -2,7 +2,23 @@
 
 ## Status
 
-Proposed.
+In progress.
+
+Implemented compiler foundation:
+
+- node definitions publish declarative execution traits;
+- compiled steps distinguish signal domain, execution coordinate, and runtime
+  ownership scope;
+- cycle-producing branches are partitioned into explicit Voice Context-owned
+  oscillator regions;
+- each region records its Unison lane count, materialization boundary,
+  reconstruction policy, and chained or shared-spectral strategy;
+- an operation reached by multiple Voice Contexts fails compilation with an
+  `AmbiguousVoiceContext` diagnostic.
+
+The prepared runtime request/state, mature lane scheduler integration,
+materialization, latency compensation, and placeholder deletion slices remain
+open. The current plan metadata does not claim audio parity by itself.
 
 Depends on:
 

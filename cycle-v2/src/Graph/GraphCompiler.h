@@ -13,7 +13,31 @@
 namespace CycleV2 {
 
 enum class GraphCompileCode {
-    CycleDetected
+    CycleDetected,
+    AmbiguousVoiceContext
+};
+
+enum class ExecutionCoordinate {
+    Configuration,
+    CycleField,
+    SpectralFrame,
+    SampleBlock
+};
+
+enum class RuntimeOwnershipScope {
+    Context,
+    SynthVoice,
+    OscillatorRegion,
+    UnisonLane
+};
+
+enum class OscillatorExecutionStrategy {
+    ChainedPerLane,
+    SharedSpectralFrame
+};
+
+enum class SpectralReconstructionPolicy {
+    CyclicFrameCrossfade
 };
 
 struct GraphCompileIssue {
@@ -96,6 +120,10 @@ struct CompiledVoiceContext {
 struct GraphExecutionStep {
     String nodeId;
     NodeKind kind { NodeKind::GenericProcessor };
+    NodeExecutionTrait executionTrait { NodeExecutionTrait::SampleBlockProcessor };
+    ExecutionCoordinate executionCoordinate { ExecutionCoordinate::SampleBlock };
+    RuntimeOwnershipScope ownershipScope { RuntimeOwnershipScope::SynthVoice };
+    int oscillatorRegionIndex { -1 };
     bool outputSink {};
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
@@ -114,6 +142,18 @@ struct GraphExecutionStep {
     std::vector<GraphStepAttachment> attachments;
 };
 
+struct OscillatorRegionPlan {
+    String id;
+    String voiceContextNodeId;
+    OscillatorExecutionStrategy strategy { OscillatorExecutionStrategy::ChainedPerLane };
+    SpectralReconstructionPolicy reconstruction {
+            SpectralReconstructionPolicy::CyclicFrameCrossfade };
+    std::vector<int> stepIndices;
+    int materializationStepIndex { -1 };
+    int laneCount { 1 };
+    int outputLatencySamples {};
+};
+
 struct GraphExecutionPlan {
     size_t maximumInputCount {};
     size_t maximumOutputCount { 1 };
@@ -126,6 +166,7 @@ struct GraphExecutionPlan {
     std::vector<Edge> attachments;
     std::vector<Edge> configurationAttachments;
     std::vector<CompiledVoiceContext> voiceContexts;
+    std::vector<OscillatorRegionPlan> oscillatorRegions;
     std::vector<CompiledSignalProbe> signalProbes;
     GraphDependencyIndex dependencyIndex;
 };
