@@ -106,43 +106,6 @@ String modulationParameterId(const String& prefix, const String& name) {
     return prefix + name.substring(0, 1).toUpperCase() + name.substring(1);
 }
 
-void paintEnvelopePurpose(
-        Graphics& graphics,
-        Rectangle<float> preview,
-        const Node& node,
-        float zoom) {
-    const String purpose = parameterValueForNode(node, "purpose", "control");
-    Rectangle<float> selector = preview.removeFromBottom(20.f * zoom).reduced(3.f * zoom, 1.f * zoom);
-    const String labels[] { "Control", "Pitch", "Scratch" };
-    const String values[] { "control", "pitch", "scratch" };
-    const float stopWidth = selector.getWidth() / 3.f;
-    for (int index = 0; index < 3; ++index) {
-        Rectangle<float> stop = selector.removeFromLeft(stopWidth).reduced(1.f * zoom, 0.f);
-        const bool selected = purpose == values[index];
-        graphics.setColour(selected
-                ? colourForDomain(node.outputs.front().domain).withAlpha(0.30f)
-                : kNodeHeader.withAlpha(0.72f));
-        graphics.fillRoundedRectangle(stop, 3.f * zoom);
-        graphics.setColour(selected ? kText : kMutedText.withAlpha(0.72f));
-        graphics.setFont(FontOptions(8.5f * zoom, selected ? Font::bold : Font::plain));
-        graphics.drawText(labels[index], stop, Justification::centred);
-    }
-
-    if (purpose == "pitch") {
-        graphics.setColour(colourForDomain(PortDomain::PitchSignal).withAlpha(0.42f));
-        graphics.drawHorizontalLine(
-                roundToInt(preview.getCentreY()),
-                preview.getX(),
-                preview.getRight());
-    } else if (purpose == "scratch") {
-        graphics.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.72f));
-        graphics.drawText(
-                String::fromUTF8("↔"),
-                preview.removeFromTop(18.f * zoom),
-                Justification::centredRight);
-    }
-}
-
 String modulationSourceLabel(const Node& node, const String& prefix = {}) {
     const String source = parameterValueForNode(
             node,
@@ -808,9 +771,6 @@ void NodeCanvasPresentation::paintNode(
                                 frame.unisonPreviewContext)
                         : frame.unisonPreviewContext
         });
-        if (node.kind == NodeKind::Envelope) {
-            paintEnvelopePurpose(graphics, preview, node, zoom);
-        }
     }
 
     const auto paintPort = [&](const Port& port) {
