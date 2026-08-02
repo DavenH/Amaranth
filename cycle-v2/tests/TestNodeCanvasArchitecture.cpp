@@ -605,11 +605,18 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
     REQUIRE(edit.value == "spectral");
 
-    edit = editAt({ 108.f, 85.5f });
+    const Rectangle<float> octave = VoiceContextCompactEditor::octaveControlBounds(panel);
+    edit = editAt({ octave.getX(), octave.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
     REQUIRE(edit.value == "-2");
-    REQUIRE(editAt({ 389.f, 85.5f }).value == "0");
-    REQUIRE(editAt({ 670.f, 85.5f }).value == "2");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Octave,
+            panel,
+            octave.getCentreX())->value == "0");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Octave,
+            panel,
+            octave.getRight())->value == "2");
 
     const Rectangle<float> voiceLength = VoiceContextCompactEditor::voiceLengthControlBounds(panel);
     edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
@@ -619,11 +626,18 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
             == Catch::Approx(4.0));
 
-    edit = editAt({ 106.f, 137.5f });
+    const Rectangle<float> pitch = VoiceContextCompactEditor::pitchControlBounds(panel);
+    edit = editAt({ pitch.getX(), pitch.getCentreY() });
     REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
     REQUIRE(edit.value == "-12");
-    REQUIRE(editAt({ 389.f, 137.5f }).value == "0");
-    REQUIRE(editAt({ 672.f, 137.5f }).value == "12");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Pitch,
+            panel,
+            pitch.getCentreX())->value == "0");
+    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
+            VoiceContextEdit::Control::Pitch,
+            panel,
+            pitch.getRight())->value == "12");
 
     edit = editAt({ 112.f, 163.5f });
     REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);

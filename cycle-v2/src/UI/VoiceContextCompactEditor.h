@@ -26,7 +26,13 @@ class VoiceContextCompactEditor {
 public:
     static Rectangle<float> expandedContentBounds(Rectangle<float> panel);
     static Rectangle<float> nodeSelectorBounds(Rectangle<float> nodeBounds, float zoom);
+    static Rectangle<float> octaveControlBounds(Rectangle<float> panel);
     static Rectangle<float> voiceLengthControlBounds(Rectangle<float> panel);
+    static Rectangle<float> pitchControlBounds(Rectangle<float> panel);
+    static std::optional<VoiceContextEdit> sliderEditAt(
+            VoiceContextEdit::Control control,
+            Rectangle<float> panel,
+            float positionX);
     static double voiceLengthAt(Rectangle<float> panel, float positionX);
 
     static String domain(const Node& node);

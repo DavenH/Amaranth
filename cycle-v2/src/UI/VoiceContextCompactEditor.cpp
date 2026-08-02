@@ -16,6 +16,11 @@ constexpr float kRowGap = 3.f;
 constexpr float kExpandedHeaderHeight = 44.f;
 constexpr float kSliderReadoutWidth = 76.f;
 
+struct SliderTick {
+    float normalized;
+    String label;
+};
+
 NormalisableRange<double> voiceLengthRange() {
     return { 0.25, 4.0, 0.01, 0.5 };
 }
@@ -43,6 +48,19 @@ String durationText(double voiceDurationSeconds) {
             ? String(wholeSeconds)
             : String(duration, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
     return value + (std::abs(duration - 1.0) < 0.0005 ? " second" : " seconds");
+}
+
+String durationReadout(double voiceDurationSeconds) {
+    return durationText(voiceDurationSeconds)
+            .replace(" seconds", " s")
+            .replace(" second", " s");
+}
+
+String pitchText(float semitones) {
+    const int rounded = roundToInt(semitones);
+    return String(rounded) + (rounded == 1 || rounded == -1
+            ? " semitone"
+            : " semitones");
 }
 
 void drawOctaveSlider(
@@ -139,8 +157,9 @@ void drawSlider(
         const String& label,
         float normalized,
         Colour colour,
-        const String& readout = {}) {
-    const float trackY = area.getCentreY();
+        const String& readout = {},
+        std::initializer_list<SliderTick> ticks = {}) {
+    const float trackY = ticks.size() > 0 ? area.getY() + 7.f : area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     Rectangle<float> readoutArea;
     if (readout.isNotEmpty()) {
@@ -160,6 +179,16 @@ void drawSlider(
     graphics.setColour(colour.withAlpha(0.76f));
     graphics.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
     graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+    graphics.setFont(FontOptions(9.5f));
+    for (const auto& tick : ticks) {
+        const float x = jmap(tick.normalized, 0.f, 1.f, left, right);
+        graphics.setColour(kMutedText.withAlpha(0.75f));
+        graphics.drawVerticalLine(roundToInt(x), trackY + 2.f, trackY + 5.f);
+        graphics.drawText(
+                tick.label,
+                Rectangle<float>(44.f, 10.f).withCentre({ x, trackY + 10.f }),
+                Justification::centred);
+    }
     if (readout.isNotEmpty()) {
         graphics.setFont(FontOptions(10.5f, Font::bold));
         graphics.setColour(kText.withAlpha(0.88f));
@@ -270,6 +299,14 @@ Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
             { nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
 }
 
+Rectangle<float> VoiceContextCompactEditor::octaveControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    return nextRow(column)
+            .withTrimmedLeft(kLabelWidth)
+            .reduced(2.f, 0.f);
+}
+
 Rectangle<float> VoiceContextCompactEditor::voiceLengthControlBounds(Rectangle<float> panel) {
     Rectangle<float> column = expandedContentBounds(panel);
     nextRow(column);
@@ -278,6 +315,47 @@ Rectangle<float> VoiceContextCompactEditor::voiceLengthControlBounds(Rectangle<f
             .withTrimmedLeft(kLabelWidth)
             .withTrimmedRight(kSliderReadoutWidth)
             .reduced(2.f, 0.f);
+}
+
+Rectangle<float> VoiceContextCompactEditor::pitchControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    nextRow(column);
+    nextRow(column);
+    return nextRow(column)
+            .withTrimmedLeft(kLabelWidth)
+            .withTrimmedRight(kSliderReadoutWidth)
+            .reduced(2.f, 0.f);
+}
+
+std::optional<VoiceContextEdit> VoiceContextCompactEditor::sliderEditAt(
+        VoiceContextEdit::Control control,
+        Rectangle<float> panel,
+        float positionX) {
+    if (control == VoiceContextEdit::Control::VoiceLength) {
+        return VoiceContextEdit { control, String(voiceLengthAt(panel, positionX), 6) };
+    }
+
+    Rectangle<float> bounds;
+    float minimum;
+    float maximum;
+    if (control == VoiceContextEdit::Control::Octave) {
+        bounds = octaveControlBounds(panel);
+        minimum = -2.f;
+        maximum = 2.f;
+    } else if (control == VoiceContextEdit::Control::Pitch) {
+        bounds = pitchControlBounds(panel);
+        minimum = -12.f;
+        maximum = 12.f;
+    } else {
+        return {};
+    }
+
+    const float normalized = jlimit(
+            0.f,
+            1.f,
+            (positionX - bounds.getX()) / jmax(1.f, bounds.getWidth()));
+    return VoiceContextEdit { control, String(roundToInt(jmap(normalized, minimum, maximum))) };
 }
 
 double VoiceContextCompactEditor::voiceLengthAt(Rectangle<float> panel, float positionX) {
@@ -354,14 +432,20 @@ void VoiceContextCompactEditor::paintExpanded(
             "Voice Length",
             (float) voiceLengthRange().convertTo0to1(voiceDurationSeconds),
             colour,
-            durationText(voiceDurationSeconds));
+            durationReadout(voiceDurationSeconds),
+            {
+                    { (float) voiceLengthRange().convertTo0to1(0.25), "0.25 s" },
+                    { (float) voiceLengthRange().convertTo0to1(1.0), "1 s" },
+                    { (float) voiceLengthRange().convertTo0to1(4.0), "4 s" }
+            });
 
     drawSlider(
             graphics,
             nextRow(column),
             "Pitch",
             (pitch + 12.f) / 24.f,
-            colour);
+            colour,
+            pitchText(pitch));
     drawCheckbox(
             graphics,
             nextRow(column),
@@ -480,14 +564,7 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
             .withTrimmedLeft(kLabelWidth)
             .reduced(2.f, 0.f);
     if (octaveControl.expanded(8.f, 4.f).contains(position)) {
-        const float left = octaveControl.getX() + 2.f;
-        const float right = octaveControl.getRight() - 2.f;
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - left) / jmax(1.f, right - left));
-        const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
-        return VoiceContextEdit { VoiceContextEdit::Control::Octave, String(octave) };
+        return sliderEditAt(VoiceContextEdit::Control::Octave, panel, position.x);
     }
 
     nextRow(column);
@@ -502,13 +579,7 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
             .withTrimmedLeft(kLabelWidth)
             .reduced(2.f, 0.f);
     if (pitchControl.expanded(8.f, 4.f).contains(position)) {
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - pitchControl.getX())
-                        / jmax(1.f, pitchControl.getWidth()));
-        const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
-        return VoiceContextEdit { VoiceContextEdit::Control::Pitch, String(pitch) };
+        return sliderEditAt(VoiceContextEdit::Control::Pitch, panel, position.x);
     }
 
     Rectangle<float> portamentoControl = nextRow(column).withTrimmedLeft(kLabelWidth);

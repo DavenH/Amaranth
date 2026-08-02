@@ -128,7 +128,7 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
-    bool draggingVoiceLength {};
+    std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
     SignalProbeRailState probeRailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;

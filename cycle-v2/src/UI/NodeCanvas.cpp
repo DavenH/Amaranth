@@ -165,7 +165,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
-    draggingVoiceLength = false;
+    draggingVoiceContextSlider.reset();
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
 
@@ -222,9 +222,17 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
         } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
-            if (click.voiceContextEdit->control == VoiceContextEdit::Control::VoiceLength) {
-                draggingVoiceLength = true;
+            const auto control = click.voiceContextEdit->control;
+            if (control == VoiceContextEdit::Control::VoiceLength) {
+                draggingVoiceContextSlider = control;
                 setPreviewVoiceLength(click.voiceContextEdit->value.getDoubleValue());
+            } else if (control == VoiceContextEdit::Control::Octave
+                    || control == VoiceContextEdit::Control::Pitch) {
+                if (authoring.beginVoiceContextSliderGesture(
+                            expandedNode->id,
+                            *click.voiceContextEdit)) {
+                    draggingVoiceContextSlider = control;
+                }
             } else {
                 applyAuthoringResult(authoring.applyVoiceContextEdit(
                         expandedNode->id,
@@ -380,12 +388,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
 
-    if (draggingVoiceLength) {
+    if (draggingVoiceContextSlider.has_value()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
         if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
-            setPreviewVoiceLength(VoiceContextCompactEditor::voiceLengthAt(
+            const auto edit = VoiceContextCompactEditor::sliderEditAt(
+                    *draggingVoiceContextSlider,
                     editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
-                    event.position.x));
+                    event.position.x);
+            if (edit.has_value()) {
+                if (edit->control == VoiceContextEdit::Control::VoiceLength) {
+                    setPreviewVoiceLength(edit->value.getDoubleValue());
+                } else {
+                    authoring.updateVoiceContextSliderGesture(*edit);
+                    requestCanvasRepaint();
+                }
+            }
         }
         return;
     }
@@ -434,8 +451,11 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
-    if (draggingVoiceLength) {
-        draggingVoiceLength = false;
+    if (draggingVoiceContextSlider.has_value()) {
+        if (*draggingVoiceContextSlider != VoiceContextEdit::Control::VoiceLength) {
+            applyAuthoringResult(authoring.endVoiceContextSliderGesture());
+        }
+        draggingVoiceContextSlider.reset();
         requestCanvasRepaint();
         return;
     }
@@ -788,7 +808,6 @@ void NodeCanvas::setPreviewVoiceLength(double seconds) {
     settings.getGlobalSetting(AppSettings::PreviewVoiceLengthMilliseconds) =
             roundToInt(duration * 1000.0);
     editStatusMessage = "Voice length: " + String(duration, 2) + " seconds";
-    editorCoordinator.clearPreviewCache();
     requestCanvasRepaint();
 }
 

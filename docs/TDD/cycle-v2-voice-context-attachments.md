@@ -288,6 +288,13 @@ or undo entries. Movement updates the compact Voice Context summary and all
 Unison previews immediately. The current duration is shown in seconds beside
 the slider.
 
+Octave, Voice Length, and Pitch share the same down-drag-up interaction
+contract. Octave and Pitch publish one graph undo entry when the gesture ends;
+Voice Length remains global preview state. Voice Length shows labelled duration
+ticks and Pitch shows its current value in semitones. Preview cache invalidation
+is signature-scoped so dragging Voice Length does not discard unrelated node
+sprites.
+
 ## Compiled Voice Plan
 
 Compilation produces an immutable plan per Voice Context:
@@ -530,10 +537,11 @@ configuration-attachment TDD so that the dependency direction stays explicit.
   compact and expanded Unison previews.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
-- Cycle V2 verification passes 5,347 assertions in 387 test cases.
+- Cycle V2 verification passes 5,353 assertions in 388 test cases.
 - `scripts/fixtures/cycle-v2-agent-voice-context-attachments.json` verifies the
   four-node attachment topology, compact summary, expanded Voice Context
-  presentation, and a continuous Voice Length drag whose result is visible in
-  exported preview state. Its reviewed OS-level capture is
-  `/private/tmp/cycle-v2-voice-context-length-os.png`; filtered launch logs
-  are `/private/tmp/cycle-v2-voice-context-length-logs.txt`.
+  presentation, complete Octave/Pitch/Voice Length drag gestures, and their
+  resulting graph or preview state. Filtered launch logs are
+  `/private/tmp/cycle-v2-voice-context-slider-drag-logs.txt`. The reviewed
+  OS-level control capture is
+  `/private/tmp/cycle-v2-voice-context-slider-drag-os.png`.

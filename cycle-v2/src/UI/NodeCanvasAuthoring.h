@@ -115,6 +115,11 @@ public:
     NodeCanvasAuthoringResult applyVoiceContextEdit(
             const String& nodeId,
             const VoiceContextEdit& edit);
+    bool beginVoiceContextSliderGesture(
+            const String& nodeId,
+            const VoiceContextEdit& edit);
+    bool updateVoiceContextSliderGesture(const VoiceContextEdit& edit);
+    NodeCanvasAuthoringResult endVoiceContextSliderGesture();
     NodeCanvasAuthoringResult setTransformMode(
             const String& nodeId,
             TransformMode mode);
@@ -153,6 +158,9 @@ private:
     GraphPresentationModel& presentation;
     NodeEditorCommands& editorCommands;
     NodeCanvasAuthoringSession authoringSession;
+    String voiceContextGestureNodeId;
+    VoiceContextEdit::Control voiceContextGestureControl { VoiceContextEdit::Control::Domain };
+    bool voiceContextGestureChanged {};
 };
 
 }

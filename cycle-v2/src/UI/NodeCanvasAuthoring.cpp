@@ -524,6 +524,67 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::applyVoiceContextEdit(
     return {};
 }
 
+bool NodeCanvasAuthoring::beginVoiceContextSliderGesture(
+        const String& nodeId,
+        const VoiceContextEdit& edit) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || node->kind != NodeKind::VoiceContext
+            || (edit.control != VoiceContextEdit::Control::Octave
+                    && edit.control != VoiceContextEdit::Control::Pitch)) {
+        return false;
+    }
+
+    commands.beginCompoundEdit();
+    voiceContextGestureNodeId = nodeId;
+    voiceContextGestureControl = edit.control;
+    voiceContextGestureChanged = false;
+    if (updateVoiceContextSliderGesture(edit)) {
+        return true;
+    }
+
+    commands.cancelCompoundEdit();
+    voiceContextGestureNodeId = {};
+    return false;
+}
+
+bool NodeCanvasAuthoring::updateVoiceContextSliderGesture(const VoiceContextEdit& edit) {
+    if (voiceContextGestureNodeId.isEmpty() || edit.control != voiceContextGestureControl) {
+        return false;
+    }
+
+    const bool octave = edit.control == VoiceContextEdit::Control::Octave;
+    const String parameterId = octave ? "octave" : "pitch";
+    const String label = octave ? "Octave" : "Pitch";
+    const auto result = commands.setNodeParameter(
+            voiceContextGestureNodeId,
+            parameterId,
+            label,
+            edit.value);
+    voiceContextGestureChanged = voiceContextGestureChanged || result.changed;
+    authoringSession.statusMessage = label + ": " + edit.value;
+    return result.succeeded();
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::endVoiceContextSliderGesture() {
+    if (voiceContextGestureNodeId.isEmpty()) {
+        return {};
+    }
+
+    const String nodeId = std::move(voiceContextGestureNodeId);
+    const bool changed = voiceContextGestureChanged;
+    voiceContextGestureChanged = false;
+    commands.commitCompoundEdit();
+    refreshPresentation();
+    return {
+            true,
+            true,
+            changed,
+            GraphEditCode::Connected,
+            nodeId,
+            { true, false, true }
+    };
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
         const String& nodeId,
         TransformMode mode) {
