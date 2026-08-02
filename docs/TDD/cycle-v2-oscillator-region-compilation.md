@@ -41,11 +41,28 @@ Implemented compiler foundation:
   Cycle 1's spectral voice consumes the shared facade. This is the
   authoritative frame-generation boundary for the upcoming Cycle V2 shared
   spectral recipe; it is not the normalized blockwise preview renderer.
+- a prepared Cycle V2 spectral recipe now executes fixed time-mesh frames,
+  FFT/IFFT, spectral mesh operands, and vectorized spectral Add/Multiply using
+  compact preallocated slots. Power-of-two transforms are prepared for the
+  bounded note range, and their per-region exclusive ownership disables the
+  legacy shared-instance mutex on the realtime path. A fixed-frame
+  FFT/IFFT identity test proves the recipe consumes the shared mature
+  rasterizer output unchanged.
 
-The shared spectral strategy, multiple-region materialization and block
-arithmetic, latency compensation, spectral tail handling, and placeholder
-deletion remain open. The chained implementation does not claim complete
-oscillator or Unison audio parity by itself.
+The spectral recipe is a domain executor, not a compatibility copy. Its
+authoritative operations remain `OscillatorLaneRasterizer` for fixed time
+frames, `Transform` for polar FFT/IFFT, `TrimeshBlockwiseDsp` for the current
+non-cyclic spectral mesh field, and `Buffer` for binary operations. Preparation
+only translates immutable compiled step/output references into compact slot
+indices and exclusive DSP instances. The stable endpoint is this
+oscillator-region-owned executor; the flat graph processors remain the
+deletion target once every spectral region and preview consumer routes through
+the domain interfaces.
+
+Per-lane cyclic spectral reconstruction, multiple-region materialization and
+block arithmetic, latency compensation, spectral tail handling, and
+placeholder deletion remain open. The prepared frame recipe alone does not
+claim complete oscillator or Unison audio parity.
 
 Depends on:
 

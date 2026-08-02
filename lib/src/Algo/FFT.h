@@ -140,6 +140,9 @@ public:
       *     these buffers.
       */
     void allocate(int bufferSize, ScaleType scaleType = DivFwdByN, bool convertsToCart = false);
+    void setExclusiveRealtimeAccess(bool isExclusive) {
+        exclusiveRealtimeAccess = isExclusive;
+    }
 
     /*
      * Resets memory buffers
@@ -215,9 +218,12 @@ public:
     }
 
 private:
+    void forwardInternal(Buffer<float> src);
+    void inverseInternal(Buffer<float> dest);
     void setPackedEndpoints(float dc, float nyquist);
 
     bool convertToCart, removeOffset;
+    bool exclusiveRealtimeAccess {};
     ScaleType scaleType;
     int order;
 

@@ -1,7 +1,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
+
 #include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
+#include "../src/Runtime/SpectralOscillatorFrameRenderer.h"
+#include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
@@ -140,4 +146,78 @@ TEST_CASE("Trimesh oscillator lanes consume the mature chained VoiceRasterizer",
 
     configuration.reset();
     mesh->destroy();
+}
+
+TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FFT",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][trimesh]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "mesh", "out", false },
+            { "fft", "time", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "mag", false },
+            { "ifft", "mag", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "fft", "phase", false },
+            { "ifft", "phase", true }).succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    const auto& region = compiled.plan.oscillatorRegions.front();
+    REQUIRE(region.strategy == OscillatorExecutionStrategy::SharedSpectralFrame);
+
+    SpectralOscillatorFrameRenderer renderer;
+    REQUIRE(renderer.prepare(compiled.plan, region, 16384));
+    constexpr int frameSize = 256;
+    std::array<float, frameSize> left {};
+    std::array<float, frameSize> right {};
+    REQUIRE(renderer.renderFrame(
+            frameSize,
+            Buffer<float>(left.data(), frameSize),
+            Buffer<float>(right.data(), frameSize)));
+    REQUIRE(left == right);
+
+    const auto& meshStep = *std::find_if(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "mesh";
+            });
+    const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            meshStep.configuration.value);
+    REQUIRE(configuration != nullptr);
+    Rasterization::VoiceCycleState expectedState;
+    Rasterization::VoiceRasterizer expectedRasterizer;
+    expectedRasterizer.setCalcDepthDimensions(false);
+    expectedRasterizer.setScalingMode(Rasterization::PointScalingMode::Bipolar);
+    expectedRasterizer.prepare(
+            Rasterization::VoiceRasterizerPreparation::forMesh(
+                    *const_cast<Mesh*>(configuration->mesh.get())),
+            { &expectedState });
+    std::array<float, frameSize> expected {};
+    REQUIRE(CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
+            expectedRasterizer,
+            {
+                    const_cast<Mesh*>(configuration->mesh.get()),
+                    configuration->morph,
+                    0.f,
+                    0
+            },
+            Buffer<float>(expected.data(), frameSize)));
+    REQUIRE(Buffer<float>(left.data(), frameSize).normDiffL2({
+                    expected.data(),
+                    frameSize
+            }) < 1.0e-5f);
 }

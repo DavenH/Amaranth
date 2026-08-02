@@ -95,6 +95,25 @@ TEST_CASE("Transform Forward/Inverse", "[transform][identity]") {
     }
 }
 
+TEST_CASE("Exclusively owned transforms preserve prepared realtime identity",
+        "[transform][identity][realtime]") {
+    constexpr int size = 512;
+    Transform fft;
+    fft.allocate(size, Transform::DivFwdByN, true);
+    fft.setExclusiveRealtimeAccess(true);
+    std::vector<float> input(size);
+    std::vector<float> output(size);
+    Buffer<float>(input.data(), size).ramp(-1.f, 2.f / (float) size);
+
+    fft.forward({ input.data(), size });
+    fft.inverse({ output.data(), size });
+
+    REQUIRE(Buffer<float>(output.data(), size).normDiffL2({
+                    input.data(),
+                    size
+            }) < 1.0e-5f);
+}
+
 TEST_CASE("Transform Scaling Options", "[transform][scaling]") {
     Transform fft;
     const int size = 256;

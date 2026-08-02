@@ -92,7 +92,16 @@ void Transform::allocate(int bufferSize, ScaleType scaleType, bool convertsToCar
 void Transform::forward(Buffer<float> src) {
     if (order == 0) return;
 
+    if (exclusiveRealtimeAccess) {
+        forwardInternal(src);
+        return;
+    }
+
     ScopedLock sl(lock);
+    forwardInternal(src);
+}
+
+void Transform::forwardInternal(Buffer<float> src) {
     int size = 1 << order;
 
   #ifdef USE_ACCELERATE
@@ -178,7 +187,16 @@ void Transform::inverse(const Buffer<Complex32>& fftInput, const Buffer<float>& 
 void Transform::inverse(Buffer<float> dest) {
     if (order == 0) return;
 
+    if (exclusiveRealtimeAccess) {
+        inverseInternal(dest);
+        return;
+    }
+
     ScopedLock sl(lock);
+    inverseInternal(dest);
+}
+
+void Transform::inverseInternal(Buffer<float> dest) {
 
     // this ought to be the length of our real dest buffer
     int size = 1 << order;
