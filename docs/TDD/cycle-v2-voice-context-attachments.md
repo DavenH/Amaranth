@@ -2,7 +2,8 @@
 
 ## Status
 
-Implemented on `cycle2/voice-context-attachments`. Typed attachment routing,
+Implemented and accepted on 2026-08-02 on
+`cycle2/voice-context-attachments`. Typed attachment routing,
 the compiled Voice Context boundary, configuration-only Unison and Modulation
 Triple products, Envelope purpose, runtime modulation defaults, shared
 pitch-phase integration, transient Unison editor feedback, and the focused
@@ -293,10 +294,10 @@ the slider using Cycle 1's rounded value and the compact `s` unit.
 Octave, Voice Length, Pitch, and Oversampling share the same down-drag-up
 interaction contract. The graph-backed controls publish one graph undo entry
 when the gesture ends; Voice Length remains global preview state. Voice Length
-shows labelled duration ticks, Octave shows labelled value ticks, and Pitch
-shows its current value in semitones. Preview cache invalidation is
-signature-scoped so dragging Voice Length does not discard unrelated node
-sprites.
+shows duration labels centred on their ticks, Octave shows value labels
+centred on their ticks, and Pitch shows its current value in `semis`. Preview
+cache invalidation is signature-scoped so dragging Voice Length does not
+discard unrelated node sprites.
 
 The expanded editor uses one three-column control grid: right-aligned names,
 equal-width slider tracks, and left-aligned current values. Domain labels the
@@ -545,6 +546,11 @@ configuration-attachment TDD so that the dependency direction stays explicit.
 - `dd1f691c` makes the compact Envelope purpose selector interactive.
 - `70519e85` prepares attached pitch-envelope playback and supplies it to both
   compact and expanded Unison previews.
+- `881761f3`, `b9265ea4`, and `eb965d65` add the shared Cycle 1 Voice Length
+  mapping, complete drag gestures for every expanded control, and establish the
+  aligned three-column editor layout.
+- `5fce8820` and `aa789c4a` centre Octave and Voice Length labels on their ticks
+  and use the compact `semis` Pitch readout.
 - The compact Voice Context summary reads global preview duration and shows
   octave, glide, and voice length without exposing oversampling or polyphony.
 - Cycle V2 verification passes 5,352 assertions in 388 test cases.
