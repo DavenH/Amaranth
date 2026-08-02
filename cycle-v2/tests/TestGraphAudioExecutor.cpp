@@ -346,6 +346,55 @@ TEST_CASE("Graph executor audibly renders and folds a chained Trimesh Unison reg
             [](float sample) {
                 return sample != 0.f;
             }));
+
+    GraphAudioExecutor delayedExecutor;
+    GraphAudioExecutor freshExecutor;
+    delayedExecutor.prepareExecution(compiled.plan, spec);
+    freshExecutor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext delayedNoteOn = noteOn;
+    delayedNoteOn.controls.noteNumber = 60;
+    delayedNoteOn.events.front().sampleOffset = 73;
+    const auto delayed = delayedExecutor.processRealtime(
+            compiled.plan, 256, {}, delayedNoteOn);
+    AudioVoiceContext freshNoteOn = delayedNoteOn;
+    freshNoteOn.events.front().sampleOffset = 0;
+    const auto fresh = freshExecutor.processRealtime(
+            compiled.plan, 183, {}, freshNoteOn);
+    REQUIRE(std::all_of(
+            delayed.payload->block.samples.begin(),
+            delayed.payload->block.samples.begin() + 73,
+            [](float sample) {
+                return sample == 0.f;
+            }));
+    REQUIRE(std::equal(
+            delayed.payload->block.samples.begin() + 73,
+            delayed.payload->block.samples.end(),
+            fresh.payload->block.samples.begin()));
+
+    GraphAudioExecutor resetExecutor;
+    GraphAudioExecutor resetReference;
+    resetExecutor.prepareExecution(compiled.plan, spec);
+    resetReference.prepareExecution(compiled.plan, spec);
+    resetExecutor.processRealtime(compiled.plan, 128, {}, freshNoteOn);
+    resetReference.processRealtime(compiled.plan, 128, {}, freshNoteOn);
+    AudioVoiceContext resetEvent = freshNoteOn;
+    resetEvent.events.front() = { NoteLifecycleType::Reset, 64, 0 };
+    const auto resetBlock = resetExecutor.processRealtime(
+            compiled.plan, 128, {}, resetEvent);
+    AudioVoiceContext resetContinuation = freshNoteOn;
+    resetContinuation.events.clear();
+    const auto referenceContinuation = resetReference.processRealtime(
+            compiled.plan, 64, {}, resetContinuation);
+    REQUIRE(std::equal(
+            resetBlock.payload->block.samples.begin(),
+            resetBlock.payload->block.samples.begin() + 64,
+            referenceContinuation.payload->block.samples.begin()));
+    REQUIRE(std::all_of(
+            resetBlock.payload->block.samples.begin() + 64,
+            resetBlock.payload->block.samples.end(),
+            [](float sample) {
+                return sample == 0.f;
+            }));
 }
 
 TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison lanes",

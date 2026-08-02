@@ -31,9 +31,13 @@ Implemented compiler foundation:
   time-only materialization boundary, and the prepared recipe converts graph
   step references into compact operation-buffer indices off the realtime
   thread.
+- oscillator-region lifecycle is segmented at exact event sample offsets.
+  Note-on and retrigger reset lane/rasterizer history before activating the
+  region, Reset clears and silences it, and NoteOff leaves oscillator history
+  running for the voice envelope's release contract.
 
 The shared spectral strategy, multiple-region materialization and block
-arithmetic, latency compensation, lifecycle segmentation, and placeholder
+arithmetic, latency compensation, spectral tail handling, and placeholder
 deletion remain open. The chained implementation does not claim complete
 oscillator or Unison audio parity by itself.
 

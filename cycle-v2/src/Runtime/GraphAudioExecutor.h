@@ -139,6 +139,7 @@ private:
             std::vector<float> pitchEnvelopeUnitValues;
             ChainedOscillatorRegionRuntime runtime;
             std::unique_ptr<OscillatorCycleRenderer> renderer;
+            bool active {};
         };
 
         int voiceIndex {};
@@ -159,6 +160,11 @@ private:
     static PreparedVoice::OscillatorRegion* oscillatorRegionForStep(
             PreparedVoice& voice,
             size_t stepIndex);
+    static void renderOscillatorRegion(
+            PreparedVoice::OscillatorRegion& region,
+            const AudioVoiceContext& voice,
+            size_t frameCount,
+            SignalPayload& output);
     GraphAudioResult processInternal(
             const GraphExecutionPlan& plan,
             size_t frameCount,

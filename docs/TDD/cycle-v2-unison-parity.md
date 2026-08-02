@@ -254,8 +254,10 @@ split-block continuity and low-note cycle capacity, and folds the result with
 the shared pan and level contracts. Multi-operation Trimesh recipes also apply
 vectorized Add and Multiply in cycle coordinates before lane folding. Shared
 spectral-frame reconstruction, independent oscillator-region materialization,
-and lifecycle/latency parity remain open, so full audible parity is not yet
-claimed.
+and spectral latency/tail parity remain open. Time-only lane and rasterizer
+state now reset at the exact NoteOn/Reset sample offset, while NoteOff leaves
+the oscillator running for envelope-controlled release. Full audible parity is
+not yet claimed.
 
 ## Completion Criteria
 

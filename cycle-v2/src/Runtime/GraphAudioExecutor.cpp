@@ -48,14 +48,6 @@ std::unique_ptr<OscillatorCycleRenderer> createChainedRegionRenderer(
             : std::unique_ptr<OscillatorCycleRenderer> {};
 }
 
-bool beginsNewNote(const AudioVoiceContext& voice) {
-    return std::any_of(voice.events.begin(), voice.events.end(), [](const auto& event) {
-        return event.sampleOffset == 0
-                && (event.type == NoteLifecycleType::NoteOn
-                        || event.type == NoteLifecycleType::Reset);
-    });
-}
-
 template<class PreparedVoiceType>
 bool oscillatorPreparationMatches(
         const GraphExecutionPlan& plan,
@@ -380,30 +372,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 preparedVoice->second,
                 stepIndex);
         if (oscillatorRegion != nullptr) {
-            if (beginsNewNote(voice)) {
-                oscillatorRegion->runtime.reset();
-                oscillatorRegion->renderer->reset();
-            }
             auto output = makeOutputPayload(context, 0);
             output.domain = PortDomain::TimeSignal;
             output.channelLayout = ChannelLayout::StereoPair;
             output.block.samples.resize(frameCount);
             output.secondaryBlock.samples.resize(frameCount);
-            Buffer<float> pitchEnvelope;
-            if (!oscillatorRegion->pitchEnvelopeUnitValues.empty()) {
-                pitchEnvelope = {
-                        oscillatorRegion->pitchEnvelopeUnitValues.data(),
-                        (int) oscillatorRegion->pitchEnvelopeUnitValues.size()
-                };
-            }
-            const bool rendered = oscillatorRegion->runtime.process(
-                    voice.controls.noteNumber,
-                    voice.controls.velocity,
-                    pitchEnvelope,
-                    { output.block.samples.data(), (int) frameCount },
-                    { output.secondaryBlock.samples.data(), (int) frameCount },
-                    *oscillatorRegion->renderer);
-            jassert(rendered);
+            renderOscillatorRegion(*oscillatorRegion, voice, frameCount, output);
             publishSingleOutput(context, std::move(output));
         } else {
             processor->process(context);
@@ -614,6 +588,61 @@ GraphAudioExecutor::oscillatorRegionForStep(
     return stepIndex < voice.oscillatorRegionByStep.size()
             ? voice.oscillatorRegionByStep[stepIndex]
             : nullptr;
+}
+
+void GraphAudioExecutor::renderOscillatorRegion(
+        PreparedVoice::OscillatorRegion& region,
+        const AudioVoiceContext& voice,
+        size_t frameCount,
+        SignalPayload& output) {
+    Buffer<float> left(output.block.samples.data(), (int) frameCount);
+    Buffer<float> right(output.secondaryBlock.samples.data(), (int) frameCount);
+    left.zero();
+    right.zero();
+    Buffer<float> pitchEnvelope;
+    if (!region.pitchEnvelopeUnitValues.empty()) {
+        pitchEnvelope = {
+                region.pitchEnvelopeUnitValues.data(),
+                (int) region.pitchEnvelopeUnitValues.size()
+        };
+    }
+
+    const auto renderSegment = [&](size_t start, size_t count) {
+        if (!region.active || count == 0) {
+            return;
+        }
+        const bool rendered = region.runtime.process(
+                voice.controls.noteNumber,
+                voice.controls.velocity,
+                pitchEnvelope,
+                left.section((int) start, (int) count),
+                right.section((int) start, (int) count),
+                *region.renderer);
+        jassert(rendered);
+    };
+    const auto applyEvent = [&](const NoteLifecycleEvent& event) {
+        if (event.type == NoteLifecycleType::NoteOff) {
+            return;
+        }
+        region.runtime.reset();
+        region.renderer->reset();
+        region.active = event.type == NoteLifecycleType::NoteOn;
+    };
+
+    size_t rendered = 0;
+    for (const auto& event : voice.events) {
+        if (event.voiceIndex != voice.voiceIndex) {
+            continue;
+        }
+        const size_t eventOffset = std::min(event.sampleOffset, frameCount);
+        if (eventOffset < rendered) {
+            continue;
+        }
+        renderSegment(rendered, eventOffset - rendered);
+        applyEvent(event);
+        rendered = eventOffset;
+    }
+    renderSegment(rendered, frameCount - rendered);
 }
 
 size_t GraphAudioExecutor::preparationCount(const String& nodeId, int voiceIndex) const {
