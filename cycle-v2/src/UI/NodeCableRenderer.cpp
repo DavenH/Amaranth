@@ -1,5 +1,7 @@
 #include "NodeCableRenderer.h"
 
+#include "NodePortGeometry.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -155,7 +157,7 @@ void paintEndpoints(
         const NodeCableStyle& style,
         float scale) {
     if (style.modulationBundle) {
-        const float size = (style.selected ? 14.f : 12.f) * scale;
+        const float size = NodePortGeometry::socketDiameter / kCableStrokeScale * scale;
         paintModulationPie(graphics, edge.source, size, true, true);
         paintModulationPie(
                 graphics,
@@ -166,7 +168,7 @@ void paintEndpoints(
         return;
     }
 
-    const float endpointSize = (style.spliceTarget ? 15.f : (style.selected ? 14.f : 11.f)) * scale;
+    const float endpointSize = NodePortGeometry::socketDiameter / kCableStrokeScale * scale;
     const Rectangle<float> endpoint(endpointSize, endpointSize);
     const Rectangle<float> sourceMarker = endpoint.withCentre(edge.source);
     const Rectangle<float> destinationMarker = endpoint.withCentre(edge.destination);

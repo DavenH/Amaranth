@@ -70,6 +70,10 @@ public:
             const NodeCanvasViewport& viewport,
             const Node& node,
             const Port& port);
+    static UnisonPreviewContext unisonPreviewContextFor(
+            const GraphExecutionPlan& plan,
+            const String& unisonNodeId,
+            UnisonPreviewContext fallback);
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:

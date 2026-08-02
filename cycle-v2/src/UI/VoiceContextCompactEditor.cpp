@@ -1,3 +1,7 @@
+#include <cmath>
+
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include "VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
@@ -6,14 +10,31 @@ namespace {
 
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kLabelWidth = 78.f;
-constexpr float kRowHeight = 23.f;
-constexpr float kRowGap = 3.f;
+const Colour kPanelBackground { 0xff11161c };
+const Colour kPanelBorder { 0xff34404d };
+constexpr float kLabelWidth = 92.f;
+constexpr float kRowHeight = 28.f;
+constexpr float kRowGap = 7.f;
+constexpr float kExpandedHeaderHeight = 44.f;
+constexpr float kSliderReadoutWidth = 92.f;
+constexpr float kColumnGap = 12.f;
+
+struct SliderTick {
+    float normalized;
+    String label;
+};
 
 Rectangle<float> nextRow(Rectangle<float>& column) {
     Rectangle<float> row = column.removeFromTop(kRowHeight);
     column.removeFromTop(kRowGap);
     return row;
+}
+
+Rectangle<float> sliderTrackBounds(Rectangle<float> row) {
+    return row
+            .withTrimmedLeft(kLabelWidth + kColumnGap)
+            .withTrimmedRight(kSliderReadoutWidth + kColumnGap)
+            .reduced(2.f, 0.f);
 }
 
 bool portamentoEnabled(const Node& node) {
@@ -25,57 +46,22 @@ bool isSpectral(const Node& node) {
     return VoiceContextCompactEditor::domain(node).startsWith("spectral");
 }
 
-void drawOctaveSlider(
-        Graphics& graphics,
-        Rectangle<float> area,
-        const Node& node,
-        float zoom) {
-    const Colour colour = colourForDomain(PortDomain::PitchSignal);
-    const float centreY = area.getCentreY();
-    const float left = area.getX() + 2.f * zoom;
-    const float right = area.getRight() - 2.f * zoom;
-    const float tickHeight = jmax(5.f * zoom, area.getHeight() * 0.20f);
-    const float tickStroke = jmax(1.f, 1.15f * zoom);
-    const float thumbSize = jmax(11.f * zoom, area.getHeight() * 0.44f);
-    const int octave = jlimit(
-            -2,
-            2,
-            parameterValueForNode(node, "octave", "0").getIntValue());
-    const float thumbX = jmap((float) (octave + 2), 0.f, 4.f, left, right);
+String durationText(double voiceDurationSeconds) {
+    const double duration = jmax(0.0, voiceDurationSeconds);
+    const int wholeSeconds = roundToInt(duration);
+    const bool isWholeSecond = std::abs(duration - (double) wholeSeconds) < 0.0005;
+    const String value = isWholeSecond
+            ? String(wholeSeconds)
+            : String(duration, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
+    return value + (std::abs(duration - 1.0) < 0.0005 ? " second" : " seconds");
+}
 
-    graphics.setColour(kMutedText.withAlpha(0.28f));
-    graphics.drawLine(
-            Line<float>({ left, centreY }, { right, centreY }),
-            jmax(1.f, 1.4f * zoom));
-    graphics.setColour(colour.withAlpha(0.70f));
-    graphics.drawLine(
-            Line<float>({ left, centreY }, { thumbX, centreY }),
-            jmax(1.f, 2.f * zoom));
+String durationReadout(double voiceDurationSeconds) {
+    return String(roundToInt(jmax(0.0, voiceDurationSeconds))) + " s";
+}
 
-    for (int i = -2; i <= 2; ++i) {
-        const float x = jmap((float) (i + 2), 0.f, 4.f, left, right);
-        const bool active = i == octave;
-
-        graphics.setColour(active
-                ? colour.withAlpha(0.92f)
-                : kMutedText.withAlpha(0.55f));
-        graphics.drawLine(
-                Line<float>(
-                        { x, centreY - tickHeight * 0.5f },
-                        { x, centreY + tickHeight * 0.5f }),
-                tickStroke);
-    }
-
-    graphics.setColour(Colour(0xff071015).withAlpha(0.72f));
-    graphics.fillEllipse(Rectangle<float>(
-            thumbSize + 4.f * zoom,
-            thumbSize + 4.f * zoom).withCentre({ thumbX, centreY }));
-    graphics.setColour(colour.withAlpha(0.98f));
-    graphics.fillEllipse(Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }));
-    graphics.setColour(Colours::white.withAlpha(0.22f));
-    graphics.drawEllipse(
-            Rectangle<float>(thumbSize, thumbSize).withCentre({ thumbX, centreY }),
-            jmax(1.f, zoom));
+String pitchText(float semitones) {
+    return String(roundToInt(semitones)) + " semis";
 }
 
 void drawSourceSelector(Graphics& graphics, Rectangle<float> area, const Node& node) {
@@ -88,7 +74,7 @@ void drawSourceSelector(Graphics& graphics, Rectangle<float> area, const Node& n
 
     graphics.setFont(FontOptions(10.8f, Font::bold));
     graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText("Source", labelArea, Justification::centredLeft);
+    graphics.drawText("Domain", labelArea.withTrimmedRight(10.f), Justification::centredRight);
 
     Rectangle<float> waveformLabel = control.removeFromLeft(62.f);
     control.removeFromLeft(8.f);
@@ -118,9 +104,17 @@ void drawSlider(
         Rectangle<float> area,
         const String& label,
         float normalized,
-        Colour colour) {
-    const float trackY = area.getCentreY();
+        Colour colour,
+        const String& readout = {},
+        std::initializer_list<SliderTick> ticks = {}) {
+    const float trackY = ticks.size() > 0 ? area.getY() + 7.f : area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
+    area.removeFromLeft(kColumnGap);
+    Rectangle<float> readoutArea;
+    if (readout.isNotEmpty()) {
+        readoutArea = area.removeFromRight(kSliderReadoutWidth);
+        area.removeFromRight(kColumnGap);
+    }
     Rectangle<float> valueArea = area.reduced(2.f, 0.f);
     const float left = valueArea.getX();
     const float right = valueArea.getRight();
@@ -129,12 +123,30 @@ void drawSlider(
 
     graphics.setFont(FontOptions(11.f, Font::bold));
     graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText(label, labelArea, Justification::centredLeft);
+    graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
     graphics.setColour(kMutedText.withAlpha(0.30f));
     graphics.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
     graphics.setColour(colour.withAlpha(0.76f));
     graphics.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
     graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+    graphics.setFont(FontOptions(9.5f));
+    for (const auto& tick : ticks) {
+        const float x = jmap(tick.normalized, 0.f, 1.f, left, right);
+        graphics.setColour(kMutedText.withAlpha(0.75f));
+        graphics.drawVerticalLine(roundToInt(x), trackY + 2.f, trackY + 5.f);
+        graphics.drawText(
+                tick.label,
+                Rectangle<float>(x - 22.f, trackY + 5.f, 44.f, 10.f),
+                Justification::centred);
+    }
+    if (readout.isNotEmpty()) {
+        graphics.setFont(FontOptions(10.5f, Font::bold));
+        graphics.setColour(kText.withAlpha(0.88f));
+        graphics.drawText(
+                readout,
+                readoutArea.withTrimmedLeft(10.f),
+                Justification::centredLeft);
+    }
 }
 
 void drawCheckbox(
@@ -165,7 +177,7 @@ void drawCheckbox(
 
     graphics.setFont(FontOptions(11.f, Font::bold));
     graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText(label, labelArea, Justification::centredLeft);
+    graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
 }
 
 void drawStopSlider(
@@ -176,6 +188,9 @@ void drawStopSlider(
         const String& value,
         Colour colour) {
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
+    area.removeFromLeft(kColumnGap);
+    Rectangle<float> readoutArea = area.removeFromRight(kSliderReadoutWidth);
+    area.removeFromRight(kColumnGap);
     Rectangle<float> control = area.reduced(2.f, 0.f);
     const float trackY = control.getCentreY() - 2.f;
     const float left = control.getX();
@@ -195,7 +210,7 @@ void drawStopSlider(
 
     graphics.setFont(FontOptions(11.f, Font::bold));
     graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText(label, labelArea, Justification::centredLeft);
+    graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
     graphics.setColour(kMutedText.withAlpha(0.28f));
     graphics.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
     graphics.setColour(colour.withAlpha(0.70f));
@@ -222,13 +237,19 @@ void drawStopSlider(
                 Rectangle<float>(x - 14.f, trackY + 5.f, 28.f, 12.f),
                 Justification::centred);
     }
+    graphics.setFont(FontOptions(10.5f, Font::bold));
+    graphics.setColour(kText.withAlpha(0.88f));
+    graphics.drawText(
+            value,
+            readoutArea.withTrimmedLeft(10.f),
+            Justification::centredLeft);
 }
 
 }
 
 Rectangle<float> VoiceContextCompactEditor::expandedContentBounds(Rectangle<float> panel) {
-    panel.removeFromTop(30.f);
-    return panel.reduced(26.f, 18.f);
+    panel.removeFromTop(kExpandedHeaderHeight);
+    return panel.removeFromTop(218.f).reduced(24.f, 4.f);
 }
 
 Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
@@ -238,6 +259,83 @@ Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(
     const float width = jmin(nodeBounds.getWidth() - 96.f * zoom, 64.f * zoom);
     return Rectangle<float>(width, 28.f * zoom).withCentre(
             { nodeBounds.getCentreX(), body.getY() + 28.f * zoom });
+}
+
+Rectangle<float> VoiceContextCompactEditor::octaveControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    return sliderTrackBounds(nextRow(column));
+}
+
+Rectangle<float> VoiceContextCompactEditor::voiceLengthControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    nextRow(column);
+    return sliderTrackBounds(nextRow(column));
+}
+
+Rectangle<float> VoiceContextCompactEditor::pitchControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    nextRow(column);
+    nextRow(column);
+    return sliderTrackBounds(nextRow(column));
+}
+
+Rectangle<float> VoiceContextCompactEditor::oversamplingControlBounds(Rectangle<float> panel) {
+    Rectangle<float> column = expandedContentBounds(panel);
+    nextRow(column);
+    nextRow(column);
+    nextRow(column);
+    nextRow(column);
+    return sliderTrackBounds(nextRow(column));
+}
+
+std::optional<VoiceContextEdit> VoiceContextCompactEditor::sliderEditAt(
+        VoiceContextEdit::Control control,
+        Rectangle<float> panel,
+        float positionX) {
+    if (control == VoiceContextEdit::Control::VoiceLength) {
+        return VoiceContextEdit { control, String(voiceLengthAt(panel, positionX), 6) };
+    }
+
+    Rectangle<float> bounds;
+    float minimum;
+    float maximum;
+    if (control == VoiceContextEdit::Control::Octave) {
+        bounds = octaveControlBounds(panel);
+        minimum = -2.f;
+        maximum = 2.f;
+    } else if (control == VoiceContextEdit::Control::Pitch) {
+        bounds = pitchControlBounds(panel);
+        minimum = -12.f;
+        maximum = 12.f;
+    } else if (control == VoiceContextEdit::Control::Oversampling) {
+        bounds = oversamplingControlBounds(panel);
+        const float normalized = jlimit(
+                0.f,
+                1.f,
+                (positionX - bounds.getX()) / jmax(1.f, bounds.getWidth()));
+        const String values[] { "1x", "2x", "4x", "8x" };
+        return VoiceContextEdit { control, values[jlimit(0, 3, roundToInt(normalized * 3.f))] };
+    } else {
+        return {};
+    }
+
+    const float normalized = jlimit(
+            0.f,
+            1.f,
+            (positionX - bounds.getX()) / jmax(1.f, bounds.getWidth()));
+    return VoiceContextEdit { control, String(roundToInt(jmap(normalized, minimum, maximum))) };
+}
+
+double VoiceContextCompactEditor::voiceLengthAt(Rectangle<float> panel, float positionX) {
+    const Rectangle<float> control = voiceLengthControlBounds(panel);
+    const double normalized = jlimit(
+            0.0,
+            1.0,
+            (double) (positionX - control.getX()) / jmax(1.f, control.getWidth()));
+    return CycleDsp::voiceLengthSeconds((float) normalized);
 }
 
 String VoiceContextCompactEditor::domain(const Node& node) {
@@ -252,43 +350,96 @@ String VoiceContextCompactEditor::nextDomain(const Node& node) {
     return isSpectral(node) ? "waveform" : "spectral";
 }
 
+String VoiceContextCompactEditor::summaryLabel(
+        const Node& node,
+        double voiceDurationSeconds) {
+    const String octave = parameterValueForNode(node, "octave", "0");
+    String summary = "Octave " + octave + "  ·  " + durationText(voiceDurationSeconds);
+    if (portamentoEnabled(node)) {
+        summary += "  ·  Glide";
+    }
+    return summary;
+}
+
 void VoiceContextCompactEditor::paintExpanded(
         Graphics& graphics,
         Rectangle<float> panel,
-        const Node& node) {
+        const Node& node,
+        double voiceDurationSeconds) {
+    graphics.setColour(kPanelBackground);
+    graphics.fillRoundedRectangle(panel, 10.f);
+    graphics.setColour(kPanelBorder);
+    graphics.drawRoundedRectangle(panel.reduced(0.5f), 10.f, 1.f);
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(17.f, Font::bold));
+    graphics.drawText("VOICE CONTEXT", panel.reduced(18.f, 0.f).removeFromTop(42.f),
+            Justification::centredLeft);
+    graphics.setColour(kMutedText.withAlpha(0.72f));
+    graphics.setFont(FontOptions(18.f));
+    graphics.drawText(
+            String::fromUTF8("×"),
+            Rectangle<float>(22.f, 22.f).withCentre(
+                    { panel.getRight() - 18.f, panel.getY() + 15.f }),
+            Justification::centred);
+
     Rectangle<float> column = expandedContentBounds(panel);
     const Colour colour = colourForDomain(PortDomain::PitchSignal);
     const float pitch = parameterValueForNode(node, "pitch", "0").getFloatValue();
 
     drawSourceSelector(graphics, nextRow(column), node);
 
-    Rectangle<float> octaveRow = nextRow(column);
-    graphics.setFont(FontOptions(11.f, Font::bold));
-    graphics.setColour(kMutedText.withAlpha(0.76f));
-    graphics.drawText(
+    const int octave = jlimit(
+            -2,
+            2,
+            parameterValueForNode(node, "octave", "0").getIntValue());
+    drawSlider(
+            graphics,
+            nextRow(column),
             "Octave",
-            octaveRow.removeFromLeft(kLabelWidth),
-            Justification::centredLeft);
-    drawOctaveSlider(graphics, octaveRow.reduced(2.f, 0.f), node, 1.f);
+            (float) (octave + 2) / 4.f,
+            colour,
+            String(octave),
+            {
+                    { 0.f, "-2" },
+                    { 0.25f, "-1" },
+                    { 0.5f, "0" },
+                    { 0.75f, "+1" },
+                    { 1.f, "+2" }
+            });
+
+    drawSlider(
+            graphics,
+            nextRow(column),
+            "Voice Length",
+            CycleDsp::voiceLengthUnitValue(voiceDurationSeconds),
+            colour,
+            durationReadout(voiceDurationSeconds),
+            {
+                    { 0.f, "0.05 s" },
+                    { CycleDsp::voiceLengthUnitValue(1.0), "1 s" },
+                    { CycleDsp::voiceLengthUnitValue(7.0), "7 s" },
+                    { 1.f, "148 s" }
+            });
 
     drawSlider(
             graphics,
             nextRow(column),
             "Pitch",
             (pitch + 12.f) / 24.f,
+            colour,
+            pitchText(pitch));
+    drawStopSlider(
+            graphics,
+            nextRow(column),
+            "Oversampling",
+            { "1x", "2x", "4x", "8x" },
+            parameterValueForNode(node, "oversampling", "1x"),
             colour);
     drawCheckbox(
             graphics,
             nextRow(column),
             "Portamento",
             portamentoEnabled(node));
-    drawStopSlider(
-            graphics,
-            nextRow(column),
-            "Oversampling",
-            { "1x", "2x", "4x" },
-            parameterValueForNode(node, "oversampling", "1x"),
-            colour);
 }
 
 void VoiceContextCompactEditor::paintNodeSelector(
@@ -337,6 +488,24 @@ void VoiceContextCompactEditor::paintNodeSelector(
     graphics.drawEllipse(knob.withCentre(knobCentre), zoom);
 }
 
+void VoiceContextCompactEditor::paintNodeSummary(
+        Graphics& graphics,
+        Rectangle<float> nodeBounds,
+        float zoom,
+        const Node& node,
+        double voiceDurationSeconds) {
+    Rectangle<float> summary = nodeBounds
+            .withTrimmedTop(94.f * zoom)
+            .withTrimmedBottom(10.f * zoom)
+            .reduced(16.f * zoom, 0.f);
+    graphics.setColour(kText.withAlpha(0.88f));
+    graphics.setFont(FontOptions(15.1f * zoom, Font::bold));
+    graphics.drawText(
+            summaryLabel(node, voiceDurationSeconds),
+            summary,
+            Justification::centred);
+}
+
 bool VoiceContextCompactEditor::hitNodeSelector(
         Rectangle<float> nodeBounds,
         float zoom,
@@ -373,31 +542,30 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
         return VoiceContextEdit { VoiceContextEdit::Control::Domain, "spectral" };
     }
 
-    Rectangle<float> octaveControl = nextRow(column)
-            .withTrimmedLeft(kLabelWidth)
-            .reduced(2.f, 0.f);
+    Rectangle<float> octaveControl = octaveControlBounds(panel);
+    nextRow(column);
     if (octaveControl.expanded(8.f, 4.f).contains(position)) {
-        const float left = octaveControl.getX() + 2.f;
-        const float right = octaveControl.getRight() - 2.f;
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - left) / jmax(1.f, right - left));
-        const int octave = jlimit(-2, 2, roundToInt(normalized * 4.f) - 2);
-        return VoiceContextEdit { VoiceContextEdit::Control::Octave, String(octave) };
+        return sliderEditAt(VoiceContextEdit::Control::Octave, panel, position.x);
     }
 
-    Rectangle<float> pitchControl = nextRow(column)
-            .withTrimmedLeft(kLabelWidth)
-            .reduced(2.f, 0.f);
+    nextRow(column);
+    if (voiceLengthControlBounds(panel).expanded(8.f, 4.f).contains(position)) {
+        return VoiceContextEdit {
+                VoiceContextEdit::Control::VoiceLength,
+                String(voiceLengthAt(panel, position.x), 6)
+        };
+    }
+
+    Rectangle<float> pitchControl = pitchControlBounds(panel);
+    nextRow(column);
     if (pitchControl.expanded(8.f, 4.f).contains(position)) {
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - pitchControl.getX())
-                        / jmax(1.f, pitchControl.getWidth()));
-        const int pitch = roundToInt(jmap(normalized, -12.f, 12.f));
-        return VoiceContextEdit { VoiceContextEdit::Control::Pitch, String(pitch) };
+        return sliderEditAt(VoiceContextEdit::Control::Pitch, panel, position.x);
+    }
+
+    Rectangle<float> oversamplingControl = oversamplingControlBounds(panel);
+    nextRow(column);
+    if (oversamplingControl.expanded(8.f, 6.f).contains(position)) {
+        return sliderEditAt(VoiceContextEdit::Control::Oversampling, panel, position.x);
     }
 
     Rectangle<float> portamentoControl = nextRow(column).withTrimmedLeft(kLabelWidth);
@@ -406,20 +574,6 @@ std::optional<VoiceContextEdit> VoiceContextCompactEditor::editAt(
                 VoiceContextEdit::Control::Portamento,
                 portamentoEnabled(node) ? "0" : "1"
         };
-    }
-
-    Rectangle<float> oversamplingControl = nextRow(column)
-            .withTrimmedLeft(kLabelWidth)
-            .reduced(2.f, 0.f);
-    if (oversamplingControl.expanded(8.f, 6.f).contains(position)) {
-        const float normalized = jlimit(
-                0.f,
-                1.f,
-                (position.x - oversamplingControl.getX())
-                        / jmax(1.f, oversamplingControl.getWidth()));
-        const int stop = jlimit(0, 2, roundToInt(normalized * 2.f));
-        const String value = stop == 0 ? "1x" : (stop == 1 ? "2x" : "4x");
-        return VoiceContextEdit { VoiceContextEdit::Control::Oversampling, value };
     }
 
     return {};

@@ -155,7 +155,7 @@ void GraphValidator::validateEdge(
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
     const Port* dest = findPort(*destNode, edge.destPortId, true);
-    const bool trimeshGuideTarget = edge.attachment
+    const bool trimeshGuideTarget = edge.isProcessingAttachment()
             && dest == nullptr
             && isTrimeshGuideTarget(*destNode, edge.destPortId);
 
@@ -173,7 +173,22 @@ void GraphValidator::validateEdge(
         return;
     }
 
-    if (edge.attachment) {
+    if (edge.isConfigurationAttachment()) {
+        if (source->connectionKind != ConnectionKind::ConfigurationAttachment
+                || dest == nullptr
+                || dest->connectionKind != ConnectionKind::ConfigurationAttachment
+                || source->attachmentType == AttachmentType::None
+                || source->attachmentType != dest->attachmentType
+                || edge.attachmentType != dest->attachmentType) {
+            report(
+                    GraphValidationCode::InvalidAttachmentDestination,
+                    "Configuration attachment types do not match: "
+                            + edge.sourceNodeId + " -> " + edge.destNodeId);
+        }
+        return;
+    }
+
+    if (edge.isProcessingAttachment()) {
         if (trimeshGuideTarget) {
             if (sourceNode->kind != NodeKind::GuideCurve) {
                 report(
@@ -198,6 +213,15 @@ void GraphValidator::validateEdge(
                     "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id);
         }
 
+        return;
+    }
+
+    if (dest->connectionKind != ConnectionKind::Signal
+            || source->connectionKind != ConnectionKind::Signal) {
+        report(
+                GraphValidationCode::ScratchPortRequiresAttachment,
+                "Attachment ports require typed attachment routing: "
+                        + edge.sourceNodeId + " -> " + edge.destNodeId);
         return;
     }
 
@@ -271,7 +295,7 @@ void GraphValidator::validateOperationInputs(
 
         for (size_t edgeIndex = 0; edgeIndex < graph.getEdges().size(); ++edgeIndex) {
             const Edge& edge = graph.getEdges()[edgeIndex];
-            if (edge.attachment || edge.destNodeId != node.id) {
+            if (edge.isAttachment() || edge.destNodeId != node.id) {
                 continue;
             }
 

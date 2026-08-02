@@ -107,7 +107,7 @@ TEST_CASE("Graph editor connects compatible ports", "[cycle-v2][graph]") {
     REQUIRE(edge.sourceNodeId == "env");
     REQUIRE(edge.destNodeId == "multiply");
     REQUIRE(edge.destPortId == "right");
-    REQUIRE_FALSE(edge.attachment);
+    REQUIRE_FALSE(edge.isAttachment());
 }
 
 TEST_CASE("Graph editor orients input to output connections", "[cycle-v2][graph]") {
@@ -134,7 +134,7 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
             { "waveMesh", "scratch", true });
 
     REQUIRE(result.succeeded());
-    REQUIRE(graph.getEdges().back().attachment);
+    REQUIRE(graph.getEdges().back().isProcessingAttachment());
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
@@ -153,7 +153,7 @@ TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2]
     REQUIRE(GraphValidator().isValid(graph));
 
     const auto& edge = graph.getEdges().back();
-    REQUIRE(edge.attachment);
+    REQUIRE(edge.isProcessingAttachment());
     REQUIRE(edge.sourceNodeId == "guide");
     REQUIRE(edge.sourcePortId == "guide");
     REQUIRE(edge.destNodeId == "waveMesh");
@@ -183,7 +183,7 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
     int guideAttachments {};
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment && edge.sourceNodeId == "guide") {
+        if (edge.isProcessingAttachment() && edge.sourceNodeId == "guide") {
             ++guideAttachments;
         }
     }
@@ -216,7 +216,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     String attachedGuideId;
 
     for (const auto& edge : graph.getEdges()) {
-        if (edge.attachment
+        if (edge.isProcessingAttachment()
                 && edge.destNodeId == "waveMesh"
                 && edge.destPortId == "guide.vertex.2.amp") {
             ++targetAttachments;

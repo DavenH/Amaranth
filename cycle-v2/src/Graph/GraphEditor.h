@@ -30,6 +30,7 @@ enum class GraphEditCode {
 
 struct GraphChangeSet {
     std::vector<String> nodeIds;
+    std::vector<Edge> removedEdges;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};

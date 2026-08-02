@@ -2,6 +2,7 @@
 
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "NodeViewModule.h"
+#include "VoiceContextCompactEditor.h"
 
 #include <cmath>
 
@@ -114,7 +115,9 @@ public:
         object->setProperty("destNodeId", edge.destNodeId);
         object->setProperty("destPortId", edge.destPortId);
         object->setProperty("domain", labelForDomain(edge.domain));
-        object->setProperty("attachment", edge.attachment);
+        object->setProperty("attachment", edge.isAttachment());
+        object->setProperty("connectionKind", idForConnectionKind(edge.connectionKind));
+        object->setProperty("attachmentType", idForAttachmentType(edge.attachmentType));
         return object;
     }
 
@@ -251,9 +254,11 @@ public:
         return "trimeshControl";
     }
 
-    static Rectangle<float> expandedEditorBounds(const Component& canvas, const Node& node) {
+    static Rectangle<float> expandedEditorBounds(
+            Rectangle<float> canvasContentBounds,
+            const Node& node) {
         return NodeViewModuleRegistry::instance().moduleFor(node.kind).expandedEditorBounds(
-                canvas.getLocalBounds().toFloat(), kExpandedEditorMinMargin);
+                canvasContentBounds, kExpandedEditorMinMargin);
     }
 
     static Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
@@ -261,12 +266,15 @@ public:
                 .withCentre({ panel.getRight() - 22.f, panel.getY() + kExpandedEditorHeaderHeight * 0.5f });
     }
 
-    static void addExpandedEditorTargets(Array<var>& targets, const Node& node, const Component& canvas,
-                                         const NodeEditorHost& editorHost) {
+    static void addExpandedEditorTargets(
+            Array<var>& targets,
+            const Node& node,
+            Rectangle<float> canvasContentBounds,
+            const NodeEditorHost& editorHost) {
         const Component* editorComponent = editorHost.component();
         Rectangle<float> panel = editorComponent != nullptr
                 ? editorComponent->getBounds().toFloat()
-                : expandedEditorBounds(canvas, node);
+                : expandedEditorBounds(canvasContentBounds, node);
         targets.add(pointerTargetToVar("expanded:" + node.id, "expandedEditor", panel, node.id));
         targets.add(pointerTargetToVar("expanded:" + node.id + ".close", "expandedCloseButton",
                                        expandedEditorCloseButton(panel), node.id));
@@ -291,6 +299,30 @@ public:
                 targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, targetBounds,
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
+            return;
+        }
+
+        if (node.kind == NodeKind::VoiceContext) {
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".octave",
+                    "octave",
+                    VoiceContextCompactEditor::octaveControlBounds(panel),
+                    node.id));
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".voiceLength",
+                    "voiceLength",
+                    VoiceContextCompactEditor::voiceLengthControlBounds(panel),
+                    node.id));
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".pitch",
+                    "pitch",
+                    VoiceContextCompactEditor::pitchControlBounds(panel),
+                    node.id));
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".oversampling",
+                    "oversampling",
+                    VoiceContextCompactEditor::oversamplingControlBounds(panel),
+                    node.id));
             return;
         }
 
@@ -323,6 +355,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedNodeId", state.selectedNodeId);
     root->setProperty("expandedNodeId", state.expandedNodeId);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
+    root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
@@ -516,7 +549,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         const auto& edge = graphEdges[(size_t) sceneEdge.edgeIndex];
         auto* target = new DynamicObject();
         target->setProperty("id", "edge:" + String(sceneEdge.edgeIndex));
-        target->setProperty("kind", edge.attachment ? "attachmentEdge" : "edge");
+        target->setProperty("kind", edge.isAttachment() ? "attachmentEdge" : "edge");
         target->setProperty("edgeIndex", sceneEdge.edgeIndex);
         target->setProperty("bounds", AutomationValueEncoder::rectangleToVar(sceneEdge.hitPath.getBounds()));
         target->setProperty("sourceNodeId", edge.sourceNodeId);
@@ -533,7 +566,11 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
 
     const Node* expandedNode = context.document.graph().findNode(state.expandedNodeId);
     if (expandedNode != nullptr) {
-        AutomationValueEncoder::addExpandedEditorTargets(targets, *expandedNode, context.canvas, context.editorHost);
+        AutomationValueEncoder::addExpandedEditorTargets(
+                targets,
+                *expandedNode,
+                state.canvasContentBounds,
+                context.editorHost);
     }
 
     for (auto& targetValue : targets) {

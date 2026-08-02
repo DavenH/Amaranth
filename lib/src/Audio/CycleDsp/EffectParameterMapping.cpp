@@ -123,4 +123,14 @@ float delaySnappedUnitValue(
     return closestDistance <= normalizedSnapDistance ? closestValue : normalizedValue;
 }
 
+double voiceLengthSeconds(float unitValue) {
+    return std::exp(8.0 * std::clamp(unitValue, 0.f, 1.f) - 3.0);
+}
+
+float voiceLengthUnitValue(double seconds) {
+    constexpr double minimumSeconds = 0.049787068367863944;
+    const double clamped = std::max(minimumSeconds, seconds);
+    return std::clamp((float) ((std::log(clamped) + 3.0) / 8.0), 0.f, 1.f);
+}
+
 }

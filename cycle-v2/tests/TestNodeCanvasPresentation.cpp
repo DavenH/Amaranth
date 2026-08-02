@@ -40,3 +40,27 @@ TEST_CASE("Node canvas presentation scales port hit geometry with canvas zoom",
     REQUIRE(doubled.bounds.getWidth() == Catch::Approx(reference.bounds.getWidth() * 2.f));
     REQUIRE(doubled.bounds.getHeight() == Catch::Approx(reference.bounds.getHeight() * 2.f));
 }
+
+TEST_CASE("Signal and attachment sockets share one presentation diameter",
+        "[cycle-v2][canvas][presentation][ports]") {
+    const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 0.58f);
+
+    const auto modulation = NodeCanvasPresentation::portPresentation(
+            viewport,
+            voice,
+            voice.inputs[0]);
+    const auto pitch = NodeCanvasPresentation::portPresentation(
+            viewport,
+            voice,
+            voice.inputs[1]);
+    const auto unison = NodeCanvasPresentation::portPresentation(
+            viewport,
+            voice,
+            voice.inputs[2]);
+
+    REQUIRE(modulation.bounds.getWidth() == Catch::Approx(8.4f));
+    REQUIRE(pitch.bounds.getWidth() == Catch::Approx(8.4f));
+    REQUIRE(unison.bounds.getWidth() == Catch::Approx(8.4f));
+}

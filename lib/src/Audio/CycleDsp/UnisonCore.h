@@ -60,8 +60,16 @@ public:
     static std::vector<UnisonPhaseSegment> phaseSegments(
             const UnisonPhaseTrajectory& trajectory,
             double durationSeconds);
+    static std::vector<UnisonPhaseSegment> phaseSegmentsForPitchEnvelope(
+            int midiNote,
+            float detuneCents,
+            float initialPhaseCycles,
+            double durationSeconds,
+            const std::vector<float>& unitPitchValues);
 
     static double frequencyForMidiNote(int midiNote, float detuneCents = 0.f);
+    static double frequencyForMidiPitch(double midiPitch, float detuneCents = 0.f);
+    static double pitchSemitonesForUnitValue(double unitPitch);
     static double wrapSignedPhase(double cycles);
 };
 

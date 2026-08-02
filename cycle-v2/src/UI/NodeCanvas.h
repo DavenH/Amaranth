@@ -128,6 +128,7 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
+    std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
     SignalProbeRailState probeRailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
@@ -150,6 +151,7 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync();
+    void setPreviewVoiceLength(double seconds);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
@@ -197,9 +199,7 @@ private:
             Graphics& graphics,
             const Node& node,
             Rectangle<float> bounds) override;
-    UnisonPreviewContext unisonPreviewContext() const override {
-        return globalUnisonPreviewContext;
-    }
+    UnisonPreviewContext unisonPreviewContext() const override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

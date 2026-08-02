@@ -153,7 +153,7 @@ std::vector<int> ModulationCableBundle::edgeIndices(
                             && edge.destNodeId == selected.destNodeId
                             && edge.sourcePortId == axis
                             && edge.destPortId == axis
-                            && !edge.attachment;
+                            && !edge.isAttachment();
                 });
         if (found == edges.end()) {
             return { edgeIndex };

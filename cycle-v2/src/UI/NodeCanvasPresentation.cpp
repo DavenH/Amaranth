@@ -3,10 +3,12 @@
 #include "NodeCableRenderer.h"
 #include "NodeCanvasGlRenderer.h"
 #include "ModulationCableBundle.h"
+#include "NodePortGeometry.h"
 #include "NodeViewModule.h"
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/GraphValidator.h"
+#include "../Nodes/Effects/EffectPlotPalette.h"
 
 #include <cmath>
 
@@ -22,10 +24,77 @@ const Colour kNodeHeader { 0xff202833 };
 const Colour kNodeBorder { 0xff3d4a58 };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kCableReferenceZoom = 0.58f;
-
 float portScale(float zoom) {
-    return zoom / kCableReferenceZoom;
+    return zoom / NodePortGeometry::referenceZoom;
+}
+
+void paintConfigurationSocket(
+        Graphics& graphics,
+        Point<float> centre,
+        float scale,
+        Colour colour,
+        bool input) {
+    const Rectangle<float> socket = Rectangle<float>(
+            NodePortGeometry::socketDiameter * scale,
+            NodePortGeometry::socketDiameter * scale)
+            .withCentre(centre);
+    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(socket.expanded(2.f * scale), 2.5f * scale);
+    graphics.setColour(colour.withAlpha(0.26f));
+    graphics.fillRoundedRectangle(socket.expanded(1.f * scale), 2.f * scale);
+    graphics.setColour(input ? colour : kCanvasBackground.withAlpha(0.96f));
+    graphics.fillRoundedRectangle(socket, 1.8f * scale);
+    graphics.setColour(colour);
+    graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
+}
+
+void paintRoundSocket(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        float scale,
+        Colour colour,
+        bool input) {
+    graphics.setColour(colour.withAlpha(0.22f));
+    graphics.fillEllipse(bounds.expanded(1.4f * scale));
+    if (input) {
+        graphics.setColour(colour);
+        graphics.fillEllipse(bounds);
+        return;
+    }
+
+    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.fillEllipse(bounds);
+    graphics.setColour(colour);
+    graphics.drawEllipse(bounds, 1.2f * scale);
+}
+
+void paintAttachmentSocket(
+        Graphics& graphics,
+        Point<float> centre,
+        float scale,
+        const Port& port,
+        Colour fallbackColour) {
+    if (port.attachmentType == AttachmentType::ModulationTriple) {
+        NodeCableRenderer::paintModulationSocket(
+                graphics,
+                centre,
+                NodePortGeometry::socketDiameter * scale,
+                !port.input);
+        return;
+    }
+
+    if (port.attachmentType == AttachmentType::Unison) {
+        const float radius = NodePortGeometry::socketDiameter * scale * 0.5f;
+        paintRoundSocket(
+                graphics,
+                Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre),
+                scale,
+                EffectPlotPalette::accent,
+                port.input);
+        return;
+    }
+
+    paintConfigurationSocket(graphics, centre, scale, fallbackColour, port.input);
 }
 
 String modulationParameterId(const String& prefix, const String& name) {
@@ -33,6 +102,43 @@ String modulationParameterId(const String& prefix, const String& name) {
         return name;
     }
     return prefix + name.substring(0, 1).toUpperCase() + name.substring(1);
+}
+
+void paintEnvelopePurpose(
+        Graphics& graphics,
+        Rectangle<float> preview,
+        const Node& node,
+        float zoom) {
+    const String purpose = parameterValueForNode(node, "purpose", "control");
+    Rectangle<float> selector = preview.removeFromBottom(20.f * zoom).reduced(3.f * zoom, 1.f * zoom);
+    const String labels[] { "Control", "Pitch", "Scratch" };
+    const String values[] { "control", "pitch", "scratch" };
+    const float stopWidth = selector.getWidth() / 3.f;
+    for (int index = 0; index < 3; ++index) {
+        Rectangle<float> stop = selector.removeFromLeft(stopWidth).reduced(1.f * zoom, 0.f);
+        const bool selected = purpose == values[index];
+        graphics.setColour(selected
+                ? colourForDomain(node.outputs.front().domain).withAlpha(0.30f)
+                : kNodeHeader.withAlpha(0.72f));
+        graphics.fillRoundedRectangle(stop, 3.f * zoom);
+        graphics.setColour(selected ? kText : kMutedText.withAlpha(0.72f));
+        graphics.setFont(FontOptions(8.5f * zoom, selected ? Font::bold : Font::plain));
+        graphics.drawText(labels[index], stop, Justification::centred);
+    }
+
+    if (purpose == "pitch") {
+        graphics.setColour(colourForDomain(PortDomain::PitchSignal).withAlpha(0.42f));
+        graphics.drawHorizontalLine(
+                roundToInt(preview.getCentreY()),
+                preview.getX(),
+                preview.getRight());
+    } else if (purpose == "scratch") {
+        graphics.setColour(colourForDomain(PortDomain::EnvelopeSignal).withAlpha(0.72f));
+        graphics.drawText(
+                String::fromUTF8("↔"),
+                preview.removeFromTop(18.f * zoom),
+                Justification::centredRight);
+    }
 }
 
 String modulationSourceLabel(const Node& node, const String& prefix = {}) {
@@ -166,6 +272,21 @@ void paintTripleModulationNode(
                     ModulationCableBundle::worldCentre(node, false)),
             ModulationCableBundle::socketDiameter * scale,
             true);
+
+    const auto attachment = std::find_if(
+            node.outputs.begin(),
+            node.outputs.end(),
+            [](const Port& port) {
+                return port.connectionKind == ConnectionKind::ConfigurationAttachment;
+            });
+    if (attachment != node.outputs.end()) {
+        paintAttachmentSocket(
+                graphics,
+                frame.viewport.toScreen(NodeCanvasScene::portWorldCentre(node, *attachment)),
+                scale,
+                *attachment,
+                colourForDomain(attachment->domain));
+    }
 }
 
 Colour displayColour(const Node& node, const Port& port) {
@@ -211,7 +332,7 @@ const Node* findNode(const NodeGraph& graph, const String& id) {
 }
 
 PortDomain edgeDomain(const NodeGraph& graph, const Edge& edge) {
-    return edge.attachment ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
+    return edge.isAttachment() ? edge.domain : GraphValidator().resolvedDomainForEdge(graph, edge);
 }
 
 Rectangle<float> actionButton(Rectangle<float> nodeBounds, float zoom) {
@@ -479,7 +600,7 @@ void NodeCanvasPresentation::paintEdges(
                 : colourForDomain(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
-                edge.attachment,
+                edge.isAttachment(),
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
@@ -568,6 +689,33 @@ void NodeCanvasPresentation::paintNodes(
     }
 }
 
+UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
+        const GraphExecutionPlan& plan,
+        const String& unisonNodeId,
+        UnisonPreviewContext fallback) {
+    std::vector<const Edge*> attachments;
+    for (const auto& edge : plan.configurationAttachments) {
+        if (edge.sourceNodeId == unisonNodeId
+                && edge.attachmentType == AttachmentType::Unison) {
+            attachments.push_back(&edge);
+        }
+    }
+    if (attachments.size() != 1) {
+        return fallback;
+    }
+    const Edge* attachment = attachments.front();
+    const auto context = std::find_if(
+            plan.voiceContexts.begin(),
+            plan.voiceContexts.end(),
+            [&](const CompiledVoiceContext& candidate) {
+                return candidate.nodeId == attachment->destNodeId;
+            });
+    if (context != plan.voiceContexts.end()) {
+        fallback.pitchEnvelopeUnitValues = context->pitchEnvelopeUnitValues;
+    }
+    return fallback;
+}
+
 void NodeCanvasPresentation::paintNode(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame,
@@ -623,6 +771,12 @@ void NodeCanvasPresentation::paintNode(
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
+        VoiceContextCompactEditor::paintNodeSummary(
+                graphics,
+                nodeBounds,
+                zoom,
+                node,
+                frame.unisonPreviewContext.voiceDurationSeconds);
     } else {
         previewRenderer.paint(graphics, {
                 node,
@@ -631,25 +785,31 @@ void NodeCanvasPresentation::paintNode(
                 profileFor(frame, node),
                 zoom,
                 true,
-                frame.unisonPreviewContext
+                node.kind == NodeKind::Unison
+                        ? unisonPreviewContextFor(
+                                frame.compileResult.plan,
+                                node.id,
+                                frame.unisonPreviewContext)
+                        : frame.unisonPreviewContext
         });
+        if (node.kind == NodeKind::Envelope) {
+            paintEnvelopePurpose(graphics, preview, node, zoom);
+        }
     }
 
     const auto paintPort = [&](const Port& port) {
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
-        graphics.setColour(colour.withAlpha(0.22f));
-        graphics.fillEllipse(location.bounds.expanded(1.4f * scale));
-
-        if (port.input) {
-            graphics.setColour(colour);
-            graphics.fillEllipse(location.bounds);
-        } else {
-            graphics.setColour(kCanvasBackground.withAlpha(0.92f));
-            graphics.fillEllipse(location.bounds);
-            graphics.setColour(colour);
-            graphics.drawEllipse(location.bounds, 1.2f * scale);
+        if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
+            paintAttachmentSocket(
+                    graphics,
+                    location.centre,
+                    scale,
+                    port,
+                    colour);
+            return;
         }
+        paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
     };
 
     for (const auto& port : node.inputs) {
@@ -678,7 +838,9 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
         const Node& node,
         const Port& port) {
     const Point<float> centre = viewport.toScreen(NodeCanvasScene::portWorldCentre(node, port));
-    const float radius = 4.2f * portScale(viewport.getZoom());
+    const float radius = NodePortGeometry::socketDiameter
+            * portScale(viewport.getZoom())
+            * 0.5f;
     return {
             Rectangle<float>(centre.x - radius, centre.y - radius, radius * 2.f, radius * 2.f),
             centre

@@ -27,6 +27,7 @@ namespace AppSettings {
     ,   LastPopupClickedHorz
     ,   CollisionDetection
     ,   ProbeEditRefreshPolicy
+    ,   PreviewVoiceLengthMilliseconds
 
     ,   numSettings
     };
