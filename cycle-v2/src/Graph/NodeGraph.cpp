@@ -268,6 +268,15 @@ bool NodeGraph::setNodeBounds(const String& nodeId, Rectangle<float> bounds) {
     return true;
 }
 
+bool NodeGraph::setPerformanceKeyboardBounds(Rectangle<float> bounds) {
+    if (performanceKeyboardBounds == bounds) {
+        return false;
+    }
+    performanceKeyboardBounds = bounds;
+    ++revision;
+    return true;
+}
+
 void NodeGraph::translateNodes(const std::vector<String>& nodeIds, Point<float> offset) {
     bool changed = false;
     for (auto& node : nodes) {

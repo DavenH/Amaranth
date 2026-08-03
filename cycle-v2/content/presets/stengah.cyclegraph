@@ -30,7 +30,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1356.44141, "y": 520.0 },
+            "position": { "x": 1356.44141, "y": 588.0 },
             "parameters": { "yellow": 0.393, "red": 0.359, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
@@ -89,7 +89,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1356.44141, "y": 857.61737 },
+            "position": { "x": 1356.44141, "y": 918.76166 },
             "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
@@ -213,7 +213,7 @@
             "id": "phaseLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1356.44141, "y": 1169.26208 },
+            "position": { "x": 1356.44141, "y": 1236.50342 },
             "parameters": { "yellow": 1.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
             "model": {
                 "schema": "trimesh",
@@ -1198,7 +1198,7 @@
             "anchorDestNodeId": "ifft",
             "anchorDestPortId": "mag",
             "label": "Spy 4",
-            "tapPosition": 0.54791,
+            "tapPosition": 0.54037,
             "railOrder": 3
         },
         {
@@ -1238,8 +1238,11 @@
             "anchorDestNodeId": "phaseOp2",
             "anchorDestPortId": "right",
             "label": "Spy 8",
-            "tapPosition": 0.50795,
+            "tapPosition": 0.52606,
             "railOrder": 7
         }
-    ]
+    ],
+    "presentation": {
+        "performanceKeyboardBounds": { "x": 710.29095, "y": 414.60132, "width": 496.0, "height": 184.0 }
+    }
 }

@@ -35,6 +35,7 @@ public:
 
     void process(AudioProcessContext& context);
     MorphPreparationDiagnostics preparationDiagnostics() const;
+    bool isActive() const { return active; }
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
     }

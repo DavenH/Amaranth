@@ -5,6 +5,7 @@
 
 #include "App/CycleV2Automation.h"
 #include "App/GraphFileHistory.h"
+#include "App/StandaloneAudioEngine.h"
 #include "UI/NodeWorkspace.h"
 #include "incl/JucePluginDefines.h"
 
@@ -21,7 +22,9 @@ public:
     void initialise(const String& commandLine) override {
         Process::makeForegroundProcess();
         automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
-        mainWindow = std::make_unique<MainWindow>(getApplicationName());
+        audioEngine = std::make_unique<CycleV2::StandaloneAudioEngine>();
+        audioEngine->start();
+        mainWindow = std::make_unique<MainWindow>(getApplicationName(), *audioEngine);
         mainWindow->setVisible(true);
         mainWindow->toFront(true);
 
@@ -32,6 +35,7 @@ public:
 
     void shutdown() override {
         mainWindow = nullptr;
+        audioEngine = nullptr;
     }
 
     class MainWindow :
@@ -45,13 +49,15 @@ public:
             CommandSaveGraphAs
         };
 
-        explicit MainWindow(const String& name) :
+        MainWindow(
+                const String& name,
+                CycleV2::StandaloneAudioEngine& audioEngine) :
                 DocumentWindow(name, Colour(0xff101318), allButtons)
             ,   properties(createProperties())
             ,   fileHistory(*properties) {
             setUsingNativeTitleBar(true);
             setResizable(true, true);
-            workspace = new CycleV2::NodeWorkspace();
+            workspace = new CycleV2::NodeWorkspace(audioEngine);
             setContentOwned(workspace, true);
 
             commandManager.registerAllCommandsForTarget(this);
@@ -298,6 +304,7 @@ public:
 
 private:
     CycleV2::CycleV2Automation::Options automationOptions;
+    std::unique_ptr<CycleV2::StandaloneAudioEngine> audioEngine;
     std::unique_ptr<MainWindow> mainWindow;
 };
 

@@ -14,6 +14,10 @@ bool NodeAudioProcessor::serviceNonRealtimePreparation() {
     return false;
 }
 
+bool NodeAudioProcessor::isVoiceActive() const {
+    return false;
+}
+
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     using Factory = std::unique_ptr<NodeAudioProcessor> (*)();
 
