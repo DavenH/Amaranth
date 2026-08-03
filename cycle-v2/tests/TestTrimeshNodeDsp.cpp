@@ -293,6 +293,42 @@ TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", 
     mesh->destroy();
 }
 
+TEST_CASE(
+        "Trimesh DSP preserves unipolar magnitude and bipolar phase domains",
+        "[cycle-v2][nodes][trimesh][dsp][domains]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    TrimeshBlockwiseDsp dsp;
+    dsp.setMesh(mesh.get());
+    dsp.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
+    dsp.setCyclic(false);
+
+    SignalPayload magnitude;
+    SignalPayload phase;
+    SignalPayload time;
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono,
+            magnitude);
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralPhaseSignal,
+            ChannelLayout::Mono,
+            phase);
+    dsp.renderCycle(32, PortDomain::TimeSignal, ChannelLayout::Mono, time);
+
+    REQUIRE(magnitude.block.samples.size() == phase.block.samples.size());
+    REQUIRE(magnitude.block.samples.size() == time.block.samples.size());
+    for (size_t index = 0; index < magnitude.block.samples.size(); ++index) {
+        REQUIRE(magnitude.block.samples[index]
+                == Catch::Approx(phase.block.samples[index] * 0.5f + 0.5f));
+        REQUIRE(magnitude.block.samples[index]
+                == Catch::Approx(time.block.samples[index] * 0.5f + 0.5f));
+    }
+
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -657,14 +693,21 @@ TEST_CASE(
             PortDomain::SpectralMagnitudeSignal,
             ChannelLayout::Mono);
     std::vector<float> directValues(32);
-    directDsp.prepare(*mesh, center, Vertex::Time, 4, 8);
+    directDsp.prepare(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            8,
+            PortDomain::SpectralMagnitudeSignal);
     REQUIRE(directDsp.counters().sliceCount == 0);
     REQUIRE(directDsp.renderColumnsInto(
             *mesh,
             center,
             Vertex::Time,
             4,
-            Buffer<float>(directValues.data(), (int) directValues.size())));
+            Buffer<float>(directValues.data(), (int) directValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
 
     std::vector<float> owningValues;
     for (const auto& column : columns) {

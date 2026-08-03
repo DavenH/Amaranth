@@ -1986,7 +1986,7 @@ TEST_CASE(
     const MorphPosition center(0.5f, 0.5f, 0.5f);
     TrimeshGridwiseDsp dsp;
     dsp.setCyclic(true);
-    dsp.prepare(*mesh, center, Vertex::Time, 32, 32);
+    dsp.prepare(*mesh, center, Vertex::Time, 32, 32, PortDomain::TimeSignal);
     std::vector<float> destination(32 * 32);
 
     ScopedRealtimeAllocationCount allocations;
@@ -1996,7 +1996,8 @@ TEST_CASE(
                 center,
                 Vertex::Time,
                 columns,
-                Buffer<float>(destination.data(), (int) (columns * 32))));
+                Buffer<float>(destination.data(), (int) (columns * 32)),
+                PortDomain::TimeSignal));
     }
 
     REQUIRE(allocations.count() == 0);

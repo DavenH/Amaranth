@@ -5,6 +5,8 @@
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphRuntime.h"
 
@@ -224,7 +226,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes[1].connected);
 }
 
-TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits",
+TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the correct taps",
         "[cycle-v2][runtime][probe][causal][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -241,22 +243,58 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
-    const auto initialWaveshaperValues = findProbePreview(
+    const auto initialWaveshaperOutput = findProbePreview(
             presentation.previewResult(), "probe2").values;
+    const auto initialWaveshaperInput = findProbePreview(
+            presentation.previewResult(), "probe5").values;
     const auto initialDownstreamValues = findProbePreview(
             presentation.previewResult(), "probe").values;
+    const auto initialMagnitudePreview = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
 
     const Node* waveshaper = document.graph().findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);
-    const auto currentPost = std::find_if(
-            waveshaper->parameters.begin(),
-            waveshaper->parameters.end(),
-            [](const auto& parameter) { return parameter.id == "post"; });
-    REQUIRE(currentPost != waveshaper->parameters.end());
-    const String editedPost = currentPost->value == "0" ? "1" : "0";
-    const auto edit = commands.setNodeParameter(
-            "waveshaper", "post", "Post", editedPost);
+    const auto currentModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            waveshaper->model);
+    REQUIRE(currentModel != nullptr);
+    REQUIRE(currentModel->flatCurve() != nullptr);
+    FlatCurveModel editedCurve;
+    REQUIRE(editedCurve.copyFrom(*currentModel->flatCurve()));
+    const auto vertices = editedCurve.getVertices();
+    std::vector<FlatCurveVertex> movableVertices;
+    std::copy_if(
+            vertices.begin(),
+            vertices.end(),
+            std::back_inserter(movableVertices),
+            [](const auto& vertex) { return vertex.curve < 0.9f; });
+    const auto editedVertex = *std::min_element(
+            movableVertices.begin(),
+            movableVertices.end(),
+            [](const auto& left, const auto& right) {
+                return std::abs(left.x - 0.5f) < std::abs(right.x - 0.5f);
+            });
+    REQUIRE(editedCurve.moveVertex(
+            editedVertex.id,
+            { editedVertex.x, editedVertex.y > 0.5f ? 0.15f : 0.85f }).succeeded());
+    const auto editedModel = CurveNodeModelState::copyOf(
+            editedCurve,
+            waveshaper->model->revision() + 1);
+    const auto beforeConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            waveshaper->parameters, waveshaper->model);
+    const auto afterConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            waveshaper->parameters, editedModel);
+    REQUIRE(beforeConfiguration != nullptr);
+    REQUIRE(afterConfiguration != nullptr);
+    REQUIRE(beforeConfiguration->transfer->lookup(editedVertex.x)
+            != afterConfiguration->transfer->lookup(editedVertex.x));
+    const auto edit = commands.publishCurveState({
+            waveshaper->id,
+            waveshaper->model->revision(),
+            editedModel,
+            waveshaper->parameters
+    });
     REQUIRE(edit.succeeded());
     REQUIRE(edit.changed);
 
@@ -272,17 +310,22 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
 
     REQUIRE(completed);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").values
-            != initialWaveshaperValues);
+            != initialWaveshaperOutput);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").values
+            == initialWaveshaperInput);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").values
             != initialDownstreamValues);
+    REQUIRE(findNodePreview(presentation.previewResult(), "magnitudeLayer1").primary
+            == initialMagnitudePreview);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
 
-TEST_CASE("Stengah downstream pan edits leave the magnitude mesh preview idempotent",
+TEST_CASE("Stengah downstream pan edits leave the upstream magnitude signal idempotent",
         "[cycle-v2][runtime][causal][pan][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -292,7 +335,18 @@ TEST_CASE("Stengah downstream pan edits leave the magnitude mesh preview idempot
             .getChildFile("stengah.cyclegraph");
     REQUIRE(preset.existsAsFile());
 
-    GraphDocument document(GraphSerializer().fromJsonString(preset.loadFileAsString()));
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "upstreamMagnitude",
+            "magnitudeLayer1",
+            "out",
+            "magnitudeLayer1Process",
+            "in",
+            "Upstream magnitude",
+            0.5f,
+            8
+    });
+    GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
     GraphChangeSet topology;
@@ -302,6 +356,9 @@ TEST_CASE("Stengah downstream pan edits leave the magnitude mesh preview idempot
             presentation.previewResult(), "magnitudeLayer1").primary;
     const auto upstreamSecondary = findNodePreview(
             presentation.previewResult(), "magnitudeLayer1").secondary;
+    const auto upstreamSignal = findProbePreview(
+            presentation.previewResult(), "upstreamMagnitude").values;
+    std::vector<float> leftPanOutput;
 
     for (const String pan : { "0", "1", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
@@ -323,6 +380,17 @@ TEST_CASE("Stengah downstream pan edits leave the magnitude mesh preview idempot
         REQUIRE(findNodePreview(
                 presentation.previewResult(), "magnitudeLayer1").secondary
                 == upstreamSecondary);
+        REQUIRE(findProbePreview(
+                presentation.previewResult(), "upstreamMagnitude").values
+                == upstreamSignal);
+        if (pan == "0") {
+            leftPanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+        } else if (pan == "1") {
+            REQUIRE(findProbePreview(
+                    presentation.previewResult(), "probe3").values
+                    != leftPanOutput);
+        }
     }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

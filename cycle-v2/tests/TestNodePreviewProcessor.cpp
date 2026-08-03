@@ -77,6 +77,32 @@ TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
     CHECK(image.getPixelAt(1, 1) != image.getPixelAt(1, 0));
 }
 
+TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
+        "[cycle-v2][runtime][probe][ui]") {
+    const auto render = [](float gain) {
+        NodePreviewResult result;
+        result.role = PreviewModuleRole::SignalSpy;
+        result.primary = { -gain, gain, -gain * 0.5f, gain * 0.5f };
+        result.gridColumns = 2;
+        result.gridRows = 2;
+        result.domain = PortDomain::TimeSignal;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    };
+
+    const Image quiet = render(0.25f);
+    const Image loud = render(0.5f);
+    REQUIRE(quiet.isValid());
+    REQUIRE(loud.isValid());
+
+    bool differs {};
+    for (int y = 0; y < quiet.getHeight(); ++y) {
+        for (int x = 0; x < quiet.getWidth(); ++x) {
+            differs = differs || quiet.getPixelAt(x, y) != loud.getPixelAt(x, y);
+        }
+    }
+    REQUIRE(differs);
+}
+
 TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic sampler",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     constexpr size_t rows = 9;

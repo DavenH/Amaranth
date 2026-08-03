@@ -13,20 +13,30 @@ void ensureCurveTable() {
     }
 }
 
+Rasterization::PointScalingMode scalingModeForDomain(PortDomain domain) {
+    if (domain == PortDomain::TimeSignal
+            || domain == PortDomain::SpectralPhaseSignal) {
+        return Rasterization::PointScalingMode::Bipolar;
+    }
+
+    return Rasterization::PointScalingMode::Unipolar;
+}
+
 }
 
 void TrimeshBlockwiseDsp::prepare(
         Mesh* meshToRender,
         const MorphPosition& morphPosition,
         int axis,
-        bool shouldWrap) {
+        bool shouldWrap,
+        PortDomain domain) {
     setMesh(meshToRender);
     setMorphPosition(morphPosition);
     setPrimaryViewAxis(axis);
     setCyclic(shouldWrap);
     ensureCurveTable();
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
-        rasterizer.renderWaveform({ *mesh, createRequest(), 0.f });
+        rasterizer.renderWaveform({ *mesh, createRequest(domain), 0.f });
     }
 }
 
@@ -51,7 +61,7 @@ void TrimeshBlockwiseDsp::renderCycle(
         PortDomain domain,
         ChannelLayout channelLayout,
         SignalPayload& output) {
-    prepare(mesh, morph, primaryViewAxis, cyclic);
+    prepare(mesh, morph, primaryViewAxis, cyclic, domain);
     renderPrepared(frameCount, domain, channelLayout, output);
 }
 
@@ -77,8 +87,8 @@ void TrimeshBlockwiseDsp::renderPrepared(
     sampleOutput(outputBuffer(output));
 }
 
-void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output) {
-    prepare(mesh, morph, primaryViewAxis, cyclic);
+void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output, PortDomain domain) {
+    prepare(mesh, morph, primaryViewAxis, cyclic, domain);
     renderPreparedInto(output);
 }
 
@@ -91,14 +101,15 @@ void TrimeshBlockwiseDsp::renderPreparedInto(Buffer<float> output) {
     sampleOutput(output);
 }
 
-Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest() const {
+Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
+        PortDomain domain) const {
     Rasterization::RasterizationRequest request;
     request.cyclic = cyclic;
     request.xMinimum = cyclic ? -0.05f : 0.f;
     request.xMaximum = cyclic ? 1.05f : 1.f;
     request.morph = morph;
     request.primaryViewDimension = primaryViewAxis;
-    request.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    request.scalingMode = scalingModeForDomain(domain);
     request.calcDepthDimensions = false;
     request.lowResCurves = false;
     return request;

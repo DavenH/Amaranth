@@ -24,7 +24,8 @@ public:
             const MorphPosition& center,
             int primaryViewAxis,
             size_t maximumColumnCount,
-            size_t maximumRowCount);
+            size_t maximumRowCount,
+            PortDomain domain);
 
     std::vector<TrimeshGridColumn> renderColumns(
             Mesh& mesh,
@@ -39,13 +40,15 @@ public:
             const MorphPosition& center,
             int primaryViewAxis,
             size_t columnCount,
-            Buffer<float> destination);
+            Buffer<float> destination,
+            PortDomain domain);
     bool renderMorphColumnsInto(
             Mesh& mesh,
             const MorphPosition* morphs,
             int primaryViewAxis,
             size_t columnCount,
-            Buffer<float> destination);
+            Buffer<float> destination,
+            PortDomain domain);
     static MorphPosition morphForColumn(
             const MorphPosition& center,
             int primaryViewAxis,

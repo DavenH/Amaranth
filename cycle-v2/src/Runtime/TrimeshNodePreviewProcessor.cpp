@@ -130,7 +130,7 @@ private:
             PortDomain outputDomain) {
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
-        blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic);
+        blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic, outputDomain);
         blockwiseDsp.renderPrepared(
                 context.pointCount,
                 outputDomain,

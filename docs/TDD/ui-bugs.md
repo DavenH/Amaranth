@@ -1,5 +1,24 @@
 # UI Bug Notes
 
+## Open: Expanded curve-editor automation target can resolve to empty canvas
+
+Context:
+
+- A focused native Stengah Waveshaper check on 2026-08-03 opened the editor
+  through automation, then captured the reported
+  `expanded:waveshaper.panel2D` screen bounds.
+- The crop at `/tmp/stengah-native/stengah-waveshaper-before-edit.png` contains
+  empty canvas and compact graph nodes rather than the expanded curve panel.
+  Native clicks at that target therefore cannot serve as evidence for editor
+  gestures or hover cursors.
+- The semantic curve publication and raw input/output probe assertions pass;
+  this is an automation/editor-host visibility or coordinate-boundary defect,
+  not the Stengah DSP failure.
+
+Current status: open; make `openNodeEditor` wait for a visible hosted component
+and derive native screen bounds from that component before restoring the
+focused native curve gesture fixture.
+
 ## Addressed: Stengah Waveshaper selection restored before panel initialization
 
 Context:

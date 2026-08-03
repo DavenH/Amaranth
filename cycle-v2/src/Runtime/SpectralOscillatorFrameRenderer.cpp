@@ -214,7 +214,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                             const_cast<Mesh*>(operation.configuration->mesh.get()),
                             operation.configuration->morph,
                             operation.configuration->primaryViewAxis,
-                            false);
+                            false,
+                            operation.outputDomain);
                 }
                 break;
             }
