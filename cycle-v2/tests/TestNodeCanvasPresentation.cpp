@@ -143,7 +143,9 @@ TEST_CASE("Input sockets precede icons attached to the node edge",
             voice,
             voice.inputs[2]);
     const float verticalSpacing = nextInput.centre.y - input.centre.y;
-    REQUIRE(verticalSpacing >= 34.f * NodePortGeometry::referenceZoom * 1.25f);
+    REQUIRE(verticalSpacing == Catch::Approx(
+            NodePortGeometry::sidePortSpacing * NodePortGeometry::referenceZoom));
+    REQUIRE(NodePortGeometry::sidePortSpacing >= 44.f * 1.2f);
     REQUIRE(nextInput.iconBounds.getBottom() < nodeBounds.getBottom());
 
     viewport.setTransform({}, NodePortGeometry::referenceZoom * 0.5f);

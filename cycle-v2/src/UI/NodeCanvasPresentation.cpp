@@ -359,6 +359,53 @@ void paintOutputAction(
     graphics.fillEllipse(Rectangle<float>(dot, dot).withCentre(output));
 }
 
+struct PortIconRail {
+    PortSide side;
+    Rectangle<float> iconSpan;
+};
+
+void includeInRail(
+        std::vector<PortIconRail>& rails,
+        PortSide side,
+        Rectangle<float> iconBounds) {
+    const auto match = std::find_if(rails.begin(), rails.end(), [&](const auto& rail) {
+        return rail.side == side;
+    });
+    if (match == rails.end()) {
+        rails.push_back({ side, iconBounds });
+    } else {
+        match->iconSpan = match->iconSpan.getUnion(iconBounds);
+    }
+}
+
+std::vector<PortIconRail> iconRailsFor(
+        const NodeCanvasViewport& viewport,
+        const Node& node) {
+    std::vector<PortIconRail> rails;
+    for (const auto& port : node.inputs) {
+        if (ModulationCableBundle::hidesIndividualPort(node, port)) {
+            continue;
+        }
+        const PortVisualSemantic semantic = NodePortVisualResolver::semanticFor(port);
+        if (NodePortIconRenderer::hasIcon(semantic)) {
+            includeInRail(
+                    rails,
+                    port.side,
+                    NodeCanvasPresentation::portPresentation(viewport, node, port).iconBounds);
+        }
+    }
+
+    if (ModulationCableBundle::supportsDestination(node)) {
+        const Point<float> centre = viewport.toScreen(
+                ModulationCableBundle::worldCentre(node, true));
+        includeInRail(
+                rails,
+                PortSide::Left,
+                NodePortGeometry::iconBounds(centre, PortSide::Left, viewport.getZoom()));
+    }
+    return rails;
+}
+
 }
 
 NodeCanvasPresentation::NodeCanvasPresentation(
@@ -678,6 +725,10 @@ void NodeCanvasPresentation::paintNode(
                                 frame.unisonPreviewContext)
                         : frame.unisonPreviewContext
         });
+    }
+
+    for (const auto& rail : iconRailsFor(frame.viewport, node)) {
+        NodePortIconRenderer::paintRail(graphics, rail.iconSpan, rail.side);
     }
 
     const auto paintPort = [&](const Port& port) {

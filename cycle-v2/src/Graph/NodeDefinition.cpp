@@ -313,7 +313,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 280.f, 166.f })
+                    .presentation({}, { 280.f, 190.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {

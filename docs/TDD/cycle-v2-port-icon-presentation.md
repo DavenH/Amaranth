@@ -27,17 +27,18 @@ shared monochrome palette. Attachment semantics are communicated by a small
 descriptive icon, not by assigning another colour.
 
 For an icon-bearing left-side input, the socket is the outermost visual element
-and the icon forms a tab against the node boundary. The visual order is:
+and the icon sits in a rail attached to the node boundary. The visual order is:
 
 ```text
 cable ───○ [icon]│ node content
 ```
 
 Output ports and plain colour-coded inputs remain boundary sockets. Semantic
-input icons sit outside the node on the node-facing side of their sockets. The
-badge uses the node body fill and an open node-facing edge so it reads as an
-attached tab rather than a floating tile. Neither form changes node or preview
-content bounds.
+input icons sit outside the node on the node-facing side of their sockets. One
+continuous rail spans every semantic icon on a side, with no gaps between
+individual rows. It uses the node body fill and an open node-facing edge so it
+reads as attached node chrome rather than a stack of floating tiles. Neither
+form changes node or preview content bounds.
 
 ## Shared Presentation Contract
 
@@ -57,24 +58,24 @@ change the base diameter or move the socket centre.
 
 Top and bottom input ports use the same socket and icon measurements, arranged
 outward as appropriate. Every visible side-port row, including a collapsed
-Modulation Triple bundle, uses the same 44 world-unit grid. This is a 29%
-increase from the original 34 units. Fixed-size nodes provide clearance above
-and below the complete row group. Icon placement is presentation geometry only;
-it does not reduce preview layout.
+Modulation Triple bundle, uses the same 54 world-unit grid. This is a 59%
+increase from the original 34 units and 23% more than the prior 44-unit pass.
+Fixed-size nodes provide clearance above and below the complete row group. Icon
+placement is presentation geometry only; it does not reduce preview layout.
 
 The initial semantic icons are:
 
 | Port semantic | Icon concept |
 | --- | --- |
-| Modulation Triple | neutral socket with a yellow/red/blue flag; red/blue for Envelope destinations |
+| Modulation Triple | three yellow/red/blue bars; red/blue bars for Envelope destinations |
 | Pitch envelope | existing Envelope Pitch mark |
 | Unison configuration | fanned voice lines |
 | Voice context | established Voice Context node mark |
 | Scratch attachment | existing Envelope Scratch mark |
 
 Icons use the same neutral two-tone palette and remain distinguishable at
-normal canvas zoom. Only the Modulation Triple flag retains semantic colour,
-because its yellow/red/blue lanes are the meaning being communicated. Sockets
+normal canvas zoom. Only the Modulation Triple bars retain semantic colour,
+because their yellow/red/blue lanes are the meaning being communicated. Sockets
 and cables remain neutral. Shape remains the primary distinction for every
 other semantic. Exact artwork belongs to the shared icon set, not individual
 node painters. A short port name remains available through hover text and
@@ -109,14 +110,16 @@ targets consume that geometry.
   and `PortVisualSemantic` values. It contains no `NodeKind` switch.
 - `NodePortIconRenderer` parses and caches the modulation and Unison sources
   once, and delegates Pitch, Scratch, and Voice Context to their established
-  renderers in neutral mode. Modulation destinations use either the coloured
-  Y/R/B or R/B flag.
+  renderers in neutral mode. Modulation destinations use either three coloured
+  Y/R/B bars or two R/B bars.
 - `NodePortSocketRenderer` is the single circular socket painter used by
   ordinary ports, compact Modulation nodes, bundle destinations, and bundle
   cable endpoints.
-- Port badges are outside node bounds and meet the preview edge. Their sockets
-  sit on the cable-facing side of the badge. Output ports, icon-bearing inputs,
+- Port rails are outside node bounds and meet the preview edge. Their sockets
+  sit on the cable-facing side of each icon. Output ports, icon-bearing inputs,
   and plain colour-coded signal inputs never reduce preview content.
+- All semantic icons on a side share one continuous rail; individual icon rows
+  do not paint separate tab backgrounds or outlines.
 - Semantic rows share one vertical grid; bundled modulation no longer uses an
   independent node-centre position. Fixed Voice Context height leaves visible
   clearance below its third row.
@@ -135,7 +138,8 @@ targets consume that geometry.
 
 - Every preview-node socket has the same base diameter and aligned hit target.
 - For semantic inputs, the socket appears on the cable-facing side of an icon
-  tab attached to the node edge; plain ports remain at the boundary.
+  in a continuous rail attached to the node edge; plain ports remain at the
+  boundary.
 - Side input rows have at least 25% more vertical separation than the original
   34-unit layout and remain equally spaced when one row represents a bundle.
 - Input icons and right-side outputs do not reduce node preview content.
@@ -144,7 +148,7 @@ targets consume that geometry.
 - Modulation Triple, Pitch, Unison, Voice Context, and Scratch attachments are
   distinguishable by icon without colour.
 - Pitch, Unison, Voice Context, and Scratch are monochrome; only modulation
-  flags retain their semantic lane colours.
+  bars retain their semantic lane colours.
 - Connection, hover, selection, and pending states remain readable without
   changing socket size.
 - Hit testing covers the common invisible target and does not depend on the

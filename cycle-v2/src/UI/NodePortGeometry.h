@@ -13,7 +13,7 @@ struct NodePortGeometry {
     static constexpr float socketIconGap = 3.6f;
     static constexpr float iconSize = 18.f;
     static constexpr float firstSidePortOffset = 58.f;
-    static constexpr float sidePortSpacing = 44.f;
+    static constexpr float sidePortSpacing = 54.f;
     static constexpr float iconLaneExtent =
             socketDiameter * 0.5f + socketIconGap + iconSize;
     static constexpr float iconLaneExtentWorld = iconLaneExtent / referenceZoom;

@@ -9,6 +9,10 @@ namespace CycleV2 {
 class NodePortIconRenderer {
 public:
     static bool hasIcon(PortVisualSemantic semantic);
+    static void paintRail(
+            Graphics& graphics,
+            Rectangle<float> iconSpan,
+            PortSide side);
     static void paint(
             Graphics& graphics,
             PortVisualSemantic semantic,
