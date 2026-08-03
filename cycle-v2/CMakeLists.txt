@@ -66,6 +66,15 @@ generate_svg_data(
     control volume pitch scratch
 )
 
+generate_svg_data(
+    PORT_ICON
+    port-icons
+    PortIconData
+    PortIconData
+    modulationYrb modulationRb pitchEnvelope unisonConfiguration
+    voiceContext scratchAttachment
+)
+
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
@@ -75,9 +84,11 @@ list(APPEND APP_SOURCES
     ${PALETTE_ICON_FILES}
     ${NODE_ICON_FILES}
     ${ENVELOPE_PURPOSE_ICON_FILES}
+    ${PORT_ICON_FILES}
     "${PALETTE_ICON_DATA_HEADER}"
     "${NODE_ICON_DATA_HEADER}"
     "${ENVELOPE_PURPOSE_ICON_DATA_HEADER}"
+    "${PORT_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
@@ -151,6 +162,9 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortIconRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortLayout.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortVisualResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TrimeshGuideCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"

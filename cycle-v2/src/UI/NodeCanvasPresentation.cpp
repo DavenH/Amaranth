@@ -4,13 +4,15 @@
 #include "NodeCanvasGlRenderer.h"
 #include "EnvelopePurposeIconRenderer.h"
 #include "ModulationCableBundle.h"
+#include "NodePortIconRenderer.h"
 #include "NodePortGeometry.h"
+#include "NodePortLayout.h"
+#include "NodePortVisualResolver.h"
 #include "NodeViewModule.h"
 #include "VoiceContextCompactEditor.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Graph/GraphValidator.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
 
 #include <cmath>
 
@@ -28,26 +30,6 @@ const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
-}
-
-void paintConfigurationSocket(
-        Graphics& graphics,
-        Point<float> centre,
-        float scale,
-        Colour colour,
-        bool input) {
-    const Rectangle<float> socket = Rectangle<float>(
-            NodePortGeometry::socketDiameter * scale,
-            NodePortGeometry::socketDiameter * scale)
-            .withCentre(centre);
-    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
-    graphics.fillRoundedRectangle(socket.expanded(2.f * scale), 2.5f * scale);
-    graphics.setColour(colour.withAlpha(0.26f));
-    graphics.fillRoundedRectangle(socket.expanded(1.f * scale), 2.f * scale);
-    graphics.setColour(input ? colour : kCanvasBackground.withAlpha(0.96f));
-    graphics.fillRoundedRectangle(socket, 1.8f * scale);
-    graphics.setColour(colour);
-    graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
 }
 
 void paintRoundSocket(
@@ -68,35 +50,6 @@ void paintRoundSocket(
     graphics.fillEllipse(bounds);
     graphics.setColour(colour);
     graphics.drawEllipse(bounds, 1.2f * scale);
-}
-
-void paintAttachmentSocket(
-        Graphics& graphics,
-        Point<float> centre,
-        float scale,
-        const Port& port,
-        Colour fallbackColour) {
-    if (port.attachmentType == AttachmentType::ModulationTriple) {
-        NodeCableRenderer::paintModulationSocket(
-                graphics,
-                centre,
-                NodePortGeometry::socketDiameter * scale,
-                !port.input);
-        return;
-    }
-
-    if (port.attachmentType == AttachmentType::Unison) {
-        const float radius = NodePortGeometry::socketDiameter * scale * 0.5f;
-        paintRoundSocket(
-                graphics,
-                Rectangle<float>(radius * 2.f, radius * 2.f).withCentre(centre),
-                scale,
-                EffectPlotPalette::accent,
-                port.input);
-        return;
-    }
-
-    paintConfigurationSocket(graphics, centre, scale, fallbackColour, port.input);
 }
 
 String modulationParameterId(const String& prefix, const String& name) {
@@ -251,24 +204,12 @@ void paintEnvelopePurposeIcon(
 }
 
 Colour displayColour(const Node& node, const Port& port) {
-    if (port.input && (node.kind == NodeKind::Envelope || node.kind == NodeKind::TrilinearMesh)) {
-        if (port.id == "yellow") {
-            return colourForMorphDimension(MorphDimension::Yellow);
-        }
-        if (port.id == "red") {
-            return colourForMorphDimension(MorphDimension::Red);
-        }
-        if (port.id == "blue") {
-            return colourForMorphDimension(MorphDimension::Blue);
-        }
-    }
-
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities();
     if (capabilities.operationLayoutControl) {
-        return colourForDomain(PortDomain::ControlSignal);
+        return NodePortVisualResolver::colourFor(PortDomain::ControlSignal);
     }
 
-    return colourForDomain(port.domain);
+    return NodePortVisualResolver::colourFor(port.domain);
 }
 
 const Port* findPort(const Node& node, const PortAddress& address) {
@@ -558,7 +499,7 @@ void NodeCanvasPresentation::paintEdges(
         const bool invalid = GraphValidator().edgeHasValidationIssue(frame.graph, edge);
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
-                : colourForDomain(edgeDomain(frame.graph, edge));
+                : NodePortVisualResolver::colourFor(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
                 edge.isAttachment(),
@@ -593,7 +534,7 @@ void NodeCanvasPresentation::paintPendingConnection(
                         frame.viewport.getZoom()),
                 source,
                 destination,
-                colourForDomain(PortDomain::ControlSignal),
+                NodePortVisualResolver::colourFor(PortDomain::ControlSignal),
                 true,
                 node->kind != NodeKind::Envelope
         }, frame.viewport.getZoom());
@@ -618,7 +559,7 @@ void NodeCanvasPresentation::paintPendingConnection(
                     frame.viewport.getZoom()),
             source,
             destination,
-            colourForDomain(port->domain)
+            NodePortVisualResolver::colourFor(port->domain)
     }, frame.viewport.getZoom());
 }
 
@@ -734,10 +675,14 @@ void NodeCanvasPresentation::paintNode(
 
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
-        VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
+        const Rectangle<float> content = NodePortLayout::reservePortGutters(
+                node,
+                nodeBounds,
+                zoom);
+        VoiceContextCompactEditor::paintNodeSelector(graphics, content, zoom, node);
         VoiceContextCompactEditor::paintNodeSummary(
                 graphics,
-                nodeBounds,
+                content,
                 zoom,
                 node,
                 frame.unisonPreviewContext.voiceDurationSeconds);
@@ -761,16 +706,12 @@ void NodeCanvasPresentation::paintNode(
     const auto paintPort = [&](const Port& port) {
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
-        if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
-            paintAttachmentSocket(
-                    graphics,
-                    location.centre,
-                    scale,
-                    port,
-                    colour);
-            return;
-        }
         paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
+        NodePortIconRenderer::paint(
+                graphics,
+                NodePortVisualResolver::semanticFor(port),
+                location.iconBounds,
+                port.side == PortSide::Right);
     };
 
     for (const auto& port : node.inputs) {
@@ -784,13 +725,19 @@ void NodeCanvasPresentation::paintNode(
     }
 
     if (ModulationCableBundle::supportsDestination(node)) {
+        const Point<float> socketCentre = frame.viewport.toScreen(
+                ModulationCableBundle::worldCentre(node, true));
+        const bool includesYellow = ModulationCableBundle::destinationIncludesYellow(node);
         NodeCableRenderer::paintModulationSocket(
                 graphics,
-                frame.viewport.toScreen(
-                        ModulationCableBundle::worldCentre(node, true)),
+                socketCentre,
                 ModulationCableBundle::socketDiameter * scale,
                 false,
-                ModulationCableBundle::destinationIncludesYellow(node));
+                includesYellow);
+        NodePortIconRenderer::paint(
+                graphics,
+                NodePortVisualResolver::modulationSemantic(includesYellow),
+                NodePortGeometry::iconBounds(socketCentre, PortSide::Left, zoom));
     }
 }
 
@@ -804,6 +751,7 @@ NodePortPresentation NodeCanvasPresentation::portPresentation(
             * 0.5f;
     return {
             Rectangle<float>(centre.x - radius, centre.y - radius, radius * 2.f, radius * 2.f),
+            NodePortGeometry::iconBounds(centre, port.side, viewport.getZoom()),
             centre
     };
 }

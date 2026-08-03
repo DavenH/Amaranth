@@ -1,4 +1,6 @@
 #include "NodePreviewRenderer.h"
+
+#include "NodePortLayout.h"
 #include "SpectralPreviewMapping.h"
 
 #include "NodeParameterValue.h"
@@ -564,19 +566,19 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
     Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
-        return nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
+        preview = nodeBounds.withTrimmedTop(40.f * zoom).reduced(3.f * zoom, 5.f * zoom);
     }
 
     if (node.kind == NodeKind::Unison) {
-        return nodeBounds.withTrimmedTop(42.f * zoom).reduced(3.f * zoom);
+        preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(3.f * zoom);
     }
 
     if (node.kind == NodeKind::Waveshaper) {
         const float size = jmin(preview.getWidth(), preview.getHeight());
-        return Rectangle<float>(size, size).withCentre(preview.getCentre());
+        preview = Rectangle<float>(size, size).withCentre(preview.getCentre());
     }
 
-    return preview;
+    return NodePortLayout::reservePortGutters(node, preview, zoom);
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {

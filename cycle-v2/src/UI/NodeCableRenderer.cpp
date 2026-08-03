@@ -10,38 +10,29 @@ const Colour kCanvasBackground { 0xff101318 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
 
-void paintModulationPie(
+void paintModulationEndpoint(
         Graphics& graphics,
         Point<float> centre,
         float diameter,
         bool output,
-        bool yellowEnabled) {
+        bool) {
     const Rectangle<float> bounds(diameter, diameter);
     const auto placed = bounds.withCentre(centre);
     graphics.setColour(kCanvasBackground.withAlpha(0.96f));
     graphics.fillEllipse(placed);
-
-    const MorphDimension dimensions[] {
-            MorphDimension::Yellow,
-            MorphDimension::Red,
-            MorphDimension::Blue
-    };
-    constexpr float segment = MathConstants<float>::twoPi / 3.f;
-    for (int index = 0; index < 3; ++index) {
-        Path wedge;
-        wedge.addPieSegment(
-                placed.reduced(output ? diameter * 0.14f : diameter * 0.06f),
-                -MathConstants<float>::halfPi + segment * (float) index,
-                -MathConstants<float>::halfPi + segment * (float) (index + 1),
-                0.f);
-        const bool enabled = index != 0 || yellowEnabled;
-        graphics.setColour(colourForMorphDimension(dimensions[index]).withAlpha(
-                enabled ? 1.f : 0.18f));
-        graphics.fillPath(wedge);
+    const Colour neutral = colourForDomain(PortDomain::ControlSignal);
+    graphics.setColour(neutral.withAlpha(0.22f));
+    graphics.fillEllipse(placed.expanded(diameter * 0.12f));
+    if (output) {
+        graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+        graphics.fillEllipse(placed);
+        graphics.setColour(neutral);
+        graphics.drawEllipse(placed, jmax(1.f, diameter * 0.12f));
+        return;
     }
 
-    graphics.setColour(Colours::white.withAlpha(0.62f));
-    graphics.drawEllipse(placed, jmax(1.f, diameter * 0.08f));
+    graphics.setColour(neutral);
+    graphics.fillEllipse(placed);
 }
 
 void paintSpliceMarker(
@@ -158,8 +149,8 @@ void paintEndpoints(
         float scale) {
     if (style.modulationBundle) {
         const float size = NodePortGeometry::socketDiameter / kCableStrokeScale * scale;
-        paintModulationPie(graphics, edge.source, size, true, true);
-        paintModulationPie(
+        paintModulationEndpoint(graphics, edge.source, size, true, true);
+        paintModulationEndpoint(
                 graphics,
                 edge.destination,
                 size,
@@ -259,8 +250,8 @@ void NodeCableRenderer::paintPending(
     graphics.fillEllipse(destinationMarker.reduced(2.f * scale));
 
     if (connection.modulationBundle) {
-        paintModulationPie(graphics, connection.source, 12.f * scale, true, true);
-        paintModulationPie(
+        paintModulationEndpoint(graphics, connection.source, 12.f * scale, true, true);
+        paintModulationEndpoint(
                 graphics,
                 connection.destination,
                 12.f * scale,
@@ -275,7 +266,7 @@ void NodeCableRenderer::paintModulationSocket(
         float diameter,
         bool output,
         bool yellowEnabled) {
-    paintModulationPie(graphics, centre, diameter, output, yellowEnabled);
+    paintModulationEndpoint(graphics, centre, diameter, output, yellowEnabled);
 }
 
 }

@@ -2,6 +2,7 @@
 
 #include "NodePaletteEntryIconRenderer.h"
 #include "NodePaletteIconRenderer.h"
+#include "NodePortVisualResolver.h"
 
 namespace CycleV2 {
 
@@ -116,7 +117,7 @@ void NodeCanvasPresentation::paintLegend(
         Path line;
         line.startNewSubPath(x, y);
         line.lineTo(x + 17.f, y);
-        graphics.setColour(colourForDomain(entry.domain).withAlpha(0.90f));
+        graphics.setColour(NodePortVisualResolver::colourFor(entry.domain).withAlpha(0.90f));
 
         if (entry.attachment) {
             Path dashed;

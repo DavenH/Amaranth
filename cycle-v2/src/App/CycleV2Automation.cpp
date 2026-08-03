@@ -1467,6 +1467,10 @@ var CycleV2Automation::pointer(const var& commandValue) {
         };
 
         eventComponent->mouseWheelMove(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0), wheel);
+    } else if (eventType == "magnify") {
+        eventComponent->mouseMagnify(
+                makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0),
+                floatProperty(commandValue, "scaleFactor", 1.f));
     } else {
         return failedResult("pointer", "Unknown pointer event: " + eventType);
     }

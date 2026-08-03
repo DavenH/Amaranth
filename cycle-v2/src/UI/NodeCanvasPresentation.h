@@ -51,6 +51,7 @@ struct NodeCanvasPresentationFrame {
 
 struct NodePortPresentation {
     Rectangle<float> bounds;
+    Rectangle<float> iconBounds;
     Point<float> centre;
 };
 
