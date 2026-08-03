@@ -7,6 +7,7 @@
 #include "NodePortIconRenderer.h"
 #include "NodePortGeometry.h"
 #include "NodePortLayout.h"
+#include "NodePortSocketRenderer.h"
 #include "NodePortVisualResolver.h"
 #include "NodeViewModule.h"
 #include "VoiceContextCompactEditor.h"
@@ -30,26 +31,6 @@ const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
-}
-
-void paintRoundSocket(
-        Graphics& graphics,
-        Rectangle<float> bounds,
-        float scale,
-        Colour colour,
-        bool input) {
-    graphics.setColour(colour.withAlpha(0.22f));
-    graphics.fillEllipse(bounds.expanded(1.4f * scale));
-    if (input) {
-        graphics.setColour(colour);
-        graphics.fillEllipse(bounds);
-        return;
-    }
-
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
-    graphics.fillEllipse(bounds);
-    graphics.setColour(colour);
-    graphics.drawEllipse(bounds, 1.2f * scale);
 }
 
 String modulationParameterId(const String& prefix, const String& name) {
@@ -136,11 +117,12 @@ void paintSingleModulationNode(
             frame.viewport.toScreen(node.bounds).getRight(),
             frame.viewport.toScreen(node.bounds).getCentreY()
     };
-    const float diameter = 8.4f * scale;
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
-    graphics.fillEllipse(Rectangle<float>(diameter, diameter).withCentre(centre));
-    graphics.setColour(colourForDomain(PortDomain::ControlSignal));
-    graphics.drawEllipse(Rectangle<float>(diameter, diameter).withCentre(centre), 1.2f * scale);
+    const float diameter = NodePortGeometry::socketDiameter * scale;
+    NodePortSocketRenderer::paint(
+            graphics,
+            Rectangle<float>(diameter, diameter).withCentre(centre),
+            NodePortVisualResolver::colourFor(PortDomain::ControlSignal),
+            false);
 }
 
 void paintTripleModulationNode(
@@ -184,12 +166,13 @@ void paintTripleModulationNode(
         }
     }
 
-    NodeCableRenderer::paintModulationSocket(
+    const float diameter = ModulationCableBundle::socketDiameter * scale;
+    NodePortSocketRenderer::paint(
             graphics,
-            frame.viewport.toScreen(
-                    ModulationCableBundle::worldCentre(node, false)),
-            ModulationCableBundle::socketDiameter * scale,
-            true);
+            Rectangle<float>(diameter, diameter).withCentre(frame.viewport.toScreen(
+                    ModulationCableBundle::worldCentre(node, false))),
+            NodePortVisualResolver::colourFor(PortDomain::ControlSignal),
+            false);
 }
 
 void paintEnvelopePurposeIcon(
@@ -535,8 +518,7 @@ void NodeCanvasPresentation::paintPendingConnection(
                 source,
                 destination,
                 NodePortVisualResolver::colourFor(PortDomain::ControlSignal),
-                true,
-                node->kind != NodeKind::Envelope
+                true
         }, frame.viewport.getZoom());
         return;
     }
@@ -706,7 +688,7 @@ void NodeCanvasPresentation::paintNode(
     const auto paintPort = [&](const Port& port) {
         const NodePortPresentation location = portPresentation(frame.viewport, node, port);
         const Colour colour = displayColour(node, port);
-        paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
+        NodePortSocketRenderer::paint(graphics, location.bounds, colour, port.input);
         NodePortIconRenderer::paint(
                 graphics,
                 NodePortVisualResolver::semanticFor(port),
@@ -728,12 +710,13 @@ void NodeCanvasPresentation::paintNode(
         const Point<float> socketCentre = frame.viewport.toScreen(
                 ModulationCableBundle::worldCentre(node, true));
         const bool includesYellow = ModulationCableBundle::destinationIncludesYellow(node);
-        NodeCableRenderer::paintModulationSocket(
+        NodePortSocketRenderer::paint(
                 graphics,
-                socketCentre,
-                ModulationCableBundle::socketDiameter * scale,
-                false,
-                includesYellow);
+                Rectangle<float>(
+                        ModulationCableBundle::socketDiameter * scale,
+                        ModulationCableBundle::socketDiameter * scale).withCentre(socketCentre),
+                NodePortVisualResolver::colourFor(PortDomain::ControlSignal),
+                true);
         NodePortIconRenderer::paint(
                 graphics,
                 NodePortVisualResolver::modulationSemantic(includesYellow),

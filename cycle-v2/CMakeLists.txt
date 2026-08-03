@@ -164,6 +164,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortLayout.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortSocketRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePortVisualResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TrimeshGuideCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"

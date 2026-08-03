@@ -118,6 +118,9 @@ API is node-agnostic and all standard previews consume it through
   `NodeKind` switch.
 - `NodePortIconRenderer` parses and caches the six SVG sources once. Modulation
   destinations use the same renderer with either the Y/R/B or R/B flag.
+- `NodePortSocketRenderer` is the single circular socket painter used by
+  ordinary ports, compact Modulation nodes, bundle destinations, and bundle
+  cable endpoints.
 - `NodePortLayout` reserves a gutter only when typed input metadata resolves to
   an actual icon. Output ports and plain colour-coded signal inputs do not
   reduce preview content.

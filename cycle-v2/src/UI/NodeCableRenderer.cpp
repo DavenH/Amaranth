@@ -1,6 +1,7 @@
 #include "NodeCableRenderer.h"
 
 #include "NodePortGeometry.h"
+#include "NodePortSocketRenderer.h"
 
 namespace CycleV2 {
 
@@ -9,31 +10,6 @@ namespace {
 const Colour kCanvasBackground { 0xff101318 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
-
-void paintModulationEndpoint(
-        Graphics& graphics,
-        Point<float> centre,
-        float diameter,
-        bool output,
-        bool) {
-    const Rectangle<float> bounds(diameter, diameter);
-    const auto placed = bounds.withCentre(centre);
-    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
-    graphics.fillEllipse(placed);
-    const Colour neutral = colourForDomain(PortDomain::ControlSignal);
-    graphics.setColour(neutral.withAlpha(0.22f));
-    graphics.fillEllipse(placed.expanded(diameter * 0.12f));
-    if (output) {
-        graphics.setColour(kCanvasBackground.withAlpha(0.96f));
-        graphics.fillEllipse(placed);
-        graphics.setColour(neutral);
-        graphics.drawEllipse(placed, jmax(1.f, diameter * 0.12f));
-        return;
-    }
-
-    graphics.setColour(neutral);
-    graphics.fillEllipse(placed);
-}
 
 void paintSpliceMarker(
         Graphics& graphics,
@@ -149,13 +125,16 @@ void paintEndpoints(
         float scale) {
     if (style.modulationBundle) {
         const float size = NodePortGeometry::socketDiameter / kCableStrokeScale * scale;
-        paintModulationEndpoint(graphics, edge.source, size, true, true);
-        paintModulationEndpoint(
+        NodePortSocketRenderer::paint(
                 graphics,
-                edge.destination,
-                size,
-                false,
-                edge.destinationBundleIncludesYellow);
+                Rectangle<float>(size, size).withCentre(edge.source),
+                colourForDomain(PortDomain::ControlSignal),
+                false);
+        NodePortSocketRenderer::paint(
+                graphics,
+                Rectangle<float>(size, size).withCentre(edge.destination),
+                colourForDomain(PortDomain::ControlSignal),
+                true);
         return;
     }
 
@@ -250,23 +229,17 @@ void NodeCableRenderer::paintPending(
     graphics.fillEllipse(destinationMarker.reduced(2.f * scale));
 
     if (connection.modulationBundle) {
-        paintModulationEndpoint(graphics, connection.source, 12.f * scale, true, true);
-        paintModulationEndpoint(
+        NodePortSocketRenderer::paint(
                 graphics,
-                connection.destination,
-                12.f * scale,
-                false,
-                connection.destinationBundleIncludesYellow);
+                Rectangle<float>(12.f * scale, 12.f * scale).withCentre(connection.source),
+                colourForDomain(PortDomain::ControlSignal),
+                false);
+        NodePortSocketRenderer::paint(
+                graphics,
+                Rectangle<float>(12.f * scale, 12.f * scale).withCentre(connection.destination),
+                colourForDomain(PortDomain::ControlSignal),
+                true);
     }
-}
-
-void NodeCableRenderer::paintModulationSocket(
-        Graphics& graphics,
-        Point<float> centre,
-        float diameter,
-        bool output,
-        bool yellowEnabled) {
-    paintModulationEndpoint(graphics, centre, diameter, output, yellowEnabled);
 }
 
 }
