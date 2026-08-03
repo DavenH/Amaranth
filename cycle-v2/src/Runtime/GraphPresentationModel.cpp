@@ -60,38 +60,21 @@ bool GraphPresentationModel::refresh(
     if (!compile && !request.edit.isValid()) {
         return true;
     }
-    updateGraph.execute(next.compileResult.plan, request, [&](const auto& product) {
-        if (product.product != UpdateProduct::PreviewTraversal
-                && product.product != UpdateProduct::ProbePreview
-                && product.product != UpdateProduct::CompactPreview) {
-            return true;
-        }
-        if (previewRendered) {
-            return true;
-        }
-        previewRendered = true;
-        next.previewResult = {};
-        if (next.compileResult.succeeded()) {
-            constexpr size_t previewFrameCount = 128;
-            const AudioExecutionSpec spec {
-                    previewFrameCount,
-                    44100.0,
-                    ChannelLayout::LinkedStereo
-            };
-            previewAudioExecutor.prepareExecution(next.compileResult.plan, spec);
-            const GraphAudioResult audio = previewAudioExecutor.process(
-                    graph,
-                    next.compileResult.plan,
-                    previewFrameCount);
-            next.previewResult = GraphPreviewExecutor().render(
-                    next.compileResult.plan,
-                    audio,
-                    graph.getSignalProbes(),
-                    40);
-            ++previewRenders;
-        }
-        return true;
-    });
+    const auto updateResult = updateGraph.executeDeferredPublication(
+            next.compileResult.plan,
+            request,
+            [&](const auto& products) {
+                return renderPreviewProducts(
+                        graph,
+                        next,
+                        products,
+                        compile,
+                        previewRendered);
+            });
+    updateGraph.publish(request, updateResult);
+    if (previewRendered) {
+        ++previewRenders;
+    }
 
     return acceptSnapshot(std::move(next));
 }
@@ -210,41 +193,80 @@ bool GraphPresentationModel::executeAsyncProducts(
         return isCurrent(refresh);
     }
 
+    return renderPreviewProducts(
+            refresh.graph,
+            next,
+            products,
+            false,
+            refresh.previewRendered,
+            [&] { return isCurrent(refresh); });
+}
+
+bool GraphPresentationModel::renderPreviewProducts(
+        const NodeGraph& graph,
+        GraphPresentationSnapshot& snapshot,
+        const std::vector<PlannedNodeProduct>& products,
+        bool renderFullGraph,
+        bool& previewRendered,
+        GraphAudioExecutor::CancellationCheck cancellationCheck) {
+    previewRendered = false;
+    const bool hasPreviewTraversal = std::any_of(
+            products.begin(), products.end(), [](const auto& product) {
+                return product.product == UpdateProduct::PreviewTraversal;
+            });
+    if (!hasPreviewTraversal || !snapshot.compileResult.succeeded()) {
+        return true;
+    }
+
     constexpr size_t previewFrameCount = 128;
     const AudioExecutionSpec spec {
             previewFrameCount,
             44100.0,
             ChannelLayout::LinkedStereo
     };
-    previewAudioExecutor.prepareExecution(next.compileResult.plan, spec);
-    std::vector<uint8_t> dirtyNodes(next.compileResult.plan.steps.size());
+    previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
+    if (renderFullGraph) {
+        const GraphAudioResult audio = previewAudioExecutor.process(
+                graph,
+                snapshot.compileResult.plan,
+                previewFrameCount);
+        snapshot.previewResult = GraphPreviewExecutor().render(
+                snapshot.compileResult.plan,
+                audio,
+                graph.getSignalProbes(),
+                40);
+        previewRendered = true;
+        return true;
+    }
+
+    std::vector<uint8_t> dirtyNodes(snapshot.compileResult.plan.steps.size());
     for (const auto& product : products) {
         if (product.product != UpdateProduct::PreviewTraversal) {
             continue;
         }
-        const auto step = next.compileResult.plan.dependencyIndex.stepIndexById.find(
+        const auto step = snapshot.compileResult.plan.dependencyIndex.stepIndexById.find(
                 product.nodeId);
-        if (step != next.compileResult.plan.dependencyIndex.stepIndexById.end()) {
+        if (step != snapshot.compileResult.plan.dependencyIndex.stepIndexById.end()) {
             dirtyNodes[static_cast<size_t>(step->second)] = 1;
         }
     }
     const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
-            refresh.graph,
-            next.compileResult.plan,
+            graph,
+            snapshot.compileResult.plan,
             previewFrameCount,
             dirtyNodes,
-            [&] { return isCurrent(refresh); });
-    if (audio.cancelled || !isCurrent(refresh)) {
+            cancellationCheck);
+    if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
         return false;
     }
     GraphPreviewExecutor().renderIncremental(
-            next.compileResult.plan,
+            snapshot.compileResult.plan,
             audio,
-            refresh.graph.getSignalProbes(),
+            graph.getSignalProbes(),
             dirtyNodes,
             40,
-            next.previewResult);
-    refresh.previewRendered = true;
+            snapshot.previewResult);
+    previewRendered = true;
     return true;
 }
 

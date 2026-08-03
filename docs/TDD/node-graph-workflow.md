@@ -1067,7 +1067,9 @@ Acceptance:
   spy/monitor nodes,
 - upstream parameter or mesh edits invalidate downstream previews,
 - downstream-only edits never invalidate, transform, or republish upstream
-  previews; repeating the same edit/refresh sequence is idempotent,
+  previews; synchronous canvas commits and asynchronous editor publication use
+  the same downstream dirty set, and repeating a right-centre-left-centre pan
+  sequence is byte-for-byte idempotent upstream,
 - incremental preview audio restores every clean producer's cached output into
   its compiled buffer slot before a dirty consumer runs, including when graph
   liveness has reused that slot later in the preceding traversal,

@@ -404,6 +404,12 @@ A probe attached before a downstream branch must not cause that branch to run;
 a probe after a join requires the dirty paths into that join but still executes
 the join once.
 
+Synchronous canvas commits and asynchronous editor refreshes must consume the
+same planned preview products. Neither path may replace a downstream dirty set
+with a full traversal. A downstream pan regression is accepted only when a
+right-centre-left-centre sequence leaves the upstream audio process count and
+preview payload unchanged.
+
 `NodeUpdateGraph` must either become the production planner behind this
 scheduler or be removed. A second test-only invalidation policy is not an
 acceptable final state.

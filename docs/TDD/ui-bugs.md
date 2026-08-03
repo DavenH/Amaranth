@@ -168,3 +168,16 @@ Context:
 - Repro artifacts: `/private/tmp/cycle-v2-eq-editor-report.json` and `/private/tmp/cycle-v2-eq-editor-logs.txt`.
 
 Current status: open.
+## Open: GuideCurveOffsetSeeds paired-seed ownership test disagrees with current data
+
+Context:
+
+- The repository-wide test run on 2026-08-03, while verifying downstream pan
+  preview invalidation, failed `TestRasterizerTypes.cpp:31` twice.
+- `GuideCurveOffsetSeeds owns paired phase and vertical seed arrays` expected
+  `verticalAt(2) == 4`, but the current implementation returned `16`.
+- The failure is outside the graph presentation and pan paths changed in that
+  work and reproduces in isolation.
+
+Current status: open; reconcile the test's paired-array expectation with the
+current `GuideCurveOffsetSeeds` storage contract.

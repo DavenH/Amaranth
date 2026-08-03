@@ -358,22 +358,19 @@ TEST_CASE("Stengah downstream pan edits leave the upstream magnitude signal idem
             presentation.previewResult(), "magnitudeLayer1").secondary;
     const auto upstreamSignal = findProbePreview(
             presentation.previewResult(), "upstreamMagnitude").values;
+    const size_t upstreamProcessCount = presentation.previewAudioProcessCount(
+            "magnitudeLayer1");
+    std::vector<float> rightPanOutput;
     std::vector<float> leftPanOutput;
+    std::vector<float> centrePanOutput;
 
-    for (const String pan : { "0", "1", "0.5" }) {
+    for (const String pan : { "1", "0.5", "0", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
                 "magnitudeLayer1Process", "pan", "Pan", pan).succeeded());
-        bool completed {};
-        presentation.refreshAsync(
+        REQUIRE(presentation.refresh(
                 document.graph(),
                 document.revision(),
-                document.lastChange(),
-                [&] { completed = true; });
-        for (int attempt = 0; attempt < 200 && !completed; ++attempt) {
-            MessageManager::getInstance()->runDispatchLoopUntil(10);
-        }
-
-        REQUIRE(completed);
+                document.lastChange()));
         REQUIRE(findNodePreview(
                 presentation.previewResult(), "magnitudeLayer1").primary
                 == upstreamPrimary);
@@ -383,13 +380,22 @@ TEST_CASE("Stengah downstream pan edits leave the upstream magnitude signal idem
         REQUIRE(findProbePreview(
                 presentation.previewResult(), "upstreamMagnitude").values
                 == upstreamSignal);
-        if (pan == "0") {
+        REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+                == upstreamProcessCount);
+        if (pan == "1") {
+            rightPanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+        } else if (pan == "0") {
             leftPanOutput = findProbePreview(
                     presentation.previewResult(), "probe3").values;
-        } else if (pan == "1") {
+            REQUIRE(leftPanOutput != rightPanOutput);
+        } else if (centrePanOutput.empty()) {
+            centrePanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+        } else {
             REQUIRE(findProbePreview(
                     presentation.previewResult(), "probe3").values
-                    != leftPanOutput);
+                    == centrePanOutput);
         }
     }
   #else
