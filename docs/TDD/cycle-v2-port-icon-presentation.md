@@ -26,16 +26,17 @@ spectral magnitude, and spectral phase. All other ports and their cables use a
 shared monochrome palette. Attachment semantics are communicated by a small
 descriptive icon, not by assigning another colour.
 
-The socket is always the outermost visual element at the node boundary. For a
-left-side input, the visual order is:
+For an icon-bearing left-side input, the socket is the outermost visual element
+and the icon forms a tab against the node boundary. The visual order is:
 
 ```text
-cable ───[icon] ○│ node content
+cable ───○ [icon]│ node content
 ```
 
-Output ports remain plain sockets. Input icons sit outside the node adjacent to
-their sockets, paint over the cable for legibility, and never change node or
-preview content bounds. Plain colour-coded signal ports have no icon.
+Output ports and plain colour-coded inputs remain boundary sockets. Semantic
+input icons sit outside the node on the node-facing side of their sockets. The
+badge slightly overlaps the node edge so it reads as an attached tab rather
+than a floating label. Neither form changes node or preview content bounds.
 
 ## Shared Presentation Contract
 
@@ -54,8 +55,9 @@ different shapes. Interaction state may change the halo or stroke but must not
 change the base diameter or move the socket centre.
 
 Top and bottom input ports use the same socket and icon measurements, arranged
-outward as appropriate. Icon placement is presentation geometry only; it does
-not change node size or preview layout.
+outward as appropriate. Side-port centres use 44 world units of vertical
+spacing, a 29% increase from the original 34 units. Icon placement is
+presentation geometry only; it does not change node size or preview layout.
 
 The initial semantic icons are:
 
@@ -92,9 +94,9 @@ layout, but its endpoint must obey the shared socket contract.
 
 The completed migration uses `NodePortGeometry` as the common owner of the
 8.4 px reference socket diameter, reference zoom, independent hit padding,
-and outward icon bounds. Ordinary, Modulation Triple, and Unison
-sockets, cable endpoints, presentation bounds, and scene targets consume that
-geometry.
+44-unit side-port spacing, and the attached icon lane. Ordinary, Modulation
+Triple, and Unison sockets, cable endpoints, presentation bounds, and scene
+targets consume that geometry.
 
 ## Implementation Evidence
 
@@ -107,11 +109,13 @@ geometry.
 - `NodePortSocketRenderer` is the single circular socket painter used by
   ordinary ports, compact Modulation nodes, bundle destinations, and bundle
   cable endpoints.
-- Port badges are outside node bounds. Output ports, icon-bearing inputs, and
-  plain colour-coded signal inputs therefore never reduce preview content.
-- Existing `ModulationCableBundle` routing, graph compatibility, scene centres,
-  and hit geometry are reused unchanged. Only endpoint/socket presentation is
-  translated at the UI boundary.
+- Port badges are outside node bounds and meet the preview edge. Their sockets
+  sit on the cable-facing side of the badge. Output ports, icon-bearing inputs,
+  and plain colour-coded signal inputs never reduce preview content.
+- Existing `ModulationCableBundle` routing and graph compatibility are reused
+  unchanged. Icon-bearing endpoint centres and their matching hit targets move
+  outward together; only this socket/icon presentation geometry is translated
+  at the UI boundary.
 - `cycle-v2-agent-port-icons.json` captures disconnected, connected/selected,
   and reduced-zoom states. The final review artifacts are
   `/private/tmp/cycle-v2-port-icons-disconnected.png`,
@@ -121,8 +125,10 @@ geometry.
 ## Acceptance Criteria
 
 - Every preview-node socket has the same base diameter and aligned hit target.
-- The socket remains at the node boundary; its icon appears immediately outside
-  the node and never overlaps the socket, selection outline, or preview content.
+- For semantic inputs, the socket appears on the cable-facing side of an icon
+  tab attached to the node edge; plain ports remain at the boundary.
+- Side input rows have at least 25% more vertical separation than the original
+  34-unit layout.
 - Input icons and right-side outputs do not reduce node preview content.
 - Only time, spectral magnitude, and spectral phase use semantic port colour;
   other ports and cables use the monochrome palette.

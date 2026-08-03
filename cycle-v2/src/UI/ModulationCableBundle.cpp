@@ -198,12 +198,15 @@ bool ModulationCableBundle::usesSharedSourceSocket(const Node& node, const Edge&
 }
 
 Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {
-    return {
+    const Point<float> boundary {
             input ? node.bounds.getX() : node.bounds.getRight(),
             input
                     ? node.bounds.getCentreY()
                     : node.bounds.getY() + NodePortGeometry::firstSidePortOffset
     };
+    return input
+            ? NodePortGeometry::socketCentreForAttachedIcon(boundary, PortSide::Left)
+            : boundary;
 }
 
 }

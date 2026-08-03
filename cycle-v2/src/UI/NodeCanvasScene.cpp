@@ -1,6 +1,7 @@
 #include "NodeCanvasScene.h"
 #include "ModulationCableBundle.h"
 #include "NodePortGeometry.h"
+#include "NodePortVisualResolver.h"
 #include "NodeViewModule.h"
 #include "TrimeshGuideCableBundle.h"
 
@@ -34,6 +35,33 @@ int portCountOnSide(const Node& node, PortSide side) {
     }) + (int) std::count_if(node.outputs.begin(), node.outputs.end(), [&](const auto& port) {
         return port.side == side;
     });
+}
+
+Point<float> portBoundaryWorldCentre(const Node& node, const Port& port) {
+    if (node.kind == NodeKind::ModulationSource) {
+        return {
+                port.input ? node.bounds.getX() : node.bounds.getRight(),
+                node.bounds.getCentreY()
+        };
+    }
+
+    if (port.side == PortSide::Top || port.side == PortSide::Bottom) {
+        const int index = portIndexOnSide(node, port);
+        const int count = juce::jmax(1, portCountOnSide(node, port.side));
+        return {
+                node.bounds.getX() + node.bounds.getWidth()
+                        * ((float) index + 1.f) / ((float) count + 1.f),
+                port.side == PortSide::Top ? node.bounds.getY() : node.bounds.getBottom()
+        };
+    }
+
+    const float y = node.bounds.getY()
+            + NodePortGeometry::firstSidePortOffset
+            + (float) portIndexOnSide(node, port) * NodePortGeometry::sidePortSpacing;
+    return {
+            port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
+            y
+    };
 }
 
 const Node* findNode(const NodeGraph& graph, const juce::String& nodeId) {
@@ -92,30 +120,10 @@ juce::Path buildCablePath(
 }
 
 juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port& port) {
-    if (node.kind == NodeKind::ModulationSource) {
-        return {
-                port.input ? node.bounds.getX() : node.bounds.getRight(),
-                node.bounds.getCentreY()
-        };
-    }
-
-    if (port.side == PortSide::Top || port.side == PortSide::Bottom) {
-        const int index = portIndexOnSide(node, port);
-        const int count = juce::jmax(1, portCountOnSide(node, port.side));
-        return {
-                node.bounds.getX() + node.bounds.getWidth()
-                        * ((float) index + 1.f) / ((float) count + 1.f),
-                port.side == PortSide::Top ? node.bounds.getY() : node.bounds.getBottom()
-        };
-    }
-
-    const float y = node.bounds.getY()
-            + NodePortGeometry::firstSidePortOffset
-            + (float) portIndexOnSide(node, port) * NodePortGeometry::sidePortSpacing;
-    return {
-            port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
-            y
-    };
+    const Point<float> boundary = portBoundaryWorldCentre(node, port);
+    return NodePortVisualResolver::semanticFor(port) == PortVisualSemantic::None
+            ? boundary
+            : NodePortGeometry::socketCentreForAttachedIcon(boundary, port.side);
 }
 
 juce::Path NodeCanvasScene::cablePath(

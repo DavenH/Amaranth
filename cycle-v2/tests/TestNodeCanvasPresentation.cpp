@@ -122,7 +122,7 @@ TEST_CASE("Only primary processing domains retain port colour",
     REQUIRE(NodePortVisualResolver::colourFor(PortDomain::VoiceControlSignal) == neutral);
 }
 
-TEST_CASE("Input icons sit outside nodes without changing socket geometry",
+TEST_CASE("Input sockets precede icons attached to the node edge",
         "[cycle-v2][canvas][presentation][ports][layout]") {
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
     NodeCanvasViewport viewport;
@@ -132,8 +132,17 @@ TEST_CASE("Input icons sit outside nodes without changing socket geometry",
             viewport,
             voice,
             voice.inputs[1]);
-    REQUIRE(input.iconBounds.getRight() < input.bounds.getX());
+    const Rectangle<float> nodeBounds = viewport.toScreen(voice.bounds);
+    REQUIRE(input.bounds.getRight() < input.iconBounds.getX());
+    REQUIRE(input.iconBounds.getRight() == Catch::Approx(nodeBounds.getX()));
     REQUIRE(input.iconBounds.getWidth() == Catch::Approx(NodePortGeometry::iconSize));
+
+    const auto nextInput = NodeCanvasPresentation::portPresentation(
+            viewport,
+            voice,
+            voice.inputs[2]);
+    const float verticalSpacing = nextInput.centre.y - input.centre.y;
+    REQUIRE(verticalSpacing >= 34.f * NodePortGeometry::referenceZoom * 1.25f);
 
     viewport.setTransform({}, NodePortGeometry::referenceZoom * 0.5f);
     const auto reduced = NodeCanvasPresentation::portPresentation(
@@ -141,7 +150,9 @@ TEST_CASE("Input icons sit outside nodes without changing socket geometry",
             voice,
             voice.inputs[1]);
     REQUIRE(reduced.iconBounds.getWidth() == Catch::Approx(NodePortGeometry::iconSize * 0.5f));
-    REQUIRE(reduced.iconBounds.getRight() < reduced.bounds.getX());
+    REQUIRE(reduced.bounds.getRight() < reduced.iconBounds.getX());
+    REQUIRE(reduced.iconBounds.getRight()
+            == Catch::Approx(viewport.toScreen(voice.bounds).getX()));
 }
 
 TEST_CASE("Input icon semantics do not reduce preview content",
