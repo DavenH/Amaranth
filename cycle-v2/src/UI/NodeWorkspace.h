@@ -65,7 +65,9 @@ private:
     PerformanceKeyboardPanel keyboard;
     Rectangle<float> performanceWorldBounds;
     uint64_t performanceMoveCount {};
+    uint64_t performanceLayoutViewportRevision {};
     bool performanceMoveActive {};
+    bool performanceOccludedByExpandedEditor {};
     uint64_t publishedPlanRevision {};
     uint64_t publishedDevicePreparationRevision {};
     bool previousDeviceReady {};

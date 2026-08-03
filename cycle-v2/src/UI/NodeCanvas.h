@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 
 #include <App/Settings.h>
@@ -82,6 +83,9 @@ public:
     Rectangle<float> visibleWorldBoundsForOverlay() const;
     Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
     Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
+    Rectangle<float> expandedEditorBoundsForOverlay() const;
+    uint64_t viewportRevisionForOverlay() const { return viewport.getRevision(); }
+    void setOverlayPresentationChangedCallback(std::function<void()> callback);
     std::optional<Rectangle<float>> performanceKeyboardBounds() const;
     void beginPerformanceKeyboardMove();
     void movePerformanceKeyboard(Rectangle<float> worldBounds);
@@ -145,6 +149,7 @@ private:
     float probeRailResizeStartHeight {};
     float probeRailResizeStartY {};
     uint32 compiledStateRefreshDueMs {};
+    std::function<void()> overlayPresentationChanged;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -152,6 +157,7 @@ private:
     void timerCallback() override;
 
     void setCanvasOpenGlAttached(bool shouldAttach);
+    void notifyOverlayPresentationChanged();
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
     uint32_t availableRenderInvalidations() const override;

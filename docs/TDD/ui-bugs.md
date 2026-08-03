@@ -183,3 +183,15 @@ Context:
 - Repro artifacts: `/private/tmp/cycle-v2-eq-editor-report.json` and `/private/tmp/cycle-v2-eq-editor-logs.txt`.
 
 Current status: open.
+
+## Open: synthetic expanded-editor close click uses a destroyed component
+
+- Cycle V2 automation resolves an expanded editor component once, sends
+  mouse-down, then sends mouse-up through the same raw pointer. An editor close
+  button may destroy that component during mouse-down, causing `EXC_BAD_ACCESS`
+  at `CycleV2Automation.cpp:1446` before mouse-up.
+- Reproduced while verifying performance-keyboard occlusion with
+  `expanded:waveMesh.close` on 2026-08-02. Crash artifact:
+  `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-logs.txt.ips`.
+- This remains open; the keyboard composition fixture avoids the unrelated
+  close gesture and asserts the reported pan/overlap sequence directly.

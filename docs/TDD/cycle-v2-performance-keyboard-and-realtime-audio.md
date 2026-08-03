@@ -163,6 +163,15 @@ expanded node editors. Its bounds are stored in canvas world coordinates, so
 pan and zoom move and scale it with the graph. The graph canvas does not receive
 pointer gestures captured by a key or the panel's drag header.
 
+`NodeCanvas` publishes viewport and expanded-editor presentation changes to the
+workspace synchronously on the message thread. The keyboard transform is
+therefore updated in the same pan/zoom event as node presentation, rather than
+waiting for the audio/status timer. When an expanded editor geometrically
+occludes the keyboard, the keyboard is hidden and releases its held note; it is
+shown again when that occlusion ends. This rule is shared by hosted component
+editors and canvas-painted compact editors, whose differing JUCE z-order cannot
+otherwise express one consistent stacking contract.
+
 The host supplies a narrow `MidiEventSink` to the widget. The widget does not
 know about `NodeGraph`, compilation, executors, voices, devices, or automation
 reports. It renders keyboard state obtained from `MidiKeyboardState` and emits
@@ -199,6 +208,8 @@ automation target inspection.
   0-127. Changing the displayed octave releases the widget-owned note first.
 - The widget does not grab typing focus from graph shortcuts and text editors.
   Pointer ownership, not keyboard focus, governs note release.
+- Opening or moving an expanded editor over the keyboard hides it and releases
+  any pointer-owned note. It must not remain interactable behind the editor.
 - UI note events use the audio device clock mapping supplied by the ingress.
   They must not be backdated to an earlier block. The normal UI scheduling
   latency is at most the next callback block plus device latency.
@@ -407,6 +418,10 @@ zero-cost when unused. It does not become a parallel renderer.
 - A key-playing gesture creates no graph revision, undo entry, compilation, or
   serialized data change.
 - Canvas pan/zoom moves and scales the panel as world-space presentation state.
+- The keyboard screen transform reaches the same viewport revision in the
+  originating pan/zoom event; timer-delayed reconciliation is not acceptable.
+- An overlapping expanded editor hides the keyboard synchronously and releases
+  any held note.
 - One header drag creates one undoable layout edit, persists the final
   world-space bounds, and creates no node, edge, or compile-plan step.
 
@@ -510,6 +525,8 @@ The feature is complete only when all of the following are true:
   presentation bounds as one undoable layout edit.
 - Saving and reopening a moved panel restores its world-space placement; the
   keyboard remains absent from graph topology and the compiled execution plan.
+- The keyboard never paints or receives gestures over an expanded editor, and
+  it tracks canvas pan/zoom without a delayed visual catch-up.
 - Device or graph failure is visible and cannot be mistaken for successful
   playback.
 
@@ -652,9 +669,9 @@ on the audio thread. Failed graph publication leaves the previous prepared
 generation owned while the workspace reports that the current graph cannot
 play.
 
-The production diff added 2,005 lines and removed 10 lines under `cycle-v2/src`
+The production diff added 2,066 lines and removed 10 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
-added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 260
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 286
 additions and 4 removals. The slight increase over the estimate is the bounded
 live-callback capture, semantic automation surface, and preset-layout boundary
 required for complete acceptance. No production implementation exceeds 350
@@ -708,6 +725,13 @@ non-realtime capture result.
   default range.
 - `/private/tmp/cycle-v2-keyboard-narrow-os.png` verifies the final 496-unit
   width, reduced exactly 20 percent from the previous 620-unit panel.
+- The focused canvas-composition fixture verifies immediate viewport-revision
+  synchronization, expanded-editor occlusion, and held-note release in 13
+  commands without failure. Its report is
+  `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-report.json`.
+- `/private/tmp/cycle-v2-keyboard-expanded-occlusion-os.png` confirms the
+  expanded Trimesh editor occupies the canvas without the keyboard painting or
+  accepting gestures above it.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

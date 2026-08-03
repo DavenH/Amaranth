@@ -42,6 +42,9 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     setOpaque(true);
     addAndMakeVisible(canvas);
     canvas.addAndMakeVisible(keyboard);
+    canvas.setOverlayPresentationChangedCallback([this] {
+        layoutPerformanceKeyboard();
+    });
     keyboard.onMoveStarted = [this] {
         performanceMoveActive = true;
         canvas.beginPerformanceKeyboardMove();
@@ -62,6 +65,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
 
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
+    canvas.setOverlayPresentationChangedCallback({});
     if (performanceMoveActive) {
         canvas.endPerformanceKeyboardMove();
     }
@@ -180,6 +184,9 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     if (targets == nullptr) {
         return result;
     }
+    if (!keyboard.isVisible()) {
+        return result;
+    }
 
     const Rectangle<float> keyboardBounds = keyboard.getBounds().toFloat();
     targets->add(pointerTarget(
@@ -248,6 +255,14 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("worldY", performanceWorldBounds.getY());
     object->setProperty("worldWidth", performanceWorldBounds.getWidth());
     object->setProperty("worldHeight", performanceWorldBounds.getHeight());
+    object->setProperty("screenX", keyboard.getX());
+    object->setProperty("screenY", keyboard.getY());
+    object->setProperty(
+            "layoutSynchronized",
+            performanceLayoutViewportRevision == canvas.viewportRevisionForOverlay());
+    object->setProperty(
+            "occludedByExpandedEditor",
+            performanceOccludedByExpandedEditor);
     object->setProperty(
             "presetPositionStored",
             canvas.performanceKeyboardBounds().has_value());
@@ -362,7 +377,18 @@ void NodeWorkspace::layoutPerformanceKeyboard() {
                 performanceKeyboardWorldHeight
         };
     }
-    keyboard.setBounds(canvas.boundsForWorldOverlay(performanceWorldBounds));
+    const Rectangle<int> screenBounds = canvas.boundsForWorldOverlay(performanceWorldBounds);
+    const Rectangle<float> expandedBounds = canvas.expandedEditorBoundsForOverlay();
+    const bool occluded = !expandedBounds.isEmpty()
+            && expandedBounds.intersects(screenBounds.toFloat());
+
+    if (occluded && keyboard.isVisible()) {
+        keyboard.releaseAllNotes();
+    }
+    keyboard.setBounds(screenBounds);
+    keyboard.setVisible(!occluded);
+    performanceOccludedByExpandedEditor = occluded;
+    performanceLayoutViewportRevision = canvas.viewportRevisionForOverlay();
 }
 
 }
