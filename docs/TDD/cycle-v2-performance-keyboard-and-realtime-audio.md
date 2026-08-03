@@ -2,7 +2,14 @@
 
 ## Status
 
-Implemented (2026-08-02).
+Closed (2026-08-02).
+
+The standalone realtime acceptance path, presentation-only keyboard, preset
+placement, canvas synchronization and occlusion, octave labels, unlabeled drag
+surface, and focused automation coverage are complete. All deletion targets
+and negative architecture boundaries have been audited; no implementation
+slices remain open in this TDD. The final UI refinements are committed through
+`1e63c9a9`.
 
 ## Problem
 
