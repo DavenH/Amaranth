@@ -938,7 +938,8 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.selectedVertex == expectedSelection);
 }
 
-TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
+        "[cycle-v2][nodes][trimesh][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
             "mesh",
@@ -960,4 +961,19 @@ TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral
     bridge.syncFromNode(node, 12, 4);
     REQUIRE_FALSE(bridge.getDataSource().getRenderData().cyclic);
     REQUIRE_FALSE(bridge.rasterizerWrapsVertices());
+    const TrimeshRenderData magnitude = bridge.getDataSource().getRenderData();
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal));
+    bridge.syncFromNode(node, 12, 4);
+    const TrimeshRenderData phase = bridge.getDataSource().getRenderData();
+
+    REQUIRE(magnitude.slice.size() == phase.slice.size());
+    REQUIRE(magnitude.surface.size() == phase.surface.size());
+    for (size_t index = 0; index < magnitude.slice.size(); ++index) {
+        REQUIRE(magnitude.slice[index] == Catch::Approx(phase.slice[index]));
+    }
+    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
+        REQUIRE(magnitude.surface[index] == Catch::Approx(phase.surface[index]));
+    }
+    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) < 0.5f);
 }

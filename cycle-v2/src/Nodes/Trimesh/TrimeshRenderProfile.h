@@ -3,6 +3,7 @@
 #include "../../Graph/GraphRenderSemanticResolver.h"
 #include "../../Graph/NodeGraph.h"
 
+#include <Array/Buffer.h>
 #include <Obj/Color.h>
 
 #include <JuceHeader.h>
@@ -55,6 +56,7 @@ public:
     const TrimeshSurfaceStyle& getSurfaceStyle() const { return surfaceStyle; }
     const TrimeshCurveStyle& getCurveStyle() const { return curveStyle; }
     const TrimeshSliceStyle& getSliceStyle() const { return sliceStyle; }
+    void mapValuesToDisplay(Buffer<float> values) const;
 
 private:
     explicit TrimeshRenderProfile(NodeRenderSemantic semantic);

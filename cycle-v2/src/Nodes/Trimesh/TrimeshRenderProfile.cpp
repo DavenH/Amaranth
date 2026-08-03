@@ -74,6 +74,13 @@ TrimeshRenderProfile TrimeshRenderProfile::fromSemantic(NodeRenderSemantic seman
     return TrimeshRenderProfile(semantic);
 }
 
+void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {
+    if (scalePolicy == RenderScalePolicy::Bipolar) {
+        values.mul(0.5f).add(0.5f);
+    }
+    values.clip(0.f, 1.f);
+}
+
 Image TrimeshSurfaceStyle::gradientImage() const {
     const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal;

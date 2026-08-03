@@ -3,6 +3,7 @@
 #include "TrimeshBlockwiseDsp.h"
 #include "TrimeshGridwiseDsp.h"
 #include "TrimeshMeshFactory.h"
+#include "TrimeshRenderProfile.h"
 
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
@@ -70,17 +71,6 @@ int primaryAxisFromParameter(const String& axisName) {
     }
 
     return Vertex::Time;
-}
-
-void normalizeBipolarBlock(SignalPayload& payload) {
-    if (payload.block.samples.empty()) {
-        return;
-    }
-
-    Buffer<float>(payload.block.samples.data(), (int) payload.block.samples.size())
-            .mul(0.5f)
-            .add(0.5f)
-            .clip(0.f, 1.f);
 }
 
 }
@@ -161,6 +151,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     rows = jmax(2, rows);
     columns = jmax(2, columns);
     const bool cyclic = domain == PortDomain::TimeSignal;
+    const TrimeshRenderProfile renderProfile = TrimeshRenderProfile::fromDomain(domain);
 
     TrimeshRenderData result;
     result.domain = domain;
@@ -175,7 +166,9 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
     blockwiseDsp.setCyclic(cyclic);
     blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
-    normalizeBipolarBlock(slice);
+    renderProfile.mapValuesToDisplay(Buffer<float>(
+            slice.block.samples.data(),
+            (int) slice.block.samples.size()));
     result.slice.assign(slice.block.samples.begin(), slice.block.samples.end());
 
     TrimeshGridwiseDsp gridwiseDsp;
@@ -192,7 +185,9 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain
     result.surface.reserve((size_t) rows * (size_t) columns);
 
     for (auto column : gridColumns) {
-        normalizeBipolarBlock(column.signal);
+        renderProfile.mapValuesToDisplay(Buffer<float>(
+                column.signal.block.samples.data(),
+                (int) column.signal.block.samples.size()));
         result.surface.insert(
                 result.surface.end(),
                 column.signal.block.samples.begin(),

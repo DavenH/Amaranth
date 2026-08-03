@@ -1075,9 +1075,10 @@ Acceptance:
   and gridwise boundaries: time and spectral phase are bipolar, while spectral
   magnitude and other unsigned/control domains remain unipolar. Domain
   conversion must not be inferred from a node kind or hidden inside a consumer,
-- preview rendering applies that domain conversion exactly once: unipolar
-  magnitude data consumes the complete spectral gradient, while bipolar time
-  and phase data is mapped around the display centre,
+- compact and expanded preview rendering apply that domain conversion exactly
+  once: unipolar magnitude data consumes the complete spectral gradient in the
+  node preview and the Trimesh 2D/3D editor, while bipolar time and phase data
+  is mapped around the display centre,
 - Waveshaper compact previews remain the authored transfer-curve editor; their
   processing effect is shown by downstream signal previews and spies. Runtime
   fixtures compare incremental results with a clean full traversal and assert
@@ -1200,8 +1201,8 @@ Current file workflow:
 - adapter-node tests for representative rasterizer and effect behavior,
 - Trimesh domain tests comparing the same mesh as unipolar magnitude and
   bipolar time/phase output.
-- heatmap tests proving that magnitude uses the full unipolar gradient and that
-  bipolar phase is converted once,
+- compact heatmap and expanded Trimesh render-data tests proving that magnitude
+  uses the full unipolar gradient and that bipolar phase is converted once,
 - round-trip tests for every discrete IR length and repeated full-state
   normalization of untouched controls,
 

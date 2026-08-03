@@ -1,0 +1,44 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "magnitudeLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.sliceMinimum",
+      "op": "lessThan",
+      "value": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelMinimum",
+      "op": "lessThan",
+      "value": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelMaximum",
+      "op": "greaterThan",
+      "value": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}
