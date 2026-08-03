@@ -546,7 +546,9 @@ layer-level mesh JSON export are implemented.
   `resizeFinalBoxSelection`, and selection-frame updates. Axe-specific
   gestures remain out of scope for now.
 - Add low-level pointer/key/wheel commands only for interaction regressions.
-  Done for pointer click/down/up/drag/move/doubleClick/wheel events.
+  Done for pointer click/down/up/drag/move/doubleClick/wheel events. Pointer
+  commands can assert `expectedCursor` at the resolved event component so
+  cursor regressions do not stop at internal classification helpers.
 - Pointer commands should target named components plus local coordinates. Done
   with local `x`/`y`, normalized coordinates, and center-point default.
 

@@ -1,20 +1,23 @@
 # UI Bug Notes
 
-## Open: Stengah Waveshaper editor restore crashes on a stale vertex selection
+## Addressed: Stengah Waveshaper selection restored before panel initialization
 
 Context:
 
 - Opening the Waveshaper editor from the locally edited Stengah preset crashes
   while restoring its saved flat-curve selection.
 - The stack reaches `Interactor::getModPosition(bool)` through
-  `FlatCurvePanelBase::restoreFlatSelection`; the saved selected vertex no
-  longer resolves to a valid interactive vertex.
+  `FlatCurvePanelBase::restoreFlatSelection`. The selected vertex is valid, but
+  selection frames were built before `Interactor2D::init` installed the
+  panel's morph-position service.
 - Repro artifact: `/private/tmp/cycle-v2-stengah-seven-probes-logs.txt.ips`.
-- This is incidental to the spy-routing defect; the focused spy fixture can edit
-  the Waveshaper parameter without opening its editor.
+- The consecutive-preset reproduction also produced
+  `/private/tmp/cycle-v2-preset-version-logs.txt` and
+  `CycleV2-2026-08-02-224917.ips`.
 
-Current status: open; validate saved selection IDs before restoring selection
-frames and add an editor-open regression for stale model selections.
+Current status: addressed by staging selection-frame reconstruction until the
+panel host initializes; covered by focused lifecycle and consecutive-preset
+automation.
 
 ## Addressed: Voice Context sliders only responded to pointer-down
 

@@ -381,6 +381,10 @@ more directly used.
   published two revisions, and Trimesh runs failed at different interaction
   stages. These failures are recorded in `ui-bugs.md`; they do not justify
   weakening the native completion criterion.
+- Consecutive preset automation on 2026-08-02 exposed selected flat-curve state
+  being restored before its mature Interactor had a valid morph-position
+  service. Selection is now staged until host initialization; a focused
+  lifecycle test and the consecutive-preset fixture cover the exact ordering.
 
 ## Implementation Sequence
 

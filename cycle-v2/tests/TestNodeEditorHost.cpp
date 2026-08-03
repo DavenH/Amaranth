@@ -8,6 +8,7 @@
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Effect2D/Effect2DWidget.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
@@ -544,6 +545,34 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
             == Catch::Approx(0.25));
     REQUIRE(static_cast<double>(widgetState.getProperty("thirdControl", {}))
             == Catch::Approx(0.75));
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Selected flat curve state binds before its panel host exists",
+          "[cycle-v2][node-editor-host][presets][selection]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            File(CYCLE_V2_SOURCE_DIR)
+                    .getChildFile("content")
+                    .getChildFile("presets")
+                    .getChildFile("stengah.cyclegraph")
+                    .loadFileAsString());
+    const Node* waveshaper = stengah.findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    REQUIRE((int64) waveshaper->editorState.getProperty("selectedVertexId", {}) > 0);
+
+    Effect2DWidget widget(NodeKind::Waveshaper);
+    widget.syncFromNode(*waveshaper);
+
+    REQUIRE_FALSE(widget.selectedVertexParameters().empty());
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            *waveshaper,
+            Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
+    REQUIRE_FALSE(widget.selectedVertexParameters().empty());
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

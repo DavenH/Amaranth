@@ -153,8 +153,10 @@ vertical knob dragging, while its visible outer ring retains ordinary node
 movement through a circular hit boundary and four-way cursor. Cable sockets
 remain available at the left and right edges. The
 Stengah automation fixture proves both gestures and verifies that a dial drag
-does not change edge count. Pan gestures snap within 5% of hard left, centre,
-and hard right.
+does not change edge count. Cursor routing publishes the resolved affordance to
+the active JUCE mouse source as well as the component under the pointer; the
+focused cursor fixture covers the Pan dial, its move ring, and a Trimesh editor
+control. Pan gestures snap within 5% of hard left, centre, and hard right.
 
 ## Boundaries And End State
 

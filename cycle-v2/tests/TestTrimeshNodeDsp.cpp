@@ -876,6 +876,16 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.activeParameter == morph.parameterId);
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
+    Component* morphTarget {};
+    for (auto* child : controls.getChildren()) {
+        if (child->getBounds().contains(morph.bounds.getCentre().roundToInt())) {
+            morphTarget = child;
+            break;
+        }
+    }
+    REQUIRE(morphTarget != nullptr);
+    REQUIRE(morphTarget != &controls);
+    REQUIRE(morphTarget->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
 
     int expectedSelection {};
     const Point<float> selectionPoint = TrimeshWidget::expandedWavePanelContentBounds(content).getCentre();

@@ -46,6 +46,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseEnter(localEvent);
         }
+        showCurrentCursor(event.source);
     }
 
     void mouseMove(const MouseEvent& event) override {
@@ -55,6 +56,7 @@ public:
             exitIfNeeded(localEvent);
             if (!forwardMouseMoveToPeer(event)) {
                 panel.setPanelMouseCursor(MouseCursor::NormalCursor);
+                showCurrentCursor(event.source);
             }
             return;
         }
@@ -64,6 +66,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseMove(localEvent);
         }
+        showCurrentCursor(event.source);
     }
 
     void mouseDown(const MouseEvent& event) override {
@@ -102,6 +105,7 @@ public:
     void mouseExit(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
         exitIfNeeded(localEvent);
+        showCurrentCursor(event.source);
     }
 
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
@@ -190,6 +194,7 @@ private:
 
         if (hoverPeer->mouseMoveFromPeer(event)) {
             setMouseCursor(hoverPeer->getMouseCursor());
+            showCurrentCursor(event.source);
             return true;
         }
 
@@ -213,8 +218,13 @@ private:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseMove(localEvent);
         }
+        showCurrentCursor(event.source);
 
         return true;
+    }
+
+    void showCurrentCursor(MouseInputSource source) {
+        source.showMouseCursor(getMouseCursor());
     }
 
     Panel& panel;

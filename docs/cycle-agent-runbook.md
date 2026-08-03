@@ -143,7 +143,10 @@ Common command families:
 - `selectVertex`, `addVertex`, `moveVertex`, `deleteVertex`: mesh mutation
   commands. Prefer gesture mode for e2e coverage of interaction code; reserve
   direct patch mode for preset generation.
-- `pointer`: targeted mouse events against a registered component.
+- `pointer`: targeted mouse events against a registered component. A move can
+  supply `expectedCursor` (`pointingHand`, `leftRightResize`, `upDownResize`,
+  `move`, `crosshair`, or `normal`) to fail at the actual event target when its
+  hover affordance regresses; successful pointer results also report `cursor`.
 - `waitForIdle`: fixed message-loop drain/delay when a command needs UI updates
   to settle.
 

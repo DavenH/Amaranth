@@ -88,6 +88,25 @@ var failedResult(const String& type, const String& message) {
     return result;
 }
 
+String cursorName(const MouseCursor& cursor) {
+    if (cursor == MouseCursor::PointingHandCursor) {
+        return "pointingHand";
+    }
+    if (cursor == MouseCursor::LeftRightResizeCursor) {
+        return "leftRightResize";
+    }
+    if (cursor == MouseCursor::UpDownResizeCursor) {
+        return "upDownResize";
+    }
+    if (cursor == MouseCursor::UpDownLeftRightResizeCursor) {
+        return "move";
+    }
+    if (cursor == MouseCursor::CrosshairCursor) {
+        return "crosshair";
+    }
+    return "normal";
+}
+
 var rectangleToVar(Rectangle<int> bounds) {
     var result = makeObject();
     auto* object = objectFor(result);
@@ -1383,12 +1402,21 @@ var CycleV2Automation::pointer(const var& commandValue) {
         return failedResult("pointer", "Unknown pointer event: " + eventType);
     }
 
+    const String resolvedCursor = cursorName(eventComponent->getMouseCursor());
+    const String expectedCursor = stringProperty(commandValue, "expectedCursor");
+    if (expectedCursor.isNotEmpty() && resolvedCursor != expectedCursor) {
+        return failedResult(
+                "pointer",
+                "Expected cursor '" + expectedCursor + "' but resolved '" + resolvedCursor + "'");
+    }
+
     var data = makeObject();
     auto* object = objectFor(data);
     object->setProperty("event", eventType);
     object->setProperty("area", area);
     object->setProperty("targetId", targetId);
     object->setProperty("targetComponent", eventComponent == component ? "area" : eventComponent->getName());
+    object->setProperty("cursor", resolvedCursor);
     object->setProperty("x", position.x);
     object->setProperty("y", position.y);
     object->setProperty("localBounds", rectangleToVar(component->getLocalBounds()));

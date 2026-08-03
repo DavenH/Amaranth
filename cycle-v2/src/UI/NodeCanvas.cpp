@@ -169,13 +169,15 @@ void NodeCanvas::mouseMove(const MouseEvent& event) {
     }
     probeRailState.hoveredProbeId = std::move(hovered);
     const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
+    MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        setMouseCursor(inlinePanDialContains(viewport, *inlinePan, event.position)
+        cursor = inlinePanDialContains(viewport, *inlinePan, event.position)
                 ? MouseCursor::UpDownResizeCursor
-                : MouseCursor::UpDownLeftRightResizeCursor);
-    } else {
-        setMouseCursor(MouseCursor::NormalCursor);
+                : MouseCursor::UpDownLeftRightResizeCursor;
     }
+    setMouseCursor(cursor);
+    auto source = event.source;
+    source.showMouseCursor(cursor);
     requestCanvasRepaint();
 }
 

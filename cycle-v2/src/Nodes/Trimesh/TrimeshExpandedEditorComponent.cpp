@@ -116,7 +116,10 @@ void TrimeshExpandedEditorComponent::resized() {
 }
 
 void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    updateCursor(event.position);
+    const MouseCursor cursor = cursorFor(event.position);
+    setMouseCursor(cursor);
+    auto source = event.source;
+    source.showMouseCursor(cursor);
 }
 
 void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
