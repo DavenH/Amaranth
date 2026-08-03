@@ -4,8 +4,8 @@
 
 Implemented. Shared geometry, neutral presentation semantics, external
 input-only icon badges, cable endpoints, hit targets, and focused
-normal/reduced-zoom fixtures are in place. This document does not change graph
-types, connection compatibility, or DSP.
+normal/reduced/enlarged-zoom fixtures are in place. This document does not
+change graph types, connection compatibility, or DSP.
 
 ## Problem
 
