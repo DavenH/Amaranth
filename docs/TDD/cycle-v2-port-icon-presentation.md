@@ -3,7 +3,7 @@
 ## Status
 
 Implemented. Shared geometry, neutral presentation semantics, external
-input-only icon badges, cable endpoints, hit targets, and focused
+input-only icon rails, cable endpoints, hit targets, and focused
 normal/reduced/enlarged-zoom fixtures are in place. This document does not
 change graph types, connection compatibility, or DSP.
 
@@ -99,7 +99,7 @@ layout, but its endpoint must obey the shared socket contract.
 
 The completed migration uses `NodePortGeometry` as the common owner of the
 8.4 px reference socket diameter, reference zoom, independent hit padding,
-44-unit side-port spacing, and the attached icon lane. Ordinary, Modulation
+54-unit side-port spacing, and the attached icon lane. Ordinary, Modulation
 Triple, and Unison sockets, cable endpoints, presentation bounds, and scene
 targets consume that geometry.
 
@@ -145,8 +145,9 @@ targets consume that geometry.
 - Input icons and right-side outputs do not reduce node preview content.
 - Only time, spectral magnitude, and spectral phase use semantic port colour;
   other ports and cables use the monochrome palette.
-- Modulation Triple, Pitch, Unison, Voice Context, and Scratch attachments are
-  distinguishable by icon without colour.
+- Pitch, Unison, Voice Context, and Scratch attachments are distinguishable by
+  monochrome shape; modulation destinations are distinguished by their two or
+  three semantically coloured bars.
 - Pitch, Unison, Voice Context, and Scratch are monochrome; only modulation
   bars retain their semantic lane colours.
 - Connection, hover, selection, and pending states remain readable without
