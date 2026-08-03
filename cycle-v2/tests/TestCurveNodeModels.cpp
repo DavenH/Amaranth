@@ -17,6 +17,7 @@
 #include "../src/Runtime/GraphAudioExecutor.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
 
@@ -562,6 +563,46 @@ TEST_CASE("Curve control drag accepts repeated parameter-only transient publicat
     REQUIRE(parameterValueForNode(
             *document.graph().findNode("shape"),
             "post") == "0.5");
+}
+
+TEST_CASE("IR control publications preserve untouched discrete length",
+        "[cycle-v2][curve-state][commands][parameters][ir]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const Node* initial = document.graph().findNode("ir");
+    REQUIRE(initial != nullptr);
+    auto publication = publicationFor(
+            *initial,
+            modelSnapshotForNode(*initial),
+            initial->model->revision());
+
+    for (auto& control : publication.controls) {
+        if (control.id == "size") {
+            control.value = String(CycleDsp::irImpulseLengthValue(1024));
+        }
+    }
+
+    commands.beginTransientEdit();
+    const float postValues[] { 0.6f, 0.7f, 0.8f };
+    for (float postValue : postValues) {
+        for (auto& control : publication.controls) {
+            if (control.id == "post") {
+                control.value = String(postValue);
+            }
+        }
+
+        const GraphEditResult result = commands.publishCurveState(publication);
+        CAPTURE(result.code);
+        REQUIRE(result.succeeded());
+        const Node* published = document.graph().findNode("ir");
+        REQUIRE(published != nullptr);
+        const String size = parameterValueForNode(*published, "size");
+        CAPTURE(postValue, size);
+        REQUIRE(CycleDsp::irImpulseLength(size.getDoubleValue()) == 1024);
+    }
+    commands.commitTransientEdit();
 }
 
 TEST_CASE("Curve state publication rejects malformed typed and incomplete control state",

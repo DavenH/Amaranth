@@ -14,6 +14,16 @@ TEST_CASE("IR model mappings preserve Cycle 1 parameter behavior", "[cycle-dsp][
     REQUIRE(CycleDsp::irPrefilterAmount(0.5) == Catch::Approx(0.125f));
 }
 
+TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp][ir]") {
+    for (int exponent = 7; exponent <= 14; ++exponent) {
+        const int length = 1 << exponent;
+        const double value = CycleDsp::irImpulseLengthValue(length);
+
+        CAPTURE(exponent, length, value);
+        REQUIRE(CycleDsp::irImpulseLength(value) == length);
+    }
+}
+
 TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-dsp][ir]") {
     constexpr int length = 128;
     std::array<float, length> raw {};

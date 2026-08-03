@@ -243,7 +243,11 @@ std::vector<float> mappedSurface(
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
     if (meshSurface) {
-        buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
+        if (profile.getScalePolicy() == RenderScalePolicy::Bipolar) {
+            buffer.mul(0.5f).add(0.5f);
+        }
+        buffer.clip(0.f, 1.f);
     } else if (preview.role == PreviewModuleRole::SignalSpy
             && preview.domain == PortDomain::TimeSignal) {
         std::vector<float> magnitude = surface;

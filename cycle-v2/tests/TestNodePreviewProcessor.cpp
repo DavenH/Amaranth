@@ -29,6 +29,12 @@ bool hasColouredPixel(const Image& image) {
     return false;
 }
 
+Colour storedArgbPixel(Colour colour) {
+    Image image(Image::ARGB, 1, 1, true);
+    image.setPixelAt(0, 0, colour);
+    return image.getPixelAt(0, 0);
+}
+
 }
 
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
@@ -123,6 +129,53 @@ TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic samp
                 (float) (rows - 1),
                 1.f + sourceUnit * (float) (rows - 2));
         CHECK(mapped[row] == Catch::Approx(sourcePosition));
+    }
+}
+
+TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
+        "[cycle-v2][runtime][preview][spectral][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::MeshSurface;
+    const float expected[] { 0.f, 0.25f, 0.5f, 0.75f, 1.f };
+    result.primary = { 0.f, 0.f, 0.25f, 0.25f, 0.5f, 0.5f,
+            0.75f, 0.75f, 1.f, 1.f };
+    result.gridColumns = 5;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralMagnitudeSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
+
+    REQUIRE(image.isValid());
+    for (int column = 0; column < image.getWidth(); ++column) {
+        CAPTURE(column);
+        const Colour actual = image.getPixelAt(column, 0);
+        if (column == 0) {
+            CHECK(actual.getAlpha() == 0);
+        } else {
+            CHECK(actual == profile.getSurfaceStyle().colourForValue(expected[column]));
+        }
+    }
+}
+
+TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
+        "[cycle-v2][runtime][preview][spectral][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::MeshSurface;
+    result.primary = { -1.f, -1.f, 0.f, 0.f, 1.f, 1.f };
+    result.gridColumns = 3;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralPhaseSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
+    const float expected[] { 0.f, 0.5f, 1.f };
+
+    REQUIRE(image.isValid());
+    for (int column = 0; column < image.getWidth(); ++column) {
+        CAPTURE(column);
+        CHECK(image.getPixelAt(column, 0) == storedArgbPixel(
+                profile.getSurfaceStyle().colourForValue(expected[column])));
     }
 }
 

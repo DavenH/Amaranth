@@ -1075,6 +1075,9 @@ Acceptance:
   and gridwise boundaries: time and spectral phase are bipolar, while spectral
   magnitude and other unsigned/control domains remain unipolar. Domain
   conversion must not be inferred from a node kind or hidden inside a consumer,
+- preview rendering applies that domain conversion exactly once: unipolar
+  magnitude data consumes the complete spectral gradient, while bipolar time
+  and phase data is mapped around the display centre,
 - Waveshaper compact previews remain the authored transfer-curve editor; their
   processing effect is shown by downstream signal previews and spies. Runtime
   fixtures compare incremental results with a clean full traversal and assert
@@ -1106,7 +1109,10 @@ Acceptance:
 - 2D mesh nodes expand to a curve/slice editor,
 - effect nodes expose their current controls as GL widgets or sprites,
 - edits propagate through `NodeUpdateGraph`,
-- closing the editor preserves node state and canvas position.
+- closing the editor preserves node state and canvas position,
+- publishing a complete expanded-editor state is idempotent for every untouched
+  control. In particular, all discrete IR-length values round trip exactly and
+  editing Post Gain, High Pass, or the curve cannot reduce the selected length.
 
 ### Milestone 8: Adapter Nodes For Existing Cycle Processing
 
@@ -1194,6 +1200,10 @@ Current file workflow:
 - adapter-node tests for representative rasterizer and effect behavior,
 - Trimesh domain tests comparing the same mesh as unipolar magnitude and
   bipolar time/phase output.
+- heatmap tests proving that magnitude uses the full unipolar gradient and that
+  bipolar phase is converted once,
+- round-trip tests for every discrete IR length and repeated full-state
+  normalization of untouched controls,
 
 ### Integration Tests
 
