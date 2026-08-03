@@ -6,7 +6,6 @@
 #include "ModulationCableBundle.h"
 #include "NodePortIconRenderer.h"
 #include "NodePortGeometry.h"
-#include "NodePortLayout.h"
 #include "NodePortSocketRenderer.h"
 #include "NodePortVisualResolver.h"
 #include "NodeViewModule.h"
@@ -657,14 +656,10 @@ void NodeCanvasPresentation::paintNode(
 
     const Rectangle<float> preview = previewRenderer.boundsFor(node, nodeBounds, zoom);
     if (node.kind == NodeKind::VoiceContext) {
-        const Rectangle<float> content = NodePortLayout::reservePortGutters(
-                node,
-                nodeBounds,
-                zoom);
-        VoiceContextCompactEditor::paintNodeSelector(graphics, content, zoom, node);
+        VoiceContextCompactEditor::paintNodeSelector(graphics, nodeBounds, zoom, node);
         VoiceContextCompactEditor::paintNodeSummary(
                 graphics,
-                content,
+                nodeBounds,
                 zoom,
                 node,
                 frame.unisonPreviewContext.voiceDurationSeconds);

@@ -1,6 +1,5 @@
 #include "NodePreviewRenderer.h"
 
-#include "NodePortLayout.h"
 #include "SpectralPreviewMapping.h"
 
 #include "NodeParameterValue.h"
@@ -562,7 +561,7 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
 Rectangle<float> NodePreviewRenderer::boundsFor(
         const Node& node,
         Rectangle<float> nodeBounds,
-        float zoom) const {
+        float zoom) {
     Rectangle<float> preview = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
     if (node.kind == NodeKind::Fft || node.kind == NodeKind::Ifft) {
@@ -578,7 +577,7 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
         preview = Rectangle<float>(size, size).withCentre(preview.getCentre());
     }
 
-    return NodePortLayout::reservePortGutters(node, preview, zoom);
+    return preview;
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {

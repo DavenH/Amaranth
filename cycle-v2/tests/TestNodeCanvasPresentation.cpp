@@ -3,10 +3,10 @@
 
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/UI/NodeCanvasPresentation.h"
-#include "../src/UI/NodePortIconRenderer.h"
 #include "../src/UI/NodePortGeometry.h"
-#include "../src/UI/NodePortLayout.h"
+#include "../src/UI/NodePortIconRenderer.h"
 #include "../src/UI/NodePortVisualResolver.h"
+#include "../src/UI/NodePreviewRenderer.h"
 
 using namespace CycleV2;
 
@@ -122,7 +122,7 @@ TEST_CASE("Only primary processing domains retain port colour",
     REQUIRE(NodePortVisualResolver::colourFor(PortDomain::VoiceControlSignal) == neutral);
 }
 
-TEST_CASE("Input icons sit inward of sockets without reserving output gutters",
+TEST_CASE("Input icons sit outside nodes without changing socket geometry",
         "[cycle-v2][canvas][presentation][ports][layout]") {
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
     NodeCanvasViewport viewport;
@@ -132,35 +132,27 @@ TEST_CASE("Input icons sit inward of sockets without reserving output gutters",
             viewport,
             voice,
             voice.inputs[1]);
-    REQUIRE(input.iconBounds.getX() > input.bounds.getRight());
-
-    const Rectangle<float> nodeBounds = viewport.toScreen(voice.bounds);
-    const Rectangle<float> content = NodePortLayout::reservePortGutters(
-            voice,
-            nodeBounds,
-            viewport.getZoom());
-    REQUIRE(content.getX() == Catch::Approx(nodeBounds.getX() + NodePortGeometry::iconGutter));
-    REQUIRE(content.getRight() == Catch::Approx(nodeBounds.getRight()));
-    REQUIRE_FALSE(content.intersects(input.iconBounds));
+    REQUIRE(input.iconBounds.getRight() < input.bounds.getX());
+    REQUIRE(input.iconBounds.getWidth() == Catch::Approx(NodePortGeometry::iconSize));
 
     viewport.setTransform({}, NodePortGeometry::referenceZoom * 0.5f);
-    const Rectangle<float> reducedBounds = viewport.toScreen(voice.bounds);
-    const Rectangle<float> reducedContent = NodePortLayout::reservePortGutters(
+    const auto reduced = NodeCanvasPresentation::portPresentation(
+            viewport,
             voice,
-            reducedBounds,
-            viewport.getZoom());
-    REQUIRE(reducedContent.getX() == Catch::Approx(
-            reducedBounds.getX() + NodePortGeometry::iconGutter * 0.5f));
+            voice.inputs[1]);
+    REQUIRE(reduced.iconBounds.getWidth() == Catch::Approx(NodePortGeometry::iconSize * 0.5f));
+    REQUIRE(reduced.iconBounds.getRight() < reduced.bounds.getX());
 }
 
-TEST_CASE("Plain signal ports do not reduce preview content",
+TEST_CASE("Input icon semantics do not reduce preview content",
         "[cycle-v2][canvas][presentation][ports][layout]") {
     const GraphNodeFactory factory;
+    const Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node reverb = factory.createNode(NodeKind::Reverb, "reverb", {});
-    const Rectangle<float> available { 10.f, 20.f, 240.f, 120.f };
+    const Rectangle<float> nodeBounds { 10.f, 20.f, 240.f, 160.f };
+    const float zoom = NodePortGeometry::referenceZoom;
+    const Rectangle<float> expected = nodeBounds.withTrimmedTop(42.f * zoom).reduced(8.f * zoom);
 
-    REQUIRE(NodePortLayout::reservePortGutters(
-            reverb,
-            available,
-            NodePortGeometry::referenceZoom) == available);
+    REQUIRE(NodePreviewRenderer::boundsFor(mesh, nodeBounds, zoom) == expected);
+    REQUIRE(NodePreviewRenderer::boundsFor(reverb, nodeBounds, zoom) == expected);
 }
