@@ -316,7 +316,8 @@ The device shell follows `AudioHub` lifecycle behavior:
 5. clear every output channel before mixing;
 6. remove MIDI and audio callbacks before releasing voices or closing the
    device; and
-7. expose device failure as visible workspace status and automation state.
+7. expose device failure through automation diagnostics without adding text to
+   the self-evident keyboard surface.
 
 The engine maps mono graph output equally to both output channels and preserves
 stereo graph output. Extra device output channels are cleared. A small fixed
@@ -330,19 +331,17 @@ touch a JUCE `Component`, mutate the graph, or publish a dynamic UI object.
 Meters and counters use atomics or a bounded snapshot copied by the message
 thread.
 
-### Device And Graph State Presentation
+### Device And Graph State Diagnostics
 
-The keyboard host shows one concise state adjacent to the keys:
-
-- `Audio ready` when a device and prepared graph generation are active;
-- `Preparing audio` while a valid graph is being prepared;
-- `Graph cannot play` when no valid generation exists; or
-- `Audio device unavailable` with access to the device settings/error details.
+The keyboard surface carries no title or readiness text: its purpose is already
+visually obvious, and device state is not an instrument control. Device
+readiness, error details, prepared graph revision, callback count, active voice
+count, and output levels remain available through automation diagnostics.
 
 A pressed-key highlight is not evidence that audio is ready. When no playable
 generation or device exists, key gestures may still update MIDI state for
-diagnostics, but the unavailable state remains visible and automation reports
-zero delivered blocks. There is no silent fallback to offline capture.
+diagnostics, but automation reports the unavailable state and zero delivered
+blocks. There is no silent fallback to offline capture.
 
 ## Thread And Lifecycle Boundaries
 
@@ -527,8 +526,8 @@ The feature is complete only when all of the following are true:
   keyboard remains absent from graph topology and the compiled execution plan.
 - The keyboard never paints or receives gestures over an expanded editor, and
   it tracks canvas pan/zoom without a delayed visual catch-up.
-- Device or graph failure is visible and cannot be mistaken for successful
-  playback.
+- Device or graph failure is observable through diagnostics and cannot be
+  mistaken for successful playback in acceptance automation.
 
 The human acceptance gesture is deliberately simple: launch Cycle V2 with the
 reference preset, press the first C on the onscreen keyboard, hear the
@@ -620,7 +619,7 @@ acceptance sequence passes.
 ## Deletion And Stable End State
 
 - Any temporary direct `NodeWorkspace` callback into the audio engine is
-  deleted once the narrow `MidiEventSink` and status view are in place.
+  deleted once the narrow `MidiEventSink` and diagnostic snapshot are in place.
 - Any temporary raw plan pointer or message-thread executor handoff is deleted
   in the prepared-generation slice before device callback enablement.
 - Any duplicated Cycle 1 keyboard styling is replaced by an extracted shared
@@ -666,12 +665,12 @@ at a block boundary, resets voices under the documented replacement policy,
 and publishes the previous generation to a retirement slot. The message-thread
 timer reclaims retired ownership, so plan and processor destruction do not run
 on the audio thread. Failed graph publication leaves the previous prepared
-generation owned while the workspace reports that the current graph cannot
-play.
+generation owned while automation diagnostics report that the current graph
+cannot play.
 
-The production diff added 2,066 lines and removed 10 lines under `cycle-v2/src`
+The production diff added 2,053 lines and removed 10 lines under `cycle-v2/src`
 before this review. The largest files are `RealtimeGraphRenderer.cpp` at 341
-added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 286
+added lines, `StandaloneAudioEngine.cpp` at 310, and `NodeWorkspace.cpp` at 274
 additions and 4 removals. The slight increase over the estimate is the bounded
 live-callback capture, semantic automation surface, and preset-layout boundary
 required for complete acceptance. No production implementation exceeds 350
@@ -732,6 +731,10 @@ non-realtime capture result.
 - `/private/tmp/cycle-v2-keyboard-expanded-occlusion-os.png` confirms the
   expanded Trimesh editor occupies the canvas without the keyboard painting or
   accepting gestures above it.
+- `/private/tmp/cycle-v2-keyboard-unlabelled-os.png` verifies that the final
+  keyboard header contains only the octave controls and drag surface, with no
+  redundant title or audio-readiness text. The 28-command MIDI/audio/drag
+  fixture continued to pass after removing the label.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

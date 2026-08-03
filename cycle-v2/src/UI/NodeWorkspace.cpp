@@ -324,20 +324,11 @@ void NodeWorkspace::timerCallback() {
             performanceWorldBounds = normalizedBounds;
         }
     }
-    const String nextStatus = !status.deviceReady
-            ? "Audio device unavailable"
-            : status.renderer.graphRevision == 0
-                    ? "Preparing audio"
-                    : "Audio ready";
-    keyboard.setStatus(nextStatus);
     layoutPerformanceKeyboard();
 
     GraphExecutionPlan plan;
     uint64_t revision {};
     if (!canvas.copyAudioPlan(plan, revision)) {
-        if (status.deviceReady) {
-            keyboard.setStatus("Graph cannot play");
-        }
         return;
     }
     if (revision == publishedPlanRevision
@@ -350,9 +341,6 @@ void NodeWorkspace::timerCallback() {
     if (audioEngine.publishGraph(std::move(plan), revision)) {
         publishedPlanRevision = revision;
         publishedDevicePreparationRevision = status.preparationRevision;
-        if (status.deviceReady) {
-            keyboard.setStatus("Audio ready");
-        }
     }
 }
 

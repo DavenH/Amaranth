@@ -89,7 +89,6 @@ public:
     Rectangle<float> dragHandleBounds() const;
 
     void releaseAllNotes() { keyboard.releaseAllNotes(); }
-    void setStatus(const String& status);
     void paint(Graphics& graphics) override;
     void resized() override;
     void mouseDown(const MouseEvent& event) override;
@@ -102,11 +101,11 @@ public:
 
 private:
     int headerHeight() const;
+    Rectangle<int> headerBounds() const;
 
     PerformanceKeyboard keyboard;
     TextButton octaveDown { "-" };
     TextButton octaveUp { "+" };
-    Label audioStatus;
     ComponentDragger dragger;
     bool dragGestureActive {};
 };
