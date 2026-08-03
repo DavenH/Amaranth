@@ -698,7 +698,7 @@ void NodeCanvasPresentation::paintNode(
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
-                nodeBounds.reduced(10.f * zoom),
+                nodeBounds.reduced(12.f * zoom),
                 profileFor(frame, node),
                 zoom,
                 true,

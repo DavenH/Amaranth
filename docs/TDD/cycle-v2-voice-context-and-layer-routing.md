@@ -150,7 +150,8 @@ frames before existing Unison materialization. Parameter changes invalidate DSP
 state without changing graph topology.
 The Channel palette names the operation Pan. Its inner dial uses conventional
 vertical knob dragging, while its visible outer ring retains ordinary node
-movement. Cable sockets remain available at the left and right edges. The
+movement through a circular hit boundary and four-way cursor. Cable sockets
+remain available at the left and right edges. The
 Stengah automation fixture proves both gestures and verifies that a dial drag
 does not change edge count. Pan gestures snap within 5% of hard left, centre,
 and hard right.

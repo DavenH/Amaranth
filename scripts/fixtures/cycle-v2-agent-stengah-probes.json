@@ -96,8 +96,8 @@
       "event": "drag",
       "targetId": "node:magnitudeLayer1Process",
       "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 0.9,
-      "targetY": 0.3,
+      "targetX": 0.5,
+      "targetY": -0.4,
       "downTargetX": 0.5,
       "downTargetY": 0.05
     },
@@ -106,8 +106,8 @@
       "event": "up",
       "targetId": "node:magnitudeLayer1Process",
       "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 0.9,
-      "targetY": 0.3,
+      "targetX": 0.5,
+      "targetY": -0.4,
       "downTargetX": 0.5,
       "downTargetY": 0.05,
       "waitForIdle": true,
@@ -115,9 +115,9 @@
     },
     {
       "command": "assertState",
-      "path": "nodes.5.bounds.x",
-      "op": "greaterThan",
-      "value": 1650
+      "path": "nodes.5.bounds.y",
+      "op": "lessThan",
+      "value": 590
     },
     {
       "command": "assertState",

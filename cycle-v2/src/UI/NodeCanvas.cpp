@@ -36,7 +36,16 @@ bool hasExpandedEditor(NodeKind kind) {
 Rectangle<float> inlinePanDialBounds(
         const NodeCanvasViewport& viewport,
         const Node& node) {
-    return viewport.toScreen(node.bounds).reduced(10.f * viewport.getZoom());
+    return viewport.toScreen(node.bounds).reduced(12.f * viewport.getZoom());
+}
+
+bool inlinePanDialContains(
+        const NodeCanvasViewport& viewport,
+        const Node& node,
+        Point<float> position) {
+    const Rectangle<float> dial = inlinePanDialBounds(viewport, node);
+    const float radius = jmin(dial.getWidth(), dial.getHeight()) * 0.5f;
+    return dial.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
 }
 
 GraphDocument createStartupDocument() {
@@ -161,9 +170,9 @@ void NodeCanvas::mouseMove(const MouseEvent& event) {
     probeRailState.hoveredProbeId = std::move(hovered);
     const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        setMouseCursor(inlinePanDialBounds(viewport, *inlinePan).contains(event.position)
+        setMouseCursor(inlinePanDialContains(viewport, *inlinePan, event.position)
                 ? MouseCursor::UpDownResizeCursor
-                : MouseCursor::DraggingHandCursor);
+                : MouseCursor::UpDownLeftRightResizeCursor);
     } else {
         setMouseCursor(MouseCursor::NormalCursor);
     }
@@ -345,8 +354,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
     const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        const Rectangle<float> dial = inlinePanDialBounds(viewport, *inlinePan);
-        if (dial.contains(event.position)
+        if (inlinePanDialContains(viewport, *inlinePan, event.position)
                 && authoring.beginSpectralPanGesture(inlinePan->id)) {
             draggingSpectralPanNodeId = inlinePan->id;
             spectralPanDragStartValue = typedParameterFloat(

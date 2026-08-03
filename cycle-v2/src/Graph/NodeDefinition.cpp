@@ -411,7 +411,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::SpectralLayer, PreviewModuleRole::None,
                             "cycle/src/Audio/Voices/SynthFilterVoice.cpp")
-                    .presentation({}, { 72.f, 72.f })
+                    .presentation({}, { 80.f, 80.f })
                     .finish(),
             buildDefinition(definition("fft", NodeKind::Fft, String::fromUTF8("Time → Freq"), "cycle chunks", "fft",
                     { input("time", "Time", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
