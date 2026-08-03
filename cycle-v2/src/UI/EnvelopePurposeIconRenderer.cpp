@@ -31,6 +31,36 @@ const Drawable* drawableFor(EnvelopePurpose purpose) {
     return match != icons.end() ? match->second.get() : nullptr;
 }
 
+const Drawable* neutralDrawableFor(EnvelopePurpose purpose) {
+    static const IconMap icons = [] {
+        IconMap result;
+        for (const EnvelopePurpose candidate : kEnvelopePurposes) {
+            const Drawable* source = drawableFor(candidate);
+            if (source == nullptr) {
+                continue;
+            }
+            auto icon = source->createCopy();
+            icon->replaceColour(Colour(0xffb8ff5c), Colour(0xffc5cad3));
+            icon->replaceColour(Colour(0xff67a7ff), Colour(0xffc5cad3));
+            result.emplace(candidate, std::move(icon));
+        }
+        return result;
+    }();
+
+    const auto match = icons.find(purpose);
+    return match != icons.end() ? match->second.get() : nullptr;
+}
+
+void paintDrawable(
+        Graphics& graphics,
+        const Drawable* drawable,
+        Rectangle<float> area,
+        float opacity) {
+    if (drawable != nullptr) {
+        drawable->drawWithin(graphics, area, RectanglePlacement::centred, opacity);
+    }
+}
+
 }
 
 bool EnvelopePurposeIconRenderer::hasIcon(EnvelopePurpose purpose) {
@@ -42,12 +72,15 @@ void EnvelopePurposeIconRenderer::paint(
         EnvelopePurpose purpose,
         Rectangle<float> area,
         float opacity) {
-    const Drawable* drawable = drawableFor(purpose);
-    if (drawable == nullptr) {
-        return;
-    }
+    paintDrawable(graphics, drawableFor(purpose), area, opacity);
+}
 
-    drawable->drawWithin(graphics, area, RectanglePlacement::centred, opacity);
+void EnvelopePurposeIconRenderer::paintNeutral(
+        Graphics& graphics,
+        EnvelopePurpose purpose,
+        Rectangle<float> area,
+        float opacity) {
+    paintDrawable(graphics, neutralDrawableFor(purpose), area, opacity);
 }
 
 }

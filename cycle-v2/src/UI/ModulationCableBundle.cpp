@@ -36,6 +36,20 @@ bool isVoiceContextDestination(const Node& node, const PortAddress& address) {
             && address.portId == kAttachmentPortId;
 }
 
+int destinationRowIndex(const Node& node) {
+    int index = 0;
+    for (const auto& port : node.inputs) {
+        if (port.side != PortSide::Left) {
+            continue;
+        }
+        if (destinationSupportsAxis(node, port.id)) {
+            return index;
+        }
+        ++index;
+    }
+    return 0;
+}
+
 }
 
 String ModulationCableBundle::portId() {
@@ -201,7 +215,9 @@ Point<float> ModulationCableBundle::worldCentre(const Node& node, bool input) {
     const Point<float> boundary {
             input ? node.bounds.getX() : node.bounds.getRight(),
             input
-                    ? node.bounds.getCentreY()
+                    ? NodePortGeometry::sidePortCentreY(
+                            node.bounds,
+                            destinationRowIndex(node))
                     : node.bounds.getY() + NodePortGeometry::firstSidePortOffset
     };
     return input

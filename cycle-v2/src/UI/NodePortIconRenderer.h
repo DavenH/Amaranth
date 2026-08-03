@@ -13,7 +13,7 @@ public:
             Graphics& graphics,
             PortVisualSemantic semantic,
             Rectangle<float> area,
-            bool mirrored = false,
+            PortSide side = PortSide::Left,
             float opacity = 0.96f);
 };
 

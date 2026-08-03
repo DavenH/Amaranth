@@ -43,7 +43,7 @@ TEST_CASE("Voice Context exposes typed voice configuration inputs", "[cycle-v2][
     REQUIRE(voice.inputs[2].attachmentType == AttachmentType::Unison);
     REQUIRE(voice.inputs[2].side == PortSide::Left);
     REQUIRE(voice.bounds.getWidth() == 280.f);
-    REQUIRE(voice.bounds.getHeight() == 148.f);
+    REQUIRE(voice.bounds.getHeight() == 166.f);
 }
 
 TEST_CASE("Voice Context normalization preserves its readable preview width",

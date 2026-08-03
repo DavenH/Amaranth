@@ -18,6 +18,10 @@ struct NodePortGeometry {
             socketDiameter * 0.5f + socketIconGap + iconSize;
     static constexpr float iconLaneExtentWorld = iconLaneExtent / referenceZoom;
 
+    static float sidePortCentreY(Rectangle<float> nodeBounds, int index) {
+        return nodeBounds.getY() + firstSidePortOffset + (float) index * sidePortSpacing;
+    }
+
     static Point<float> socketCentreForAttachedIcon(
             Point<float> nodeBoundary,
             PortSide side) {

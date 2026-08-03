@@ -55,9 +55,9 @@ Point<float> portBoundaryWorldCentre(const Node& node, const Port& port) {
         };
     }
 
-    const float y = node.bounds.getY()
-            + NodePortGeometry::firstSidePortOffset
-            + (float) portIndexOnSide(node, port) * NodePortGeometry::sidePortSpacing;
+    const float y = NodePortGeometry::sidePortCentreY(
+            node.bounds,
+            portIndexOnSide(node, port));
     return {
             port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
             y

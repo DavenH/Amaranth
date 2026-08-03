@@ -688,7 +688,7 @@ void NodeCanvasPresentation::paintNode(
                 graphics,
                 NodePortVisualResolver::semanticFor(port),
                 location.iconBounds,
-                port.side == PortSide::Right);
+                port.side);
     };
 
     for (const auto& port : node.inputs) {
@@ -715,7 +715,8 @@ void NodeCanvasPresentation::paintNode(
         NodePortIconRenderer::paint(
                 graphics,
                 NodePortVisualResolver::modulationSemantic(includesYellow),
-                NodePortGeometry::iconBounds(socketCentre, PortSide::Left, zoom));
+                NodePortGeometry::iconBounds(socketCentre, PortSide::Left, zoom),
+                PortSide::Left);
     }
 }
 

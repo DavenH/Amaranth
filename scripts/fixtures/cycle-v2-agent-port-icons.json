@@ -35,7 +35,9 @@
     { "command": "assertState", "path": "edgeCount", "op": "greaterThan", "value": 5 },
     { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-port-icons-connected.png" },
     { "command": "pointer", "area": "canvas", "event": "magnify", "x": 500, "y": 430, "scaleFactor": 0.68, "waitForIdle": true, "idleDelayMs": 150 },
-    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-port-icons-reduced.png" }
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-port-icons-reduced.png" },
+    { "command": "pointer", "area": "canvas", "event": "magnify", "x": 500, "y": 430, "scaleFactor": 1.7, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-port-icons-enlarged.png" }
   ],
   "quit": true
 }

@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/UI/ModulationCableBundle.h"
 #include "../src/UI/NodeCanvasPresentation.h"
 #include "../src/UI/NodePortGeometry.h"
 #include "../src/UI/NodePortIconRenderer.h"
@@ -143,6 +144,7 @@ TEST_CASE("Input sockets precede icons attached to the node edge",
             voice.inputs[2]);
     const float verticalSpacing = nextInput.centre.y - input.centre.y;
     REQUIRE(verticalSpacing >= 34.f * NodePortGeometry::referenceZoom * 1.25f);
+    REQUIRE(nextInput.iconBounds.getBottom() < nodeBounds.getBottom());
 
     viewport.setTransform({}, NodePortGeometry::referenceZoom * 0.5f);
     const auto reduced = NodeCanvasPresentation::portPresentation(
@@ -153,6 +155,17 @@ TEST_CASE("Input sockets precede icons attached to the node edge",
     REQUIRE(reduced.bounds.getRight() < reduced.iconBounds.getX());
     REQUIRE(reduced.iconBounds.getRight()
             == Catch::Approx(viewport.toScreen(voice.bounds).getX()));
+}
+
+TEST_CASE("Bundled modulation uses the same side-port row grid",
+        "[cycle-v2][canvas][presentation][ports][layout]") {
+    const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const Point<float> context = NodeCanvasScene::portWorldCentre(mesh, mesh.inputs[0]);
+    const Point<float> scratch = NodeCanvasScene::portWorldCentre(mesh, mesh.inputs[1]);
+    const Point<float> modulation = ModulationCableBundle::worldCentre(mesh, true);
+
+    REQUIRE(scratch.y - context.y == Catch::Approx(NodePortGeometry::sidePortSpacing));
+    REQUIRE(modulation.y - scratch.y == Catch::Approx(NodePortGeometry::sidePortSpacing));
 }
 
 TEST_CASE("Input icon semantics do not reduce preview content",

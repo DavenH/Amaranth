@@ -14,6 +14,11 @@ public:
             EnvelopePurpose purpose,
             Rectangle<float> area,
             float opacity = 0.94f);
+    static void paintNeutral(
+            Graphics& graphics,
+            EnvelopePurpose purpose,
+            Rectangle<float> area,
+            float opacity = 0.94f);
 };
 
 }

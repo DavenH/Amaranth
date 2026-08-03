@@ -35,8 +35,9 @@ cable ───○ [icon]│ node content
 
 Output ports and plain colour-coded inputs remain boundary sockets. Semantic
 input icons sit outside the node on the node-facing side of their sockets. The
-badge slightly overlaps the node edge so it reads as an attached tab rather
-than a floating label. Neither form changes node or preview content bounds.
+badge uses the node body fill and an open node-facing edge so it reads as an
+attached tab rather than a floating tile. Neither form changes node or preview
+content bounds.
 
 ## Shared Presentation Contract
 
@@ -55,9 +56,11 @@ different shapes. Interaction state may change the halo or stroke but must not
 change the base diameter or move the socket centre.
 
 Top and bottom input ports use the same socket and icon measurements, arranged
-outward as appropriate. Side-port centres use 44 world units of vertical
-spacing, a 29% increase from the original 34 units. Icon placement is
-presentation geometry only; it does not change node size or preview layout.
+outward as appropriate. Every visible side-port row, including a collapsed
+Modulation Triple bundle, uses the same 44 world-unit grid. This is a 29%
+increase from the original 34 units. Fixed-size nodes provide clearance above
+and below the complete row group. Icon placement is presentation geometry only;
+it does not reduce preview layout.
 
 The initial semantic icons are:
 
@@ -69,15 +72,16 @@ The initial semantic icons are:
 | Voice context | established Voice Context node mark |
 | Scratch attachment | existing Envelope Scratch mark |
 
-Icons use the same visual weight and remain distinguishable at normal canvas
-zoom. The established Pitch, Scratch, and Voice Context marks retain their
-existing accents, and the modulation flag reuses the established morph-axis
-colours; sockets and cables remain neutral. Shape remains the primary semantic
-distinction. Exact artwork belongs to the shared icon set, not individual node
-painters. A short port name remains available through hover text and
+Icons use the same neutral two-tone palette and remain distinguishable at
+normal canvas zoom. Only the Modulation Triple flag retains semantic colour,
+because its yellow/red/blue lanes are the meaning being communicated. Sockets
+and cables remain neutral. Shape remains the primary distinction for every
+other semantic. Exact artwork belongs to the shared icon set, not individual
+node painters. A short port name remains available through hover text and
 accessibility metadata; an icon is not the only machine-readable description.
-Existing Pitch, Scratch, and Voice Context artwork is reused through its
-authoritative renderer rather than copied into the port icon set.
+Existing Pitch, Scratch, and Voice Context artwork is reused through neutral
+variants provided by its authoritative renderer rather than copied into the
+port icon set.
 
 ## Ownership And Migration
 
@@ -105,22 +109,27 @@ targets consume that geometry.
   and `PortVisualSemantic` values. It contains no `NodeKind` switch.
 - `NodePortIconRenderer` parses and caches the modulation and Unison sources
   once, and delegates Pitch, Scratch, and Voice Context to their established
-  renderers. Modulation destinations use either the Y/R/B or R/B flag.
+  renderers in neutral mode. Modulation destinations use either the coloured
+  Y/R/B or R/B flag.
 - `NodePortSocketRenderer` is the single circular socket painter used by
   ordinary ports, compact Modulation nodes, bundle destinations, and bundle
   cable endpoints.
 - Port badges are outside node bounds and meet the preview edge. Their sockets
   sit on the cable-facing side of the badge. Output ports, icon-bearing inputs,
   and plain colour-coded signal inputs never reduce preview content.
+- Semantic rows share one vertical grid; bundled modulation no longer uses an
+  independent node-centre position. Fixed Voice Context height leaves visible
+  clearance below its third row.
 - Existing `ModulationCableBundle` routing and graph compatibility are reused
   unchanged. Icon-bearing endpoint centres and their matching hit targets move
   outward together; only this socket/icon presentation geometry is translated
   at the UI boundary.
 - `cycle-v2-agent-port-icons.json` captures disconnected, connected/selected,
-  and reduced-zoom states. The final review artifacts are
+  reduced-zoom, and enlarged states. The final review artifacts are
   `/private/tmp/cycle-v2-port-icons-disconnected.png`,
   `/private/tmp/cycle-v2-port-icons-connected.png`, and
-  `/private/tmp/cycle-v2-port-icons-reduced.png`.
+  `/private/tmp/cycle-v2-port-icons-reduced.png`, with an enlarged inspection at
+  `/private/tmp/cycle-v2-port-icons-enlarged.png`.
 
 ## Acceptance Criteria
 
@@ -128,12 +137,14 @@ targets consume that geometry.
 - For semantic inputs, the socket appears on the cable-facing side of an icon
   tab attached to the node edge; plain ports remain at the boundary.
 - Side input rows have at least 25% more vertical separation than the original
-  34-unit layout.
+  34-unit layout and remain equally spaced when one row represents a bundle.
 - Input icons and right-side outputs do not reduce node preview content.
 - Only time, spectral magnitude, and spectral phase use semantic port colour;
   other ports and cables use the monochrome palette.
 - Modulation Triple, Pitch, Unison, Voice Context, and Scratch attachments are
   distinguishable by icon without colour.
+- Pitch, Unison, Voice Context, and Scratch are monochrome; only modulation
+  flags retain their semantic lane colours.
 - Connection, hover, selection, and pending states remain readable without
   changing socket size.
 - Hit testing covers the common invisible target and does not depend on the
