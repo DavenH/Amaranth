@@ -17,7 +17,7 @@ which will become noisy and ambiguous as the attachment vocabulary grows.
 
 Port icons drawn inside preview rectangles compete with the visualization and
 can be mistaken for preview content. Semantic badges instead belong outside the
-node, immediately before the boundary socket.
+node as attached tabs, with the socket on their cable-facing side.
 
 ## Decision
 
@@ -50,7 +50,7 @@ One UI presentation primitive owns:
 - cable endpoint geometry.
 
 All sockets are circular and have one base visual diameter. Direction is shown
-by boundary position and cable direction, not by making inputs and outputs
+by side placement and cable direction, not by making inputs and outputs
 different shapes. Interaction state may change the halo or stroke but must not
 change the base diameter or move the socket centre.
 
