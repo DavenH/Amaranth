@@ -892,9 +892,9 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
-    graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape2", {}));
     graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
-    graph.addEdge({ "shape", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "shape2", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -904,7 +904,7 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
             graph,
             compileResult.plan,
             128,
-            { "wave", "shape", "equalizer" });
+            { "wave", "shape", "shape2" });
     REQUIRE(first.nodes.size() == 3);
     REQUIRE(first.nodes[1]->output.traversalGrid.isValid());
     REQUIRE(first.nodes[2]->output.traversalGrid.isValid());
@@ -913,10 +913,26 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
             graph,
             compileResult.plan,
             128,
-            { "shape", "equalizer" });
+            { "shape", "shape2" });
     REQUIRE(second.nodes.size() == 3);
     REQUIRE(second.nodes[1]->output.traversalGrid.isValid());
     REQUIRE(second.nodes[2]->output.traversalGrid.isValid());
+
+    GraphAudioExecutor fullExecutor;
+    const auto full = fullExecutor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "wave", "shape", "shape2" });
+    REQUIRE(full.nodes.size() == second.nodes.size());
+    REQUIRE(second.nodes[1]->output.block.samples
+            == full.nodes[1]->output.block.samples);
+    REQUIRE(second.nodes[1]->output.traversalGrid.values
+            == full.nodes[1]->output.traversalGrid.values);
+    REQUIRE(second.nodes[2]->output.block.samples
+            == full.nodes[2]->output.block.samples);
+    REQUIRE(second.nodes[2]->output.traversalGrid.values
+            == full.nodes[2]->output.traversalGrid.values);
 }
 
 TEST_CASE("Incremental graph audio stops between obsolete dirty nodes",

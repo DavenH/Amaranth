@@ -706,6 +706,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "inspectPointerTargets") {
         return inspectPointerTargets();
     }
+    if (command == "inspectPointerCursor") {
+        return inspectPointerCursor();
+    }
     if (command == "inspectOpenGLDiagnostics") {
         return inspectOpenGLDiagnostics();
     }
@@ -1067,6 +1070,30 @@ var CycleV2Automation::openNodeEditor(const var& commandValue) {
 
 var CycleV2Automation::inspectPointerTargets() const {
     return okResult("inspectPointerTargets", workspace.inspectPointerTargetsForAutomation());
+}
+
+var CycleV2Automation::inspectPointerCursor() const {
+    const auto source = Desktop::getInstance().getMainMouseSource();
+    Component* component = source.getComponentUnderMouse();
+    const Point<int> screenPosition = Desktop::getMousePosition();
+    if (component == nullptr) {
+        const Point<int> windowPosition = window.getLocalPoint(nullptr, screenPosition);
+        component = window.getComponentAt(windowPosition);
+    }
+    if (component == nullptr) {
+        return failedResult(
+                "inspectPointerCursor",
+                "No component is under the OS pointer at "
+                        + String(screenPosition.x) + "," + String(screenPosition.y));
+    }
+
+    var data = makeObject();
+    auto* object = objectFor(data);
+    object->setProperty("component", component->getName());
+    object->setProperty("cursor", cursorName(component->getMouseCursor()));
+    object->setProperty("screenX", screenPosition.x);
+    object->setProperty("screenY", screenPosition.y);
+    return okResult("inspectPointerCursor", data);
 }
 
 var CycleV2Automation::inspectOpenGLDiagnostics() const {

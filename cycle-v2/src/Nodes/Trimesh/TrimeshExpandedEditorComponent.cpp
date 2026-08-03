@@ -19,6 +19,7 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
     widget.setExpandedPanelHostDelegate(this);
+    startTimerHz(30);
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
@@ -250,6 +251,37 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {
     setMouseCursor(cursorFor(position));
+}
+
+void TrimeshExpandedEditorComponent::timerCallback() {
+    if (!isShowing()) {
+        return;
+    }
+
+    const Point<int> desktopPosition = Desktop::getMousePosition();
+    if (desktopPosition == lastPolledMousePosition) {
+        return;
+    }
+    lastPolledMousePosition = desktopPosition;
+    const Point<float> position = getLocalPoint(
+            nullptr, desktopPosition).toFloat();
+    if (!getLocalBounds().toFloat().contains(position)) {
+        return;
+    }
+
+    for (Component* panel : {
+            widget.getExpandedPanel3DComponentIfCreated(),
+            widget.getExpandedPanel2DComponentIfCreated() }) {
+        if (panel != nullptr && panel->getBounds().toFloat().contains(position)) {
+            return;
+        }
+    }
+
+    const MouseCursor cursor = cursorFor(position);
+    setMouseCursor(cursor);
+    auto source = Desktop::getInstance().getMainMouseSource();
+    source.showMouseCursor(cursor);
+    source.forceMouseCursorUpdate();
 }
 
 void TrimeshExpandedEditorComponent::updatePanelHosts() {

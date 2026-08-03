@@ -19,7 +19,8 @@ constexpr uint32_t Panel3DBake = 1u << 2;
 }
 
 class TrimeshPanelHosts::PanelHostComponent :
-        public Component {
+        public Component,
+        private Timer {
 public:
     explicit PanelHostComponent(Panel& targetPanel) :
             panel(targetPanel) {
@@ -27,6 +28,7 @@ public:
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
         setWantsKeyboardFocus(true);
+        startTimerHz(30);
     }
 
     void setHoverPeer(PanelHostComponent* peer) {
@@ -136,6 +138,44 @@ public:
     }
 
 private:
+    void timerCallback() override {
+        if (!isShowing()) {
+            return;
+        }
+
+        const Point<int> desktopPosition = Desktop::getMousePosition();
+        if (desktopPosition == lastPolledMousePosition) {
+            return;
+        }
+        lastPolledMousePosition = desktopPosition;
+        const Point<float> position = getLocalPoint(
+                nullptr, desktopPosition).toFloat();
+        if (!getLocalBounds().toFloat().contains(position)) {
+            return;
+        }
+
+        auto source = Desktop::getInstance().getMainMouseSource();
+        const Time now = Time::getCurrentTime();
+        const MouseEvent event(
+                source,
+                position,
+                ModifierKeys::getCurrentModifiersRealtime(),
+                0.f,
+                0.f,
+                0.f,
+                0.f,
+                0.f,
+                this,
+                this,
+                now,
+                position,
+                now,
+                0,
+                false);
+        mouseMove(event);
+        source.forceMouseCursorUpdate();
+    }
+
     MouseEvent currentMouseEvent(const MouseEvent& event) const {
         return localMouseEvent(event, getLocalPoint(nullptr, Desktop::getMousePosition()).toFloat());
     }
@@ -231,6 +271,7 @@ private:
     PanelHostComponent* hoverPeer {};
     TrimeshPanelHostDelegate* delegate {};
     bool mouseInside {};
+    Point<int> lastPolledMousePosition { -1, -1 };
 };
 
 TrimeshPanelHosts::TrimeshPanelHosts(

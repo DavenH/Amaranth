@@ -1,0 +1,34 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.7.nodeId",
+      "equals": "waveshaper"
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.7.sampleCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-stengah-pipeline.png"
+    }
+  ],
+  "quit": true
+}

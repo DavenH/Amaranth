@@ -40,6 +40,20 @@ const GraphPreviewResult::SignalProbePreview& findProbePreview(
     return *found;
 }
 
+const NodePreviewResult& findNodePreview(
+        const GraphPreviewResult& result,
+        const String& nodeId) {
+    const auto found = std::find_if(
+            result.nodes.begin(),
+            result.nodes.end(),
+            [&](const auto& preview) {
+                return preview.nodeId == nodeId;
+            });
+
+    REQUIRE(found != result.nodes.end());
+    return *found;
+}
+
 }
 
 TEST_CASE("Runtime traces compiled graph execution", "[cycle-v2][runtime]") {
@@ -263,6 +277,53 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
             != initialWaveshaperValues);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").values
             != initialDownstreamValues);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah downstream pan edits leave the magnitude mesh preview idempotent",
+        "[cycle-v2][runtime][causal][pan][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    GraphDocument document(GraphSerializer().fromJsonString(preset.loadFileAsString()));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    const auto upstreamPrimary = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
+    const auto upstreamSecondary = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").secondary;
+
+    for (const String pan : { "0", "1", "0.5" }) {
+        REQUIRE(commands.setNodeParameter(
+                "magnitudeLayer1Process", "pan", "Pan", pan).succeeded());
+        bool completed {};
+        presentation.refreshAsync(
+                document.graph(),
+                document.revision(),
+                document.lastChange(),
+                [&] { completed = true; });
+        for (int attempt = 0; attempt < 200 && !completed; ++attempt) {
+            MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+
+        REQUIRE(completed);
+        REQUIRE(findNodePreview(
+                presentation.previewResult(), "magnitudeLayer1").primary
+                == upstreamPrimary);
+        REQUIRE(findNodePreview(
+                presentation.previewResult(), "magnitudeLayer1").secondary
+                == upstreamSecondary);
+    }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

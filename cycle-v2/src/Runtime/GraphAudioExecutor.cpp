@@ -274,6 +274,14 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 && diagnosticCache[stepIndex].has_value();
         const bool explicitlyDirty = dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
         if (captureDiagnostics && hasCachedResult && !explicitlyDirty) {
+            const auto& cachedOutputs = diagnosticCache[stepIndex]->outputs;
+            for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
+                const int bufferIndex = step.outputs[outputIndex].bufferIndex;
+                if (bufferIndex < 0 || outputIndex >= cachedOutputs.size()) {
+                    continue;
+                }
+                bufferSlots[(size_t) bufferIndex] = cachedOutputs[outputIndex].second;
+            }
             continue;
         }
         NodeAudioProcessor* processor = stepIndex < preparedVoice->second.processors.size()

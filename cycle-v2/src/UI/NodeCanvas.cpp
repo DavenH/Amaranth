@@ -152,33 +152,36 @@ void NodeCanvas::focusLost(FocusChangeType) {
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
-    lastMousePosition = event.position;
-    palette.updateHover(event.position);
+    updateHoverAt(event.position, event.source);
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
+    lastMousePosition = position;
+    palette.updateHover(position);
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
             presentation.revision(),
             document.revision());
     String hovered = canvasPresentation.probeRail().probeAt(
-            event.position,
+            position,
             getLocalBounds().toFloat(),
             graph,
             probeRailState);
     if (hovered.isEmpty()) {
-        hovered = canvasPresentation.probeRail().markerProbeAt(event.position, graph, scene);
+        hovered = canvasPresentation.probeRail().markerProbeAt(position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
-    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
+    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(position));
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        cursor = inlinePanDialContains(viewport, *inlinePan, event.position)
+        cursor = inlinePanDialContains(viewport, *inlinePan, position)
                 ? MouseCursor::UpDownResizeCursor
                 : MouseCursor::UpDownLeftRightResizeCursor;
     }
     setMouseCursor(cursor);
-    auto source = event.source;
     source.showMouseCursor(cursor);
-    requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
@@ -681,7 +684,10 @@ void NodeCanvas::timerCallback() {
 
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
-        lastMousePosition = mouse;
+        auto source = Desktop::getInstance().getMainMouseSource();
+        updateHoverAt(mouse, source);
+        source.triggerFakeMove();
+        source.forceMouseCursorUpdate();
         requestCanvasRepaint();
     }
 }

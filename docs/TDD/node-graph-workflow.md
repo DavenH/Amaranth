@@ -1066,6 +1066,17 @@ Acceptance:
 - spectrogram, phasigram, and cyclogram-style preview experiments exist on
   spy/monitor nodes,
 - upstream parameter or mesh edits invalidate downstream previews,
+- downstream-only edits never invalidate, transform, or republish upstream
+  previews; repeating the same edit/refresh sequence is idempotent,
+- incremental preview audio restores every clean producer's cached output into
+  its compiled buffer slot before a dirty consumer runs, including when graph
+  liveness has reused that slot later in the preceding traversal,
+- Waveshaper compact previews remain the authored transfer-curve editor; their
+  processing effect is shown by downstream signal previews and spies. Runtime
+  fixtures compare incremental results with a clean full traversal,
+- hover cursors update from pointer motion alone on the canvas and expanded
+  editors. macOS verification must move the OS pointer and inspect the resulting
+  component cursor without first sending a click,
 - reduced-detail previews are used during interaction,
 - full-detail previews restore after interaction settles.
 

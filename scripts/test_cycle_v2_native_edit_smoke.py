@@ -11,6 +11,7 @@ import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = os.path.join(REPO, "build/standalone-debug/cycle-v2/CycleV2.app")
+APP_EXECUTABLE = os.path.join(APP, "Contents/MacOS/CycleV2")
 CLICK = "/opt/homebrew/bin/cliclick"
 SETTLE_SECONDS = 0.08
 
@@ -47,7 +48,7 @@ class NativeEditSmoke:
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             result = subprocess.run(
-                ["pgrep", "-x", "CycleV2"],
+                ["pgrep", "-f", f"^{APP_EXECUTABLE}$"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -94,6 +95,16 @@ class NativeEditSmoke:
         ], check=True)
         time.sleep(0.04)
         subprocess.run([CLICK, "-w", "20", f"du:{point[0]},{point[1]}"], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def move_pointer(self, point):
+        self.focus_app()
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{point[0]},{point[1]}",
+        ], check=True)
         time.sleep(SETTLE_SECONDS)
 
     def drag(self, source, destination, force_curve_reshape=False):
@@ -209,6 +220,14 @@ class NativeEditSmoke:
             time.sleep(0.005)
             state = self.graph_state()
         return state
+
+    def cursor_until(self, expected):
+        deadline = time.monotonic() + 0.3
+        cursor = self.command({"command": "inspectPointerCursor"})
+        while cursor["cursor"] != expected and time.monotonic() < deadline:
+            time.sleep(0.01)
+            cursor = self.command({"command": "inspectPointerCursor"})
+        assert cursor["cursor"] == expected, cursor
 
     @staticmethod
     def causal_sequence(state):
@@ -483,6 +502,31 @@ class NativeEditSmoke:
         assert reset["nodeCount"] == initial["nodeCount"]
         assert reset["edgeCount"] == initial["edgeCount"]
         assert reset["compileSucceeded"]
+
+    def hover_cursor_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO,
+                "cycle-v2",
+                "content",
+                "presets",
+                "stengah.cyclegraph",
+            ),
+        })
+        time.sleep(0.2)
+        pan = self.target("node:magnitudeLayer1Process")
+
+        self.move_pointer(self.point(pan, 0.5, 0.5))
+        self.cursor_until("upDownResize")
+
+        self.move_pointer(self.point(pan, 0.05, 0.05))
+        self.cursor_until("move")
+
+        self.open_editor("magnitudeLayer1", trimesh=True)
+        morph = self.target("expanded:magnitudeLayer1.trimeshMorphRail.yellow")
+        self.move_pointer(self.point(morph, 0.5, 0.5))
+        self.cursor_until("leftRightResize")
 
     def effect2d_sequence(self):
         initial_audio = self.audio_samples()
@@ -1109,6 +1153,7 @@ class NativeEditSmoke:
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
+                "hover-cursor": self.hover_cursor_sequence,
             }
             for sequence in sequences:
                 available[sequence]()
@@ -1126,6 +1171,7 @@ if __name__ == "__main__":
         "envelope",
         "trimesh",
         "causal-trimesh",
+        "hover-cursor",
     }
     if unknown:
         raise SystemExit(f"Unknown native edit smoke sequence: {', '.join(sorted(unknown))}")

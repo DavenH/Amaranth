@@ -143,6 +143,7 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
+    void updateHoverAt(juce::Point<float> position, juce::MouseInputSource source);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     NodeCanvasPresentationFrame presentationFrame() const;
