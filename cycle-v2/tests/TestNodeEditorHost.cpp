@@ -130,15 +130,26 @@ public:
     void setNodeEditorStatus(const String&) override {}
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
     void flushNodeEditorRefresh() override {}
-    void refreshNodeEditorPresentation() override {}
+    void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
     void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
         ++recordedMovements;
     }
+    void commitNodeEditorLocalState(
+            const String&,
+            const String&,
+            uint64_t,
+            uint64_t) override {
+        ++localCommits;
+    }
+    ProbeRefreshMode probeRefreshMode() const override { return refreshMode; }
 
+    ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
     int repaints {};
     int scheduledRefreshes {};
+    int immediateRefreshes {};
+    int localCommits {};
     int rebinds {};
     int recordedMovements {};
 };
@@ -868,6 +879,64 @@ TEST_CASE("Node editor command service publishes model edits as one transaction"
     REQUIRE(restored != nullptr);
     REQUIRE(restored->voices().size() == 1);
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh primary morph commits refresh graph presentation",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(nodeParameterValue(*document.graph().findNode("mesh"), "yellow") == "0.800");
+    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.localCommits == 0);
+}
+
+TEST_CASE("Live Trimesh morph commits reuse movement refresh",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.localCommits == 1);
 }
 
 TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",

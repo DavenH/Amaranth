@@ -1069,7 +1069,9 @@ Acceptance:
 - downstream-only edits never invalidate, transform, or republish upstream
   previews; synchronous canvas commits and asynchronous editor publication use
   the same downstream dirty set, and repeating a right-centre-left-centre pan
-  sequence is byte-for-byte idempotent upstream,
+  sequence is byte-for-byte idempotent upstream. The same contract test must
+  then edit that upstream node and prove its execution count, preview, and
+  downstream output all change,
 - incremental preview audio restores every clean producer's cached output into
   its compiled buffer slot before a dirty consumer runs, including when graph
   liveness has reused that slot later in the preceding traversal,

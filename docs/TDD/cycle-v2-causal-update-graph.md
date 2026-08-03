@@ -408,7 +408,9 @@ Synchronous canvas commits and asynchronous editor refreshes must consume the
 same planned preview products. Neither path may replace a downstream dirty set
 with a full traversal. A downstream pan regression is accepted only when a
 right-centre-left-centre sequence leaves the upstream audio process count and
-preview payload unchanged.
+preview payload unchanged, then edits that upstream node and proves it and its
+dependents become dirty. Isolation and reactivation are one paired contract;
+separate component tests are insufficient evidence.
 
 `NodeUpdateGraph` must either become the production planner behind this
 scheduler or be removed. A second test-only invalidation policy is not an

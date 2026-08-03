@@ -255,6 +255,7 @@ private:
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
+    bool activeVertexChanged {};
     String activeMeshNodeId;
     bool activeMeshChanged {};
     bool curveTransactionActive {};

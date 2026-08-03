@@ -89,6 +89,28 @@
       "command": "assertState",
       "path": "previewStats.4.audioProcessCount",
       "equals": 1
+    },
+    {
+      "command": "setMorphSlider",
+      "nodeId": "magnitudeLayer1",
+      "axis": "yellow",
+      "value": 0.8
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.4.audioProcessCount",
+      "equals": 2
+    },
+    {
+      "command": "setVertexParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "vertex.amp",
+      "value": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.4.audioProcessCount",
+      "equals": 3
     }
   ],
   "quit": true

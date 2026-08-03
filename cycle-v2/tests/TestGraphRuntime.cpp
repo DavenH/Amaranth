@@ -325,7 +325,7 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
   #endif
 }
 
-TEST_CASE("Stengah downstream pan edits leave the upstream magnitude signal idempotent",
+TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream Trimesh",
         "[cycle-v2][runtime][causal][pan][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -398,6 +398,25 @@ TEST_CASE("Stengah downstream pan edits leave the upstream magnitude signal idem
                     == centrePanOutput);
         }
     }
+
+    const Node* magnitude = document.graph().findNode("magnitudeLayer1");
+    REQUIRE(magnitude != nullptr);
+    const String currentRed = parameterValueForNode(*magnitude, "red");
+    const String editedRed = currentRed.getFloatValue() < 0.5f ? "0.8" : "0.2";
+    REQUIRE(commands.setNodeParameter(
+            "magnitudeLayer1", "red", "Red", editedRed).succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+    REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+            == upstreamProcessCount + 1);
+    REQUIRE(findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary
+            != upstreamPrimary);
+    REQUIRE(findProbePreview(
+            presentation.previewResult(), "probe3").values
+            != centrePanOutput);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
