@@ -201,6 +201,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                     operation.timeRasterizer = std::make_unique<
                             Rasterization::VoiceRasterizer>();
                     operation.timeRasterizer->setCalcDepthDimensions(false);
+                    operation.timeRasterizer->setGuideCurveProvider(
+                            operation.configuration->guideCurveProvider.get());
                     operation.timeRasterizer->setScalingMode(
                             Rasterization::PointScalingMode::Bipolar);
                     operation.timeRasterizer->prepare(
@@ -210,6 +212,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                 } else {
                     operation.type = OperationType::SpectralTrimesh;
                     operation.spectralRasterizer = std::make_unique<TrimeshBlockwiseDsp>();
+                    operation.spectralRasterizer->setGuideCurveProvider(
+                            operation.configuration->guideCurveProvider.get());
                     operation.spectralRasterizer->prepare(
                             const_cast<Mesh*>(operation.configuration->mesh.get()),
                             operation.configuration->morph,

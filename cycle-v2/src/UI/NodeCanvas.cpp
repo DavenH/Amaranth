@@ -1316,7 +1316,7 @@ Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {
 }
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
-    return &editorCoordinator.previewResources().trimeshWidget(node.id);
+    return &editorCoordinator.previewResources().trimeshWidget(node);
 }
 
 TrimeshRenderProfile NodeCanvas::trimeshRenderProfile(const Node& node) const {

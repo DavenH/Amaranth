@@ -132,18 +132,26 @@ GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(
         return { GraphEditCode::MissingPort, {}, {} };
     }
 
-    const String targetPortId = guideVertexTargetPortId(vertexIndex, parameterField);
+    const auto targetPortIds = TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+            *meshNode,
+            vertexIndex,
+            parameterField);
+    if (targetPortIds.empty()) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
     NodeGraph candidate = graph;
-    candidate.removeEdgesToInput(meshNodeId, targetPortId);
-    candidate.addEdge({
-            guideNodeId,
-            "guide",
-            meshNodeId,
-            targetPortId,
-            PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
+    for (const auto& targetPortId : targetPortIds) {
+        candidate.removeEdgesToInput(meshNodeId, targetPortId);
+        candidate.addEdge({
+                guideNodeId,
+                "guide",
+                meshNodeId,
+                targetPortId,
+                PortDomain::EnvelopeSignal,
+                ConnectionKind::ProcessingAttachment,
+                AttachmentType::GuideCurve
+        });
+    }
 
     auto issues = GraphValidator().validate(candidate);
 
@@ -579,10 +587,6 @@ const Port* GraphEditor::findPort(const Node& node, const String& portId, bool i
     }
 
     return nullptr;
-}
-
-String GraphEditor::guideVertexTargetPortId(int vertexIndex, const String& parameterField) const {
-    return TrimeshGuideAttachmentTarget::portIdFor(vertexIndex, parameterField);
 }
 
 String GraphEditor::createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const {

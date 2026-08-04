@@ -16,6 +16,7 @@ class Vertex;
 namespace CycleV2 {
 
 class TrimeshRenderProfile;
+class GuideCurveSnapshotProvider;
 
 struct TrimeshRenderData {
     std::vector<float> surface;
@@ -92,6 +93,9 @@ public:
     TrimeshNodeModel& operator=(const TrimeshNodeModel&) = delete;
 
     void syncFromNode(const Node& node);
+    void applyPreparedGuides(
+            const Mesh& preparedMesh,
+            std::shared_ptr<GuideCurveSnapshotProvider> provider);
 
     TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
     TrimeshRenderData renderGrid(
@@ -136,6 +140,7 @@ private:
     uint64_t revision {};
     uint64_t appliedModelRevision {};
     NodeModelStatePtr appliedModelState;
+    std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
     TrimeshDerivedRevisions revisions;
 };
 

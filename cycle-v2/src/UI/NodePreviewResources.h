@@ -29,6 +29,8 @@ public:
     explicit NodePreviewResources(NodeEditorCommandService& commands);
 
     TrimeshWidget& trimeshWidget(const String& nodeId);
+    TrimeshWidget& trimeshWidget(const Node& node);
+    void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
     Effect2DWidget& effect2DWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
 
@@ -40,6 +42,7 @@ public:
 
 private:
     NodeEditorCommandService& editorCommands;
+    const NodeGraph* graph {};
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
     std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;

@@ -1063,7 +1063,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);
-        publishConfigurations(result.plan.steps);
+        publishConfigurations(graph, result.plan.steps);
     }
 
     if (!result.succeeded()) {
@@ -1100,11 +1100,19 @@ void GraphCompiler::refreshSignalProbes(
     }
 }
 
-void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps) const {
+void GraphCompiler::publishConfigurations(
+        const NodeGraph& graph,
+        std::vector<GraphExecutionStep>& steps) const {
     const AudioExecutionSpec spec;
 
     for (auto& step : steps) {
-        const String key = configurationFactory.keyFor(step.audioRole, step.parameters, step.model, spec);
+        const String key = configurationFactory.keyFor(
+                step.audioRole,
+                step.parameters,
+                step.model,
+                spec,
+                &graph,
+                step.nodeId);
         auto found = std::find_if(configurations.begin(), configurations.end(), [&](const auto& entry) {
             return entry.nodeId == step.nodeId;
         });
@@ -1115,7 +1123,13 @@ void GraphCompiler::publishConfigurations(std::vector<GraphExecutionStep>& steps
         }
 
         step.configuration = found->publisher.publish(key, [&]() {
-            return configurationFactory.create(step.audioRole, step.parameters, step.model, spec);
+            return configurationFactory.create(
+                    step.audioRole,
+                    step.parameters,
+                    step.model,
+                    spec,
+                    &graph,
+                    step.nodeId);
         });
     }
 }

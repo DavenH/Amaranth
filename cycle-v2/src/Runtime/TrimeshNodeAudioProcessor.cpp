@@ -109,6 +109,8 @@ public:
         preparedDomain = spec.domain;
         smoothedMorph.reset(configuration->morph);
         morphInitialized = true;
+        trimeshDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
 
         trimeshDsp.prepare(
                 const_cast<Mesh*>(configuration->mesh.get()),

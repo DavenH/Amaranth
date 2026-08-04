@@ -104,7 +104,6 @@ private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;
     Node* findMutableNode(NodeGraph& graph, const String& nodeId) const;
     const Port* findPort(const Node& node, const String& portId, bool input) const;
-    String guideVertexTargetPortId(int vertexIndex, const String& parameterField) const;
     String createUniqueNodeId(const NodeGraph& graph, NodeKind kind) const;
     String createUniqueProbeId(const NodeGraph& graph) const;
     String baseIdForKind(NodeKind kind) const;

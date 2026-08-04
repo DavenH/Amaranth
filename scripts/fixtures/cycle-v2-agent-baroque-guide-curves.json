@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelGuideRailSegmentCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer3"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelComponentGuideSegmentCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

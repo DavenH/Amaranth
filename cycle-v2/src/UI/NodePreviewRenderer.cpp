@@ -656,6 +656,9 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     String signature = nodeSignature(request.node, request.profile.getDomain());
+    if (request.node.kind == NodeKind::TrilinearMesh) {
+        signature += "|guide:" + resources.trimeshWidget(request.node).guideContextKey();
+    }
     if (request.node.kind == NodeKind::Unison) {
         signature += "|previewNote:" + String(request.unisonContext.midiNote)
                 + "|voiceDuration:" + String(request.unisonContext.voiceDurationSeconds, 6);
@@ -703,7 +706,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        resources.trimeshWidget(request.node.id).paintCompact(
+        resources.trimeshWidget(request.node).paintCompact(
                 graphics,
                 request.node,
                 request.area,

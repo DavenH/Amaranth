@@ -89,9 +89,19 @@ public:
         const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);
+        GuideCurveProvider* guideProvider = configuration != nullptr
+                ? configuration->guideCurveProvider.get()
+                : nullptr;
 
         context.domain = outputDomain;
-        renderSlice(context, *mesh, morph, primaryAxis, cyclic, outputDomain);
+        renderSlice(
+                context,
+                *mesh,
+                morph,
+                primaryAxis,
+                cyclic,
+                outputDomain,
+                guideProvider);
         renderGrid(
                 context,
                 *mesh,
@@ -99,7 +109,8 @@ public:
                 primaryAxis,
                 cyclic,
                 outputDomain,
-                columnCount);
+                columnCount,
+                guideProvider);
     }
 
 private:
@@ -127,9 +138,11 @@ private:
             const MorphPosition& morph,
             int primaryAxis,
             bool cyclic,
-            PortDomain outputDomain) {
+            PortDomain outputDomain,
+            GuideCurveProvider* guideProvider) {
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
+        blockwiseDsp.setGuideCurveProvider(guideProvider);
         blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic, outputDomain);
         blockwiseDsp.renderPrepared(
                 context.pointCount,
@@ -147,9 +160,11 @@ private:
             int primaryAxis,
             bool cyclic,
             PortDomain outputDomain,
-            size_t columnCount) {
+            size_t columnCount,
+            GuideCurveProvider* guideProvider) {
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(cyclic);
+        gridwiseDsp.setGuideCurveProvider(guideProvider);
         const auto columns = gridwiseDsp.renderColumns(
                 mesh,
                 morph,

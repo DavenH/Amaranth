@@ -17,7 +17,13 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
             false
     });
 
-    const String target = targetPortId(vertexIndex, parameterField);
+    const Node* meshNode = graph.findNode(meshNodeId);
+    const auto targets = meshNode != nullptr
+            ? TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+                    *meshNode,
+                    vertexIndex,
+                    parameterField)
+            : std::vector<String>();
     int guideNumber {};
 
     for (const auto& node : graph.getNodes()) {
@@ -33,7 +39,8 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
                     && edge.attachmentType == AttachmentType::GuideCurve
                     && edge.sourceNodeId == node.id
                     && edge.destNodeId == meshNodeId
-                    && edge.destPortId == target) {
+                    && std::find(targets.begin(), targets.end(), edge.destPortId)
+                            != targets.end()) {
                 attached = true;
                 break;
             }
@@ -49,12 +56,6 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
     }
 
     return items;
-}
-
-String TrimeshGuideAttachmentMenu::targetPortId(
-        int vertexIndex,
-        const String& parameterField) {
-    return TrimeshGuideAttachmentTarget::portIdFor(vertexIndex, parameterField);
 }
 
 }

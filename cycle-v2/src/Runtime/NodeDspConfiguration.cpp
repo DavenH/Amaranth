@@ -7,6 +7,7 @@
 #include "../Nodes/Effects/EffectSignalProcessors.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "../Nodes/Trimesh/TrimeshGuidePreparation.h"
 #include "../Nodes/Trimesh/TrimeshMeshFactory.h"
 #include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Unison/UnisonNode.h"
@@ -18,7 +19,9 @@ namespace {
 
 std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
-        const NodeModelStatePtr& model) {
+        const NodeModelStatePtr& model,
+        const NodeGraph* graph,
+        const String& nodeId) {
     auto configuration = std::make_shared<TrimeshConfiguration>();
     const NodeModelStatePtr modelToUse = model != nullptr
             ? model
@@ -28,6 +31,18 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     configuration->mesh = typedModel->sharedMesh();
+    if (graph != nullptr) {
+        const Node* node = graph->findNode(nodeId);
+        if (node != nullptr) {
+            auto guides = TrimeshGuidePreparation::prepare(
+                    *graph,
+                    *node,
+                    *configuration->mesh);
+            configuration->mesh = std::move(guides.mesh);
+            configuration->guideCurveProvider = std::move(guides.provider);
+            configuration->guideAssignmentCount = guides.assignmentCount;
+        }
+    }
     configuration->morph = {
             typedParameterFloat(parameters, "yellow", 0.5f),
             typedParameterFloat(parameters, "red", 0.5f),
@@ -45,7 +60,9 @@ String NodeDspConfigurationFactory::keyFor(
         AudioModuleRole role,
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
-        const AudioExecutionSpec& spec) const {
+        const AudioExecutionSpec& spec,
+        const NodeGraph* graph,
+        const String& nodeId) const {
     String key((int) role);
     (void) spec;
 
@@ -55,6 +72,9 @@ String NodeDspConfigurationFactory::keyFor(
     if (model != nullptr) {
         key << ":model=" << model->schemaId() << ":" << String((int64) model->revision());
     }
+    if (graph != nullptr) {
+        key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
+    }
 
     return key;
 }
@@ -63,7 +83,14 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         AudioModuleRole role,
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
-        const AudioExecutionSpec&) const {
+        const AudioExecutionSpec&,
+        const NodeGraph* graph,
+        const String& nodeId) const {
+    if (role == AudioModuleRole::MeshSource) {
+        return std::shared_ptr<const INodeDspConfiguration>(
+                buildTrimeshConfiguration(parameters, model, graph, nodeId));
+    }
+
     using Factory = std::shared_ptr<const INodeDspConfiguration> (*)(
             AudioModuleRole,
             const std::vector<NodeParameter>&,
@@ -82,7 +109,7 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     buildModulationTripleConfiguration(values));
         } },
         { AudioModuleRole::WaveSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
-            auto configuration = buildTrimeshConfiguration(values, {});
+            auto configuration = buildTrimeshConfiguration(values, {}, nullptr, {});
             configuration->processorRole = roleToUse;
             configuration->gain = typedParameterFloat(values, "level", 1.f)
                     * typedParameterFloat(values, "amplitude", 1.f);
@@ -106,9 +133,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             configuration->halfCycleCarry = typedParameterString(values, "mode", "cyclic")
                     == "acyclicCarry";
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
-        } },
-        { AudioModuleRole::MeshSource, [](AudioModuleRole, const auto& values, const auto& modelState) {
-            return std::shared_ptr<const INodeDspConfiguration>(buildTrimeshConfiguration(values, modelState));
         } },
         { AudioModuleRole::SpectralLayer, [](AudioModuleRole, const auto& values, const auto&) {
             auto configuration = std::make_shared<SpectralLayerConfiguration>();

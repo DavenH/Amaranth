@@ -46,6 +46,27 @@ void TrimeshWidget::syncFromNode(const Node& node) {
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
 }
 
+void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
+    String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
+    if (node.model != nullptr) {
+        nextKey << ":mesh=" << String((int64) node.model->revision());
+    }
+    if (nextKey == guideConfigurationKey) {
+        return;
+    }
+
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    if (model == nullptr) {
+        return;
+    }
+
+    bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
+            graph,
+            node,
+            model->mesh()));
+    guideConfigurationKey = nextKey;
+}
+
 void TrimeshWidget::setDisplayDomain(PortDomain domain) {
     setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
 }
@@ -283,6 +304,27 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     stats.intercepts.reserve(snapshot.intercepts().size());
     for (const auto& intercept : snapshot.intercepts()) {
         stats.intercepts.emplace_back(intercept.x, intercept.y);
+    }
+    for (const auto& curve : snapshot.curves()) {
+        VertCube* cube = curve.b.cube;
+        if (cube == nullptr) {
+            continue;
+        }
+
+        if (cube->getCompGuideCurve() >= 0) {
+            ++stats.componentGuideSegmentCount;
+        }
+        if (cube->guideCurveAt(Vertex::Curve) >= 0) {
+            ++stats.curveGuideSegmentCount;
+        }
+        for (int dimension = 0; dimension < Vertex::numElements; ++dimension) {
+            if (dimension != Vertex::Time
+                    && dimension != Vertex::Curve
+                    && cube->guideCurveAt(dimension) >= 0) {
+                ++stats.guideRailSegmentCount;
+                break;
+            }
+        }
     }
     if (samples.empty()) {
         return stats;

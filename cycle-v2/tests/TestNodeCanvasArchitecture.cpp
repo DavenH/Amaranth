@@ -520,7 +520,7 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.vertex.0.red",
+    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.red",
             PortDomain::ControlSignal,
             ConnectionKind::ProcessingAttachment,
             AttachmentType::GuideCurve });

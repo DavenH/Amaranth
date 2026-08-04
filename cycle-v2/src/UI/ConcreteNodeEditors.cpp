@@ -738,6 +738,11 @@ public:
         const auto panelStats = boundWidget->panelRenderStatsForAutomation();
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
+        meshState->setProperty("panelGuideRailSegmentCount", panelStats.guideRailSegmentCount);
+        meshState->setProperty(
+                "panelComponentGuideSegmentCount",
+                panelStats.componentGuideSegmentCount);
+        meshState->setProperty("panelCurveGuideSegmentCount", panelStats.curveGuideSegmentCount);
         meshState->setProperty("panelMinimum", panelStats.minimum);
         meshState->setProperty("panelMaximum", panelStats.maximum);
         meshState->setProperty("panelCentreSample", panelStats.centreSample);

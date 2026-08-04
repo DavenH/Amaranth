@@ -90,6 +90,7 @@ TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
     ,   revision             (other.revision)
     ,   appliedModelRevision (other.appliedModelRevision)
     ,   appliedModelState    (std::move(other.appliedModelState))
+    ,   guideCurveProvider   (std::move(other.guideCurveProvider))
     ,   revisions            (other.revisions) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
@@ -102,6 +103,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         revision = other.revision;
         appliedModelRevision = other.appliedModelRevision;
         appliedModelState = std::move(other.appliedModelState);
+        guideCurveProvider = std::move(other.guideCurveProvider);
         revisions = other.revisions;
     }
 
@@ -147,6 +149,14 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     }
 }
 
+void TrimeshNodeModel::applyPreparedGuides(
+        const Mesh& preparedMesh,
+        std::shared_ptr<GuideCurveSnapshotProvider> provider) {
+    mesh().deepCopy(&preparedMesh);
+    guideCurveProvider = std::move(provider);
+    bumpMeshContentRevision();
+}
+
 TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain domain) {
     return renderGrid(rows, columns, TrimeshRenderProfile::fromDomain(domain));
 }
@@ -168,6 +178,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
 
     TrimeshBlockwiseDsp blockwiseDsp;
     SignalPayload slice;
+    blockwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     blockwiseDsp.setMesh(&mesh());
     blockwiseDsp.setMorphPosition(morph);
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
@@ -180,6 +191,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
 
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);
+    gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     const auto gridColumns = gridwiseDsp.renderColumns(
             mesh(),
             morph,

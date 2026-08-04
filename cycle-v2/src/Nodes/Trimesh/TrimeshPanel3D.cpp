@@ -9,7 +9,7 @@ TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& sour
     applyGradientForProfile();
     volumeScale = 1.f;
     volumeTrans = 0.f;
-    guideCurveApplicable = false;
+    guideCurveApplicable = true;
     speedApplicable = false;
     pendingDeformUpdate = false;
 }
