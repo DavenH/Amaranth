@@ -157,6 +157,18 @@ does not change edge count. Cursor routing publishes the resolved affordance to
 the active JUCE mouse source as well as the component under the pointer; the
 focused cursor fixture covers the Pan dial, its move ring, and a Trimesh editor
 control. Pan gestures snap within 5% of hard left, centre, and hard right.
+An open expanded editor captures pointer input only inside its visible panel;
+canvas nodes outside it, including Pan dials and move rings, retain their normal
+gestures. The Pan hit region is the complete visible circular chrome rather
+than the smaller rectangular node body, so cursor and drag ownership cannot
+flicker at the ring boundary.
+
+Compact and expanded Trimesh views consume one render-profile contract. Domain
+and scale policy are both part of mesh-data and sprite invalidation: changing a
+downstream Pan between additive/unipolar and multiplicative/bipolar semantics
+must rebuild both views from the same authored mesh values. A combined Stengah
+regression sequence opens the magnitude editor, adjusts and moves its downstream
+Pan, checks stable hover affordances, and compares the two presentations.
 
 ## Boundaries And End State
 

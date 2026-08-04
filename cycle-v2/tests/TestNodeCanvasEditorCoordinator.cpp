@@ -5,17 +5,16 @@
 
 using namespace CycleV2;
 
-TEST_CASE("Expanded editor routing captures hosted editors before canvas gestures",
+TEST_CASE("Expanded hosted editor routing captures only its visible panel",
         "[cycle-v2][canvas][editor-coordinator]") {
     const Node envelope = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
     const Rectangle<float> canvas(0.f, 0.f, 1200.f, 800.f);
+    const Rectangle<float> panel = NodeCanvasEditorCoordinator::boundsFor(&envelope, canvas);
 
-    const ExpandedEditorClick click = NodeCanvasEditorCoordinator::routeClick(
-            &envelope,
-            canvas,
-            { 4.f, 4.f });
-
-    REQUIRE(click.kind == ExpandedEditorClickKind::Captured);
+    REQUIRE(NodeCanvasEditorCoordinator::routeClick(&envelope, canvas, panel.getCentre()).kind
+            == ExpandedEditorClickKind::Captured);
+    REQUIRE(NodeCanvasEditorCoordinator::routeClick(&envelope, canvas, { 4.f, 4.f }).kind
+            == ExpandedEditorClickKind::Unclaimed);
     REQUIRE(NodeCanvasEditorCoordinator::blocksCanvas(&envelope));
 }
 

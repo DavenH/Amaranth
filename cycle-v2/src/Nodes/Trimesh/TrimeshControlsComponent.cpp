@@ -18,6 +18,7 @@ public:
                         || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
                 ? MouseCursor::LeftRightResizeCursor
                 : MouseCursor::PointingHandCursor);
+        setName("TrimeshControlTarget");
     }
 
     void paint(Graphics&) override {

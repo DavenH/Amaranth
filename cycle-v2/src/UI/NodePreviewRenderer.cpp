@@ -668,11 +668,13 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
             || cached.width != width
             || cached.height != height
             || cached.domain != request.profile.getDomain()
+            || cached.scalePolicy != request.profile.getScalePolicy()
             || cached.signature != signature) {
         cached.image = Image(Image::ARGB, width, height, true);
         cached.width = width;
         cached.height = height;
         cached.domain = request.profile.getDomain();
+        cached.scalePolicy = request.profile.getScalePolicy();
         cached.signature = signature;
         Graphics sprite(cached.image);
         NodePreviewRenderRequest localRequest = request;

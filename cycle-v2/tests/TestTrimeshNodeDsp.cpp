@@ -963,6 +963,20 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
     REQUIRE_FALSE(bridge.rasterizerWrapsVertices());
     const TrimeshRenderData magnitude = bridge.getDataSource().getRenderData();
 
+    bridge.setRenderProfile(TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    }));
+    bridge.syncFromNode(node, 12, 4);
+    const TrimeshRenderData multiplicativeMagnitude = bridge.getDataSource().getRenderData();
+
+    REQUIRE(magnitude.surface.size() == multiplicativeMagnitude.surface.size());
+    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
+        REQUIRE(multiplicativeMagnitude.surface[index]
+                == Catch::Approx(magnitude.surface[index] * 0.5f + 0.5f));
+    }
+
     bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal));
     bridge.syncFromNode(node, 12, 4);
     const TrimeshRenderData phase = bridge.getDataSource().getRenderData();
@@ -976,4 +990,44 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
         REQUIRE(magnitude.surface[index] == Catch::Approx(phase.surface[index]));
     }
     REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) < 0.5f);
+}
+
+TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",
+        "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    });
+    TrimeshWidget widget;
+    Image compactImage(Image::ARGB, 220, 180, true);
+    Graphics compactGraphics(compactImage);
+    widget.paintCompact(
+            compactGraphics,
+            node,
+            compactImage.getBounds().toFloat(),
+            1.f,
+            profile);
+    const TrimeshRenderData compact = widget.renderDataForAutomation();
+
+    widget.setRenderProfile(profile);
+    Image expandedImage(Image::ARGB, 900, 650, true);
+    Graphics expandedGraphics(expandedImage);
+    widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
+    const TrimeshRenderData expanded = widget.renderDataForAutomation();
+
+    REQUIRE(compact.rows == expanded.rows);
+    REQUIRE(compact.columns == expanded.columns);
+    REQUIRE(compact.slice == expanded.slice);
+    REQUIRE(compact.surface == expanded.surface);
 }

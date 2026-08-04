@@ -70,6 +70,7 @@ private:
     std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
     uint64_t lastSyncedRevision { UINT64_MAX };
     PortDomain lastRenderDomain { PortDomain::ControlSignal };
+    RenderScalePolicy lastRenderScalePolicy { RenderScalePolicy::Bipolar };
     int lastRows {};
     int lastColumns {};
 };

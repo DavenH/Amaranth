@@ -1083,6 +1083,9 @@ Acceptance:
   once: unipolar magnitude data consumes the complete spectral gradient in the
   node preview and the Trimesh 2D/3D editor, while bipolar time and phase data
   is mapped around the display centre,
+- render-domain and scale-policy changes invalidate the shared Trimesh data and
+  compact sprite caches; compact and expanded views never retain different
+  mappings of the same authored mesh revision,
 - Waveshaper compact previews remain the authored transfer-curve editor; their
   processing effect is shown by downstream signal previews and spies. Runtime
   fixtures compare incremental results with a clean full traversal and assert

@@ -148,10 +148,17 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
 }
 
 TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain domain) {
+    return renderGrid(rows, columns, TrimeshRenderProfile::fromDomain(domain));
+}
+
+TrimeshRenderData TrimeshNodeModel::renderGrid(
+        int rows,
+        int columns,
+        const TrimeshRenderProfile& renderProfile) {
     rows = jmax(2, rows);
     columns = jmax(2, columns);
+    const PortDomain domain = renderProfile.getDomain();
     const bool cyclic = domain == PortDomain::TimeSignal;
-    const TrimeshRenderProfile renderProfile = TrimeshRenderProfile::fromDomain(domain);
 
     TrimeshRenderData result;
     result.domain = domain;

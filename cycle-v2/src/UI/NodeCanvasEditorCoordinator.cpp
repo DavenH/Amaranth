@@ -85,14 +85,14 @@ ExpandedEditorClick NodeCanvasEditorCoordinator::routeClick(
     }
 
     const Rectangle<float> panel = boundsFor(node, canvasBounds);
-    if (hasHostedEditor(*node)) {
-        return { ExpandedEditorClickKind::Captured };
-    }
     if (closeButton(*node, panel).contains(position)) {
         return { ExpandedEditorClickKind::Close };
     }
     if (!panel.contains(position)) {
         return {};
+    }
+    if (hasHostedEditor(*node)) {
+        return { ExpandedEditorClickKind::Captured };
     }
 
     if (node->kind == NodeKind::VoiceContext) {

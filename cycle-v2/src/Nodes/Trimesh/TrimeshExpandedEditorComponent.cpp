@@ -16,6 +16,7 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
         widget      (targetWidget)
     ,   controls    (targetWidget) {
     setOpaque(false);
+    setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
     widget.setExpandedPanelHostDelegate(this);
@@ -281,7 +282,6 @@ void TrimeshExpandedEditorComponent::timerCallback() {
     setMouseCursor(cursor);
     auto source = Desktop::getInstance().getMainMouseSource();
     source.showMouseCursor(cursor);
-    source.forceMouseCursorUpdate();
 }
 
 void TrimeshExpandedEditorComponent::updatePanelHosts() {

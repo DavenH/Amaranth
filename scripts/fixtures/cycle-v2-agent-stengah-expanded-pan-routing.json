@@ -1,0 +1,180 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:waveshaper",
+      "targetX": 0.1,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:waveshaper",
+      "downTargetId": "node:waveshaper",
+      "targetX": 0.1,
+      "targetY": 0.75,
+      "downTargetX": 0.1,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:waveshaper",
+      "downTargetId": "node:waveshaper",
+      "targetX": 0.1,
+      "targetY": 0.75,
+      "downTargetX": 0.1,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.14.bounds.y",
+      "op": "greaterThan",
+      "value": 758.216
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "magnitudeLayer1"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "magnitudeLayer1Process",
+      "parameterId": "pan",
+      "label": "Pan",
+      "value": "0.5"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "expectedCursor": "upDownResize"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -2.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -2.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1Process",
+      "parameterId": "pan",
+      "equals": "1.000000"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.04,
+      "expectedCursor": "move"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.04
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.04
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.04,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.5.bounds.y",
+      "op": "lessThan",
+      "value": 538
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 24
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelMinimum",
+      "op": "lessThan",
+      "value": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelMaximum",
+      "op": "greaterThan",
+      "value": 0.5
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-stengah-expanded-pan-routing.png"
+    }
+  ],
+  "quit": true
+}

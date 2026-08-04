@@ -173,7 +173,6 @@ private:
                 0,
                 false);
         mouseMove(event);
-        source.forceMouseCursorUpdate();
     }
 
     MouseEvent currentMouseEvent(const MouseEvent& event) const {

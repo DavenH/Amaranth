@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: Closing a hosted editor through automation dereferences its deleted target
+
+Context:
+
+- The combined Stengah interaction fixture opened the magnitude Trimesh editor
+  and invoked `pointer` on `expanded:magnitudeLayer1.close`.
+- Both a down/up sequence and the atomic click path crashed on the message
+  thread in `CycleV2Automation::pointer` after the close action deleted the
+  hosted component used as the current pointer target.
+- Repro artifacts: `/private/tmp/cycle-v2-expanded-pan.log.ips` and
+  `~/Library/Logs/DiagnosticReports/CycleV2-2026-08-03-213846.ips`.
+
+Current status: open; pointer automation must not retain or dereference a
+component after an event synchronously destroys its hosted editor.
+
 ## Open: Expanded curve-editor automation target can resolve to empty canvas
 
 Context:

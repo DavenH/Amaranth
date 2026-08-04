@@ -39,6 +39,36 @@ Rectangle<float> inlinePanDialBounds(
     return viewport.toScreen(node.bounds).reduced(12.f * viewport.getZoom());
 }
 
+Rectangle<float> inlinePanHitBounds(
+        const NodeCanvasViewport& viewport,
+        const Node& node) {
+    return viewport.toScreen(node.bounds).expanded(3.f * viewport.getZoom());
+}
+
+bool inlinePanContains(
+        const NodeCanvasViewport& viewport,
+        const Node& node,
+        Point<float> position) {
+    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, node);
+    const float radius = jmin(hitBounds.getWidth(), hitBounds.getHeight()) * 0.5f;
+    return hitBounds.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
+}
+
+const Node* findInlinePanAt(
+        const NodeGraph& graph,
+        const NodeCanvasViewport& viewport,
+        Point<float> position) {
+    const auto& nodes = graph.getNodes();
+    for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
+        if (node->kind == NodeKind::SpectralLayer
+                && inlinePanContains(viewport, *node, position)) {
+            return &*node;
+        }
+    }
+
+    return nullptr;
+}
+
 bool inlinePanDialContains(
         const NodeCanvasViewport& viewport,
         const Node& node,
@@ -110,6 +140,7 @@ NodeCanvas::NodeCanvas() :
     refreshCompiledState();
 
     setOpaque(true);
+    setName("NodeCanvas");
     setWantsKeyboardFocus(true);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
@@ -173,7 +204,23 @@ void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
         hovered = canvasPresentation.probeRail().markerProbeAt(position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
-    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(position));
+
+    if (Component* expandedEditor = editorCoordinator.host().component()) {
+        const Point<float> editorPosition = expandedEditor->getLocalPoint(
+                this,
+                position.roundToInt()).toFloat();
+        if (expandedEditor->getLocalBounds().toFloat().contains(editorPosition)) {
+            Component* cursorTarget = expandedEditor->getComponentAt(editorPosition.roundToInt());
+            const MouseCursor cursor = cursorTarget != nullptr
+                    ? cursorTarget->getMouseCursor()
+                    : expandedEditor->getMouseCursor();
+            setMouseCursor(cursor);
+            source.showMouseCursor(cursor);
+            return;
+        }
+    }
+
+    const Node* inlinePan = findInlinePanAt(graph, viewport, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         cursor = inlinePanDialContains(viewport, *inlinePan, position)
@@ -277,8 +324,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             interaction.captureExpandedEditor();
         }
 
-        requestCanvasRepaint();
-        return;
+        if (click.kind != ExpandedEditorClickKind::Unclaimed) {
+            requestCanvasRepaint();
+            return;
+        }
     }
 
     NodeKind paletteKind;
@@ -357,7 +406,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
-    const Node* inlinePan = queries.findNodeAt(viewport.toWorld(event.position));
+    const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         if (inlinePanDialContains(viewport, *inlinePan, event.position)
                 && authoring.beginSpectralPanGesture(inlinePan->id)) {
@@ -381,6 +430,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     const Node* hitNode = queries.findNodeAt(viewport.toWorld(event.position));
+    if (hitNode == nullptr && inlinePan != nullptr) {
+        hitNode = inlinePan;
+    }
 
     if (hitNode != nullptr) {
         selectedNodeId = hitNode->id;
@@ -686,8 +738,6 @@ void NodeCanvas::timerCallback() {
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
         auto source = Desktop::getInstance().getMainMouseSource();
         updateHoverAt(mouse, source);
-        source.triggerFakeMove();
-        source.forceMouseCursorUpdate();
         requestCanvasRepaint();
     }
 }

@@ -73,12 +73,14 @@ void TrimeshPanelBridge::syncFromNode(
     const bool blueChanged = previousMorph.blue.getTargetValue() != nextMorph.blue.getTargetValue();
     const bool morphChanged = yellowChanged || redChanged || blueChanged;
     const bool renderDomainChanged = lastRenderDomain != renderProfile.getDomain();
+    const bool renderScaleChanged = lastRenderScalePolicy != renderProfile.getScalePolicy();
     const bool gridShapeChanged = lastRows != rows || lastColumns != columns;
 
     if (!panelDataChanged
             && !morphChanged
             && !primaryAxisChanged
             && !renderDomainChanged
+            && !renderScaleChanged
             && lastSyncedRevision == nextPanelRevision
             && lastRows == rows
             && lastColumns == columns) {
@@ -94,13 +96,14 @@ void TrimeshPanelBridge::syncFromNode(
     change.blueChanged = blueChanged;
     change.primaryViewAxis = model.getPrimaryViewAxis();
     change.gridShapeChanged = gridShapeChanged;
-    change.renderDomainChanged = renderDomainChanged;
+    change.renderDomainChanged = renderDomainChanged || renderScaleChanged;
 
     const TrimeshInvalidationResult invalidated = invalidation.invalidate(change);
-    dataSource.rebuild(model, rows, columns, renderProfile.getDomain());
+    dataSource.rebuild(model, rows, columns, renderProfile);
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = nextPanelRevision;
     lastRenderDomain = renderProfile.getDomain();
+    lastRenderScalePolicy = renderProfile.getScalePolicy();
     lastRows = rows;
     lastColumns = columns;
 }
@@ -128,7 +131,7 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
         meshEditedCallback(event);
     }
 
-    dataSource.rebuild(model, lastRows, lastColumns, renderProfile.getDomain());
+    dataSource.rebuild(model, lastRows, lastColumns, renderProfile);
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = panelRevisionFor(model);
 }

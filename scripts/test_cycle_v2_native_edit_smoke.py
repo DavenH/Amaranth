@@ -34,10 +34,7 @@ class NativeEditSmoke:
             check=True,
             stdout=subprocess.DEVNULL,
         )
-        subprocess.run([
-            "osascript", "-e", 'tell application "CycleV2" to activate'
-        ], check=True)
-        subprocess.run(["open", "-a", "cycle-v2"], check=True)
+        subprocess.run(["open", "-a", APP], check=True)
         time.sleep(0.1)
 
     def stop(self):
@@ -73,7 +70,7 @@ class NativeEditSmoke:
 
     @staticmethod
     def focus_app():
-        subprocess.run(["open", "-a", "cycle-v2"], check=True)
+        subprocess.run(["open", "-a", APP], check=True)
         time.sleep(0.03)
 
     def click(self, *commands):
@@ -389,8 +386,15 @@ class NativeEditSmoke:
         self.release_drag(fft_destination)
         self.key_chord("z")
 
-        created_envelope = self.create_from_palette(4, 0)
-        assert created_envelope == "env2"
+        created_envelope = self.create_from_palette(4, 2)
+        assert created_envelope not in {node["id"] for node in initial["nodes"]}
+        self.command({
+            "command": "setNodeParameter",
+            "nodeId": created_envelope,
+            "parameterId": "purpose",
+            "label": "Purpose",
+            "value": "scratch",
+        })
         created = self.graph_state()
         assert created["nodeCount"] == initial["nodeCount"] + 1
 
@@ -452,8 +456,8 @@ class NativeEditSmoke:
         })
 
         insertion_initial = self.graph_state()
-        created_delay = self.create_from_palette(5, 3)
-        assert created_delay == "delay"
+        created_delay = self.create_from_palette(5, 4)
+        assert created_delay not in {node["id"] for node in insertion_initial["nodes"]}
         delay_node = self.target(f"node:{created_delay}")
         wave_output = self.target("output:waveMesh.out")
         fft_input = self.target("input:fft.time")
@@ -516,15 +520,45 @@ class NativeEditSmoke:
         })
         time.sleep(0.2)
         pan = self.target("node:magnitudeLayer1Process")
+        pan_before = self.node_bounds(self.graph_state(), "magnitudeLayer1Process")
+        pan_value_before = float(self.parameters(self.inspect("magnitudeLayer1Process"))["pan"])
 
         self.move_pointer(self.point(pan, 0.5, 0.5))
         self.cursor_until("upDownResize")
 
-        self.move_pointer(self.point(pan, 0.05, 0.05))
-        self.cursor_until("move")
+        for _ in range(3):
+            self.move_pointer(self.point(pan, 0.5, 0.05))
+            self.cursor_until("move")
+            self.move_pointer(self.point(pan, 0.5, 0.5))
+            self.cursor_until("upDownResize")
+
+        dial = self.point(pan, 0.5, 0.5)
+        self.drag(dial, (dial[0], dial[1] - 45))
+        pan_value_after = float(self.parameters(self.inspect("magnitudeLayer1Process"))["pan"])
+        assert abs(pan_value_after - pan_value_before) > 0.05, (
+            pan_value_before,
+            pan_value_after,
+        )
+
+        ring = self.point(pan, 0.5, 0.05)
+        self.drag(ring, (ring[0], ring[1] - 30))
+        pan_after = self.node_bounds(self.graph_state(), "magnitudeLayer1Process")
+        assert pan_after["y"] < pan_before["y"] - 10.0, (pan_before, pan_after)
 
         self.open_editor("magnitudeLayer1", trimesh=True)
         morph = self.target("expanded:magnitudeLayer1.trimeshMorphRail.yellow")
+        self.move_pointer(self.point(morph, 0.5, 0.5))
+        self.cursor_until("leftRightResize")
+
+        waveshaper = self.target("node:waveshaper")
+        waveshaper_before = self.node_bounds(self.graph_state(), "waveshaper")
+        source = self.point(waveshaper, 0.1, 0.5)
+        self.drag(source, (source[0], source[1] + 30))
+        waveshaper_after = self.node_bounds(self.graph_state(), "waveshaper")
+        assert waveshaper_after["y"] > waveshaper_before["y"] + 10.0, (
+            waveshaper_before,
+            waveshaper_after,
+        )
         self.move_pointer(self.point(morph, 0.5, 0.5))
         self.cursor_until("leftRightResize")
 
@@ -1164,7 +1198,13 @@ class NativeEditSmoke:
 if __name__ == "__main__":
     if sys.platform != "darwin":
         raise SystemExit("Native CycleV2 edit smoke requires macOS")
-    requested = sys.argv[1:] or ["authoring", "waveshaper", "envelope", "trimesh"]
+    requested = sys.argv[1:] or [
+        "authoring",
+        "waveshaper",
+        "envelope",
+        "trimesh",
+        "hover-cursor",
+    ]
     unknown = set(requested) - {
         "authoring",
         "waveshaper",
