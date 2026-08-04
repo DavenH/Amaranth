@@ -643,6 +643,59 @@ TEST_CASE("Spectral layer processor makes phase panning explicit in both payload
             (int) result.secondaryTraversalGrid.values.size()).normL2() > 0.01f);
 }
 
+TEST_CASE("Spectral layer normalizes every magnitude traversal column independently",
+        "[cycle-v2][runtime][spectral-layer][grid]") {
+    NodeAudioProcessorFactory factory;
+    auto gridProcessor = factory.create(AudioModuleRole::SpectralLayer);
+    REQUIRE(gridProcessor != nullptr);
+
+    AudioProcessContext gridContext;
+    gridContext.frameCount = 3;
+    gridContext.parameters = {
+            { "pan", "Pan", "0.5" },
+            { "range", "Range", "0.625" },
+            { "mode", "Mode", "additive" }
+    };
+    gridContext.inputs = { gridPayload({
+            0.1f, 0.2f, 0.3f,
+            0.4f, 0.5f, 0.6f
+    }, 2, 3) };
+    gridContext.inputs.front().domain = PortDomain::SpectralMagnitudeSignal;
+    gridContext.inputs.front().traversalGrid.metadata.valueDomain
+            = PortDomain::SpectralMagnitudeSignal;
+    gridContext.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair }
+    };
+    prepareProcessor(*gridProcessor, AudioModuleRole::SpectralLayer, gridContext);
+    gridProcessor->process(gridContext);
+
+    for (size_t column = 0; column < 2; ++column) {
+        auto columnProcessor = factory.create(AudioModuleRole::SpectralLayer);
+        AudioProcessContext columnContext;
+        columnContext.frameCount = 3;
+        columnContext.parameters = gridContext.parameters;
+        const size_t offset = column * 3;
+        columnContext.inputs = { payload({
+                gridContext.inputs.front().traversalGrid.values[offset],
+                gridContext.inputs.front().traversalGrid.values[offset + 1],
+                gridContext.inputs.front().traversalGrid.values[offset + 2]
+        }) };
+        columnContext.inputs.front().domain = PortDomain::SpectralMagnitudeSignal;
+        columnContext.outputPorts = gridContext.outputPorts;
+        prepareProcessor(*columnProcessor, AudioModuleRole::SpectralLayer, columnContext);
+        columnProcessor->process(columnContext);
+
+        const auto& gridResult = output(gridContext);
+        const auto& columnResult = output(columnContext);
+        for (size_t row = 0; row < 3; ++row) {
+            CHECK(gridResult.traversalGrid.values[offset + row]
+                    == Catch::Approx(columnResult.block.samples[row]));
+            CHECK(gridResult.secondaryTraversalGrid.values[offset + row]
+                    == Catch::Approx(columnResult.secondaryBlock.samples[row]));
+        }
+    }
+}
+
 TEST_CASE("Utility audio processors combine both channels of spectral traversal grids",
         "[cycle-v2][runtime][spectral-layer][stereo]") {
     auto left = gridPayload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f }, 2, 3);

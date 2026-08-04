@@ -3,6 +3,8 @@
 #include <utility>
 
 #include "NodeCanvasAutomationInspector.h"
+
+#include "SignalProbeDetailView.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
 #include "NodeViewModule.h"
@@ -452,6 +454,10 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());
+    root->setProperty("probeDetailId", state.probeDetailId);
+    root->setProperty("probeDetailOpen", state.probeDetailId.isNotEmpty());
+    root->setProperty("probeDetailResolution", (int) state.probeDetailResolution);
+    root->setProperty("probeDetailRows", (int) state.probeDetailRows);
     root->setProperty("compileSucceeded", compileResult.succeeded());
     root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
     root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
@@ -623,6 +629,16 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             "probeRefreshMode",
             "probeRefreshMode",
             state.probeRefreshModeBounds));
+    if (state.probeDetailId.isNotEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId,
+                "probeDetail",
+                state.probeDetailBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetailClose",
+                "probeDetailClose",
+                SignalProbeDetailView::closeBounds(state.probeDetailBounds)));
+    }
 
     const auto& sceneSnapshot = scene.build(context.document.graph(), context.viewport, context.presentation.revision(),
                                             context.document.revision());

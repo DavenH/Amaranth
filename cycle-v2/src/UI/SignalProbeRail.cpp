@@ -90,6 +90,16 @@ float SignalProbeRail::maximumHorizontalOffset(
     return jmax(0.f, contentWidth - workspace.getWidth());
 }
 
+int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
+    const auto probes = orderedProbes(graph);
+    const auto found = std::find_if(probes.begin(), probes.end(), [&](const auto* probe) {
+        return probe->id == probeId;
+    });
+    return found == probes.end()
+            ? 0
+            : (int) std::distance(probes.begin(), found) + 1;
+}
+
 std::vector<const SignalProbe*> SignalProbeRail::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());
@@ -375,7 +385,7 @@ void SignalProbeRail::paintRail(
         graphics.setColour(kText);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText(
-                String(index + 1) + "  " + probe.label,
+                String(index + 1),
                 header.withTrimmedLeft(22.f).withTrimmedRight(28.f),
                 Justification::centredLeft);
         const Rectangle<float> close = closeBounds(tile).reduced(5.f);

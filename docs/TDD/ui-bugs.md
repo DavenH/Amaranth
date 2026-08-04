@@ -245,3 +245,18 @@ current `GuideCurveOffsetSeeds` storage contract.
   `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-logs.txt.ips`.
 - This remains open; the keyboard composition fixture avoids the unrelated
   close gesture and asserts the reported pan/overlap sequence directly.
+
+## Open: Stengah magnitude-pan preset expectation has drifted
+
+Context:
+
+- The full `CycleV2_tests` run on 2026-08-04 failed
+  `TestGraphSerializer.cpp:664` in `Stengah starts from its populated spectral
+  layers`.
+- The test expects `magnitudeLayer1Process.pan == 0.5`, while the committed
+  `stengah.cyclegraph` contains `0.75833`.
+- The failure reproduces in isolation and predates the probe-label, traversal,
+  and expanded-detail changes.
+
+Current status: open; decide whether the bundled preset or the canonical preset
+assertion owns the intended authored pan, then update the losing authority.

@@ -21,6 +21,7 @@
 #include "../src/UI/NodePaletteEntryIconRenderer.h"
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
+#include "../src/UI/SignalProbeDetailView.h"
 #include "../src/UI/SignalProbeRail.h"
 #include "../src/UI/SpectralPreviewMapping.h"
 #include "../src/UI/TransformCompactEditor.h"
@@ -79,6 +80,80 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
 
     expanded.expanded = false;
     REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
+}
+
+TEST_CASE("Signal probe detail uses the audition-note period resolution",
+        "[cycle-v2][canvas][probe][detail]") {
+    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(60) == 256);
+    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(72) == 128);
+
+    const Rectangle<float> content { 0.f, 0.f, 1200.f, 610.f };
+    const Rectangle<float> detail = SignalProbeDetailView::boundsFor(content);
+    REQUIRE(content.contains(detail));
+    REQUIRE(detail.getWidth() > 700.f);
+    REQUIRE(detail.getHeight() > 400.f);
+    REQUIRE(detail.contains(SignalProbeDetailView::closeBounds(detail)));
+}
+
+TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
+        "[cycle-v2][canvas][probe][detail]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    for (auto& parameter : triple.parameters) {
+        if (parameter.id == "redConstant") {
+            parameter.value = "0.5";
+        }
+    }
+    graph.addNode(std::move(triple));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    graph.addEdge({
+            "voice", "context", "wave", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+
+    REQUIRE(GraphPresentationModel::auditionMidiNoteForProbe(
+            graph,
+            graph.getSignalProbes().front().id) == 73);
+}
+
+TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
+        "[cycle-v2][canvas][probe][detail]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 400.f, 0.f }));
+    graph.addEdge({
+            "wave", "out", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(60);
+    const auto detail = presentation.captureProbePreview(
+            graph,
+            graph.getSignalProbes().front().id,
+            resolution,
+            60);
+
+    REQUIRE(detail.has_value());
+    REQUIRE(detail->connected);
+    REQUIRE(detail->gridRows == resolution);
+    REQUIRE(detail->values.size() == detail->gridColumns * resolution);
 }
 
 }

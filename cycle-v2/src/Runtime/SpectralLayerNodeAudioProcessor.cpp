@@ -39,6 +39,27 @@ void renderLayer(
     right.zero();
 }
 
+void renderTraversalGrid(
+        PortDomain domain,
+        const SignalTraversalGrid& source,
+        SignalTraversalGrid& left,
+        SignalTraversalGrid& right,
+        const SpectralLayerConfiguration& configuration) {
+    for (size_t column = 0; column < source.columns; ++column) {
+        const int offset = (int) (column * source.rows);
+        const int rowCount = (int) source.rows;
+        renderLayer(
+                domain,
+                {
+                        const_cast<float*>(source.values.data()) + offset,
+                        rowCount
+                },
+                { left.values.data() + offset, rowCount },
+                { right.values.data() + offset, rowCount },
+                configuration);
+    }
+}
+
 class SpectralLayerAudioProcessor final : public NodeAudioProcessor {
 public:
     AudioModuleRole role() const override { return AudioModuleRole::SpectralLayer; }
@@ -92,20 +113,11 @@ public:
                     input->traversalGrid.rows,
                     input->traversalGrid.metadata,
                     context.workArena);
-            renderLayer(
+            renderTraversalGrid(
                     output.domain,
-                    {
-                            const_cast<float*>(input->traversalGrid.values.data()),
-                            (int) input->traversalGrid.values.size()
-                    },
-                    {
-                            output.traversalGrid.values.data(),
-                            (int) output.traversalGrid.values.size()
-                    },
-                    {
-                            output.secondaryTraversalGrid.values.data(),
-                            (int) output.secondaryTraversalGrid.values.size()
-                    },
+                    input->traversalGrid,
+                    output.traversalGrid,
+                    output.secondaryTraversalGrid,
                     *configuration);
         }
 

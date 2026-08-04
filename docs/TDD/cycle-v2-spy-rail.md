@@ -2,11 +2,11 @@
 
 ## Status
 
-Implementation in progress as of 2026-07-17. Passive probe storage, preview
-routing, cable gestures, traversal ordering, rail presentation, scrolling, and
-editor-safe hosting are implemented. Tile reordering, renaming, and the larger
-double-click preview remain open and must be completed before this TDD returns
-to an implemented state.
+Implementation in progress as of 2026-08-04. Passive probe storage, preview
+routing, cable gestures, traversal ordering, rail presentation, scrolling,
+editor-safe hosting, and the larger double-click preview are implemented. Tile
+reordering and renaming remain open and must be completed before this TDD
+returns to an implemented state.
 
 Supersedes the canvas-node and node-drop interaction described in
 `spy-node.md`. The signal-traversal contract remains authoritative.
@@ -95,7 +95,9 @@ Expanded rail tiles:
 
 - form one horizontally scrollable, reorderable row;
 - use the existing traversal-grid renderer;
-- show probe number, label, domain, disconnected state, and delete control;
+- show only the probe ordinal beside the preview, plus disconnected state and
+  delete control; the persisted label remains available for future naming UX
+  but is not repeated in the compact tile;
 - open a larger preview on double-click;
 - publish selection back to the cable marker.
 
@@ -104,6 +106,23 @@ and collapsed state do not.
 
 Collapsed state is one handle showing probe count and disconnected status.
 Tiles and their visual rendering stop while collapsed; cable markers remain.
+
+The larger preview is calculated lazily when a tile is opened. It reuses
+`GraphAudioExecutor`, the compiled probe address, and `NodePreviewRenderer`;
+it does not introduce another traversal or rasterization path. Its diagnostic
+frame size is the next power of two at or above one period of the audition note
+at the preview sample rate. Time-domain grids therefore have that many rows;
+spectral grids retain the corresponding unique FFT bins. The immutable preview
+voice uses the persisted key value from the upstream Voice Context's attached
+Modulation Triple. The key value is mapped through Cycle's MIDI note range; if
+there is no attached Modulation Triple, MIDI note 60 is the default.
+
+The authoritative period calculation is
+`CycleDsp::OscillatorLaneCore::angleDelta` followed by
+`Arithmetic::getNextPow2`, matching spectral oscillator frame preparation.
+The presentation boundary translates only the selected probe, detail bounds,
+and close interaction. Closing the view deletes its lazy payload; no graph or
+audio state is retained by the overlay.
 
 ## Expanded Editor Hosting
 
@@ -124,7 +143,8 @@ editor.
   samples with and without probes.
 - Preview tests prove exact addressed traversal data and immediate refresh.
 - Presentation tests cover rail geometry, collapse, marker identity,
-  interaction-only tethers, and editor-safe bounds.
+  interaction-only tethers, editor-safe bounds, detail geometry, and lazy
+  note-period resolution.
 - Native macOS automation covers right-click and Control-click menus,
   Option-click toggling, marker reattachment, rail resizing/collapse, deletion,
   and save/reload.

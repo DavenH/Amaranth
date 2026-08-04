@@ -44,6 +44,7 @@ public:
             const SignalProbeRailState& state,
             int tileIndex);
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
+    static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
 
     String probeAt(
             Point<float> position,

@@ -18,6 +18,10 @@ struct NodeCanvasAutomationPresentation {
     double previewVoiceLengthSeconds { 1.0 };
     ProbeRefreshMode probeRefreshMode { ProbeRefreshMode::OnGestureCommit };
     juce::Rectangle<float> probeRefreshModeBounds;
+    juce::String probeDetailId;
+    size_t probeDetailResolution {};
+    size_t probeDetailRows {};
+    juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
 };
 

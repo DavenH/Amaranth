@@ -249,6 +249,18 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     SignalProbeRail& probeRail = canvasPresentation.probeRail();
+    if (probeDetailState.isOpen()) {
+        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
+        if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
+            probeDetailState.close();
+            notifyOverlayPresentationChanged();
+            requestCanvasRepaint();
+            return;
+        }
+        if (detail.contains(event.position)) {
+            return;
+        }
+    }
     if (probeRail.refreshModeBoundsFor(workspace, probeRailState).contains(event.position)) {
         probeRailState.refreshMode = probeRailState.refreshMode == ProbeRefreshMode::LiveLatest
                 ? ProbeRefreshMode::OnGestureCommit
@@ -260,6 +272,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
     if (probeRail.collapseHandleFor(workspace, probeRailState).contains(event.position)) {
         probeRailState.expanded = !probeRailState.expanded;
+        if (!probeRailState.expanded) {
+            probeDetailState.close();
+            notifyOverlayPresentationChanged();
+        }
         resized();
         return;
     }
@@ -276,12 +292,19 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (probeRailState.selectedProbeId == closeProbe) {
             probeRailState.selectedProbeId = {};
         }
+        if (probeDetailState.probeId == closeProbe) {
+            probeDetailState.close();
+            notifyOverlayPresentationChanged();
+        }
         return;
     }
     const String railProbe = probeRail.probeAt(
             event.position, workspace, graph, probeRailState);
     if (railProbe.isNotEmpty()) {
         probeRailState.selectedProbeId = railProbe;
+        if (event.getNumberOfClicks() >= 2) {
+            openProbeDetail(railProbe);
+        }
         requestCanvasRepaint();
         return;
     }
@@ -673,6 +696,12 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::escapeKey) {
+        if (probeDetailState.isOpen()) {
+            probeDetailState.close();
+            notifyOverlayPresentationChanged();
+            requestCanvasRepaint();
+            return true;
+        }
         return clearSelection();
     }
 
@@ -811,6 +840,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             kUseGlCanvasUnderlay,
             workspace,
             probeRailState,
+            probeDetailState,
             globalUnisonPreviewContext
     };
 }
@@ -889,6 +919,7 @@ void NodeCanvas::refreshCompiledState() {
     compiledStateRefreshPending = false;
     editorCoordinator.clearPreviewCache();
     presentation.refresh(graph, document.revision(), document.lastChange());
+    refreshProbeDetail();
 }
 
 void NodeCanvas::refreshCompiledStateAsync() {
@@ -910,6 +941,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
                         safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
                         safeThis->canvasContentBounds());
                 safeThis->openGLContext.triggerRepaint();
+                safeThis->refreshProbeDetail();
                 safeThis->requestCanvasRepaint();
             });
 }
@@ -927,6 +959,41 @@ void NodeCanvas::setPreviewVoiceLength(double seconds) {
             roundToInt(duration * 1000.0);
     editStatusMessage = "Voice length: " + String(duration, 2) + " seconds";
     requestCanvasRepaint();
+}
+
+void NodeCanvas::openProbeDetail(const String& probeId) {
+    const int midiNote = GraphPresentationModel::auditionMidiNoteForProbe(
+            commands.editingGraph(),
+            probeId,
+            globalUnisonPreviewContext.midiNote);
+    const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
+            midiNote);
+    auto preview = presentation.captureProbePreview(
+            commands.editingGraph(),
+            probeId,
+            resolution,
+            midiNote);
+    if (!preview.has_value()) {
+        probeDetailState.close();
+        return;
+    }
+
+    editorCoordinator.close();
+    probeDetailState.open(
+            std::move(*preview),
+            SignalProbeRail::ordinalForProbe(graph, probeId),
+            midiNote,
+            resolution);
+    notifyOverlayPresentationChanged();
+}
+
+void NodeCanvas::refreshProbeDetail() {
+    if (!probeDetailState.isOpen()) {
+        return;
+    }
+
+    const String probeId = probeDetailState.probeId;
+    openProbeDetail(probeId);
 }
 
 UnisonPreviewContext NodeCanvas::unisonPreviewContext() const {
@@ -952,6 +1019,9 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
                     SignalProbeRail::maximumHorizontalOffset(
                             getLocalBounds().toFloat(),
                             (int) graph.getSignalProbes().size()));
+            if (SignalProbeRail::ordinalForProbe(graph, probeDetailState.probeId) == 0) {
+                probeDetailState.close();
+            }
             resized();
         }
     }
@@ -981,6 +1051,12 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             SignalProbeRail::refreshModeBoundsFor(
                     getLocalBounds().toFloat(),
                     probeRailState),
+            probeDetailState.probeId,
+            probeDetailState.resolution,
+            probeDetailState.renderResult.gridRows,
+            probeDetailState.isOpen()
+                    ? SignalProbeDetailView::boundsFor(canvasContentBounds())
+                    : Rectangle<float> {},
             canvasContentBounds()
     };
 }
@@ -1128,6 +1204,10 @@ Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) co
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
+    if (probeDetailState.isOpen()) {
+        return SignalProbeDetailView::boundsFor(canvasContentBounds());
+    }
+
     const Node* expandedNode = queries.findNode(expandedNodeId);
     return expandedNode != nullptr
             ? editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
@@ -1177,6 +1257,7 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        probeDetailState.close();
         probeRailState.expanded = !graph.getSignalProbes().empty();
         probeRailState.horizontalOffset = 0.f;
         resized();
