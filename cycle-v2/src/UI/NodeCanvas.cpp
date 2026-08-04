@@ -170,6 +170,7 @@ void NodeCanvas::paint(Graphics& g) {
 void NodeCanvas::resized() {
     viewport.setBounds(canvasContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -298,6 +299,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
+            notifyOverlayPresentationChanged();
         } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
             const auto control = click.voiceContextEdit->control;
             if (control == VoiceContextEdit::Control::VoiceLength) {
@@ -441,6 +443,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
+            editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+            notifyOverlayPresentationChanged();
         }
 
         requestCanvasRepaint();
@@ -536,6 +540,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
     if (const auto* pan = std::get_if<PanDragUpdate>(&update)) {
         viewport.setTransform(pan->pan, viewport.getZoom());
+        notifyOverlayPresentationChanged();
     } else if (const auto* nodeDrag = std::get_if<NodeDragUpdate>(&update)) {
         if (nodeDrag->beginTransaction) {
             authoring.beginNodeMoveGesture();
@@ -644,11 +649,13 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
     constexpr float panScale = 720.f;
     viewport.panBy(Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale));
+    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     viewport.zoomAround(event.position, scaleFactor);
+    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -954,6 +961,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     }
     if (result.effects.editorBindingChanged) {
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
+        notifyOverlayPresentationChanged();
     }
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
@@ -1096,6 +1104,66 @@ var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
     return automation.captureAudio(frameCount);
 }
 
+bool NodeCanvas::copyAudioPlan(
+        GraphExecutionPlan& plan,
+        uint64_t& revision) const {
+    if (!presentation.compileResult().succeeded()) {
+        return false;
+    }
+    plan = presentation.compileResult().plan;
+    revision = presentation.revision();
+    return true;
+}
+
+Rectangle<float> NodeCanvas::visibleWorldBoundsForOverlay() const {
+    return viewport.toWorld(canvasContentBounds());
+}
+
+Rectangle<int> NodeCanvas::boundsForWorldOverlay(Rectangle<float> worldBounds) const {
+    return viewport.toScreen(worldBounds).toNearestInt();
+}
+
+Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) const {
+    return viewport.toWorld(canvasPosition);
+}
+
+Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
+    const Node* expandedNode = queries.findNode(expandedNodeId);
+    return expandedNode != nullptr
+            ? editorCoordinator.boundsFor(expandedNode, canvasContentBounds())
+            : Rectangle<float> {};
+}
+
+void NodeCanvas::setOverlayPresentationChangedCallback(std::function<void()> callback) {
+    overlayPresentationChanged = std::move(callback);
+}
+
+void NodeCanvas::notifyOverlayPresentationChanged() {
+    if (overlayPresentationChanged) {
+        overlayPresentationChanged();
+    }
+}
+
+std::optional<Rectangle<float>> NodeCanvas::performanceKeyboardBounds() const {
+    return commands.editingGraph().getPerformanceKeyboardBounds();
+}
+
+void NodeCanvas::beginPerformanceKeyboardMove() {
+    commands.beginCompoundEdit();
+}
+
+void NodeCanvas::movePerformanceKeyboard(Rectangle<float> worldBounds) {
+    commands.setPerformanceKeyboardBounds(worldBounds);
+}
+
+void NodeCanvas::endPerformanceKeyboardMove() {
+    commands.commitCompoundEdit();
+}
+
+void NodeCanvas::storePerformanceKeyboardBounds(Rectangle<float> worldBounds) {
+    commands.setPerformanceKeyboardBounds(worldBounds);
+}
+
 File NodeCanvas::snapshotFile() const {
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("CycleV2")
@@ -1154,6 +1222,7 @@ bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
         editorCoordinator.updateHost(nullptr, canvasContentBounds());
+        notifyOverlayPresentationChanged();
         requestCanvasRepaint();
     }
     return cleared;
@@ -1173,6 +1242,7 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
 
 void NodeCanvas::closeNodeEditor() {
     editorCoordinator.close();
+    notifyOverlayPresentationChanged();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {

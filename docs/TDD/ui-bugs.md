@@ -95,6 +95,41 @@ Context:
 Current status: open; reconcile the paired seed test contract with the current
 `GuideCurveOffsetSeeds` representation.
 
+## Addressed: Cycle v2 performance keyboard disappears after OpenGL startup
+
+Context:
+
+- The floating performance keyboard was initially a sibling drawn over a
+  full-workspace `NodeCanvas`.
+- It appeared during startup, then the canvas's attached native OpenGL surface
+  covered it when that context became active. App-side component screenshots
+  still showed the sibling and therefore produced a false-positive visual
+  result.
+- Reproduced on 2026-08-02 with the OS capture
+  `/private/tmp/cycle-v2-keyboard-before-os.png`.
+
+Current status: addressed by hosting the compact node-like panel as a child of
+the OpenGL-attached canvas, reusing the established expanded-editor component
+composition path. The performance fixture asserts the ownership boundary and
+header drag behavior; the OS capture
+`/private/tmp/cycle-v2-keyboard-node-os.png` verifies native composition.
+
+## Addressed: Cycle v2 performance keyboard loses grip while dragging
+
+Context:
+
+- A header drag moved the canvas keyboard briefly, then stopped even though the
+  primary mouse button remained held.
+- `PerformanceKeyboardPanel::mouseDrag` re-evaluated the original mouse-down Y
+  against the component's current coordinate system. Moving the component
+  changed that coordinate, so an initially valid header gesture could fail its
+  own header check partway through the drag.
+
+Current status: addressed by latching header-drag ownership on mouse-down and
+retaining it until mouse-up. The focused fixture performs two consecutive drag
+updates, and a native `cliclick` gesture completed five diagonal movement
+updates without losing grip.
+
 ## Open: Cycle v2 automation launch emits Settings assertions
 
 Context:
@@ -128,7 +163,7 @@ Context:
 Current status: open; isolate the broad UI test that adds an already-parented
 component and capture its exact call site.
 
-## Open: Cycle v2 automation screenshots append to existing PNG files
+## Addressed: Cycle v2 automation screenshots appended to existing PNG files
 
 Context:
 
@@ -136,7 +171,9 @@ Context:
 - Image viewers consequently decode the oldest frame, which can make visual-regression review appear stale even though the report says the screenshot succeeded.
 - Reproduced on 2026-07-22 with `scripts/fixtures/cycle-v2-agent-screenshot.json` and `/private/tmp/cycle-v2-agent-canvas.png`; moving the old output away before capture produced the current frame.
 
-Current status: open; automation screenshot output should truncate or replace its target atomically.
+Current status: addressed by deleting the exact destination before opening the
+new screenshot stream. Offline and live WAV automation artifacts now use the
+same replacement behavior.
 
 ## Open: Trilinear mesh 2D rasterization changes when primary view axis changes
 
@@ -196,3 +233,15 @@ Context:
 
 Current status: open; reconcile the test's paired-array expectation with the
 current `GuideCurveOffsetSeeds` storage contract.
+
+## Open: synthetic expanded-editor close click uses a destroyed component
+
+- Cycle V2 automation resolves an expanded editor component once, sends
+  mouse-down, then sends mouse-up through the same raw pointer. An editor close
+  button may destroy that component during mouse-down, causing `EXC_BAD_ACCESS`
+  at `CycleV2Automation.cpp:1446` before mouse-up.
+- Reproduced while verifying performance-keyboard occlusion with
+  `expanded:waveMesh.close` on 2026-08-02. Crash artifact:
+  `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-logs.txt.ips`.
+- This remains open; the keyboard composition fixture avoids the unrelated
+  close gesture and asserts the reported pan/overlap sequence directly.

@@ -663,6 +663,29 @@ size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
     return preparedCount;
 }
 
+bool GraphAudioExecutor::hasActiveVoiceTail(int voiceIndex) const {
+    return std::any_of(
+            processors.begin(),
+            processors.end(),
+            [&](const auto& entry) {
+                return entry.first.voiceIndex == voiceIndex
+                        && entry.second.role == AudioModuleRole::Envelope
+                        && entry.second.processor != nullptr
+                        && entry.second.processor->isVoiceActive();
+            });
+}
+
+bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex) const {
+    return std::any_of(
+            processors.begin(),
+            processors.end(),
+            [&](const auto& entry) {
+                return entry.first.voiceIndex == voiceIndex
+                        && entry.second.role == AudioModuleRole::Envelope
+                        && entry.second.processor != nullptr;
+            });
+}
+
 GraphAudioExecutor::CachedProcessor& GraphAudioExecutor::processorFor(
         const String& nodeId,
         int voiceIndex,

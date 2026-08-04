@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 
 #include <App/Settings.h>
@@ -78,6 +79,18 @@ public:
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
+    bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
+    Rectangle<float> visibleWorldBoundsForOverlay() const;
+    Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
+    Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
+    Rectangle<float> expandedEditorBoundsForOverlay() const;
+    uint64_t viewportRevisionForOverlay() const { return viewport.getRevision(); }
+    void setOverlayPresentationChangedCallback(std::function<void()> callback);
+    std::optional<Rectangle<float>> performanceKeyboardBounds() const;
+    void beginPerformanceKeyboardMove();
+    void movePerformanceKeyboard(Rectangle<float> worldBounds);
+    void endPerformanceKeyboardMove();
+    void storePerformanceKeyboardBounds(Rectangle<float> worldBounds);
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -138,6 +151,7 @@ private:
     float probeRailResizeStartHeight {};
     float probeRailResizeStartY {};
     uint32 compiledStateRefreshDueMs {};
+    std::function<void()> overlayPresentationChanged;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -146,6 +160,7 @@ private:
     void updateHoverAt(juce::Point<float> position, juce::MouseInputSource source);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
+    void notifyOverlayPresentationChanged();
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
     uint32_t availableRenderInvalidations() const override;

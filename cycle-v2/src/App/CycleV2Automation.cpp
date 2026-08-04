@@ -736,6 +736,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "captureAudio") {
         return captureAudio(commandValue);
     }
+    if (command == "captureLiveAudio") {
+        return captureLiveAudio(commandValue);
+    }
     if (command == "openNodeEditor" || command == "openMeshPopup") {
         return openNodeEditor(commandValue);
     }
@@ -1026,6 +1029,7 @@ var CycleV2Automation::captureAudio(const var& commandValue) {
         }
 
         path.getParentDirectory().createDirectory();
+        path.deleteFile();
         std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
 
         if (stream == nullptr || !stream->openedOk()) {
@@ -1050,6 +1054,59 @@ var CycleV2Automation::captureAudio(const var& commandValue) {
     }
 
     return okResult("captureAudio", data);
+}
+
+var CycleV2Automation::captureLiveAudio(const var& commandValue) {
+    const int durationMs = jlimit(10, 1400, intProperty(commandValue, "durationMs", 500));
+    const File path = resolveCommandPath(stringProperty(commandValue, "path"));
+    auto capture = workspace.captureLiveAudioForAutomation(durationMs);
+    if (!capture.completed || capture.left.empty() || capture.right.empty()) {
+        return failedResult("captureLiveAudio", "Live audio-device capture did not complete");
+    }
+
+    var metrics = makeObject();
+    auto* metricsObject = objectFor(metrics);
+    metricsObject->setProperty("peak", capture.peak);
+    metricsObject->setProperty("rms", capture.rms);
+    String message;
+    if (!checkAudioThresholds(commandValue, metrics, message)) {
+        return failedResult("captureLiveAudio", message);
+    }
+
+    if (path != File()) {
+        AudioSampleBuffer buffer(2, (int) capture.left.size());
+        buffer.copyFrom(0, 0, capture.left.data(), (int) capture.left.size());
+        buffer.copyFrom(1, 0, capture.right.data(), (int) capture.right.size());
+        path.getParentDirectory().createDirectory();
+        path.deleteFile();
+        std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
+        if (stream == nullptr || !stream->openedOk()) {
+            return failedResult("captureLiveAudio", "Could not open live capture path: " + path.getFullPathName());
+        }
+        WavAudioFormat wavFormat;
+        std::unique_ptr<AudioFormatWriter> writer(
+                wavFormat.createWriterFor(stream.get(), capture.sampleRate, 2, 24, {}, 0));
+        if (writer == nullptr) {
+            return failedResult("captureLiveAudio", "Could not create live WAV writer");
+        }
+        stream.release();
+        if (!writer->writeFromAudioSampleBuffer(buffer, 0, buffer.getNumSamples())) {
+            return failedResult("captureLiveAudio", "Could not write live WAV capture");
+        }
+    }
+
+    var data = makeObject();
+    auto* dataObject = objectFor(data);
+    dataObject->setProperty("source", "audioDeviceCallback");
+    dataObject->setProperty("sampleRate", capture.sampleRate);
+    dataObject->setProperty("frameCount", (int) capture.left.size());
+    dataObject->setProperty("firstCallback", (int64) capture.firstCallback);
+    dataObject->setProperty("lastCallback", (int64) capture.lastCallback);
+    dataObject->setProperty("metrics", metrics);
+    if (path != File()) {
+        dataObject->setProperty("path", path.getFullPathName());
+    }
+    return okResult("captureLiveAudio", data);
 }
 
 var CycleV2Automation::openNodeEditor(const var& commandValue) {
@@ -1300,7 +1357,10 @@ var CycleV2Automation::pointer(const var& commandValue) {
     const String targetId = stringProperty(commandValue, "targetId");
     const String downTargetId = stringProperty(commandValue, "downTargetId");
 
-    if (targetId.isNotEmpty() || downTargetId.isNotEmpty()) {
+    if (targetId.startsWith("PerformanceKeyboard.")
+            || downTargetId.startsWith("PerformanceKeyboard.")) {
+        area = "workspace";
+    } else if (targetId.isNotEmpty() || downTargetId.isNotEmpty()) {
         area = "canvas";
     }
 
@@ -1317,6 +1377,34 @@ var CycleV2Automation::pointer(const var& commandValue) {
     }
 
     const String eventType = stringProperty(commandValue, "event", stringProperty(commandValue, "pointerEvent", "click"));
+    if (targetId.startsWith("PerformanceKeyboard.Note")) {
+        const int noteNumber = targetId.fromFirstOccurrenceOf(
+                "PerformanceKeyboard.Note", false, false).getIntValue();
+        const float velocity = jlimit(0.05f, 1.f, floatProperty(commandValue, "targetY", 0.8f));
+        bool handled {};
+        if (eventType == "down") {
+            handled = workspace.performancePointerDownForAutomation(noteNumber, velocity);
+        } else if (eventType == "drag") {
+            handled = workspace.performancePointerDragForAutomation(noteNumber, velocity);
+        } else if (eventType == "up") {
+            handled = workspace.performancePointerUpForAutomation();
+        } else if (eventType == "click") {
+            handled = workspace.performancePointerDownForAutomation(noteNumber, velocity)
+                    && workspace.performancePointerUpForAutomation();
+        }
+        if (!handled) {
+            return failedResult("pointer", "Performance keyboard gesture could not be applied");
+        }
+
+        var data = makeObject();
+        auto* object = objectFor(data);
+        object->setProperty("event", eventType);
+        object->setProperty("area", "workspace");
+        object->setProperty("targetId", targetId);
+        object->setProperty("note", noteNumber);
+        object->setProperty("velocity", velocity);
+        return okResult("pointer", data);
+    }
     auto resolveTargetPosition = [&](const String& id, bool down, bool& resolved) -> Point<float> {
         resolved = true;
 
@@ -1469,6 +1557,7 @@ var CycleV2Automation::screenshot(const var& commandValue) const {
     Image image = component->createComponentSnapshot(component->getLocalBounds());
     PNGImageFormat format;
     path.getParentDirectory().createDirectory();
+    path.deleteFile();
     std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
 
     if (stream == nullptr || !format.writeImageToStream(image, *stream)) {

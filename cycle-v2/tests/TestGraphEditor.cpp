@@ -206,6 +206,26 @@ TEST_CASE("Compound editor movement publishes one durable document revision",
     REQUIRE(publications == 1);
 }
 
+TEST_CASE("Performance keyboard movement is one undoable layout edit",
+        "[cycle-v2][graph][layout][keyboard]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    const uint64_t initialRevision = document.revision();
+
+    commands.beginCompoundEdit();
+    REQUIRE(commands.setPerformanceKeyboardBounds({ 100.f, 200.f, 496.f, 184.f }).succeeded());
+    REQUIRE(commands.setPerformanceKeyboardBounds({ 180.f, 260.f, 496.f, 184.f }).succeeded());
+    REQUIRE(document.revision() == initialRevision);
+    commands.commitCompoundEdit();
+
+    REQUIRE(document.revision() == initialRevision + 1);
+    REQUIRE(document.isDirty());
+    REQUIRE(document.graph().getPerformanceKeyboardBounds()
+            == Rectangle<float>(180.f, 260.f, 496.f, 184.f));
+    REQUIRE(document.undo());
+    REQUIRE_FALSE(document.graph().getPerformanceKeyboardBounds().has_value());
+}
+
 TEST_CASE("Transient editor movement leaves the durable graph unchanged until commit",
         "[cycle-v2][graph][causal]") {
     NodeGraph graph;

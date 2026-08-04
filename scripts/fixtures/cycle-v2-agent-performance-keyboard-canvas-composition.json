@@ -1,0 +1,74 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "performance.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.layoutSynchronized",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 1000,
+      "y": 800,
+      "deltaX": 0.2,
+      "deltaY": 0.1
+    },
+    {
+      "command": "assertState",
+      "path": "panX",
+      "op": "greaterThan",
+      "value": 100
+    },
+    {
+      "command": "assertState",
+      "path": "performance.layoutSynchronized",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.8
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": 60
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.occludedByExpandedEditor",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.visible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "performance.heldNote",
+      "equals": -1
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": true
+}

@@ -59,6 +59,7 @@ public:
     GraphEditResult translateNodes(
             const std::vector<juce::String>& nodeIds,
             juce::Point<float> offset);
+    GraphEditResult setPerformanceKeyboardBounds(juce::Rectangle<float> bounds);
 
     void beginCompoundEdit();
     void commitCompoundEdit();

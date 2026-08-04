@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace CycleV2 {
@@ -214,6 +215,9 @@ public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
+    const std::optional<Rectangle<float>>& getPerformanceKeyboardBounds() const {
+        return performanceKeyboardBounds;
+    }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
@@ -236,6 +240,7 @@ public:
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
+    bool setPerformanceKeyboardBounds(Rectangle<float> bounds);
     void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
     void markChanged() { ++revision; }
 
@@ -245,6 +250,7 @@ private:
     std::vector<Node> nodes;
     std::vector<Edge> edges;
     std::vector<SignalProbe> signalProbes;
+    std::optional<Rectangle<float>> performanceKeyboardBounds;
     uint64_t revision {};
 };
 
