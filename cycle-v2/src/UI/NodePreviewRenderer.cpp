@@ -1,5 +1,4 @@
 #include "NodePreviewRenderer.h"
-#include "SpectralPreviewMapping.h"
 
 #include "NodeParameterValue.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
@@ -188,31 +187,6 @@ void drawMeters(
     }
 }
 
-void unwrapPhase(std::vector<float>& surface, size_t columns, size_t rows) {
-    if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
-        return;
-    }
-
-    for (size_t row = 0; row < rows; ++row) {
-        float offset = 0.f;
-        float previous = surface[row];
-        for (size_t column = 1; column < columns; ++column) {
-            const size_t index = column * rows + row;
-            const float current = surface[index];
-            const float delta = current + offset - previous;
-
-            if (delta > MathConstants<float>::pi) {
-                offset -= MathConstants<float>::twoPi;
-            } else if (delta < -MathConstants<float>::pi) {
-                offset += MathConstants<float>::twoPi;
-            }
-
-            surface[index] = current + offset;
-            previous = surface[index];
-        }
-    }
-}
-
 std::vector<float> mappedSurface(
         const NodePreviewResult& preview,
         const std::vector<float>& values) {
@@ -221,27 +195,17 @@ std::vector<float> mappedSurface(
         return surface;
     }
 
-    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
-    if (meshSurface && (preview.domain == PortDomain::SpectralMagnitudeSignal
-            || preview.domain == PortDomain::SpectralPhaseSignal)) {
-        surface = SpectralPreviewMapping::frequencySurface(
-                surface,
-                preview.gridColumns,
-                preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        return SpectralPreviewMapping::magnitudeSurface(
-                surface,
-                preview.gridColumns,
-                preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
-        unwrapPhase(surface, preview.gridColumns, preview.gridRows);
-        return SpectralPreviewMapping::phaseSurface(
+    const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
+            || preview.domain == PortDomain::SpectralPhaseSignal;
+    if (spectral) {
+        return TrimeshRenderProfile::fromDomain(preview.domain).mapGridToDisplay(
                 surface,
                 preview.gridColumns,
                 preview.gridRows);
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
+    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     if (meshSurface) {
         const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
         profile.mapValuesToDisplay(buffer);

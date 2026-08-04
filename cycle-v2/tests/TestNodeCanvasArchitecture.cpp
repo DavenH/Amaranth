@@ -22,7 +22,6 @@
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeRail.h"
-#include "../src/UI/SpectralPreviewMapping.h"
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
@@ -100,11 +99,13 @@ TEST_CASE("Spectral preview excludes DC and preserves low harmonic detail",
         }
     }
 
-    const auto mappedWithDc = SpectralPreviewMapping::magnitudeSurface(
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto mappedWithDc = profile.mapGridToDisplay(
             withDc,
             columns,
             rows);
-    const auto mappedWithoutDc = SpectralPreviewMapping::magnitudeSurface(
+    const auto mappedWithoutDc = profile.mapGridToDisplay(
             withoutDc,
             columns,
             rows);

@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented. Compact Trimesh nodes now retain the same authoritative prepared
-widget model as the expanded editor, and Baroque Flute's spectral-phase
-traversal is characterized with and without its authored guide attachments.
+Implemented. Compact Trimesh nodes retain the same authoritative prepared
+widget model as the expanded editor, and spectral grids use one domain-owned
+frequency and value mapping in Trimesh views and signal spies.
 
 ## Problem
 
@@ -83,6 +83,9 @@ edits invalidate every attached Trimesh configuration and preview product.
    attachment resolution, changed grid output, and 2D/3D render state.
 6. Remove the compact-preview dual authority and characterize Baroque Flute's
    spectral-phase traversal with and without its authored guide attachments.
+7. Make spectral row sampling and value mapping a render-profile property used
+   identically by Trimesh grids and signal spies; delete the role-specific
+   spectral preview mapper.
 
 ## Semantic Tests
 
@@ -98,6 +101,9 @@ edits invalidate every attached Trimesh configuration and preview product.
   including captured traversal output.
 - Compact preview, expanded fallback rendering, Panel2D, Panel3D, blockwise DSP,
   and gridwise DSP consume one equivalent provider-backed configuration.
+- Given one spectral traversal grid, Trimesh and signal-spy heatmaps produce
+  identical mapped pixels; DC exclusion and logarithmic row sampling are
+  independent of preview role.
 - Two updates in one guide-assignment gesture, commit, visible/downstream
   refresh, and undo preserve the durable base-revision contract.
 - Baroque Flute resolves all eleven imported cube-component assignments.
@@ -136,6 +142,10 @@ edits invalidate every attached Trimesh configuration and preview product.
   resolution, while the expanded editor rendered its prepared model grid.
   Compact and expanded views now resolve through the same widget-owned grid;
   captured traversal remains authoritative for DSP diagnostics and probes.
+- `TrimeshRenderProfile` now owns DC exclusion, Cycle logarithmic row sampling,
+  phase unwrapping, and spectral value scaling. Trimesh model grids and spy
+  heatmaps call the same operation, independent of preview role; the former
+  UI-specific spectral mapper is deleted.
 - Vertex-menu authoring now resolves the selected vertex's owning cubes and
   writes only `guide.cube.<index>.<field>` edges. The provisional vertex target
   parser and production path are deleted.
@@ -145,8 +155,9 @@ edits invalidate every attached Trimesh configuration and preview product.
   output. The Baroque compact capture is
   `/private/tmp/cycle-v2-baroque-compact-guides.png`.
 
-Verification completed with `*Guide*` (110 assertions), `[trimesh]` (718
-assertions), both automation fixtures, the standalone Cycle V2 build, and
-`git diff --check`. The earlier full 459-case Cycle V2 run passed 457 cases;
-the two Stengah failures are the shared preset-pan issue recorded in
-`audio-bugs.md`. `clang-tidy` was not available in the environment.
+Verification completed with `*Guide*` (110 assertions), `[spectral][ui]` (50
+assertions), `[preview]` (140 assertions), `[trimesh]` (674 assertions), the
+Stengah probe fixture, the standalone Cycle V2 build, and `git diff --check`.
+The earlier full 459-case Cycle V2 run passed 457 cases; the two Stengah
+failures are the shared preset-pan issue recorded in `audio-bugs.md`.
+`clang-tidy` was not available in the environment.

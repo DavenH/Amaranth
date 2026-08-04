@@ -204,14 +204,15 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     result.surface.reserve((size_t) rows * (size_t) columns);
 
     for (auto column : gridColumns) {
-        renderProfile.mapValuesToDisplay(Buffer<float>(
-                column.signal.block.samples.data(),
-                (int) column.signal.block.samples.size()));
         result.surface.insert(
                 result.surface.end(),
                 column.signal.block.samples.begin(),
                 column.signal.block.samples.end());
     }
+    result.surface = renderProfile.mapGridToDisplay(
+            result.surface,
+            (size_t) columns,
+            (size_t) rows);
 
     return result;
 }

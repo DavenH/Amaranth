@@ -1141,7 +1141,7 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.selectedVertex == expectedSelection);
 }
 
-TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
+TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
         "[cycle-v2][nodes][trimesh][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -1177,7 +1177,7 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
     REQUIRE(magnitude.surface.size() == multiplicativeMagnitude.surface.size());
     for (size_t index = 0; index < magnitude.surface.size(); ++index) {
         REQUIRE(multiplicativeMagnitude.surface[index]
-                == Catch::Approx(magnitude.surface[index] * 0.5f + 0.5f));
+                == Catch::Approx(magnitude.surface[index]));
     }
 
     bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal));
@@ -1189,10 +1189,11 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
     for (size_t index = 0; index < magnitude.slice.size(); ++index) {
         REQUIRE(magnitude.slice[index] == Catch::Approx(phase.slice[index]));
     }
-    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
-        REQUIRE(magnitude.surface[index] == Catch::Approx(phase.surface[index]));
-    }
-    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) < 0.5f);
+    REQUIRE(magnitude.surface != phase.surface);
+    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) >= 0.f);
+    REQUIRE(*std::max_element(magnitude.surface.begin(), magnitude.surface.end()) <= 1.f);
+    REQUIRE(*std::min_element(phase.surface.begin(), phase.surface.end()) >= 0.f);
+    REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
 TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",
