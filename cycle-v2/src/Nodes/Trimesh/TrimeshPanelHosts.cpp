@@ -19,7 +19,8 @@ constexpr uint32_t Panel3DBake = 1u << 2;
 }
 
 class TrimeshPanelHosts::PanelHostComponent :
-        public Component {
+        public Component,
+        private Timer {
 public:
     explicit PanelHostComponent(Panel& targetPanel) :
             panel(targetPanel) {
@@ -27,6 +28,7 @@ public:
         setInterceptsMouseClicks(true, true);
         setOpaque(false);
         setWantsKeyboardFocus(true);
+        startTimerHz(30);
     }
 
     void setHoverPeer(PanelHostComponent* peer) {
@@ -46,6 +48,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseEnter(localEvent);
         }
+        showCurrentCursor(event.source);
     }
 
     void mouseMove(const MouseEvent& event) override {
@@ -55,6 +58,7 @@ public:
             exitIfNeeded(localEvent);
             if (!forwardMouseMoveToPeer(event)) {
                 panel.setPanelMouseCursor(MouseCursor::NormalCursor);
+                showCurrentCursor(event.source);
             }
             return;
         }
@@ -64,6 +68,7 @@ public:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseMove(localEvent);
         }
+        showCurrentCursor(event.source);
     }
 
     void mouseDown(const MouseEvent& event) override {
@@ -102,6 +107,7 @@ public:
     void mouseExit(const MouseEvent& event) override {
         const MouseEvent localEvent = currentMouseEvent(event);
         exitIfNeeded(localEvent);
+        showCurrentCursor(event.source);
     }
 
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
@@ -132,6 +138,43 @@ public:
     }
 
 private:
+    void timerCallback() override {
+        if (!isShowing()) {
+            return;
+        }
+
+        const Point<int> desktopPosition = Desktop::getMousePosition();
+        if (desktopPosition == lastPolledMousePosition) {
+            return;
+        }
+        lastPolledMousePosition = desktopPosition;
+        const Point<float> position = getLocalPoint(
+                nullptr, desktopPosition).toFloat();
+        if (!getLocalBounds().toFloat().contains(position)) {
+            return;
+        }
+
+        auto source = Desktop::getInstance().getMainMouseSource();
+        const Time now = Time::getCurrentTime();
+        const MouseEvent event(
+                source,
+                position,
+                ModifierKeys::getCurrentModifiersRealtime(),
+                0.f,
+                0.f,
+                0.f,
+                0.f,
+                0.f,
+                this,
+                this,
+                now,
+                position,
+                now,
+                0,
+                false);
+        mouseMove(event);
+    }
+
     MouseEvent currentMouseEvent(const MouseEvent& event) const {
         return localMouseEvent(event, getLocalPoint(nullptr, Desktop::getMousePosition()).toFloat());
     }
@@ -190,6 +233,7 @@ private:
 
         if (hoverPeer->mouseMoveFromPeer(event)) {
             setMouseCursor(hoverPeer->getMouseCursor());
+            showCurrentCursor(event.source);
             return true;
         }
 
@@ -213,14 +257,20 @@ private:
         if (Interactor* interactor = panel.getInteractor().get()) {
             interactor->mouseMove(localEvent);
         }
+        showCurrentCursor(event.source);
 
         return true;
+    }
+
+    void showCurrentCursor(MouseInputSource source) {
+        source.showMouseCursor(getMouseCursor());
     }
 
     Panel& panel;
     PanelHostComponent* hoverPeer {};
     TrimeshPanelHostDelegate* delegate {};
     bool mouseInside {};
+    Point<int> lastPolledMousePosition { -1, -1 };
 };
 
 TrimeshPanelHosts::TrimeshPanelHosts(

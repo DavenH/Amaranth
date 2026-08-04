@@ -6,6 +6,8 @@
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 
+#include <Audio/CycleDsp/IrModel.h>
+
 using namespace CycleV2;
 
 TEST_CASE("Envelope purpose changes output grammar and removes stale edges atomically",
@@ -162,6 +164,21 @@ TEST_CASE("IR length uses one effective normalizer for graph and DSP edits",
     REQUIRE_FALSE(sameLength.changed);
     REQUIRE(nextLength.succeeded());
     REQUIRE(nextLength.changed);
+
+    const auto* size = NodeDefinitionRegistry::instance().findParameter(
+            NodeKind::ImpulseResponse,
+            "size");
+    REQUIRE(size != nullptr);
+    for (int exponent = 7; exponent <= 14; ++exponent) {
+        const int length = 1 << exponent;
+        String normalized(CycleDsp::irImpulseLengthValue(length));
+
+        for (int publication = 0; publication < 4; ++publication) {
+            normalized = size->normalized(normalized);
+            CAPTURE(exponent, length, publication, normalized);
+            REQUIRE(CycleDsp::irImpulseLength(normalized.getDoubleValue()) == length);
+        }
+    }
 }
 
 TEST_CASE("Compound editor movement publishes one durable document revision",

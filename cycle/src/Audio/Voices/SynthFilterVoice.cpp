@@ -2,6 +2,7 @@
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Definitions.h>
 #include <Util/LogRegions.h>
 
@@ -209,7 +210,6 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
 
 void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
     bool wasStereoBeforeLayer 	= noteState.isStereo;
-    float additiveScale 		= Arithmetic::calcAdditiveScaling(noteState.numHarmonics);
 
     Buffer harmRast(rastBuffer.withSize(noteState.numHarmonics));
 
@@ -244,20 +244,11 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
             float leftPan, rightPan;
             Arithmetic::getPans(layerPan, leftPan, rightPan);
 
-            float dynamicRange = Spectrum3D::calcDynamicRangeScale(props.range);
-            dynamicRange = sqrtf(dynamicRange);
-
-            float multiplicand = powf(2.f, dynamicRange);
-            float thresh = powf(1e-19f, 1.f / dynamicRange);
-
-            // denorm prevention
-            harmRast.threshLT(thresh).pow(dynamicRange);
-
-            if (props.mode == Spectrum3D::Additive) {
-                multiplicand *= additiveScale;
-            }
-
-            harmRast.mul(multiplicand);
+            CycleDsp::SpectralLayerCore::shapeMagnitude(
+                    harmRast,
+                    props.range,
+                    props.mode == Spectrum3D::Additive,
+                    noteState.numHarmonics);
 
             if (props.mode == Spectrum3D::Subtractive) {
                 Buffer rightBuffer(phaseAccumBuffer[Left].withSize(noteState.numHarmonics));
@@ -266,17 +257,17 @@ void SynthFilterVoice::calcMagnitudeFilters(Buffer<Float32> fftRamp) {
                     harmRast.copyTo(rightBuffer);
 
                     if (leftPan > 0.f) {
-                        if (leftPan != 1.f) {
-                            harmRast.sub(1.f).mul(leftPan).add(1.f);
-                        }
+                        CycleDsp::SpectralLayerCore::applyMultiplicativePan(
+                                harmRast,
+                                leftPan);
 
                         magBufs[Left].mul(harmRast);
                     }
 
                     if (rightPan > 0.f) {
-                        if (rightPan != 1.f) {
-                            rightBuffer.sub(1.f).mul(rightPan).add(1.f);
-                        }
+                        CycleDsp::SpectralLayerCore::applyMultiplicativePan(
+                                rightBuffer,
+                                rightPan);
 
                         magBufs[Right].mul(rightBuffer);
                     }
@@ -365,7 +356,8 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
                 float pans[2];
                 Arithmetic::getPans(props.pan, pans[0], pans[1]);
 
-                float phaseAmpScale = Spectrum3D::calcPhaseOffsetScale(props.range);
+                float phaseAmpScale = CycleDsp::SpectralLayerCore::phaseOffsetScale(
+                        props.range);
 
                 harmRast.mul(phaseAmpScale * MathConstants<float>::twoPi);
 

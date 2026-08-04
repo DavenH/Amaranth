@@ -62,7 +62,9 @@ cmake --build --preset standalone-debug --target CycleV2 --parallel 10
 scripts/test_cycle_v2_native_edit_smoke.py
 ```
 
-The smoke launches one persistent app instance, resolves target screen bounds,
+The smoke launches one persistent app instance by its exact configured `.app`
+path so another worktree's Cycle build cannot receive its native gestures. It
+resolves target screen bounds,
 and drives `cliclick` through macOS. It covers Waveshaper add, move, reshape,
 delete, and re-add, followed by Trimesh add, collision rejection, move,
 vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
@@ -143,7 +145,10 @@ Common command families:
 - `selectVertex`, `addVertex`, `moveVertex`, `deleteVertex`: mesh mutation
   commands. Prefer gesture mode for e2e coverage of interaction code; reserve
   direct patch mode for preset generation.
-- `pointer`: targeted mouse events against a registered component.
+- `pointer`: targeted mouse events against a registered component. A move can
+  supply `expectedCursor` (`pointingHand`, `leftRightResize`, `upDownResize`,
+  `move`, `crosshair`, or `normal`) to fail at the actual event target when its
+  hover affordance regresses; successful pointer results also report `cursor`.
 - `waitForIdle`: fixed message-loop drain/delay when a command needs UI updates
   to settle.
 

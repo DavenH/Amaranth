@@ -88,6 +88,25 @@ var failedResult(const String& type, const String& message) {
     return result;
 }
 
+String cursorName(const MouseCursor& cursor) {
+    if (cursor == MouseCursor::PointingHandCursor) {
+        return "pointingHand";
+    }
+    if (cursor == MouseCursor::LeftRightResizeCursor) {
+        return "leftRightResize";
+    }
+    if (cursor == MouseCursor::UpDownResizeCursor) {
+        return "upDownResize";
+    }
+    if (cursor == MouseCursor::UpDownLeftRightResizeCursor) {
+        return "move";
+    }
+    if (cursor == MouseCursor::CrosshairCursor) {
+        return "crosshair";
+    }
+    return "normal";
+}
+
 var rectangleToVar(Rectangle<int> bounds) {
     var result = makeObject();
     auto* object = objectFor(result);
@@ -687,6 +706,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "inspectPointerTargets") {
         return inspectPointerTargets();
     }
+    if (command == "inspectPointerCursor") {
+        return inspectPointerCursor();
+    }
     if (command == "inspectOpenGLDiagnostics") {
         return inspectOpenGLDiagnostics();
     }
@@ -1107,6 +1129,30 @@ var CycleV2Automation::inspectPointerTargets() const {
     return okResult("inspectPointerTargets", workspace.inspectPointerTargetsForAutomation());
 }
 
+var CycleV2Automation::inspectPointerCursor() const {
+    const auto source = Desktop::getInstance().getMainMouseSource();
+    Component* component = source.getComponentUnderMouse();
+    const Point<int> screenPosition = Desktop::getMousePosition();
+    if (component == nullptr) {
+        const Point<int> windowPosition = window.getLocalPoint(nullptr, screenPosition);
+        component = window.getComponentAt(windowPosition);
+    }
+    if (component == nullptr) {
+        return failedResult(
+                "inspectPointerCursor",
+                "No component is under the OS pointer at "
+                        + String(screenPosition.x) + "," + String(screenPosition.y));
+    }
+
+    var data = makeObject();
+    auto* object = objectFor(data);
+    object->setProperty("component", component->getName());
+    object->setProperty("cursor", cursorName(component->getMouseCursor()));
+    object->setProperty("screenX", screenPosition.x);
+    object->setProperty("screenY", screenPosition.y);
+    return okResult("inspectPointerCursor", data);
+}
+
 var CycleV2Automation::inspectOpenGLDiagnostics() const {
     return okResult("inspectOpenGLDiagnostics", workspace.inspectOpenGLDiagnosticsForAutomation());
 }
@@ -1471,12 +1517,21 @@ var CycleV2Automation::pointer(const var& commandValue) {
         return failedResult("pointer", "Unknown pointer event: " + eventType);
     }
 
+    const String resolvedCursor = cursorName(eventComponent->getMouseCursor());
+    const String expectedCursor = stringProperty(commandValue, "expectedCursor");
+    if (expectedCursor.isNotEmpty() && resolvedCursor != expectedCursor) {
+        return failedResult(
+                "pointer",
+                "Expected cursor '" + expectedCursor + "' but resolved '" + resolvedCursor + "'");
+    }
+
     var data = makeObject();
     auto* object = objectFor(data);
     object->setProperty("event", eventType);
     object->setProperty("area", area);
     object->setProperty("targetId", targetId);
     object->setProperty("targetComponent", eventComponent == component ? "area" : eventComponent->getName());
+    object->setProperty("cursor", resolvedCursor);
     object->setProperty("x", position.x);
     object->setProperty("y", position.y);
     object->setProperty("localBounds", rectangleToVar(component->getLocalBounds()));

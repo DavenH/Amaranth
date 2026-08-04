@@ -55,7 +55,7 @@ generate_svg_data(
     genericProcessor voiceContext waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft envelope add multiply guideCurve impulseResponse waveshaper
-    unison reverb delay equalizer stereoSplit stereoJoin output
+    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin output
 )
 
 generate_svg_data(
@@ -124,6 +124,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralLayerNodeAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorRegionRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TransformNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/TrimeshNodeAudioProcessor.cpp"

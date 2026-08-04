@@ -5,6 +5,8 @@
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphRuntime.h"
 
@@ -37,6 +39,20 @@ const GraphPreviewResult::SignalProbePreview& findProbePreview(
             });
 
     REQUIRE(found != result.probes.end());
+    return *found;
+}
+
+const NodePreviewResult& findNodePreview(
+        const GraphPreviewResult& result,
+        const String& nodeId) {
+    const auto found = std::find_if(
+            result.nodes.begin(),
+            result.nodes.end(),
+            [&](const auto& preview) {
+                return preview.nodeId == nodeId;
+            });
+
+    REQUIRE(found != result.nodes.end());
     return *found;
 }
 
@@ -210,7 +226,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes[1].connected);
 }
 
-TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits",
+TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the correct taps",
         "[cycle-v2][runtime][probe][causal][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -227,18 +243,58 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
     topology.topologyChanged = true;
     REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
+    const auto initialWaveshaperOutput = findProbePreview(
+            presentation.previewResult(), "probe2").values;
+    const auto initialWaveshaperInput = findProbePreview(
+            presentation.previewResult(), "probe5").values;
+    const auto initialDownstreamValues = findProbePreview(
+            presentation.previewResult(), "probe").values;
+    const auto initialMagnitudePreview = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
 
     const Node* waveshaper = document.graph().findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);
-    const auto currentPre = std::find_if(
-            waveshaper->parameters.begin(),
-            waveshaper->parameters.end(),
-            [](const auto& parameter) { return parameter.id == "pre"; });
-    REQUIRE(currentPre != waveshaper->parameters.end());
-    const String editedPre = currentPre->value == "0.5" ? "0.6" : "0.5";
-    const auto edit = commands.setNodeParameter(
-            "waveshaper", "pre", "Pre", editedPre);
+    const auto currentModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+            waveshaper->model);
+    REQUIRE(currentModel != nullptr);
+    REQUIRE(currentModel->flatCurve() != nullptr);
+    FlatCurveModel editedCurve;
+    REQUIRE(editedCurve.copyFrom(*currentModel->flatCurve()));
+    const auto vertices = editedCurve.getVertices();
+    std::vector<FlatCurveVertex> movableVertices;
+    std::copy_if(
+            vertices.begin(),
+            vertices.end(),
+            std::back_inserter(movableVertices),
+            [](const auto& vertex) { return vertex.curve < 0.9f; });
+    const auto editedVertex = *std::min_element(
+            movableVertices.begin(),
+            movableVertices.end(),
+            [](const auto& left, const auto& right) {
+                return std::abs(left.x - 0.5f) < std::abs(right.x - 0.5f);
+            });
+    REQUIRE(editedCurve.moveVertex(
+            editedVertex.id,
+            { editedVertex.x, editedVertex.y > 0.5f ? 0.15f : 0.85f }).succeeded());
+    const auto editedModel = CurveNodeModelState::copyOf(
+            editedCurve,
+            waveshaper->model->revision() + 1);
+    const auto beforeConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            waveshaper->parameters, waveshaper->model);
+    const auto afterConfiguration = WaveshaperSignalProcessor::buildConfiguration(
+            waveshaper->parameters, editedModel);
+    REQUIRE(beforeConfiguration != nullptr);
+    REQUIRE(afterConfiguration != nullptr);
+    REQUIRE(beforeConfiguration->transfer->lookup(editedVertex.x)
+            != afterConfiguration->transfer->lookup(editedVertex.x));
+    const auto edit = commands.publishCurveState({
+            waveshaper->id,
+            waveshaper->model->revision(),
+            editedModel,
+            waveshaper->parameters
+    });
     REQUIRE(edit.succeeded());
     REQUIRE(edit.changed);
 
@@ -254,7 +310,113 @@ TEST_CASE("Stengah probes remain connected through asynchronous Waveshaper edits
 
     REQUIRE(completed);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe2").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").connected);
     REQUIRE(findProbePreview(presentation.previewResult(), "probe").connected);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe2").values
+            != initialWaveshaperOutput);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe5").values
+            == initialWaveshaperInput);
+    REQUIRE(findProbePreview(presentation.previewResult(), "probe").values
+            != initialDownstreamValues);
+    REQUIRE(findNodePreview(presentation.previewResult(), "magnitudeLayer1").primary
+            == initialMagnitudePreview);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream Trimesh",
+        "[cycle-v2][runtime][causal][pan][presets]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+
+    NodeGraph graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    graph.addSignalProbe({
+            "upstreamMagnitude",
+            "magnitudeLayer1",
+            "out",
+            "magnitudeLayer1Process",
+            "in",
+            "Upstream magnitude",
+            0.5f,
+            8
+    });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), topology));
+    const auto upstreamPrimary = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary;
+    const auto upstreamSecondary = findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").secondary;
+    const auto upstreamSignal = findProbePreview(
+            presentation.previewResult(), "upstreamMagnitude").values;
+    const size_t upstreamProcessCount = presentation.previewAudioProcessCount(
+            "magnitudeLayer1");
+    std::vector<float> rightPanOutput;
+    std::vector<float> leftPanOutput;
+    std::vector<float> centrePanOutput;
+
+    for (const String pan : { "1", "0.5", "0", "0.5" }) {
+        REQUIRE(commands.setNodeParameter(
+                "magnitudeLayer1Process", "pan", "Pan", pan).succeeded());
+        REQUIRE(presentation.refresh(
+                document.graph(),
+                document.revision(),
+                document.lastChange()));
+        REQUIRE(findNodePreview(
+                presentation.previewResult(), "magnitudeLayer1").primary
+                == upstreamPrimary);
+        REQUIRE(findNodePreview(
+                presentation.previewResult(), "magnitudeLayer1").secondary
+                == upstreamSecondary);
+        REQUIRE(findProbePreview(
+                presentation.previewResult(), "upstreamMagnitude").values
+                == upstreamSignal);
+        REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+                == upstreamProcessCount);
+        if (pan == "1") {
+            rightPanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+        } else if (pan == "0") {
+            leftPanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+            REQUIRE(leftPanOutput != rightPanOutput);
+        } else if (centrePanOutput.empty()) {
+            centrePanOutput = findProbePreview(
+                    presentation.previewResult(), "probe3").values;
+        } else {
+            REQUIRE(findProbePreview(
+                    presentation.previewResult(), "probe3").values
+                    == centrePanOutput);
+        }
+    }
+
+    const Node* magnitude = document.graph().findNode("magnitudeLayer1");
+    REQUIRE(magnitude != nullptr);
+    const String currentRed = parameterValueForNode(*magnitude, "red");
+    const String editedRed = currentRed.getFloatValue() < 0.5f ? "0.8" : "0.2";
+    REQUIRE(commands.setNodeParameter(
+            "magnitudeLayer1", "red", "Red", editedRed).succeeded());
+    REQUIRE(presentation.refresh(
+            document.graph(),
+            document.revision(),
+            document.lastChange()));
+    REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
+            == upstreamProcessCount + 1);
+    REQUIRE(findNodePreview(
+            presentation.previewResult(), "magnitudeLayer1").primary
+            != upstreamPrimary);
+    REQUIRE(findProbePreview(
+            presentation.previewResult(), "probe3").values
+            != centrePanOutput);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

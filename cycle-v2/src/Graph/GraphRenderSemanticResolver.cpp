@@ -87,10 +87,13 @@ NodeRenderSemantic GraphRenderSemanticResolver::semanticForEdge(
     const Node* destNode = findNode(graph, edge.destNodeId);
 
     if (domain == PortDomain::SpectralMagnitudeSignal && destNode != nullptr) {
-        if (destNode->kind == NodeKind::Multiply) {
+        const bool multiplicativeLayer = destNode->kind == NodeKind::SpectralLayer
+                && parameterValueForNode(*destNode, "mode", "additive") == "multiplicative";
+        if (destNode->kind == NodeKind::Multiply || multiplicativeLayer) {
             semantic.scalePolicy = RenderScalePolicy::Bipolar;
             semantic.role = RenderSemanticRole::SpectralMagnitudeMultiplicative;
-        } else if (destNode->kind == NodeKind::Add) {
+        } else if (destNode->kind == NodeKind::Add
+                || destNode->kind == NodeKind::SpectralLayer) {
             semantic.scalePolicy = RenderScalePolicy::Unipolar;
             semantic.role = RenderSemanticRole::SpectralMagnitudeAdditive;
         }

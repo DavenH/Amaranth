@@ -19,6 +19,7 @@ struct CachedNodePreviewSprite {
     Image runtimeHeatmap;
     String runtimeHeatmapSignature;
     PortDomain domain { PortDomain::ControlSignal };
+    RenderScalePolicy scalePolicy { RenderScalePolicy::Bipolar };
     int width {};
     int height {};
 };

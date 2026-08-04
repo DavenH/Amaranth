@@ -11,6 +11,36 @@
     },
     {
       "command": "assertState",
+      "path": "nodes.5.id",
+      "equals": "magnitudeLayer1Process"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.5.kind",
+      "equals": "Pan"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.5.parameters.0.value",
+      "equals": "0.5"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.6.parameters.0.value",
+      "equals": "1"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.7.parameters.0.value",
+      "equals": "0"
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.7.outputs.0.channelLayout",
+      "equals": "Pair"
+    },
+    {
+      "command": "assertState",
       "path": "probePreviewStats.0.connected",
       "equals": true
     },
@@ -20,13 +50,92 @@
       "equals": true
     },
     {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -2.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -2.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1Process",
+      "parameterId": "pan",
+      "equals": "1.000000"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.05
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": -0.4,
+      "downTargetX": 0.5,
+      "downTargetY": 0.05,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "nodes.5.bounds.y",
+      "op": "lessThan",
+      "value": 590
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 24
+    },
+    {
       "command": "inspectTargets",
       "area": "canvas"
+    },
+    {
+      "command": "inspectPointerTargets"
     },
     {
       "command": "screenshot",
       "area": "canvas",
       "path": "/private/tmp/cycle-v2-stengah-probes.png"
     }
-  ]
+  ],
+  "quit": true
 }

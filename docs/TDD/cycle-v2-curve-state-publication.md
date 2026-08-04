@@ -40,7 +40,7 @@ controls. A representative command is:
 ```cpp
 struct CurveNodeStatePublication {
     juce::String nodeId;
-    uint64_t expectedRevision {};
+    uint64_t durableBaseRevision {};
     uint64_t revision {};
     juce::String modelSnapshot;
     std::vector<NodeParameterValue> controls;
@@ -54,6 +54,12 @@ emits one consolidated `GraphChangeSet`.
 
 ## Revision Rules
 
+- `durableBaseRevision` always names the durable document revision at which an
+  edit gesture began. UI code must not replace it with the current transient
+  snapshot revision during that gesture.
+- The dispatcher owns translation from that durable base revision to its
+  private transient graph. Callers publish semantic state and must not call
+  `GraphEditor` directly or infer whether a transient replacement is needed.
 - A content-changing publication must use a revision greater than the current
   revision.
 - An equal revision is accepted only when the complete canonical state is
@@ -129,6 +135,11 @@ typed snapshot, wrong node kind, and invalid control value.
 - Curve editors now publish one semantic state value. Live drag publications
   remain atomic and coalesce into one undo entry, while compilation scheduling
   is deferred until the gesture transaction commits.
+- Repeated control-only publications within one live gesture retain the
+  gesture's durable base revision and may replace the current transient
+  snapshot at the same model revision. This exception exists only inside the
+  dispatcher-owned transient edit; the durable equal-revision conflict rules
+  remain unchanged.
 - Repository presets are verified to contain valid typed state whose embedded
   revision agrees with the node revision and whose canonical serialization is
   deterministic. Present-but-malformed typed state is rejected rather than

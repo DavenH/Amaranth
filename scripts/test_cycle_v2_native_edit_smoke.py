@@ -11,6 +11,7 @@ import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = os.path.join(REPO, "build/standalone-debug/cycle-v2/CycleV2.app")
+APP_EXECUTABLE = os.path.join(APP, "Contents/MacOS/CycleV2")
 CLICK = "/opt/homebrew/bin/cliclick"
 SETTLE_SECONDS = 0.08
 
@@ -33,10 +34,7 @@ class NativeEditSmoke:
             check=True,
             stdout=subprocess.DEVNULL,
         )
-        subprocess.run([
-            "osascript", "-e", 'tell application "CycleV2" to activate'
-        ], check=True)
-        subprocess.run(["open", "-a", "cycle-v2"], check=True)
+        subprocess.run(["open", "-a", APP], check=True)
         time.sleep(0.1)
 
     def stop(self):
@@ -47,7 +45,7 @@ class NativeEditSmoke:
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             result = subprocess.run(
-                ["pgrep", "-x", "CycleV2"],
+                ["pgrep", "-f", f"^{APP_EXECUTABLE}$"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -72,7 +70,7 @@ class NativeEditSmoke:
 
     @staticmethod
     def focus_app():
-        subprocess.run(["open", "-a", "cycle-v2"], check=True)
+        subprocess.run(["open", "-a", APP], check=True)
         time.sleep(0.03)
 
     def click(self, *commands):
@@ -94,6 +92,16 @@ class NativeEditSmoke:
         ], check=True)
         time.sleep(0.04)
         subprocess.run([CLICK, "-w", "20", f"du:{point[0]},{point[1]}"], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def move_pointer(self, point):
+        self.focus_app()
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{point[0]},{point[1]}",
+        ], check=True)
         time.sleep(SETTLE_SECONDS)
 
     def drag(self, source, destination, force_curve_reshape=False):
@@ -209,6 +217,14 @@ class NativeEditSmoke:
             time.sleep(0.005)
             state = self.graph_state()
         return state
+
+    def cursor_until(self, expected):
+        deadline = time.monotonic() + 0.3
+        cursor = self.command({"command": "inspectPointerCursor"})
+        while cursor["cursor"] != expected and time.monotonic() < deadline:
+            time.sleep(0.01)
+            cursor = self.command({"command": "inspectPointerCursor"})
+        assert cursor["cursor"] == expected, cursor
 
     @staticmethod
     def causal_sequence(state):
@@ -370,8 +386,15 @@ class NativeEditSmoke:
         self.release_drag(fft_destination)
         self.key_chord("z")
 
-        created_envelope = self.create_from_palette(4, 0)
-        assert created_envelope == "env2"
+        created_envelope = self.create_from_palette(4, 2)
+        assert created_envelope not in {node["id"] for node in initial["nodes"]}
+        self.command({
+            "command": "setNodeParameter",
+            "nodeId": created_envelope,
+            "parameterId": "purpose",
+            "label": "Purpose",
+            "value": "scratch",
+        })
         created = self.graph_state()
         assert created["nodeCount"] == initial["nodeCount"] + 1
 
@@ -433,8 +456,8 @@ class NativeEditSmoke:
         })
 
         insertion_initial = self.graph_state()
-        created_delay = self.create_from_palette(5, 3)
-        assert created_delay == "delay"
+        created_delay = self.create_from_palette(5, 4)
+        assert created_delay not in {node["id"] for node in insertion_initial["nodes"]}
         delay_node = self.target(f"node:{created_delay}")
         wave_output = self.target("output:waveMesh.out")
         fft_input = self.target("input:fft.time")
@@ -483,6 +506,61 @@ class NativeEditSmoke:
         assert reset["nodeCount"] == initial["nodeCount"]
         assert reset["edgeCount"] == initial["edgeCount"]
         assert reset["compileSucceeded"]
+
+    def hover_cursor_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO,
+                "cycle-v2",
+                "content",
+                "presets",
+                "stengah.cyclegraph",
+            ),
+        })
+        time.sleep(0.2)
+        pan = self.target("node:magnitudeLayer1Process")
+        pan_before = self.node_bounds(self.graph_state(), "magnitudeLayer1Process")
+        pan_value_before = float(self.parameters(self.inspect("magnitudeLayer1Process"))["pan"])
+
+        self.move_pointer(self.point(pan, 0.5, 0.5))
+        self.cursor_until("upDownResize")
+
+        for _ in range(3):
+            self.move_pointer(self.point(pan, 0.5, 0.05))
+            self.cursor_until("move")
+            self.move_pointer(self.point(pan, 0.5, 0.5))
+            self.cursor_until("upDownResize")
+
+        dial = self.point(pan, 0.5, 0.5)
+        self.drag(dial, (dial[0], dial[1] - 45))
+        pan_value_after = float(self.parameters(self.inspect("magnitudeLayer1Process"))["pan"])
+        assert abs(pan_value_after - pan_value_before) > 0.05, (
+            pan_value_before,
+            pan_value_after,
+        )
+
+        ring = self.point(pan, 0.5, 0.05)
+        self.drag(ring, (ring[0], ring[1] - 30))
+        pan_after = self.node_bounds(self.graph_state(), "magnitudeLayer1Process")
+        assert pan_after["y"] < pan_before["y"] - 10.0, (pan_before, pan_after)
+
+        self.open_editor("magnitudeLayer1", trimesh=True)
+        morph = self.target("expanded:magnitudeLayer1.trimeshMorphRail.yellow")
+        self.move_pointer(self.point(morph, 0.5, 0.5))
+        self.cursor_until("leftRightResize")
+
+        waveshaper = self.target("node:waveshaper")
+        waveshaper_before = self.node_bounds(self.graph_state(), "waveshaper")
+        source = self.point(waveshaper, 0.1, 0.5)
+        self.drag(source, (source[0], source[1] + 30))
+        waveshaper_after = self.node_bounds(self.graph_state(), "waveshaper")
+        assert waveshaper_after["y"] > waveshaper_before["y"] + 10.0, (
+            waveshaper_before,
+            waveshaper_after,
+        )
+        self.move_pointer(self.point(morph, 0.5, 0.5))
+        self.cursor_until("leftRightResize")
 
     def effect2d_sequence(self):
         initial_audio = self.audio_samples()
@@ -1109,6 +1187,7 @@ class NativeEditSmoke:
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
+                "hover-cursor": self.hover_cursor_sequence,
             }
             for sequence in sequences:
                 available[sequence]()
@@ -1119,13 +1198,20 @@ class NativeEditSmoke:
 if __name__ == "__main__":
     if sys.platform != "darwin":
         raise SystemExit("Native CycleV2 edit smoke requires macOS")
-    requested = sys.argv[1:] or ["authoring", "waveshaper", "envelope", "trimesh"]
+    requested = sys.argv[1:] or [
+        "authoring",
+        "waveshaper",
+        "envelope",
+        "trimesh",
+        "hover-cursor",
+    ]
     unknown = set(requested) - {
         "authoring",
         "waveshaper",
         "envelope",
         "trimesh",
         "causal-trimesh",
+        "hover-cursor",
     }
     if unknown:
         raise SystemExit(f"Unknown native edit smoke sequence: {', '.join(sorted(unknown))}")

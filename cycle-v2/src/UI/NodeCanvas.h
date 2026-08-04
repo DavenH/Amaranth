@@ -142,6 +142,8 @@ private:
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
     std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
+    String draggingSpectralPanNodeId;
+    float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
@@ -155,6 +157,7 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
+    void updateHoverAt(juce::Point<float> position, juce::MouseInputSource source);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     void notifyOverlayPresentationChanged();

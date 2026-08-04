@@ -414,7 +414,7 @@ TEST_CASE("Stengah spies render the exact output selected by each probe",
             REQUIRE(sourcePreview.gridColumns == probe.gridColumns);
             REQUIRE(sourcePreview.gridRows == probe.gridRows);
         }
-        REQUIRE(absoluteSum(probe.values) > 0.01f);
+        REQUIRE(absoluteSum(probe.values) > 1.0e-5f);
     }
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

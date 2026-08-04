@@ -8,6 +8,7 @@
 #include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
 #include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Effect2D/Effect2DWidget.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
@@ -129,15 +130,26 @@ public:
     void setNodeEditorStatus(const String&) override {}
     void scheduleNodeEditorRefresh() override { ++scheduledRefreshes; }
     void flushNodeEditorRefresh() override {}
-    void refreshNodeEditorPresentation() override {}
+    void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
     void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
         ++recordedMovements;
     }
+    void commitNodeEditorLocalState(
+            const String&,
+            const String&,
+            uint64_t,
+            uint64_t) override {
+        ++localCommits;
+    }
+    ProbeRefreshMode probeRefreshMode() const override { return refreshMode; }
 
+    ProbeRefreshMode refreshMode { ProbeRefreshMode::OnGestureCommit };
     int repaints {};
     int scheduledRefreshes {};
+    int immediateRefreshes {};
+    int localCommits {};
     int rebinds {};
     int recordedMovements {};
 };
@@ -549,6 +561,34 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
   #endif
 }
 
+TEST_CASE("Selected flat curve state binds before its panel host exists",
+          "[cycle-v2][node-editor-host][presets][selection]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    const NodeGraph stengah = GraphSerializer().fromJsonString(
+            File(CYCLE_V2_SOURCE_DIR)
+                    .getChildFile("content")
+                    .getChildFile("presets")
+                    .getChildFile("stengah.cyclegraph")
+                    .loadFileAsString());
+    const Node* waveshaper = stengah.findNode("waveshaper");
+    REQUIRE(waveshaper != nullptr);
+    REQUIRE((int64) waveshaper->editorState.getProperty("selectedVertexId", {}) > 0);
+
+    Effect2DWidget widget(NodeKind::Waveshaper);
+    widget.syncFromNode(*waveshaper);
+
+    REQUIRE_FALSE(widget.selectedVertexParameters().empty());
+    REQUIRE(widget.prepareExpandedPanelComponent(
+            *waveshaper,
+            Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
+    REQUIRE_FALSE(widget.selectedVertexParameters().empty());
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         "[cycle-v2][node-editor-host][envelope][purpose]") {
     ScopedJuceInitialiser_GUI juce;
@@ -770,10 +810,16 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
             { 2, 1.f, 0.75f, 1.f }
     }));
     model.setPublicationRevision(document.graph().findNode("shape")->model->revision() + 1);
+    auto secondControls = curveControls(*document.graph().findNode("shape"));
+    for (auto& control : secondControls) {
+        if (control.id == "post") {
+            control.value = "0.9";
+        }
+    }
     REQUIRE(commands.publishCurveState(
             "shape",
             CurveNodeModelState::copyOf(model, model.revision()),
-            curveControls(*document.graph().findNode("shape"))));
+            secondControls));
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.repaints == 2);
     commands.commitCurveTransaction();
@@ -789,8 +835,10 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
                     { 1, 0.f, 0.25f, 1.f },
                     { 2, 1.f, 0.75f, 1.f }
             });
+    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.9");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
+    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -831,6 +879,64 @@ TEST_CASE("Node editor command service publishes model edits as one transaction"
     REQUIRE(restored != nullptr);
     REQUIRE(restored->voices().size() == 1);
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh primary morph commits refresh graph presentation",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(nodeParameterValue(*document.graph().findNode("mesh"), "yellow") == "0.800");
+    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.localCommits == 0);
+}
+
+TEST_CASE("Live Trimesh morph commits reuse movement refresh",
+        "[cycle-v2][editor][trimesh][causal]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    commands.endTrimeshMorphEdit();
+
+    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.localCommits == 1);
 }
 
 TEST_CASE("Effect parameter drag publishes continuously as one undo transaction",

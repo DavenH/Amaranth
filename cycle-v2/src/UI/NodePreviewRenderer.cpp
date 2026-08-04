@@ -17,6 +17,7 @@ namespace CycleV2 {
 namespace {
 
 const Colour kMutedText { 0xff8793a1 };
+constexpr float kSignedLogDisplayScale = 0.1442695f;
 
 float fastSin(float value) {
     return (float) dsp::FastMathApproximations::sin((double) value);
@@ -242,7 +243,23 @@ std::vector<float> mappedSurface(
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
     if (meshSurface) {
-        buffer.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
+        profile.mapValuesToDisplay(buffer);
+    } else if (preview.role == PreviewModuleRole::SignalSpy
+            && preview.domain == PortDomain::TimeSignal) {
+        std::vector<float> magnitude = surface;
+        Buffer<float>(magnitude.data(), (int) magnitude.size())
+                .abs()
+                .clip(0.f, 1.f)
+                .mul(31.f)
+                .add(1.f)
+                .ln()
+                .mul(kSignedLogDisplayScale);
+        for (size_t index = 0; index < surface.size(); ++index) {
+            surface[index] = values[index] < 0.f
+                    ? 0.5f - magnitude[index]
+                    : 0.5f + magnitude[index];
+        }
     } else if (preview.domain == PortDomain::TimeSignal) {
         float minimum {};
         float maximum {};
@@ -522,6 +539,33 @@ void drawMathOperationPreview(
             PathStrokeType(stroke, PathStrokeType::mitered, PathStrokeType::rounded));
 }
 
+void drawSpectralLayerPreview(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Node& node,
+        PortDomain domain) {
+    const float pan = jlimit(0.f, 1.f, nodeParameterValue(node, "pan", "0.5").getFloatValue());
+    const float diameter = jmin(area.getWidth(), area.getHeight());
+    const Rectangle<float> dial(diameter, diameter);
+    const Rectangle<float> bounds = dial.withCentre(area.getCentre());
+    const Point<float> centre = bounds.getCentre();
+    const float stroke = jmax(1.f, diameter * 0.055f);
+    const float radius = diameter * 0.31f;
+    const float angle = MathConstants<float>::pi * (-0.75f + pan * 1.5f);
+    const Point<float> indicator {
+            centre.x + std::sin(angle) * radius,
+            centre.y - std::cos(angle) * radius
+    };
+    const Colour colour = colourForDomain(domain);
+
+    graphics.setColour(Colour(0xff11171d));
+    graphics.fillEllipse(bounds);
+    graphics.setColour(colour.withAlpha(0.88f));
+    graphics.drawEllipse(bounds.reduced(stroke * 0.5f), stroke);
+    graphics.drawLine(Line<float>(centre, indicator), stroke);
+    graphics.fillEllipse(Rectangle<float>(stroke * 1.8f, stroke * 1.8f).withCentre(indicator));
+}
+
 }
 
 NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
@@ -580,7 +624,8 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {
-    if (request.area.getWidth() < 20.f || request.area.getHeight() < 20.f) {
+    const float minimumDimension = request.node.kind == NodeKind::SpectralLayer ? 8.f : 20.f;
+    if (request.area.getWidth() < minimumDimension || request.area.getHeight() < minimumDimension) {
         return;
     }
 
@@ -623,11 +668,13 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
             || cached.width != width
             || cached.height != height
             || cached.domain != request.profile.getDomain()
+            || cached.scalePolicy != request.profile.getScalePolicy()
             || cached.signature != signature) {
         cached.image = Image(Image::ARGB, width, height, true);
         cached.width = width;
         cached.height = height;
         cached.domain = request.profile.getDomain();
+        cached.scalePolicy = request.profile.getScalePolicy();
         cached.signature = signature;
         Graphics sprite(cached.image);
         NodePreviewRenderRequest localRequest = request;
@@ -827,6 +874,15 @@ void NodePreviewRenderer::paintQualitative(
 
     if (kind == NodeKind::Add || kind == NodeKind::Multiply) {
         drawMathOperationPreview(graphics, request.area, kind == NodeKind::Multiply, request.zoom);
+        return;
+    }
+
+    if (kind == NodeKind::SpectralLayer) {
+        drawSpectralLayerPreview(
+                graphics,
+                request.area,
+                request.node,
+                request.profile.getDomain());
         return;
     }
 

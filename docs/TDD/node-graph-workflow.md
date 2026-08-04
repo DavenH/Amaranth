@@ -1066,6 +1066,38 @@ Acceptance:
 - spectrogram, phasigram, and cyclogram-style preview experiments exist on
   spy/monitor nodes,
 - upstream parameter or mesh edits invalidate downstream previews,
+- downstream-only edits never invalidate, transform, or republish upstream
+  previews; synchronous canvas commits and asynchronous editor publication use
+  the same downstream dirty set, and repeating a right-centre-left-centre pan
+  sequence is byte-for-byte idempotent upstream. The same contract test must
+  then edit that upstream node and prove its execution count, preview, and
+  downstream output all change,
+- incremental preview audio restores every clean producer's cached output into
+  its compiled buffer slot before a dirty consumer runs, including when graph
+  liveness has reused that slot later in the preceding traversal,
+- Trimesh rasterization follows the Cycle 1 domain contract at both blockwise
+  and gridwise boundaries: time and spectral phase are bipolar, while spectral
+  magnitude and other unsigned/control domains remain unipolar. Domain
+  conversion must not be inferred from a node kind or hidden inside a consumer,
+- compact and expanded preview rendering apply that domain conversion exactly
+  once: unipolar magnitude data consumes the complete spectral gradient in the
+  node preview and the Trimesh 2D/3D editor, while bipolar time and phase data
+  is mapped around the display centre,
+- render-domain and scale-policy changes invalidate the shared Trimesh data and
+  compact sprite caches; compact and expanded views never retain different
+  mappings of the same authored mesh revision,
+- Waveshaper compact previews remain the authored transfer-curve editor; their
+  processing effect is shown by downstream signal previews and spies. Runtime
+  fixtures compare incremental results with a clean full traversal and assert
+  that an authored Stengah curve edit changes its output tap while its input tap
+  remains byte-for-byte unchanged,
+- time-signal spy heatmaps preserve absolute level across spies instead of
+  independently peak-normalizing each tile. Low-level signals may use a fixed
+  symmetric display compression, but post-gain and Waveshaper level changes
+  must remain visibly different,
+- hover cursors update from pointer motion alone on the canvas and expanded
+  editors. macOS verification must move the OS pointer and inspect the resulting
+  component cursor without first sending a click,
 - reduced-detail previews are used during interaction,
 - full-detail previews restore after interaction settles.
 
@@ -1085,7 +1117,10 @@ Acceptance:
 - 2D mesh nodes expand to a curve/slice editor,
 - effect nodes expose their current controls as GL widgets or sprites,
 - edits propagate through `NodeUpdateGraph`,
-- closing the editor preserves node state and canvas position.
+- closing the editor preserves node state and canvas position,
+- publishing a complete expanded-editor state is idempotent for every untouched
+  control. In particular, all discrete IR-length values round trip exactly and
+  editing Post Gain, High Pass, or the curve cannot reduce the selected length.
 
 ### Milestone 8: Adapter Nodes For Existing Cycle Processing
 
@@ -1170,7 +1205,13 @@ Current file workflow:
 - compiler tests for topological order and buffer allocation plans,
 - FFT/IFFT node round trips using known signals,
 - multiply node tests for envelope-style modulation,
-- adapter-node tests for representative rasterizer and effect behavior.
+- adapter-node tests for representative rasterizer and effect behavior,
+- Trimesh domain tests comparing the same mesh as unipolar magnitude and
+  bipolar time/phase output.
+- compact heatmap and expanded Trimesh render-data tests proving that magnitude
+  uses the full unipolar gradient and that bipolar phase is converted once,
+- round-trip tests for every discrete IR length and repeated full-state
+  normalization of untouched controls,
 
 ### Integration Tests
 
@@ -1183,6 +1224,11 @@ Current file workflow:
 - upstream mesh edit invalidates downstream previews and execution state,
 - parameter-only edits avoid unnecessary graph recompilation,
 - topology edits force recompilation and publish a new plan snapshot.
+- Stengah Waveshaper curve edits change the Waveshaper output spy and its
+  downstream signal without changing the Waveshaper input spy or upstream
+  magnitude node preview.
+- Stengah pan edits change the downstream spectral signal without changing the
+  raw upstream magnitude tap or magnitude node preview.
 
 ### UI And Automation Tests
 

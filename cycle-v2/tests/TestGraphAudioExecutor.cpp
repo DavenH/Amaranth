@@ -893,9 +893,9 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
-    graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
+    graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape2", {}));
     graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
-    graph.addEdge({ "shape", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "shape", "time", "shape2", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -905,7 +905,7 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
             graph,
             compileResult.plan,
             128,
-            { "wave", "shape", "equalizer" });
+            { "wave", "shape", "shape2" });
     REQUIRE(first.nodes.size() == 3);
     REQUIRE(first.nodes[1]->output.traversalGrid.isValid());
     REQUIRE(first.nodes[2]->output.traversalGrid.isValid());
@@ -914,10 +914,26 @@ TEST_CASE("Incremental graph audio retains cached inputs for dirty downstream no
             graph,
             compileResult.plan,
             128,
-            { "shape", "equalizer" });
+            { "shape", "shape2" });
     REQUIRE(second.nodes.size() == 3);
     REQUIRE(second.nodes[1]->output.traversalGrid.isValid());
     REQUIRE(second.nodes[2]->output.traversalGrid.isValid());
+
+    GraphAudioExecutor fullExecutor;
+    const auto full = fullExecutor.processIncremental(
+            graph,
+            compileResult.plan,
+            128,
+            { "wave", "shape", "shape2" });
+    REQUIRE(full.nodes.size() == second.nodes.size());
+    REQUIRE(second.nodes[1]->output.block.samples
+            == full.nodes[1]->output.block.samples);
+    REQUIRE(second.nodes[1]->output.traversalGrid.values
+            == full.nodes[1]->output.traversalGrid.values);
+    REQUIRE(second.nodes[2]->output.block.samples
+            == full.nodes[2]->output.block.samples);
+    REQUIRE(second.nodes[2]->output.traversalGrid.values
+            == full.nodes[2]->output.traversalGrid.values);
 }
 
 TEST_CASE("Incremental graph audio stops between obsolete dirty nodes",
@@ -1736,11 +1752,99 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
         for (size_t sample = 0; sample < withScratch.size(); ++sample) {
             difference += std::abs(withScratch[sample] - withoutScratch[sample]);
         }
+        const auto& attachedPayload = findNodeAudio(attached, nodeId).output;
+        const auto& fallbackPayload = findNodeAudio(fallback, nodeId).output;
+        if (attachedPayload.isStereo() && fallbackPayload.isStereo()) {
+            const auto& withScratchRight = attachedPayload.secondaryTraversalGrid.values;
+            const auto& withoutScratchRight = fallbackPayload.secondaryTraversalGrid.values;
+            REQUIRE(withScratchRight.size() == withoutScratchRight.size());
+            for (size_t sample = 0; sample < withScratchRight.size(); ++sample) {
+                difference += std::abs(
+                        withScratchRight[sample] - withoutScratchRight[sample]);
+            }
+        }
         INFO("node: " << nodeId);
         REQUIRE(difference > 0.01f);
     }
+
+    const auto& rightPhase = findNodeAudio(attached, "phaseLayer1Process").output;
+    const auto& leftPhase = findNodeAudio(attached, "phaseLayer2Process").output;
+    REQUIRE(rightPhase.isStereo());
+    REQUIRE(leftPhase.isStereo());
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(rightPhase.block.samples.data()),
+            (int) rightPhase.block.samples.size()).normL2() < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(rightPhase.secondaryBlock.samples.data()),
+            (int) rightPhase.secondaryBlock.samples.size()).normL2() > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(leftPhase.block.samples.data()),
+            (int) leftPhase.block.samples.size()).normL2() > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(leftPhase.secondaryBlock.samples.data()),
+            (int) leftPhase.secondaryBlock.samples.size()).normL2() < 1.0e-6f);
+
+    const auto previews = GraphPreviewExecutor().render(
+            attachedPlan.plan,
+            attached,
+            attachedGraph.getSignalProbes(),
+            128);
+    const auto probeFor = [&](const String& probeId)
+            -> const GraphPreviewResult::SignalProbePreview& {
+        const auto found = std::find_if(
+                previews.probes.begin(),
+                previews.probes.end(),
+                [&](const auto& preview) {
+                    return preview.probeId == probeId;
+                });
+        REQUIRE(found != previews.probes.end());
+        return *found;
+    };
+    const auto& leftPhaseProbe = probeFor("probe7");
+    REQUIRE(leftPhaseProbe.connected);
+    REQUIRE(leftPhaseProbe.domain == PortDomain::SpectralPhaseSignal);
+    REQUIRE(leftPhaseProbe.channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(leftPhaseProbe.values == leftPhase.traversalGrid.values);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Stengah Waveshaper post gain changes stereo traversal and downstream audio",
+        "[cycle-v2][runtime][waveshaper][grid][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("stengah.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    NodeGraph lowGraph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    NodeGraph highGraph = lowGraph;
+    REQUIRE(GraphEditor().setNodeParameter(
+            lowGraph, "waveshaper", "post", "Post", "0").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            highGraph, "waveshaper", "post", "Post", "1").succeeded());
+    const auto lowPlan = GraphCompiler().compile(lowGraph);
+    const auto highPlan = GraphCompiler().compile(highGraph);
+    REQUIRE(lowPlan.succeeded());
+    REQUIRE(highPlan.succeeded());
+
+    AudioVoiceContext voice;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto low = GraphAudioExecutor().process(lowGraph, lowPlan.plan, 128, {}, voice);
+    const auto high = GraphAudioExecutor().process(highGraph, highPlan.plan, 128, {}, voice);
+    const auto& lowShape = findNodeAudio(low, "waveshaper").output;
+    const auto& highShape = findNodeAudio(high, "waveshaper").output;
+
+    REQUIRE(lowShape.isStereo());
+    REQUIRE(highShape.isStereo());
+    REQUIRE(lowShape.traversalGrid.isValid());
+    REQUIRE(lowShape.secondaryTraversalGrid.isValid());
+    REQUIRE(lowShape.traversalGrid.values != highShape.traversalGrid.values);
+    REQUIRE(lowShape.secondaryTraversalGrid.values
+            != highShape.secondaryTraversalGrid.values);
+    REQUIRE(low.output.block.samples != high.output.block.samples);
+    REQUIRE(low.output.secondaryBlock.samples != high.output.secondaryBlock.samples);
   #endif
 }
 
@@ -1909,7 +2013,7 @@ TEST_CASE(
     const MorphPosition center(0.5f, 0.5f, 0.5f);
     TrimeshGridwiseDsp dsp;
     dsp.setCyclic(true);
-    dsp.prepare(*mesh, center, Vertex::Time, 32, 32);
+    dsp.prepare(*mesh, center, Vertex::Time, 32, 32, PortDomain::TimeSignal);
     std::vector<float> destination(32 * 32);
 
     ScopedRealtimeAllocationCount allocations;
@@ -1919,7 +2023,8 @@ TEST_CASE(
                 center,
                 Vertex::Time,
                 columns,
-                Buffer<float>(destination.data(), (int) (columns * 32))));
+                Buffer<float>(destination.data(), (int) (columns * 32)),
+                PortDomain::TimeSignal));
     }
 
     REQUIRE(allocations.count() == 0);

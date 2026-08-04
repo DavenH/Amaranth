@@ -218,6 +218,7 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::WaveSource,
             AudioModuleRole::ImageSource,
             AudioModuleRole::MeshSource,
+            AudioModuleRole::SpectralLayer,
             AudioModuleRole::Fft,
             AudioModuleRole::Ifft,
             AudioModuleRole::Add,
@@ -601,6 +602,78 @@ TEST_CASE("Utility audio processors add and multiply inputs", "[cycle-v2][runtim
     factory.create(AudioModuleRole::Multiply)->process(multiplyContext);
 
     REQUIRE(output(multiplyContext).block.samples == std::vector<float> { 0.5f, 2.f, 4.5f, 8.f });
+}
+
+TEST_CASE("Spectral layer processor makes phase panning explicit in both payload forms",
+        "[cycle-v2][runtime][spectral-layer][pan]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::SpectralLayer);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.parameters = {
+            { "pan", "Pan", "1" },
+            { "range", "Range", "0.6" },
+            { "mode", "Mode", "additive" }
+    };
+    context.inputs = { gridPayload({ 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f }, 2, 3) };
+    context.inputs.front().domain = PortDomain::SpectralPhaseSignal;
+    context.inputs.front().traversalGrid.metadata.valueDomain
+            = PortDomain::SpectralPhaseSignal;
+    context.outputPorts = {
+            { "out", PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair }
+    };
+    prepareProcessor(*processor, AudioModuleRole::SpectralLayer, context);
+    processor->process(context);
+
+    const auto& result = output(context);
+    REQUIRE(result.channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(result.block.samples.data()),
+            (int) result.block.samples.size()).normL2() < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(result.secondaryBlock.samples.data()),
+            (int) result.secondaryBlock.samples.size()).normL2() > 0.01f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(result.traversalGrid.values.data()),
+            (int) result.traversalGrid.values.size()).normL2() < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(result.secondaryTraversalGrid.values.data()),
+            (int) result.secondaryTraversalGrid.values.size()).normL2() > 0.01f);
+}
+
+TEST_CASE("Utility audio processors combine both channels of spectral traversal grids",
+        "[cycle-v2][runtime][spectral-layer][stereo]") {
+    auto left = gridPayload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f }, 2, 3);
+    auto right = gridPayload({ 10.f, 20.f, 30.f, 40.f, 50.f, 60.f }, 2, 3);
+    for (SignalPayload* payloadToConfigure : { &left, &right }) {
+        payloadToConfigure->domain = PortDomain::SpectralPhaseSignal;
+        payloadToConfigure->channelLayout = ChannelLayout::StereoPair;
+        payloadToConfigure->traversalGrid.metadata.valueDomain
+                = PortDomain::SpectralPhaseSignal;
+    }
+    left.secondaryBlock.samples = std::vector<float> { 100.f, 200.f, 300.f };
+    left.secondaryTraversalGrid = left.traversalGrid;
+    left.secondaryTraversalGrid.values
+            = std::vector<float> { 100.f, 200.f, 300.f, 400.f, 500.f, 600.f };
+    right.secondaryBlock.samples = std::vector<float> { 1000.f, 2000.f, 3000.f };
+    right.secondaryTraversalGrid = right.traversalGrid;
+    right.secondaryTraversalGrid.values
+            = std::vector<float> { 1000.f, 2000.f, 3000.f, 4000.f, 5000.f, 6000.f };
+
+    AudioProcessContext context;
+    context.frameCount = 3;
+    context.inputs = { left, right };
+    context.outputPorts = {
+            { "out", PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair }
+    };
+    NodeAudioProcessorFactory().create(AudioModuleRole::Add)->process(context);
+
+    REQUIRE(output(context).traversalGrid.values
+            == std::vector<float> { 11.f, 22.f, 33.f, 44.f, 55.f, 66.f });
+    REQUIRE(output(context).secondaryTraversalGrid.values
+            == std::vector<float> { 1100.f, 2200.f, 3300.f, 4400.f, 5500.f, 6600.f });
 }
 
 TEST_CASE("Utility audio processors transform traversal grids", "[cycle-v2][runtime]") {

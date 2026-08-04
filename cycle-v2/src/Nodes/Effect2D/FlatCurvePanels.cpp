@@ -89,11 +89,11 @@ public:
 
     void init() override {
         Panel2D::init();
-        Interactor2D::init();
+        initialiseInteraction();
     }
     void initWithHost(Component* hostComponent) override {
         Panel2D::initWithExternalComponent(hostComponent);
-        Interactor2D::init();
+        initialiseInteraction();
         updateZoomBounds(true);
     }
     void clearInteractionState() override {
@@ -117,7 +117,9 @@ public:
         }
         state.currentVertex = vertex;
         getSelected().push_back(vertex);
-        updateSelectionFrames();
+        if (interactionInitialised) {
+            updateSelectionFrames();
+        }
     }
     void setControlValues(
             bool enabledToUse,
@@ -341,6 +343,14 @@ protected:
     }
 
 private:
+    void initialiseInteraction() {
+        Interactor2D::init();
+        interactionInitialised = true;
+        if (state.currentVertex != nullptr) {
+            updateSelectionFrames();
+        }
+    }
+
     void appendCommonAutomation(DynamicObject& root) const {
         if (zoomPanel != nullptr) {
             auto* zoom = new DynamicObject();
@@ -400,6 +410,7 @@ private:
     Mesh& mesh;
     float domainPadding {};
     bool padVertically {};
+    bool interactionInitialised {};
     bool enabled { true };
     float controlA { 0.5f };
     float controlB { 0.5f };

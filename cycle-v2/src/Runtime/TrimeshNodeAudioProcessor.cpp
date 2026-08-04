@@ -114,7 +114,8 @@ public:
                 const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
                 configuration->primaryViewAxis,
-                preparedDomain == PortDomain::TimeSignal);
+                preparedDomain == PortDomain::TimeSignal,
+                preparedDomain);
 
         trimeshGridDsp.setCyclic(preparedDomain == PortDomain::TimeSignal);
         trimeshGridDsp.prepare(
@@ -122,7 +123,8 @@ public:
                 configuration->morph,
                 configuration->primaryViewAxis,
                 std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
-                traversalRowsForDomain(preparedDomain, spec.maximumFrameCount));
+                traversalRowsForDomain(preparedDomain, spec.maximumFrameCount),
+                preparedDomain);
         traversalMorphs.resize(std::max(
                 kDefaultTraversalColumns,
                 spec.maximumFrameCount / 2));
@@ -304,7 +306,8 @@ private:
                 &mesh,
                 morph,
                 primaryAxis,
-                outputPort.domain == PortDomain::TimeSignal);
+                outputPort.domain == PortDomain::TimeSignal,
+                outputPort.domain);
         trimeshDsp.renderPrepared(
                 context.frameCount,
                 outputPort.domain,
@@ -368,7 +371,8 @@ private:
                     columnCount,
                     Buffer<float>(
                             output.traversalGrid.values.data(),
-                            (int) (columnCount * rowCount)));
+                            (int) (columnCount * rowCount)),
+                    outputPort.domain);
             return;
         }
         trimeshGridDsp.renderColumnsInto(
@@ -378,7 +382,8 @@ private:
                 columnCount,
                 Buffer<float>(
                         output.traversalGrid.values.data(),
-                        (int) (columnCount * rowCount)));
+                        (int) (columnCount * rowCount)),
+                outputPort.domain);
     }
 
     bool morphInitialized {};

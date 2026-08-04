@@ -13,17 +13,19 @@ void TrimeshGridwiseDsp::prepare(
         const MorphPosition& center,
         int primaryViewAxis,
         size_t maximumColumnCount,
-        size_t maximumRowCount) {
+        size_t maximumRowCount,
+        PortDomain domain) {
     preparationScratch.resize(maximumRowCount);
     renderColumnRange(
             mesh,
             center,
             primaryViewAxis,
             maximumColumnCount,
-            [this](size_t, const MorphPosition&) {
+            [this, domain](size_t, const MorphPosition&) {
                 blockwiseDsp.renderCycleInto(Buffer<float>(
                         preparationScratch.data(),
-                        (int) preparationScratch.size()));
+                        (int) preparationScratch.size()),
+                        domain);
             });
     resetCounters();
 }
@@ -65,7 +67,8 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
         const MorphPosition& center,
         int primaryViewAxis,
         size_t columnCount,
-        Buffer<float> destination) {
+        Buffer<float> destination,
+        PortDomain domain) {
     if (columnCount == 0 || destination.empty()
             || destination.size() % (int) columnCount != 0) {
         return false;
@@ -77,10 +80,13 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
             center,
             primaryViewAxis,
             columnCount,
-            [this, destination, rowCount](size_t index, const MorphPosition&) {
+            [this, destination, rowCount, domain](
+                    size_t index,
+                    const MorphPosition&) {
                 blockwiseDsp.renderCycleInto(destination.section(
                         (int) index * rowCount,
-                        rowCount));
+                        rowCount),
+                        domain);
                 ++renderCounters.sliceCount;
                 ++renderCounters.bakeCount;
             });
@@ -93,7 +99,8 @@ bool TrimeshGridwiseDsp::renderMorphColumnsInto(
         const MorphPosition* morphs,
         int primaryViewAxis,
         size_t columnCount,
-        Buffer<float> destination) {
+        Buffer<float> destination,
+        PortDomain domain) {
     if (morphs == nullptr || columnCount == 0 || destination.empty()
             || destination.size() % (int) columnCount != 0) {
         return false;
@@ -106,7 +113,8 @@ bool TrimeshGridwiseDsp::renderMorphColumnsInto(
         blockwiseDsp.setMorphPosition(morphs[index]);
         blockwiseDsp.renderCycleInto(destination.section(
                 (int) index * rowCount,
-                rowCount));
+                rowCount),
+                domain);
         ++renderCounters.sliceCount;
         ++renderCounters.bakeCount;
     }

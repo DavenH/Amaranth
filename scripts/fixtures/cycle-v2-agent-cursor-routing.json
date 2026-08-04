@@ -1,0 +1,37 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "expectedCursor": "upDownResize"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.1,
+      "expectedCursor": "move"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "expectedCursor": "leftRightResize"
+    }
+  ],
+  "quit": true
+}

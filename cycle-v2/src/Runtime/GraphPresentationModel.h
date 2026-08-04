@@ -56,6 +56,9 @@ public:
     uint64_t revision() const { return presentationRevision; }
     size_t compilationCount() const { return compilations; }
     size_t previewRenderCount() const { return previewRenders; }
+    size_t previewAudioProcessCount(const String& nodeId) const {
+        return previewAudioExecutor.diagnosticProcessCount(nodeId);
+    }
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
 
     GraphAudioResult captureAudio(const NodeGraph& graph, size_t frameCount) const;
@@ -89,6 +92,13 @@ private:
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);
+    bool renderPreviewProducts(
+            const NodeGraph& graph,
+            GraphPresentationSnapshot& snapshot,
+            const std::vector<PlannedNodeProduct>& products,
+            bool renderFullGraph,
+            bool& previewRendered,
+            GraphAudioExecutor::CancellationCheck cancellationCheck = {});
     std::function<void()> publishAsyncRefresh(std::shared_ptr<AsyncRefresh> refresh);
     bool isCurrent(const AsyncRefresh& refresh) const;
     CausalUpdateRequest updateRequest(

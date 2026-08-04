@@ -16,6 +16,7 @@ enum class AudioModuleRole {
     WaveSource,
     ImageSource,
     MeshSource,
+    SpectralLayer,
     Fft,
     Ifft,
     Add,

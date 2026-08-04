@@ -33,6 +33,51 @@ bool hasExpandedEditor(NodeKind kind) {
     return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().expandedEditor;
 }
 
+Rectangle<float> inlinePanDialBounds(
+        const NodeCanvasViewport& viewport,
+        const Node& node) {
+    return viewport.toScreen(node.bounds).reduced(12.f * viewport.getZoom());
+}
+
+Rectangle<float> inlinePanHitBounds(
+        const NodeCanvasViewport& viewport,
+        const Node& node) {
+    return viewport.toScreen(node.bounds).expanded(3.f * viewport.getZoom());
+}
+
+bool inlinePanContains(
+        const NodeCanvasViewport& viewport,
+        const Node& node,
+        Point<float> position) {
+    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, node);
+    const float radius = jmin(hitBounds.getWidth(), hitBounds.getHeight()) * 0.5f;
+    return hitBounds.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
+}
+
+const Node* findInlinePanAt(
+        const NodeGraph& graph,
+        const NodeCanvasViewport& viewport,
+        Point<float> position) {
+    const auto& nodes = graph.getNodes();
+    for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
+        if (node->kind == NodeKind::SpectralLayer
+                && inlinePanContains(viewport, *node, position)) {
+            return &*node;
+        }
+    }
+
+    return nullptr;
+}
+
+bool inlinePanDialContains(
+        const NodeCanvasViewport& viewport,
+        const Node& node,
+        Point<float> position) {
+    const Rectangle<float> dial = inlinePanDialBounds(viewport, node);
+    const float radius = jmin(dial.getWidth(), dial.getHeight()) * 0.5f;
+    return dial.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
+}
+
 GraphDocument createStartupDocument() {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const File defaultGraph = File(String(CYCLE_V2_SOURCE_DIR))
@@ -95,6 +140,7 @@ NodeCanvas::NodeCanvas() :
     refreshCompiledState();
 
     setOpaque(true);
+    setName("NodeCanvas");
     setWantsKeyboardFocus(true);
     openGLContext.setRenderer(this);
     openGLContext.setContinuousRepainting(false);
@@ -138,24 +184,52 @@ void NodeCanvas::focusLost(FocusChangeType) {
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
-    lastMousePosition = event.position;
-    palette.updateHover(event.position);
+    updateHoverAt(event.position, event.source);
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
+    lastMousePosition = position;
+    palette.updateHover(position);
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
             presentation.revision(),
             document.revision());
     String hovered = canvasPresentation.probeRail().probeAt(
-            event.position,
+            position,
             getLocalBounds().toFloat(),
             graph,
             probeRailState);
     if (hovered.isEmpty()) {
-        hovered = canvasPresentation.probeRail().markerProbeAt(event.position, graph, scene);
+        hovered = canvasPresentation.probeRail().markerProbeAt(position, graph, scene);
     }
     probeRailState.hoveredProbeId = std::move(hovered);
-    setMouseCursor(MouseCursor::NormalCursor);
-    requestCanvasRepaint();
+
+    if (Component* expandedEditor = editorCoordinator.host().component()) {
+        const Point<float> editorPosition = expandedEditor->getLocalPoint(
+                this,
+                position.roundToInt()).toFloat();
+        if (expandedEditor->getLocalBounds().toFloat().contains(editorPosition)) {
+            Component* cursorTarget = expandedEditor->getComponentAt(editorPosition.roundToInt());
+            const MouseCursor cursor = cursorTarget != nullptr
+                    ? cursorTarget->getMouseCursor()
+                    : expandedEditor->getMouseCursor();
+            setMouseCursor(cursor);
+            source.showMouseCursor(cursor);
+            return;
+        }
+    }
+
+    const Node* inlinePan = findInlinePanAt(graph, viewport, position);
+    MouseCursor cursor = MouseCursor::NormalCursor;
+    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
+        cursor = inlinePanDialContains(viewport, *inlinePan, position)
+                ? MouseCursor::UpDownResizeCursor
+                : MouseCursor::UpDownLeftRightResizeCursor;
+    }
+    setMouseCursor(cursor);
+    source.showMouseCursor(cursor);
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
@@ -169,6 +243,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
     draggingVoiceContextSlider.reset();
+    draggingSpectralPanNodeId = {};
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
 
@@ -251,8 +326,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             interaction.captureExpandedEditor();
         }
 
-        requestCanvasRepaint();
-        return;
+        if (click.kind != ExpandedEditorClickKind::Unclaimed) {
+            requestCanvasRepaint();
+            return;
+        }
     }
 
     NodeKind paletteKind;
@@ -331,6 +408,21 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
+    const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
+    if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
+        if (inlinePanDialContains(viewport, *inlinePan, event.position)
+                && authoring.beginSpectralPanGesture(inlinePan->id)) {
+            draggingSpectralPanNodeId = inlinePan->id;
+            spectralPanDragStartValue = typedParameterFloat(
+                    inlinePan->parameters,
+                    "pan",
+                    0.5f);
+            selectedNodeId = inlinePan->id;
+            selectedEdgeIndex = -1;
+            requestCanvasRepaint();
+            return;
+        }
+    }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         interaction.beginConnection(*hitPort, event.position);
         selectedNodeId = hitPort->nodeId;
@@ -340,6 +432,9 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     const Node* hitNode = queries.findNodeAt(viewport.toWorld(event.position));
+    if (hitNode == nullptr && inlinePan != nullptr) {
+        hitNode = inlinePan;
+    }
 
     if (hitNode != nullptr) {
         selectedNodeId = hitNode->id;
@@ -386,6 +481,17 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
+
+    if (draggingSpectralPanNodeId.isNotEmpty()) {
+        const float value = jlimit(
+                0.f,
+                1.f,
+                spectralPanDragStartValue
+                        - event.getOffsetFromDragStart().y / 120.f);
+        authoring.updateSpectralPanGesture(value);
+        requestCanvasRepaint();
+        return;
+    }
 
     if (draggingVoiceContextSlider.has_value()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
@@ -451,6 +557,12 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
+    if (draggingSpectralPanNodeId.isNotEmpty()) {
+        draggingSpectralPanNodeId = {};
+        applyAuthoringResult(authoring.endSpectralPanGesture());
+        requestCanvasRepaint();
+        return;
+    }
     if (draggingVoiceContextSlider.has_value()) {
         if (*draggingVoiceContextSlider != VoiceContextEdit::Control::VoiceLength) {
             applyAuthoringResult(authoring.endVoiceContextSliderGesture());
@@ -631,7 +743,8 @@ void NodeCanvas::timerCallback() {
 
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
-        lastMousePosition = mouse;
+        auto source = Desktop::getInstance().getMainMouseSource();
+        updateHoverAt(mouse, source);
         requestCanvasRepaint();
     }
 }

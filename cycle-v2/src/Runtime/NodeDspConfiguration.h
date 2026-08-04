@@ -40,6 +40,14 @@ struct FftNodeConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return processorRole; }
 };
 
+struct SpectralLayerConfiguration final : public INodeDspConfiguration {
+    float pan { 0.5f };
+    float range { 0.5f };
+    bool additive { true };
+
+    AudioModuleRole role() const override { return AudioModuleRole::SpectralLayer; }
+};
+
 struct PublishedNodeConfiguration {
     uint64_t revision {};
     String key;

@@ -3,6 +3,7 @@
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Binary/Gradients.h>
 #include <Curve/Mesh/Mesh.h>
 #include <UI/Widgets/CalloutUtils.h>
@@ -632,4 +633,13 @@ bool Spectrum3D::isSurfaceDetailReduced() {
 
 bool Spectrum3D::willAdjustSurfaceColumns() {
     return !getSetting(DrawWave) && getSetting(CurrentMorphAxis) == Vertex::Red;
+}
+
+float Spectrum3D::calcPhaseOffsetScale(float value) {
+    return CycleDsp::SpectralLayerCore::phaseOffsetScale(value);
+}
+
+float Spectrum3D::calcDynamicRangeScale(float value) {
+    const float dynamicRange = CycleDsp::SpectralLayerCore::magnitudeDynamicRange(value);
+    return dynamicRange * dynamicRange;
 }

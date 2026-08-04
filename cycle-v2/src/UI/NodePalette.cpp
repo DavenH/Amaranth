@@ -51,6 +51,7 @@ const NodePalette::Entry kFxEntries[] = {
 };
 
 const NodePalette::Entry kChannelEntries[] = {
+        { NodeKind::SpectralLayer, "Pan" },
         { NodeKind::StereoSplit, "Split" },
         { NodeKind::StereoJoin, "Join" },
         { NodeKind::Output, "Output" }

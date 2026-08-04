@@ -2,6 +2,7 @@
 
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/NodeDefinition.h"
+#include "../src/UI/NodeCanvasScene.h"
 
 #include <set>
 
@@ -11,7 +12,7 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
     const auto& registry = NodeDefinitionRegistry::instance();
     std::set<String> typeIds;
 
-    REQUIRE(registry.definitions().size() == 22);
+    REQUIRE(registry.definitions().size() == 23);
     for (const auto& definition : registry.definitions()) {
         REQUIRE(definition.typeId.isNotEmpty());
         REQUIRE(definition.defaultInstanceIdPrefix.isNotEmpty());
@@ -48,4 +49,16 @@ TEST_CASE("Runtime module metadata comes from node definitions", "[cycle-v2][gra
             REQUIRE(definition.previewRole != PreviewModuleRole::None);
         }
     }
+}
+
+TEST_CASE("Pan presents as an inline cable control", "[cycle-v2][graph][definitions]") {
+    const Node node = GraphNodeFactory().createNode(NodeKind::SpectralLayer, "layer", {});
+
+    REQUIRE(labelForNodeKind(node.kind) == "Pan");
+    REQUIRE(node.bounds.getWidth() == 80.f);
+    REQUIRE(node.bounds.getHeight() == 80.f);
+    REQUIRE(NodeCanvasScene::portWorldCentre(node, node.inputs.front()).getY()
+            == node.bounds.getCentreY());
+    REQUIRE(NodeCanvasScene::portWorldCentre(node, node.outputs.front()).getY()
+            == node.bounds.getCentreY());
 }

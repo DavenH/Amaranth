@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <memory>
+#include <optional>
 
 #include "../Graph/GraphEditor.h"
 #include "../Graph/GraphCommandDispatcher.h"
@@ -254,9 +255,12 @@ private:
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};
     int activeVertexIndex { -1 };
+    bool activeVertexChanged {};
     String activeMeshNodeId;
     bool activeMeshChanged {};
     bool curveTransactionActive {};
+    std::optional<uint64_t> curveTransactionBaseRevision;
+    String curveTransactionNodeId;
     bool curvePublicationPending {};
     String curvePublicationNodeId;
     uint64_t curvePublicationFingerprint {};

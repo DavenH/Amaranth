@@ -1,5 +1,7 @@
 #include "TrimeshPanelDataSource.h"
 
+#include "TrimeshRenderProfile.h"
+
 namespace CycleV2 {
 
 void TrimeshPanelDataSource::rebuild(
@@ -7,9 +9,17 @@ void TrimeshPanelDataSource::rebuild(
         int rows,
         int columns,
         PortDomain domain) {
+    rebuild(model, rows, columns, TrimeshRenderProfile::fromDomain(domain));
+}
+
+void TrimeshPanelDataSource::rebuild(
+        TrimeshNodeModel& model,
+        int rows,
+        int columns,
+        const TrimeshRenderProfile& renderProfile) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(rows, columns, domain);
+    renderData = model.renderGrid(rows, columns, renderProfile);
     storage = renderData.surface;
     panelColumns.clear();
     panelColumns.reserve((size_t) renderData.columns);

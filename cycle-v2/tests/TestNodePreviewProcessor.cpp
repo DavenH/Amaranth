@@ -29,6 +29,12 @@ bool hasColouredPixel(const Image& image) {
     return false;
 }
 
+Colour storedArgbPixel(Colour colour) {
+    Image image(Image::ARGB, 1, 1, true);
+    image.setPixelAt(0, 0, colour);
+    return image.getPixelAt(0, 0);
+}
+
 }
 
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
@@ -77,6 +83,32 @@ TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
     CHECK(image.getPixelAt(1, 1) != image.getPixelAt(1, 0));
 }
 
+TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
+        "[cycle-v2][runtime][probe][ui]") {
+    const auto render = [](float gain) {
+        NodePreviewResult result;
+        result.role = PreviewModuleRole::SignalSpy;
+        result.primary = { -gain, gain, -gain * 0.5f, gain * 0.5f };
+        result.gridColumns = 2;
+        result.gridRows = 2;
+        result.domain = PortDomain::TimeSignal;
+        return NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    };
+
+    const Image quiet = render(0.25f);
+    const Image loud = render(0.5f);
+    REQUIRE(quiet.isValid());
+    REQUIRE(loud.isValid());
+
+    bool differs {};
+    for (int y = 0; y < quiet.getHeight(); ++y) {
+        for (int x = 0; x < quiet.getWidth(); ++x) {
+            differs = differs || quiet.getPixelAt(x, y) != loud.getPixelAt(x, y);
+        }
+    }
+    REQUIRE(differs);
+}
+
 TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic sampler",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     constexpr size_t rows = 9;
@@ -97,6 +129,53 @@ TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic samp
                 (float) (rows - 1),
                 1.f + sourceUnit * (float) (rows - 2));
         CHECK(mapped[row] == Catch::Approx(sourcePosition));
+    }
+}
+
+TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
+        "[cycle-v2][runtime][preview][spectral][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::MeshSurface;
+    const float expected[] { 0.f, 0.25f, 0.5f, 0.75f, 1.f };
+    result.primary = { 0.f, 0.f, 0.25f, 0.25f, 0.5f, 0.5f,
+            0.75f, 0.75f, 1.f, 1.f };
+    result.gridColumns = 5;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralMagnitudeSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
+
+    REQUIRE(image.isValid());
+    for (int column = 0; column < image.getWidth(); ++column) {
+        CAPTURE(column);
+        const Colour actual = image.getPixelAt(column, 0);
+        if (column == 0) {
+            CHECK(actual.getAlpha() == 0);
+        } else {
+            CHECK(actual == profile.getSurfaceStyle().colourForValue(expected[column]));
+        }
+    }
+}
+
+TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
+        "[cycle-v2][runtime][preview][spectral][ui]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::MeshSurface;
+    result.primary = { -1.f, -1.f, 0.f, 0.f, 1.f, 1.f };
+    result.gridColumns = 3;
+    result.gridRows = 2;
+    result.domain = PortDomain::SpectralPhaseSignal;
+
+    const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(result);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(result.domain);
+    const float expected[] { 0.f, 0.5f, 1.f };
+
+    REQUIRE(image.isValid());
+    for (int column = 0; column < image.getWidth(); ++column) {
+        CAPTURE(column);
+        CHECK(image.getPixelAt(column, 0) == storedArgbPixel(
+                profile.getSurfaceStyle().colourForValue(expected[column])));
     }
 }
 

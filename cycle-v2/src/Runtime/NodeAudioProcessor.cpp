@@ -30,6 +30,7 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::WaveSource, createWaveSourceAudioProcessor },
             { AudioModuleRole::ImageSource, createImageSourceAudioProcessor },
             { AudioModuleRole::MeshSource, createTrimeshAudioProcessor },
+            { AudioModuleRole::SpectralLayer, createSpectralLayerAudioProcessor },
             { AudioModuleRole::Add, createAddAudioProcessor },
             { AudioModuleRole::Multiply, createMultiplyAudioProcessor },
             { AudioModuleRole::StereoJoin, createStereoJoinAudioProcessor },

@@ -18,9 +18,15 @@ public:
                         || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
                 ? MouseCursor::LeftRightResizeCursor
                 : MouseCursor::PointingHandCursor);
+        setName("TrimeshControlTarget");
     }
 
     void paint(Graphics&) override {
+    }
+
+    void mouseMove(const MouseEvent& event) override {
+        auto source = event.source;
+        source.showMouseCursor(getMouseCursor());
     }
 
     void mouseDown(const MouseEvent& event) override {

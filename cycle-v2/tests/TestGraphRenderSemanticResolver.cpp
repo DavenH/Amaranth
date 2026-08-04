@@ -80,6 +80,35 @@ TEST_CASE("Render semantics resolve envelope scale from downstream target", "[cy
     REQUIRE(semantic.role == RenderSemanticRole::EnvelopeBipolar);
 }
 
+TEST_CASE("Spectral Layer mode exposes the source mesh magnitude semantic", "[cycle-v2][graph]") {
+    GraphNodeFactory factory;
+    GraphRenderSemanticResolver resolver;
+    NodeGraph graph;
+
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = { { "domain", "Start Domain", "spectral" } };
+    Node layer = factory.createNode(NodeKind::SpectralLayer, "layer", {});
+    layer.parameters = {
+            { "pan", "Pan", "0.5" },
+            { "range", "Range", "0.5" },
+            { "mode", "Magnitude Mode", "multiplicative" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(std::move(layer));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({ "voice", "context", "mesh", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "layer", "in", PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({ "layer", "out", "ifft", "mag", PortDomain::ControlSignal, ConnectionKind::Signal });
+
+    const NodeRenderSemantic semantic = resolver.semanticForNodeOutput(graph, "mesh", "out");
+
+    REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeMultiplicative);
+}
+
 TEST_CASE("Render semantics use voice context before downstream consumers exist", "[cycle-v2][graph]") {
     GraphNodeFactory factory;
     GraphRenderSemanticResolver resolver;

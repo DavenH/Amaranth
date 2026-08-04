@@ -32,6 +32,7 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
+                                       private juce::Timer,
                                        private TrimeshControlsDelegate,
                                        private TrimeshPanelHostDelegate {
 public:
@@ -58,6 +59,7 @@ private:
     juce::String vertexGuideParameterField(const juce::String& parameterId) const;
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
+    void timerCallback() override;
     void updatePanelHosts();
     void updateControlsHost();
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
@@ -81,6 +83,7 @@ private:
     TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    juce::Point<int> lastPolledMousePosition { -1, -1 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };

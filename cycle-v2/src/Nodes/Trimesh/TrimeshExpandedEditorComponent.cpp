@@ -16,9 +16,11 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
         widget      (targetWidget)
     ,   controls    (targetWidget) {
     setOpaque(false);
+    setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
     widget.setExpandedPanelHostDelegate(this);
+    startTimerHz(30);
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
@@ -116,7 +118,10 @@ void TrimeshExpandedEditorComponent::resized() {
 }
 
 void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    updateCursor(event.position);
+    const MouseCursor cursor = cursorFor(event.position);
+    setMouseCursor(cursor);
+    auto source = event.source;
+    source.showMouseCursor(cursor);
 }
 
 void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
@@ -247,6 +252,36 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {
     setMouseCursor(cursorFor(position));
+}
+
+void TrimeshExpandedEditorComponent::timerCallback() {
+    if (!isShowing()) {
+        return;
+    }
+
+    const Point<int> desktopPosition = Desktop::getMousePosition();
+    if (desktopPosition == lastPolledMousePosition) {
+        return;
+    }
+    lastPolledMousePosition = desktopPosition;
+    const Point<float> position = getLocalPoint(
+            nullptr, desktopPosition).toFloat();
+    if (!getLocalBounds().toFloat().contains(position)) {
+        return;
+    }
+
+    for (Component* panel : {
+            widget.getExpandedPanel3DComponentIfCreated(),
+            widget.getExpandedPanel2DComponentIfCreated() }) {
+        if (panel != nullptr && panel->getBounds().toFloat().contains(position)) {
+            return;
+        }
+    }
+
+    const MouseCursor cursor = cursorFor(position);
+    setMouseCursor(cursor);
+    auto source = Desktop::getInstance().getMainMouseSource();
+    source.showMouseCursor(cursor);
 }
 
 void TrimeshExpandedEditorComponent::updatePanelHosts() {

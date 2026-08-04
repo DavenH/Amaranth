@@ -67,28 +67,33 @@ bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
 }
 
 void FftSignalProcessor::prepareExecution(size_t maximumFrameCount) {
-    preparedBlockwiseDsp.clear();
-    for (size_t frameCount = 1; frameCount <= maximumFrameCount; frameCount *= 2) {
-        auto processor = std::make_unique<FftBlockwiseDsp>();
-        processor->prepare(frameCount);
-        preparedBlockwiseDsp.push_back(std::move(processor));
-        if (frameCount > maximumFrameCount / 2) {
-            break;
+    for (auto& channelProcessors : preparedBlockwiseDsp) {
+        channelProcessors.clear();
+        for (size_t frameCount = 1; frameCount <= maximumFrameCount; frameCount *= 2) {
+            auto processor = std::make_unique<FftBlockwiseDsp>();
+            processor->prepare(frameCount);
+            channelProcessors.push_back(std::move(processor));
+            if (frameCount > maximumFrameCount / 2) {
+                break;
+            }
         }
     }
 }
 
-FftBlockwiseDsp& FftSignalProcessor::blockwiseFor(size_t frameCount) {
+FftBlockwiseDsp& FftSignalProcessor::blockwiseFor(
+        size_t frameCount,
+        size_t channel) {
+    const size_t channelIndex = std::min(channel, blockwiseDsp.size() - 1);
     if (frameCount > 0 && (frameCount & (frameCount - 1)) == 0) {
         size_t exponent = 0;
         for (size_t value = frameCount; value > 1; value /= 2) {
             ++exponent;
         }
-        if (exponent < preparedBlockwiseDsp.size()) {
-            return *preparedBlockwiseDsp[exponent];
+        if (exponent < preparedBlockwiseDsp[channelIndex].size()) {
+            return *preparedBlockwiseDsp[channelIndex][exponent];
         }
     }
-    return blockwiseDsp;
+    return blockwiseDsp[channelIndex];
 }
 
 void FftSignalProcessor::processForward(AudioProcessContext& context) {
@@ -101,8 +106,25 @@ void FftSignalProcessor::processForward(AudioProcessContext& context) {
 
     auto magnitude = makeOutputPayload(context, 0);
     auto phase = makeOutputPayload(context, 1);
-    blockwiseFor(input->block.samples.size()).forward(input->block, magnitude.block, phase.block);
-    publishForwardTraversalGrids(*input, magnitude, phase, context.workArena);
+    const size_t channelCount = payloadChannelCount(*input);
+    if (channelCount == 2) {
+        magnitude.channelLayout = ChannelLayout::StereoPair;
+        phase.channelLayout = ChannelLayout::StereoPair;
+        magnitude.secondaryBlock.samples.resize(context.frameCount);
+        phase.secondaryBlock.samples.resize(context.frameCount);
+    }
+    for (size_t channel = 0; channel < channelCount; ++channel) {
+        blockwiseFor(input->block.samples.size(), channel).forward(
+                payloadBlock(*input, channel),
+                payloadBlock(magnitude, channel),
+                payloadBlock(phase, channel));
+        publishForwardTraversalGrids(
+                *input,
+                magnitude,
+                phase,
+                channel,
+                context.workArena);
+    }
 
     publishOutputs(context, std::move(magnitude), std::move(phase));
 }
@@ -121,10 +143,33 @@ void FftSignalProcessor::processInverse(AudioProcessContext& context, bool useHa
 
     auto output = makeOutputPayload(context, 0);
     SignalPayload* phase = inputAt(context, 1);
-    auto& blockwise = blockwiseFor(output.block.samples.size());
-    blockwise.setHalfCycleCarryEnabled(useHalfCycleCarry);
-    blockwise.inverse(magnitude->block, phase != nullptr ? &phase->block : nullptr, output.block);
-    publishInverseTraversalGrid(*magnitude, phase, output, useHalfCycleCarry, context.workArena);
+    const bool stereo = magnitude->isStereo()
+            || (phase != nullptr && phase->isStereo());
+    if (stereo) {
+        output.channelLayout = ChannelLayout::StereoPair;
+        output.secondaryBlock.samples.resize(context.frameCount);
+    }
+    const size_t channelCount = stereo ? 2u : 1u;
+    for (size_t channel = 0; channel < channelCount; ++channel) {
+        auto& blockwise = blockwiseFor(output.block.samples.size(), channel);
+        blockwise.setHalfCycleCarryEnabled(useHalfCycleCarry);
+        const size_t magnitudeChannel = magnitude->isStereo() ? channel : 0;
+        const size_t phaseChannel = phase != nullptr && phase->isStereo() ? channel : 0;
+        const SignalBlock* phaseBlock = phase != nullptr
+                ? &payloadBlock(*phase, phaseChannel)
+                : nullptr;
+        blockwise.inverse(
+                payloadBlock(*magnitude, magnitudeChannel),
+                phaseBlock,
+                payloadBlock(output, channel));
+        publishInverseTraversalGrid(
+                *magnitude,
+                phase,
+                output,
+                channel,
+                useHalfCycleCarry,
+                context.workArena);
+    }
     publishSingleOutput(context, std::move(output));
 }
 
@@ -132,12 +177,13 @@ void FftSignalProcessor::publishForwardTraversalGrids(
         const SignalPayload& input,
         SignalPayload& magnitude,
         SignalPayload& phase,
+        size_t channel,
         const AudioProcessWorkArena* arena) {
-    if (!input.traversalGrid.isValid()) {
+    const auto& inputGrid = payloadTraversalGrid(input, channel);
+    if (!inputGrid.isValid()) {
         return;
     }
 
-    const auto& inputGrid = input.traversalGrid;
     TraversalGridColumnReader inputColumns(inputGrid);
     inputColumns.read(0, scratchTimeColumn);
     traversalDsp.resetState();
@@ -149,13 +195,13 @@ void FftSignalProcessor::publishForwardTraversalGrids(
     }
 
     TraversalGridColumnWriter magnitudeColumns(
-            magnitude.traversalGrid,
+            payloadTraversalGrid(magnitude, channel),
             inputGrid.columns,
             binRows,
             frequencyMetadataFor(inputGrid, magnitude, binRows),
             arena);
     TraversalGridColumnWriter phaseColumns(
-            phase.traversalGrid,
+            payloadTraversalGrid(phase, channel),
             inputGrid.columns,
             binRows,
             frequencyMetadataFor(inputGrid, phase, binRows),
@@ -190,29 +236,34 @@ void FftSignalProcessor::publishInverseTraversalGrid(
         const SignalPayload& magnitude,
         const SignalPayload* phase,
         SignalPayload& output,
+        size_t channel,
         bool useHalfCycleCarry,
         const AudioProcessWorkArena* arena) {
-    if (!magnitude.traversalGrid.isValid()) {
+    const size_t magnitudeChannel = magnitude.isStereo() ? channel : 0;
+    const auto& magnitudeGrid = payloadTraversalGrid(magnitude, magnitudeChannel);
+    if (!magnitudeGrid.isValid()) {
         return;
     }
 
     auto metadata = makeTraversalGridMetadata(
             output.domain,
-            magnitude.traversalGrid.columns,
+            magnitudeGrid.columns,
             output.block.samples.size(),
-            magnitude.traversalGrid.metadata.columnAxis,
+            magnitudeGrid.metadata.columnAxis,
             TraversalGridAxis::Time);
-    metadata.columnResolution = magnitude.traversalGrid.metadata.columnResolution;
-    TraversalGridColumnReader magnitudeColumns(magnitude.traversalGrid);
+    metadata.columnResolution = magnitudeGrid.metadata.columnResolution;
+    TraversalGridColumnReader magnitudeColumns(magnitudeGrid);
     TraversalGridColumnWriter outputColumns(
-            output.traversalGrid,
-            magnitude.traversalGrid.columns,
+            payloadTraversalGrid(output, channel),
+            magnitudeGrid.columns,
             output.block.samples.size(),
             metadata,
             arena);
 
-    TraversalGridColumnReader candidatePhaseColumns(
-            phase != nullptr ? &phase->traversalGrid : nullptr);
+    const size_t phaseChannel = phase != nullptr && phase->isStereo() ? channel : 0;
+    TraversalGridColumnReader candidatePhaseColumns(phase != nullptr
+            ? &payloadTraversalGrid(*phase, phaseChannel)
+            : nullptr);
     const bool hasCompatiblePhase = candidatePhaseColumns.isFrequencyCompanionFor(
             magnitudeColumns);
 

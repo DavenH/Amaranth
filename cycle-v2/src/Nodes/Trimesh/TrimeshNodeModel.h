@@ -15,6 +15,8 @@ class Vertex;
 
 namespace CycleV2 {
 
+class TrimeshRenderProfile;
+
 struct TrimeshRenderData {
     std::vector<float> surface;
     std::vector<float> slice;
@@ -92,6 +94,10 @@ public:
     void syncFromNode(const Node& node);
 
     TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
+    TrimeshRenderData renderGrid(
+            int rows,
+            int columns,
+            const TrimeshRenderProfile& renderProfile);
     std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();

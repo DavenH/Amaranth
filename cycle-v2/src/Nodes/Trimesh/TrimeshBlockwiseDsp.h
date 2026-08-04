@@ -25,7 +25,8 @@ public:
             Mesh* meshToRender,
             const MorphPosition& morphPosition,
             int axis,
-            bool shouldWrap);
+            bool shouldWrap,
+            PortDomain domain);
     void setMesh(Mesh* meshToRender);
     void setMorphPosition(const MorphPosition& morphPosition);
     void setPrimaryViewAxis(int axis);
@@ -41,11 +42,11 @@ public:
             PortDomain domain,
             ChannelLayout channelLayout,
             SignalPayload& output);
-    void renderCycleInto(Buffer<float> output);
+    void renderCycleInto(Buffer<float> output, PortDomain domain);
     void renderPreparedInto(Buffer<float> output);
 
 private:
-    Rasterization::RasterizationRequest createRequest() const;
+    Rasterization::RasterizationRequest createRequest(PortDomain domain) const;
     void sampleOutput(Buffer<float> output);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 

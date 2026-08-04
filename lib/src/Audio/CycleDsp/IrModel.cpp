@@ -5,7 +5,8 @@
 namespace CycleDsp {
 
 int irImpulseLength(double normalizedValue) {
-    return 1 << int(7 + normalizedValue * 7);
+    constexpr double boundaryTolerance = 1.0e-5;
+    return 1 << int(7. + normalizedValue * 7. + boundaryTolerance);
 }
 
 double irImpulseLengthValue(int length) {

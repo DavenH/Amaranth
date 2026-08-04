@@ -1,20 +1,57 @@
 # UI Bug Notes
 
-## Open: Stengah Waveshaper editor restore crashes on a stale vertex selection
+## Open: Closing a hosted editor through automation dereferences its deleted target
+
+Context:
+
+- The combined Stengah interaction fixture opened the magnitude Trimesh editor
+  and invoked `pointer` on `expanded:magnitudeLayer1.close`.
+- Both a down/up sequence and the atomic click path crashed on the message
+  thread in `CycleV2Automation::pointer` after the close action deleted the
+  hosted component used as the current pointer target.
+- Repro artifacts: `/private/tmp/cycle-v2-expanded-pan.log.ips` and
+  `~/Library/Logs/DiagnosticReports/CycleV2-2026-08-03-213846.ips`.
+
+Current status: open; pointer automation must not retain or dereference a
+component after an event synchronously destroys its hosted editor.
+
+## Open: Expanded curve-editor automation target can resolve to empty canvas
+
+Context:
+
+- A focused native Stengah Waveshaper check on 2026-08-03 opened the editor
+  through automation, then captured the reported
+  `expanded:waveshaper.panel2D` screen bounds.
+- The crop at `/tmp/stengah-native/stengah-waveshaper-before-edit.png` contains
+  empty canvas and compact graph nodes rather than the expanded curve panel.
+  Native clicks at that target therefore cannot serve as evidence for editor
+  gestures or hover cursors.
+- The semantic curve publication and raw input/output probe assertions pass;
+  this is an automation/editor-host visibility or coordinate-boundary defect,
+  not the Stengah DSP failure.
+
+Current status: open; make `openNodeEditor` wait for a visible hosted component
+and derive native screen bounds from that component before restoring the
+focused native curve gesture fixture.
+
+## Addressed: Stengah Waveshaper selection restored before panel initialization
 
 Context:
 
 - Opening the Waveshaper editor from the locally edited Stengah preset crashes
   while restoring its saved flat-curve selection.
 - The stack reaches `Interactor::getModPosition(bool)` through
-  `FlatCurvePanelBase::restoreFlatSelection`; the saved selected vertex no
-  longer resolves to a valid interactive vertex.
+  `FlatCurvePanelBase::restoreFlatSelection`. The selected vertex is valid, but
+  selection frames were built before `Interactor2D::init` installed the
+  panel's morph-position service.
 - Repro artifact: `/private/tmp/cycle-v2-stengah-seven-probes-logs.txt.ips`.
-- This is incidental to the spy-routing defect; the focused spy fixture can edit
-  the Waveshaper parameter without opening its editor.
+- The consecutive-preset reproduction also produced
+  `/private/tmp/cycle-v2-preset-version-logs.txt` and
+  `CycleV2-2026-08-02-224917.ips`.
 
-Current status: open; validate saved selection IDs before restoring selection
-frames and add an editor-open regression for stale model selections.
+Current status: addressed by staging selection-frame reconstruction until the
+panel host initializes; covered by focused lifecycle and consecutive-preset
+automation.
 
 ## Addressed: Voice Context sliders only responded to pointer-down
 
@@ -183,6 +220,19 @@ Context:
 - Repro artifacts: `/private/tmp/cycle-v2-eq-editor-report.json` and `/private/tmp/cycle-v2-eq-editor-logs.txt`.
 
 Current status: open.
+## Open: GuideCurveOffsetSeeds paired-seed ownership test disagrees with current data
+
+Context:
+
+- The repository-wide test run on 2026-08-03, while verifying downstream pan
+  preview invalidation, failed `TestRasterizerTypes.cpp:31` twice.
+- `GuideCurveOffsetSeeds owns paired phase and vertical seed arrays` expected
+  `verticalAt(2) == 4`, but the current implementation returned `16`.
+- The failure is outside the graph presentation and pan paths changed in that
+  work and reproduces in isolation.
+
+Current status: open; reconcile the test's paired-array expectation with the
+current `GuideCurveOffsetSeeds` storage contract.
 
 ## Open: synthetic expanded-editor close click uses a destroyed component
 

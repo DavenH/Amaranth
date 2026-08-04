@@ -110,6 +110,16 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         { AudioModuleRole::MeshSource, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(buildTrimeshConfiguration(values, modelState));
         } },
+        { AudioModuleRole::SpectralLayer, [](AudioModuleRole, const auto& values, const auto&) {
+            auto configuration = std::make_shared<SpectralLayerConfiguration>();
+            configuration->pan = typedParameterFloat(values, "pan", 0.5f);
+            configuration->range = typedParameterFloat(values, "range", 0.5f);
+            configuration->additive = typedParameterString(
+                    values,
+                    "mode",
+                    "additive") == "additive";
+            return std::shared_ptr<const INodeDspConfiguration>(configuration);
+        } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     WaveshaperSignalProcessor::buildConfiguration(values, modelState));

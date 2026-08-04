@@ -224,9 +224,24 @@ bool NodeEditorCommandService::publishCurveState(
     if (node == nullptr) {
         return false;
     }
+    uint64_t durableBaseRevision = node->model != nullptr ? node->model->revision() : 0;
+    if (curveTransactionActive) {
+        const Node* durableNode = document.graph().findNode(nodeId);
+        if (durableNode == nullptr || (curveTransactionBaseRevision.has_value()
+                && curveTransactionNodeId != nodeId)) {
+            return false;
+        }
+        if (!curveTransactionBaseRevision.has_value()) {
+            curveTransactionBaseRevision = durableNode->model != nullptr
+                    ? durableNode->model->revision()
+                    : 0;
+            curveTransactionNodeId = nodeId;
+        }
+        durableBaseRevision = *curveTransactionBaseRevision;
+    }
     const auto result = commands.publishCurveState({
             nodeId,
-            node->model != nullptr ? node->model->revision() : 0,
+            durableBaseRevision,
             model,
             controls
     });
@@ -283,12 +298,16 @@ void NodeEditorCommandService::beginCurveTransaction() {
     curvePublicationPending = false;
     curvePublicationNodeId = {};
     curvePublicationFingerprint = 0;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
     commands.beginTransientEdit();
 }
 
 void NodeEditorCommandService::commitCurveTransaction() {
     commands.commitTransientEdit();
     curveTransactionActive = false;
+    curveTransactionBaseRevision.reset();
+    curveTransactionNodeId = {};
     if (!curvePublicationPending) {
         return;
     }
@@ -398,14 +417,9 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     if (activeMorphNodeId.isEmpty()) {
         return;
     }
-    const Node* node = findNode(activeMorphNodeId);
-    const String primaryAxis = node != nullptr
-            ? nodeParameterValue(*node, "primaryAxis", "yellow")
-            : String();
-    const bool primaryAxisOnly = activeMorphParameterId == primaryAxis;
     commands.commitTransientEdit();
-    if (activeMorphChanged && (primaryAxisOnly
-            || presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest)) {
+    if (activeMorphChanged
+            && presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
         presentation.commitNodeEditorLocalState(
                 activeMorphNodeId,
                 activeMorphParameterId,
@@ -446,6 +460,7 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
     activeVertexParameterId = parameterId;
     activeVertexWidget = widget;
     activeVertexIndex = vertexIndex;
+    activeVertexChanged = false;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshVertexParameterEditValue(value);
 }
@@ -478,6 +493,7 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
     if (!result.changed) {
         return true;
     }
+    activeVertexChanged = true;
     const uint64_t fingerprint = FingerprintBuilder()
             .add(activeVertexParameterId)
             .add(modelRevision + 1)
@@ -496,16 +512,22 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
     if (activeVertexNodeId.isEmpty()) {
         return;
     }
+    const bool changed = activeVertexChanged;
     if (findNode(activeVertexNodeId) != nullptr && activeVertexWidget != nullptr) {
         commands.commitTransientEdit();
     } else {
         commands.cancelTransientEdit();
     }
-    presentation.flushNodeEditorRefresh();
+    if (changed && presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+        presentation.flushNodeEditorRefresh();
+    } else if (changed) {
+        presentation.refreshNodeEditorPresentation();
+    }
     activeVertexNodeId = {};
     activeVertexParameterId = {};
     activeVertexWidget = nullptr;
     activeVertexIndex = -1;
+    activeVertexChanged = false;
 }
 
 void NodeEditorCommandService::persistTrimeshMeshEdits(
@@ -559,7 +581,11 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
 
     commands.commitTransientEdit();
     if (activeMeshChanged) {
-        presentation.flushNodeEditorRefresh();
+        if (presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+            presentation.flushNodeEditorRefresh();
+        } else {
+            presentation.refreshNodeEditorPresentation();
+        }
     }
     activeMeshNodeId = {};
     activeMeshChanged = false;

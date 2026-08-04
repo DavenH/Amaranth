@@ -42,6 +42,20 @@ String parameterValue(const Node& node, const String& parameterId) {
     return {};
 }
 
+float snapPanValue(float value) {
+    const float normalized = jlimit(0.f, 1.f, value);
+    if (normalized <= 0.05f) {
+        return 0.f;
+    }
+    if (normalized >= 0.45f && normalized <= 0.55f) {
+        return 0.5f;
+    }
+    if (normalized >= 0.95f) {
+        return 1.f;
+    }
+    return normalized;
+}
+
 }
 
 NodeCanvasAuthoring::NodeCanvasAuthoring(
@@ -583,6 +597,55 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::endVoiceContextSliderGesture() {
     const String nodeId = std::move(voiceContextGestureNodeId);
     const bool changed = voiceContextGestureChanged;
     voiceContextGestureChanged = false;
+    commands.commitCompoundEdit();
+    refreshPresentation();
+    return {
+            true,
+            true,
+            changed,
+            GraphEditCode::Connected,
+            nodeId,
+            { true, false, true }
+    };
+}
+
+bool NodeCanvasAuthoring::beginSpectralPanGesture(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || node->kind != NodeKind::SpectralLayer) {
+        return false;
+    }
+
+    commands.beginCompoundEdit();
+    spectralPanGestureNodeId = nodeId;
+    spectralPanGestureChanged = false;
+    selectNode(nodeId);
+    return true;
+}
+
+bool NodeCanvasAuthoring::updateSpectralPanGesture(float value) {
+    if (spectralPanGestureNodeId.isEmpty()) {
+        return false;
+    }
+
+    const String normalized = String(snapPanValue(value), 6);
+    const auto result = commands.setNodeParameter(
+            spectralPanGestureNodeId,
+            "pan",
+            "Pan",
+            normalized);
+    spectralPanGestureChanged = spectralPanGestureChanged || result.changed;
+    authoringSession.statusMessage = "Pan: " + normalized;
+    return result.succeeded();
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::endSpectralPanGesture() {
+    if (spectralPanGestureNodeId.isEmpty()) {
+        return {};
+    }
+
+    const String nodeId = std::move(spectralPanGestureNodeId);
+    const bool changed = spectralPanGestureChanged;
+    spectralPanGestureChanged = false;
     commands.commitCompoundEdit();
     refreshPresentation();
     return {

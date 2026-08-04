@@ -293,6 +293,42 @@ TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", 
     mesh->destroy();
 }
 
+TEST_CASE(
+        "Trimesh DSP preserves unipolar magnitude and bipolar phase domains",
+        "[cycle-v2][nodes][trimesh][dsp][domains]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    TrimeshBlockwiseDsp dsp;
+    dsp.setMesh(mesh.get());
+    dsp.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
+    dsp.setCyclic(false);
+
+    SignalPayload magnitude;
+    SignalPayload phase;
+    SignalPayload time;
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono,
+            magnitude);
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralPhaseSignal,
+            ChannelLayout::Mono,
+            phase);
+    dsp.renderCycle(32, PortDomain::TimeSignal, ChannelLayout::Mono, time);
+
+    REQUIRE(magnitude.block.samples.size() == phase.block.samples.size());
+    REQUIRE(magnitude.block.samples.size() == time.block.samples.size());
+    for (size_t index = 0; index < magnitude.block.samples.size(); ++index) {
+        REQUIRE(magnitude.block.samples[index]
+                == Catch::Approx(phase.block.samples[index] * 0.5f + 0.5f));
+        REQUIRE(magnitude.block.samples[index]
+                == Catch::Approx(time.block.samples[index] * 0.5f + 0.5f));
+    }
+
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -657,14 +693,21 @@ TEST_CASE(
             PortDomain::SpectralMagnitudeSignal,
             ChannelLayout::Mono);
     std::vector<float> directValues(32);
-    directDsp.prepare(*mesh, center, Vertex::Time, 4, 8);
+    directDsp.prepare(
+            *mesh,
+            center,
+            Vertex::Time,
+            4,
+            8,
+            PortDomain::SpectralMagnitudeSignal);
     REQUIRE(directDsp.counters().sliceCount == 0);
     REQUIRE(directDsp.renderColumnsInto(
             *mesh,
             center,
             Vertex::Time,
             4,
-            Buffer<float>(directValues.data(), (int) directValues.size())));
+            Buffer<float>(directValues.data(), (int) directValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
 
     std::vector<float> owningValues;
     for (const auto& column : columns) {
@@ -876,6 +919,16 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.activeParameter == morph.parameterId);
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
+    Component* morphTarget {};
+    for (auto* child : controls.getChildren()) {
+        if (child->getBounds().contains(morph.bounds.getCentre().roundToInt())) {
+            morphTarget = child;
+            break;
+        }
+    }
+    REQUIRE(morphTarget != nullptr);
+    REQUIRE(morphTarget != &controls);
+    REQUIRE(morphTarget->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
 
     int expectedSelection {};
     const Point<float> selectionPoint = TrimeshWidget::expandedWavePanelContentBounds(content).getCentre();
@@ -885,7 +938,8 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.selectedVertex == expectedSelection);
 }
 
-TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral profiles", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
+        "[cycle-v2][nodes][trimesh][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
             "mesh",
@@ -907,4 +961,73 @@ TEST_CASE("Trimesh panel bridge disables cyclic rasterizer wrapping for spectral
     bridge.syncFromNode(node, 12, 4);
     REQUIRE_FALSE(bridge.getDataSource().getRenderData().cyclic);
     REQUIRE_FALSE(bridge.rasterizerWrapsVertices());
+    const TrimeshRenderData magnitude = bridge.getDataSource().getRenderData();
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    }));
+    bridge.syncFromNode(node, 12, 4);
+    const TrimeshRenderData multiplicativeMagnitude = bridge.getDataSource().getRenderData();
+
+    REQUIRE(magnitude.surface.size() == multiplicativeMagnitude.surface.size());
+    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
+        REQUIRE(multiplicativeMagnitude.surface[index]
+                == Catch::Approx(magnitude.surface[index] * 0.5f + 0.5f));
+    }
+
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal));
+    bridge.syncFromNode(node, 12, 4);
+    const TrimeshRenderData phase = bridge.getDataSource().getRenderData();
+
+    REQUIRE(magnitude.slice.size() == phase.slice.size());
+    REQUIRE(magnitude.surface.size() == phase.surface.size());
+    for (size_t index = 0; index < magnitude.slice.size(); ++index) {
+        REQUIRE(magnitude.slice[index] == Catch::Approx(phase.slice[index]));
+    }
+    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
+        REQUIRE(magnitude.surface[index] == Catch::Approx(phase.surface[index]));
+    }
+    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) < 0.5f);
+}
+
+TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",
+        "[cycle-v2][nodes][trimesh][compact][expanded][spectral]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    });
+    TrimeshWidget widget;
+    Image compactImage(Image::ARGB, 220, 180, true);
+    Graphics compactGraphics(compactImage);
+    widget.paintCompact(
+            compactGraphics,
+            node,
+            compactImage.getBounds().toFloat(),
+            1.f,
+            profile);
+    const TrimeshRenderData compact = widget.renderDataForAutomation();
+
+    widget.setRenderProfile(profile);
+    Image expandedImage(Image::ARGB, 900, 650, true);
+    Graphics expandedGraphics(expandedImage);
+    widget.paintExpanded(expandedGraphics, node, expandedImage.getBounds().toFloat());
+    const TrimeshRenderData expanded = widget.renderDataForAutomation();
+
+    REQUIRE(compact.rows == expanded.rows);
+    REQUIRE(compact.columns == expanded.columns);
+    REQUIRE(compact.slice == expanded.slice);
+    REQUIRE(compact.surface == expanded.surface);
 }

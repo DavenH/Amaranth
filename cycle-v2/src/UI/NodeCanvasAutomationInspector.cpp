@@ -551,7 +551,11 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
 
     Array<var> previewStats;
     for (const auto& preview : previewResult.nodes) {
-        previewStats.add(AutomationValueEncoder::previewStatsToVar(preview));
+        var stats = AutomationValueEncoder::previewStatsToVar(preview);
+        stats.getDynamicObject()->setProperty(
+                "audioProcessCount",
+                static_cast<int>(context.presentation.previewAudioProcessCount(preview.nodeId)));
+        previewStats.add(std::move(stats));
     }
 
     Array<var> probePreviewStats;
