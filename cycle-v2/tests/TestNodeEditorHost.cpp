@@ -17,6 +17,7 @@
 #include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeEditorHost.h"
 #include "../src/UI/NodeParameterValue.h"
+#include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
@@ -164,6 +165,72 @@ public:
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
 };
+
+TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
+        "[cycle-v2][canvas][preview][trimesh][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+
+    NodePreviewResult divergentRuntime;
+    divergentRuntime.nodeId = "mesh";
+    divergentRuntime.role = PreviewModuleRole::MeshSurface;
+    divergentRuntime.primary = { 0.f, 1.f, 1.f, 0.f };
+    divergentRuntime.gridColumns = 2;
+    divergentRuntime.gridRows = 2;
+    divergentRuntime.domain = PortDomain::SpectralPhaseSignal;
+    const Node& node = *document.graph().findNode("mesh");
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal);
+    const Rectangle<float> bounds { 0.f, 0.f, 120.f, 96.f };
+
+    const auto render = [&](const NodePreviewResult* runtime) {
+        NodePreviewResources resources(editorCommands);
+        resources.setGraph(&document.graph());
+        NodePreviewRenderer renderer(resources);
+        Image image(Image::ARGB, 120, 96, true);
+        Graphics graphics(image);
+        renderer.paint(graphics, {
+                node,
+                runtime,
+                bounds,
+                profile,
+                1.f,
+                true
+        });
+        return image;
+    };
+
+    const Image authoritative = render(nullptr);
+    const Image withRuntime = render(&divergentRuntime);
+    REQUIRE(authoritative.isValid());
+    REQUIRE(withRuntime.isValid());
+    const auto checksum = [](const Image& image) {
+        uint64_t result = 1469598103934665603ULL;
+        for (int y = 0; y < image.getHeight(); ++y) {
+            for (int x = 0; x < image.getWidth(); ++x) {
+                result ^= image.getPixelAt(x, y).getARGB();
+                result *= 1099511628211ULL;
+            }
+        }
+        return result;
+    };
+    REQUIRE(checksum(withRuntime) == checksum(authoritative));
+}
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
 public:

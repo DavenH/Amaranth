@@ -2,10 +2,9 @@
 
 ## Status
 
-Implemented. Focused guide/Trimesh tests and both preset automation fixtures
-pass. The repository-wide Cycle V2 suite was also run; its two remaining
-failures share the unrelated Stengah `magnitudeLayer1Process.pan` preset drift
-recorded in `audio-bugs.md`.
+Implemented. Compact Trimesh nodes now retain the same authoritative prepared
+widget model as the expanded editor, and Baroque Flute's spectral-phase
+traversal is characterized with and without its authored guide attachments.
 
 ## Problem
 
@@ -82,6 +81,8 @@ edits invalidate every attached Trimesh configuration and preview product.
    including full gesture, commit, refresh, and undo coverage.
 5. Add Baroque Flute and African Horn focused automation assertions for guide
    attachment resolution, changed grid output, and 2D/3D render state.
+6. Remove the compact-preview dual authority and characterize Baroque Flute's
+   spectral-phase traversal with and without its authored guide attachments.
 
 ## Semantic Tests
 
@@ -130,16 +131,22 @@ edits invalidate every attached Trimesh configuration and preview product.
 - Blockwise, gridwise, spectral, oscillator, preview, compact, Panel2D, and
   Panel3D paths consume the prepared mesh/provider pair. Guide-source edits are
   part of the destination configuration and compact-sprite cache keys.
+- Compact Trimesh rendering no longer returns early through the captured-grid
+  heatmap route. That route applied spectral frequency remapping at audio-block
+  resolution, while the expanded editor rendered its prepared model grid.
+  Compact and expanded views now resolve through the same widget-owned grid;
+  captured traversal remains authoritative for DSP diagnostics and probes.
 - Vertex-menu authoring now resolves the selected vertex's owning cubes and
   writes only `guide.cube.<index>.<field>` edges. The provisional vertex target
   parser and production path are deleted.
 - The Baroque Flute fixture asserts amplitude rails and Time/component guide
-  segments; the African Horn fixture asserts its Curve guide and populated
-  guided panel output. The Baroque capture is
-  `/private/tmp/cycle-v2-baroque-guides.png`.
+  segments, including `phaseLayer1`, and captures the compact canvas; the
+  African Horn fixture asserts its Curve guide and populated guided panel
+  output. The Baroque compact capture is
+  `/private/tmp/cycle-v2-baroque-compact-guides.png`.
 
-Verification completed with `*Guide*` (98 assertions), `[trimesh]` (703
+Verification completed with `*Guide*` (110 assertions), `[trimesh]` (718
 assertions), both automation fixtures, the standalone Cycle V2 build, and
-`git diff --check`. The full 459-case Cycle V2 run passed 457 cases; the two
-Stengah failures are the shared preset-pan issue above. `clang-tidy` was not
-available in the environment.
+`git diff --check`. The earlier full 459-case Cycle V2 run passed 457 cases;
+the two Stengah failures are the shared preset-pan issue recorded in
+`audio-bugs.md`. `clang-tidy` was not available in the environment.

@@ -629,6 +629,11 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.node.kind == NodeKind::TrilinearMesh
+            && paintAuthoritativeModel(graphics, request)) {
+        return;
+    }
+
     if (request.runtimeResult != nullptr
             && (request.runtimeResult->role == PreviewModuleRole::SignalSpy
                     || request.runtimeResult->role == PreviewModuleRole::MeshSurface)

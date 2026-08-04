@@ -5,6 +5,30 @@
       "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
     },
     {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-baroque-compact-guides.png"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelComponentGuideSegmentCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-baroque-phase-expanded.png"
+    },
+    {
       "command": "openMeshPopup",
       "nodeId": "magnitudeLayer1"
     },
@@ -35,7 +59,15 @@
     {
       "command": "inspectTargets",
       "area": "canvas"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
     }
   ],
-  "quit": false
+  "quit": true
 }
