@@ -44,6 +44,11 @@
     },
     {
       "command": "assertState",
+      "path": "probeDetailColumns",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
       "path": "probeDetailRows",
       "equals": 129
     },

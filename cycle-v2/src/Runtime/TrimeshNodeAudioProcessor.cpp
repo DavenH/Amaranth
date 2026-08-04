@@ -107,6 +107,9 @@ public:
         }
 
         preparedDomain = spec.domain;
+        preparedTraversalColumns = spec.traversalColumnCount > 0
+                ? spec.traversalColumnCount
+                : std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2);
         smoothedMorph.reset(configuration->morph);
         morphInitialized = true;
 
@@ -122,12 +125,10 @@ public:
                 *const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
                 configuration->primaryViewAxis,
-                std::max(kDefaultTraversalColumns, spec.maximumFrameCount / 2),
+                preparedTraversalColumns,
                 traversalRowsForDomain(preparedDomain, spec.maximumFrameCount),
                 preparedDomain);
-        traversalMorphs.resize(std::max(
-                kDefaultTraversalColumns,
-                spec.maximumFrameCount / 2));
+        traversalMorphs.resize(preparedTraversalColumns);
     }
 
     void process(AudioProcessContext& context) override {
@@ -323,9 +324,7 @@ private:
             const SignalPayload* scratch,
             Rasterization::ScratchSourceDomain scratchDomain,
             SignalPayload& output) {
-        const size_t columnCount = std::max(
-                kDefaultTraversalColumns,
-                context.frameCount / 2);
+        const size_t columnCount = preparedTraversalColumns;
         const size_t rowCount = traversalRowsForDomain(
                 outputPort.domain,
                 context.frameCount);
@@ -387,6 +386,7 @@ private:
     }
 
     bool morphInitialized {};
+    size_t preparedTraversalColumns { kDefaultTraversalColumns };
     AudioModuleRole processorRole { AudioModuleRole::MeshSource };
     PortDomain preparedDomain { PortDomain::ControlSignal };
     SmoothedMorphPosition smoothedMorph;

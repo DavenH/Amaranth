@@ -457,6 +457,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("probeDetailId", state.probeDetailId);
     root->setProperty("probeDetailOpen", state.probeDetailId.isNotEmpty());
     root->setProperty("probeDetailResolution", (int) state.probeDetailResolution);
+    root->setProperty("probeDetailColumns", (int) state.probeDetailColumns);
     root->setProperty("probeDetailRows", (int) state.probeDetailRows);
     root->setProperty("compileSucceeded", compileResult.succeeded());
     root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());

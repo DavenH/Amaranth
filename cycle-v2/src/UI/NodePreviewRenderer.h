@@ -16,6 +16,7 @@ struct NodePreviewRenderRequest {
     float zoom {};
     bool cache { true };
     UnisonPreviewContext unisonContext;
+    bool highQuality {};
 };
 
 class NodePreviewRenderer {

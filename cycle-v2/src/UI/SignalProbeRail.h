@@ -4,6 +4,7 @@
 
 #include "NodeCanvasScene.h"
 #include "NodePreviewRenderer.h"
+#include "SignalProbeDetailView.h"
 #include "../Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
@@ -72,7 +73,8 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state);
+            const SignalProbeRailState& state,
+            const SignalProbeDetailState* detailState = nullptr);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);

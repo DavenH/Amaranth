@@ -133,13 +133,18 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
     graph.addEdge({
-            "wave", "out", "out", "time",
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "fft", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
-    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
     GraphPresentationModel presentation;
     REQUIRE(presentation.refresh(graph, 1));
@@ -152,6 +157,7 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
 
     REQUIRE(detail.has_value());
     REQUIRE(detail->connected);
+    REQUIRE(detail->gridColumns == resolution);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
 }

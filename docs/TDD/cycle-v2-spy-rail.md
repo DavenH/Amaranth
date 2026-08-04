@@ -112,7 +112,9 @@ The larger preview is calculated lazily when a tile is opened. It reuses
 it does not introduce another traversal or rasterization path. Its diagnostic
 frame size is the next power of two at or above one period of the audition note
 at the preview sample rate. Time-domain grids therefore have that many rows;
-spectral grids retain the corresponding unique FFT bins. The immutable preview
+the lazy capture explicitly requests the same number of traversal columns so a
+large view does not magnify the compact preview's half-resolution mesh surface.
+Spectral grids retain the corresponding unique FFT bins. The immutable preview
 voice uses the persisted key value from the upstream Voice Context's attached
 Modulation Triple. The key value is mapped through Cycle's MIDI note range; if
 there is no attached Modulation Triple, MIDI note 60 is the default.
@@ -123,6 +125,10 @@ The authoritative period calculation is
 The presentation boundary translates only the selected probe, detail bounds,
 and close interaction. Closing the view deletes its lazy payload; no graph or
 audio state is retained by the overlay.
+
+While the detail is open, its rail tile renders the same captured payload. This
+keeps compact and expanded views identical without calculating the expensive
+grid during ordinary preview refreshes.
 
 ## Expanded Editor Hosting
 

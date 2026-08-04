@@ -20,6 +20,7 @@ struct NodeCanvasAutomationPresentation {
     juce::Rectangle<float> probeRefreshModeBounds;
     juce::String probeDetailId;
     size_t probeDetailResolution {};
+    size_t probeDetailColumns {};
     size_t probeDetailRows {};
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;

@@ -1053,6 +1053,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
                     probeRailState),
             probeDetailState.probeId,
             probeDetailState.resolution,
+            probeDetailState.renderResult.gridColumns,
             probeDetailState.renderResult.gridRows,
             probeDetailState.isOpen()
                     ? SignalProbeDetailView::boundsFor(canvasContentBounds())

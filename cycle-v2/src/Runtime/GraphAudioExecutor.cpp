@@ -199,6 +199,12 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         executionSpec.sampleRate = timing.sampleRate;
         executionSpec.bpm = timing.bpm;
         executionSpec.beatsPerMeasure = timing.beatsPerMeasure;
+        const auto prepared = preparedVoices.find(voice.voiceIndex);
+        if (prepared != preparedVoices.end()
+                && prepared->second.plan == &plan
+                && prepared->second.maximumFrameCount == frameCount) {
+            executionSpec.traversalColumnCount = prepared->second.traversalColumnCount;
+        }
         prepareExecution(plan, executionSpec, voice.voiceIndex);
     }
 
@@ -465,8 +471,12 @@ void GraphAudioExecutor::prepareExecution(
         const AudioExecutionSpec& spec,
         int voiceIndex) const {
     NodeAudioProcessorFactory factory;
-    const size_t gridValueCapacity = spec.maximumFrameCount
-            * std::max(spec.maximumFrameCount, plan.maximumTraversalColumns);
+    const size_t maximumGridColumns = std::max({
+            spec.maximumFrameCount,
+            spec.traversalColumnCount,
+            plan.maximumTraversalColumns
+    });
+    const size_t gridValueCapacity = spec.maximumFrameCount * maximumGridColumns;
     const bool workspaceMatches = workArena.frameCapacity == spec.maximumFrameCount
             && workArena.inputCapacity == plan.maximumInputCount
             && workArena.outputCapacity == plan.maximumOutputCount
@@ -505,6 +515,7 @@ void GraphAudioExecutor::prepareExecution(
     preparedVoice.voiceIndex = voiceIndex;
     preparedVoice.plan = &plan;
     preparedVoice.maximumFrameCount = spec.maximumFrameCount;
+    preparedVoice.traversalColumnCount = spec.traversalColumnCount;
     preparedVoice.sampleRate = spec.sampleRate;
     preparedVoice.processors.clear();
     preparedVoice.processors.reserve(plan.steps.size());
@@ -534,7 +545,8 @@ void GraphAudioExecutor::prepareExecution(
                 stepSpec.domain,
                 stepSpec.channelLayout,
                 stepSpec.bpm,
-                stepSpec.beatsPerMeasure
+                stepSpec.beatsPerMeasure,
+                stepSpec.traversalColumnCount
         };
         if (cached.prepared && cached.preparation == signature) {
             continue;

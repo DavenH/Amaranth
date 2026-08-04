@@ -16,6 +16,7 @@ struct AudioExecutionSpec {
     PortDomain domain { PortDomain::ControlSignal };
     double bpm { 120.0 };
     int beatsPerMeasure { 4 };
+    size_t traversalColumnCount {};
 };
 
 class INodeDspConfiguration {

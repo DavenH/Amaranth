@@ -331,7 +331,8 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
+        const SignalProbeRailState& state,
+        const SignalProbeDetailState* detailState) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     graphics.setColour(kRailBackground);
     graphics.fillRect(rail);
@@ -400,24 +401,34 @@ void SignalProbeRail::paintRail(
             continue;
         }
 
+        const bool useDetail = detailState != nullptr
+                && detailState->probeId == probe.id;
+        NodePreviewResult compactResult;
+        const NodePreviewResult* renderResult {};
+        if (useDetail) {
+            renderResult = &detailState->renderResult;
+        } else {
+            const PreviewModuleRole displayRole = preview->sourceRole
+                    == PreviewModuleRole::MeshSurface
+                    ? PreviewModuleRole::MeshSurface
+                    : PreviewModuleRole::SignalSpy;
+            compactResult = {
+                    "probe-preview-" + probe.id,
+                    displayRole,
+                    preview->values,
+                    {},
+                    preview->gridColumns,
+                    preview->gridRows,
+                    preview->domain
+            };
+            renderResult = &compactResult;
+        }
         Node displayNode;
         displayNode.id = "probe-preview-" + probe.id;
         displayNode.kind = NodeKind::GenericProcessor;
-        const PreviewModuleRole displayRole = preview->sourceRole == PreviewModuleRole::MeshSurface
-                ? PreviewModuleRole::MeshSurface
-                : PreviewModuleRole::SignalSpy;
-        NodePreviewResult result {
-                displayNode.id,
-                displayRole,
-                preview->values,
-                {},
-                preview->gridColumns,
-                preview->gridRows,
-                preview->domain
-        };
         renderer.paint(graphics, {
                 displayNode,
-                &result,
+                renderResult,
                 previewBounds,
                 TrimeshRenderProfile::fromDomain(preview->domain),
                 1.f,

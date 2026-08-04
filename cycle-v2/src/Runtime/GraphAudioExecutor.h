@@ -113,6 +113,7 @@ private:
         ChannelLayout channelLayout { ChannelLayout::Mono };
         double bpm {};
         int beatsPerMeasure {};
+        size_t traversalColumnCount {};
 
         bool operator==(const PreparationSignature& other) const {
             return revision == other.revision
@@ -122,7 +123,8 @@ private:
                     && domain == other.domain
                     && channelLayout == other.channelLayout
                     && bpm == other.bpm
-                    && beatsPerMeasure == other.beatsPerMeasure;
+                    && beatsPerMeasure == other.beatsPerMeasure
+                    && traversalColumnCount == other.traversalColumnCount;
         }
     };
 
@@ -146,6 +148,7 @@ private:
         int voiceIndex {};
         const GraphExecutionPlan* plan {};
         size_t maximumFrameCount {};
+        size_t traversalColumnCount {};
         double sampleRate {};
         std::vector<NodeAudioProcessor*> processors;
         std::vector<std::unique_ptr<OscillatorRegion>> oscillatorRegions;

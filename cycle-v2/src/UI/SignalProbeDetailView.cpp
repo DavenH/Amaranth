@@ -125,6 +125,8 @@ void SignalProbeDetailView::paint(
             content.withTrimmedTop(4.f),
             TrimeshRenderProfile::fromDomain(state.domain),
             1.f,
+            true,
+            {},
             true
     });
 }

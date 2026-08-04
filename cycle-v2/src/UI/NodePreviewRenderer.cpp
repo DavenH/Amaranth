@@ -280,25 +280,37 @@ std::vector<float> mappedSurface(
     return surface;
 }
 
-bool drawHeatmapImage(Graphics& graphics, Rectangle<float> area, const Image& image) {
+bool drawHeatmapImage(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Image& image,
+        bool highQuality = false) {
     if (!image.isValid()) {
         return false;
     }
 
     const Rectangle<float> content = area.reduced(
             jmin(area.getWidth(), area.getHeight()) * 0.024f);
-    graphics.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    graphics.setImageResamplingQuality(
+            highQuality
+                    ? Graphics::highResamplingQuality
+                    : Graphics::mediumResamplingQuality);
     graphics.setColour(EffectPlotPalette::insetBackground);
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
 }
 
-bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewResult& preview) {
+bool drawHeatmap(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        bool highQuality = false) {
     return drawHeatmapImage(
             graphics,
             area,
-            NodePreviewRenderer::createRuntimeHeatmapImage(preview));
+            NodePreviewRenderer::createRuntimeHeatmapImage(preview),
+            highQuality);
 }
 
 void drawEffect2DFallback(
@@ -745,7 +757,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
 
     if (result.role == PreviewModuleRole::SignalSpy
             || result.role == PreviewModuleRole::MeshSurface) {
-        return drawHeatmap(graphics, request.area, result);
+        return drawHeatmap(graphics, request.area, result, request.highQuality);
     }
 
     if (result.role == PreviewModuleRole::ReverbSpectrogram) {
@@ -806,7 +818,11 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
         cached.runtimeHeatmapSignature = signature;
     }
 
-    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
+    return drawHeatmapImage(
+            graphics,
+            request.area,
+            cached.runtimeHeatmap,
+            request.highQuality);
 }
 
 void NodePreviewRenderer::paintUncached(
@@ -839,7 +855,11 @@ bool NodePreviewRenderer::paintCachedHeatmap(
         cached.domain = result.domain;
         cached.signature = signature;
         Graphics sprite(cached.image);
-        if (!drawHeatmap(sprite, { 0.f, 0.f, (float) width, (float) height }, result)) {
+        if (!drawHeatmap(
+                sprite,
+                { 0.f, 0.f, (float) width, (float) height },
+                result,
+                request.highQuality)) {
             cached.image = {};
             return false;
         }
