@@ -163,6 +163,23 @@ Context:
 Current status: open; isolate the broad UI test that adds an already-parented
 component and capture its exact call site.
 
+## Addressed: Trimesh drag leaves graph edits transient
+
+Context:
+
+- A Trimesh drag could publish one or more mesh changes and then finish with
+  `DidMeshChange` cleared after collision handling. The interactor consequently
+  omitted the gesture-complete event, leaving the dispatcher's transient graph
+  open.
+- Later node moves and edge deletions were applied to that transient copy, so
+  neither the durable graph nor the canvas changed.
+- The 2D and 3D interactors now retain whether the current gesture published
+  an edit and always emit its matching completion on mouse-up.
+- `scripts/test_cycle_v2_native_edit_smoke.py trimesh-versioning` covers the
+  collision/edit sequence followed by node move, edge deletion, and undo.
+
+Current status: addressed on 2026-08-05.
+
 ## Addressed: Cycle v2 automation screenshots appended to existing PNG files
 
 Context:

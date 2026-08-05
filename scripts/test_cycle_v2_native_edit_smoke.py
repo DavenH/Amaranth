@@ -893,7 +893,7 @@ class NativeEditSmoke:
             "Envelope downstream output",
         )
 
-    def trimesh_sequence(self):
+    def trimesh_sequence(self, stop_after_versioning_check=False):
         initial_audio = self.audio_samples()
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
@@ -982,6 +982,39 @@ class NativeEditSmoke:
             collision_state["trimesh"],
             moved_state["trimesh"],
         )
+
+        graph_after_mesh_edit = self.graph_state()
+        voice_bounds = self.node_bounds(graph_after_mesh_edit, "voice")
+        self.command({
+            "command": "moveNode",
+            "nodeId": "voice",
+            "x": voice_bounds["x"] + 24,
+            "y": voice_bounds["y"],
+        })
+        moved_voice = self.graph_state()
+        assert self.node_bounds(moved_voice, "voice")["x"] == voice_bounds["x"] + 24
+
+        self.key_chord("z")
+        restored_voice = self.graph_state_until(
+            lambda graph_state: (
+                self.node_bounds(graph_state, "voice")["x"] == voice_bounds["x"]
+            )
+        )
+        edge_count = restored_voice["edgeCount"]
+        self.command({"command": "deleteEdge", "edgeIndex": 0})
+        assert self.graph_state()["edgeCount"] == edge_count - 1
+
+        self.key_chord("z")
+        restored_edge = self.graph_state_until(
+            lambda graph_state: graph_state["edgeCount"] == edge_count
+        )
+        assert restored_edge["edgeCount"] == edge_count
+        if stop_after_versioning_check:
+            return
+
+        self.open_editor("waveMesh", trimesh=True)
+        panel = self.target("expanded:waveMesh.panel2D")
+
         topology_before_parameter_edit = self.trimesh_model(moved_state)
         self.capture("trimesh-05-before-parameter", self.target("canvas"))
 
@@ -1186,6 +1219,7 @@ class NativeEditSmoke:
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
+                "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "causal-trimesh": self.causal_trimesh_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
@@ -1210,6 +1244,7 @@ if __name__ == "__main__":
         "waveshaper",
         "envelope",
         "trimesh",
+        "trimesh-versioning",
         "causal-trimesh",
         "hover-cursor",
     }

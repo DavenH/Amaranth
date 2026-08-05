@@ -170,6 +170,7 @@ void TrimeshInteractor3D::mouseDrag(const MouseEvent& event) {
     Interactor3D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+        meshEditGestureActive = true;
         meshEditedCallback({ true, false });
     }
 }
@@ -205,9 +206,10 @@ void TrimeshInteractor3D::mouseUp(const MouseEvent& event) {
     flag(LoweredRes) = false;
     flag(SimpleRepaint) = false;
 
-    if (meshChanged && meshEditedCallback != nullptr) {
+    if ((meshChanged || meshEditGestureActive) && meshEditedCallback != nullptr) {
         meshEditedCallback({ true, true });
     }
+    meshEditGestureActive = false;
 }
 
 void TrimeshInteractor3D::deleteSelected() {
