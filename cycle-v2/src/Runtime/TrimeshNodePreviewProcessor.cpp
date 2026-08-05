@@ -5,6 +5,7 @@
 
 #include "PreviewProcessorFactories.h"
 
+#include "../Graph/NodeParameterMap.h"
 #include "../Nodes/Trimesh/PreparedTrimeshTopology.h"
 #include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
@@ -28,10 +29,11 @@ int primaryAxisFromParameter(const String& axisName) {
 }
 
 MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& parameters) {
+    const NodeParameterMap parameterMap(parameters);
     return {
-            typedParameterFloat(parameters, "yellow", 0.5f),
-            typedParameterFloat(parameters, "red", 0.5f),
-            typedParameterFloat(parameters, "blue", 0.5f)
+            parameterMap.floatValue("yellow", 0.5f),
+            parameterMap.floatValue("red", 0.5f),
+            parameterMap.floatValue("blue", 0.5f)
     };
 }
 
@@ -82,10 +84,8 @@ public:
                 : meshMorphFromParameters(context.parameters);
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
-                : primaryAxisFromParameter(typedParameterString(
-                        context.parameters,
-                        "primaryAxis",
-                        "yellow"));
+                : primaryAxisFromParameter(NodeParameterMap(context.parameters)
+                        .stringValue("primaryAxis", "yellow"));
         const PortDomain outputDomain = primaryOutputDomain(context.outputPorts);
         const bool cyclic = outputDomain == PortDomain::TimeSignal;
         const size_t columnCount = std::max<size_t>(8, context.pointCount / 2);

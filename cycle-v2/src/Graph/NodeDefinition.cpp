@@ -687,40 +687,4 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
     applyEnvelopePurpose(node);
 }
 
-String typedParameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        const String& fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == parameterId) {
-            return parameter.value;
-        }
-    }
-    return fallback;
-}
-
-bool typedParameterBool(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        bool fallback) {
-    const String value = typedParameterString(parameters, parameterId, fallback ? "1" : "0").toLowerCase();
-    return value == "1" || value == "true" || value == "on" || value == "yes";
-}
-
-int typedParameterInt(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        int fallback) {
-    const String value = typedParameterString(parameters, parameterId);
-    return value.isNotEmpty() ? value.getIntValue() : fallback;
-}
-
-float typedParameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        float fallback) {
-    const String value = typedParameterString(parameters, parameterId);
-    return value.isNotEmpty() ? value.getFloatValue() : fallback;
-}
-
 }

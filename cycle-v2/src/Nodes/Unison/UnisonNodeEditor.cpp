@@ -2,8 +2,8 @@
 
 #include "UnisonNode.h"
 #include "../Effects/EffectPreviewRenderer.h"
+#include "../../Graph/NodeParameterMap.h"
 #include "../../UI/NodeEditorHost.h"
-#include "../../UI/NodeParameterValue.h"
 
 namespace CycleV2 {
 
@@ -63,8 +63,9 @@ public:
     void setNode(const Node& nodeToUse) {
         bindingNode = true;
         node = nodeToUse;
+        const NodeParameterMap parameters(node);
         enabledButton.setToggleState(
-                nodeParameterValue(node, "enabled", "1").getIntValue() != 0,
+                parameters.boolValue("enabled", true),
                 dontSendNotification);
         modeSelector.setSelectedId(
                 individualMode() ? 2 : 1,
@@ -72,8 +73,7 @@ public:
         for (auto& control : controls) {
             if (control->kind != ControlKind::IndividualVoice) {
                 control->slider.setValue(
-                        nodeParameterValue(
-                                node,
+                        parameters.stringValue(
                                 control->id,
                                 String(control->defaultValue)).getDoubleValue(),
                         dontSendNotification);
@@ -229,7 +229,7 @@ private:
     }
 
     bool individualMode() const {
-        return nodeParameterValue(node, "mode", "group") == "individual";
+        return NodeParameterMap(node).stringValue("mode", "group") == "individual";
     }
 
     std::shared_ptr<const UnisonNodeModelState> individualModel() const {
@@ -264,7 +264,7 @@ private:
             for (auto& control : controls) {
                 if (control->id == "phase") {
                     control->slider.setValue(
-                            nodeParameterValue(node, "phase", "0.5").getDoubleValue(),
+                            NodeParameterMap(node).floatValue("phase", 0.5f),
                             dontSendNotification);
                     updateReadout(*control);
                     break;
@@ -328,7 +328,7 @@ private:
         } else if (control.id == "phase") {
             text = String(value, 2) + " cycles";
         } else if (control.id == "voiceFine") {
-            const float width = nodeParameterValue(node, "width", "35").getFloatValue();
+            const float width = NodeParameterMap(node).floatValue("width", 35.f);
             text = String(CycleDsp::UnisonCore::detuneCentsFromPosition(value, width), 1)
                     + " cents";
         } else {

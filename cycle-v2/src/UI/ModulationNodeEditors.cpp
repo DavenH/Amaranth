@@ -1,6 +1,6 @@
 #include "ModulationNodeEditors.h"
 
-#include "NodeParameterValue.h"
+#include "../Graph/NodeParameterMap.h"
 
 namespace CycleV2 {
 
@@ -81,24 +81,17 @@ public:
     void setNode(const Node& node) {
         nodeId = node.id;
         binding = true;
-        const String sourceId = nodeParameterValue(
-                node,
-                parameterId(prefix, "source"),
-                defaultSource);
+        const NodeParameterMap parameters(node);
+        const String sourceId = parameters.stringValue(
+                parameterId(prefix, "source"), defaultSource);
         source.setSelectedItemIndex(
                 jmax(0, sourceIds.indexOf(sourceId)),
                 dontSendNotification);
         controller.setValue(
-                nodeParameterValue(
-                        node,
-                        parameterId(prefix, "controller"),
-                        "1").getDoubleValue(),
+                parameters.floatValue(parameterId(prefix, "controller"), 1.f),
                 dontSendNotification);
         constant.setValue(
-                nodeParameterValue(
-                        node,
-                        parameterId(prefix, "constant"),
-                        "0.5").getDoubleValue(),
+                parameters.floatValue(parameterId(prefix, "constant"), 0.5f),
                 dontSendNotification);
         binding = false;
         updateConditionalControl();

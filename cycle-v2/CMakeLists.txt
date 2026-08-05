@@ -88,6 +88,7 @@ list(REMOVE_DUPLICATES APP_SOURCES)
 set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeParameterMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDomainResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphRenderSemanticResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"

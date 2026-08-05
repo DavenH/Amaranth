@@ -9,6 +9,8 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "NodeCanvas.h"
+
+#include "../Graph/NodeParameterMap.h"
 #include "NodeViewModule.h"
 #include "TransformCompactEditor.h"
 
@@ -413,10 +415,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (inlinePanDialContains(viewport, *inlinePan, event.position)
                 && authoring.beginSpectralPanGesture(inlinePan->id)) {
             draggingSpectralPanNodeId = inlinePan->id;
-            spectralPanDragStartValue = typedParameterFloat(
-                    inlinePan->parameters,
-                    "pan",
-                    0.5f);
+            spectralPanDragStartValue = NodeParameterMap(*inlinePan)
+                    .floatValue("pan", 0.5f);
             selectedNodeId = inlinePan->id;
             selectedEdgeIndex = -1;
             requestCanvasRepaint();

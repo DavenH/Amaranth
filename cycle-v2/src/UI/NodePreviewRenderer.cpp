@@ -1,7 +1,7 @@
 #include "NodePreviewRenderer.h"
 
-#include "NodeParameterValue.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
+#include "../Graph/NodeParameterMap.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
@@ -42,7 +42,7 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
             return role == PreviewModuleRole::EqualizerResponse
                     ? EffectPlotPalette::forEnabledState(
                             colourForDomain(PortDomain::TimeSignal),
-                            nodeParameterValue(node, "enabled", "1").getIntValue() != 0)
+                            NodeParameterMap(node).boolValue("enabled", true))
                     : colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
             return Colour(0xffd2d9e2);
@@ -508,7 +508,7 @@ void drawSpectralLayerPreview(
         Rectangle<float> area,
         const Node& node,
         PortDomain domain) {
-    const float pan = jlimit(0.f, 1.f, nodeParameterValue(node, "pan", "0.5").getFloatValue());
+    const float pan = jlimit(0.f, 1.f, NodeParameterMap(node).floatValue("pan", 0.5f));
     const float diameter = jmin(area.getWidth(), area.getHeight());
     const Rectangle<float> dial(diameter, diameter);
     const Rectangle<float> bounds = dial.withCentre(area.getCentre());
@@ -729,7 +729,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 jmin(request.area.getWidth(), request.area.getHeight()) * 0.04f);
         graphics.setColour(EffectPlotPalette::forEnabledState(
                 EffectPlotPalette::insetBackground,
-                nodeParameterValue(request.node, "enabled", "1").getIntValue() != 0));
+                NodeParameterMap(request.node).boolValue("enabled", true)));
         graphics.fillRoundedRectangle(background, 4.f);
         paintEqualizerResponseData(
                 graphics,
@@ -766,7 +766,7 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
     }
 
     const bool desaturated = request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
-            && nodeParameterValue(request.node, "enabled", "1").getIntValue() == 0;
+            && !NodeParameterMap(request.node).boolValue("enabled", true);
     const String signature = runtimeSignature(*request.runtimeResult)
             + "|desaturated:" + String(desaturated ? 1 : 0);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);

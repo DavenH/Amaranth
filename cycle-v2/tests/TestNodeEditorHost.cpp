@@ -16,7 +16,6 @@
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeEditorHost.h"
-#include "../src/UI/NodeParameterValue.h"
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodePreviewResources.h"
 
@@ -902,10 +901,10 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
                     { 1, 0.f, 0.25f, 1.f },
                     { 2, 1.f, 0.75f, 1.f }
             });
-    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.9");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.9");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.5");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -971,7 +970,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
     commands.endTrimeshMorphEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("mesh"), "yellow") == "0.800");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
     REQUIRE(presentation.recordedMovements == 1);
     REQUIRE(presentation.immediateRefreshes == 1);
     REQUIRE(presentation.localCommits == 0);
@@ -1027,10 +1026,10 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.700000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.700000");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.recordedMovements == 2);
@@ -1059,7 +1058,7 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
             dispatcher,
             presentation,
             resources);
-    const String originalWidth = nodeParameterValue(
+    const String originalWidth = parameterValueForNode(
             *document.graph().findNode("unison"), "width");
     const uint64_t originalRevision = document.revision();
     std::vector<float> observedDetunes;
@@ -1084,13 +1083,13 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(document.revision() == originalRevision);
     commands.endNodeParameterEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == "60.000000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == "60.000000");
     REQUIRE(presentation.recordedMovements == 3);
     REQUIRE(presentation.repaints == 3);
     REQUIRE(presentation.rebinds == 1);
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == originalWidth);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -1110,9 +1109,9 @@ TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transac
             dispatcher,
             presentation,
             resources);
-    const String originalGain = nodeParameterValue(
+    const String originalGain = parameterValueForNode(
             *document.graph().findNode("equalizer"), "band3Gain");
-    const String originalFrequency = nodeParameterValue(
+    const String originalFrequency = parameterValueForNode(
             *document.graph().findNode("equalizer"), "band3Frequency");
 
     REQUIRE(commands.beginNodeParameterPairEdit(
@@ -1122,13 +1121,13 @@ TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transac
     commands.endNodeParameterEdit();
 
     const Node* edited = document.graph().findNode("equalizer");
-    REQUIRE(nodeParameterValue(*edited, "band3Gain") == "0.750000");
-    REQUIRE(nodeParameterValue(*edited, "band3Frequency") == "0.650000");
+    REQUIRE(parameterValueForNode(*edited, "band3Gain") == "0.750000");
+    REQUIRE(parameterValueForNode(*edited, "band3Frequency") == "0.650000");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     const Node* restored = document.graph().findNode("equalizer");
-    REQUIRE(nodeParameterValue(*restored, "band3Gain") == originalGain);
-    REQUIRE(nodeParameterValue(*restored, "band3Frequency") == originalFrequency);
+    REQUIRE(parameterValueForNode(*restored, "band3Gain") == originalGain);
+    REQUIRE(parameterValueForNode(*restored, "band3Frequency") == originalFrequency);
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -1151,13 +1150,13 @@ TEST_CASE("Effect discrete parameter changes are independently undoable",
 
     REQUIRE(commands.setNodeParameterValue("delay", "enabled", "Enabled", 0.f));
     REQUIRE(commands.setNodeParameterValue("delay", "time", "Time", 0.25f));
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.250000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "time") == "0.250000");
     REQUIRE(presentation.rebinds == 2);
 
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.5");
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "0");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "time") == "0.5");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "0");
 
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "1");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "1");
 }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "../../Graph/NodeParameterMap.h"
 #include "../Effect2D/CurveNodeModels.h"
 #include "../Effect2D/FlatCurvePreparation.h"
 
@@ -11,31 +12,6 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kGuidePadding = 0.05f;
-float parameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        float fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getFloatValue();
-        }
-    }
-
-    return fallback;
-}
-
-bool parameterBool(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        bool fallback) {
-    for (const auto& parameter : parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getIntValue() != 0;
-        }
-    }
-
-    return fallback;
-}
 
 }
 
@@ -53,16 +29,17 @@ bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
 
     GuideSnapshot snapshot;
     snapshot.table.resize(tableSize);
-    snapshot.parameters.noiseLevel = parameterFloat(node.parameters, "noise", 0.f);
-    snapshot.parameters.verticalOffsetLevel = parameterFloat(node.parameters, "dcOffset", 0.f);
-    snapshot.parameters.phaseOffsetLevel = parameterFloat(node.parameters, "phase", 0.f);
+    const NodeParameterMap parameters(node);
+    snapshot.parameters.noiseLevel = parameters.floatValue("noise", 0.f);
+    snapshot.parameters.verticalOffsetLevel = parameters.floatValue("dcOffset", 0.f);
+    snapshot.parameters.phaseOffsetLevel = parameters.floatValue("phase", 0.f);
     snapshot.parameters.seed = stableSeed((int) guides.size());
 
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
     snapshot.density = curve != nullptr ? (int) curve->getVertices().size() : 0;
 
-    if (!parameterBool(node.parameters, "enabled", true)) {
+    if (!parameters.boolValue("enabled", true)) {
         Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).zero();
         guides.push_back(std::move(snapshot));
         return true;

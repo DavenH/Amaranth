@@ -1,5 +1,7 @@
 #include "NodeGraph.h"
 
+#include "NodeParameterMap.h"
+
 #include "GraphNodeFactory.h"
 #include "NodeDefinition.h"
 
@@ -582,13 +584,7 @@ std::optional<AttachmentType> attachmentTypeForId(const String& id) {
 }
 
 String parameterValueForNode(const Node& node, const String& parameterId, const String& fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == parameterId) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
+    return NodeParameterMap(node).stringValue(parameterId, fallback);
 }
 
 NodeNaturalSize naturalSizeForNode(const Node& node) {

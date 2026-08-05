@@ -4,6 +4,8 @@
 
 #include "ModulationSource.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include "../../Runtime/AudioProcessContextUtils.h"
 
 namespace CycleV2 {
@@ -182,13 +184,13 @@ ModulationSourceConfiguration ModulationSource::buildConfiguration(
     const String sourceId = prefix.isEmpty() ? "source" : prefix + "Source";
     const String controllerId = prefix.isEmpty() ? "controller" : prefix + "Controller";
     const String constantId = prefix.isEmpty() ? "constant" : prefix + "Constant";
+    const NodeParameterMap parameterMap(parameters);
     ModulationSourceConfiguration configuration;
-    configuration.mode = modeFromId(typedParameterString(
-            parameters, sourceId, defaultSource));
+    configuration.mode = modeFromId(parameterMap.stringValue(sourceId, defaultSource));
     configuration.controller = jlimit(0, 127,
-            typedParameterInt(parameters, controllerId, 1));
+            parameterMap.intValue(controllerId, 1));
     configuration.constant = jlimit(0.f, 1.f,
-            typedParameterFloat(parameters, constantId, 0.5f));
+            parameterMap.floatValue(constantId, 0.5f));
     return configuration;
 }
 

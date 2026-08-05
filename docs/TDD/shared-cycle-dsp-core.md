@@ -578,9 +578,9 @@ Current status:
 - Imported Cycle 1 meshes preserve `VertCube::guideCurveChans` metadata and the
   graph grammar now accepts stable `guide.cube.<index>.<field>` attachment
   targets. Stengah serializes its two channel-0 assignments using those exact
-  cube-component targets. The provider slice must translate the targets to the
-  preserved channel assignments; it must not approximate them with per-vertex
-  routing.
+  cube-component targets. `TrimeshGuidePreparation` translates those targets
+  into render-local provider slots while preserving the component assignment;
+  it does not approximate them with per-vertex routing.
 
 Target:
 

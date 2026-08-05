@@ -1,5 +1,7 @@
 #include "GraphCompiler.h"
 
+#include "NodeParameterMap.h"
+
 #include "../Nodes/Control/ModulationTriple.h"
 #include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "../Nodes/Unison/UnisonNode.h"
@@ -112,16 +114,6 @@ std::vector<GraphStepOutput> buildStepOutputs(
     }
 
     return outputs;
-}
-
-int parameterInt(const Node& node, const String& parameterId, int fallback) {
-    const String value = parameterValueForNode(node, parameterId);
-
-    if (value.isEmpty()) {
-        return fallback;
-    }
-
-    return value.getIntValue();
 }
 
 String transformModeForNode(const Node& node) {
@@ -292,7 +284,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 descriptor.previewable,
                 descriptor.cycle1AdapterBacked,
                 descriptor.cycle1Reference,
-                parameterInt(node, "cycleFrames", 2048),
+                NodeParameterMap(node).intValue("cycleFrames", 2048),
                 latencyCyclesForNode(node),
                 transformModeForNode(node),
                 node.parameters,
@@ -508,15 +500,16 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
             continue;
         }
 
+        const NodeParameterMap parameters(node);
         CompiledVoiceContext context;
         context.nodeId = node.id;
-        context.startDomain = parameterValueForNode(node, "domain", "waveform");
-        context.octave = typedParameterInt(node.parameters, "octave", 0);
-        context.pitchSemitones = typedParameterFloat(node.parameters, "pitch", 0.f);
-        context.portamento = typedParameterBool(node.parameters, "portamento", false);
+        context.startDomain = parameters.stringValue("domain", "waveform");
+        context.octave = parameters.intValue("octave", 0);
+        context.pitchSemitones = parameters.floatValue("pitch", 0.f);
+        context.portamento = parameters.boolValue("portamento", false);
         context.oversampling = jmax(
                 1,
-                parameterValueForNode(node, "oversampling", "1x").getIntValue());
+                parameters.stringValue("oversampling", "1x").getIntValue());
         context.defaultModulation = defaultModulation;
         auto unison = defaultUnison;
         context.unison = unison;

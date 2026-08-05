@@ -5,6 +5,8 @@
 #include "TrimeshMeshFactory.h"
 #include "TrimeshRenderProfile.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -30,36 +32,6 @@ bool includes(
 }
 
 namespace {
-
-float parameterFloat(const Node& node, const String& id, float fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getFloatValue();
-        }
-    }
-
-    return fallback;
-}
-
-String parameterString(const Node& node, const String& id, const String& fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
-}
-
-int parameterInt(const Node& node, const String& id, int fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getIntValue();
-        }
-    }
-
-    return fallback;
-}
 
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
@@ -111,13 +83,14 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
 }
 
 void TrimeshNodeModel::syncFromNode(const Node& node) {
+    const NodeParameterMap parameters(node);
     const MorphPosition nextMorph {
-            parameterFloat(node, "yellow", 0.5f),
-            parameterFloat(node, "red", 0.5f),
-            parameterFloat(node, "blue", 0.5f)
+            parameters.floatValue("yellow", 0.5f),
+            parameters.floatValue("red", 0.5f),
+            parameters.floatValue("blue", 0.5f)
     };
     const int nextPrimaryAxis = primaryAxisFromParameter(
-            parameterString(node, "primaryAxis", "yellow"));
+            parameters.stringValue("primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
             "selectedVertexId", -1);
 

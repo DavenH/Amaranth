@@ -2,6 +2,7 @@
 
 #include "NodeDspConfiguration.h"
 
+#include "../Graph/NodeParameterMap.h"
 #include "../Nodes/Control/ModulationSource.h"
 #include "../Nodes/Control/ModulationTriple.h"
 #include "../Nodes/Effects/EffectSignalProcessors.h"
@@ -30,6 +31,7 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     if (typedModel == nullptr) {
         return {};
     }
+    const NodeParameterMap parameterMap(parameters);
     configuration->mesh = typedModel->sharedMesh();
     if (graph != nullptr) {
         const Node* node = graph->findNode(nodeId);
@@ -44,11 +46,11 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         }
     }
     configuration->morph = {
-            typedParameterFloat(parameters, "yellow", 0.5f),
-            typedParameterFloat(parameters, "red", 0.5f),
-            typedParameterFloat(parameters, "blue", 0.5f)
+            parameterMap.floatValue("yellow", 0.5f),
+            parameterMap.floatValue("red", 0.5f),
+            parameterMap.floatValue("blue", 0.5f)
     };
-    const String axis = typedParameterString(parameters, "primaryAxis", "yellow");
+    const String axis = parameterMap.stringValue("primaryAxis", "yellow");
     configuration->primaryViewAxis = axis == "red" ? Vertex::Red
             : (axis == "blue" ? Vertex::Blue : Vertex::Time);
     return configuration;
@@ -110,15 +112,16 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         } },
         { AudioModuleRole::WaveSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
             auto configuration = buildTrimeshConfiguration(values, {}, nullptr, {});
+            const NodeParameterMap parameters(values);
             configuration->processorRole = roleToUse;
-            configuration->gain = typedParameterFloat(values, "level", 1.f)
-                    * typedParameterFloat(values, "amplitude", 1.f);
+            configuration->gain = parameters.floatValue("level", 1.f)
+                    * parameters.floatValue("amplitude", 1.f);
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::ImageSource, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
             auto configuration = std::make_shared<SourceNodeConfiguration>();
             configuration->processorRole = roleToUse;
-            configuration->level = typedParameterFloat(values, "level", 1.f);
+            configuration->level = NodeParameterMap(values).floatValue("level", 1.f);
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::Fft, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
@@ -130,18 +133,16 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         { AudioModuleRole::Ifft, [](AudioModuleRole roleToUse, const auto& values, const auto&) {
             auto configuration = std::make_shared<FftNodeConfiguration>();
             configuration->processorRole = roleToUse;
-            configuration->halfCycleCarry = typedParameterString(values, "mode", "cyclic")
+            configuration->halfCycleCarry = NodeParameterMap(values).stringValue("mode", "cyclic")
                     == "acyclicCarry";
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::SpectralLayer, [](AudioModuleRole, const auto& values, const auto&) {
             auto configuration = std::make_shared<SpectralLayerConfiguration>();
-            configuration->pan = typedParameterFloat(values, "pan", 0.5f);
-            configuration->range = typedParameterFloat(values, "range", 0.5f);
-            configuration->additive = typedParameterString(
-                    values,
-                    "mode",
-                    "additive") == "additive";
+            const NodeParameterMap parameters(values);
+            configuration->pan = parameters.floatValue("pan", 0.5f);
+            configuration->range = parameters.floatValue("range", 0.5f);
+            configuration->additive = parameters.stringValue("mode", "additive") == "additive";
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
@@ -158,12 +159,13 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         } },
         { AudioModuleRole::Delay, [](AudioModuleRole, const auto& values, const auto&) {
             auto configuration = std::make_shared<DelayConfiguration>();
-            configuration->enabled = typedParameterBool(values, "enabled", true);
-            configuration->time = typedParameterFloat(values, "time", 0.5f);
-            configuration->feedback = typedParameterFloat(values, "feedback", 0.5f);
-            configuration->spin = typedParameterFloat(values, "spin", 1.f);
-            configuration->wet = typedParameterFloat(values, "wet", 0.9f);
-            configuration->spinIterations = typedParameterFloat(values, "spinIters", 0.f);
+            const NodeParameterMap parameters(values);
+            configuration->enabled = parameters.boolValue("enabled", true);
+            configuration->time = parameters.floatValue("time", 0.5f);
+            configuration->feedback = parameters.floatValue("feedback", 0.5f);
+            configuration->spin = parameters.floatValue("spin", 1.f);
+            configuration->wet = parameters.floatValue("wet", 0.9f);
+            configuration->spinIterations = parameters.floatValue("spinIters", 0.f);
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::Equalizer, [](AudioModuleRole, const auto& values, const auto&) {

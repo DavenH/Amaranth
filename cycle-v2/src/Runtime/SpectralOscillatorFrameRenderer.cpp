@@ -1,5 +1,7 @@
 #include "SpectralOscillatorFrameRenderer.h"
 
+#include "../Graph/NodeParameterMap.h"
+
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Curve.h>
@@ -224,15 +226,14 @@ bool SpectralOscillatorFrameRenderer::prepare(
                 break;
             }
             case AudioModuleRole::Fft:      operation.type = OperationType::Fft; break;
-            case AudioModuleRole::SpectralLayer:
+            case AudioModuleRole::SpectralLayer: {
+                const NodeParameterMap parameters(step.parameters);
                 operation.type = OperationType::SpectralLayer;
-                operation.pan = typedParameterFloat(step.parameters, "pan", 0.5f);
-                operation.range = typedParameterFloat(step.parameters, "range", 0.5f);
-                operation.additive = typedParameterString(
-                        step.parameters,
-                        "mode",
-                        "additive") == "additive";
+                operation.pan = parameters.floatValue("pan", 0.5f);
+                operation.range = parameters.floatValue("range", 0.5f);
+                operation.additive = parameters.stringValue("mode", "additive") == "additive";
                 break;
+            }
             case AudioModuleRole::Ifft:     operation.type = OperationType::Ifft; break;
             case AudioModuleRole::Add:      operation.type = OperationType::Add; break;
             case AudioModuleRole::Multiply: operation.type = OperationType::Multiply; break;
