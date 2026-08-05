@@ -127,9 +127,10 @@ edits invalidate every attached Trimesh configuration and preview product.
 
 ## Implementation Result
 
-- `GuideCurveSnapshotProvider` reproduces Cycle 1's 8192-sample padded bipolar
-  tables, guide parameters, stable per-guide noise, and domain-stable visual
-  offset seeds.
+- `GuideCurveSnapshotProvider` owns Cycle 2's immutable 8192-sample padded
+  bipolar tables and delegates table lookup, downsampling, phase rotation,
+  stable noise, DC offset, and seed generation to the same
+  `GuideCurveTableDsp` core used by Cycle 1.
 - `TrimeshGuidePreparation` is the only graph-to-rasterizer adapter. It copies
   the destination mesh, clears legacy channels, maps cube-component edges to
   local provider slots, and delegates all deformation and waveform baking to

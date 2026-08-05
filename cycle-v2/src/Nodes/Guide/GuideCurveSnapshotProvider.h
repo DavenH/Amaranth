@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Curve/GuideCurveProvider.h>
+#include <Curve/GuideCurveTableDsp.h>
 
 #include <cstdint>
 #include <vector>
@@ -32,10 +32,7 @@ public:
 private:
     struct GuideSnapshot {
         std::vector<float> table;
-        float noiseLevel {};
-        float verticalOffsetLevel {};
-        float phaseOffsetLevel {};
-        int seed {};
+        GuideCurveTableParameters parameters;
         int density {};
     };
 

@@ -34,8 +34,7 @@ GuideCurvePanel::GuideCurvePanel(SingletonRepo* repo) :
 
 namespace {
     int stableGuideSeed(int guideIndex) {
-        const uint32_t mixed = (uint32_t(guideIndex) + 1u) * 0x9e3779b9u;
-        return (int) (mixed % uint32_t(GuideCurveProvider::tableSize));
+        return GuideCurveTableDsp::stableSeed(guideIndex);
     }
 }
 
@@ -74,9 +73,8 @@ void GuideCurvePanel::init() {
 
     samplingInterval = (1.f - 2 * getRealConstant(GuideCurvePadding)) / float(tableSize - 1);
 
-    unsigned int seed = 0x47554944u;
     noiseArray = constMemory.place(tableSize);
-    noiseArray.rand(seed).sub(0.5f);
+    GuideCurveTableDsp::initializeNoise(noiseArray);
     phaseMoveBuffer = constMemory.place(tableSize);
 
     createNameImage("Guide Curves");
@@ -566,41 +564,19 @@ bool GuideCurvePanel::readJSON(const var& object) {
 void GuideCurvePanel::sampleDownAddNoise(int index,
                                        Buffer<float> dest,
                                        const NoiseContext& context) {
-    int length = dest.size();
-
     if (! isPositiveAndBelow(index, (int) guideTables.size())) {
         dest.zero();
         return;
     }
 
-    GuideCurveProps& props 	= guideTables[index];
-    Buffer<Float32> table = props.table;
-
-    dest.downsampleFrom(table);
-
-    length = dest.size();
-
-    if (props.phaseOffsetLevel > 0) {
-        int phaseOffset = (context.phaseOffset & tableModulo - tableSize / 2) * props.phaseOffsetLevel;
-
-        dest.withPhase(phaseOffset % length, phaseMoveBuffer.withSize(length));
-    }
-
-    if (props.noiseLevel > 0.f) {
-        int noiseOffset = (props.seed + context.noiseSeed) & tableModulo;
-        int elemsToCopy = jmin(length, noiseArray.size() - noiseOffset);
-
-        dest.addProduct(noiseArray.section(noiseOffset, elemsToCopy), props.noiseLevel);
-
-        if (length - elemsToCopy > 0) {
-            dest.offset(elemsToCopy).addProduct(noiseArray, props.noiseLevel);
-        }
-    }
-
-    if (props.vertOffsetLevel > 0.f) {
-        int offset = (props.seed + context.vertOffset) & tableModulo;
-        dest.add(props.vertOffsetLevel * noiseArray[offset]);
-    }
+    GuideCurveProps& props = guideTables[index];
+    GuideCurveTableDsp::sampleDownAddNoise(
+            props.table,
+            noiseArray,
+            phaseMoveBuffer,
+            props.parameters(),
+            dest,
+            context);
 }
 
 void GuideCurvePanel::reset() {

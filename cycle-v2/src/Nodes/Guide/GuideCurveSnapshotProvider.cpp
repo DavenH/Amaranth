@@ -11,8 +11,6 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kGuidePadding = 0.05f;
-constexpr int kTableModulo = GuideCurveProvider::tableSize - 1;
-
 float parameterFloat(
         const std::vector<NodeParameter>& parameters,
         const String& id,
@@ -44,8 +42,8 @@ bool parameterBool(
 GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
         noise        (tableSize)
     ,   phaseScratch (tableSize) {
-    uint32_t seed = 0x47554944u;
-    Buffer<float>(noise.data(), (int) noise.size()).rand(seed).sub(0.5f);
+    GuideCurveTableDsp::initializeNoise(
+            Buffer<float>(noise.data(), (int) noise.size()));
 }
 
 bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
@@ -55,10 +53,10 @@ bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
 
     GuideSnapshot snapshot;
     snapshot.table.resize(tableSize);
-    snapshot.noiseLevel = parameterFloat(node.parameters, "noise", 0.f);
-    snapshot.verticalOffsetLevel = parameterFloat(node.parameters, "dcOffset", 0.f);
-    snapshot.phaseOffsetLevel = parameterFloat(node.parameters, "phase", 0.f);
-    snapshot.seed = stableSeed((int) guides.size());
+    snapshot.parameters.noiseLevel = parameterFloat(node.parameters, "noise", 0.f);
+    snapshot.parameters.verticalOffsetLevel = parameterFloat(node.parameters, "dcOffset", 0.f);
+    snapshot.parameters.phaseOffsetLevel = parameterFloat(node.parameters, "phase", 0.f);
+    snapshot.parameters.seed = stableSeed((int) guides.size());
 
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
@@ -99,17 +97,12 @@ float GuideCurveSnapshotProvider::getTableValue(
         return 0.f;
     }
 
-    const float position = progress * (float) (tableSize - 1);
-    const int tableIndex = (int) position;
-    const int phaseOffset = (context.phaseOffset & (kTableModulo - tableSize / 2))
-            * guide->phaseOffsetLevel;
-    const int sampleIndex = (tableIndex + phaseOffset) & kTableModulo;
-    const int noiseIndex = (context.noiseSeed + guide->seed) & kTableModulo;
-    const int verticalIndex = context.vertOffset & kTableModulo;
-
-    return guide->table[(size_t) sampleIndex]
-            + guide->noiseLevel * noise[(size_t) noiseIndex]
-            + guide->verticalOffsetLevel * noise[(size_t) verticalIndex];
+    return GuideCurveTableDsp::tableValue(
+            Buffer<Float32>(guide->table.data(), (int) guide->table.size()),
+            Buffer<float>(noise.data(), (int) noise.size()),
+            guide->parameters,
+            progress,
+            context);
 }
 
 void GuideCurveSnapshotProvider::sampleDownAddNoise(
@@ -122,35 +115,13 @@ void GuideCurveSnapshotProvider::sampleDownAddNoise(
         return;
     }
 
-    destination.downsampleFrom(Buffer<float>(guide->table.data(), (int) guide->table.size()));
-    const int length = destination.size();
-
-    if (guide->phaseOffsetLevel > 0.f && length > 0) {
-        const int phaseOffset = (context.phaseOffset & (kTableModulo - tableSize / 2))
-                * guide->phaseOffsetLevel;
-        destination.withPhase(
-                phaseOffset % length,
-                Buffer<float>(phaseScratch.data(), length));
-    }
-
-    if (guide->noiseLevel > 0.f) {
-        const int noiseOffset = (guide->seed + context.noiseSeed) & kTableModulo;
-        const int firstLength = jmin(length, (int) noise.size() - noiseOffset);
-        destination.withSize(firstLength).addProduct(
-                Buffer<float>(noise.data() + noiseOffset, firstLength),
-                guide->noiseLevel);
-
-        if (length > firstLength) {
-            destination.offset(firstLength).addProduct(
-                    Buffer<float>(noise.data(), length - firstLength),
-                    guide->noiseLevel);
-        }
-    }
-
-    if (guide->verticalOffsetLevel > 0.f) {
-        const int offset = (guide->seed + context.vertOffset) & kTableModulo;
-        destination.add(guide->verticalOffsetLevel * noise[(size_t) offset]);
-    }
+    GuideCurveTableDsp::sampleDownAddNoise(
+            Buffer<Float32>(guide->table.data(), (int) guide->table.size()),
+            Buffer<float>(noise.data(), (int) noise.size()),
+            Buffer<float>(phaseScratch.data(), (int) phaseScratch.size()),
+            guide->parameters,
+            destination,
+            context);
 }
 
 Buffer<Float32> GuideCurveSnapshotProvider::getTable(int guideIndex) {
@@ -174,8 +145,7 @@ uint32_t GuideCurveSnapshotProvider::visualizationSeed(PortDomain domain) {
 }
 
 int GuideCurveSnapshotProvider::stableSeed(int guideIndex) {
-    const uint32_t mixed = ((uint32_t) guideIndex + 1u) * 0x9e3779b9u;
-    return (int) (mixed % (uint32_t) tableSize);
+    return GuideCurveTableDsp::stableSeed(guideIndex);
 }
 
 GuideCurveSnapshotProvider::GuideSnapshot* GuideCurveSnapshotProvider::guideAt(
