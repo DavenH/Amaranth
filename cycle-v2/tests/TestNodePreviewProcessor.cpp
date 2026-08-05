@@ -7,6 +7,7 @@
 #include "../src/Runtime/NodePreviewProcessor.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
 #include "../src/Nodes/Effects/EffectSignalProcessors.h"
+#include "../src/Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 #include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/SpectralPreviewMapping.h"
 
@@ -195,7 +196,7 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
     }
 }
 
-TEST_CASE("Spectral spy heatmaps match multiplicative mesh presentation",
+TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     NodePreviewResult mesh;
     mesh.role = PreviewModuleRole::MeshSurface;
@@ -217,10 +218,23 @@ TEST_CASE("Spectral spy heatmaps match multiplicative mesh presentation",
 
     const Image meshImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);
     const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
+    TrimeshRenderData expectedData;
+    expectedData.surface = mesh.primary;
+    expectedData.columns = (int) mesh.gridColumns;
+    expectedData.rows = (int) mesh.gridRows;
+    expectedData.domain = mesh.domain;
+    profile.mapValuesToDisplay(Buffer<float>(
+            expectedData.surface.data(),
+            (int) expectedData.surface.size()));
+    const Image expectedImage = TrimeshSurfaceRenderer::createHeatmapImage(
+            expectedData,
+            profile);
 
     REQUIRE(meshImage.isValid());
     REQUIRE(spyImage.isValid());
-    REQUIRE(imagesMatch(meshImage, spyImage));
+    REQUIRE(expectedImage.isValid());
+    REQUIRE(imagesMatch(meshImage, expectedImage));
+    REQUIRE(imagesMatch(spyImage, expectedImage));
 
     mesh.primary.assign(mesh.primary.size(), 0.f);
     const Image zeroImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);

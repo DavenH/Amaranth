@@ -15,6 +15,7 @@ struct NodeAudioResult {
     String nodeId;
     SignalPayload output;
     std::vector<std::pair<String, SignalPayload>> outputs;
+    std::vector<SignalTraversalGrid> probeTraversalGrids;
 };
 
 struct GraphAudioResult {

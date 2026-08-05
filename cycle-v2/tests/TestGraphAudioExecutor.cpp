@@ -1804,7 +1804,9 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
     REQUIRE(leftPhaseProbe.connected);
     REQUIRE(leftPhaseProbe.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(leftPhaseProbe.channelLayout == ChannelLayout::StereoPair);
-    REQUIRE(leftPhaseProbe.values == leftPhase.traversalGrid.values);
+    const auto& normalizedLeftPhase = findNodeAudio(attached, "phaseLayer2").output;
+    REQUIRE(leftPhaseProbe.values == normalizedLeftPhase.traversalGrid.values);
+    REQUIRE(leftPhaseProbe.values != leftPhase.traversalGrid.values);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

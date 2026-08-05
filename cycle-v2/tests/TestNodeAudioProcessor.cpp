@@ -641,6 +641,9 @@ TEST_CASE("Spectral layer processor makes phase panning explicit in both payload
     REQUIRE(Buffer<float>(
             const_cast<float*>(result.secondaryTraversalGrid.values.data()),
             (int) result.secondaryTraversalGrid.values.size()).normL2() > 0.01f);
+    const SignalTraversalGrid* probeGrid = processor->probeTraversalGrid(context, 0);
+    REQUIRE(probeGrid != nullptr);
+    REQUIRE(probeGrid->values == context.inputs.front().traversalGrid.values);
 }
 
 TEST_CASE("Spectral layer normalizes every magnitude traversal column independently",
@@ -694,6 +697,12 @@ TEST_CASE("Spectral layer normalizes every magnitude traversal column independen
                     == Catch::Approx(columnResult.secondaryBlock.samples[row]));
         }
     }
+
+    const SignalTraversalGrid* probeGrid = gridProcessor->probeTraversalGrid(
+            gridContext,
+            0);
+    REQUIRE(probeGrid != nullptr);
+    REQUIRE(probeGrid->values == gridContext.inputs.front().traversalGrid.values);
 }
 
 TEST_CASE("Utility audio processors combine both channels of spectral traversal grids",

@@ -270,6 +270,8 @@ void appendProbePreviews(
     for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
         const auto& probe = probes[probeIndex];
         const SignalPayload* payload {};
+        const NodeAudioResult* sourceNode {};
+        size_t sourceOutputIndex {};
         GraphPreviewResult::SignalProbePreview preview;
         if (probeIndex < plan.signalProbes.size()) {
             const auto& address = plan.signalProbes[probeIndex];
@@ -280,22 +282,30 @@ void appendProbePreviews(
                 if (node != nullptr
                         && address.sourceOutputIndex >= 0
                         && static_cast<size_t>(address.sourceOutputIndex) < node->outputs.size()) {
-                    payload = &node->outputs[static_cast<size_t>(address.sourceOutputIndex)].second;
+                    sourceNode = node;
+                    sourceOutputIndex = static_cast<size_t>(address.sourceOutputIndex);
+                    payload = &node->outputs[sourceOutputIndex].second;
                     preview.sourceRole = plan.steps[
                             static_cast<size_t>(address.sourceStepIndex)].previewRole;
                 }
             }
         }
-        const bool connected = payload != nullptr && payload->traversalGrid.isValid();
+        const SignalTraversalGrid* probeGrid = payload != nullptr
+                ? &payload->traversalGrid
+                : nullptr;
+        if (sourceNode != nullptr && sourceOutputIndex < sourceNode->probeTraversalGrids.size()) {
+            probeGrid = &sourceNode->probeTraversalGrids[sourceOutputIndex];
+        }
+        const bool connected = probeGrid != nullptr && probeGrid->isValid();
         preview.probeId = probe.id;
         preview.connected = connected;
         if (connected) {
             preview.values.assign(
-                    payload->traversalGrid.values.begin(),
-                    payload->traversalGrid.values.end());
-            preview.gridColumns = payload->traversalGrid.columns;
-            preview.gridRows = payload->traversalGrid.rows;
-            preview.domain = payload->traversalGrid.metadata.valueDomain;
+                    probeGrid->values.begin(),
+                    probeGrid->values.end());
+            preview.gridColumns = probeGrid->columns;
+            preview.gridRows = probeGrid->rows;
+            preview.domain = probeGrid->metadata.valueDomain;
             preview.channelLayout = payload->channelLayout;
         }
         result.probes.push_back(std::move(preview));

@@ -225,19 +225,16 @@ std::vector<float> mappedSurface(
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
-    const bool spectralSignalSurface = spectral
+    const bool spectralTraversalSurface = spectral
             && (meshSurface || preview.role == PreviewModuleRole::SignalSpy);
-    if (spectralSignalSurface) {
-        surface = SpectralPreviewMapping::frequencySurface(
-                surface,
-                preview.gridColumns,
-                preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+    if (!spectralTraversalSurface
+            && preview.domain == PortDomain::SpectralMagnitudeSignal) {
         return SpectralPreviewMapping::magnitudeSurface(
                 surface,
                 preview.gridColumns,
                 preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
+    } else if (!spectralTraversalSurface
+            && preview.domain == PortDomain::SpectralPhaseSignal) {
         unwrapPhase(surface, preview.gridColumns, preview.gridRows);
         return SpectralPreviewMapping::phaseSurface(
                 surface,
@@ -246,7 +243,7 @@ std::vector<float> mappedSurface(
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
-    if (meshSurface || spectralSignalSurface) {
+    if (meshSurface || spectralTraversalSurface) {
         profile.mapValuesToDisplay(buffer);
     } else if (preview.role == PreviewModuleRole::SignalSpy
             && preview.domain == PortDomain::TimeSignal) {

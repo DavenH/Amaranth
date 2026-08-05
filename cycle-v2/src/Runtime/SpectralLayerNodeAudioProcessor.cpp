@@ -73,6 +73,21 @@ public:
         sourceBlock.reserve(spec.maximumFrameCount);
     }
 
+    const SignalTraversalGrid* probeTraversalGrid(
+            const AudioProcessContext& context,
+            size_t outputIndex) const override {
+        if (outputIndex != 0) {
+            return nullptr;
+        }
+
+        const SignalPayload* input = !context.inputViews.empty()
+                ? context.inputViews.front()
+                : (!context.inputs.empty() ? &context.inputs.front() : nullptr);
+        return input != nullptr && input->traversalGrid.isValid()
+                ? &input->traversalGrid
+                : nullptr;
+    }
+
     void process(AudioProcessContext& context) override {
         const SignalPayload* input = inputAt(context, 0);
         if (input == nullptr || configuration == nullptr) {

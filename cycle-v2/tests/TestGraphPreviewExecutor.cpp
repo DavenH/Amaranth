@@ -397,16 +397,22 @@ TEST_CASE("Stengah spies render the exact output selected by each probe",
         const auto& expected = outputForPort(
                 findAudio(audio, authoredProbe.sourceNodeId),
                 authoredProbe.sourcePortId);
+        const auto& sourceAudio = findAudio(audio, authoredProbe.sourceNodeId);
+        const auto& compiledProbe = compileResult.plan.signalProbes[probeIndex];
+        const auto outputIndex = static_cast<size_t>(compiledProbe.sourceOutputIndex);
+        const SignalTraversalGrid& expectedProbeGrid = outputIndex
+                        < sourceAudio.probeTraversalGrids.size()
+                ? sourceAudio.probeTraversalGrids[outputIndex]
+                : expected.traversalGrid;
         INFO("probe id: " << probe.probeId);
         INFO("source: " << authoredProbe.sourceNodeId << "." << authoredProbe.sourcePortId);
-        const auto& compiledProbe = compileResult.plan.signalProbes[probeIndex];
         INFO("compiled source: "
                 << compileResult.plan.steps[static_cast<size_t>(compiledProbe.sourceStepIndex)].nodeId
                 << " output index " << compiledProbe.sourceOutputIndex);
-        REQUIRE(expected.traversalGrid.isValid());
+        REQUIRE(expectedProbeGrid.isValid());
         REQUIRE(probe.connected);
-        REQUIRE(probe.domain == expected.traversalGrid.metadata.valueDomain);
-        const bool matchesExpectedOutput = probe.values == expected.traversalGrid.values;
+        REQUIRE(probe.domain == expectedProbeGrid.metadata.valueDomain);
+        const bool matchesExpectedOutput = probe.values == expectedProbeGrid.values;
         REQUIRE(matchesExpectedOutput);
         if (probe.sourceRole == PreviewModuleRole::MeshSurface) {
             const auto& sourcePreview = findPreview(result, authoredProbe.sourceNodeId);

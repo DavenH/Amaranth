@@ -132,11 +132,15 @@ the native traversal grid suitable for the larger surface without altering its
 samples.
 
 Spectral probes also preserve the captured grid values without normalization or
-amplitude remapping. Their presentation applies the same inverse-log frequency
-row sampling and source-output render scale as the attached Trimesh. In
-particular, a multiplicative magnitude mesh maps its raw unipolar grid into the
-display range `[0.5, 1]`; the attached probe performs that mapping once at paint
-time and therefore matches both the mesh surface and its grid lines.
+amplitude remapping. Trimesh traversal rows are already sampled in the
+log-frequency coordinate space, so probe presentation must not resample them.
+Spectral Layer exposes its normalized input grid through the probe observation
+contract while its audio blocks and execution traversal grid receive the
+magnitude or phase transfer. Presentation then applies only the source-output
+render scale. In particular, a multiplicative magnitude mesh maps its raw
+unipolar grid into the display range `[0.5, 1]`; the attached probe performs that
+mapping once at paint time and therefore matches both the mesh surface and its
+grid lines.
 
 ## Expanded Editor Hosting
 
@@ -155,7 +159,8 @@ editor.
   ordering, serialization, undo/redo, and preset loading.
 - Compiler/audio tests prove equal execution plans, buffers, latency, and
   samples with and without probes.
-- Preview tests prove exact addressed traversal data and immediate refresh.
+- Preview tests prove exact addressed diagnostic traversal data and immediate
+  refresh.
 - Presentation tests cover rail geometry, collapse, marker identity,
   interaction-only tethers, editor-safe bounds, detail geometry, and lazy
   note-period resolution.
@@ -168,7 +173,8 @@ editor.
 ## Completion Criteria
 
 - No Spy palette item, canvas card, port, or runtime processing step remains.
-- Probes persist and preview the exact source output without affecting audio.
+- Probes persist and preview the exact source observation without affecting
+  audio. Spectral Layer observations are its normalized input grid.
 - Dense inspection no longer competes with processing nodes for canvas space.
 - Expanded editors never obscure the rail or prevent its feedback.
 
@@ -177,8 +183,8 @@ editor.
 - `TestSignalProbe.cpp` covers uniqueness, rejection of non-signal cables,
   serialization, disconnection, exact execution-plan preservation, reattach,
   removal, and undo/redo.
-- Graph preview tests cover exact traversal payloads for every probe in the
-  bundled eight-probe graph.
+- Graph preview tests cover exact diagnostic traversal payloads for every probe
+  in the bundled eight-probe graph.
 - Canvas architecture tests prove that expanded editor bounds remain inside
   the content rectangle reserved above expanded and collapsed rails.
 - `cycle-v2-agent-probe-rail-os-screenshot.json` loads the bundled graph,

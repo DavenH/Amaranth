@@ -425,8 +425,24 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             nodeOutputs.push_back({ "out", std::move(silent) });
         }
 
+        std::vector<SignalTraversalGrid> probeTraversalGrids;
+        probeTraversalGrids.reserve(nodeOutputs.size());
+        for (size_t outputIndex = 0; outputIndex < nodeOutputs.size(); ++outputIndex) {
+            const SignalTraversalGrid* observation = processor->probeTraversalGrid(
+                    context,
+                    outputIndex);
+            probeTraversalGrids.push_back(
+                    observation != nullptr && observation->isValid()
+                            ? *observation
+                            : nodeOutputs[outputIndex].second.traversalGrid);
+        }
+
         NodeAudioResult nodeResult {
-                step.nodeId, nodeOutputs.front().second, std::move(nodeOutputs) };
+                step.nodeId,
+                nodeOutputs.front().second,
+                std::move(nodeOutputs),
+                std::move(probeTraversalGrids)
+        };
         if (incrementalResult != nullptr) {
             stagedDiagnosticResults[stepIndex] = std::move(nodeResult);
         } else {
