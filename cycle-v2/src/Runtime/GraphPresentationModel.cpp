@@ -60,7 +60,6 @@ GraphPreviewResult captureProbePreviews(
     AudioExecutionSpec spec;
     spec.maximumFrameCount = frameCount;
     spec.sampleRate = 44100.0;
-    spec.traversalColumnCount = frameCount;
     GraphAudioExecutor captureExecutor;
     captureExecutor.prepareExecution(plan, spec);
 

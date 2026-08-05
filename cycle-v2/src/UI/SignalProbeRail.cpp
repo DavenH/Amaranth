@@ -100,6 +100,25 @@ int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probe
             : (int) std::distance(probes.begin(), found) + 1;
 }
 
+NodeRenderSemantic SignalProbeRail::renderSemanticForProbe(
+        const NodeGraph& graph,
+        const String& probeId) {
+    const auto found = std::find_if(
+            graph.getSignalProbes().begin(),
+            graph.getSignalProbes().end(),
+            [&](const auto& probe) {
+                return probe.id == probeId;
+            });
+    if (found == graph.getSignalProbes().end()) {
+        return {};
+    }
+
+    return GraphRenderSemanticResolver().semanticForNodeOutput(
+            graph,
+            found->sourceNodeId,
+            found->sourcePortId);
+}
+
 std::vector<const SignalProbe*> SignalProbeRail::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());
@@ -426,11 +445,15 @@ void SignalProbeRail::paintRail(
         Node displayNode;
         displayNode.id = "probe-preview-" + probe.id;
         displayNode.kind = NodeKind::GenericProcessor;
+        NodeRenderSemantic semantic = renderSemanticForProbe(graph, probe.id);
+        if (semantic.domain == PortDomain::ControlSignal) {
+            semantic.domain = preview->domain;
+        }
         renderer.paint(graphics, {
                 displayNode,
                 renderResult,
                 previewBounds,
-                TrimeshRenderProfile::fromDomain(preview->domain),
+                TrimeshRenderProfile::fromSemantic(semantic),
                 1.f,
                 true
         });

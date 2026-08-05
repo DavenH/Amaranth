@@ -981,6 +981,8 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     editorCoordinator.close();
     probeDetailState.open(
             std::move(*preview),
+            SignalProbeRail::renderSemanticForProbe(
+                    commands.editingGraph(), probeId).scalePolicy,
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
             resolution);

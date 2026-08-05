@@ -112,9 +112,8 @@ The larger preview is calculated lazily when a tile is opened. It reuses
 it does not introduce another traversal or rasterization path. Its diagnostic
 frame size is the next power of two at or above one period of the audition note
 at the preview sample rate. Time-domain grids therefore have that many rows;
-the lazy capture explicitly requests the same number of traversal columns so a
-large view does not magnify the compact preview's half-resolution mesh surface.
-Spectral grids retain the corresponding unique FFT bins. The immutable preview
+Trimesh sources retain their authoritative traversal-column sampling and
+spectral grids retain the corresponding unique FFT bins. The immutable preview
 voice uses the persisted key value from the upstream Voice Context's attached
 Modulation Triple. The key value is mapped through Cycle's MIDI note range; if
 there is no attached Modulation Triple, MIDI note 60 is the default.
@@ -128,7 +127,16 @@ audio state is retained by the overlay.
 
 While the detail is open, its rail tile renders the same captured payload. This
 keeps compact and expanded views identical without calculating the expensive
-grid during ordinary preview refreshes.
+grid during ordinary preview refreshes. High-quality presentation scaling makes
+the native traversal grid suitable for the larger surface without altering its
+samples.
+
+Spectral probes also preserve the captured grid values without normalization or
+amplitude remapping. Their presentation applies the same inverse-log frequency
+row sampling and source-output render scale as the attached Trimesh. In
+particular, a multiplicative magnitude mesh maps its raw unipolar grid into the
+display range `[0.5, 1]`; the attached probe performs that mapping once at paint
+time and therefore matches both the mesh surface and its grid lines.
 
 ## Expanded Editor Hosting
 

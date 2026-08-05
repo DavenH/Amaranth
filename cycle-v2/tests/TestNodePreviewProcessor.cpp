@@ -35,6 +35,22 @@ Colour storedArgbPixel(Colour colour) {
     return image.getPixelAt(0, 0);
 }
 
+bool imagesMatch(const Image& first, const Image& second) {
+    if (first.getBounds() != second.getBounds()) {
+        return false;
+    }
+
+    for (int y = 0; y < first.getHeight(); ++y) {
+        for (int x = 0; x < first.getWidth(); ++x) {
+            if (first.getPixelAt(x, y) != second.getPixelAt(x, y)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 }
 
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
@@ -177,6 +193,40 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
         CHECK(image.getPixelAt(column, 0) == storedArgbPixel(
                 profile.getSurfaceStyle().colourForValue(expected[column])));
     }
+}
+
+TEST_CASE("Spectral spy heatmaps match multiplicative mesh presentation",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    NodePreviewResult mesh;
+    mesh.role = PreviewModuleRole::MeshSurface;
+    mesh.primary = {
+            0.f, 0.f, 0.1f, 0.35f, 0.8f, 1.f, 0.75f, 0.2f, 0.f,
+            0.f, 0.05f, 0.25f, 0.65f, 1.f, 0.9f, 0.4f, 0.1f, 0.f
+    };
+    mesh.gridColumns = 2;
+    mesh.gridRows = 9;
+    mesh.domain = PortDomain::SpectralMagnitudeSignal;
+
+    NodePreviewResult spy = mesh;
+    spy.role = PreviewModuleRole::SignalSpy;
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    });
+
+    const Image meshImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);
+    const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
+
+    REQUIRE(meshImage.isValid());
+    REQUIRE(spyImage.isValid());
+    REQUIRE(imagesMatch(meshImage, spyImage));
+
+    mesh.primary.assign(mesh.primary.size(), 0.f);
+    const Image zeroImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);
+    REQUIRE(zeroImage.isValid());
+    CHECK(zeroImage.getPixelAt(0, 0) == storedArgbPixel(
+            profile.getSurfaceStyle().colourForValue(0.5f)));
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",

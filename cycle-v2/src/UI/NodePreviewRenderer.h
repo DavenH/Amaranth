@@ -27,6 +27,10 @@ public:
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
             bool desaturated = false);
+    static Image createRuntimeHeatmapImage(
+            const NodePreviewResult& preview,
+            const TrimeshRenderProfile& profile,
+            bool desaturated = false);
 
     Rectangle<float> boundsFor(
             const Node& node,

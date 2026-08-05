@@ -48,11 +48,13 @@ void paintHeader(
 
 void SignalProbeDetailState::open(
         GraphPreviewResult::SignalProbePreview previewToUse,
+        RenderScalePolicy scalePolicyToUse,
         int ordinalToUse,
         int midiNoteToUse,
         size_t resolutionToUse) {
     probeId = previewToUse.probeId;
     domain = previewToUse.domain;
+    scalePolicy = scalePolicyToUse;
     ordinal = ordinalToUse;
     midiNote = midiNoteToUse;
     resolution = resolutionToUse;
@@ -123,7 +125,11 @@ void SignalProbeDetailView::paint(
             displayNode,
             &state.renderResult,
             content.withTrimmedTop(4.f),
-            TrimeshRenderProfile::fromDomain(state.domain),
+            TrimeshRenderProfile::fromSemantic({
+                    state.domain,
+                    state.scalePolicy,
+                    RenderSemanticRole::Generic
+            }),
             1.f,
             true,
             {},

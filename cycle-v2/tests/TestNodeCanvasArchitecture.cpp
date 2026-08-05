@@ -157,9 +157,48 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
 
     REQUIRE(detail.has_value());
     REQUIRE(detail->connected);
-    REQUIRE(detail->gridColumns == resolution);
+    REQUIRE(detail->gridColumns == resolution / 2);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+}
+
+TEST_CASE("Signal probes inherit spectral mesh render semantics",
+        "[cycle-v2][canvas][probe][spectral]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", {});
+    voice.parameters = { { "domain", "Start Domain", "spectral" } };
+    Node layer = factory.createNode(NodeKind::SpectralLayer, "layer", {});
+    layer.parameters = {
+            { "pan", "Pan", "0.5" },
+            { "range", "Range", "0.5" },
+            { "mode", "Magnitude Mode", "multiplicative" }
+    };
+
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(std::move(layer));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "layer", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "layer", "out", "ifft", "mag",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+
+    const NodeRenderSemantic semantic = SignalProbeRail::renderSemanticForProbe(
+            graph,
+            graph.getSignalProbes().front().id);
+    REQUIRE(semantic.domain == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(semantic.scalePolicy == RenderScalePolicy::Bipolar);
+    REQUIRE(semantic.role == RenderSemanticRole::SpectralMagnitudeMultiplicative);
 }
 
 }

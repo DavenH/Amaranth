@@ -5,6 +5,7 @@
 #include "NodeCanvasScene.h"
 #include "NodePreviewRenderer.h"
 #include "SignalProbeDetailView.h"
+#include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
@@ -46,6 +47,9 @@ public:
             int tileIndex);
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
+    static NodeRenderSemantic renderSemanticForProbe(
+            const NodeGraph& graph,
+            const String& probeId);
 
     String probeAt(
             Point<float> position,

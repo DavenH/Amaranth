@@ -11,6 +11,7 @@ struct SignalProbeDetailState {
     String probeId;
     NodePreviewResult renderResult;
     PortDomain domain { PortDomain::TimeSignal };
+    RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
     int ordinal {};
     int midiNote { 60 };
     size_t resolution {};
@@ -18,6 +19,7 @@ struct SignalProbeDetailState {
     bool isOpen() const { return probeId.isNotEmpty(); }
     void open(
             GraphPreviewResult::SignalProbePreview previewToUse,
+            RenderScalePolicy scalePolicyToUse,
             int ordinalToUse,
             int midiNoteToUse,
             size_t resolutionToUse);
