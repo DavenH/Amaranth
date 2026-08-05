@@ -92,6 +92,7 @@ uint64_t previewContentHash(const NodePreviewResult& preview) {
 String runtimeSignature(const NodePreviewResult& preview) {
     return String((int) preview.role)
             + ":" + String((int) preview.domain)
+            + ":" + String((int) preview.frequencySampling)
             + ":" + String((int) preview.gridColumns)
             + "x" + String((int) preview.gridRows)
             + ":" + String((int) preview.primary.size())
@@ -225,8 +226,12 @@ std::vector<float> mappedSurface(
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
+    const bool logarithmicFrequencyGrid = preview.frequencySampling
+            == TraversalGridFrequencySampling::LogarithmicBins;
     const bool spectralTraversalSurface = spectral
-            && (meshSurface || preview.role == PreviewModuleRole::SignalSpy);
+            && (meshSurface
+                    || (preview.role == PreviewModuleRole::SignalSpy
+                            && logarithmicFrequencyGrid));
     if (!spectralTraversalSurface
             && preview.domain == PortDomain::SpectralMagnitudeSignal) {
         return SpectralPreviewMapping::magnitudeSurface(

@@ -1518,11 +1518,15 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
     REQUIRE(context.outputs[0].traversalGrid.isValid());
     REQUIRE(context.outputs[0].traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(context.outputs[0].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
+    REQUIRE(context.outputs[0].traversalGrid.metadata.frequencySampling
+            == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(context.outputs[1].domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].block.samples.size() == 3);
     REQUIRE(context.outputs[1].traversalGrid.isValid());
     REQUIRE(context.outputs[1].traversalGrid.metadata.valueDomain == PortDomain::SpectralPhaseSignal);
     REQUIRE(context.outputs[1].traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
+    REQUIRE(context.outputs[1].traversalGrid.metadata.frequencySampling
+            == TraversalGridFrequencySampling::LinearBins);
 }
 
 TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[cycle-v2][runtime]") {

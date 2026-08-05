@@ -43,6 +43,11 @@ enum class TraversalGridLayout {
     ColumnsThenRows
 };
 
+enum class TraversalGridFrequencySampling {
+    LinearBins,
+    LogarithmicBins
+};
+
 struct TraversalGridAxisResolution {
     double origin {};
     double step { 1.0 };
@@ -54,6 +59,8 @@ struct TraversalGridMetadata {
     TraversalGridLayout layout { TraversalGridLayout::ColumnsThenRows };
     TraversalGridAxis columnAxis { TraversalGridAxis::None };
     TraversalGridAxis rowAxis { TraversalGridAxis::None };
+    TraversalGridFrequencySampling frequencySampling {
+            TraversalGridFrequencySampling::LinearBins };
     PortDomain valueDomain { PortDomain::ControlSignal };
     TraversalGridAxisResolution columnResolution;
     TraversalGridAxisResolution rowResolution;

@@ -131,9 +131,12 @@ grid during ordinary preview refreshes. High-quality presentation scaling makes
 the native traversal grid suitable for the larger surface without altering its
 samples.
 
-Spectral probes also preserve the captured grid values without normalization or
-amplitude remapping. Trimesh traversal rows are already sampled in the
-log-frequency coordinate space, so probe presentation must not resample them.
+Spectral probes preserve the captured grid values. Trimesh traversal rows are
+already sampled in the log-frequency coordinate space, so probe presentation
+must not resample them or apply FFT amplitude mapping.
+Raw FFT traversal rows instead carry linear-bin provenance; probe presentation
+applies Cycle v1's `Spectrum2D` inverse-log frequency sampling and amplitude
+mapping with `AmpTensionScale = 500` exactly once.
 Spectral Layer exposes its normalized input grid through the probe observation
 contract while its audio blocks and execution traversal grid receive the
 magnitude or phase transfer. Presentation then applies only the source-output

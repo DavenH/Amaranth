@@ -307,6 +307,7 @@ void appendProbePreviews(
             preview.gridRows = probeGrid->rows;
             preview.domain = probeGrid->metadata.valueDomain;
             preview.channelLayout = payload->channelLayout;
+            preview.frequencySampling = probeGrid->metadata.frequencySampling;
         }
         result.probes.push_back(std::move(preview));
     }

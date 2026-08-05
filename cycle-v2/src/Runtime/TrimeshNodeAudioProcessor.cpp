@@ -330,16 +330,20 @@ private:
                 outputPort.domain,
                 context.frameCount);
 
+        auto metadata = makeTraversalGridMetadata(
+                output.domain,
+                columnCount,
+                rowCount,
+                TraversalGridAxis::Time,
+                defaultTraversalRowAxisForDomain(output.domain));
+        if (metadata.rowAxis == TraversalGridAxis::Frequency) {
+            metadata.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
+        }
         configureTraversalGrid(
                 output.traversalGrid,
                 columnCount,
                 rowCount,
-                makeTraversalGridMetadata(
-                        output.domain,
-                        columnCount,
-                        rowCount,
-                        TraversalGridAxis::Time,
-                        defaultTraversalRowAxisForDomain(output.domain)),
+                metadata,
                 context.workArena);
 
         Mesh& mesh = currentMesh();

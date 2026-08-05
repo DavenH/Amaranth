@@ -149,6 +149,21 @@ TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic samp
     }
 }
 
+TEST_CASE("Spectral preview magnitude mapping follows Spectrum2D",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    constexpr size_t rows = 5;
+    const std::vector<float> source { 1000.f, 0.f, 0.001f, 0.1f, 1.f };
+    auto expected = SpectralPreviewMapping::frequencySurface(source, 1, rows);
+    Buffer<float> expectedBuffer(expected.data(), (int) expected.size());
+    expectedBuffer.abs();
+    Arithmetic::applyLogMapping(expectedBuffer, 500.f);
+    expectedBuffer.clip(0.f, 1.f);
+
+    const auto mapped = SpectralPreviewMapping::magnitudeSurface(source, 1, rows);
+
+    REQUIRE(mapped == expected);
+}
+
 TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
         "[cycle-v2][runtime][preview][spectral][ui]") {
     NodePreviewResult result;
@@ -210,6 +225,7 @@ TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
 
     NodePreviewResult spy = mesh;
     spy.role = PreviewModuleRole::SignalSpy;
+    spy.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
@@ -241,6 +257,37 @@ TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
     REQUIRE(zeroImage.isValid());
     CHECK(zeroImage.getPixelAt(0, 0) == storedArgbPixel(
             profile.getSurfaceStyle().colourForValue(0.5f)));
+}
+
+TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
+        "[cycle-v2][runtime][probe][spectral][ui]") {
+    NodePreviewResult spy;
+    spy.role = PreviewModuleRole::SignalSpy;
+    spy.primary = {
+            1000.f, 0.f, 0.001f, 0.01f, 0.1f, 0.5f, 1.f, 0.5f, 0.1f,
+            1000.f, 0.f, 0.001f, 0.01f, 0.1f, 0.5f, 1.f, 0.5f, 0.1f
+    };
+    spy.gridColumns = 2;
+    spy.gridRows = spy.primary.size() / spy.gridColumns;
+    spy.domain = PortDomain::SpectralMagnitudeSignal;
+    spy.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+
+    NodePreviewResult expected = spy;
+    expected.role = PreviewModuleRole::MeshSurface;
+    expected.primary = SpectralPreviewMapping::magnitudeSurface(
+            spy.primary,
+            spy.gridColumns,
+            spy.gridRows);
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(spy.domain);
+
+    const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
+    const Image expectedImage = NodePreviewRenderer::createRuntimeHeatmapImage(
+            expected,
+            profile);
+
+    REQUIRE(spyImage.isValid());
+    REQUIRE(expectedImage.isValid());
+    REQUIRE(imagesMatch(spyImage, expectedImage));
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",

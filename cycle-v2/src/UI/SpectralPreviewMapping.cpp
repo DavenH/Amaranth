@@ -12,6 +12,8 @@ namespace CycleV2::SpectralPreviewMapping {
 
 namespace {
 
+constexpr float kSpectrumAmplitudeTension = 500.f;
+
 std::vector<float> rowsWithoutDc(
         const std::vector<float>& source,
         size_t columns,
@@ -73,13 +75,10 @@ std::vector<float> magnitudeSurface(
             frequencyTensionScale);
 
     if (!surface.empty()) {
-        Buffer<float>(surface.data(), (int) surface.size())
-                .abs()
-                .mul(16.f)
-                .add(1.f)
-                .ln()
-                .mul(1.f / 2.833213344f)
-                .clip(0.f, 1.f);
+        Buffer<float> buffer(surface.data(), (int) surface.size());
+        buffer.abs();
+        Arithmetic::applyLogMapping(buffer, kSpectrumAmplitudeTension);
+        buffer.clip(0.f, 1.f);
     }
 
     return surface;

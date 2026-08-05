@@ -68,7 +68,8 @@ void SignalProbeDetailState::open(
             {},
             previewToUse.gridColumns,
             previewToUse.gridRows,
-            domain
+            domain,
+            previewToUse.frequencySampling
     };
 }
 

@@ -306,6 +306,8 @@ TEST_CASE("Graph preview executor renders FFT probe previews from audio traversa
     REQUIRE(magSpy.gridRows == magnitude.traversalGrid.rows);
     REQUIRE(phaseSpy.gridColumns == phase.traversalGrid.columns);
     REQUIRE(phaseSpy.gridRows == phase.traversalGrid.rows);
+    REQUIRE(magSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
+    REQUIRE(phaseSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(magSpy.values == magnitude.traversalGrid.values);
     REQUIRE(phaseSpy.values == phase.traversalGrid.values);
 }
@@ -349,11 +351,14 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
             findProbePreview(result, "probe6").values) > 0.01f);
     REQUIRE(magMesh.traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(magMesh.traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
+    REQUIRE(magMesh.traversalGrid.metadata.frequencySampling
+            == TraversalGridFrequencySampling::LogarithmicBins);
     REQUIRE(columnDifference(magMesh.traversalGrid, 0, magMesh.traversalGrid.columns - 1) > 0.01f);
     REQUIRE(*std::min_element(addMag.traversalGrid.values.begin(), addMag.traversalGrid.values.end()) >= 0.f);
     requireMagnitudeGridAddEquals(addMag.traversalGrid, fftMagnitude.traversalGrid, magMesh.traversalGrid);
     REQUIRE(addSpy.gridColumns == addMag.traversalGrid.columns);
     REQUIRE(addSpy.gridRows == addMag.traversalGrid.rows);
+    REQUIRE(addSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(absoluteDifferenceSum(addSpy.values, addMag.traversalGrid.values) < 1.0e-5f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

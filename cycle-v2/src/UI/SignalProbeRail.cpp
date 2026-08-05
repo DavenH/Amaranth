@@ -438,7 +438,8 @@ void SignalProbeRail::paintRail(
                     {},
                     preview->gridColumns,
                     preview->gridRows,
-                    preview->domain
+                    preview->domain,
+                    preview->frequencySampling
             };
             renderResult = &compactResult;
         }

@@ -16,6 +16,8 @@ struct NodePreviewResult {
     size_t gridColumns {};
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };
+    TraversalGridFrequencySampling frequencySampling {
+            TraversalGridFrequencySampling::LinearBins };
 };
 
 struct GraphPreviewResult {
@@ -27,6 +29,8 @@ struct GraphPreviewResult {
         PortDomain domain { PortDomain::TimeSignal };
         ChannelLayout channelLayout { ChannelLayout::Mono };
         PreviewModuleRole sourceRole { PreviewModuleRole::None };
+        TraversalGridFrequencySampling frequencySampling {
+                TraversalGridFrequencySampling::LinearBins };
         bool connected {};
     };
 
