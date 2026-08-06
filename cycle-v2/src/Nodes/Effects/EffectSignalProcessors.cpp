@@ -1,6 +1,7 @@
 #include "EffectSignalProcessors.h"
 
 #include "../../Graph/NodeDefinition.h"
+#include "../../Graph/NodeParameterMap.h"
 #include "../Effect2D/FlatCurvePreparation.h"
 
 #include <Algo/ConvReverb.h>
@@ -25,10 +26,11 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model) {
     auto result = std::make_shared<IrConfiguration>();
-    result->enabled = typedParameterBool(parameters, "enabled", true);
-    const float highPass = parameterFloat(parameters, "highPass", 0.5f);
+    const NodeParameterMap parameterMap(parameters);
+    result->enabled = parameterMap.boolValue("enabled", true);
+    const float highPass = parameterMap.floatValue("highPass", 0.5f);
     const size_t impulseLength = (size_t) CycleDsp::irImpulseLength(
-            parameterFloat(parameters, "size", 0.5f));
+            parameterMap.floatValue("size", 0.5f));
     FlatCurvePreparation curve(
             "CycleV2IrConfiguration",
             NodeKind::ImpulseResponse,
@@ -62,7 +64,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             { result->impulse.data(), (int) result->impulse.size() },
             levels,
             transform);
-    result->postGain = CycleDsp::irPostGain(parameterFloat(parameters, "post", 0.5f));
+    result->postGain = CycleDsp::irPostGain(parameterMap.floatValue("post", 0.5f));
     return result;
 }
 
@@ -159,18 +161,6 @@ void IrSignalProcessor::prepareConvolver(
 }
 
 void DelaySignalProcessor::configure(
-        const std::vector<NodeParameter>& parametersToUse,
-        const AudioProcessTiming& timing) {
-    DelayConfiguration prepared;
-    prepared.time = parameterFloat(parametersToUse, "time", 0.5f);
-    prepared.feedback = parameterFloat(parametersToUse, "feedback", 0.5f);
-    prepared.spin = parameterFloat(parametersToUse, "spin", 1.f);
-    prepared.wet = parameterFloat(parametersToUse, "wet", 0.9f);
-    prepared.spinIterations = parameterFloat(parametersToUse, "spinIters", 0.f);
-    configure(prepared, timing);
-}
-
-void DelaySignalProcessor::configure(
         const DelayConfiguration& prepared,
         const AudioProcessTiming& timing) {
     bpm = std::max(1.0, timing.bpm);
@@ -223,16 +213,17 @@ void DelaySignalProcessor::processBuffer(
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<ReverbConfiguration>();
-    result->enabled = typedParameterBool(parameters, "enabled", true);
-    const float roomSize = jlimit(0.f, 1.f, parameterFloat(parameters, "size", 0.5f));
-    const float damping = CycleDsp::reverbDamping(parameterFloat(parameters, "damp", 0.2f));
-    const float highPass = jlimit(0.f, 1.f, parameterFloat(parameters, "highPass", 0.05f));
+    const NodeParameterMap parameterMap(parameters);
+    result->enabled = parameterMap.boolValue("enabled", true);
+    const float roomSize = jlimit(0.f, 1.f, parameterMap.floatValue("size", 0.5f));
+    const float damping = CycleDsp::reverbDamping(parameterMap.floatValue("damp", 0.2f));
+    const float highPass = jlimit(0.f, 1.f, parameterMap.floatValue("highPass", 0.05f));
     const size_t kernelLength = CycleDsp::reverbKernelLength(roomSize);
 
     result->kernels[0].assign(kernelLength, 0.f);
     result->kernels[1].assign(kernelLength, 0.f);
-    result->width = jlimit(0.f, 1.f, parameterFloat(parameters, "width", 1.f));
-    result->wetLevel = CycleDsp::reverbWetLevel(parameterFloat(parameters, "wet", 0.4f));
+    result->width = jlimit(0.f, 1.f, parameterMap.floatValue("width", 1.f));
+    result->wetLevel = CycleDsp::reverbWetLevel(parameterMap.floatValue("wet", 0.4f));
 
     CycleDsp::ReverbKernelConfiguration kernelConfiguration;
     kernelConfiguration.roomSize = roomSize;
@@ -412,13 +403,14 @@ void ReverbSignalProcessor::mixPendingBuffers(size_t frameCount) {
 std::shared_ptr<const EqualizerConfiguration> EqualizerSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters) {
     auto result = std::make_shared<EqualizerConfiguration>();
-    result->enabled = typedParameterBool(parameters, "enabled", true);
+    const NodeParameterMap parameterMap(parameters);
+    result->enabled = parameterMap.boolValue("enabled", true);
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
         const String number(band + 1);
         result->gains[(size_t) band] = CycleDsp::equalizerGainDecibels(
-                parameterFloat(parameters, "band" + number + "Gain", 0.5f));
+                parameterMap.floatValue("band" + number + "Gain", 0.5f));
         result->frequencies[(size_t) band] = CycleDsp::equalizerFrequency(
-                parameterFloat(parameters, "band" + number + "Frequency", 0.5f));
+                parameterMap.floatValue("band" + number + "Frequency", 0.5f));
     }
     return result;
 }

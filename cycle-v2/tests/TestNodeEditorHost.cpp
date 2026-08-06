@@ -16,7 +16,7 @@
 #include "../src/UI/NodeCanvasAutomationInspector.h"
 #include "../src/UI/EnvelopePurposeSelector.h"
 #include "../src/UI/NodeEditorHost.h"
-#include "../src/UI/NodeParameterValue.h"
+#include "../src/UI/NodePreviewRenderer.h"
 #include "../src/UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
@@ -164,6 +164,72 @@ public:
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
 };
+
+TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
+        "[cycle-v2][canvas][preview][trimesh][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService editorCommands(
+            canvas,
+            document,
+            graphCommands,
+            presentation,
+            editorResources);
+
+    NodePreviewResult divergentRuntime;
+    divergentRuntime.nodeId = "mesh";
+    divergentRuntime.role = PreviewModuleRole::MeshSurface;
+    divergentRuntime.primary = { 0.f, 1.f, 1.f, 0.f };
+    divergentRuntime.gridColumns = 2;
+    divergentRuntime.gridRows = 2;
+    divergentRuntime.domain = PortDomain::SpectralPhaseSignal;
+    const Node& node = *document.graph().findNode("mesh");
+    const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal);
+    const Rectangle<float> bounds { 0.f, 0.f, 120.f, 96.f };
+
+    const auto render = [&](const NodePreviewResult* runtime) {
+        NodePreviewResources resources(editorCommands);
+        resources.setGraph(&document.graph());
+        NodePreviewRenderer renderer(resources);
+        Image image(Image::ARGB, 120, 96, true);
+        Graphics graphics(image);
+        renderer.paint(graphics, {
+                node,
+                runtime,
+                bounds,
+                profile,
+                1.f,
+                true
+        });
+        return image;
+    };
+
+    const Image authoritative = render(nullptr);
+    const Image withRuntime = render(&divergentRuntime);
+    REQUIRE(authoritative.isValid());
+    REQUIRE(withRuntime.isValid());
+    const auto checksum = [](const Image& image) {
+        uint64_t result = 1469598103934665603ULL;
+        for (int y = 0; y < image.getHeight(); ++y) {
+            for (int x = 0; x < image.getWidth(); ++x) {
+                result ^= image.getPixelAt(x, y).getARGB();
+                result *= 1099511628211ULL;
+            }
+        }
+        return result;
+    };
+    REQUIRE(checksum(withRuntime) == checksum(authoritative));
+}
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
 public:
@@ -835,10 +901,10 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
                     { 1, 0.f, 0.25f, 1.f },
                     { 2, 1.f, 0.75f, 1.f }
             });
-    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.9");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.9");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("shape"), "post") == "0.5");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -904,7 +970,7 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
     commands.endTrimeshMorphEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("mesh"), "yellow") == "0.800");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
     REQUIRE(presentation.recordedMovements == 1);
     REQUIRE(presentation.immediateRefreshes == 1);
     REQUIRE(presentation.localCommits == 0);
@@ -960,10 +1026,10 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(commands.updateNodeParameterEditValue(0.7f));
     commands.endNodeParameterEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.700000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.700000");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("reverb"), "wet") == "0.4");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("reverb"), "wet") == "0.4");
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.recordedMovements == 2);
@@ -992,7 +1058,7 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
             dispatcher,
             presentation,
             resources);
-    const String originalWidth = nodeParameterValue(
+    const String originalWidth = parameterValueForNode(
             *document.graph().findNode("unison"), "width");
     const uint64_t originalRevision = document.revision();
     std::vector<float> observedDetunes;
@@ -1017,13 +1083,13 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(document.revision() == originalRevision);
     commands.endNodeParameterEdit();
 
-    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == "60.000000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == "60.000000");
     REQUIRE(presentation.recordedMovements == 3);
     REQUIRE(presentation.repaints == 3);
     REQUIRE(presentation.rebinds == 1);
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("unison"), "width") == originalWidth);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -1043,9 +1109,9 @@ TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transac
             dispatcher,
             presentation,
             resources);
-    const String originalGain = nodeParameterValue(
+    const String originalGain = parameterValueForNode(
             *document.graph().findNode("equalizer"), "band3Gain");
-    const String originalFrequency = nodeParameterValue(
+    const String originalFrequency = parameterValueForNode(
             *document.graph().findNode("equalizer"), "band3Frequency");
 
     REQUIRE(commands.beginNodeParameterPairEdit(
@@ -1055,13 +1121,13 @@ TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transac
     commands.endNodeParameterEdit();
 
     const Node* edited = document.graph().findNode("equalizer");
-    REQUIRE(nodeParameterValue(*edited, "band3Gain") == "0.750000");
-    REQUIRE(nodeParameterValue(*edited, "band3Frequency") == "0.650000");
+    REQUIRE(parameterValueForNode(*edited, "band3Gain") == "0.750000");
+    REQUIRE(parameterValueForNode(*edited, "band3Frequency") == "0.650000");
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     const Node* restored = document.graph().findNode("equalizer");
-    REQUIRE(nodeParameterValue(*restored, "band3Gain") == originalGain);
-    REQUIRE(nodeParameterValue(*restored, "band3Frequency") == originalFrequency);
+    REQUIRE(parameterValueForNode(*restored, "band3Gain") == originalGain);
+    REQUIRE(parameterValueForNode(*restored, "band3Frequency") == originalFrequency);
     REQUIRE_FALSE(document.canUndo());
 }
 
@@ -1084,13 +1150,13 @@ TEST_CASE("Effect discrete parameter changes are independently undoable",
 
     REQUIRE(commands.setNodeParameterValue("delay", "enabled", "Enabled", 0.f));
     REQUIRE(commands.setNodeParameterValue("delay", "time", "Time", 0.25f));
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.250000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "time") == "0.250000");
     REQUIRE(presentation.rebinds == 2);
 
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "time") == "0.5");
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "0");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "time") == "0.5");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "0");
 
     REQUIRE(document.undo());
-    REQUIRE(nodeParameterValue(*document.graph().findNode("delay"), "enabled") == "1");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("delay"), "enabled") == "1");
 }

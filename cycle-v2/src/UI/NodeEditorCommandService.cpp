@@ -1,6 +1,6 @@
 #include "NodeEditorHost.h"
 
-#include "NodeParameterValue.h"
+#include "../Graph/NodeParameterMap.h"
 #include "../Runtime/FingerprintBuilder.h"
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
@@ -333,7 +333,7 @@ bool NodeEditorCommandService::setTrimeshPrimaryAxisValue(
     if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return false;
     }
-    if (nodeParameterValue(*node, "primaryAxis", "yellow") == axis) {
+    if (NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == axis) {
         return true;
     }
     const auto result = commands.setNodeParameter(nodeId, "primaryAxis", "Primary Axis", axis);
@@ -356,7 +356,9 @@ bool NodeEditorCommandService::toggleTrimeshLinkAxisValue(
     }
     const String parameterId = "link." + axis;
     const String defaultValue = axis == "yellow" ? "1" : "0";
-    const bool enabled = nodeParameterValue(*node, parameterId, defaultValue).getIntValue() != 0;
+    const bool enabled = NodeParameterMap(*node).boolValue(
+            parameterId,
+            defaultValue.getIntValue() != 0);
     const auto result = commands.setNodeParameter(
             nodeId, parameterId, "Link " + axis, enabled ? "0" : "1");
     if (!result.succeeded()) {

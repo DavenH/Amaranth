@@ -2,6 +2,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphEditor.h"
+#include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "../src/Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../src/Nodes/Trimesh/TrimeshControlsComponent.h"
 #include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
@@ -22,6 +26,8 @@
 #include <Curve/Mesh/Intercept.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 
 using namespace CycleV2;
 
@@ -118,6 +124,211 @@ TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
 
     restored.destroy();
     source->destroy();
+}
+
+TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
+        "[cycle-v2][nodes][guide][parity]") {
+    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    std::vector<FlatCurveVertex> vertices {
+            { 1, 0.05f, 0.25f, 1.f },
+            { 2, 0.95f, 0.75f, 1.f }
+    };
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices(std::move(vertices)));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    for (auto& parameter : guide.parameters) {
+        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
+            parameter.value = "0";
+        }
+    }
+
+    GuideCurveSnapshotProvider provider;
+    REQUIRE(provider.addGuide(guide));
+    REQUIRE(provider.size() == 1);
+    REQUIRE(provider.getTableDensity(0) == 2);
+    REQUIRE(provider.getTable(0).size() == GuideCurveProvider::tableSize);
+
+    GuideCurveProvider::NoiseContext context;
+    REQUIRE(provider.getTableValue(0, 0.f, context) == Catch::Approx(-0.25f).margin(1e-4f));
+    REQUIRE(provider.getTableValue(0, 0.5f, context) == Catch::Approx(0.f).margin(1e-4f));
+    REQUIRE(provider.getTableValue(0, 1.f, context) == Catch::Approx(0.25f).margin(1e-4f));
+}
+
+TEST_CASE("Guide snapshot noise and offsets are deterministic",
+        "[cycle-v2][nodes][guide][parity]") {
+    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 0.2f, 1.f },
+            { 2, 0.95f, 0.8f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    for (auto& parameter : guide.parameters) {
+        if (parameter.id == "noise") {
+            parameter.value = "0.4";
+        } else if (parameter.id == "dcOffset") {
+            parameter.value = "0.3";
+        } else if (parameter.id == "phase") {
+            parameter.value = "0.2";
+        }
+    }
+
+    GuideCurveSnapshotProvider first;
+    GuideCurveSnapshotProvider repeated;
+    REQUIRE(first.addGuide(guide));
+    REQUIRE(repeated.addGuide(guide));
+
+    GuideCurveProvider::NoiseContext context;
+    context.noiseSeed = 127;
+    context.vertOffset = 521;
+    context.phaseOffset = 913;
+    REQUIRE(first.getTableValue(0, 0.37f, context)
+            == Catch::Approx(repeated.getTableValue(0, 0.37f, context)));
+
+    std::array<float, 64> firstSamples {};
+    std::array<float, 64> repeatedSamples {};
+    first.sampleDownAddNoise(0, { firstSamples.data(), (int) firstSamples.size() }, context);
+    repeated.sampleDownAddNoise(
+            0,
+            { repeatedSamples.data(), (int) repeatedSamples.size() },
+            context);
+    REQUIRE(firstSamples == repeatedSamples);
+    REQUIRE(GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal)
+            == 0x54494d45u);
+    REQUIRE(GuideCurveSnapshotProvider::visualizationSeed(PortDomain::SpectralPhaseSignal)
+            == 0x50484153u);
+    REQUIRE(GuideCurveSnapshotProvider::visualizationSeed(
+            PortDomain::SpectralMagnitudeSignal) == 0x53504543u);
+}
+
+TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
+        "[cycle-v2][nodes][trimesh][guide][parity]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("GuidedTrimesh");
+    REQUIRE(mesh != nullptr);
+    mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp) = 1.f;
+
+    NodeGraph graph;
+    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, 1.f, 1.f },
+            { 2, 0.95f, 1.f, 1.f }
+    }));
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    for (auto& parameter : guide.parameters) {
+        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
+            parameter.value = "0";
+        }
+    }
+    Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    trimesh.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    graph.addNode(std::move(guide));
+    graph.addNode(std::move(trimesh));
+    graph.addEdge({
+            "guide",
+            "guide",
+            "mesh",
+            TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
+    });
+    graph.addEdge({
+            "guide",
+            "guide",
+            "mesh",
+            TrimeshGuideAttachmentTarget::portIdForCube(0, "time"),
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::GuideCurve
+    });
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto step = std::find_if(
+            compiled.plan.steps.begin(),
+            compiled.plan.steps.end(),
+            [](const GraphExecutionStep& candidate) {
+                return candidate.nodeId == "mesh";
+            });
+    REQUIRE(step != compiled.plan.steps.end());
+    const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            step->configuration.value);
+    REQUIRE(configuration != nullptr);
+    REQUIRE(configuration->guideAssignmentCount == 2);
+    REQUIRE(configuration->guideCurveProvider != nullptr);
+    Mesh& preparedMesh = *const_cast<Mesh*>(configuration->mesh.get());
+    REQUIRE(preparedMesh.getCubes().front()->guideCurveAt(Vertex::Amp) == 0);
+    REQUIRE(preparedMesh.getCubes().front()->guideCurveAt(Vertex::Time) == 0);
+
+    Rasterization::TrilinearMeshRasterizer componentRasterizer;
+    componentRasterizer.setMesh(&preparedMesh);
+    componentRasterizer.setGuideCurveProvider(configuration->guideCurveProvider.get());
+    Rasterization::RasterizationRequest componentRequest;
+    componentRequest.cyclic = true;
+    componentRequest.morph = configuration->morph;
+    componentRequest.primaryViewDimension = configuration->primaryViewAxis;
+    componentRequest.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    componentRequest.decoupleComponentDeforms = true;
+    const auto& componentResult = componentRasterizer.renderWaveform({
+            preparedMesh,
+            componentRequest,
+            0.f
+    });
+    REQUIRE_FALSE(componentResult.guideCurveRegions.empty());
+
+    constexpr int sampleCount = 128;
+    std::vector<float> plainSamples(sampleCount);
+    std::vector<float> guidedSamples(sampleCount);
+    TrimeshBlockwiseDsp plain;
+    plain.setMesh(mesh.get());
+    plain.setMorphPosition(configuration->morph);
+    plain.setPrimaryViewAxis(configuration->primaryViewAxis);
+    plain.setCyclic(true);
+    plain.renderCycleInto(Buffer<float>(plainSamples.data(), sampleCount), PortDomain::TimeSignal);
+
+    TrimeshBlockwiseDsp guided;
+    guided.setMesh(&preparedMesh);
+    guided.setGuideCurveProvider(configuration->guideCurveProvider.get());
+    guided.setMorphPosition(configuration->morph);
+    guided.setPrimaryViewAxis(configuration->primaryViewAxis);
+    guided.setCyclic(true);
+    guided.renderCycleInto(Buffer<float>(guidedSamples.data(), sampleCount), PortDomain::TimeSignal);
+
+    double blockDifference {};
+    for (int i = 0; i < sampleCount; ++i) {
+        blockDifference += std::abs(guidedSamples[(size_t) i] - plainSamples[(size_t) i]);
+    }
+    REQUIRE(blockDifference > 0.1);
+
+    constexpr int columnCount = 8;
+    std::vector<float> plainGrid(columnCount * sampleCount);
+    std::vector<float> guidedGrid(columnCount * sampleCount);
+    TrimeshGridwiseDsp plainGridDsp;
+    TrimeshGridwiseDsp guidedGridDsp;
+    guidedGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+    REQUIRE(plainGridDsp.renderColumnsInto(
+            *mesh,
+            configuration->morph,
+            configuration->primaryViewAxis,
+            columnCount,
+            Buffer<float>(plainGrid.data(), (int) plainGrid.size()),
+            PortDomain::TimeSignal));
+    REQUIRE(guidedGridDsp.renderColumnsInto(
+            preparedMesh,
+            configuration->morph,
+            configuration->primaryViewAxis,
+            columnCount,
+            Buffer<float>(guidedGrid.data(), (int) guidedGrid.size()),
+            PortDomain::TimeSignal));
+
+    double gridDifference {};
+    for (size_t i = 0; i < guidedGrid.size(); ++i) {
+        gridDifference += std::abs(guidedGrid[i] - plainGrid[i]);
+    }
+    REQUIRE(gridDifference > 0.5);
+
+    mesh->destroy();
 }
 
 TEST_CASE("Invalid Trimesh topology snapshots do not partially mutate the mesh",
@@ -576,15 +787,7 @@ TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes
     REQUIRE(items[2].attached);
 }
 
-TEST_CASE("Trimesh guide attachment target parses and formats vertex fields", "[cycle-v2][nodes][trimesh]") {
-    const auto target = TrimeshGuideAttachmentTarget::parse("guide.vertex.12.amp");
-
-    REQUIRE(target.isValid());
-    REQUIRE(target.vertexIndex == 12);
-    REQUIRE(target.field == "amp");
-    REQUIRE(target.fieldIndex() == 4);
-    REQUIRE(TrimeshGuideAttachmentTarget::fields()[(size_t) target.fieldIndex()] == "amp");
-    REQUIRE(TrimeshGuideAttachmentTarget::portIdFor(12, "amp") == "guide.vertex.12.amp");
+TEST_CASE("Trimesh guide attachment target parses and formats cube components", "[cycle-v2][nodes][trimesh]") {
     const auto cubeTarget = TrimeshGuideAttachmentTarget::parse("guide.cube.4.phase");
     REQUIRE(cubeTarget.isValid());
     REQUIRE(cubeTarget.isCubeTarget());
@@ -592,8 +795,8 @@ TEST_CASE("Trimesh guide attachment target parses and formats vertex fields", "[
     REQUIRE(cubeTarget.field == "phase");
     REQUIRE(TrimeshGuideAttachmentTarget::portIdForCube(4, "phase")
             == "guide.cube.4.phase");
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.x.amp").isValid());
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.unknown").isValid());
+    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.amp").isValid());
+    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.cube.12.unknown").isValid());
     REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());
 }
 
@@ -938,7 +1141,7 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.selectedVertex == expectedSelection);
 }
 
-TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
+TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
         "[cycle-v2][nodes][trimesh][expanded][spectral]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {
@@ -974,7 +1177,7 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
     REQUIRE(magnitude.surface.size() == multiplicativeMagnitude.surface.size());
     for (size_t index = 0; index < magnitude.surface.size(); ++index) {
         REQUIRE(multiplicativeMagnitude.surface[index]
-                == Catch::Approx(magnitude.surface[index] * 0.5f + 0.5f));
+                == Catch::Approx(magnitude.surface[index]));
     }
 
     bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralPhaseSignal));
@@ -986,10 +1189,11 @@ TEST_CASE("Trimesh panel bridge applies spectral domains exactly once",
     for (size_t index = 0; index < magnitude.slice.size(); ++index) {
         REQUIRE(magnitude.slice[index] == Catch::Approx(phase.slice[index]));
     }
-    for (size_t index = 0; index < magnitude.surface.size(); ++index) {
-        REQUIRE(magnitude.surface[index] == Catch::Approx(phase.surface[index]));
-    }
-    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) < 0.5f);
+    REQUIRE(magnitude.surface != phase.surface);
+    REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) >= 0.f);
+    REQUIRE(*std::max_element(magnitude.surface.begin(), magnitude.surface.end()) <= 1.f);
+    REQUIRE(*std::min_element(phase.surface.begin(), phase.surface.end()) >= 0.f);
+    REQUIRE(*std::max_element(phase.surface.begin(), phase.surface.end()) <= 1.f);
 }
 
 TEST_CASE("Compact and expanded Trimesh views share mapped magnitude data",

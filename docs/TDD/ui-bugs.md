@@ -63,7 +63,7 @@ automation.
   Oversampling through complete down-drag-up sequences and asserts their
   resulting graph or preview state.
 
-## Open: Trimesh rasterization ignores attached guide curves
+## Addressed: Trimesh rasterization ignored attached guide curves
 
 Context:
 
@@ -76,9 +76,9 @@ Context:
   then change the attached Guide Curve's noise control. The Trimesh rendering
   remains unchanged.
 
-Current status: open; route the existing guide provider/snapshot contract into
-Trimesh rasterization and add a focused visual fixture that proves the assigned
-cube component changes without copying Cycle 1 rasterization logic.
+Current status: addressed by the provider-backed graph attachment preparation
+described in `cycle-v2-trimesh-guide-curve-parity.md`; the Baroque Flute and
+African Horn fixtures assert guide rails, component curves, and guided output.
 
 ## Open: GuideCurveOffsetSeeds vertical seed contract fails
 
@@ -245,3 +245,17 @@ current `GuideCurveOffsetSeeds` storage contract.
   `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-logs.txt.ips`.
 - This remains open; the keyboard composition fixture avoids the unrelated
   close gesture and asserts the reported pan/overlap sequence directly.
+
+## Addressed: Cycle V2 guide rails requested a missing PathRepo singleton
+
+- A Baroque Flute guide-curve screenshot run on 2026-08-04 completed the
+  expanded Trimesh guide assertions, then logged `JUCE Assertion failure in
+  SingletonRepo.h:54` when the guide rail was drawn.
+- Enabling the mature `Panel::createLinePath` implementation exposed its
+  `PathRepo` dependency, which the narrow Cycle V2 panel environment had not
+  registered.
+- Repro artifacts: `/private/tmp/cycle-v2-baroque-guides-report.json` and
+  `/private/tmp/cycle-v2-baroque-guides-logs.txt.raw`.
+
+Current status: addressed by registering and initializing `PathRepo` in the
+Cycle V2 Trimesh panel environment; the guide fixture is the regression check.

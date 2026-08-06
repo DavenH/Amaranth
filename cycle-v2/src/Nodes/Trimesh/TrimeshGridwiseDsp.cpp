@@ -8,6 +8,10 @@ void TrimeshGridwiseDsp::setCyclic(bool shouldWrap) {
     blockwiseDsp.setCyclic(shouldWrap);
 }
 
+void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
+    blockwiseDsp.setGuideCurveProvider(provider);
+}
+
 void TrimeshGridwiseDsp::prepare(
         Mesh& mesh,
         const MorphPosition& center,

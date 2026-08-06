@@ -483,7 +483,7 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
 
 TEST_CASE("Trimesh guide targets require guide curve attachment sources", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.addEdge({ "env", "env", "waveMesh", "guide.vertex.0.amp", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "env", "env", "waveMesh", "guide.cube.0.amp", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment });
 
     auto issues = GraphValidator().validate(graph);
 
@@ -616,8 +616,8 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     graph.addEdge({ "source", "time", "dest", "missing", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "source", "time", "dest", "attachmentTarget", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
     graph.addEdge({ "source", "time", "dest", "scratch", PortDomain::TimeSignal, ConnectionKind::Signal });
-    graph.addEdge({ "guide", "curve", "mesh", "guide.vertex.0.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
-    graph.addEdge({ "source", "time", "mesh", "guide.vertex.1.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "guide", "curve", "mesh", "guide.cube.0.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
+    graph.addEdge({ "source", "time", "mesh", "guide.cube.1.amp", PortDomain::TimeSignal, ConnectionKind::ProcessingAttachment });
     graph.addEdge({ "source", "time", "dest", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "pitch", "pitch", "dest", "time", PortDomain::PitchSignal, ConnectionKind::Signal });
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });

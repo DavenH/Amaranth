@@ -7,6 +7,7 @@
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
@@ -598,6 +599,18 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
         REQUIRE(hasGuideEdge(
                 "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
     }
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    size_t preparedAssignments {};
+    for (const auto& step : compiled.plan.steps) {
+        const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+                step.configuration.value);
+        if (configuration != nullptr) {
+            preparedAssignments += configuration->guideAssignmentCount;
+        }
+    }
+    REQUIRE(preparedAssignments == 11);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

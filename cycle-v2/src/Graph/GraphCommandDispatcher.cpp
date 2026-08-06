@@ -1,5 +1,7 @@
 #include "GraphCommandDispatcher.h"
 
+#include "NodeParameterMap.h"
+
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 
 #include <algorithm>
@@ -14,13 +16,6 @@ bool isCurveNodeKind(NodeKind kind) {
         || kind == NodeKind::GuideCurve
         || kind == NodeKind::ImpulseResponse
         || kind == NodeKind::Waveshaper;
-}
-
-const NodeParameter* findParameter(const std::vector<NodeParameter>& parameters, const juce::String& id) {
-    const auto found = std::find_if(parameters.begin(), parameters.end(), [&](const auto& parameter) {
-        return parameter.id == id;
-    });
-    return found != parameters.end() ? &*found : nullptr;
 }
 
 struct EditAnnotation {
@@ -252,13 +247,13 @@ GraphEditResult GraphCommandDispatcher::publishCurveState(
             if (envelope == nullptr) {
                 return GraphEditResult { GraphEditCode::InvalidTypedSnapshot, publication.nodeId, {} };
             }
-            const auto* red = findParameter(parameters, "red");
-            const auto* blue = findParameter(parameters, "blue");
-            const auto* logarithmic = findParameter(parameters, "logarithmic");
-            if (red == nullptr || blue == nullptr || logarithmic == nullptr
-                    || red->value.getFloatValue() != envelope->red
-                    || blue->value.getFloatValue() != envelope->blue
-                    || (logarithmic->value.getIntValue() != 0) != envelope->logarithmic) {
+            const NodeParameterMap parameterMap(parameters);
+            if (!parameterMap.contains("red")
+                    || !parameterMap.contains("blue")
+                    || !parameterMap.contains("logarithmic")
+                    || parameterMap.floatValue("red") != envelope->red
+                    || parameterMap.floatValue("blue") != envelope->blue
+                    || parameterMap.boolValue("logarithmic") != envelope->logarithmic) {
                 return GraphEditResult { GraphEditCode::InvalidControlValue, publication.nodeId, {} };
             }
         }

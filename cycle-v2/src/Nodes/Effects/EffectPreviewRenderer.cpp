@@ -8,16 +8,12 @@
 
 #include "EffectPlotPalette.h"
 
+#include "../../Graph/NodeParameterMap.h"
 #include "../Unison/UnisonNode.h"
-#include "../../UI/NodeParameterValue.h"
 
 namespace CycleV2 {
 
 namespace {
-
-float parameterValue(const Node& node, const String& id, float fallback) {
-    return nodeParameterValue(node, id, String(fallback)).getFloatValue();
-}
 
 Colour previewColour(bool enabled, Colour colour) {
     return EffectPlotPalette::forEnabledState(colour, enabled);
@@ -29,11 +25,12 @@ Rectangle<float> contentArea(Rectangle<float> area) {
 
 void paintReverb(Graphics& graphics, Rectangle<float> area, const Node& node, float zoom) {
     const Rectangle<float> content = contentArea(area);
-    const float size = parameterValue(node, "size", 0.5f);
-    const float damping = parameterValue(node, "damp", 0.2f);
-    const float width = parameterValue(node, "width", 1.f);
-    const float wet = parameterValue(node, "wet", 0.4f);
-    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const NodeParameterMap parameters(node);
+    const float size = parameters.floatValue("size", 0.5f);
+    const float damping = parameters.floatValue("damp", 0.2f);
+    const float width = parameters.floatValue("width", 1.f);
+    const float wet = parameters.floatValue("wet", 0.4f);
+    const bool enabled = parameters.boolValue("enabled", true);
     const int reflectionCount = 5 + roundToInt(size * 6.f);
     float amplitude = 0.88f;
     const float decay = 0.48f + size * 0.36f - damping * 0.12f;
@@ -151,7 +148,7 @@ void paintUnisonPhasePreview(
         const Node& node,
         float zoom,
         const UnisonPreviewContext& context) {
-    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const bool enabled = NodeParameterMap(node).boolValue("enabled", true);
     const Rectangle<float> background = area.reduced(1.f);
     const Rectangle<float> plot = background.reduced(4.f);
     const auto stateColour = [enabled](Colour colour) {
@@ -222,13 +219,14 @@ void paintDelayPingPreview(
     if (showLabels) {
         content = content.withTrimmedLeft(18.f).reduced(0.f, 8.f);
     }
-    const float time = parameterValue(node, "time", 0.5f);
-    const float feedback = parameterValue(node, "feedback", 0.5f);
-    const float spin = parameterValue(node, "spin", 0.5f);
-    const float wet = parameterValue(node, "wet", 0.5f);
-    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const NodeParameterMap parameters(node);
+    const float time = parameters.floatValue("time", 0.5f);
+    const float feedback = parameters.floatValue("feedback", 0.5f);
+    const float spin = parameters.floatValue("spin", 0.5f);
+    const float wet = parameters.floatValue("wet", 0.5f);
+    const bool enabled = parameters.boolValue("enabled", true);
     const int spinLength = CycleDsp::delaySpinIterations(
-            parameterValue(node, "spinIters", 0.f));
+            parameters.floatValue("spinIters", 0.f));
     constexpr int visibleBeatCount = 16;
     const float delayBeats = (float) CycleDsp::delayBeats(time, 4);
     float amplitude = 1.f;
@@ -265,17 +263,18 @@ void paintEqualizerResponsePreview(
         Graphics& graphics,
         Rectangle<float> area,
         const Node& node,
-        bool showDetails) {
+    bool showDetails) {
     CycleDsp::EqualizerCore core(1);
+    const NodeParameterMap parameters(node);
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
         const String prefix = "band" + String(band + 1);
         core.configureBand(
                 band,
                 44100.0,
-                CycleDsp::equalizerFrequency(parameterValue(
-                        node, prefix + "Frequency", 0.5f)),
-                CycleDsp::equalizerGainDecibels(parameterValue(
-                        node, prefix + "Gain", 0.5f)));
+                CycleDsp::equalizerFrequency(parameters.floatValue(
+                        prefix + "Frequency", 0.5f)),
+                CycleDsp::equalizerGainDecibels(parameters.floatValue(
+                        prefix + "Gain", 0.5f)));
     }
 
     const int pointCount = jmax(2, roundToInt(area.getWidth()));
@@ -302,7 +301,7 @@ void paintEqualizerResponseData(
         return;
     }
 
-    const bool enabled = parameterValue(node, "enabled", 1.f) >= 0.5f;
+    const bool enabled = NodeParameterMap(node).boolValue("enabled", true);
     const auto stateColour = [enabled](Colour colour) {
         return EffectPlotPalette::forEnabledState(colour, enabled);
     };
@@ -379,12 +378,13 @@ Point<float> equalizerBandControlPoint(
         Rectangle<float> area,
         const Node& node,
         int band) {
+    const NodeParameterMap parameters(node);
     const String prefix = "band" + String(band + 1);
-    const float frequency = CycleDsp::equalizerFrequency(parameterValue(
-            node, prefix + "Frequency", 0.5f));
+    const float frequency = CycleDsp::equalizerFrequency(
+            parameters.floatValue(prefix + "Frequency", 0.5f));
     const float frequencyUnit = (float) (
             std::log((double) frequency / 40.0) / std::log(400.0));
-    const float gainUnit = parameterValue(node, prefix + "Gain", 0.5f);
+    const float gainUnit = parameters.floatValue(prefix + "Gain", 0.5f);
     return {
             area.getX() + frequencyUnit * area.getWidth(),
             area.getBottom() - gainUnit * area.getHeight()

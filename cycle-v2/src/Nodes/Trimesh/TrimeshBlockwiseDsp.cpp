@@ -35,6 +35,7 @@ void TrimeshBlockwiseDsp::prepare(
     setPrimaryViewAxis(axis);
     setCyclic(shouldWrap);
     ensureCurveTable();
+    configureGuideCurveSeeds(domain);
     if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
         rasterizer.renderWaveform({ *mesh, createRequest(domain), 0.f });
     }
@@ -54,6 +55,28 @@ void TrimeshBlockwiseDsp::setPrimaryViewAxis(int axis) {
 
 void TrimeshBlockwiseDsp::setCyclic(bool shouldWrap) {
     cyclic = shouldWrap;
+}
+
+void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
+    guideCurveProvider = provider;
+    rasterizer.setGuideCurveProvider(provider);
+}
+
+void TrimeshBlockwiseDsp::configureGuideCurveSeeds(PortDomain domain) {
+    if (guideCurveProvider == nullptr) {
+        return;
+    }
+
+    const auto* snapshot = dynamic_cast<const GuideCurveSnapshotProvider*>(guideCurveProvider);
+    const int guideCount = snapshot != nullptr
+            ? snapshot->size()
+            : Rasterization::GuideCurveOffsetSeeds::capacity;
+    const uint32_t stableSeed = GuideCurveSnapshotProvider::visualizationSeed(domain);
+    rasterizer.updateOffsetSeeds(
+            guideCount,
+            GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::visualization(stableSeed));
+    rasterizer.setNoiseSeed((int) (stableSeed % GuideCurveProvider::tableSize));
 }
 
 void TrimeshBlockwiseDsp::renderCycle(

@@ -1,8 +1,7 @@
 #include "NodePreviewRenderer.h"
-#include "SpectralPreviewMapping.h"
 
-#include "NodeParameterValue.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
+#include "../Graph/NodeParameterMap.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
@@ -43,7 +42,7 @@ Colour previewColourForRole(PreviewModuleRole role, const Node& node) {
             return role == PreviewModuleRole::EqualizerResponse
                     ? EffectPlotPalette::forEnabledState(
                             colourForDomain(PortDomain::TimeSignal),
-                            nodeParameterValue(node, "enabled", "1").getIntValue() != 0)
+                            NodeParameterMap(node).boolValue("enabled", true))
                     : colourForDomain(PortDomain::TimeSignal);
         case PreviewModuleRole::SignalSpy:
             return Colour(0xffd2d9e2);
@@ -188,31 +187,6 @@ void drawMeters(
     }
 }
 
-void unwrapPhase(std::vector<float>& surface, size_t columns, size_t rows) {
-    if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
-        return;
-    }
-
-    for (size_t row = 0; row < rows; ++row) {
-        float offset = 0.f;
-        float previous = surface[row];
-        for (size_t column = 1; column < columns; ++column) {
-            const size_t index = column * rows + row;
-            const float current = surface[index];
-            const float delta = current + offset - previous;
-
-            if (delta > MathConstants<float>::pi) {
-                offset -= MathConstants<float>::twoPi;
-            } else if (delta < -MathConstants<float>::pi) {
-                offset += MathConstants<float>::twoPi;
-            }
-
-            surface[index] = current + offset;
-            previous = surface[index];
-        }
-    }
-}
-
 std::vector<float> mappedSurface(
         const NodePreviewResult& preview,
         const std::vector<float>& values) {
@@ -221,27 +195,17 @@ std::vector<float> mappedSurface(
         return surface;
     }
 
-    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
-    if (meshSurface && (preview.domain == PortDomain::SpectralMagnitudeSignal
-            || preview.domain == PortDomain::SpectralPhaseSignal)) {
-        surface = SpectralPreviewMapping::frequencySurface(
-                surface,
-                preview.gridColumns,
-                preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        return SpectralPreviewMapping::magnitudeSurface(
-                surface,
-                preview.gridColumns,
-                preview.gridRows);
-    } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
-        unwrapPhase(surface, preview.gridColumns, preview.gridRows);
-        return SpectralPreviewMapping::phaseSurface(
+    const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
+            || preview.domain == PortDomain::SpectralPhaseSignal;
+    if (spectral) {
+        return TrimeshRenderProfile::fromDomain(preview.domain).mapGridToDisplay(
                 surface,
                 preview.gridColumns,
                 preview.gridRows);
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
+    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     if (meshSurface) {
         const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
         profile.mapValuesToDisplay(buffer);
@@ -544,7 +508,7 @@ void drawSpectralLayerPreview(
         Rectangle<float> area,
         const Node& node,
         PortDomain domain) {
-    const float pan = jlimit(0.f, 1.f, nodeParameterValue(node, "pan", "0.5").getFloatValue());
+    const float pan = jlimit(0.f, 1.f, NodeParameterMap(node).floatValue("pan", 0.5f));
     const float diameter = jmin(area.getWidth(), area.getHeight());
     const Rectangle<float> dial(diameter, diameter);
     const Rectangle<float> bounds = dial.withCentre(area.getCentre());
@@ -629,6 +593,11 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.node.kind == NodeKind::TrilinearMesh
+            && paintAuthoritativeModel(graphics, request)) {
+        return;
+    }
+
     if (request.runtimeResult != nullptr
             && (request.runtimeResult->role == PreviewModuleRole::SignalSpy
                     || request.runtimeResult->role == PreviewModuleRole::MeshSurface)
@@ -656,6 +625,9 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     String signature = nodeSignature(request.node, request.profile.getDomain());
+    if (request.node.kind == NodeKind::TrilinearMesh) {
+        signature += "|guide:" + resources.trimeshWidget(request.node).guideContextKey();
+    }
     if (request.node.kind == NodeKind::Unison) {
         signature += "|previewNote:" + String(request.unisonContext.midiNote)
                 + "|voiceDuration:" + String(request.unisonContext.voiceDurationSeconds, 6);
@@ -703,7 +675,7 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {
     if (request.node.kind == NodeKind::TrilinearMesh) {
-        resources.trimeshWidget(request.node.id).paintCompact(
+        resources.trimeshWidget(request.node).paintCompact(
                 graphics,
                 request.node,
                 request.area,
@@ -757,7 +729,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 jmin(request.area.getWidth(), request.area.getHeight()) * 0.04f);
         graphics.setColour(EffectPlotPalette::forEnabledState(
                 EffectPlotPalette::insetBackground,
-                nodeParameterValue(request.node, "enabled", "1").getIntValue() != 0));
+                NodeParameterMap(request.node).boolValue("enabled", true)));
         graphics.fillRoundedRectangle(background, 4.f);
         paintEqualizerResponseData(
                 graphics,
@@ -794,7 +766,7 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
     }
 
     const bool desaturated = request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
-            && nodeParameterValue(request.node, "enabled", "1").getIntValue() == 0;
+            && !NodeParameterMap(request.node).boolValue("enabled", true);
     const String signature = runtimeSignature(*request.runtimeResult)
             + "|desaturated:" + String(desaturated ? 1 : 0);
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);

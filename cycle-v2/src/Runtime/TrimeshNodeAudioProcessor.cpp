@@ -40,14 +40,6 @@ int primaryAxisFromParameter(const String& axisName) {
     return Vertex::Time;
 }
 
-MorphPosition meshMorphFromParameters(const std::vector<NodeParameter>& parameters) {
-    return {
-            parameterFloat(parameters, "yellow", 0.5f),
-            parameterFloat(parameters, "red", 0.5f),
-            parameterFloat(parameters, "blue", 0.5f)
-    };
-}
-
 Rasterization::ScratchSourceDomain scratchDomainFor(PortDomain domain) {
     if (domain == PortDomain::TimeSignal) {
         return Rasterization::ScratchSourceDomain::Time;
@@ -109,6 +101,8 @@ public:
         preparedDomain = spec.domain;
         smoothedMorph.reset(configuration->morph);
         morphInitialized = true;
+        trimeshDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
+        trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
 
         trimeshDsp.prepare(
                 const_cast<Mesh*>(configuration->mesh.get()),
@@ -153,7 +147,7 @@ public:
 
         const MorphPosition baseMorph = configuration != nullptr
                 ? configuration->morph
-                : meshMorphFromParameters(processParameters(context));
+                : MorphPosition { 0.5f, 0.5f, 0.5f };
         if (!morphInitialized) {
             smoothedMorph.reset(baseMorph);
             morphInitialized = true;
@@ -165,10 +159,7 @@ public:
         const MorphPosition& morph = smoothedMorph.current();
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
-                : primaryAxisFromParameter(typedParameterString(
-                        processParameters(context),
-                        "primaryAxis",
-                        "yellow"));
+                : Vertex::Time;
 
         const SignalPayload* scratch = scratchAttachment(context);
         const auto scratchDomain = scratchDomainFor(outputPort.domain);

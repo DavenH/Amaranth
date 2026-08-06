@@ -163,21 +163,4 @@ private:
     std::vector<NodeDefinition> nodeDefinitions;
 };
 
-String typedParameterString(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        const String& fallback = {});
-bool typedParameterBool(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        bool fallback = false);
-int typedParameterInt(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        int fallback = 0);
-float typedParameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& parameterId,
-        float fallback = 0.f);
-
 }

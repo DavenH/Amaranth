@@ -1,6 +1,7 @@
 #include "CurveNodeModels.h"
 
 #include "../../Graph/NodeModelDecodeDiagnostics.h"
+#include "../../Graph/NodeParameterMap.h"
 
 #include "../Envelope/EnvelopeMeshState.h"
 
@@ -10,17 +11,6 @@
 #include <cmath>
 
 namespace CycleV2 {
-
-namespace {
-
-String parameterValue(const std::vector<NodeParameter>& parameters, const String& id) {
-    const auto found = std::find_if(parameters.begin(), parameters.end(), [&](const auto& parameter) {
-        return parameter.id == id;
-    });
-    return found != parameters.end() ? found->value : String();
-}
-
-}
 
 FlatCurveModel::FlatCurveModel(String name) :
         mesh(std::move(name)) {}
@@ -425,9 +415,10 @@ bool EnvelopeNodeModel::syncFromNode(const Node& node) {
     const bool loaded = typed != nullptr
             && typed->envelope() != nullptr
             && copyFrom(*typed->envelope());
-    logarithmic = parameterValueForNode(node, "logarithmic", "0").getIntValue() != 0;
-    red = jlimit(0.f, 1.f, parameterValueForNode(node, "red", "0.5").getFloatValue());
-    blue = jlimit(0.f, 1.f, parameterValueForNode(node, "blue", "0.5").getFloatValue());
+    const NodeParameterMap parameters(node);
+    logarithmic = parameters.boolValue("logarithmic", false);
+    red = jlimit(0.f, 1.f, parameters.floatValue("red", 0.5f));
+    blue = jlimit(0.f, 1.f, parameters.floatValue("blue", 0.5f));
     return loaded;
 }
 
@@ -554,10 +545,11 @@ void EnvelopeNodeModel::rebuildIdentityMap() {
 }
 
 void WaveshaperNodeModel::syncFromNode(const Node& node) {
-    enabled = parameterValueForNode(node, "enabled", "1").getIntValue() != 0;
-    preGain = jlimit(0.f, 1.f, parameterValueForNode(node, "pre", "0.5").getFloatValue());
-    postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
-    oversampling = jmax(1, parameterValueForNode(node, "aaFactor", "1").getIntValue());
+    const NodeParameterMap parameters(node);
+    enabled = parameters.boolValue("enabled", true);
+    preGain = jlimit(0.f, 1.f, parameters.floatValue("pre", 0.5f));
+    postGain = jlimit(0.f, 1.f, parameters.floatValue("post", 0.5f));
+    oversampling = jmax(1, parameters.intValue("aaFactor", 1));
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     if (typed != nullptr && typed->flatCurve() != nullptr) {
         curve.copyFrom(*typed->flatCurve());
@@ -565,10 +557,11 @@ void WaveshaperNodeModel::syncFromNode(const Node& node) {
 }
 
 void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
-    enabled = parameterValueForNode(node, "enabled", "1").getIntValue() != 0;
-    size = jlimit(0.f, 1.f, parameterValueForNode(node, "size", "0.5").getFloatValue());
-    postGain = jlimit(0.f, 1.f, parameterValueForNode(node, "post", "0.5").getFloatValue());
-    highPass = jlimit(0.f, 1.f, parameterValueForNode(node, "highPass", "0.5").getFloatValue());
+    const NodeParameterMap parameters(node);
+    enabled = parameters.boolValue("enabled", true);
+    size = jlimit(0.f, 1.f, parameters.floatValue("size", 0.5f));
+    postGain = jlimit(0.f, 1.f, parameters.floatValue("post", 0.5f));
+    highPass = jlimit(0.f, 1.f, parameters.floatValue("highPass", 0.5f));
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     if (typed != nullptr && typed->flatCurve() != nullptr) {
         curve.copyFrom(*typed->flatCurve());
@@ -576,10 +569,11 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
 }
 
 void GuideCurveNodeModel::syncFromNode(const Node& node) {
-    enabled = parameterValueForNode(node, "enabled", "1").getIntValue() != 0;
-    noise = jlimit(0.f, 1.f, parameterValueForNode(node, "noise", "0.5").getFloatValue());
-    dcOffset = jlimit(0.f, 1.f, parameterValueForNode(node, "dcOffset", "0.5").getFloatValue());
-    phase = jlimit(0.f, 1.f, parameterValueForNode(node, "phase", "0.5").getFloatValue());
+    const NodeParameterMap parameters(node);
+    enabled = parameters.boolValue("enabled", true);
+    noise = jlimit(0.f, 1.f, parameters.floatValue("noise", 0.5f));
+    dcOffset = jlimit(0.f, 1.f, parameters.floatValue("dcOffset", 0.5f));
+    phase = jlimit(0.f, 1.f, parameters.floatValue("phase", 0.5f));
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
     if (typed != nullptr && typed->flatCurve() != nullptr) {
         curve.copyFrom(*typed->flatCurve());

@@ -5,6 +5,7 @@
 
 #include "NodeCanvasAuthoring.h"
 
+#include "../Graph/NodeParameterMap.h"
 #include "ModulationCableBundle.h"
 #include "NodeViewModule.h"
 #include "TrimeshGuideCableBundle.h"
@@ -30,16 +31,6 @@ bool outputSideControlSupported(NodeKind kind) {
 bool hasEditor(NodeKind kind) {
     const auto& capabilities = NodeViewModuleRegistry::instance().moduleFor(kind).capabilities();
     return capabilities.expandedEditor;
-}
-
-String parameterValue(const Node& node, const String& parameterId) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == parameterId) {
-            return parameter.value;
-        }
-    }
-
-    return {};
 }
 
 float snapPanValue(float value) {
@@ -333,11 +324,10 @@ bool NodeCanvasAuthoring::getNodeParameter(
         return false;
     }
 
-    for (const auto& parameter : node->parameters) {
-        if (parameter.id == parameterId) {
-            value = parameter.value;
-            return true;
-        }
+    const NodeParameterMap parameters(*node);
+    if (parameters.contains(parameterId)) {
+        value = parameters.stringValue(parameterId);
+        return true;
     }
 
     return false;
@@ -667,7 +657,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setTransformMode(
     }
 
     const String value = TransformCompactEditor::parameterValue(mode);
-    if (parameterValue(*node, "mode") == value) {
+    if (NodeParameterMap(*node).stringValue("mode") == value) {
         return handledResult(true, TransformCompactEditor::status(node->kind, mode), { true });
     }
 
@@ -799,7 +789,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::setVoiceContextParameter(
     if (node == nullptr || node->kind != NodeKind::VoiceContext) {
         return {};
     }
-    if (parameterValue(*node, parameterId) == value) {
+    if (NodeParameterMap(*node).stringValue(parameterId) == value) {
         return handledResult(true, statusMessage, { true });
     }
 

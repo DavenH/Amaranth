@@ -321,7 +321,7 @@ TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2]
     REQUIRE(edge.sourceNodeId == "guide");
     REQUIRE(edge.sourcePortId == "guide");
     REQUIRE(edge.destNodeId == "waveMesh");
-    REQUIRE(edge.destPortId == "guide.vertex.2.amp");
+    REQUIRE(edge.destPortId == "guide.cube.0.amp");
 }
 
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
@@ -382,7 +382,7 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     for (const auto& edge : graph.getEdges()) {
         if (edge.isProcessingAttachment()
                 && edge.destNodeId == "waveMesh"
-                && edge.destPortId == "guide.vertex.2.amp") {
+                && edge.destPortId == "guide.cube.0.amp") {
             ++targetAttachments;
             attachedGuideId = edge.sourceNodeId;
         }
