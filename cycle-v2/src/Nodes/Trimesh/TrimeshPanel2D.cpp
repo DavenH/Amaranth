@@ -2,14 +2,9 @@
 
 #include <UI/Panels/CommonGfx.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 namespace CycleV2 {
-
-namespace {
-
-constexpr float kSpectrumTension = 500.f;
-
-}
 
 TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
         SingletonAccessor  (repo, "CycleV2TrimeshPanel2D")
@@ -68,6 +63,19 @@ void TrimeshPanel2D::setRenderProfile(TrimeshRenderProfile profile) {
     requestRepaint();
 }
 
+void TrimeshPanel2D::setPreviewMidiNote(int midiNote) {
+    if (previewMidiNote == midiNote) {
+        return;
+    }
+
+    previewMidiNote = midiNote;
+    dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
+    if (getComponent() != nullptr) {
+        updateBackground();
+        requestRepaint();
+    }
+}
+
 void TrimeshPanel2D::applyRenderProfile() {
     const auto& curveStyle = renderProfile.getCurveStyle();
 
@@ -111,8 +119,7 @@ void TrimeshPanel2D::drawSpectrumMagnitudeBackground(bool fillBackground) {
 
     xBuffer.ensureSize(128);
     Buffer<float> scaledRamp = xBuffer.withSize(128);
-    scaledRamp.ramp(0.f, 1.f / (float) scaledRamp.size());
-    Arithmetic::applyLogMapping(scaledRamp, kSpectrumTension);
+    LogRegionMapping(previewMidiNote).fillDisplayUnits(scaledRamp);
     applyScaleX(scaledRamp);
 
     for (int i = 0; i < scaledRamp.size() - 7; i += 4) {
@@ -135,7 +142,7 @@ void TrimeshPanel2D::drawSpectrumMagnitudeBackground(bool fillBackground) {
         value *= 0.5f;
     }
 
-    Arithmetic::applyLogMapping(dbLines, kSpectrumTension);
+    Arithmetic::applyLogMapping(dbLines, 500.f);
     applyScaleY(dbLines);
     progress.ramp(1.f, -1.f / (float) progress.size());
 
@@ -173,8 +180,7 @@ void TrimeshPanel2D::drawSpectrumPhaseBackground(bool fillBackground) {
 
     xBuffer.ensureSize(128);
     Buffer<float> scaledRamp = xBuffer.withSize(128);
-    scaledRamp.ramp(0.f, 1.f / (float) scaledRamp.size());
-    Arithmetic::applyLogMapping(scaledRamp, kSpectrumTension);
+    LogRegionMapping(previewMidiNote).fillDisplayUnits(scaledRamp);
     applyScaleX(scaledRamp);
 
     const int quarterSize = scaledRamp.size() / 4;

@@ -8,6 +8,7 @@
 #include <Curve/Mesh/Vertex.h>
 #include <Design/Updating/Updater.h>
 #include <UI/MiscGraphics.h>
+#include <Util/LogRegions.h>
 
 namespace CycleV2 {
 
@@ -20,13 +21,16 @@ TrimeshPanelEnvironment::TrimeshPanelEnvironment() :
     repo.add(new PathRepo(&repo));
     repo.add(new EditWatcher(&repo));
     repo.add(new Updater(&repo));
+    repo.add(new LogRegions(&repo));
 
     auto& constants = repo.get<AppConstants>("AppConstants");
     constants.setConstant(Constants::FontFace, String("Verdana"));
     constants.setConstant(Constants::MinLineLength, 0.001);
+    constants.setConstant(Constants::LogFreqTensionScale, 0.5);
 
     repo.get<MiscGraphics>("MiscGraphics").init();
     repo.get<PathRepo>("PathRepo").init();
+    repo.get<LogRegions>("LogRegions").init();
 
     auto& settings = repo.get<Settings>("Settings");
     settings.initialiseSettings();

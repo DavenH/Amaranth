@@ -1,55 +1,12 @@
 #include "GraphPresentationModel.h"
 #include "FingerprintBuilder.h"
-
-#include "../Graph/NodeParameterMap.h"
-
-#include <App/AppConstants.h>
-#include <Util/Arithmetic.h>
+#include "PreviewPitchResolver.h"
 
 #include <algorithm>
-#include <optional>
-#include <set>
 
 namespace CycleV2 {
 
 namespace {
-
-const SignalProbe* findProbe(const NodeGraph& graph, const String& probeId) {
-    const auto found = std::find_if(
-            graph.getSignalProbes().begin(),
-            graph.getSignalProbes().end(),
-            [&](const auto& candidate) {
-                return candidate.id == probeId;
-            });
-    return found == graph.getSignalProbes().end() ? nullptr : &*found;
-}
-
-std::optional<int> attachedKeyNote(
-        const NodeGraph& graph,
-        const String& voiceContextId,
-        int fallbackMidiNote) {
-    const Range<int> midiRange {
-            Constants::LowestMidiNote,
-            Constants::HighestMidiNote
-    };
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.destNodeId != voiceContextId
-                || edge.attachmentType != AttachmentType::ModulationTriple) {
-            continue;
-        }
-        const Node* triple = graph.findNode(edge.sourceNodeId);
-        if (triple == nullptr || triple->kind != NodeKind::ModulationTriple) {
-            continue;
-        }
-
-        const float fallbackKey = Arithmetic::getUnitValueForGraphicNote(
-                fallbackMidiNote,
-                midiRange);
-        const float key = NodeParameterMap(*triple).floatValue("redConstant", fallbackKey);
-        return Arithmetic::getGraphicNoteForValue(key, midiRange);
-    }
-    return std::nullopt;
-}
 
 GraphPreviewResult captureProbePreviews(
         const NodeGraph& graph,
@@ -94,36 +51,7 @@ int GraphPresentationModel::auditionMidiNoteForProbe(
         const NodeGraph& graph,
         const String& probeId,
         int fallbackMidiNote) {
-    const SignalProbe* probe = findProbe(graph, probeId);
-    if (probe == nullptr) {
-        return fallbackMidiNote;
-    }
-
-    std::vector<String> pending { probe->sourceNodeId };
-    std::set<String> visited;
-    while (!pending.empty()) {
-        const String nodeId = pending.back();
-        pending.pop_back();
-        if (!visited.insert(nodeId).second) {
-            continue;
-        }
-
-        const Node* node = graph.findNode(nodeId);
-        if (node != nullptr && node->kind == NodeKind::VoiceContext) {
-            const auto note = attachedKeyNote(graph, nodeId, fallbackMidiNote);
-            if (note.has_value()) {
-                return *note;
-            }
-        }
-
-        for (const auto& edge : graph.getEdges()) {
-            if (edge.destNodeId == nodeId && !edge.isAttachment()) {
-                pending.push_back(edge.sourceNodeId);
-            }
-        }
-    }
-
-    return fallbackMidiNote;
+    return PreviewPitchResolver::forProbe(graph, probeId, fallbackMidiNote);
 }
 
 bool GraphPresentationModel::refresh(
@@ -332,11 +260,16 @@ bool GraphPresentationModel::renderPreviewProducts(
             ChannelLayout::LinkedStereo
     };
     previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
+    AudioVoiceContext previewVoice;
+    previewVoice.controls.noteNumber = PreviewPitchResolver::forGraph(graph);
+    previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     if (renderFullGraph) {
         const GraphAudioResult audio = previewAudioExecutor.process(
                 graph,
                 snapshot.compileResult.plan,
-                previewFrameCount);
+                previewFrameCount,
+                {},
+                previewVoice);
         snapshot.previewResult = GraphPreviewExecutor().render(
                 snapshot.compileResult.plan,
                 audio,
@@ -362,6 +295,7 @@ bool GraphPresentationModel::renderPreviewProducts(
             snapshot.compileResult.plan,
             previewFrameCount,
             dirtyNodes,
+            previewVoice,
             cancellationCheck);
     if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
         return false;

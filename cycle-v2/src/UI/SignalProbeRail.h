@@ -4,7 +4,6 @@
 
 #include "NodeCanvasScene.h"
 #include "NodePreviewRenderer.h"
-#include "SignalProbeDetailView.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Runtime/NodeUpdateGraph.h"
 
@@ -77,8 +76,7 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state,
-            const SignalProbeDetailState* detailState = nullptr);
+            const SignalProbeRailState& state);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);

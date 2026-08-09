@@ -78,6 +78,13 @@ public:
             size_t frameCount,
             const std::vector<uint8_t>& dirtyNodes,
             CancellationCheck cancellationCheck = {}) const;
+    GraphAudioResultView processIncrementalIndexed(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            const std::vector<uint8_t>& dirtyNodes,
+            AudioVoiceContext voice,
+            CancellationCheck cancellationCheck = {}) const;
     void clearIncrementalCache() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
     GraphAudioOutputView processRealtime(

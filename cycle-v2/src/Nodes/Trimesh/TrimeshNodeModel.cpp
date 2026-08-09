@@ -130,14 +130,23 @@ void TrimeshNodeModel::applyPreparedGuides(
     bumpMeshContentRevision();
 }
 
-TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain domain) {
-    return renderGrid(rows, columns, TrimeshRenderProfile::fromDomain(domain));
+TrimeshRenderData TrimeshNodeModel::renderGrid(
+        int rows,
+        int columns,
+        PortDomain domain,
+        int midiNote) {
+    return renderGrid(
+            rows,
+            columns,
+            TrimeshRenderProfile::fromDomain(domain),
+            midiNote);
 }
 
 TrimeshRenderData TrimeshNodeModel::renderGrid(
         int rows,
         int columns,
-        const TrimeshRenderProfile& renderProfile) {
+        const TrimeshRenderProfile& renderProfile,
+        int midiNote) {
     rows = jmax(2, rows);
     columns = jmax(2, columns);
     const PortDomain domain = renderProfile.getDomain();
@@ -157,10 +166,22 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
     blockwiseDsp.setCyclic(cyclic);
     blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
-    renderProfile.mapValuesToDisplay(Buffer<float>(
-            slice.block.samples.data(),
-            (int) slice.block.samples.size()));
-    result.slice.assign(slice.block.samples.begin(), slice.block.samples.end());
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal) {
+        const std::vector<float> rawSlice(
+                slice.block.samples.begin(),
+                slice.block.samples.end());
+        result.slice = renderProfile.mapGridToDisplay(
+                rawSlice,
+                1,
+                (size_t) rows,
+                midiNote);
+    } else {
+        renderProfile.mapValuesToDisplay(Buffer<float>(
+                slice.block.samples.data(),
+                (int) slice.block.samples.size()));
+        result.slice.assign(slice.block.samples.begin(), slice.block.samples.end());
+    }
 
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);
@@ -182,10 +203,15 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
                 column.signal.block.samples.begin(),
                 column.signal.block.samples.end());
     }
-    result.surface = renderProfile.mapGridToDisplay(
+    result.linearFrequencySurface = renderProfile.mapLinearFrequencyGridValuesToDisplay(
             result.surface,
             (size_t) columns,
             (size_t) rows);
+    result.surface = renderProfile.mapGridToDisplay(
+            result.surface,
+            (size_t) columns,
+            (size_t) rows,
+            midiNote);
 
     return result;
 }

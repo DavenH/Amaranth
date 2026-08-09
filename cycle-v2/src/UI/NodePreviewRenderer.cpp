@@ -92,6 +92,7 @@ String runtimeSignature(const NodePreviewResult& preview) {
     return String((int) preview.role)
             + ":" + String((int) preview.domain)
             + ":" + String((int) preview.frequencySampling)
+            + ":" + String(preview.frequencyMidiNote)
             + ":" + String((int) preview.gridColumns)
             + "x" + String((int) preview.gridRows)
             + ":" + String((int) preview.primary.size())
@@ -211,18 +212,21 @@ std::vector<float> mappedSurface(
         return profile.mapGridToDisplay(
                 surface,
                 preview.gridColumns,
-                preview.gridRows);
+                preview.gridRows,
+                preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
-                preview.gridRows);
+                preview.gridRows,
+                preview.frequencyMidiNote);
     } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
-                preview.gridRows);
+                preview.gridRows,
+                preview.frequencyMidiNote);
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());

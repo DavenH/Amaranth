@@ -352,7 +352,7 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
     REQUIRE(magMesh.traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(magMesh.traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
     REQUIRE(magMesh.traversalGrid.metadata.frequencySampling
-            == TraversalGridFrequencySampling::LogarithmicBins);
+            == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(columnDifference(magMesh.traversalGrid, 0, magMesh.traversalGrid.columns - 1) > 0.01f);
     REQUIRE(*std::min_element(addMag.traversalGrid.values.begin(), addMag.traversalGrid.values.end()) >= 0.f);
     requireMagnitudeGridAddEquals(addMag.traversalGrid, fftMagnitude.traversalGrid, magMesh.traversalGrid);

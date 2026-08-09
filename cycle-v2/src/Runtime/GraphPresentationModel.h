@@ -65,7 +65,7 @@ public:
     static int auditionMidiNoteForProbe(
             const NodeGraph& graph,
             const String& probeId,
-            int fallbackMidiNote = 60);
+            int fallbackMidiNote = 48);
     std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
             const NodeGraph& graph,
             const String& probeId,

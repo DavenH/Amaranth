@@ -61,6 +61,7 @@ struct TraversalGridMetadata {
     TraversalGridAxis rowAxis { TraversalGridAxis::None };
     TraversalGridFrequencySampling frequencySampling {
             TraversalGridFrequencySampling::LinearBins };
+    int frequencyMidiNote { 48 };
     PortDomain valueDomain { PortDomain::ControlSignal };
     TraversalGridAxisResolution columnResolution;
     TraversalGridAxisResolution rowResolution;

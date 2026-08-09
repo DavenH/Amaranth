@@ -116,7 +116,7 @@ Trimesh sources retain their authoritative traversal-column sampling and
 spectral grids retain the corresponding unique FFT bins. The immutable preview
 voice uses the persisted key value from the upstream Voice Context's attached
 Modulation Triple. The key value is mapped through Cycle's MIDI note range; if
-there is no attached Modulation Triple, MIDI note 60 is the default.
+there is no attached Modulation Triple, MIDI note 48 (C3) is the default.
 
 The authoritative period calculation is
 `CycleDsp::OscillatorLaneCore::angleDelta` followed by
@@ -125,18 +125,25 @@ The presentation boundary translates only the selected probe, detail bounds,
 and close interaction. Closing the view deletes its lazy payload; no graph or
 audio state is retained by the overlay.
 
-While the detail is open, its rail tile renders the same captured payload. This
-keeps compact and expanded views identical without calculating the expensive
-grid during ordinary preview refreshes. High-quality presentation scaling makes
-the native traversal grid suitable for the larger surface without altering its
-samples.
+While the detail is open, its rail tile continues to render the ordinary compact
+payload. The lazy high-resolution payload belongs only to the detail overlay;
+capturing it must not mutate or replace the compact preview. Both payloads use
+the same presentation mapping, so increased resolution preserves the represented
+structure.
 
-Spectral probes preserve the captured grid values. Trimesh traversal rows are
-already sampled in the log-frequency coordinate space, so probe presentation
-must not resample them or apply FFT amplitude mapping.
-Raw FFT traversal rows instead carry linear-bin provenance; probe presentation
-applies Cycle v1's `Spectrum2D` inverse-log frequency sampling and amplitude
-mapping with `AmpTensionScale = 500` exactly once.
+Spectral probes preserve the captured grid values. Spectral traversal rows use
+linear frequency/phase coordinates and carry the resolved preview MIDI note as
+axis metadata. Presentation samples those rows through the same pitch-dependent
+`LogRegions` mapping used by Cycle v1. Trimesh surfaces, their mesh coordinates,
+compact and expanded Trimesh views, and compact and expanded probes must all use
+that one mapping exactly once. C3 and C5 therefore produce different displayed
+frequency positions while every view at one pitch remains coincident.
+
+Raw FFT traversal rows use the same frequency-coordinate mapping. Magnitude
+presentation additionally applies Cycle v1's `Spectrum2D` amplitude mapping
+with `AmpTensionScale = 500` exactly once; Trimesh magnitude presentation keeps
+its render-semantic value scale. Frequency provenance must never be inferred
+from preview role.
 Spectral Layer exposes its normalized input grid through the probe observation
 contract while its audio blocks and execution traversal grid receive the
 magnitude or phase transfer. Presentation then applies only the source-output
@@ -167,6 +174,10 @@ editor.
 - Presentation tests cover rail geometry, collapse, marker identity,
   interaction-only tethers, editor-safe bounds, detail geometry, and lazy
   note-period resolution.
+- Spectral integration tests use localized value regions at C3 and C5 to prove
+  that Trimesh surface samples, mesh coordinates, compact probes, and expanded
+  probes occupy the same displayed frequency region. The tests also prove that
+  changing pitch changes the mapping rather than merely changing resolution.
 - Native macOS automation covers right-click and Control-click menus,
   Option-click toggling, marker reattachment, rail resizing/collapse, deletion,
   and save/reload.
@@ -190,6 +201,14 @@ editor.
   in the bundled eight-probe graph.
 - Canvas architecture tests prove that expanded editor bounds remain inside
   the content rectangle reserved above expanded and collapsed rails.
+- Pitch-mapping integration tests cover exact Cycle v1 LogRegions coordinates,
+  C3/C5-dependent Trimesh panel row/key metadata, compact/expanded spectral
+  value-region correspondence, and compact-payload immutability during a lazy
+  detail capture.
+- `cycle-v2-agent-spy-detail.json` verifies the lazy 256-sample Stengah detail
+  traversal and captures matching compact/detail structure at
+  `/private/tmp/cycle-v2-spy-compact.png` and
+  `/private/tmp/cycle-v2-spy-detail.png`.
 - `cycle-v2-agent-probe-rail-os-screenshot.json` loads the bundled graph,
   asserts all eight probes, opens the Trimesh editor, and supplies the native
   macOS OS-capture target. The verified capture is

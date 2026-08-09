@@ -50,6 +50,7 @@ public:
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void setPreviewMidiNote(int midiNote);
     void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
 
     void paintCompact(
@@ -147,6 +148,7 @@ private:
         uint64_t revision {};
         PortDomain domain { PortDomain::ControlSignal };
         RenderScalePolicy scalePolicy { RenderScalePolicy::Unipolar };
+        int midiNote { 48 };
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
@@ -169,6 +171,7 @@ private:
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    int previewMidiNote { 48 };
     std::array<juce::String, 6> guideAttachmentLabels;
     juce::String guideConfigurationKey { "unprepared" };
 };

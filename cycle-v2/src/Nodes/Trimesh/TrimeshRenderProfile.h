@@ -61,11 +61,18 @@ public:
     std::vector<float> mapGridToDisplay(
             const std::vector<float>& source,
             size_t columns,
+            size_t rows,
+            int midiNote = 48) const;
+    std::vector<float> mapLinearFrequencyGridValuesToDisplay(
+            const std::vector<float>& source,
+            size_t columns,
             size_t rows) const;
     std::vector<float> mapSpectrum2DGridToDisplay(
             const std::vector<float>& source,
             size_t columns,
-            size_t rows) const;
+            size_t rows,
+            int midiNote = 48) const;
+    float displayFrequencyUnit(float sourceUnit, int midiNote = 48) const;
     void mapValuesToDisplay(Buffer<float> values) const;
 
 private:

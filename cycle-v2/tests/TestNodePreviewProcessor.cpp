@@ -52,6 +52,41 @@ bool imagesMatch(const Image& first, const Image& second) {
     return true;
 }
 
+std::vector<float> localizedSpectralRegion(
+        size_t rows,
+        float start,
+        float end) {
+    std::vector<float> values(rows);
+    const size_t first = 1 + (size_t) (start * (float) (rows - 2));
+    const size_t last = 1 + (size_t) (end * (float) (rows - 2));
+    std::fill(
+            values.begin() + (std::vector<float>::difference_type) first,
+            values.begin() + (std::vector<float>::difference_type) last,
+            1.f);
+    return values;
+}
+
+std::pair<float, float> activeRegion(
+        const std::vector<float>& values,
+        float threshold) {
+    const auto first = std::find_if(values.begin(), values.end(), [&](float value) {
+        return value > threshold;
+    });
+    const auto last = std::find_if(values.rbegin(), values.rend(), [&](float value) {
+        return value > threshold;
+    });
+    if (first == values.end() || last == values.rend()) {
+        return {};
+    }
+
+    const float denominator = (float) (values.size() - 1);
+    return {
+            (float) std::distance(values.begin(), first) / denominator,
+            (float) (values.size() - 1 - (size_t) std::distance(values.rbegin(), last))
+                    / denominator
+    };
+}
+
 }
 
 TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][runtime]") {
@@ -128,33 +163,39 @@ TEST_CASE("Signal spy heatmaps preserve absolute time-signal gain",
 
 TEST_CASE("Spectral preview frequency mapping follows the Cycle logarithmic sampler",
         "[cycle-v2][runtime][probe][spectral][ui]") {
-    constexpr size_t rows = 9;
+    constexpr size_t rows = 257;
+    constexpr float regionStart = 0.24f;
+    constexpr float regionEnd = 0.34f;
     std::vector<float> source(rows);
-    Buffer<float>(source.data(), (int) source.size()).ramp(0.f, 1.f);
+    const size_t sourceStart = 1 + (size_t) (regionStart * (float) (rows - 2));
+    const size_t sourceEnd = 1 + (size_t) (regionEnd * (float) (rows - 2));
+    std::fill(
+            source.begin() + (std::vector<float>::difference_type) sourceStart,
+            source.begin() + (std::vector<float>::difference_type) sourceEnd,
+            1.f);
 
-    const auto mapped = TrimeshRenderProfile::fromDomain(
-            PortDomain::SpectralMagnitudeSignal).mapGridToDisplay(
-                    source,
-                    1,
-                    rows);
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto c3 = profile.mapGridToDisplay(source, 1, rows, 48);
+    const auto c5 = profile.mapGridToDisplay(source, 1, rows, 72);
+    const auto firstActiveRow = [](const std::vector<float>& values) {
+        return (size_t) std::distance(
+                values.begin(),
+                std::find_if(values.begin(), values.end(), [](float value) {
+                    return value > 0.5f;
+                }));
+    };
 
-    REQUIRE(mapped.size() == source.size());
-    for (size_t row = 0; row < rows; ++row) {
-        const float unit = (float) row / (float) (rows - 1);
-        const float sourceUnit = Arithmetic::invLogMapping(
-                (float) rows * 0.5f,
-                unit,
-                true);
-        const float sourcePosition = jlimit(
-                1.f,
-                (float) (rows - 1),
-                1.f + sourceUnit * (float) (rows - 2));
-        const float expected = jlimit(
-                0.f,
-                1.f,
-                std::log(1.f + 16.f * sourcePosition) / 2.833213344f);
-        CHECK(mapped[row] == Catch::Approx(expected));
-    }
+    const size_t c3Start = firstActiveRow(c3);
+    const size_t c5Start = firstActiveRow(c5);
+    const size_t expectedC3 = (size_t) roundToInt(
+            profile.displayFrequencyUnit(regionStart, 48) * (float) (rows - 1));
+    const size_t expectedC5 = (size_t) roundToInt(
+            profile.displayFrequencyUnit(regionStart, 72) * (float) (rows - 1));
+
+    CHECK(std::abs((int) c3Start - (int) expectedC3) <= 2);
+    CHECK(std::abs((int) c5Start - (int) expectedC5) <= 2);
+    CHECK(c3Start > c5Start);
 }
 
 TEST_CASE("Spectral preview magnitude mapping follows Spectrum2D",
@@ -163,30 +204,59 @@ TEST_CASE("Spectral preview magnitude mapping follows Spectrum2D",
     const std::vector<float> source { 1000.f, 0.f, 0.001f, 0.1f, 1.f };
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralMagnitudeSignal);
-    std::vector<float> expected(rows);
+    const auto c3 = profile.mapSpectrum2DGridToDisplay(source, 1, rows, 48);
+    const auto c5 = profile.mapSpectrum2DGridToDisplay(source, 1, rows, 72);
+    const float expectedC3[] { 0.000000118f, 0.007274421f, 0.036858425f, 0.14368251f, 1.f };
+    const float expectedC5[] { 0.000000118f, 0.017031401f, 0.067444496f, 0.238788915f, 1.f };
+
     for (size_t row = 0; row < rows; ++row) {
-        const float unit = (float) row / (float) (rows - 1);
-        const float sourceUnit = Arithmetic::invLogMapping(
-                (float) rows * 0.5f,
-                unit,
-                true);
-        const float position = jlimit(
-                1.f,
-                (float) (rows - 1),
-                1.f + sourceUnit * (float) (rows - 2));
-        const size_t rowA = (size_t) position;
-        const size_t rowB = std::min(rowA + 1, rows - 1);
-        const float amount = position - (float) rowA;
-        expected[row] = source[rowA] + amount * (source[rowB] - source[rowA]);
+        CHECK(c3[row] == Catch::Approx(expectedC3[row]).margin(1.0e-6f));
+        CHECK(c5[row] == Catch::Approx(expectedC5[row]).margin(1.0e-6f));
     }
-    Buffer<float> expectedBuffer(expected.data(), (int) expected.size());
-    expectedBuffer.abs();
-    Arithmetic::applyLogMapping(expectedBuffer, 500.f);
-    expectedBuffer.clip(0.f, 1.f);
+}
 
-    const auto mapped = profile.mapSpectrum2DGridToDisplay(source, 1, rows);
+TEST_CASE("Spectral compact and expanded grids preserve pitch-mapped value regions",
+        "[cycle-v2][runtime][probe][spectral][ui][integration]") {
+    constexpr float sourceStart = 0.24f;
+    constexpr float sourceEnd = 0.34f;
+    constexpr size_t compactRows = 65;
+    constexpr size_t expandedRows = 513;
 
-    REQUIRE(mapped == expected);
+    for (const PortDomain domain : {
+            PortDomain::SpectralMagnitudeSignal,
+            PortDomain::SpectralPhaseSignal }) {
+        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
+        float previousStart {};
+
+        for (const int midiNote : { 72, 48 }) {
+            const auto compact = profile.mapGridToDisplay(
+                    localizedSpectralRegion(compactRows, sourceStart, sourceEnd),
+                    1,
+                    compactRows,
+                    midiNote);
+            const auto expanded = profile.mapGridToDisplay(
+                    localizedSpectralRegion(expandedRows, sourceStart, sourceEnd),
+                    1,
+                    expandedRows,
+                    midiNote);
+            const float threshold = domain == PortDomain::SpectralMagnitudeSignal
+                    ? 0.5f
+                    : 0.75f;
+            const auto compactRegion = activeRegion(compact, threshold);
+            const auto expandedRegion = activeRegion(expanded, threshold);
+            const float meshCoordinate = profile.displayFrequencyUnit(
+                    sourceStart,
+                    midiNote);
+
+            CHECK(compactRegion.first == Catch::Approx(expandedRegion.first).margin(0.025f));
+            CHECK(compactRegion.second == Catch::Approx(expandedRegion.second).margin(0.025f));
+            CHECK(expandedRegion.first == Catch::Approx(meshCoordinate).margin(0.01f));
+            if (previousStart > 0.f) {
+                CHECK(expandedRegion.first > previousStart + 0.02f);
+            }
+            previousStart = expandedRegion.first;
+        }
+    }
 }
 
 TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
@@ -219,7 +289,7 @@ TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
     }
 }
 
-TEST_CASE("Spectral grid mapping is identical for Trimesh and signal spies",
+TEST_CASE("Spectral grid mapping is identical for Trimesh and its signal spies",
         "[cycle-v2][runtime][preview][probe][spectral][ui]") {
     for (const PortDomain domain : {
             PortDomain::SpectralMagnitudeSignal,
@@ -239,10 +309,10 @@ TEST_CASE("Spectral grid mapping is identical for Trimesh and signal spies",
         result.gridColumns = 3;
         result.gridRows = 4;
         result.domain = domain;
-        result.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
+        result.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+        result.frequencyMidiNote = 48;
 
         const Image trimesh = NodePreviewRenderer::createRuntimeHeatmapImage(result);
-        result.role = PreviewModuleRole::SignalSpy;
         const Image spy = NodePreviewRenderer::createRuntimeHeatmapImage(result);
 
         CAPTURE(domain);
@@ -278,7 +348,7 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
     }
 }
 
-TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
+TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     NodePreviewResult mesh;
     mesh.role = PreviewModuleRole::MeshSurface;
@@ -289,10 +359,10 @@ TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
     mesh.gridColumns = 2;
     mesh.gridRows = 9;
     mesh.domain = PortDomain::SpectralMagnitudeSignal;
-    mesh.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
+    mesh.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+    mesh.frequencyMidiNote = 48;
 
     NodePreviewResult spy = mesh;
-    spy.role = PreviewModuleRole::SignalSpy;
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromSemantic({
             PortDomain::SpectralMagnitudeSignal,
             RenderScalePolicy::Bipolar,
@@ -306,9 +376,11 @@ TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
     expectedData.columns = (int) mesh.gridColumns;
     expectedData.rows = (int) mesh.gridRows;
     expectedData.domain = mesh.domain;
-    profile.mapValuesToDisplay(Buffer<float>(
-            expectedData.surface.data(),
-            (int) expectedData.surface.size()));
+    expectedData.surface = profile.mapGridToDisplay(
+            expectedData.surface,
+            mesh.gridColumns,
+            mesh.gridRows,
+            mesh.frequencyMidiNote);
     const Image expectedImage = TrimeshSurfaceRenderer::createHeatmapImage(
             expectedData,
             profile);
@@ -321,9 +393,17 @@ TEST_CASE("Spectral spy heatmaps render the already sampled Trimesh grid",
 
     mesh.primary.assign(mesh.primary.size(), 0.f);
     const Image zeroImage = NodePreviewRenderer::createRuntimeHeatmapImage(mesh, profile);
+    expectedData.surface = profile.mapGridToDisplay(
+            mesh.primary,
+            mesh.gridColumns,
+            mesh.gridRows,
+            mesh.frequencyMidiNote);
+    const Image expectedZeroImage = TrimeshSurfaceRenderer::createHeatmapImage(
+            expectedData,
+            profile);
     REQUIRE(zeroImage.isValid());
-    CHECK(zeroImage.getPixelAt(0, 0) == storedArgbPixel(
-            profile.getSurfaceStyle().colourForValue(0.5f)));
+    REQUIRE(expectedZeroImage.isValid());
+    CHECK(imagesMatch(zeroImage, expectedZeroImage));
 }
 
 TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",

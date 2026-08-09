@@ -4,6 +4,9 @@
 #include <cmath>
 #include <set>
 
+#include <App/AppConstants.h>
+#include <Util/Arithmetic.h>
+
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphNodeFactory.h"
@@ -83,6 +86,7 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
 
 TEST_CASE("Signal probe detail uses the audition-note period resolution",
         "[cycle-v2][canvas][probe][detail]") {
+    REQUIRE(SignalProbeDetailView::resolutionForMidiNote(48) == 512);
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(60) == 256);
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(72) == 128);
 
@@ -101,18 +105,66 @@ TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
     Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
     for (auto& parameter : triple.parameters) {
         if (parameter.id == "redConstant") {
-            parameter.value = "0.5";
+            parameter.value = String(Arithmetic::getUnitValueForGraphicNote(
+                    72,
+                    {
+                            Constants::LowestMidiNote,
+                            Constants::HighestMidiNote
+                    }), 9);
         }
     }
     graph.addNode(std::move(triple));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addEdge({
             "triple", "modulation", "voice", "modulation",
             PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
             AttachmentType::ModulationTriple
     });
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "mesh", "out", "fft", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+
+    REQUIRE(GraphPresentationModel::auditionMidiNoteForProbe(
+            graph,
+            graph.getSignalProbes().front().id) == 72);
+
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    REQUIRE(presentation.previewResult().probes.front().connected);
+    REQUIRE(presentation.previewResult().probes.front().frequencyMidiNote == 72);
+
+    const String c3Key(Arithmetic::getUnitValueForGraphicNote(
+            48,
+            {
+                    Constants::LowestMidiNote,
+                    Constants::HighestMidiNote
+            }), 9);
+    const GraphEditResult pitchEdit = GraphEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redConstant",
+            "Red",
+            c3Key);
+    REQUIRE(pitchEdit.succeeded());
+    REQUIRE(presentation.refresh(graph, 2, pitchEdit.changes));
+    REQUIRE(presentation.previewResult().probes.front().frequencyMidiNote == 48);
+}
+
+TEST_CASE("Signal probe preview pitch defaults to C3 without a Modulation Triple",
+        "[cycle-v2][canvas][probe][detail][spectral]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
     graph.addEdge({
             "voice", "context", "wave", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -121,11 +173,11 @@ TEST_CASE("Signal probe detail resolves the attached Voice Context key value",
             "wave", "out", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
-    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
 
     REQUIRE(GraphPresentationModel::auditionMidiNoteForProbe(
             graph,
-            graph.getSignalProbes().front().id) == 73);
+            graph.getSignalProbes().front().id) == 48);
 }
 
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
@@ -147,6 +199,9 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
 
     GraphPresentationModel presentation;
     REQUIRE(presentation.refresh(graph, 1));
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    const GraphPreviewResult::SignalProbePreview compactBefore =
+            presentation.previewResult().probes.front();
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(60);
     const auto detail = presentation.captureProbePreview(
             graph,
@@ -159,6 +214,11 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     REQUIRE(detail->gridColumns == resolution / 2);
     REQUIRE(detail->gridRows == resolution);
     REQUIRE(detail->values.size() == detail->gridColumns * resolution);
+    const GraphPreviewResult::SignalProbePreview& compactAfter =
+            presentation.previewResult().probes.front();
+    REQUIRE(compactAfter.gridColumns == compactBefore.gridColumns);
+    REQUIRE(compactAfter.gridRows == compactBefore.gridRows);
+    REQUIRE(compactAfter.values == compactBefore.values);
 }
 
 TEST_CASE("Signal probes inherit spectral mesh render semantics",

@@ -467,8 +467,7 @@ void NodeCanvasPresentation::paint(
             frame.graph,
             frame.previewResult,
             frame.workspaceBounds,
-            frame.probeRailState,
-            frame.probeDetailState.isOpen() ? &frame.probeDetailState : nullptr);
+            frame.probeRailState);
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,

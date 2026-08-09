@@ -964,8 +964,7 @@ void NodeCanvas::setPreviewVoiceLength(double seconds) {
 void NodeCanvas::openProbeDetail(const String& probeId) {
     const int midiNote = GraphPresentationModel::auditionMidiNoteForProbe(
             commands.editingGraph(),
-            probeId,
-            globalUnisonPreviewContext.midiNote);
+            probeId);
     const size_t resolution = SignalProbeDetailView::resolutionForMidiNote(
             midiNote);
     auto preview = presentation.captureProbePreview(

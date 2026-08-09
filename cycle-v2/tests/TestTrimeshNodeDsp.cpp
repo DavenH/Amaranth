@@ -24,6 +24,7 @@
 
 #include <App/SingletonRepo.h>
 #include <Curve/Mesh/Intercept.h>
+#include <Util/LogRegionMapping.h>
 
 #include <algorithm>
 #include <array>
@@ -1009,6 +1010,41 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
 }
 
+TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",
+        "[cycle-v2][nodes][trimesh][spectral][integration]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node {
+            "mesh",
+            NodeKind::TrilinearMesh,
+            {},
+            {},
+            {},
+            {},
+            {}
+    };
+    TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+
+    for (const int midiNote : { 48, 72 }) {
+        bridge.setPreviewMidiNote(midiNote);
+        bridge.syncFromNode(node, 10, 3);
+
+        const auto& renderData = bridge.getRenderData();
+        const auto& columns = bridge.getDataSource().getColumns();
+        const int expectedRows = LogRegionMapping(midiNote).regionSize();
+
+        CAPTURE(midiNote);
+        REQUIRE(renderData.rows == expectedRows);
+        REQUIRE(renderData.surface.size() == (size_t) expectedRows * 3);
+        REQUIRE(renderData.linearFrequencySurface.size()
+                == renderData.surface.size());
+        REQUIRE(columns.size() == 3);
+        REQUIRE(columns.front().size() == expectedRows);
+        REQUIRE(columns.front().midiKey == midiNote);
+    }
+}
+
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
@@ -1186,10 +1222,12 @@ TEST_CASE("Trimesh panel bridge maps spectral grids by signal domain",
 
     REQUIRE(magnitude.slice.size() == phase.slice.size());
     REQUIRE(magnitude.surface.size() == phase.surface.size());
-    for (size_t index = 0; index < magnitude.slice.size(); ++index) {
-        REQUIRE(magnitude.slice[index] == Catch::Approx(phase.slice[index]));
-    }
+    REQUIRE(magnitude.slice != phase.slice);
     REQUIRE(magnitude.surface != phase.surface);
+    REQUIRE(*std::min_element(magnitude.slice.begin(), magnitude.slice.end()) >= 0.f);
+    REQUIRE(*std::max_element(magnitude.slice.begin(), magnitude.slice.end()) <= 1.f);
+    REQUIRE(*std::min_element(phase.slice.begin(), phase.slice.end()) >= 0.f);
+    REQUIRE(*std::max_element(phase.slice.begin(), phase.slice.end()) <= 1.f);
     REQUIRE(*std::min_element(magnitude.surface.begin(), magnitude.surface.end()) >= 0.f);
     REQUIRE(*std::max_element(magnitude.surface.begin(), magnitude.surface.end()) <= 1.f);
     REQUIRE(*std::min_element(phase.surface.begin(), phase.surface.end()) >= 0.f);

@@ -327,8 +327,9 @@ private:
                 rowCount,
                 TraversalGridAxis::Time,
                 defaultTraversalRowAxisForDomain(output.domain));
+        metadata.frequencyMidiNote = processVoice(context).controls.noteNumber;
         if (metadata.rowAxis == TraversalGridAxis::Frequency) {
-            metadata.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
+            metadata.frequencySampling = TraversalGridFrequencySampling::LinearBins;
         }
         configureTraversalGrid(
                 output.traversalGrid,

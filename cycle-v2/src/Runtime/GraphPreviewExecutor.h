@@ -18,6 +18,7 @@ struct NodePreviewResult {
     PortDomain domain { PortDomain::TimeSignal };
     TraversalGridFrequencySampling frequencySampling {
             TraversalGridFrequencySampling::LinearBins };
+    int frequencyMidiNote { 48 };
 };
 
 struct GraphPreviewResult {
@@ -31,6 +32,7 @@ struct GraphPreviewResult {
         PreviewModuleRole sourceRole { PreviewModuleRole::None };
         TraversalGridFrequencySampling frequencySampling {
                 TraversalGridFrequencySampling::LinearBins };
+        int frequencyMidiNote { 48 };
         bool connected {};
     };
 
