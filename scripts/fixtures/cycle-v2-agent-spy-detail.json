@@ -27,7 +27,7 @@
       "command": "pointer",
       "area": "canvas",
       "event": "doubleClick",
-      "x": 92,
+      "x": 292,
       "y": 850,
       "waitForIdle": true,
       "idleDelayMs": 300

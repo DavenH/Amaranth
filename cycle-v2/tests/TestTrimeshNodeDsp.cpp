@@ -513,10 +513,12 @@ TEST_CASE(
     dsp.setMesh(mesh.get());
     dsp.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
     dsp.setCyclic(false);
+    dsp.setFrequencyMidiNote(48);
 
     SignalPayload magnitude;
     SignalPayload phase;
     SignalPayload time;
+    SignalPayload c5Magnitude;
     dsp.renderCycle(
             32,
             PortDomain::SpectralMagnitudeSignal,
@@ -528,15 +530,30 @@ TEST_CASE(
             ChannelLayout::Mono,
             phase);
     dsp.renderCycle(32, PortDomain::TimeSignal, ChannelLayout::Mono, time);
+    dsp.setFrequencyMidiNote(72);
+    dsp.renderCycle(
+            32,
+            PortDomain::SpectralMagnitudeSignal,
+            ChannelLayout::Mono,
+            c5Magnitude);
 
     REQUIRE(magnitude.block.samples.size() == phase.block.samples.size());
     REQUIRE(magnitude.block.samples.size() == time.block.samples.size());
+    REQUIRE(magnitude.block.samples.size() == c5Magnitude.block.samples.size());
+    float pitchDifference {};
+    float uniformSamplingDifference {};
     for (size_t index = 0; index < magnitude.block.samples.size(); ++index) {
         REQUIRE(magnitude.block.samples[index]
                 == Catch::Approx(phase.block.samples[index] * 0.5f + 0.5f));
-        REQUIRE(magnitude.block.samples[index]
-                == Catch::Approx(time.block.samples[index] * 0.5f + 0.5f));
+        pitchDifference += std::abs(
+                magnitude.block.samples[index]
+                - c5Magnitude.block.samples[index]);
+        uniformSamplingDifference += std::abs(
+                magnitude.block.samples[index]
+                - (time.block.samples[index] * 0.5f + 0.5f));
     }
+    REQUIRE(pitchDifference > 0.01f);
+    REQUIRE(uniformSamplingDifference > 0.01f);
 
     mesh->destroy();
 }

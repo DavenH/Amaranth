@@ -187,6 +187,7 @@ TEST_CASE("Spectral oscillator recipes preserve a fixed Trimesh frame through FF
     std::array<float, frameSize> right {};
     REQUIRE(renderer.renderFrame(
             frameSize,
+            60,
             Buffer<float>(left.data(), frameSize),
             Buffer<float>(right.data(), frameSize)));
     REQUIRE(left == right);
@@ -249,6 +250,7 @@ TEST_CASE("Stengah phase layer pans survive spectral materialization",
         std::array<float, frameSize> right {};
         REQUIRE(renderer.renderFrame(
                 frameSize,
+                60,
                 Buffer<float>(left.data(), frameSize),
                 Buffer<float>(right.data(), frameSize)));
         return std::pair { left, right };

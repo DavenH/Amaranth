@@ -143,6 +143,7 @@ private:
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
         blockwiseDsp.setGuideCurveProvider(guideProvider);
+        blockwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         blockwiseDsp.prepare(&mesh, morph, primaryAxis, cyclic, outputDomain);
         blockwiseDsp.renderPrepared(
                 context.pointCount,
@@ -165,6 +166,7 @@ private:
         TrimeshGridwiseDsp gridwiseDsp;
         gridwiseDsp.setCyclic(cyclic);
         gridwiseDsp.setGuideCurveProvider(guideProvider);
+        gridwiseDsp.setFrequencyMidiNote(context.frequencyMidiNote);
         const auto columns = gridwiseDsp.renderColumns(
                 mesh,
                 morph,

@@ -281,11 +281,11 @@ TEST_CASE("Spectral preview excludes DC and preserves low harmonic detail",
 
     const auto profile = TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralMagnitudeSignal);
-    const auto mappedWithDc = profile.mapGridToDisplay(
+    const auto mappedWithDc = profile.mapSpectrum2DGridToDisplay(
             withDc,
             columns,
             rows);
-    const auto mappedWithoutDc = profile.mapGridToDisplay(
+    const auto mappedWithoutDc = profile.mapSpectrum2DGridToDisplay(
             withoutDc,
             columns,
             rows);

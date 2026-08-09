@@ -165,6 +165,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     blockwiseDsp.setMorphPosition(morph);
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
     blockwiseDsp.setCyclic(cyclic);
+    blockwiseDsp.setFrequencyMidiNote(midiNote);
     blockwiseDsp.renderCycle((size_t) rows, domain, ChannelLayout::LinkedStereo, slice);
     if (domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal) {
@@ -186,6 +187,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);
     gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
+    gridwiseDsp.setFrequencyMidiNote(midiNote);
     const auto gridColumns = gridwiseDsp.renderColumns(
             mesh(),
             morph,
@@ -203,10 +205,8 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
                 column.signal.block.samples.begin(),
                 column.signal.block.samples.end());
     }
-    result.linearFrequencySurface = renderProfile.mapLinearFrequencyGridValuesToDisplay(
-            result.surface,
-            (size_t) columns,
-            (size_t) rows);
+    result.linearFrequencySurface = renderProfile.mapTrimeshValuesToDisplay(
+            result.surface);
     result.surface = renderProfile.mapGridToDisplay(
             result.surface,
             (size_t) columns,

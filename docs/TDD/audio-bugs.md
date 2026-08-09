@@ -23,7 +23,9 @@ Context:
   `TestChainedOscillatorRegionRuntime.cpp:276` in `Stengah phase layer pans
   survive spectral materialization`.
 - Swapping the two authored phase-layer pans produced an L2 channel mismatch of
-  `1.810257196` rather than the required value below `1.0e-5`.
+  `1.810257196` rather than the required value below `1.0e-5`. After restoring
+  pitch-log Trimesh sampling on 2026-08-09, the mismatch remains open but is
+  reduced to `0.612827003`.
 - The failure reproduces in isolation and is outside the spectral traversal
   column normalization changed for probe previews.
 

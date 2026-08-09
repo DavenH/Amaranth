@@ -201,13 +201,6 @@ std::vector<float> mappedSurface(
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
-    const bool logarithmicFrequencyGrid = preview.frequencySampling
-            == TraversalGridFrequencySampling::LogarithmicBins;
-    const bool spectralTraversalSurface = spectral && logarithmicFrequencyGrid;
-    if (spectralTraversalSurface) {
-        profile.mapValuesToDisplay(Buffer<float>(surface.data(), (int) surface.size()));
-        return surface;
-    }
     if (meshSurface && spectral) {
         return profile.mapGridToDisplay(
                 surface,

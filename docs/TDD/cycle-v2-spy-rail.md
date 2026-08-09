@@ -131,13 +131,19 @@ capturing it must not mutate or replace the compact preview. Both payloads use
 the same presentation mapping, so increased resolution preserves the represented
 structure.
 
-Spectral probes preserve the captured grid values. Spectral traversal rows use
-linear frequency/phase coordinates and carry the resolved preview MIDI note as
-axis metadata. Presentation samples those rows through the same pitch-dependent
-`LogRegions` mapping used by Cycle v1. Trimesh surfaces, their mesh coordinates,
-compact and expanded Trimesh views, and compact and expanded probes must all use
-that one mapping exactly once. C3 and C5 therefore produce different displayed
-frequency positions while every view at one pitch remains coincident.
+Spectral probes preserve the captured grid values. A spectral Trimesh evaluates
+its authored mesh at the pitch-dependent `LogRegions` frequency coordinates used
+by Cycle v1. The resulting samples remain indexed as linear spectral bins and
+travel through graph traversal unchanged. Trimesh panels place those samples at
+the same log coordinates; compact and expanded probes inverse-sample the same
+coordinates onto their pixel grids. Sampling and presentation therefore use one
+mapping in opposite directions instead of either side approximating the other.
+
+Trimesh magnitude values retain their native unipolar scale, including authored
+multiplicative content in `[0.5, 1]`; phase receives only the ordinary bipolar to
+display-range conversion. Spectrum2D amplitude/phase shaping is reserved for
+FFT-style probe semantics and must not move a Trimesh surface away from its mesh
+lines.
 
 Raw FFT traversal rows use the same frequency-coordinate mapping. Magnitude
 presentation additionally applies Cycle v1's `Spectrum2D` amplitude mapping

@@ -12,6 +12,7 @@
 #include "../src/UI/NodePreviewRenderer.h"
 
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 using namespace CycleV2;
 
@@ -55,14 +56,18 @@ bool imagesMatch(const Image& first, const Image& second) {
 std::vector<float> localizedSpectralRegion(
         size_t rows,
         float start,
-        float end) {
+        float end,
+        int midiNote) {
+    std::vector<float> positions(rows);
+    LogRegionMapping(midiNote).fillDisplayUnits(Buffer<float>(
+            positions.data(),
+            (int) positions.size()));
     std::vector<float> values(rows);
-    const size_t first = 1 + (size_t) (start * (float) (rows - 2));
-    const size_t last = 1 + (size_t) (end * (float) (rows - 2));
-    std::fill(
-            values.begin() + (std::vector<float>::difference_type) first,
-            values.begin() + (std::vector<float>::difference_type) last,
-            1.f);
+    for (size_t row = 0; row < rows; ++row) {
+        values[row] = positions[row] >= start && positions[row] <= end
+                ? 1.f
+                : 0.f;
+    }
     return values;
 }
 
@@ -217,8 +222,8 @@ TEST_CASE("Spectral preview magnitude mapping follows Spectrum2D",
 
 TEST_CASE("Spectral compact and expanded grids preserve pitch-mapped value regions",
         "[cycle-v2][runtime][probe][spectral][ui][integration]") {
-    constexpr float sourceStart = 0.24f;
-    constexpr float sourceEnd = 0.34f;
+    constexpr float sourceStart = 0.35f;
+    constexpr float sourceEnd = 0.70f;
     constexpr size_t compactRows = 65;
     constexpr size_t expandedRows = 513;
 
@@ -226,16 +231,26 @@ TEST_CASE("Spectral compact and expanded grids preserve pitch-mapped value regio
             PortDomain::SpectralMagnitudeSignal,
             PortDomain::SpectralPhaseSignal }) {
         const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(domain);
-        float previousStart {};
+        float previousSampledStart {};
 
         for (const int midiNote : { 72, 48 }) {
+            const auto compactSamples = localizedSpectralRegion(
+                    compactRows,
+                    sourceStart,
+                    sourceEnd,
+                    midiNote);
+            const auto expandedSamples = localizedSpectralRegion(
+                    expandedRows,
+                    sourceStart,
+                    sourceEnd,
+                    midiNote);
             const auto compact = profile.mapGridToDisplay(
-                    localizedSpectralRegion(compactRows, sourceStart, sourceEnd),
+                    compactSamples,
                     1,
                     compactRows,
                     midiNote);
             const auto expanded = profile.mapGridToDisplay(
-                    localizedSpectralRegion(expandedRows, sourceStart, sourceEnd),
+                    expandedSamples,
                     1,
                     expandedRows,
                     midiNote);
@@ -244,19 +259,42 @@ TEST_CASE("Spectral compact and expanded grids preserve pitch-mapped value regio
                     : 0.75f;
             const auto compactRegion = activeRegion(compact, threshold);
             const auto expandedRegion = activeRegion(expanded, threshold);
-            const float meshCoordinate = profile.displayFrequencyUnit(
-                    sourceStart,
-                    midiNote);
+            const auto sampledRegion = activeRegion(expandedSamples, 0.5f);
 
-            CHECK(compactRegion.first == Catch::Approx(expandedRegion.first).margin(0.025f));
-            CHECK(compactRegion.second == Catch::Approx(expandedRegion.second).margin(0.025f));
-            CHECK(expandedRegion.first == Catch::Approx(meshCoordinate).margin(0.01f));
-            if (previousStart > 0.f) {
-                CHECK(expandedRegion.first > previousStart + 0.02f);
+            CHECK(compactRegion.first == Catch::Approx(expandedRegion.first).margin(0.04f));
+            CHECK(compactRegion.second == Catch::Approx(expandedRegion.second).margin(0.04f));
+            CHECK(expandedRegion.first == Catch::Approx(sourceStart).margin(0.02f));
+            CHECK(expandedRegion.second == Catch::Approx(sourceEnd).margin(0.02f));
+            if (previousSampledStart > 0.f) {
+                CHECK(std::abs(sampledRegion.first - previousSampledStart) > 0.005f);
             }
-            previousStart = expandedRegion.first;
+            previousSampledStart = sampledRegion.first;
         }
     }
+}
+
+TEST_CASE("Trimesh spectral presentation preserves the authored value scale",
+        "[cycle-v2][runtime][preview][spectral][ui][integration]") {
+    const TrimeshRenderProfile magnitude = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const TrimeshRenderProfile multiplicative = TrimeshRenderProfile::fromSemantic({
+            PortDomain::SpectralMagnitudeSignal,
+            RenderScalePolicy::Bipolar,
+            RenderSemanticRole::SpectralMagnitudeMultiplicative
+    });
+    const TrimeshRenderProfile phase = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal);
+
+    const std::vector<float> magnitudeValues { 0.f, 0.5f, 0.75f, 1.f };
+    const std::vector<float> phaseValues { -1.f, 0.f, 1.f };
+    const std::vector<float> expectedPhase { 0.f, 0.5f, 1.f };
+
+    CHECK(magnitude.mapTrimeshValuesToDisplay(magnitudeValues) == magnitudeValues);
+    CHECK(multiplicative.mapTrimeshValuesToDisplay(magnitudeValues) == magnitudeValues);
+    CHECK(phase.mapTrimeshValuesToDisplay(phaseValues) == expectedPhase);
+    const std::vector<float> halfMagnitude { 0.5f, 0.5f };
+    CHECK(magnitude.mapSpectrum2DGridToDisplay(halfMagnitude, 1, 2, 48)
+            != halfMagnitude);
 }
 
 TEST_CASE("Magnitude mesh heatmaps consume the full unipolar colour scale",
@@ -419,17 +457,18 @@ TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
     spy.domain = PortDomain::SpectralMagnitudeSignal;
     spy.frequencySampling = TraversalGridFrequencySampling::LinearBins;
 
-    NodePreviewResult expected = spy;
-    expected.role = PreviewModuleRole::MeshSurface;
-    expected.frequencySampling = TraversalGridFrequencySampling::LogarithmicBins;
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(spy.domain);
-    expected.primary = profile.mapSpectrum2DGridToDisplay(
+    TrimeshRenderData expected;
+    expected.surface = profile.mapSpectrum2DGridToDisplay(
             spy.primary,
             spy.gridColumns,
             spy.gridRows);
+    expected.columns = (int) spy.gridColumns;
+    expected.rows = (int) spy.gridRows;
+    expected.domain = spy.domain;
 
     const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
-    const Image expectedImage = NodePreviewRenderer::createRuntimeHeatmapImage(
+    const Image expectedImage = TrimeshSurfaceRenderer::createHeatmapImage(
             expected,
             profile);
 

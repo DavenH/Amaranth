@@ -63,10 +63,8 @@ public:
             size_t columns,
             size_t rows,
             int midiNote = 48) const;
-    std::vector<float> mapLinearFrequencyGridValuesToDisplay(
-            const std::vector<float>& source,
-            size_t columns,
-            size_t rows) const;
+    std::vector<float> mapTrimeshValuesToDisplay(
+            const std::vector<float>& source) const;
     std::vector<float> mapSpectrum2DGridToDisplay(
             const std::vector<float>& source,
             size_t columns,

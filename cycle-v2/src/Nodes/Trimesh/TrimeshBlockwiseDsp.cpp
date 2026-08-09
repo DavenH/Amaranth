@@ -2,6 +2,7 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Util/LogRegionMapping.h>
 
 namespace CycleV2 {
 
@@ -30,6 +31,7 @@ void TrimeshBlockwiseDsp::prepare(
         int axis,
         bool shouldWrap,
         PortDomain domain) {
+    preparedDomain = domain;
     setMesh(meshToRender);
     setMorphPosition(morphPosition);
     setPrimaryViewAxis(axis);
@@ -60,6 +62,15 @@ void TrimeshBlockwiseDsp::setCyclic(bool shouldWrap) {
 void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     guideCurveProvider = provider;
     rasterizer.setGuideCurveProvider(provider);
+}
+
+void TrimeshBlockwiseDsp::setFrequencyMidiNote(int midiNote) {
+    frequencyMidiNote = midiNote;
+}
+
+void TrimeshBlockwiseDsp::prepareSampling(size_t maximumFrameCount) {
+    frequencyPositions.resize(maximumFrameCount);
+    cachedFrequencyPositionCount = 0;
 }
 
 void TrimeshBlockwiseDsp::configureGuideCurveSeeds(PortDomain domain) {
@@ -93,6 +104,7 @@ void TrimeshBlockwiseDsp::renderPrepared(
         PortDomain domain,
         ChannelLayout channelLayout,
         SignalPayload& output) {
+    preparedDomain = domain;
     output.block.samples.resize(frameCount);
     output.domain = domain;
     output.channelLayout = channelLayout;
@@ -145,16 +157,37 @@ void TrimeshBlockwiseDsp::sampleOutput(Buffer<float> dest) {
         return;
     }
 
+    const bool spectral = preparedDomain == PortDomain::SpectralMagnitudeSignal
+            || preparedDomain == PortDomain::SpectralPhaseSignal;
+    const Buffer<float> positions = spectral
+            ? frequencyPositionsFor(dest.size())
+            : Buffer<float>();
     const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
     int currentIndex = sampler.initialIndex();
 
     for (int i = 0; i < dest.size(); ++i) {
-        const float phase = (float) i * delta;
+        const float phase = spectral ? positions[i] : (float) i * delta;
 
         if (sampler.isSampleableAt(phase)) {
             dest[i] = sampler.sampleAt(phase, currentIndex);
         }
     }
+}
+
+Buffer<float> TrimeshBlockwiseDsp::frequencyPositionsFor(int size) {
+    if ((int) frequencyPositions.size() < size) {
+        frequencyPositions.resize((size_t) size);
+        cachedFrequencyPositionCount = 0;
+    }
+
+    Buffer<float> positions(frequencyPositions.data(), size);
+    if (cachedFrequencyMidiNote != frequencyMidiNote
+            || cachedFrequencyPositionCount != size) {
+        LogRegionMapping(frequencyMidiNote).fillDisplayUnits(positions);
+        cachedFrequencyMidiNote = frequencyMidiNote;
+        cachedFrequencyPositionCount = size;
+    }
+    return positions;
 }
 
 Buffer<float> TrimeshBlockwiseDsp::outputBuffer(SignalPayload& output) const {

@@ -20,6 +20,8 @@ public:
 
     void setCyclic(bool shouldWrap);
     void setGuideCurveProvider(GuideCurveProvider* provider);
+    void setFrequencyMidiNote(int midiNote);
+    void prepareSampling(size_t maximumRowCount);
     void prepare(
             Mesh& mesh,
             const MorphPosition& center,

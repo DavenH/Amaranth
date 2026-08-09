@@ -12,6 +12,14 @@ void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     blockwiseDsp.setGuideCurveProvider(provider);
 }
 
+void TrimeshGridwiseDsp::setFrequencyMidiNote(int midiNote) {
+    blockwiseDsp.setFrequencyMidiNote(midiNote);
+}
+
+void TrimeshGridwiseDsp::prepareSampling(size_t maximumRowCount) {
+    blockwiseDsp.prepareSampling(maximumRowCount);
+}
+
 void TrimeshGridwiseDsp::prepare(
         Mesh& mesh,
         const MorphPosition& center,
@@ -20,6 +28,7 @@ void TrimeshGridwiseDsp::prepare(
         size_t maximumRowCount,
         PortDomain domain) {
     preparationScratch.resize(maximumRowCount);
+    prepareSampling(maximumRowCount);
     renderColumnRange(
             mesh,
             center,

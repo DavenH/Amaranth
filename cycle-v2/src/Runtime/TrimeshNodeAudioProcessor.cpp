@@ -94,6 +94,10 @@ public:
     }
 
     void prepareExecution(const AudioExecutionSpec& spec) override {
+        trimeshDsp.prepareSampling(spec.maximumFrameCount);
+        trimeshGridDsp.prepareSampling(traversalRowsForDomain(
+                spec.domain,
+                spec.maximumFrameCount));
         if (configuration == nullptr) {
             return;
         }
@@ -160,6 +164,9 @@ public:
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : Vertex::Time;
+        const int frequencyMidiNote = processVoice(context).controls.noteNumber;
+        trimeshDsp.setFrequencyMidiNote(frequencyMidiNote);
+        trimeshGridDsp.setFrequencyMidiNote(frequencyMidiNote);
 
         const SignalPayload* scratch = scratchAttachment(context);
         const auto scratchDomain = scratchDomainFor(outputPort.domain);
