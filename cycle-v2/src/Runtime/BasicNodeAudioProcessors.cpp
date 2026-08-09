@@ -72,7 +72,7 @@ public:
                 : 1.f;
         const float level = configuration != nullptr
                 ? configuration->level
-                : parameterFloat(processParameters(context), "level", 1.f);
+                : 1.f;
         payloadBuffer(output, context.frameCount).ramp(0.f, level / denominator);
         if (output.isStereo()) {
             VecOps::copy(

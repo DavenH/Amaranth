@@ -9,6 +9,7 @@
 #include "TrimeshInteractor2D.h"
 #include "TrimeshInteractor3D.h"
 #include "TrimeshInvalidation.h"
+#include "TrimeshGuidePreparation.h"
 
 #include <cstdint>
 #include <functional>
@@ -26,6 +27,7 @@ public:
             const Node& node,
             int rows,
             int columns);
+    void applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
     TrimeshPanel2D& getPanel2D() { return panel2D; }
@@ -53,6 +55,7 @@ public:
 
 private:
     void refreshAfterMeshEdit(TrimeshMeshEditEvent event);
+    void updateGuideCurveSeeds();
     void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
 
@@ -68,6 +71,7 @@ private:
     TrimeshPanelHosts panelHosts;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
+    std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
     uint64_t lastSyncedRevision { UINT64_MAX };
     PortDomain lastRenderDomain { PortDomain::ControlSignal };
     RenderScalePolicy lastRenderScalePolicy { RenderScalePolicy::Bipolar };

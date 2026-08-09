@@ -52,6 +52,21 @@ TrimeshPanelBridge::~TrimeshPanelBridge() {
     releaseSharedGlResources();
 }
 
+void TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
+    if (guides.mesh == nullptr || guides.provider == nullptr) {
+        return;
+    }
+
+    guideCurveProvider = std::move(guides.provider);
+    environment.getRepo().setGuideCurveProvider(guideCurveProvider.get());
+    panelRasterizer.getRasterizer().setGuideCurveProvider(guideCurveProvider.get());
+    updateGuideCurveSeeds();
+    model.applyPreparedGuides(*guides.mesh, guideCurveProvider);
+    dataSource.rebuild(model, lastRows, lastColumns, renderProfile);
+    updateRasterizer(true, true);
+    lastSyncedRevision = panelRevisionFor(model);
+}
+
 void TrimeshPanelBridge::syncFromNode(
         const Node& node,
         int rows,
@@ -212,8 +227,24 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
     renderProfile = profile;
+    updateGuideCurveSeeds();
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
+}
+
+void TrimeshPanelBridge::updateGuideCurveSeeds() {
+    if (guideCurveProvider == nullptr) {
+        return;
+    }
+
+    const uint32_t stableSeed = GuideCurveSnapshotProvider::visualizationSeed(
+            renderProfile.getDomain());
+    panelRasterizer.getRasterizer().updateOffsetSeeds(
+            guideCurveProvider->size(),
+            GuideCurveProvider::tableSize,
+            Rasterization::GuideCurveSeed::visualization(stableSeed));
+    panelRasterizer.getRasterizer().setNoiseSeed(
+            (int) (stableSeed % GuideCurveProvider::tableSize));
 }
 
 void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFactor) {

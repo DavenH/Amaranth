@@ -1,5 +1,7 @@
 #include "FftSignalProcessor.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -61,7 +63,7 @@ private:
 };
 
 bool inverseUsesHalfCycleCarry(const std::vector<NodeParameter>& parameters) {
-    return typedParameterString(parameters, "mode", "cyclic") == "acyclicCarry";
+    return NodeParameterMap(parameters).stringValue("mode", "cyclic") == "acyclicCarry";
 }
 
 }

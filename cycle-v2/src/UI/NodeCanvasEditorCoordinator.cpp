@@ -48,6 +48,7 @@ NodeCanvasEditorCoordinator::NodeCanvasEditorCoordinator(
     ,   resources(commandsToUse)
     ,   renderer(resources)
     ,   editorHost(owner, commandsToUse, presentation, editorResources) {
+    resources.setGraph(&document.graph());
 }
 
 NodeCanvasEditorCoordinator::~NodeCanvasEditorCoordinator() {
@@ -158,7 +159,7 @@ std::array<String, 6> NodeCanvasEditorCoordinator::trimeshGuideLabelsFor(const N
         return labels;
     }
 
-    TrimeshWidget& widget = resources.trimeshWidget(node.id);
+    TrimeshWidget& widget = resources.trimeshWidget(node);
     const int vertexIndex = widget.resolvedSelectedVertexIndexForNode(node);
     const auto& fields = TrimeshGuideAttachmentTarget::fields();
 

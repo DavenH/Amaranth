@@ -19,6 +19,7 @@ public:
     };
 
     void setCyclic(bool shouldWrap);
+    void setGuideCurveProvider(GuideCurveProvider* provider);
     void prepare(
             Mesh& mesh,
             const MorphPosition& center,

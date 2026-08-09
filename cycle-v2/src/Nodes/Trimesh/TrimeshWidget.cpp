@@ -1,5 +1,7 @@
 #include "TrimeshWidget.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include <Curve/Mesh/Vertex.h>
 
 #include <array>
@@ -30,20 +32,31 @@ Rectangle<float> panelBodyBounds(Rectangle<float> panel) {
     return panel.reduced(kPanelContentInsetX, 0.f);
 }
 
-bool nodeBoolParameter(const Node& node, const String& id, bool fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getIntValue() != 0;
-        }
-    }
-
-    return fallback;
-}
-
 }
 
 void TrimeshWidget::syncFromNode(const Node& node) {
     bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
+}
+
+void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
+    String nextKey = TrimeshGuidePreparation::configurationKey(graph, node.id);
+    if (node.model != nullptr) {
+        nextKey << ":mesh=" << String((int64) node.model->revision());
+    }
+    if (nextKey == guideConfigurationKey) {
+        return;
+    }
+
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    if (model == nullptr) {
+        return;
+    }
+
+    bridge.applyPreparedGuides(TrimeshGuidePreparation::prepare(
+            graph,
+            node,
+            model->mesh()));
+    guideConfigurationKey = nextKey;
 }
 
 void TrimeshWidget::setDisplayDomain(PortDomain domain) {
@@ -155,6 +168,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
 
     const auto selectedParameters = model.getSelectedVertexParameters();
     const int primaryAxis = model.getPrimaryViewAxis();
+    const NodeParameterMap parameters(node);
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
             TrimeshSidePanelRenderer::AxisState {
                     "Yellow",
@@ -162,7 +176,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     Colour(0xffe0c247),
                     model.getMorphPosition().time.getCurrentValue(),
                     primaryAxis == Vertex::Time,
-                    nodeBoolParameter(node, "link.yellow", true)
+                    parameters.boolValue("link.yellow", true)
             },
             TrimeshSidePanelRenderer::AxisState {
                     "Red",
@@ -170,7 +184,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     Colour(0xffd65a5a),
                     model.getMorphPosition().red.getCurrentValue(),
                     primaryAxis == Vertex::Red,
-                    nodeBoolParameter(node, "link.red", false)
+                    parameters.boolValue("link.red", false)
             },
             TrimeshSidePanelRenderer::AxisState {
                     "Blue",
@@ -178,7 +192,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     Colour(0xff5f91e8),
                     model.getMorphPosition().blue.getCurrentValue(),
                     primaryAxis == Vertex::Blue,
-                    nodeBoolParameter(node, "link.blue", false)
+                    parameters.boolValue("link.blue", false)
             }
     };
 
@@ -283,6 +297,27 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     stats.intercepts.reserve(snapshot.intercepts().size());
     for (const auto& intercept : snapshot.intercepts()) {
         stats.intercepts.emplace_back(intercept.x, intercept.y);
+    }
+    for (const auto& curve : snapshot.curves()) {
+        VertCube* cube = curve.b.cube;
+        if (cube == nullptr) {
+            continue;
+        }
+
+        if (cube->getCompGuideCurve() >= 0) {
+            ++stats.componentGuideSegmentCount;
+        }
+        if (cube->guideCurveAt(Vertex::Curve) >= 0) {
+            ++stats.curveGuideSegmentCount;
+        }
+        for (int dimension = 0; dimension < Vertex::numElements; ++dimension) {
+            if (dimension != Vertex::Time
+                    && dimension != Vertex::Curve
+                    && cube->guideCurveAt(dimension) >= 0) {
+                ++stats.guideRailSegmentCount;
+                break;
+            }
+        }
     }
     if (samples.empty()) {
         return stats;

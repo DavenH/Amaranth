@@ -1,5 +1,7 @@
 #include "UnisonNode.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include "../../Graph/NodeModelDecodeDiagnostics.h"
 
 #include <algorithm>
@@ -146,16 +148,16 @@ std::shared_ptr<const UnisonNodeConfiguration> buildUnisonNodeConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model) {
     auto configuration = std::make_shared<UnisonNodeConfiguration>();
-    configuration->group.enabled = typedParameterBool(parameters, "enabled", true);
-    configuration->group.order = typedParameterInt(parameters, "order", 1);
-    configuration->group.detuneWidthCents = typedParameterFloat(
-            parameters,
+    const NodeParameterMap parameterMap(parameters);
+    configuration->group.enabled = parameterMap.boolValue("enabled", true);
+    configuration->group.order = parameterMap.intValue("order", 1);
+    configuration->group.detuneWidthCents = parameterMap.floatValue(
             "width",
             CycleDsp::maximumUnisonDetuneCents * 0.5f);
-    configuration->group.panSpread = typedParameterFloat(parameters, "panSpread", 1.f);
-    configuration->group.phaseSpread = typedParameterFloat(parameters, "phase", 0.5f);
-    configuration->group.jitter = typedParameterFloat(parameters, "jitter", 0.5f);
-    configuration->individualMode = typedParameterString(parameters, "mode", "group")
+    configuration->group.panSpread = parameterMap.floatValue("panSpread", 1.f);
+    configuration->group.phaseSpread = parameterMap.floatValue("phase", 0.5f);
+    configuration->group.jitter = parameterMap.floatValue("jitter", 0.5f);
+    configuration->individualMode = parameterMap.stringValue("mode", "group")
             == "individual";
     if (configuration->individualMode) {
         CycleDsp::UnisonIndividualConfiguration individual;

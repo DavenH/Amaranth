@@ -1,5 +1,7 @@
 #include "EnvelopeSignalProcessor.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include "../Effect2D/CurveNodeModels.h"
 
 #include <Util/Arithmetic.h>
@@ -65,13 +67,14 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
     if (envelope == nullptr) {
         return {};
     }
+    const NodeParameterMap parameterMap(parameters);
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
             envelope->getMesh(),
-            parameterFloat(parameters, "red", 0.5f),
-            parameterFloat(parameters, "blue", 0.5f),
-            parameterFloat(parameters, "level", 1.f),
-            parameterFloat(parameters, "logarithmic", 0.f) != 0.f);
+            parameterMap.floatValue("red", 0.5f),
+            parameterMap.floatValue("blue", 0.5f),
+            parameterMap.floatValue("level", 1.f),
+            parameterMap.boolValue("logarithmic", false));
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {

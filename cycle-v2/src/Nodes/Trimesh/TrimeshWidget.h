@@ -34,6 +34,9 @@ struct TrimeshExpandedHitRegion {
 struct TrimeshPanelRenderStats {
     int sampleCount {};
     int interceptCount {};
+    int guideRailSegmentCount {};
+    int componentGuideSegmentCount {};
+    int curveGuideSegmentCount {};
     float minimum {};
     float maximum {};
     float centreSample {};
@@ -44,6 +47,7 @@ struct TrimeshPanelRenderStats {
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
+    void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
@@ -89,6 +93,7 @@ public:
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
     TrimeshPanelRenderStats panelRenderStatsForAutomation() const;
+    const juce::String& guideContextKey() const { return guideConfigurationKey; }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
@@ -165,6 +170,7 @@ private:
     CachedHeatmap compactHeatmap;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::array<juce::String, 6> guideAttachmentLabels;
+    juce::String guideConfigurationKey { "unprepared" };
 };
 
 }

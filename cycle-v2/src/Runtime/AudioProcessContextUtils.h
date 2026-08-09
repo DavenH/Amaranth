@@ -311,13 +311,6 @@ inline SignalPayload* inputAt(AudioProcessContext& context, size_t index) {
     return input;
 }
 
-inline float parameterFloat(
-        const std::vector<NodeParameter>& parameters,
-        const String& id,
-        float fallback) {
-    return typedParameterFloat(parameters, id, fallback);
-}
-
 inline void publishVectorAsTraversalGrid(
         SignalPayload& payload,
         size_t columns,

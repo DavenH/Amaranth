@@ -23,6 +23,15 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
     return widget;
 }
 
+TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
+    TrimeshWidget& widget = trimeshWidget(node.id);
+    widget.syncFromNode(node);
+    if (graph != nullptr) {
+        widget.syncGuideContext(*graph, node);
+    }
+    return widget;
+}
+
 Effect2DWidget& NodePreviewResources::effect2DWidget(const Node& node) {
     for (auto& entry : effect2DWidgets) {
         if (entry.first == node.id) {

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphNodeFactory.h"
+#include "../src/Graph/NodeParameterMap.h"
 #include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../src/UI/ModulationCableBundle.h"
 #include "../src/UI/NodeCanvasAuthoring.h"
@@ -361,21 +362,15 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
 
     REQUIRE(authoring.beginSpectralPanGesture("pan"));
     REQUIRE(authoring.updateSpectralPanGesture(0.47f));
-    REQUIRE(typedParameterFloat(
-            document.graph().findNode("pan")->parameters,
-            "pan",
-            0.f) == 0.5f);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("pan"))
+            .floatValue("pan", 0.f) == 0.5f);
     REQUIRE(authoring.updateSpectralPanGesture(0.03f));
-    REQUIRE(typedParameterFloat(
-            document.graph().findNode("pan")->parameters,
-            "pan",
-            1.f) == 0.f);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("pan"))
+            .floatValue("pan", 1.f) == 0.f);
     REQUIRE(authoring.updateSpectralPanGesture(0.75f));
     REQUIRE(authoring.updateSpectralPanGesture(0.97f));
-    REQUIRE(typedParameterFloat(
-            document.graph().findNode("pan")->parameters,
-            "pan",
-            0.f) == 1.f);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("pan"))
+            .floatValue("pan", 0.f) == 1.f);
     REQUIRE_FALSE(document.canUndo());
 
     const auto committed = authoring.endSpectralPanGesture();
@@ -383,8 +378,6 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
     REQUIRE(committed.graphChanged);
     REQUIRE(document.canUndo());
     REQUIRE(authoring.undo().succeeded);
-    REQUIRE(typedParameterFloat(
-            document.graph().findNode("pan")->parameters,
-            "pan",
-            0.f) == 0.5f);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("pan"))
+            .floatValue("pan", 0.f) == 0.5f);
 }

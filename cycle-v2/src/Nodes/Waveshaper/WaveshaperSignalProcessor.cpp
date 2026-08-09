@@ -1,5 +1,6 @@
 #include "WaveshaperSignalProcessor.h"
 
+#include "../../Graph/NodeParameterMap.h"
 #include "../../Graph/NodeDefinition.h"
 #include "../Effect2D/FlatCurvePreparation.h"
 
@@ -21,7 +22,8 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model) {
     auto result = std::make_shared<WaveshaperConfiguration>();
-    result->enabled = typedParameterBool(parameters, "enabled", true);
+    const NodeParameterMap parameterMap(parameters);
+    result->enabled = parameterMap.boolValue("enabled", true);
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
     FlatCurvePreparation curve(
             "CycleV2WaveshaperConfiguration",
@@ -36,9 +38,9 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     preparedTransfer->rasterizeFrom(curve.sampler(), kWaveshaperPadding);
 
     result->transfer = std::move(preparedTransfer);
-    result->preGain = cycle1GainForParameter(parameterFloat(parameters, "pre", 0.5f));
-    result->postGain = cycle1GainForParameter(parameterFloat(parameters, "post", 0.5f));
-    const int requestedFactor = (int) parameterFloat(parameters, "aaFactor", 1.f);
+    result->preGain = cycle1GainForParameter(parameterMap.floatValue("pre", 0.5f));
+    result->postGain = cycle1GainForParameter(parameterMap.floatValue("post", 0.5f));
+    const int requestedFactor = parameterMap.intValue("aaFactor", 1);
     result->oversampleFactor = requestedFactor >= 8 ? 8
             : requestedFactor >= 4 ? 4
             : requestedFactor >= 2 ? 2

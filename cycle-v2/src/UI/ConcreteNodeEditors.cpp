@@ -3,7 +3,7 @@
 #include "NodeEditorHost.h"
 
 #include "ModulationNodeEditors.h"
-#include "NodeParameterValue.h"
+#include "../Graph/NodeParameterMap.h"
 #include "../Nodes/Effects/EffectPreviewRenderer.h"
 #include "../Nodes/Effects/EffectPlotPalette.h"
 #include "../Nodes/Unison/UnisonNodeEditor.h"
@@ -183,12 +183,13 @@ public:
 
     void setNode(const Node& nodeToUse) {
         node = nodeToUse;
+        const NodeParameterMap parameters(node);
         enabledButton.setToggleState(
-                nodeParameterValue(node, "enabled", "1").getIntValue() != 0,
+                parameters.boolValue("enabled", true),
                 dontSendNotification);
         for (auto& control : controls) {
             control->slider.setValue(
-                    nodeParameterValue(node, control->id, String(control->defaultValue))
+                    parameters.stringValue(control->id, String(control->defaultValue))
                             .getDoubleValue(),
                     dontSendNotification);
             updateReadout(*control);
@@ -671,17 +672,20 @@ public:
         Array<var> morphSliders;
         Array<var> primaryAxisButtons;
         Array<var> linkToggles;
+        const NodeParameterMap parameters(boundNode);
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
-            slider->setProperty("value", nodeParameterValue(boundNode, axis, "0.5").getDoubleValue());
+            slider->setProperty("value", parameters.floatValue(axis, 0.5f));
             slider->setProperty("minimum", 0.0);
             slider->setProperty("maximum", 1.0);
             morphSliders.add(slider);
 
             auto* primary = new DynamicObject();
             primary->setProperty("id", axis);
-            primary->setProperty("selected", nodeParameterValue(boundNode, "primaryAxis", "yellow") == axis);
+            primary->setProperty(
+                    "selected",
+                    parameters.stringValue("primaryAxis", "yellow") == axis);
             primaryAxisButtons.add(primary);
 
             auto* link = new DynamicObject();
@@ -689,7 +693,7 @@ public:
             link->setProperty("id", axis);
             link->setProperty(
                     "selected",
-                    nodeParameterValue(boundNode, "link." + axis, defaultValue).getIntValue() != 0);
+                    parameters.boolValue("link." + axis, defaultValue.getIntValue() != 0));
             linkToggles.add(link);
         }
         state.setProperty("morphSliders", morphSliders);
@@ -738,6 +742,11 @@ public:
         const auto panelStats = boundWidget->panelRenderStatsForAutomation();
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
+        meshState->setProperty("panelGuideRailSegmentCount", panelStats.guideRailSegmentCount);
+        meshState->setProperty(
+                "panelComponentGuideSegmentCount",
+                panelStats.componentGuideSegmentCount);
+        meshState->setProperty("panelCurveGuideSegmentCount", panelStats.curveGuideSegmentCount);
         meshState->setProperty("panelMinimum", panelStats.minimum);
         meshState->setProperty("panelMaximum", panelStats.maximum);
         meshState->setProperty("panelCentreSample", panelStats.centreSample);

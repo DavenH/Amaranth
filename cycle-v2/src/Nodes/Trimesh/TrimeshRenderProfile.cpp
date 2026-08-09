@@ -1,6 +1,10 @@
 #include "TrimeshRenderProfile.h"
 
 #include <Binary/Gradients.h>
+#include <Util/Arithmetic.h>
+
+#include <algorithm>
+#include <cmath>
 
 namespace CycleV2 {
 
@@ -58,6 +62,114 @@ Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     return kWaveformGrey;
 }
 
+std::vector<float> logarithmicRowsWithoutDc(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) {
+    if (columns == 0 || rows < 2 || source.size() < columns * rows) {
+        return source;
+    }
+
+    std::vector<float> surface(source.size());
+    std::vector<float> sourceRows(rows);
+    const float frequencyTension = (float) rows * 0.5f;
+    for (size_t row = 0; row < rows; ++row) {
+        const float unit = (float) row / (float) (rows - 1);
+        const float sourceUnit = Arithmetic::invLogMapping(
+                frequencyTension,
+                unit,
+                true);
+        sourceRows[row] = jlimit(
+                1.f,
+                (float) (rows - 1),
+                1.f + sourceUnit * (float) (rows - 2));
+    }
+
+    for (size_t column = 0; column < columns; ++column) {
+        const size_t columnOffset = column * rows;
+        for (size_t row = 0; row < rows; ++row) {
+            const float position = sourceRows[row];
+            const size_t rowA = (size_t) position;
+            const size_t rowB = std::min(rowA + 1, rows - 1);
+            const float amount = position - (float) rowA;
+            surface[columnOffset + row] = source[columnOffset + rowA]
+                    + amount * (source[columnOffset + rowB] - source[columnOffset + rowA]);
+        }
+    }
+
+    return surface;
+}
+
+void unwrapPhaseColumns(std::vector<float>& surface, size_t columns, size_t rows) {
+    if (columns < 2 || rows == 0 || surface.size() < columns * rows) {
+        return;
+    }
+
+    for (size_t row = 0; row < rows; ++row) {
+        float offset = 0.f;
+        float previous = surface[row];
+        for (size_t column = 1; column < columns; ++column) {
+            const size_t index = column * rows + row;
+            const float current = surface[index];
+            const float delta = current + offset - previous;
+
+            if (delta > MathConstants<float>::pi) {
+                offset -= MathConstants<float>::twoPi;
+            } else if (delta < -MathConstants<float>::pi) {
+                offset += MathConstants<float>::twoPi;
+            }
+
+            surface[index] = current + offset;
+            previous = surface[index];
+        }
+    }
+}
+
+void mapMagnitudeToDisplay(Buffer<float> values, float tension) {
+    values.abs();
+    Arithmetic::applyLogMapping(values, tension);
+    values.clip(0.f, 1.f);
+}
+
+void mapPhaseToDisplay(Buffer<float> values) {
+    float minimum {};
+    float maximum {};
+    int minimumIndex {};
+    int maximumIndex {};
+    values.getMin(minimum, minimumIndex);
+    values.getMax(maximum, maximumIndex);
+
+    const float realMaximum = jmax(std::abs(minimum), std::abs(maximum));
+    if (realMaximum <= 0.f) {
+        values.set(0.5f);
+        return;
+    }
+
+    const float exponent = std::ceil(std::log2(realMaximum) + 0.5f);
+    values.mul(std::pow(2.f, -exponent)).add(0.5f).clip(0.f, 1.f);
+}
+
+std::vector<float> mapSpectralGridToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows,
+        PortDomain domain,
+        float magnitudeTension) {
+    std::vector<float> surface = source;
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        unwrapPhaseColumns(surface, columns, rows);
+    }
+    surface = logarithmicRowsWithoutDc(surface, columns, rows);
+
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        mapMagnitudeToDisplay(buffer, magnitudeTension);
+    } else {
+        mapPhaseToDisplay(buffer);
+    }
+    return surface;
+}
+
 }
 
 TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
@@ -72,6 +184,39 @@ TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
 
 TrimeshRenderProfile TrimeshRenderProfile::fromSemantic(NodeRenderSemantic semantic) {
     return TrimeshRenderProfile(semantic);
+}
+
+std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) const {
+    std::vector<float> surface = source;
+    if (surface.empty()) {
+        return surface;
+    }
+
+    if (domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal) {
+        return mapSpectralGridToDisplay(source, columns, rows, domain, 16.f);
+    }
+
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    mapValuesToDisplay(buffer);
+    return surface;
+}
+
+std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows) const {
+    if (source.empty()) {
+        return source;
+    }
+    if (domain != PortDomain::SpectralMagnitudeSignal
+            && domain != PortDomain::SpectralPhaseSignal) {
+        return mapGridToDisplay(source, columns, rows);
+    }
+    return mapSpectralGridToDisplay(source, columns, rows, domain, 500.f);
 }
 
 void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Curve/GuideCurveTableDsp.h>
+
 #include <App/MeshLibrary.h>
 #include <Curve/GuideCurveProvider.h>
 #include <Curve/Mesh/Mesh.h>
@@ -74,22 +76,21 @@ public:
     var writeJSON() const override;
     bool readJSON(const var& object) override;
 
-    float getTableValue(int guideIndex, float progress, const GuideCurveProvider::NoiseContext& context) override
-    {
+    float getTableValue(
+            int guideIndex,
+            float progress,
+            const GuideCurveProvider::NoiseContext& context) override {
         if(! isPositiveAndBelow(guideIndex, (int) guideTables.size())) {
             return 0;
         }
 
-        float position  = progress * (GuideCurvePanel::tableSize - 1);
-        int idx 		= (int) position;
-
         GuideCurveProps& props = guideTables[guideIndex];
-
-        int phaseOffset = (context.phaseOffset & tableModulo - tableSize / 2) * props.phaseOffsetLevel;
-
-        return props.table[(idx + phaseOffset) & tableModulo] +
-                props.noiseLevel * noiseArray[(context.noiseSeed + props.seed) & tableModulo] +
-                noiseArray[context.vertOffset] * props.vertOffsetLevel;
+        return GuideCurveTableDsp::tableValue(
+                props.table,
+                noiseArray,
+                props.parameters(),
+                progress,
+                context);
     }
 
     Buffer<Float32> getTable(int index) override
@@ -127,6 +128,10 @@ private:
         float noiseLevel, vertOffsetLevel, phaseOffsetLevel;
         Ref<GuideCurvePanel> panel;
         Buffer<Float32> table;
+
+        GuideCurveTableParameters parameters() const {
+            return { noiseLevel, vertOffsetLevel, phaseOffsetLevel, seed };
+        }
     };
 
     float samplingInterval;

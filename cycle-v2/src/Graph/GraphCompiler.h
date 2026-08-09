@@ -198,7 +198,9 @@ private:
         NodeConfigurationPublisher publisher;
     };
 
-    void publishConfigurations(std::vector<GraphExecutionStep>& steps) const;
+    void publishConfigurations(
+            const NodeGraph& graph,
+            std::vector<GraphExecutionStep>& steps) const;
 
     GraphDomainResolver domainResolver;
     GraphValidator validator;

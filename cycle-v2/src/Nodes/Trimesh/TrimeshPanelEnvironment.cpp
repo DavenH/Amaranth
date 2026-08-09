@@ -4,6 +4,7 @@
 #include <App/EditWatcher.h>
 #include <App/MeshLibrary.h>
 #include <App/Settings.h>
+#include <Curve/Mesh/PathRepo.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Design/Updating/Updater.h>
 #include <UI/MiscGraphics.h>
@@ -16,6 +17,7 @@ TrimeshPanelEnvironment::TrimeshPanelEnvironment() :
     repo.add(new MiscGraphics(&repo));
     repo.add(new Settings(&repo));
     repo.add(new MeshLibrary(&repo));
+    repo.add(new PathRepo(&repo));
     repo.add(new EditWatcher(&repo));
     repo.add(new Updater(&repo));
 
@@ -24,6 +26,7 @@ TrimeshPanelEnvironment::TrimeshPanelEnvironment() :
     constants.setConstant(Constants::MinLineLength, 0.001);
 
     repo.get<MiscGraphics>("MiscGraphics").init();
+    repo.get<PathRepo>("PathRepo").init();
 
     auto& settings = repo.get<Settings>("Settings");
     settings.initialiseSettings();

@@ -1,5 +1,12 @@
 #include "TrimeshGuideAttachmentTarget.h"
 
+#include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/Vertex.h>
+
+#include <algorithm>
+
+#include "TrimeshMeshState.h"
+
 namespace CycleV2 {
 
 const std::array<juce::String, TrimeshGuideAttachmentTarget::fieldCount>&
@@ -17,7 +24,7 @@ TrimeshGuideAttachmentTarget::fields() {
 }
 
 bool TrimeshGuideAttachmentTarget::isValid() const {
-    return (vertexIndex >= 0) != (cubeIndex >= 0) && fieldIndex() >= 0;
+    return cubeIndex >= 0 && fieldIndex() >= 0;
 }
 
 int TrimeshGuideAttachmentTarget::fieldIndex() const {
@@ -33,8 +40,7 @@ int TrimeshGuideAttachmentTarget::fieldIndex() const {
 }
 
 TrimeshGuideAttachmentTarget TrimeshGuideAttachmentTarget::parse(const juce::String& portId) {
-    const bool cubeTarget = portId.startsWith("guide.cube.");
-    const juce::String prefix = cubeTarget ? "guide.cube." : "guide.vertex.";
+    const juce::String prefix = "guide.cube.";
     if (!portId.startsWith(prefix)) {
         return {};
     }
@@ -48,24 +54,40 @@ TrimeshGuideAttachmentTarget TrimeshGuideAttachmentTarget::parse(const juce::Str
     }
 
     TrimeshGuideAttachmentTarget target {
-            cubeTarget ? -1 : targetIndexText.getIntValue(),
+            targetIndexText.getIntValue(),
             fieldText
     };
-    target.cubeIndex = cubeTarget ? targetIndexText.getIntValue() : -1;
 
     return target.isValid() ? target : TrimeshGuideAttachmentTarget {};
-}
-
-juce::String TrimeshGuideAttachmentTarget::portIdFor(
-        int vertexIndex,
-        const juce::String& field) {
-    return "guide.vertex." + juce::String(vertexIndex) + "." + field;
 }
 
 juce::String TrimeshGuideAttachmentTarget::portIdForCube(
         int cubeIndex,
         const juce::String& field) {
     return "guide.cube." + juce::String(cubeIndex) + "." + field;
+}
+
+std::vector<juce::String> TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+        const Node& trimeshNode,
+        int vertexIndex,
+        const juce::String& field) {
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(trimeshNode.model);
+    if (model == nullptr || !isPositiveAndBelow(vertexIndex, model->mesh().getNumVerts())) {
+        return {};
+    }
+
+    Mesh& mesh = *const_cast<Mesh*>(&model->mesh());
+    Vertex* vertex = mesh.getVerts()[(size_t) vertexIndex];
+    std::vector<juce::String> targets;
+    for (auto* owner : vertex->owners) {
+        const auto found = std::find(mesh.getCubes().begin(), mesh.getCubes().end(), owner);
+        if (found != mesh.getCubes().end()) {
+            targets.push_back(portIdForCube(
+                    (int) std::distance(mesh.getCubes().begin(), found),
+                    field));
+        }
+    }
+    return targets;
 }
 
 }

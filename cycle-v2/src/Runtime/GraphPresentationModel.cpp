@@ -1,6 +1,8 @@
 #include "GraphPresentationModel.h"
 #include "FingerprintBuilder.h"
 
+#include "../Graph/NodeParameterMap.h"
+
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
@@ -43,10 +45,7 @@ std::optional<int> attachedKeyNote(
         const float fallbackKey = Arithmetic::getUnitValueForGraphicNote(
                 fallbackMidiNote,
                 midiRange);
-        const float key = typedParameterFloat(
-                triple->parameters,
-                "redConstant",
-                fallbackKey);
+        const float key = NodeParameterMap(*triple).floatValue("redConstant", fallbackKey);
         return Arithmetic::getGraphicNoteForValue(key, midiRange);
     }
     return std::nullopt;
@@ -572,8 +571,18 @@ void GraphPresentationModel::refreshConfigurations(
         const std::vector<String>& nodeIds) {
     AudioExecutionSpec spec;
     for (auto& step : plan.steps) {
-        if (!nodeIds.empty()
-                && std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) == nodeIds.end()) {
+        const bool directlyChanged = nodeIds.empty()
+                || std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) != nodeIds.end();
+        const bool attachedGuideChanged = std::any_of(
+                graph.getEdges().begin(),
+                graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.destNodeId == step.nodeId
+                            && edge.attachmentType == AttachmentType::GuideCurve
+                            && std::find(nodeIds.begin(), nodeIds.end(), edge.sourceNodeId)
+                                    != nodeIds.end();
+                });
+        if (!directlyChanged && !attachedGuideChanged) {
             continue;
         }
         const Node* node = graph.findNode(step.nodeId);
@@ -582,12 +591,22 @@ void GraphPresentationModel::refreshConfigurations(
         }
         step.parameters = node->parameters;
         const String key = configurationFactory.keyFor(
-                step.audioRole, step.parameters, node->model, spec);
+                step.audioRole,
+                step.parameters,
+                node->model,
+                spec,
+                &graph,
+                step.nodeId);
         if (step.configuration.key == key) {
             continue;
         }
         auto value = configurationFactory.create(
-                step.audioRole, step.parameters, node->model, spec);
+                step.audioRole,
+                step.parameters,
+                node->model,
+                spec,
+                &graph,
+                step.nodeId);
         if (value != nullptr) {
             step.configuration = {
                     step.configuration.revision + 1,

@@ -8,6 +8,8 @@
 
 #include <JuceHeader.h>
 
+#include <vector>
+
 namespace CycleV2 {
 
 enum class TrimeshSliceBackground {
@@ -56,6 +58,14 @@ public:
     const TrimeshSurfaceStyle& getSurfaceStyle() const { return surfaceStyle; }
     const TrimeshCurveStyle& getCurveStyle() const { return curveStyle; }
     const TrimeshSliceStyle& getSliceStyle() const { return sliceStyle; }
+    std::vector<float> mapGridToDisplay(
+            const std::vector<float>& source,
+            size_t columns,
+            size_t rows) const;
+    std::vector<float> mapSpectrum2DGridToDisplay(
+            const std::vector<float>& source,
+            size_t columns,
+            size_t rows) const;
     void mapValuesToDisplay(Buffer<float> values) const;
 
 private:

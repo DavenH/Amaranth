@@ -170,13 +170,13 @@ TEST_CASE("Runtime exposes targeted guide attachments separately from signal inp
             wave.attachments.end(),
             [](const RuntimeInput& input) {
                 return input.sourceNodeId == "guide"
-                    && input.destPortId == "guide.vertex.4.curve";
+                    && input.destPortId == "guide.cube.0.curve";
             }));
     REQUIRE(std::none_of(
             wave.signalInputs.begin(),
             wave.signalInputs.end(),
             [](const RuntimeInput& input) {
-                return input.destPortId.startsWith("guide.vertex.");
+                return input.destPortId.startsWith("guide.cube.");
             }));
 }
 

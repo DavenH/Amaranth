@@ -23,7 +23,6 @@
 #include "../src/UI/NodeViewModule.h"
 #include "../src/UI/SignalProbeDetailView.h"
 #include "../src/UI/SignalProbeRail.h"
-#include "../src/UI/SpectralPreviewMapping.h"
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/Runtime/GraphPresentationModel.h"
@@ -220,11 +219,13 @@ TEST_CASE("Spectral preview excludes DC and preserves low harmonic detail",
         }
     }
 
-    const auto mappedWithDc = SpectralPreviewMapping::magnitudeSurface(
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const auto mappedWithDc = profile.mapGridToDisplay(
             withDc,
             columns,
             rows);
-    const auto mappedWithoutDc = SpectralPreviewMapping::magnitudeSurface(
+    const auto mappedWithoutDc = profile.mapGridToDisplay(
             withoutDc,
             columns,
             rows);
@@ -640,7 +641,7 @@ TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cy
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.vertex.0.red",
+    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.red",
             PortDomain::ControlSignal,
             ConnectionKind::ProcessingAttachment,
             AttachmentType::GuideCurve });

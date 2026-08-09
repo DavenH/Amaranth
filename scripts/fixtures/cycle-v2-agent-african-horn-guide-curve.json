@@ -1,0 +1,29 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "timeLayer2"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelCurveGuideSegmentCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelAbsoluteSum",
+      "op": "greaterThan",
+      "value": 1.0
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    }
+  ],
+  "quit": true
+}

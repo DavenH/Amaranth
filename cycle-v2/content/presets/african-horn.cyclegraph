@@ -1268,7 +1268,7 @@
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
         { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.vertex.0.curve", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
+        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.cube.0.curve", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
         { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [

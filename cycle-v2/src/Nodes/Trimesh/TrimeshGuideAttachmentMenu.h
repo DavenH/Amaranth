@@ -24,8 +24,6 @@ public:
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField);
-
-    static String targetPortId(int vertexIndex, const String& parameterField);
 };
 
 }

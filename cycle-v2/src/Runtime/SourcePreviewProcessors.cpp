@@ -1,5 +1,7 @@
 #include "PreviewProcessorFactories.h"
 
+#include "../Graph/NodeParameterMap.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -22,7 +24,8 @@ public:
         const float denominator = context.pointCount > 1
                 ? (float) (context.pointCount - 1)
                 : 1.f;
-        const float amplitude = typedParameterFloat(context.parameters, "amplitude", 1.f);
+        const float amplitude = NodeParameterMap(context.parameters)
+                .floatValue("amplitude", 1.f);
 
         for (size_t i = 0; i < context.pointCount; ++i) {
             const float phase = (float) i / denominator;

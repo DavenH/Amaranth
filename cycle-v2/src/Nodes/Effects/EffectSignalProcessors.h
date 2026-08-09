@@ -86,9 +86,6 @@ private:
 class DelaySignalProcessor :
         public IUnarySignalOperation {
 public:
-    void configure(
-            const std::vector<NodeParameter>& parameters,
-            const AudioProcessTiming& timing);
     void configure(const DelayConfiguration& configuration, const AudioProcessTiming& timing);
     void beginBlock(size_t frameCount) override;
     void beginTraversalGrid(size_t columns, size_t rows) override;

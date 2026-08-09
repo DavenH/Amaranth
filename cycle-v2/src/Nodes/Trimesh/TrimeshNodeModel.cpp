@@ -5,6 +5,8 @@
 #include "TrimeshMeshFactory.h"
 #include "TrimeshRenderProfile.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -30,36 +32,6 @@ bool includes(
 }
 
 namespace {
-
-float parameterFloat(const Node& node, const String& id, float fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getFloatValue();
-        }
-    }
-
-    return fallback;
-}
-
-String parameterString(const Node& node, const String& id, const String& fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value;
-        }
-    }
-
-    return fallback;
-}
-
-int parameterInt(const Node& node, const String& id, int fallback) {
-    for (const auto& parameter : node.parameters) {
-        if (parameter.id == id) {
-            return parameter.value.getIntValue();
-        }
-    }
-
-    return fallback;
-}
 
 int primaryAxisFromParameter(const String& axisName) {
     if (axisName == "red") {
@@ -90,6 +62,7 @@ TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
     ,   revision             (other.revision)
     ,   appliedModelRevision (other.appliedModelRevision)
     ,   appliedModelState    (std::move(other.appliedModelState))
+    ,   guideCurveProvider   (std::move(other.guideCurveProvider))
     ,   revisions            (other.revisions) {}
 
 TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept {
@@ -102,6 +75,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         revision = other.revision;
         appliedModelRevision = other.appliedModelRevision;
         appliedModelState = std::move(other.appliedModelState);
+        guideCurveProvider = std::move(other.guideCurveProvider);
         revisions = other.revisions;
     }
 
@@ -109,13 +83,14 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
 }
 
 void TrimeshNodeModel::syncFromNode(const Node& node) {
+    const NodeParameterMap parameters(node);
     const MorphPosition nextMorph {
-            parameterFloat(node, "yellow", 0.5f),
-            parameterFloat(node, "red", 0.5f),
-            parameterFloat(node, "blue", 0.5f)
+            parameters.floatValue("yellow", 0.5f),
+            parameters.floatValue("red", 0.5f),
+            parameters.floatValue("blue", 0.5f)
     };
     const int nextPrimaryAxis = primaryAxisFromParameter(
-            parameterString(node, "primaryAxis", "yellow"));
+            parameters.stringValue("primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
             "selectedVertexId", -1);
 
@@ -147,6 +122,14 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     }
 }
 
+void TrimeshNodeModel::applyPreparedGuides(
+        const Mesh& preparedMesh,
+        std::shared_ptr<GuideCurveSnapshotProvider> provider) {
+    mesh().deepCopy(&preparedMesh);
+    guideCurveProvider = std::move(provider);
+    bumpMeshContentRevision();
+}
+
 TrimeshRenderData TrimeshNodeModel::renderGrid(int rows, int columns, PortDomain domain) {
     return renderGrid(rows, columns, TrimeshRenderProfile::fromDomain(domain));
 }
@@ -168,6 +151,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
 
     TrimeshBlockwiseDsp blockwiseDsp;
     SignalPayload slice;
+    blockwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     blockwiseDsp.setMesh(&mesh());
     blockwiseDsp.setMorphPosition(morph);
     blockwiseDsp.setPrimaryViewAxis(primaryViewAxis);
@@ -180,6 +164,7 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
 
     TrimeshGridwiseDsp gridwiseDsp;
     gridwiseDsp.setCyclic(cyclic);
+    gridwiseDsp.setGuideCurveProvider(guideCurveProvider.get());
     const auto gridColumns = gridwiseDsp.renderColumns(
             mesh(),
             morph,
@@ -192,14 +177,15 @@ TrimeshRenderData TrimeshNodeModel::renderGrid(
     result.surface.reserve((size_t) rows * (size_t) columns);
 
     for (auto column : gridColumns) {
-        renderProfile.mapValuesToDisplay(Buffer<float>(
-                column.signal.block.samples.data(),
-                (int) column.signal.block.samples.size()));
         result.surface.insert(
                 result.surface.end(),
                 column.signal.block.samples.begin(),
                 column.signal.block.samples.end());
     }
+    result.surface = renderProfile.mapGridToDisplay(
+            result.surface,
+            (size_t) columns,
+            (size_t) rows);
 
     return result;
 }

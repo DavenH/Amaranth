@@ -1283,7 +1283,9 @@ TEST_CASE("Delay processor transforms block and traversal grid with matching del
             { "feedback", "Feedback", "1" },
             { "wet", "Wet", "1" }
     };
-    factory.create(AudioModuleRole::Delay)->process(context);
+    auto processor = factory.create(AudioModuleRole::Delay);
+    prepareProcessor(*processor, AudioModuleRole::Delay, context);
+    processor->process(context);
 
     REQUIRE(output(context).block.samples[0] == Catch::Approx(1.f));
     REQUIRE(output(context).block.samples[5] > context.inputs.front().block.samples[5]);
@@ -1316,6 +1318,7 @@ TEST_CASE("Delay traversal rendering does not overwrite block state", "[cycle-v2
                     2,
                     8)
     };
+    prepareProcessor(*withGridProcessor, AudioModuleRole::Delay, withGridFirst);
     withGridProcessor->process(withGridFirst);
 
     AudioProcessContext blockOnlyFirst;
@@ -1325,6 +1328,7 @@ TEST_CASE("Delay traversal rendering does not overwrite block state", "[cycle-v2
     blockOnlyFirst.inputs = {
             payload({ 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f })
     };
+    prepareProcessor(*blockOnlyProcessor, AudioModuleRole::Delay, blockOnlyFirst);
     blockOnlyProcessor->process(blockOnlyFirst);
 
     AudioProcessContext withGridSecond;

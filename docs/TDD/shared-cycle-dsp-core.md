@@ -571,18 +571,16 @@ Tests:
 
 Current status:
 
-- Guide panel and preview behavior are UI-bridged.
-- Runtime signal semantics are not yet treated as shared core behavior.
-- Cycle 2 exposes noise/DC/phase parameters but has no curve snapshot or
-  `GuideCurveProvider` adapter, and its audio role currently publishes no
-  output. Add that model boundary before signal processing; do not synthesize a
-  placeholder curve locally.
+- `GuideCurveTableDsp` owns the shared table lookup, downsampling, phase
+  rotation, deterministic noise, vertical offset, and stable seed behavior.
+- Cycle 1's `GuideCurvePanel` and Cycle 2's immutable
+  `GuideCurveSnapshotProvider` are storage/lifecycle adapters over that core.
 - Imported Cycle 1 meshes preserve `VertCube::guideCurveChans` metadata and the
   graph grammar now accepts stable `guide.cube.<index>.<field>` attachment
   targets. Stengah serializes its two channel-0 assignments using those exact
-  cube-component targets. The provider slice must translate the targets to the
-  preserved channel assignments; it must not approximate them with per-vertex
-  routing.
+  cube-component targets. `TrimeshGuidePreparation` translates those targets
+  into render-local provider slots while preserving the component assignment;
+  it does not approximate them with per-vertex routing.
 
 Target:
 
@@ -667,7 +665,7 @@ Complete one module end-to-end before starting the next:
 - [ ] Extract shared oscillator, morph/phase, voice-filter, and voice-unison behavior.
 - [x] Audit FFT/IFFT framed-transform policy and extract only if duplicated.
 - [x] Audit Guide Curve signal behavior and extract only if duplicated.
-- [ ] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.
+- [x] Add Cycle 2 Guide Curve snapshot/provider adapter before runtime sampling.
 - [ ] Remove or clearly label every remaining approximate adapter.
 
 ## Definition Of Done

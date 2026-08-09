@@ -60,13 +60,7 @@ public:
     }
 
     void process(AudioProcessContext& context) override {
-        if (configuration == nullptr) {
-            operation.configure(processParameters(context), context.timing);
-        }
-
-        const bool enabled = configuration != nullptr
-                ? configuration->enabled
-                : typedParameterBool(processParameters(context), "enabled", true);
+        const bool enabled = configuration != nullptr && configuration->enabled;
         processUnaryEffect(operation, processor, context, enabled);
     }
 

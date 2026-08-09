@@ -1812,6 +1812,63 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
   #endif
 }
 
+TEST_CASE("Baroque Flute guide topology changes the phase-layer traversal",
+        "[cycle-v2][runtime][guide][trimesh][preset]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("baroque-flute.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const NodeGraph guidedGraph = GraphSerializer().fromJsonString(
+            preset.loadFileAsString());
+    NodeGraph plainGraph = guidedGraph;
+    plainGraph.removeEdgesFromOutput("guide1", "guide");
+    const auto guidedPlan = GraphCompiler().compile(guidedGraph);
+    const auto plainPlan = GraphCompiler().compile(plainGraph);
+    REQUIRE(guidedPlan.succeeded());
+    REQUIRE(plainPlan.succeeded());
+
+    constexpr size_t frameCount = 128;
+    const auto guided = GraphAudioExecutor().process(
+            guidedGraph, guidedPlan.plan, frameCount, {}, {});
+    const auto plain = GraphAudioExecutor().process(
+            plainGraph, plainPlan.plan, frameCount, {}, {});
+    const auto& guidedGrid = findNodeAudio(
+            guided, "phaseLayer1").output.traversalGrid.values;
+    const auto& plainGrid = findNodeAudio(
+            plain, "phaseLayer1").output.traversalGrid.values;
+    REQUIRE(guidedGrid.size() == plainGrid.size());
+
+    float difference = 0.f;
+    for (size_t sample = 0; sample < guidedGrid.size(); ++sample) {
+        difference += std::abs(guidedGrid[sample] - plainGrid[sample]);
+    }
+    REQUIRE(difference > 0.01f);
+
+    const auto guidedPreviews = GraphPreviewExecutor().render(
+            guidedPlan.plan, guided, {}, frameCount);
+    const auto plainPreviews = GraphPreviewExecutor().render(
+            plainPlan.plan, plain, {}, frameCount);
+    const auto previewFor = [](const GraphPreviewResult& previews)
+            -> const NodePreviewResult& {
+        const auto found = std::find_if(
+                previews.nodes.begin(),
+                previews.nodes.end(),
+                [](const NodePreviewResult& preview) {
+                    return preview.nodeId == "phaseLayer1";
+                });
+        REQUIRE(found != previews.nodes.end());
+        return *found;
+    };
+    const auto& guidedPreview = previewFor(guidedPreviews);
+    const auto& plainPreview = previewFor(plainPreviews);
+    REQUIRE(guidedPreview.primary == guidedGrid);
+    REQUIRE(plainPreview.primary == plainGrid);
+    REQUIRE(guidedPreview.primary != plainPreview.primary);
+  #endif
+}
+
 TEST_CASE("Stengah Waveshaper post gain changes stereo traversal and downstream audio",
         "[cycle-v2][runtime][waveshaper][grid][preset]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

@@ -19,6 +19,20 @@ format checks. The macOS app launched successfully for OS capture, but the
 capture harness could not make it frontmost, so no visual screenshot is
 claimed as completion evidence.
 
+### Post-audit keyed parameter lookup (2026-08-05)
+
+Cycle V2 now keeps the ordered `NodeParameter` vector as its durable graph and
+serialization representation, while `NodeParameterMap` builds one indexed,
+immutable read snapshot for configuration, model, preview, and UI contexts.
+The duplicated scalar and typed lookup helpers were deleted. Call sites that
+read several parameters construct one snapshot and perform average constant-
+time keyed lookup; duplicate identifiers retain the previous first-value-wins
+behavior.
+
+Realtime processors do not construct the map or parse graph parameters. They
+consume dispatcher-prepared immutable DSP configurations, including Delay,
+and isolated processor tests now exercise that same preparation boundary.
+
 ## Audit Principle
 
 Repeated mechanics should be factored until the meaningful domain variant is
