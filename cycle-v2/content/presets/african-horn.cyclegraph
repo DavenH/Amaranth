@@ -1236,7 +1236,7 @@
             "kind": "delay",
             "definitionVersion": 1,
             "position": { "x": 1189.3103, "y": 520.0 },
-            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.5, "spin": 0.692, "spinIters": 0.5 }
+            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.71, "wet": 0.5, "spin": 0.692, "spinIters": 0.5 }
         },
         {
             "id": "volumeMultiply",
@@ -1271,5 +1271,19 @@
         { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.vertex.0.curve", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
         { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": []
+    "probes": [
+        {
+            "id": "probe2",
+            "sourceNodeId": "volumeMultiply",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "output",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.42555,
+            "railOrder": 1
+        }
+    ],
+    "presentation": {
+        "performanceKeyboardBounds": { "x": 1183.34827, "y": 830.9812, "width": 496.0, "height": 184.0 }
+    }
 }
