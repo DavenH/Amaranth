@@ -124,14 +124,8 @@ class NativeEditSmoke:
         if force_curve_reshape:
             down_commands.extend(["kd:cmd", "w:10"])
         down_commands.append(f"dd:{source[0]},{source[1]}")
-        subprocess.run(down_commands, check=True)
-        time.sleep(0.04)
-        drag_commands = [
-            CLICK,
-            "-w",
-            "20",
-            *moves,
-            f"du:{destination[0]},{destination[1]}",
+        drag_commands = down_commands + moves + [
+            f"du:{destination[0]},{destination[1]}"
         ]
         if force_curve_reshape:
             drag_commands.extend(["w:10", "ku:cmd"])
@@ -1106,6 +1100,43 @@ class NativeEditSmoke:
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
 
+    def spectral_trimesh_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO, "cycle-v2", "content", "presets", "stengah.cyclegraph"
+            ),
+        })
+        state = self.open_editor("magnitudeLayer1", trimesh=True)
+        panel = self.target("expanded:magnitudeLayer1.panel2D")
+        intercepts = sorted(
+            state["trimesh"]["panelIntercepts"],
+            key=lambda intercept: intercept["x"],
+        )
+        source_intercept = intercepts[len(intercepts) // 2]
+        source = self.point(
+            panel,
+            source_intercept["x"],
+            1.0 - source_intercept["y"],
+        )
+        destination = self.point(
+            panel,
+            min(0.95, source_intercept["x"] + 0.025),
+            1.0 - min(0.9, source_intercept["y"] + 0.06),
+        )
+        topology = self.trimesh_model(state)
+
+        self.drag(source, destination)
+
+        moved = self.inspect("magnitudeLayer1")
+        assert self.trimesh_model(moved) != topology, (
+            "Spectral Trimesh vertex did not move",
+            source,
+            destination,
+            state["trimesh"],
+            moved["trimesh"],
+        )
+
     def causal_trimesh_sequence(self):
         self.command({
             "command": "openGraph",
@@ -1220,6 +1251,7 @@ class NativeEditSmoke:
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
+                "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
@@ -1245,6 +1277,7 @@ if __name__ == "__main__":
         "envelope",
         "trimesh",
         "trimesh-versioning",
+        "spectral-trimesh",
         "causal-trimesh",
         "hover-cursor",
     }

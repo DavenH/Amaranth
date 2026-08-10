@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Addressed: Hosted Trimesh vertex drags used stale desktop coordinates
+
+Context:
+
+- `PanelHostComponent` discarded the coordinates carried by each JUCE mouse
+  event and reconstructed them from the current desktop cursor position.
+- Delayed delivery and in-process pointer automation could therefore hit or
+  move a different vertex. A pointer-down at the panel's phase-0.50 intercept
+  selected a phase-0.84 vertex in the focused reproduction.
+
+Current status: addressed by translating the delivered event into the panel
+host's coordinate space with JUCE's event-relative conversion. The focused
+in-process fixture asserts the resulting vertex parameters, while native
+smokes cover a full edit/commit/undo sequence and a spectral Stengah Trimesh.
+
 ## Open: Closing a hosted editor through automation dereferences its deleted target
 
 Context:

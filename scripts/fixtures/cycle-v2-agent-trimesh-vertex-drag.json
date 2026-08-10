@@ -1,0 +1,58 @@
+{
+  "commands": [
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.5,
+      "targetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.54,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.54,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "greaterThan": 0.46
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
+      "lessThan": 0.48
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.4.value",
+      "greaterThan": 0.34
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.4.value",
+      "lessThan": 0.36
+    }
+  ],
+  "quit": true
+}
