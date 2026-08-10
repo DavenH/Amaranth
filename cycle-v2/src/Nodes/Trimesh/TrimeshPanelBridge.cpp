@@ -62,7 +62,9 @@ void TrimeshPanelBridge::applyPreparedGuides(PreparedTrimeshGuides guides) {
     environment.getRepo().setGuideCurveProvider(guideCurveProvider.get());
     panelRasterizer.getRasterizer().setGuideCurveProvider(guideCurveProvider.get());
     updateGuideCurveSeeds();
-    model.applyPreparedGuides(*guides.mesh, guideCurveProvider);
+    if (model.applyPreparedGuides(*guides.mesh, guideCurveProvider)) {
+        clearInteractionPointers();
+    }
     dataSource.rebuild(
             model,
             lastRows,
@@ -87,7 +89,9 @@ void TrimeshPanelBridge::syncFromNode(
     const int previousPrimaryAxis = model.getPrimaryViewAxis();
     const MorphPosition previousMorph = model.getMorphPosition();
 
-    model.syncFromNode(node);
+    if (model.syncFromNode(node)) {
+        clearInteractionPointers();
+    }
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
     syncPrimaryAxisContext();
 
@@ -174,6 +178,11 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
 void TrimeshPanelBridge::setMeshEditedCallback(
         std::function<void(TrimeshMeshEditEvent)> callback) {
     meshEditedCallback = std::move(callback);
+}
+
+void TrimeshPanelBridge::clearInteractionPointers() {
+    interactor2D.clearSelectedAndCurrent();
+    interactor3D.clearSelectedAndCurrent();
 }
 
 int TrimeshPanelBridge::selectedVertexIndexForPanel() {

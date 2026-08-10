@@ -777,6 +777,30 @@ TEST_CASE("Trimesh node model replaces equal-revision snapshots from another doc
     populated->destroy();
 }
 
+TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent publications",
+        "[cycle-v2][nodes][trimesh][interaction]") {
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    Vertex* liveVertex = model.getMeshForPanel().getVerts().front();
+    liveVertex->values[Vertex::Amp] = 0.15441218f;
+    model.markMeshEdited();
+    node.model = TrimeshNodeModelState::copyOf(model.getMeshForPanel(), 2);
+
+    REQUIRE_FALSE(model.syncFromNode(node));
+    REQUIRE(model.getMeshForPanel().getVerts().front() == liveVertex);
+
+    auto changedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
+    changedMesh->getVerts().front()->values[Vertex::Amp] = 0.17f;
+    node.model = TrimeshNodeModelState::copyOf(*changedMesh, 3);
+    changedMesh->destroy();
+
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.getMeshForPanel().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(0.17f));
+}
+
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
@@ -1025,6 +1049,30 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     REQUIRE(bridge.getInteractor3D().hasRasterizer());
     REQUIRE(bridge.getDataSource().getColumns().size() == 3);
     REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
+}
+
+TEST_CASE("Trimesh panel bridge clears interaction pointers only for mesh replacement",
+        "[cycle-v2][nodes][trimesh][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+
+    bridge.syncFromNode(node, 10, 3);
+    Vertex* liveVertex = bridge.getModel().getMeshForPanel().getVerts().front();
+    bridge.getInteractor2D().getSelected().push_back(liveVertex);
+    node.model = TrimeshNodeModelState::copyOf(bridge.getModel().getMeshForPanel(), 2);
+
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getInteractor2D().getSelected().size() == 1);
+    REQUIRE(bridge.getInteractor2D().getSelected().front() == liveVertex);
+
+    auto changedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
+    changedMesh->getVerts().front()->values[Vertex::Amp] = 0.17f;
+    node.model = TrimeshNodeModelState::copyOf(*changedMesh, 3);
+    changedMesh->destroy();
+
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getInteractor2D().getSelected().empty());
 }
 
 TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",

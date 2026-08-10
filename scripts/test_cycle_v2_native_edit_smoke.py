@@ -987,6 +987,30 @@ class NativeEditSmoke:
             moved_state["trimesh"],
         )
 
+        published_revision = self.model_revision(moved_state)
+        published_topology = self.trimesh_model(moved_state)
+        moved_source = self.point(
+            panel,
+            moved["vertex.phase"],
+            1.0 - moved["vertex.amp"],
+        )
+        moved_destination = self.point(
+            panel,
+            min(0.95, moved["vertex.phase"] + 0.012),
+            1.0 - min(0.95, moved["vertex.amp"] + 0.03),
+        )
+        self.drag(moved_source, moved_destination)
+        moved_state = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.model_revision(inspected) > published_revision,
+        )
+        self.assert_trimesh_slice(moved_state, "Trimesh slice after repeated vertex drag")
+        assert self.trimesh_model(moved_state) != published_topology
+        moved = {
+            parameter["id"]: parameter["value"]
+            for parameter in moved_state["trimesh"]["selectedVertexParameters"]
+        }
+
         graph_after_mesh_edit = self.graph_state()
         voice_bounds = self.node_bounds(graph_after_mesh_edit, "voice")
         self.command({

@@ -56,6 +56,7 @@ public:
 
 private:
     void refreshAfterMeshEdit(TrimeshMeshEditEvent event);
+    void clearInteractionPointers();
     void updateGuideCurveSeeds();
     void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);

@@ -93,8 +93,8 @@ public:
     TrimeshNodeModel(const TrimeshNodeModel&) = delete;
     TrimeshNodeModel& operator=(const TrimeshNodeModel&) = delete;
 
-    void syncFromNode(const Node& node);
-    void applyPreparedGuides(
+    bool syncFromNode(const Node& node);
+    bool applyPreparedGuides(
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);
 
