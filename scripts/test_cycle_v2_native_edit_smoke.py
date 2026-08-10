@@ -183,7 +183,7 @@ class NativeEditSmoke:
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
         self.command({"command": command, "nodeId": node_id})
-        time.sleep(0.2)
+        self.target(f"expanded:{node_id}")
         return self.inspect(node_id)
 
     def inspect(self, node_id):
@@ -198,8 +198,18 @@ class NativeEditSmoke:
         return state
 
     def target(self, target_id):
-        targets = self.command({"command": "inspectPointerTargets"})["targets"]
-        return next(target for target in targets if target["id"] == target_id)["screenBounds"]
+        deadline = time.monotonic() + 1.0
+        while True:
+            targets = self.command({"command": "inspectPointerTargets"})["targets"]
+            target = next((candidate for candidate in targets
+                           if candidate["id"] == target_id), None)
+            if (target is not None
+                    and target.get("nativeReady", True)
+                    and "screenBounds" in target):
+                return target["screenBounds"]
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"native pointer target is not ready: {target_id}")
+            time.sleep(0.01)
 
     def graph_state(self):
         return self.command({"command": "snapshotState"})

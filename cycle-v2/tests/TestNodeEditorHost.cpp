@@ -518,17 +518,22 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     const Array<var>* targets = pointerObject->getProperty("targets").getArray();
     REQUIRE(targets != nullptr);
 
-    auto hasTarget = [targets](const String& id) {
-        return std::any_of(targets->begin(), targets->end(), [&](const var& targetValue) {
+    auto targetWithId = [targets](const String& id) -> const DynamicObject* {
+        const auto match = std::find_if(targets->begin(), targets->end(), [&](const var& targetValue) {
             const auto* target = targetValue.getDynamicObject();
             return target != nullptr && target->getProperty("id").toString() == id;
         });
+        return match != targets->end() ? match->getDynamicObject() : nullptr;
     };
 
-    REQUIRE(hasTarget("node:mesh"));
-    REQUIRE(hasTarget("expanded:mesh.panel3D"));
-    REQUIRE(hasTarget("expanded:mesh.trimeshMorphRail.yellow"));
-    REQUIRE(hasTarget("expanded:mesh.trimeshVertexParameter.vertex.phase"));
+    REQUIRE(targetWithId("node:mesh") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.panel3D") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
+    const DynamicObject* expandedTarget = targetWithId("expanded:mesh");
+    REQUIRE(expandedTarget != nullptr);
+    REQUIRE_FALSE((bool) expandedTarget->getProperty("nativeReady"));
+    REQUIRE(expandedTarget->getProperty("screenBounds").isVoid());
 
     const var snapshot = inspector.exportState(state);
     const auto* snapshotObject = snapshot.getDynamicObject();

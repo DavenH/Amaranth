@@ -1487,22 +1487,42 @@ var CycleV2Automation::pointer(const var& commandValue) {
         }
     }
 
+    const String targetComponentName = eventComponent == component
+            ? "area"
+            : eventComponent->getName();
+    Component::SafePointer<Component> safeEventComponent(eventComponent);
+    String resolvedCursor = cursorName(eventComponent->getMouseCursor());
+
     if (eventType == "click") {
-        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));
-        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 1));
+        safeEventComponent->mouseDown(makePointerEvent(
+                *safeEventComponent, position, position, commandValue, true, false, 1));
+        if (safeEventComponent != nullptr) {
+            safeEventComponent->mouseUp(makePointerEvent(
+                    *safeEventComponent, position, position, commandValue, false, false, 1));
+        }
     } else if (eventType == "doubleClick") {
-        const MouseEvent doubleClick = makePointerEvent(*eventComponent, position, position, commandValue, true, false, 2);
-        eventComponent->mouseDown(doubleClick);
-        eventComponent->mouseDoubleClick(doubleClick);
-        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 2));
+        const MouseEvent doubleClick = makePointerEvent(
+                *safeEventComponent, position, position, commandValue, true, false, 2);
+        safeEventComponent->mouseDown(doubleClick);
+        if (safeEventComponent != nullptr) {
+            safeEventComponent->mouseDoubleClick(doubleClick);
+        }
+        if (safeEventComponent != nullptr) {
+            safeEventComponent->mouseUp(makePointerEvent(
+                    *safeEventComponent, position, position, commandValue, false, false, 2));
+        }
     } else if (eventType == "down") {
-        eventComponent->mouseDown(makePointerEvent(*eventComponent, position, position, commandValue, true, false, 1));
+        safeEventComponent->mouseDown(makePointerEvent(
+                *safeEventComponent, position, position, commandValue, true, false, 1));
     } else if (eventType == "up") {
-        eventComponent->mouseUp(makePointerEvent(*eventComponent, position, downPosition, commandValue, false, false, 1));
+        safeEventComponent->mouseUp(makePointerEvent(
+                *safeEventComponent, position, downPosition, commandValue, false, false, 1));
     } else if (eventType == "drag") {
-        eventComponent->mouseDrag(makePointerEvent(*eventComponent, position, downPosition, commandValue, true, true, 1));
+        safeEventComponent->mouseDrag(makePointerEvent(
+                *safeEventComponent, position, downPosition, commandValue, true, true, 1));
     } else if (eventType == "move") {
-        eventComponent->mouseMove(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0));
+        safeEventComponent->mouseMove(makePointerEvent(
+                *safeEventComponent, position, position, commandValue, false, false, 0));
     } else if (eventType == "wheel") {
         MouseWheelDetails wheel {
                 floatProperty(commandValue, "deltaX"),
@@ -1512,12 +1532,17 @@ var CycleV2Automation::pointer(const var& commandValue) {
                 boolProperty(commandValue, "inertial")
         };
 
-        eventComponent->mouseWheelMove(makePointerEvent(*eventComponent, position, position, commandValue, false, false, 0), wheel);
+        safeEventComponent->mouseWheelMove(
+                makePointerEvent(*safeEventComponent, position, position, commandValue, false, false, 0),
+                wheel);
     } else {
         return failedResult("pointer", "Unknown pointer event: " + eventType);
     }
 
-    const String resolvedCursor = cursorName(eventComponent->getMouseCursor());
+    const bool targetDestroyed = safeEventComponent == nullptr;
+    if (!targetDestroyed) {
+        resolvedCursor = cursorName(safeEventComponent->getMouseCursor());
+    }
     const String expectedCursor = stringProperty(commandValue, "expectedCursor");
     if (expectedCursor.isNotEmpty() && resolvedCursor != expectedCursor) {
         return failedResult(
@@ -1530,7 +1555,8 @@ var CycleV2Automation::pointer(const var& commandValue) {
     object->setProperty("event", eventType);
     object->setProperty("area", area);
     object->setProperty("targetId", targetId);
-    object->setProperty("targetComponent", eventComponent == component ? "area" : eventComponent->getName());
+    object->setProperty("targetComponent", targetComponentName);
+    object->setProperty("targetDestroyed", targetDestroyed);
     object->setProperty("cursor", resolvedCursor);
     object->setProperty("x", position.x);
     object->setProperty("y", position.y);

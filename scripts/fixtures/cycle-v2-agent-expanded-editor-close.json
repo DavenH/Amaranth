@@ -1,0 +1,27 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "waveMesh"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.close"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": ""
+    },
+    {
+      "command": "inspectPointerTargets"
+    }
+  ],
+  "quit": true
+}

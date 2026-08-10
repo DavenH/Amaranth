@@ -362,9 +362,16 @@ public:
             Rectangle<float> canvasContentBounds,
             const NodeEditorHost& editorHost) {
         const Component* editorComponent = editorHost.component();
+        const bool hostedComponentReady = editorComponent != nullptr
+                && editorComponent->isShowing()
+                && !editorComponent->getLocalBounds().isEmpty();
+        const bool requiresHostedComponent = NodeViewModuleRegistry::instance()
+                .moduleFor(node.kind).capabilities().hostedEditor;
+        const bool nativeReady = hostedComponentReady || !requiresHostedComponent;
         Rectangle<float> panel = editorComponent != nullptr
                 ? editorComponent->getBounds().toFloat()
                 : expandedEditorBounds(canvasContentBounds, node);
+        const int firstExpandedTarget = targets.size();
         targets.add(pointerTargetToVar("expanded:" + node.id, "expandedEditor", panel, node.id));
         targets.add(pointerTargetToVar("expanded:" + node.id + ".close", "expandedCloseButton",
                                        expandedEditorCloseButton(panel), node.id));
@@ -389,14 +396,7 @@ public:
                 targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, targetBounds,
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
-            return;
-        }
-
-        if (node.kind == NodeKind::Envelope) {
-            addEnvelopeTargets(targets, node, panel, editorHost);
-        }
-
-        if (node.kind == NodeKind::VoiceContext) {
+        } else if (node.kind == NodeKind::VoiceContext) {
             targets.add(pointerTargetToVar(
                     "expanded:" + node.id + ".octave",
                     "octave",
@@ -417,13 +417,37 @@ public:
                     "oversampling",
                     VoiceContextCompactEditor::oversamplingControlBounds(panel),
                     node.id));
-            return;
+        } else {
+            if (node.kind == NodeKind::Envelope) {
+                addEnvelopeTargets(targets, node, panel, editorHost);
+            }
+
+            if (!editorHost.panelBoundsForAutomation().isEmpty()) {
+                const Rectangle<float> panelHost =
+                        editorHost.panelBoundsForAutomation().translated(panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar(
+                        "expanded:" + node.id + ".panel2D",
+                        "effect2DPanel",
+                        panelHost,
+                        node.id));
+            }
         }
 
-        if (!editorHost.panelBoundsForAutomation().isEmpty()) {
-            const Rectangle<float> panelHost =
-                    editorHost.panelBoundsForAutomation().translated(panel.getX(), panel.getY());
-            targets.add(pointerTargetToVar("expanded:" + node.id + ".panel2D", "effect2DPanel", panelHost, node.id));
+        for (int i = firstExpandedTarget; i < targets.size(); ++i) {
+            auto* target = targets.getReference(i).getDynamicObject();
+            if (target == nullptr) {
+                continue;
+            }
+
+            target->setProperty("nativeReady", nativeReady);
+            if (!hostedComponentReady) {
+                continue;
+            }
+
+            const Rectangle<float> bounds = rectangleFromVar(target->getProperty("bounds"));
+            const Point<float> editorLocalOrigin = bounds.getPosition() - panel.getPosition();
+            const Point<float> screenOrigin = editorComponent->localPointToGlobal(editorLocalOrigin);
+            target->setProperty("screenBounds", rectangleToVar(bounds.withPosition(screenOrigin)));
         }
     }
 };
@@ -695,7 +719,11 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         auto* target = targetValue.getDynamicObject();
         auto* bounds = target != nullptr ? target->getProperty("bounds").getDynamicObject() : nullptr;
 
-        if (bounds == nullptr) {
+        if (bounds == nullptr || !target->getProperty("screenBounds").isVoid()) {
+            continue;
+        }
+        if (!target->getProperty("nativeReady").isVoid()
+                && !(bool) target->getProperty("nativeReady")) {
             continue;
         }
 
