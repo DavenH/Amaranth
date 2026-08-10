@@ -15,6 +15,7 @@ struct NodeAudioResult {
     String nodeId;
     SignalPayload output;
     std::vector<std::pair<String, SignalPayload>> outputs;
+    std::vector<SignalTraversalGrid> probeTraversalGrids;
 };
 
 struct GraphAudioResult {
@@ -76,6 +77,13 @@ public:
             const GraphExecutionPlan& plan,
             size_t frameCount,
             const std::vector<uint8_t>& dirtyNodes,
+            CancellationCheck cancellationCheck = {}) const;
+    GraphAudioResultView processIncrementalIndexed(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            size_t frameCount,
+            const std::vector<uint8_t>& dirtyNodes,
+            AudioVoiceContext voice,
             CancellationCheck cancellationCheck = {}) const;
     void clearIncrementalCache() const;
     size_t diagnosticProcessCount(const String& nodeId) const;

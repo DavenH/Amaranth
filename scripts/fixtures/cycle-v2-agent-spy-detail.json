@@ -1,0 +1,65 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probePreviewStats.0.connected",
+      "equals": true
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-spy-compact.png"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "doubleClick",
+      "x": 292,
+      "y": 850,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailOpen",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailResolution",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailColumns",
+      "equals": 128
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailRows",
+      "equals": 129
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-spy-detail.png"
+    }
+  ],
+  "quit": true
+}

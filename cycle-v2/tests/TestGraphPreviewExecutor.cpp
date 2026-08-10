@@ -306,6 +306,8 @@ TEST_CASE("Graph preview executor renders FFT probe previews from audio traversa
     REQUIRE(magSpy.gridRows == magnitude.traversalGrid.rows);
     REQUIRE(phaseSpy.gridColumns == phase.traversalGrid.columns);
     REQUIRE(phaseSpy.gridRows == phase.traversalGrid.rows);
+    REQUIRE(magSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
+    REQUIRE(phaseSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(magSpy.values == magnitude.traversalGrid.values);
     REQUIRE(phaseSpy.values == phase.traversalGrid.values);
 }
@@ -349,11 +351,14 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
             findProbePreview(result, "probe6").values) > 0.01f);
     REQUIRE(magMesh.traversalGrid.metadata.valueDomain == PortDomain::SpectralMagnitudeSignal);
     REQUIRE(magMesh.traversalGrid.metadata.rowAxis == TraversalGridAxis::Frequency);
+    REQUIRE(magMesh.traversalGrid.metadata.frequencySampling
+            == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(columnDifference(magMesh.traversalGrid, 0, magMesh.traversalGrid.columns - 1) > 0.01f);
     REQUIRE(*std::min_element(addMag.traversalGrid.values.begin(), addMag.traversalGrid.values.end()) >= 0.f);
     requireMagnitudeGridAddEquals(addMag.traversalGrid, fftMagnitude.traversalGrid, magMesh.traversalGrid);
     REQUIRE(addSpy.gridColumns == addMag.traversalGrid.columns);
     REQUIRE(addSpy.gridRows == addMag.traversalGrid.rows);
+    REQUIRE(addSpy.frequencySampling == TraversalGridFrequencySampling::LinearBins);
     REQUIRE(absoluteDifferenceSum(addSpy.values, addMag.traversalGrid.values) < 1.0e-5f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
@@ -397,16 +402,22 @@ TEST_CASE("Stengah spies render the exact output selected by each probe",
         const auto& expected = outputForPort(
                 findAudio(audio, authoredProbe.sourceNodeId),
                 authoredProbe.sourcePortId);
+        const auto& sourceAudio = findAudio(audio, authoredProbe.sourceNodeId);
+        const auto& compiledProbe = compileResult.plan.signalProbes[probeIndex];
+        const auto outputIndex = static_cast<size_t>(compiledProbe.sourceOutputIndex);
+        const SignalTraversalGrid& expectedProbeGrid = outputIndex
+                        < sourceAudio.probeTraversalGrids.size()
+                ? sourceAudio.probeTraversalGrids[outputIndex]
+                : expected.traversalGrid;
         INFO("probe id: " << probe.probeId);
         INFO("source: " << authoredProbe.sourceNodeId << "." << authoredProbe.sourcePortId);
-        const auto& compiledProbe = compileResult.plan.signalProbes[probeIndex];
         INFO("compiled source: "
                 << compileResult.plan.steps[static_cast<size_t>(compiledProbe.sourceStepIndex)].nodeId
                 << " output index " << compiledProbe.sourceOutputIndex);
-        REQUIRE(expected.traversalGrid.isValid());
+        REQUIRE(expectedProbeGrid.isValid());
         REQUIRE(probe.connected);
-        REQUIRE(probe.domain == expected.traversalGrid.metadata.valueDomain);
-        const bool matchesExpectedOutput = probe.values == expected.traversalGrid.values;
+        REQUIRE(probe.domain == expectedProbeGrid.metadata.valueDomain);
+        const bool matchesExpectedOutput = probe.values == expectedProbeGrid.values;
         REQUIRE(matchesExpectedOutput);
         if (probe.sourceRole == PreviewModuleRole::MeshSurface) {
             const auto& sourcePreview = findPreview(result, authoredProbe.sourceNodeId);

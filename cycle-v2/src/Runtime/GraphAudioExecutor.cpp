@@ -145,6 +145,22 @@ GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
         CancellationCheck cancellationCheck) const {
     AudioVoiceContext voice;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, voice.voiceIndex });
+    return processIncrementalIndexed(
+            graph,
+            plan,
+            frameCount,
+            dirtyNodes,
+            std::move(voice),
+            std::move(cancellationCheck));
+}
+
+GraphAudioResultView GraphAudioExecutor::processIncrementalIndexed(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        const std::vector<uint8_t>& dirtyNodes,
+        AudioVoiceContext voice,
+        CancellationCheck cancellationCheck) const {
     GraphAudioResultView result;
     processInternal(
             plan, frameCount, {}, voice, true, nullptr,
@@ -425,8 +441,24 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             nodeOutputs.push_back({ "out", std::move(silent) });
         }
 
+        std::vector<SignalTraversalGrid> probeTraversalGrids;
+        probeTraversalGrids.reserve(nodeOutputs.size());
+        for (size_t outputIndex = 0; outputIndex < nodeOutputs.size(); ++outputIndex) {
+            const SignalTraversalGrid* observation = processor->probeTraversalGrid(
+                    context,
+                    outputIndex);
+            probeTraversalGrids.push_back(
+                    observation != nullptr && observation->isValid()
+                            ? *observation
+                            : nodeOutputs[outputIndex].second.traversalGrid);
+        }
+
         NodeAudioResult nodeResult {
-                step.nodeId, nodeOutputs.front().second, std::move(nodeOutputs) };
+                step.nodeId,
+                nodeOutputs.front().second,
+                std::move(nodeOutputs),
+                std::move(probeTraversalGrids)
+        };
         if (incrementalResult != nullptr) {
             stagedDiagnosticResults[stepIndex] = std::move(nodeResult);
         } else {

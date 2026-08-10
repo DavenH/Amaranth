@@ -157,6 +157,7 @@ bool SpectralOscillatorRegionRuntime::renderSharedFrame(
                 fadeOut.withSize(halfSize))
             || !renderer.renderFrame(
                     fixedFrameSize,
+                    midiNote,
                     currentFrames[0].withSize(fixedFrameSize),
                     currentFrames[1].withSize(fixedFrameSize))) {
         fixedFrameSize = 0;

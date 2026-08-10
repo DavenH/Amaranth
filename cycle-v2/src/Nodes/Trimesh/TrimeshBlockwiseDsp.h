@@ -3,6 +3,8 @@
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Obj/MorphPosition.h>
 
+#include <vector>
+
 #include "../../Runtime/NodeAudioProcessor.h"
 #include "../Guide/GuideCurveSnapshotProvider.h"
 
@@ -30,11 +32,13 @@ public:
             int axis,
             bool shouldWrap,
             PortDomain domain);
+    void prepareSampling(size_t maximumFrameCount);
     void setMesh(Mesh* meshToRender);
     void setMorphPosition(const MorphPosition& morphPosition);
     void setPrimaryViewAxis(int axis);
     void setCyclic(bool shouldWrap);
     void setGuideCurveProvider(GuideCurveProvider* provider);
+    void setFrequencyMidiNote(int midiNote);
 
     void renderCycle(
             size_t frameCount,
@@ -53,14 +57,20 @@ private:
     void configureGuideCurveSeeds(PortDomain domain);
     Rasterization::RasterizationRequest createRequest(PortDomain domain) const;
     void sampleOutput(Buffer<float> output);
+    Buffer<float> frequencyPositionsFor(int size);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 
     bool cyclic { true };
-    GuideCurveProvider* guideCurveProvider {};
+    int frequencyMidiNote { 48 };
+    int cachedFrequencyMidiNote { -1 };
+    int cachedFrequencyPositionCount {};
     int primaryViewAxis { Vertex::Time };
-    Mesh* mesh {};
+    PortDomain preparedDomain { PortDomain::TimeSignal };
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
+    std::vector<float> frequencyPositions;
     Rasterization::TrilinearMeshRasterizer rasterizer;
+    GuideCurveProvider* guideCurveProvider {};
+    Mesh* mesh {};
 };
 
 }

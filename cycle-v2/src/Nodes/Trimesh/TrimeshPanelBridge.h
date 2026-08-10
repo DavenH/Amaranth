@@ -49,6 +49,7 @@ public:
     void releaseSharedGlResources();
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void setPreviewMidiNote(int midiNote);
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
     int selectedVertexIndexForPanel();
@@ -77,6 +78,8 @@ private:
     RenderScalePolicy lastRenderScalePolicy { RenderScalePolicy::Bipolar };
     int lastRows {};
     int lastColumns {};
+    int previewMidiNote { 48 };
+    int lastPreviewMidiNote { -1 };
 };
 
 }

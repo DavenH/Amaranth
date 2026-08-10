@@ -124,14 +124,8 @@ class NativeEditSmoke:
         if force_curve_reshape:
             down_commands.extend(["kd:cmd", "w:10"])
         down_commands.append(f"dd:{source[0]},{source[1]}")
-        subprocess.run(down_commands, check=True)
-        time.sleep(0.04)
-        drag_commands = [
-            CLICK,
-            "-w",
-            "20",
-            *moves,
-            f"du:{destination[0]},{destination[1]}",
+        drag_commands = down_commands + moves + [
+            f"du:{destination[0]},{destination[1]}"
         ]
         if force_curve_reshape:
             drag_commands.extend(["w:10", "ku:cmd"])
@@ -893,7 +887,7 @@ class NativeEditSmoke:
             "Envelope downstream output",
         )
 
-    def trimesh_sequence(self):
+    def trimesh_sequence(self, stop_after_versioning_check=False):
         initial_audio = self.audio_samples()
         state = self.open_editor("waveMesh", trimesh=True)
         panel = self.target("expanded:waveMesh.panel2D")
@@ -982,6 +976,39 @@ class NativeEditSmoke:
             collision_state["trimesh"],
             moved_state["trimesh"],
         )
+
+        graph_after_mesh_edit = self.graph_state()
+        voice_bounds = self.node_bounds(graph_after_mesh_edit, "voice")
+        self.command({
+            "command": "moveNode",
+            "nodeId": "voice",
+            "x": voice_bounds["x"] + 24,
+            "y": voice_bounds["y"],
+        })
+        moved_voice = self.graph_state()
+        assert self.node_bounds(moved_voice, "voice")["x"] == voice_bounds["x"] + 24
+
+        self.key_chord("z")
+        restored_voice = self.graph_state_until(
+            lambda graph_state: (
+                self.node_bounds(graph_state, "voice")["x"] == voice_bounds["x"]
+            )
+        )
+        edge_count = restored_voice["edgeCount"]
+        self.command({"command": "deleteEdge", "edgeIndex": 0})
+        assert self.graph_state()["edgeCount"] == edge_count - 1
+
+        self.key_chord("z")
+        restored_edge = self.graph_state_until(
+            lambda graph_state: graph_state["edgeCount"] == edge_count
+        )
+        assert restored_edge["edgeCount"] == edge_count
+        if stop_after_versioning_check:
+            return
+
+        self.open_editor("waveMesh", trimesh=True)
+        panel = self.target("expanded:waveMesh.panel2D")
+
         topology_before_parameter_edit = self.trimesh_model(moved_state)
         self.capture("trimesh-05-before-parameter", self.target("canvas"))
 
@@ -1072,6 +1099,43 @@ class NativeEditSmoke:
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
+
+    def spectral_trimesh_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(
+                REPO, "cycle-v2", "content", "presets", "stengah.cyclegraph"
+            ),
+        })
+        state = self.open_editor("magnitudeLayer1", trimesh=True)
+        panel = self.target("expanded:magnitudeLayer1.panel2D")
+        intercepts = sorted(
+            state["trimesh"]["panelIntercepts"],
+            key=lambda intercept: intercept["x"],
+        )
+        source_intercept = intercepts[len(intercepts) // 2]
+        source = self.point(
+            panel,
+            source_intercept["x"],
+            1.0 - source_intercept["y"],
+        )
+        destination = self.point(
+            panel,
+            min(0.95, source_intercept["x"] + 0.025),
+            1.0 - min(0.9, source_intercept["y"] + 0.06),
+        )
+        topology = self.trimesh_model(state)
+
+        self.drag(source, destination)
+
+        moved = self.inspect("magnitudeLayer1")
+        assert self.trimesh_model(moved) != topology, (
+            "Spectral Trimesh vertex did not move",
+            source,
+            destination,
+            state["trimesh"],
+            moved["trimesh"],
+        )
 
     def causal_trimesh_sequence(self):
         self.command({
@@ -1186,6 +1250,8 @@ class NativeEditSmoke:
                 "waveshaper": self.effect2d_sequence,
                 "envelope": self.envelope_sequence,
                 "trimesh": self.trimesh_sequence,
+                "trimesh-versioning": lambda: self.trimesh_sequence(True),
+                "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
@@ -1210,6 +1276,8 @@ if __name__ == "__main__":
         "waveshaper",
         "envelope",
         "trimesh",
+        "trimesh-versioning",
+        "spectral-trimesh",
         "causal-trimesh",
         "hover-cursor",
     }

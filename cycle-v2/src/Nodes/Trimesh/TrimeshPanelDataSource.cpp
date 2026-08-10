@@ -8,19 +8,28 @@ void TrimeshPanelDataSource::rebuild(
         TrimeshNodeModel& model,
         int rows,
         int columns,
-        PortDomain domain) {
-    rebuild(model, rows, columns, TrimeshRenderProfile::fromDomain(domain));
+        PortDomain domain,
+        int midiNote) {
+    rebuild(
+            model,
+            rows,
+            columns,
+            TrimeshRenderProfile::fromDomain(domain),
+            midiNote);
 }
 
 void TrimeshPanelDataSource::rebuild(
         TrimeshNodeModel& model,
         int rows,
         int columns,
-        const TrimeshRenderProfile& renderProfile) {
+        const TrimeshRenderProfile& renderProfile,
+        int midiNote) {
     const ScopedLock lock(gridLock);
 
-    renderData = model.renderGrid(rows, columns, renderProfile);
-    storage = renderData.surface;
+    renderData = model.renderGrid(rows, columns, renderProfile, midiNote);
+    storage = renderData.linearFrequencySurface.empty()
+            ? renderData.surface
+            : renderData.linearFrequencySurface;
     panelColumns.clear();
     panelColumns.reserve((size_t) renderData.columns);
 
@@ -38,7 +47,7 @@ void TrimeshPanelDataSource::rebuild(
                 storage.data() + offset,
                 renderData.rows,
                 x,
-                0);
+                (char) midiNote);
     }
 }
 

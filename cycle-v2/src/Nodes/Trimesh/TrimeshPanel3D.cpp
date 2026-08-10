@@ -33,6 +33,8 @@ void TrimeshPanel3D::setRenderProfile(TrimeshRenderProfile profile) {
     }
 
     renderProfile = profile;
+    haveLogarithmicY = profile.getDomain() == PortDomain::SpectralMagnitudeSignal
+            || profile.getDomain() == PortDomain::SpectralPhaseSignal;
     applyGradientForProfile();
     dirtyState.mark(PanelDirtyState::Flag::SurfaceCache);
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);

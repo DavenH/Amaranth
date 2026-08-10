@@ -70,6 +70,7 @@ bool TrimeshInteractor2D::isCurrentVertexHit(Point<int> mousePosition) {
 bool TrimeshInteractor2D::doCreateVertex() {
     const bool created = Interactor2D::doCreateVertex();
     if (created && meshEditedCallback != nullptr) {
+        meshEditGestureActive = true;
         meshEditedCallback({ false, false });
     }
     return created;
@@ -79,6 +80,7 @@ void TrimeshInteractor2D::mouseDrag(const MouseEvent& event) {
     Interactor2D::mouseDrag(event);
 
     if (flag(DidMeshChange) && meshEditedCallback != nullptr) {
+        meshEditGestureActive = true;
         meshEditedCallback({ false, false });
     }
 }
@@ -115,9 +117,11 @@ void TrimeshInteractor2D::mouseUp(const MouseEvent& event) {
     flag(LoweredRes) = false;
     flag(SimpleRepaint) = false;
 
-    if ((meshChanged || createdVertex) && meshEditedCallback != nullptr) {
+    if ((meshChanged || createdVertex || meshEditGestureActive)
+            && meshEditedCallback != nullptr) {
         meshEditedCallback({ false, true });
     }
+    meshEditGestureActive = false;
 }
 
 void TrimeshInteractor2D::deleteSelected() {

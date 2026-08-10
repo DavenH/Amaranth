@@ -68,6 +68,11 @@ void TrimeshWidget::setRenderProfile(TrimeshRenderProfile profile) {
     bridge.setRenderProfile(profile);
 }
 
+void TrimeshWidget::setPreviewMidiNote(int midiNote) {
+    previewMidiNote = midiNote;
+    bridge.setPreviewMidiNote(midiNote);
+}
+
 void TrimeshWidget::setGuideAttachmentLabels(std::array<String, 6> labels) {
     guideAttachmentLabels = std::move(labels);
 }
@@ -103,7 +108,8 @@ void TrimeshWidget::paintCompact(
             || compactHeatmap.columns != renderData.columns
             || compactHeatmap.revision != compactRevision
             || compactHeatmap.domain != profile.getDomain()
-            || compactHeatmap.scalePolicy != profile.getScalePolicy()) {
+            || compactHeatmap.scalePolicy != profile.getScalePolicy()
+            || compactHeatmap.midiNote != previewMidiNote) {
         compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
         compactHeatmap.valueCount = renderData.surface.size();
         compactHeatmap.rows = renderData.rows;
@@ -111,6 +117,7 @@ void TrimeshWidget::paintCompact(
         compactHeatmap.revision = compactRevision;
         compactHeatmap.domain = profile.getDomain();
         compactHeatmap.scalePolicy = profile.getScalePolicy();
+        compactHeatmap.midiNote = previewMidiNote;
     }
 
     if (compactHeatmap.image.isValid()) {

@@ -443,7 +443,8 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodePreviewRenderer& previewRendererToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse) {
+    ,   signalProbeRail(previewRendererToUse)
+    ,   signalProbeDetailView(previewRendererToUse) {
 }
 
 void NodeCanvasPresentation::paint(
@@ -467,6 +468,10 @@ void NodeCanvasPresentation::paint(
             frame.previewResult,
             frame.workspaceBounds,
             frame.probeRailState);
+    signalProbeDetailView.paint(
+            graphics,
+            frame.canvasBounds,
+            frame.probeDetailState);
 }
 
 void NodeCanvasPresentation::paintContent(

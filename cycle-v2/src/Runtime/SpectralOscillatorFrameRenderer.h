@@ -26,6 +26,7 @@ public:
     void reset();
     bool renderFrame(
             int frameSize,
+            int midiNote,
             Buffer<float> left,
             Buffer<float> right);
     size_t frameRenderCount() const { return renderCount; }

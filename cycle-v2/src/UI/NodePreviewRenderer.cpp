@@ -91,6 +91,8 @@ uint64_t previewContentHash(const NodePreviewResult& preview) {
 String runtimeSignature(const NodePreviewResult& preview) {
     return String((int) preview.role)
             + ":" + String((int) preview.domain)
+            + ":" + String((int) preview.frequencySampling)
+            + ":" + String(preview.frequencyMidiNote)
             + ":" + String((int) preview.gridColumns)
             + "x" + String((int) preview.gridRows)
             + ":" + String((int) preview.primary.size())
@@ -189,25 +191,39 @@ void drawMeters(
 
 std::vector<float> mappedSurface(
         const NodePreviewResult& preview,
-        const std::vector<float>& values) {
+        const std::vector<float>& values,
+        const TrimeshRenderProfile& profile) {
     std::vector<float> surface = values;
     if (surface.empty()) {
         return surface;
     }
 
+    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
-    if (spectral) {
-        return TrimeshRenderProfile::fromDomain(preview.domain).mapGridToDisplay(
+    if (meshSurface && spectral) {
+        return profile.mapGridToDisplay(
                 surface,
                 preview.gridColumns,
-                preview.gridRows);
+                preview.gridRows,
+                preview.frequencyMidiNote);
+    }
+    if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        return profile.mapSpectrum2DGridToDisplay(
+                surface,
+                preview.gridColumns,
+                preview.gridRows,
+                preview.frequencyMidiNote);
+    } else if (preview.domain == PortDomain::SpectralPhaseSignal) {
+        return profile.mapSpectrum2DGridToDisplay(
+                surface,
+                preview.gridColumns,
+                preview.gridRows,
+                preview.frequencyMidiNote);
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
-    const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     if (meshSurface) {
-        const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(preview.domain);
         profile.mapValuesToDisplay(buffer);
     } else if (preview.role == PreviewModuleRole::SignalSpy
             && preview.domain == PortDomain::TimeSignal) {
@@ -244,25 +260,38 @@ std::vector<float> mappedSurface(
     return surface;
 }
 
-bool drawHeatmapImage(Graphics& graphics, Rectangle<float> area, const Image& image) {
+bool drawHeatmapImage(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const Image& image,
+        bool highQuality = false) {
     if (!image.isValid()) {
         return false;
     }
 
     const Rectangle<float> content = area.reduced(
             jmin(area.getWidth(), area.getHeight()) * 0.024f);
-    graphics.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    graphics.setImageResamplingQuality(
+            highQuality
+                    ? Graphics::highResamplingQuality
+                    : Graphics::mediumResamplingQuality);
     graphics.setColour(EffectPlotPalette::insetBackground);
     graphics.fillRect(content);
     graphics.drawImage(image, content);
     return true;
 }
 
-bool drawHeatmap(Graphics& graphics, Rectangle<float> area, const NodePreviewResult& preview) {
+bool drawHeatmap(
+        Graphics& graphics,
+        Rectangle<float> area,
+        const NodePreviewResult& preview,
+        const TrimeshRenderProfile& profile,
+        bool highQuality = false) {
     return drawHeatmapImage(
             graphics,
             area,
-            NodePreviewRenderer::createRuntimeHeatmapImage(preview));
+            NodePreviewRenderer::createRuntimeHeatmapImage(preview, profile),
+            highQuality);
 }
 
 void drawEffect2DFallback(
@@ -546,16 +575,26 @@ bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         bool desaturated) {
-    const auto createImage = [&preview](const std::vector<float>& values) {
+    return createRuntimeHeatmapImage(
+            preview,
+            TrimeshRenderProfile::fromDomain(preview.domain),
+            desaturated);
+}
+
+Image NodePreviewRenderer::createRuntimeHeatmapImage(
+        const NodePreviewResult& preview,
+        const TrimeshRenderProfile& profile,
+        bool desaturated) {
+    const auto createImage = [&preview, &profile](const std::vector<float>& values) {
         TrimeshRenderData data;
-        data.surface = mappedSurface(preview, values);
+        data.surface = mappedSurface(preview, values, profile);
         data.domain = preview.domain;
         data.columns = (int) preview.gridColumns;
         data.rows = (int) preview.gridRows;
         data.cyclic = preview.domain == PortDomain::TimeSignal;
         return TrimeshSurfaceRenderer::createHeatmapImage(
                 data,
-                TrimeshRenderProfile::fromDomain(preview.domain));
+                profile);
     };
 
     Image image = createImage(preview.primary);
@@ -717,7 +756,12 @@ bool NodePreviewRenderer::paintRuntimeResult(
 
     if (result.role == PreviewModuleRole::SignalSpy
             || result.role == PreviewModuleRole::MeshSurface) {
-        return drawHeatmap(graphics, request.area, result);
+        return drawHeatmap(
+                graphics,
+                request.area,
+                result,
+                request.profile,
+                request.highQuality);
     }
 
     if (result.role == PreviewModuleRole::ReverbSpectrogram) {
@@ -768,17 +812,23 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
     const bool desaturated = request.runtimeResult->role == PreviewModuleRole::ReverbSpectrogram
             && !NodeParameterMap(request.node).boolValue("enabled", true);
     const String signature = runtimeSignature(*request.runtimeResult)
-            + "|desaturated:" + String(desaturated ? 1 : 0);
+            + "|desaturated:" + String(desaturated ? 1 : 0)
+            + "|scale:" + String((int) request.profile.getScalePolicy());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = createRuntimeHeatmapImage(
                 *request.runtimeResult,
+                request.profile,
                 desaturated);
         cached.runtimeHeatmapSignature = signature;
     }
 
-    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
+    return drawHeatmapImage(
+            graphics,
+            request.area,
+            cached.runtimeHeatmap,
+            request.highQuality);
 }
 
 void NodePreviewRenderer::paintUncached(
@@ -804,14 +854,21 @@ bool NodePreviewRenderer::paintCachedHeatmap(
             || cached.width != width
             || cached.height != height
             || cached.domain != result.domain
+            || cached.scalePolicy != request.profile.getScalePolicy()
             || cached.signature != signature) {
         cached.image = Image(Image::ARGB, width, height, true);
         cached.width = width;
         cached.height = height;
         cached.domain = result.domain;
+        cached.scalePolicy = request.profile.getScalePolicy();
         cached.signature = signature;
         Graphics sprite(cached.image);
-        if (!drawHeatmap(sprite, { 0.f, 0.f, (float) width, (float) height }, result)) {
+        if (!drawHeatmap(
+                sprite,
+                { 0.f, 0.f, (float) width, (float) height },
+                result,
+                request.profile,
+                request.highQuality)) {
             cached.image = {};
             return false;
         }

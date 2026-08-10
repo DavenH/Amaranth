@@ -145,6 +145,7 @@ private:
     String draggingSpectralPanNodeId;
     float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
+    SignalProbeDetailState probeDetailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
     bool resizingProbeRail {};
@@ -170,6 +171,8 @@ private:
     void refreshCompiledState();
     void refreshCompiledStateAsync();
     void setPreviewVoiceLength(double seconds);
+    void openProbeDetail(const String& probeId);
+    void refreshProbeDetail();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();

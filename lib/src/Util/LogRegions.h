@@ -1,14 +1,18 @@
 #pragma once
+
+#include <JuceHeader.h>
+
 #include <vector>
-#include "JuceHeader.h"
+
+#include "LogRegionMapping.h"
+#include "NumberUtils.h"
 #include "../Array/Buffer.h"
 #include "../Array/ScopedAlloc.h"
-#include "../App/SingletonAccessor.h"
 #include "../App/AppConstants.h"
+#include "../App/SingletonAccessor.h"
 #include "../App/SingletonRepo.h"
 #include "../Definitions.h"
 #include "../Obj/Ref.h"
-#include "../Util/NumberUtils.h"
 
 using std::vector;
 
@@ -21,18 +25,19 @@ public:
     ~LogRegions() override = default;
 
     void init() override {
-        const double samplerate = 44100.0;
-
-        float freqTension = getRealConstant(LogFreqTensionScale);
+        const double samplerate = LogRegionMapping::defaultSampleRate;
+        const float freqTension = getRealConstant(LogFreqTensionScale);
         midiRange = Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote);
 
         vector<int> sizes;
         int totalSize = 0;
 
         for (int i = 0; i < midiRange.getLength() + 1; ++i) {
-            int key = midiRange.getStart() + i - 12;
-
-            int size = ceilf(0.5f * samplerate / MidiMessage::getMidiNoteInHertz(key));
+            const int midiNote = midiRange.getStart() + i;
+            const int size = LogRegionMapping(
+                    midiNote,
+                    samplerate,
+                    freqTension).regionSize();
             sizes.push_back(size);
             totalSize += size;
         }
@@ -43,14 +48,10 @@ public:
         for (int i = 0; i < frequencyRamps.size(); ++i) {
             Buffer<float>& ramp = frequencyRamps[i];
             ramp = memory.place(sizes[i]);
-
-            int size         = sizes[i];
-            float tension    = size * freqTension;
-            float leftOffset = (powf(tension + 1, 0.05f) - 1) / float(tension);
-            float ix         = (1.f - leftOffset) / float(size - 1.f);
-            float iln        = 1 / logf(tension + 1.f);
-
-            ramp.ramp(leftOffset, ix).mul(tension).add(1.f).ln().mul(iln);
+            LogRegionMapping(
+                    midiRange.getStart() + i,
+                    samplerate,
+                    freqTension).fillDisplayUnits(ramp);
         }
     }
 

@@ -62,6 +62,15 @@ public:
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
 
     GraphAudioResult captureAudio(const NodeGraph& graph, size_t frameCount) const;
+    static int auditionMidiNoteForProbe(
+            const NodeGraph& graph,
+            const String& probeId,
+            int fallbackMidiNote = 48);
+    std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
+            const NodeGraph& graph,
+            const String& probeId,
+            size_t frameCount,
+            int midiNote) const;
 
 private:
     struct AsyncState {

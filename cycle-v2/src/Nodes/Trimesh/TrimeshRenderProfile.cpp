@@ -2,6 +2,7 @@
 
 #include <Binary/Gradients.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 #include <algorithm>
 #include <cmath>
@@ -62,28 +63,26 @@ Color negativeCurveColourFor(bool spectral, bool phase, bool bipolar) {
     return kWaveformGrey;
 }
 
-std::vector<float> logarithmicRowsWithoutDc(
+std::vector<float> logarithmicRowsToDisplay(
         const std::vector<float>& source,
         size_t columns,
-        size_t rows) {
+        size_t rows,
+        int midiNote,
+        bool excludeDc) {
     if (columns == 0 || rows < 2 || source.size() < columns * rows) {
         return source;
     }
 
     std::vector<float> surface(source.size());
     std::vector<float> sourceRows(rows);
-    const float frequencyTension = (float) rows * 0.5f;
-    for (size_t row = 0; row < rows; ++row) {
-        const float unit = (float) row / (float) (rows - 1);
-        const float sourceUnit = Arithmetic::invLogMapping(
-                frequencyTension,
-                unit,
-                true);
-        sourceRows[row] = jlimit(
-                1.f,
-                (float) (rows - 1),
-                1.f + sourceUnit * (float) (rows - 2));
-    }
+    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
+            sourceRows.data(),
+            (int) sourceRows.size()));
+    const float firstSourceRow = excludeDc ? 1.f : 0.f;
+    Buffer<float>(sourceRows.data(), (int) sourceRows.size())
+            .mul((float) (rows - 1) - firstSourceRow)
+            .add(firstSourceRow)
+            .clip(firstSourceRow, (float) (rows - 1));
 
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
@@ -125,13 +124,10 @@ void unwrapPhaseColumns(std::vector<float>& surface, size_t columns, size_t rows
     }
 }
 
-void mapMagnitudeToDisplay(Buffer<float> values) {
-    values.abs()
-            .mul(16.f)
-            .add(1.f)
-            .ln()
-            .mul(1.f / 2.833213344f)
-            .clip(0.f, 1.f);
+void mapMagnitudeToDisplay(Buffer<float> values, float tension) {
+    values.abs();
+    Arithmetic::applyLogMapping(values, tension);
+    values.clip(0.f, 1.f);
 }
 
 void mapPhaseToDisplay(Buffer<float> values) {
@@ -150,6 +146,46 @@ void mapPhaseToDisplay(Buffer<float> values) {
 
     const float exponent = std::ceil(std::log2(realMaximum) + 0.5f);
     values.mul(std::pow(2.f, -exponent)).add(0.5f).clip(0.f, 1.f);
+}
+
+std::vector<float> mapSpectralValuesToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows,
+        PortDomain domain,
+        float magnitudeTension) {
+    std::vector<float> surface = source;
+    if (domain == PortDomain::SpectralPhaseSignal) {
+        unwrapPhaseColumns(surface, columns, rows);
+    }
+
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        mapMagnitudeToDisplay(buffer, magnitudeTension);
+    } else {
+        mapPhaseToDisplay(buffer);
+    }
+    return surface;
+}
+
+std::vector<float> mapSpectralGridToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows,
+        PortDomain domain,
+        float magnitudeTension,
+        int midiNote) {
+    return logarithmicRowsToDisplay(
+            mapSpectralValuesToDisplay(
+                    source,
+                    columns,
+                    rows,
+                    domain,
+                    magnitudeTension),
+            columns,
+            rows,
+            midiNote,
+            true);
 }
 
 }
@@ -171,32 +207,69 @@ TrimeshRenderProfile TrimeshRenderProfile::fromSemantic(NodeRenderSemantic seman
 std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
         const std::vector<float>& source,
         size_t columns,
-        size_t rows) const {
+        size_t rows,
+        int midiNote) const {
     std::vector<float> surface = source;
     if (surface.empty()) {
         return surface;
     }
 
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        unwrapPhaseColumns(surface, columns, rows);
-    }
     if (domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal) {
-        surface = logarithmicRowsWithoutDc(surface, columns, rows);
+        surface = mapTrimeshValuesToDisplay(surface);
+        return logarithmicRowsToDisplay(
+                surface,
+                columns,
+                rows,
+                midiNote,
+                false);
     }
 
     Buffer<float> buffer(surface.data(), (int) surface.size());
-    if (domain == PortDomain::SpectralMagnitudeSignal) {
-        mapMagnitudeToDisplay(buffer);
-        return surface;
-    }
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        mapPhaseToDisplay(buffer);
-        return surface;
-    }
-
     mapValuesToDisplay(buffer);
     return surface;
+}
+
+std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
+        const std::vector<float>& source,
+        size_t columns,
+        size_t rows,
+        int midiNote) const {
+    if (source.empty()) {
+        return source;
+    }
+    if (domain != PortDomain::SpectralMagnitudeSignal
+            && domain != PortDomain::SpectralPhaseSignal) {
+        return mapGridToDisplay(source, columns, rows, midiNote);
+    }
+    return mapSpectralGridToDisplay(
+            source,
+            columns,
+            rows,
+            domain,
+            500.f,
+            midiNote);
+}
+
+std::vector<float> TrimeshRenderProfile::mapTrimeshValuesToDisplay(
+        const std::vector<float>& source) const {
+    if (source.empty()) {
+        return source;
+    }
+    std::vector<float> surface = source;
+    Buffer<float> values(surface.data(), (int) surface.size());
+    if (domain == PortDomain::SpectralMagnitudeSignal) {
+        values.clip(0.f, 1.f);
+    } else if (domain == PortDomain::SpectralPhaseSignal) {
+        values.mul(0.5f).add(0.5f).clip(0.f, 1.f);
+    } else {
+        mapValuesToDisplay(values);
+    }
+    return surface;
+}
+
+float TrimeshRenderProfile::displayFrequencyUnit(float sourceUnit, int midiNote) const {
+    return LogRegionMapping(midiNote).displayUnitForSourceUnit(sourceUnit);
 }
 
 void TrimeshRenderProfile::mapValuesToDisplay(Buffer<float> values) const {

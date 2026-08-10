@@ -36,6 +36,9 @@ struct PreviewProcessContext {
     size_t gridColumns {};
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };
+    TraversalGridFrequencySampling frequencySampling {
+            TraversalGridFrequencySampling::LinearBins };
+    int frequencyMidiNote { 48 };
     const PublishedNodeConfiguration* configuration {};
     const SignalPayload* capturedOutput {};
     bool reusedCapturedTraversal {};

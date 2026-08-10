@@ -15,18 +15,19 @@ Current status: open; locate the first non-finite producer in the default graph
 after the live Envelope mesh edit and retain the audio assertion as a failing
 gate rather than accepting or filtering the samples.
 
-## Open: Stengah magnitude pan drift breaks spectral pan invariants
+## Open: Stengah phase-pan swap parity no longer matches the bundled preset
 
 Context:
 
-- The Cycle V2 suite run on 2026-08-04 failed the Stengah spectral pan-swap
-  invariant and its serializer expectation.
-- `magnitudeLayer1Process.pan` is currently `0.75833` in the preset while the
-  tests and phase-channel swap invariant require the authored neutral value
-  `0.5`. The unchanged asymmetric magnitude channel prevents left/right phase
-  swaps from producing swapped output frames.
-- Repro: `CycleV2_tests "Stengah phase layer pans survive spectral
-  materialization"` and `TestGraphSerializer.cpp:677`.
+- The full `CycleV2_tests` run on 2026-08-04 failed
+  `TestChainedOscillatorRegionRuntime.cpp:276` in `Stengah phase layer pans
+  survive spectral materialization`.
+- Swapping the two authored phase-layer pans produced an L2 channel mismatch of
+  `1.810257196` rather than the required value below `1.0e-5`. After restoring
+  pitch-log Trimesh sampling on 2026-08-09, the mismatch remains open but is
+  reduced to `0.612827003`.
+- The failure reproduces in isolation and is outside the spectral traversal
+  column normalization changed for probe previews.
 
-Current status: open; resolve whether the preset pan edit is intentional, then
-update the preset or redesign the invariant around isolated phase material.
+Current status: open; reconcile the bundled Stengah phase-layer state and
+spectral materialization parity before restoring this full-suite gate.

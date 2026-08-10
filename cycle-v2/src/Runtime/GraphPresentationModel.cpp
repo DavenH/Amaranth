@@ -1,11 +1,39 @@
 #include "GraphPresentationModel.h"
 #include "FingerprintBuilder.h"
+#include "PreviewPitchResolver.h"
 
 #include <algorithm>
 
 namespace CycleV2 {
 
 namespace {
+
+GraphPreviewResult captureProbePreviews(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        size_t frameCount,
+        int midiNote) {
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = 44100.0;
+    GraphAudioExecutor captureExecutor;
+    captureExecutor.prepareExecution(plan, spec);
+
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = jlimit(0, 127, midiNote);
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const GraphAudioResult audio = captureExecutor.process(
+            graph,
+            plan,
+            frameCount,
+            {},
+            voice);
+    return GraphPreviewExecutor().render(
+            plan,
+            audio,
+            graph.getSignalProbes(),
+            frameCount);
+}
 
 }
 
@@ -17,6 +45,13 @@ GraphPresentationModel::~GraphPresentationModel() {
     asyncState->alive.store(false);
     asyncState->generation.fetch_add(1);
     asyncWorker.shutdown();
+}
+
+int GraphPresentationModel::auditionMidiNoteForProbe(
+        const NodeGraph& graph,
+        const String& probeId,
+        int fallbackMidiNote) {
+    return PreviewPitchResolver::forProbe(graph, probeId, fallbackMidiNote);
 }
 
 bool GraphPresentationModel::refresh(
@@ -225,11 +260,16 @@ bool GraphPresentationModel::renderPreviewProducts(
             ChannelLayout::LinkedStereo
     };
     previewAudioExecutor.prepareExecution(snapshot.compileResult.plan, spec);
+    AudioVoiceContext previewVoice;
+    previewVoice.controls.noteNumber = PreviewPitchResolver::forGraph(graph);
+    previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     if (renderFullGraph) {
         const GraphAudioResult audio = previewAudioExecutor.process(
                 graph,
                 snapshot.compileResult.plan,
-                previewFrameCount);
+                previewFrameCount,
+                {},
+                previewVoice);
         snapshot.previewResult = GraphPreviewExecutor().render(
                 snapshot.compileResult.plan,
                 audio,
@@ -255,6 +295,7 @@ bool GraphPresentationModel::renderPreviewProducts(
             snapshot.compileResult.plan,
             previewFrameCount,
             dirtyNodes,
+            previewVoice,
             cancellationCheck);
     if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
         return false;
@@ -416,6 +457,34 @@ GraphAudioResult GraphPresentationModel::captureAudio(
     GraphAudioExecutor captureExecutor;
     captureExecutor.prepareExecution(current.compileResult.plan, spec);
     return captureExecutor.process(graph, current.compileResult.plan, frameCount);
+}
+
+std::optional<GraphPreviewResult::SignalProbePreview>
+GraphPresentationModel::captureProbePreview(
+        const NodeGraph& graph,
+        const String& probeId,
+        size_t frameCount,
+        int midiNote) const {
+    if (!current.compileResult.succeeded() || frameCount == 0) {
+        return std::nullopt;
+    }
+
+    const GraphPreviewResult previews = captureProbePreviews(
+            graph,
+            current.compileResult.plan,
+            frameCount,
+            midiNote);
+    const auto found = std::find_if(
+            previews.probes.begin(),
+            previews.probes.end(),
+            [&](const auto& preview) {
+                return preview.probeId == probeId;
+            });
+    if (found == previews.probes.end() || !found->connected) {
+        return std::nullopt;
+    }
+
+    return *found;
 }
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {

@@ -2,6 +2,8 @@
 
 #include "NodeEditorHost.h"
 
+#include "../Runtime/PreviewPitchResolver.h"
+
 namespace CycleV2 {
 
 NodePreviewResources::NodePreviewResources(NodeEditorCommandService& commands) :
@@ -25,6 +27,9 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     TrimeshWidget& widget = trimeshWidget(node.id);
+    widget.setPreviewMidiNote(graph != nullptr
+            ? PreviewPitchResolver::forNode(*graph, node.id)
+            : PreviewPitchResolver::defaultMidiNote);
     widget.syncFromNode(node);
     if (graph != nullptr) {
         widget.syncGuideContext(*graph, node);
