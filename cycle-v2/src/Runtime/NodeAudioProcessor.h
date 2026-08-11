@@ -17,6 +17,9 @@ public:
     virtual void adoptConfiguration(const PublishedNodeConfiguration& configuration);
     virtual bool serviceNonRealtimePreparation();
     virtual bool isVoiceActive() const;
+    virtual const SignalTraversalGrid* probeTraversalGrid(
+            const AudioProcessContext& context,
+            size_t outputIndex) const;
     virtual void process(AudioProcessContext& context) = 0;
 };
 

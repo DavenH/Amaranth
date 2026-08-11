@@ -20,6 +20,7 @@ class GuideCurveSnapshotProvider;
 
 struct TrimeshRenderData {
     std::vector<float> surface;
+    std::vector<float> linearFrequencySurface;
     std::vector<float> slice;
     PortDomain domain { PortDomain::TimeSignal };
     int rows {};
@@ -97,11 +98,16 @@ public:
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);
 
-    TrimeshRenderData renderGrid(int rows, int columns, PortDomain domain = PortDomain::TimeSignal);
     TrimeshRenderData renderGrid(
             int rows,
             int columns,
-            const TrimeshRenderProfile& renderProfile);
+            PortDomain domain = PortDomain::TimeSignal,
+            int midiNote = 48);
+    TrimeshRenderData renderGrid(
+            int rows,
+            int columns,
+            const TrimeshRenderProfile& renderProfile,
+            int midiNote = 48);
     std::vector<TrimeshVertexParameter> getVertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> getSelectedVertexParameters();
     std::vector<TrimeshVertexMarker> getVertexMarkers();

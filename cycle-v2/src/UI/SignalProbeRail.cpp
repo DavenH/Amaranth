@@ -90,6 +90,35 @@ float SignalProbeRail::maximumHorizontalOffset(
     return jmax(0.f, contentWidth - workspace.getWidth());
 }
 
+int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probeId) {
+    const auto probes = orderedProbes(graph);
+    const auto found = std::find_if(probes.begin(), probes.end(), [&](const auto* probe) {
+        return probe->id == probeId;
+    });
+    return found == probes.end()
+            ? 0
+            : (int) std::distance(probes.begin(), found) + 1;
+}
+
+NodeRenderSemantic SignalProbeRail::renderSemanticForProbe(
+        const NodeGraph& graph,
+        const String& probeId) {
+    const auto found = std::find_if(
+            graph.getSignalProbes().begin(),
+            graph.getSignalProbes().end(),
+            [&](const auto& probe) {
+                return probe.id == probeId;
+            });
+    if (found == graph.getSignalProbes().end()) {
+        return {};
+    }
+
+    return GraphRenderSemanticResolver().semanticForNodeOutput(
+            graph,
+            found->sourceNodeId,
+            found->sourcePortId);
+}
+
 std::vector<const SignalProbe*> SignalProbeRail::orderedProbes(const NodeGraph& graph) {
     std::vector<const SignalProbe*> probes;
     probes.reserve(graph.getSignalProbes().size());
@@ -375,7 +404,7 @@ void SignalProbeRail::paintRail(
         graphics.setColour(kText);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText(
-                String(index + 1) + "  " + probe.label,
+                String(index + 1),
                 header.withTrimmedLeft(22.f).withTrimmedRight(28.f),
                 Justification::centredLeft);
         const Rectangle<float> close = closeBounds(tile).reduced(5.f);
@@ -390,26 +419,33 @@ void SignalProbeRail::paintRail(
             continue;
         }
 
-        Node displayNode;
-        displayNode.id = "probe-preview-" + probe.id;
-        displayNode.kind = NodeKind::GenericProcessor;
-        const PreviewModuleRole displayRole = preview->sourceRole == PreviewModuleRole::MeshSurface
+        const PreviewModuleRole displayRole = preview->sourceRole
+                == PreviewModuleRole::MeshSurface
                 ? PreviewModuleRole::MeshSurface
                 : PreviewModuleRole::SignalSpy;
-        NodePreviewResult result {
-                displayNode.id,
+        NodePreviewResult compactResult {
+                "probe-preview-" + probe.id,
                 displayRole,
                 preview->values,
                 {},
                 preview->gridColumns,
                 preview->gridRows,
-                preview->domain
+                preview->domain,
+                preview->frequencySampling,
+                preview->frequencyMidiNote
         };
+        Node displayNode;
+        displayNode.id = "probe-preview-" + probe.id;
+        displayNode.kind = NodeKind::GenericProcessor;
+        NodeRenderSemantic semantic = renderSemanticForProbe(graph, probe.id);
+        if (semantic.domain == PortDomain::ControlSignal) {
+            semantic.domain = preview->domain;
+        }
         renderer.paint(graphics, {
                 displayNode,
-                &result,
+                &compactResult,
                 previewBounds,
-                TrimeshRenderProfile::fromDomain(preview->domain),
+                TrimeshRenderProfile::fromSemantic(semantic),
                 1.f,
                 true
         });

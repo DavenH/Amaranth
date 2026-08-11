@@ -32,6 +32,7 @@ public:
 private:
     std::function<void(TrimeshMeshEditEvent)> meshEditedCallback;
     Mesh* mesh {};
+    bool meshEditGestureActive {};
 };
 
 }

@@ -325,7 +325,7 @@ TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the c
   #endif
 }
 
-TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream Trimesh",
+TEST_CASE("Stengah probes preserve normalized grids across spectral pan edits",
         "[cycle-v2][runtime][causal][pan][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
@@ -358,11 +358,11 @@ TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream 
             presentation.previewResult(), "magnitudeLayer1").secondary;
     const auto upstreamSignal = findProbePreview(
             presentation.previewResult(), "upstreamMagnitude").values;
+    const auto downstreamSignal = findProbePreview(
+            presentation.previewResult(), "probe3").values;
+    REQUIRE(downstreamSignal == upstreamSignal);
     const size_t upstreamProcessCount = presentation.previewAudioProcessCount(
             "magnitudeLayer1");
-    std::vector<float> rightPanOutput;
-    std::vector<float> leftPanOutput;
-    std::vector<float> centrePanOutput;
 
     for (const String pan : { "1", "0.5", "0", "0.5" }) {
         REQUIRE(commands.setNodeParameter(
@@ -380,23 +380,11 @@ TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream 
         REQUIRE(findProbePreview(
                 presentation.previewResult(), "upstreamMagnitude").values
                 == upstreamSignal);
+        REQUIRE(findProbePreview(
+                presentation.previewResult(), "probe3").values
+                == downstreamSignal);
         REQUIRE(presentation.previewAudioProcessCount("magnitudeLayer1")
                 == upstreamProcessCount);
-        if (pan == "1") {
-            rightPanOutput = findProbePreview(
-                    presentation.previewResult(), "probe3").values;
-        } else if (pan == "0") {
-            leftPanOutput = findProbePreview(
-                    presentation.previewResult(), "probe3").values;
-            REQUIRE(leftPanOutput != rightPanOutput);
-        } else if (centrePanOutput.empty()) {
-            centrePanOutput = findProbePreview(
-                    presentation.previewResult(), "probe3").values;
-        } else {
-            REQUIRE(findProbePreview(
-                    presentation.previewResult(), "probe3").values
-                    == centrePanOutput);
-        }
     }
 
     const Node* magnitude = document.graph().findNode("magnitudeLayer1");
@@ -416,7 +404,7 @@ TEST_CASE("Stengah invalidation isolates pan edits and reactivates the upstream 
             != upstreamPrimary);
     REQUIRE(findProbePreview(
             presentation.previewResult(), "probe3").values
-            != centrePanOutput);
+            != downstreamSignal);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

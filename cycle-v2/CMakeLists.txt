@@ -122,6 +122,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SourcePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/SpectralOscillatorFrameRenderer.cpp"
@@ -165,6 +166,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorCommandService.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
 )
 

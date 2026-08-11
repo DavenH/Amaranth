@@ -7,6 +7,7 @@
 #include "NodeCanvasViewport.h"
 #include "NodePalette.h"
 #include "NodePreviewRenderer.h"
+#include "SignalProbeDetailView.h"
 #include "SignalProbeRail.h"
 #include "../Graph/GraphCompiler.h"
 #include "../Runtime/GraphPreviewExecutor.h"
@@ -46,6 +47,7 @@ struct NodeCanvasPresentationFrame {
     bool openGLUnderlay { true };
     Rectangle<float> workspaceBounds;
     SignalProbeRailState probeRailState;
+    SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
 };
 
@@ -104,6 +106,7 @@ private:
     NodeCanvasScene& scene;
     NodePreviewRenderer& previewRenderer;
     SignalProbeRail signalProbeRail;
+    SignalProbeDetailView signalProbeDetailView;
 };
 
 }

@@ -2,11 +2,11 @@
 
 ## Status
 
-Implementation in progress as of 2026-07-17. Passive probe storage, preview
-routing, cable gestures, traversal ordering, rail presentation, scrolling, and
-editor-safe hosting are implemented. Tile reordering, renaming, and the larger
-double-click preview remain open and must be completed before this TDD returns
-to an implemented state.
+Implementation in progress as of 2026-08-04. Passive probe storage, preview
+routing, cable gestures, traversal ordering, rail presentation, scrolling,
+editor-safe hosting, and the larger double-click preview are implemented. Tile
+reordering and renaming remain open and must be completed before this TDD
+returns to an implemented state.
 
 Supersedes the canvas-node and node-drop interaction described in
 `spy-node.md`. The signal-traversal contract remains authoritative.
@@ -95,7 +95,9 @@ Expanded rail tiles:
 
 - form one horizontally scrollable, reorderable row;
 - use the existing traversal-grid renderer;
-- show probe number, label, domain, disconnected state, and delete control;
+- show only the probe ordinal beside the preview, plus disconnected state and
+  delete control; the persisted label remains available for future naming UX
+  but is not repeated in the compact tile;
 - open a larger preview on double-click;
 - publish selection back to the cable marker.
 
@@ -104,6 +106,57 @@ and collapsed state do not.
 
 Collapsed state is one handle showing probe count and disconnected status.
 Tiles and their visual rendering stop while collapsed; cable markers remain.
+
+The larger preview is calculated lazily when a tile is opened. It reuses
+`GraphAudioExecutor`, the compiled probe address, and `NodePreviewRenderer`;
+it does not introduce another traversal or rasterization path. Its diagnostic
+frame size is the next power of two at or above one period of the audition note
+at the preview sample rate. Time-domain grids therefore have that many rows;
+Trimesh sources retain their authoritative traversal-column sampling and
+spectral grids retain the corresponding unique FFT bins. The immutable preview
+voice uses the persisted key value from the upstream Voice Context's attached
+Modulation Triple. The key value is mapped through Cycle's MIDI note range; if
+there is no attached Modulation Triple, MIDI note 48 (C3) is the default.
+
+The authoritative period calculation is
+`CycleDsp::OscillatorLaneCore::angleDelta` followed by
+`Arithmetic::getNextPow2`, matching spectral oscillator frame preparation.
+The presentation boundary translates only the selected probe, detail bounds,
+and close interaction. Closing the view deletes its lazy payload; no graph or
+audio state is retained by the overlay.
+
+While the detail is open, its rail tile continues to render the ordinary compact
+payload. The lazy high-resolution payload belongs only to the detail overlay;
+capturing it must not mutate or replace the compact preview. Both payloads use
+the same presentation mapping, so increased resolution preserves the represented
+structure.
+
+Spectral probes preserve the captured grid values. A spectral Trimesh evaluates
+its authored mesh at the pitch-dependent `LogRegions` frequency coordinates used
+by Cycle v1. The resulting samples remain indexed as linear spectral bins and
+travel through graph traversal unchanged. Trimesh panels place those samples at
+the same log coordinates; compact and expanded probes inverse-sample the same
+coordinates onto their pixel grids. Sampling and presentation therefore use one
+mapping in opposite directions instead of either side approximating the other.
+
+Trimesh magnitude values retain their native unipolar scale, including authored
+multiplicative content in `[0.5, 1]`; phase receives only the ordinary bipolar to
+display-range conversion. Spectrum2D amplitude/phase shaping is reserved for
+FFT-style probe semantics and must not move a Trimesh surface away from its mesh
+lines.
+
+Raw FFT traversal rows use the same frequency-coordinate mapping. Magnitude
+presentation additionally applies Cycle v1's `Spectrum2D` amplitude mapping
+with `AmpTensionScale = 500` exactly once; Trimesh magnitude presentation keeps
+its render-semantic value scale. Frequency provenance must never be inferred
+from preview role.
+Spectral Layer exposes its normalized input grid through the probe observation
+contract while its audio blocks and execution traversal grid receive the
+magnitude or phase transfer. Presentation then applies only the source-output
+render scale. In particular, a multiplicative magnitude mesh maps its raw
+unipolar grid into the display range `[0.5, 1]`; the attached probe performs that
+mapping once at paint time and therefore matches both the mesh surface and its
+grid lines.
 
 ## Expanded Editor Hosting
 
@@ -122,9 +175,15 @@ editor.
   ordering, serialization, undo/redo, and preset loading.
 - Compiler/audio tests prove equal execution plans, buffers, latency, and
   samples with and without probes.
-- Preview tests prove exact addressed traversal data and immediate refresh.
+- Preview tests prove exact addressed diagnostic traversal data and immediate
+  refresh.
 - Presentation tests cover rail geometry, collapse, marker identity,
-  interaction-only tethers, and editor-safe bounds.
+  interaction-only tethers, editor-safe bounds, detail geometry, and lazy
+  note-period resolution.
+- Spectral integration tests use localized value regions at C3 and C5 to prove
+  that Trimesh surface samples, mesh coordinates, compact probes, and expanded
+  probes occupy the same displayed frequency region. The tests also prove that
+  changing pitch changes the mapping rather than merely changing resolution.
 - Native macOS automation covers right-click and Control-click menus,
   Option-click toggling, marker reattachment, rail resizing/collapse, deletion,
   and save/reload.
@@ -134,7 +193,8 @@ editor.
 ## Completion Criteria
 
 - No Spy palette item, canvas card, port, or runtime processing step remains.
-- Probes persist and preview the exact source output without affecting audio.
+- Probes persist and preview the exact source observation without affecting
+  audio. Spectral Layer observations are its normalized input grid.
 - Dense inspection no longer competes with processing nodes for canvas space.
 - Expanded editors never obscure the rail or prevent its feedback.
 
@@ -143,10 +203,18 @@ editor.
 - `TestSignalProbe.cpp` covers uniqueness, rejection of non-signal cables,
   serialization, disconnection, exact execution-plan preservation, reattach,
   removal, and undo/redo.
-- Graph preview tests cover exact traversal payloads for every probe in the
-  bundled eight-probe graph.
+- Graph preview tests cover exact diagnostic traversal payloads for every probe
+  in the bundled eight-probe graph.
 - Canvas architecture tests prove that expanded editor bounds remain inside
   the content rectangle reserved above expanded and collapsed rails.
+- Pitch-mapping integration tests cover exact Cycle v1 LogRegions coordinates,
+  C3/C5-dependent Trimesh panel row/key metadata, compact/expanded spectral
+  value-region correspondence, and compact-payload immutability during a lazy
+  detail capture.
+- `cycle-v2-agent-spy-detail.json` verifies the lazy 256-sample Stengah detail
+  traversal and captures matching compact/detail structure at
+  `/private/tmp/cycle-v2-spy-compact.png` and
+  `/private/tmp/cycle-v2-spy-detail.png`.
 - `cycle-v2-agent-probe-rail-os-screenshot.json` loads the bundled graph,
   asserts all eight probes, opens the Trimesh editor, and supplies the native
   macOS OS-capture target. The verified capture is

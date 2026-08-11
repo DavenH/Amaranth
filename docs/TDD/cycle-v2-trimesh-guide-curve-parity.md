@@ -143,10 +143,11 @@ edits invalidate every attached Trimesh configuration and preview product.
   resolution, while the expanded editor rendered its prepared model grid.
   Compact and expanded views now resolve through the same widget-owned grid;
   captured traversal remains authoritative for DSP diagnostics and probes.
-- `TrimeshRenderProfile` now owns DC exclusion, Cycle logarithmic row sampling,
-  phase unwrapping, and spectral value scaling. Trimesh model grids and spy
-  heatmaps call the same operation, independent of preview role; the former
-  UI-specific spectral mapper is deleted.
+- `TrimeshRenderProfile` owns DC exclusion, phase unwrapping, and spectral value
+  scaling. Pitch-dependent frequency coordinates come from Cycle 1's
+  `LogRegions` core. Trimesh model grids, mesh coordinates, and spy heatmaps
+  consume that shared mapping independently of preview role; the former
+  UI-specific spectral mapper remains deleted.
 - Vertex-menu authoring now resolves the selected vertex's owning cubes and
   writes only `guide.cube.<index>.<field>` edges. The provisional vertex target
   parser and production path are deleted.

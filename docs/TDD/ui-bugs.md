@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Addressed: Hosted Trimesh vertex drags used stale desktop coordinates
+
+Context:
+
+- `PanelHostComponent` discarded the coordinates carried by each JUCE mouse
+  event and reconstructed them from the current desktop cursor position.
+- Delayed delivery and in-process pointer automation could therefore hit or
+  move a different vertex. A pointer-down at the panel's phase-0.50 intercept
+  selected a phase-0.84 vertex in the focused reproduction.
+
+Current status: addressed by translating the delivered event into the panel
+host's coordinate space with JUCE's event-relative conversion. The focused
+in-process fixture asserts the resulting vertex parameters, while native
+smokes cover a full edit/commit/undo sequence and a spectral Stengah Trimesh.
+
 ## Open: Closing a hosted editor through automation dereferences its deleted target
 
 Context:
@@ -163,6 +178,23 @@ Context:
 Current status: open; isolate the broad UI test that adds an already-parented
 component and capture its exact call site.
 
+## Addressed: Trimesh drag leaves graph edits transient
+
+Context:
+
+- A Trimesh drag could publish one or more mesh changes and then finish with
+  `DidMeshChange` cleared after collision handling. The interactor consequently
+  omitted the gesture-complete event, leaving the dispatcher's transient graph
+  open.
+- Later node moves and edge deletions were applied to that transient copy, so
+  neither the durable graph nor the canvas changed.
+- The 2D and 3D interactors now retain whether the current gesture published
+  an edit and always emit its matching completion on mouse-up.
+- `scripts/test_cycle_v2_native_edit_smoke.py trimesh-versioning` covers the
+  collision/edit sequence followed by node move, edge deletion, and undo.
+
+Current status: addressed on 2026-08-05.
+
 ## Addressed: Cycle v2 automation screenshots appended to existing PNG files
 
 Context:
@@ -259,3 +291,18 @@ current `GuideCurveOffsetSeeds` storage contract.
 
 Current status: addressed by registering and initializing `PathRepo` in the
 Cycle V2 Trimesh panel environment; the guide fixture is the regression check.
+
+## Open: Stengah magnitude-pan preset expectation has drifted
+
+Context:
+
+- The full `CycleV2_tests` run on 2026-08-04 failed
+  `TestGraphSerializer.cpp:664` in `Stengah starts from its populated spectral
+  layers`.
+- The test expects `magnitudeLayer1Process.pan == 0.5`, while the committed
+  `stengah.cyclegraph` contains `0.75833`.
+- The failure reproduces in isolation and predates the probe-label, traversal,
+  and expanded-detail changes.
+
+Current status: open; decide whether the bundled preset or the canonical preset
+assertion owns the intended authored pan, then update the losing authority.

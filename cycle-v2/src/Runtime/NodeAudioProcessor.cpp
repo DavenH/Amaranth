@@ -18,6 +18,12 @@ bool NodeAudioProcessor::isVoiceActive() const {
     return false;
 }
 
+const SignalTraversalGrid* NodeAudioProcessor::probeTraversalGrid(
+        const AudioProcessContext&,
+        size_t) const {
+    return nullptr;
+}
+
 std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModuleRole role) const {
     using Factory = std::unique_ptr<NodeAudioProcessor> (*)();
 

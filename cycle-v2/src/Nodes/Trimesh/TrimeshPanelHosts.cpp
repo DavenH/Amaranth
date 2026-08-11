@@ -176,30 +176,7 @@ private:
     }
 
     MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        return localMouseEvent(event, getLocalPoint(nullptr, Desktop::getMousePosition()).toFloat());
-    }
-
-    MouseEvent localMouseEvent(const MouseEvent& event, Point<float> localPosition) const {
-        const Point<float> localMouseDown = event.eventComponent != nullptr
-                ? getLocalPoint(event.eventComponent, event.mouseDownPosition).toFloat()
-                : localPosition;
-
-        return MouseEvent(
-                event.source,
-                localPosition,
-                event.mods,
-                event.pressure,
-                event.orientation,
-                event.rotation,
-                event.tiltX,
-                event.tiltY,
-                const_cast<PanelHostComponent*>(this),
-                event.originalComponent,
-                event.eventTime,
-                localMouseDown,
-                event.mouseDownTime,
-                event.getNumberOfClicks(),
-                event.mouseWasDraggedSinceMouseDown());
+        return event.getEventRelativeTo(const_cast<PanelHostComponent*>(this));
     }
 
     void enterIfNeeded(const MouseEvent& event) {

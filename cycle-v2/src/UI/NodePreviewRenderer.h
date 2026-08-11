@@ -16,6 +16,7 @@ struct NodePreviewRenderRequest {
     float zoom {};
     bool cache { true };
     UnisonPreviewContext unisonContext;
+    bool highQuality {};
 };
 
 class NodePreviewRenderer {
@@ -25,6 +26,10 @@ public:
     static bool requiresEffect2DModel(NodeKind kind);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
+            bool desaturated = false);
+    static Image createRuntimeHeatmapImage(
+            const NodePreviewResult& preview,
+            const TrimeshRenderProfile& profile,
             bool desaturated = false);
 
     Rectangle<float> boundsFor(

@@ -15,6 +15,7 @@ public:
     void panelResized() override;
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
+    void setPreviewMidiNote(int midiNote);
 
 private:
     void applyRenderProfile();
@@ -23,6 +24,7 @@ private:
     void drawSpectrumPhaseBackground(bool fillBackground);
 
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
+    int previewMidiNote { 48 };
 };
 
 }

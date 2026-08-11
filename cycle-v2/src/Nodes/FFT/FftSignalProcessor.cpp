@@ -231,6 +231,8 @@ TraversalGridMetadata FftSignalProcessor::frequencyMetadataFor(
             inputGrid.metadata.columnAxis,
             TraversalGridAxis::Frequency);
     metadata.columnResolution = inputGrid.metadata.columnResolution;
+    metadata.frequencySampling = TraversalGridFrequencySampling::LinearBins;
+    metadata.frequencyMidiNote = inputGrid.metadata.frequencyMidiNote;
     return metadata;
 }
 

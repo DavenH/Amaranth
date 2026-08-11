@@ -12,6 +12,9 @@ struct PreviewResultView {
     size_t gridColumns {};
     size_t gridRows {};
     PortDomain domain { PortDomain::TimeSignal };
+    TraversalGridFrequencySampling frequencySampling {
+            TraversalGridFrequencySampling::LinearBins };
+    int frequencyMidiNote { 48 };
 
     bool hasValues() const {
         return (primary != nullptr && !primary->empty())
@@ -113,6 +116,8 @@ void addAudioTraversalGridToContext(
     context.input.gridRows = input->traversalGrid.rows;
     context.input.domain = input->traversalGrid.metadata.valueDomain;
     context.domain = context.input.domain;
+    context.frequencySampling = input->traversalGrid.metadata.frequencySampling;
+    context.frequencyMidiNote = input->traversalGrid.metadata.frequencyMidiNote;
 }
 
 PreviewResultView viewOf(const NodePreviewResult& preview) {
@@ -121,7 +126,9 @@ PreviewResultView viewOf(const NodePreviewResult& preview) {
             &preview.secondary,
             preview.gridColumns,
             preview.gridRows,
-            preview.domain
+            preview.domain,
+            preview.frequencySampling,
+            preview.frequencyMidiNote
     };
 }
 
@@ -207,6 +214,12 @@ GraphPreviewResult renderPreview(
         context.configuration = &step.configuration;
         if (stepIndex < audioIndex.size() && audioIndex[stepIndex] != nullptr) {
             context.capturedOutput = &audioIndex[stepIndex]->output;
+            if (context.capturedOutput->traversalGrid.isValid()) {
+                context.frequencySampling = context.capturedOutput
+                        ->traversalGrid.metadata.frequencySampling;
+                context.frequencyMidiNote = context.capturedOutput
+                        ->traversalGrid.metadata.frequencyMidiNote;
+            }
         }
         context.parameters = step.parameters;
         context.outputPorts.reserve(step.outputs.size());
@@ -228,6 +241,8 @@ GraphPreviewResult renderPreview(
             context.input.gridRows = inputPreview.gridRows;
             context.input.domain = inputPreview.domain;
             context.domain = inputPreview.domain;
+            context.frequencySampling = inputPreview.frequencySampling;
+            context.frequencyMidiNote = inputPreview.frequencyMidiNote;
         }
         addAudioTraversalGridToContext(context, step, audioIndex, result);
         processor->render(context);
@@ -243,7 +258,9 @@ GraphPreviewResult renderPreview(
                 std::move(context.secondary),
                 context.gridColumns,
                 context.gridRows,
-                context.domain
+                context.domain,
+                context.frequencySampling,
+                context.frequencyMidiNote
         };
         if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
             result.nodes[static_cast<size_t>(cachedIndex)] = std::move(preview);
@@ -270,6 +287,8 @@ void appendProbePreviews(
     for (size_t probeIndex = 0; probeIndex < probes.size(); ++probeIndex) {
         const auto& probe = probes[probeIndex];
         const SignalPayload* payload {};
+        const NodeAudioResult* sourceNode {};
+        size_t sourceOutputIndex {};
         GraphPreviewResult::SignalProbePreview preview;
         if (probeIndex < plan.signalProbes.size()) {
             const auto& address = plan.signalProbes[probeIndex];
@@ -280,23 +299,33 @@ void appendProbePreviews(
                 if (node != nullptr
                         && address.sourceOutputIndex >= 0
                         && static_cast<size_t>(address.sourceOutputIndex) < node->outputs.size()) {
-                    payload = &node->outputs[static_cast<size_t>(address.sourceOutputIndex)].second;
+                    sourceNode = node;
+                    sourceOutputIndex = static_cast<size_t>(address.sourceOutputIndex);
+                    payload = &node->outputs[sourceOutputIndex].second;
                     preview.sourceRole = plan.steps[
                             static_cast<size_t>(address.sourceStepIndex)].previewRole;
                 }
             }
         }
-        const bool connected = payload != nullptr && payload->traversalGrid.isValid();
+        const SignalTraversalGrid* probeGrid = payload != nullptr
+                ? &payload->traversalGrid
+                : nullptr;
+        if (sourceNode != nullptr && sourceOutputIndex < sourceNode->probeTraversalGrids.size()) {
+            probeGrid = &sourceNode->probeTraversalGrids[sourceOutputIndex];
+        }
+        const bool connected = probeGrid != nullptr && probeGrid->isValid();
         preview.probeId = probe.id;
         preview.connected = connected;
         if (connected) {
             preview.values.assign(
-                    payload->traversalGrid.values.begin(),
-                    payload->traversalGrid.values.end());
-            preview.gridColumns = payload->traversalGrid.columns;
-            preview.gridRows = payload->traversalGrid.rows;
-            preview.domain = payload->traversalGrid.metadata.valueDomain;
+                    probeGrid->values.begin(),
+                    probeGrid->values.end());
+            preview.gridColumns = probeGrid->columns;
+            preview.gridRows = probeGrid->rows;
+            preview.domain = probeGrid->metadata.valueDomain;
             preview.channelLayout = payload->channelLayout;
+            preview.frequencySampling = probeGrid->metadata.frequencySampling;
+            preview.frequencyMidiNote = probeGrid->metadata.frequencyMidiNote;
         }
         result.probes.push_back(std::move(preview));
     }
