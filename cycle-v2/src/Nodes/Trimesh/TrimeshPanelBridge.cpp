@@ -44,6 +44,7 @@ TrimeshPanelBridge::TrimeshPanelBridge() :
 }
 
 TrimeshPanelBridge::~TrimeshPanelBridge() {
+    stopTimer();
     interactor2D.stopTimer();
     interactor3D.stopTimer();
     panel2D.setInteractor(nullptr);
@@ -90,6 +91,8 @@ void TrimeshPanelBridge::syncFromNode(
     const MorphPosition previousMorph = model.getMorphPosition();
 
     if (model.syncFromNode(node)) {
+        stopTimer();
+        pendingMeshEdit = false;
         clearInteractionPointers();
     }
     environment.setMorphPosition(model.getMorphPosition(), model.getPrimaryViewAxis());
@@ -143,15 +146,6 @@ void TrimeshPanelBridge::syncFromNode(
 }
 
 void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
-    const TrimeshInvalidationResult invalidated = invalidation.invalidate({
-            TrimeshChangeKind::MeshEdit,
-            false,
-            false,
-            false,
-            event.sourceIs3D,
-            model.getPrimaryViewAxis()
-    });
-
     vector<Vertex*>& selected = event.sourceIs3D
             ? interactor3D.getSelected()
             : interactor2D.getSelected();
@@ -161,18 +155,50 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     model.markMeshEdited();
     syncPrimaryAxisContext();
 
-    if (meshEditedCallback != nullptr) {
-        meshEditedCallback(event);
-    }
-
-    dataSource.rebuild(
-            model,
-            lastRows,
-            lastColumns,
-            renderProfile,
-            previewMidiNote);
+    const TrimeshInvalidationResult invalidated = invalidation.invalidate({
+            TrimeshChangeKind::MeshEdit,
+            false,
+            false,
+            false,
+            event.sourceIs3D,
+            model.getPrimaryViewAxis()
+    });
     updateRasterizer(invalidated.refresh2DPanel, invalidated.refresh3DGeometry);
     lastSyncedRevision = panelRevisionFor(model);
+
+    pendingMeshEdit = true;
+    pendingMeshEditSourceIs3D = event.sourceIs3D;
+    if (event.gestureComplete) {
+        stopTimer();
+        flushPendingMeshEdit(true);
+    } else if (!isTimerRunning()) {
+        startTimerHz(30);
+    }
+}
+
+void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {
+    if (!pendingMeshEdit) {
+        return;
+    }
+
+    pendingMeshEdit = false;
+
+    if (gestureComplete) {
+        dataSource.rebuild(
+                model,
+                lastRows,
+                lastColumns,
+                renderProfile,
+                previewMidiNote);
+    }
+
+    if (meshEditedCallback != nullptr) {
+        meshEditedCallback({ pendingMeshEditSourceIs3D, gestureComplete });
+    }
+}
+
+void TrimeshPanelBridge::timerCallback() {
+    flushPendingMeshEdit(false);
 }
 
 void TrimeshPanelBridge::setMeshEditedCallback(

@@ -54,7 +54,6 @@ private:
     PanelHostCallbacks createPanelHostCallbacks();
     void initialisePanel3DHost();
     void initialisePanel2DHost();
-    void updatePanelHostPeers();
     void renderPanel(Panel& panel, Rectangle<float> bounds, float scaleFactor);
     void requestPanelInvalidation(Panel* panel, PanelDirtyState::Flag flag);
     uint32_t availableRenderInvalidations() const override;

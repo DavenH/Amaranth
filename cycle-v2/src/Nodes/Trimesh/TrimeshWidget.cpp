@@ -298,12 +298,26 @@ const TrimeshRenderData& TrimeshWidget::renderDataForAutomation() const {
 TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
     const auto samples = snapshot.waveY();
+    const TrimeshPanel2D& panel = bridge.getPanel2D();
     TrimeshPanelRenderStats stats;
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
+    const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;
+    if (hasPanelSize) {
+        stats.phaseUnitsPerDisplayX = panel.invertScaleX(panel.getWidth())
+                - panel.invertScaleX(0);
+        stats.ampUnitsPerDisplayY = panel.invertScaleY(0)
+                - panel.invertScaleY(panel.getHeight());
+    }
     stats.intercepts.reserve(snapshot.intercepts().size());
+    stats.displayedIntercepts.reserve(snapshot.intercepts().size());
     for (const auto& intercept : snapshot.intercepts()) {
         stats.intercepts.emplace_back(intercept.x, intercept.y);
+        if (hasPanelSize) {
+            stats.displayedIntercepts.emplace_back(
+                    panel.sx(intercept.x) / panel.getWidth(),
+                    panel.sy(intercept.y) / panel.getHeight());
+        }
     }
     for (const auto& curve : snapshot.curves()) {
         VertCube* cube = curve.b.cube;

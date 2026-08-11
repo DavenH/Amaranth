@@ -32,7 +32,6 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
-                                       private juce::Timer,
                                        private TrimeshControlsDelegate,
                                        private TrimeshPanelHostDelegate {
 public:
@@ -48,6 +47,7 @@ public:
 
     void paint(juce::Graphics& g) override;
     void resized() override;
+    void mouseEnter(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
@@ -59,7 +59,7 @@ private:
     juce::String vertexGuideParameterField(const juce::String& parameterId) const;
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
-    void timerCallback() override;
+    juce::Point<float> localPointerPosition(const juce::MouseEvent& event) const;
     void updatePanelHosts();
     void updateControlsHost();
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
@@ -75,15 +75,12 @@ private:
             juce::Rectangle<int> screenArea) override;
     void selectTrimeshVertex(int index) override;
     void requestTrimeshPanelRepaint() override;
-    void setTrimeshPanelCursor(const juce::MouseCursor& cursor) override;
-    void handleMouseOutsideTrimeshPanels(juce::Point<float> screenPosition) override;
 
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
-    juce::Point<int> lastPolledMousePosition { -1, -1 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)
 };

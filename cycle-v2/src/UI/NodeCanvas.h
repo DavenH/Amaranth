@@ -214,6 +214,7 @@ private:
 
     Effect2DWidget* effect2DWidget(const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
+    TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     void paintNodePreview(

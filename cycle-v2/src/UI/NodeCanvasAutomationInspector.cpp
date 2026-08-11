@@ -446,8 +446,14 @@ public:
 
             const Rectangle<float> bounds = rectangleFromVar(target->getProperty("bounds"));
             const Point<float> editorLocalOrigin = bounds.getPosition() - panel.getPosition();
-            const Point<float> screenOrigin = editorComponent->localPointToGlobal(editorLocalOrigin);
-            target->setProperty("screenBounds", rectangleToVar(bounds.withPosition(screenOrigin)));
+            const Rectangle<int> editorLocalBounds(
+                    roundToInt(editorLocalOrigin.x),
+                    roundToInt(editorLocalOrigin.y),
+                    roundToInt(bounds.getWidth()),
+                    roundToInt(bounds.getHeight()));
+            target->setProperty(
+                    "screenBounds",
+                    rectangleToVar(editorComponent->localAreaToGlobal(editorLocalBounds).toFloat()));
         }
     }
 };

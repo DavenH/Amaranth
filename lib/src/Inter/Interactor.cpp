@@ -672,7 +672,7 @@ void Interactor::eraseSelected() {
     flag(DidMeshChange) = true;
 }
 
-void Interactor::associateTo(Panel* panel) {
+void Interactor::associateTo(Panel* panel, bool observeComponentInput) {
     if (display != nullptr) {
         display->removeMouseListener(this);
     }
@@ -680,7 +680,7 @@ void Interactor::associateTo(Panel* panel) {
     this->panel = panel;
     this->display = panel->comp;
 
-    if (display != nullptr) {
+    if (display != nullptr && observeComponentInput) {
         display->addMouseListener(this, false);
         startTimerHz(30);
     } else {

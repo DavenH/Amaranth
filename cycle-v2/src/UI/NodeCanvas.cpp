@@ -937,9 +937,11 @@ void NodeCanvas::refreshCompiledStateAsync() {
                 if (safeThis == nullptr) {
                     return;
                 }
-                safeThis->editorCoordinator.updateHost(
-                        safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
-                        safeThis->canvasContentBounds());
+                if (!safeThis->commands.hasTransientEdit()) {
+                    safeThis->editorCoordinator.updateHost(
+                            safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
+                            safeThis->canvasContentBounds());
+                }
                 safeThis->openGLContext.triggerRepaint();
                 safeThis->refreshProbeDetail();
                 safeThis->requestCanvasRepaint();
@@ -1400,6 +1402,10 @@ Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {
     return &editorCoordinator.previewResources().trimeshWidget(node);
+}
+
+TrimeshWidget* NodeCanvas::findTrimeshWidget(const String& nodeId) {
+    return editorCoordinator.previewResources().findTrimeshWidget(nodeId);
 }
 
 TrimeshRenderProfile NodeCanvas::trimeshRenderProfile(const Node& node) const {

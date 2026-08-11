@@ -116,6 +116,7 @@ public:
     void setGraphicsHelper(CommonGfx* gfx);
     void setHostContext(const PanelHostContext& context);
     void setHostCallbacks(const PanelHostCallbacks& callbacks);
+    void setInteractorMouseListenerEnabled(bool enabled);
     void setPanelMouseCursor(const MouseCursor& cursor);
     void setPanelRenderer(PanelRenderer* renderer) { panelRenderer = renderer; }
     void setRenderHelper(Renderer* util)    { renderHelper = util;          }
@@ -253,6 +254,7 @@ protected:
     PanelHostContext hostContext;
     PanelHostCallbacks hostCallbacks;
     bool hasExplicitHostContext = false;
+    bool interactorMouseListenerEnabled = true;
 
     Buffer<float> vertMajorLines, vertMinorLines, horzMajorLines, horzMinorLines;
     ScopedAlloc<float> xBuffer, yBuffer, cBuffer, stripRamp, spliceBuffer, bgLinesMemory;

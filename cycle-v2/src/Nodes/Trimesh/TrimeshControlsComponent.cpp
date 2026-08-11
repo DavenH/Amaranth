@@ -24,9 +24,12 @@ public:
     void paint(Graphics&) override {
     }
 
-    void mouseMove(const MouseEvent& event) override {
-        auto source = event.source;
-        source.showMouseCursor(getMouseCursor());
+    void mouseEnter(const MouseEvent&) override {
+        installCursor();
+    }
+
+    void mouseMove(const MouseEvent&) override {
+        installCursor();
     }
 
     void mouseDown(const MouseEvent& event) override {
@@ -42,6 +45,13 @@ public:
     }
 
 private:
+    void installCursor() {
+        owner.setMouseCursor(getMouseCursor());
+        if (Component* editor = owner.getParentComponent()) {
+            editor->setMouseCursor(getMouseCursor());
+        }
+    }
+
     Point<float> ownerPosition(Point<float> position) const {
         return getBounds().toFloat().getTopLeft() + position;
     }

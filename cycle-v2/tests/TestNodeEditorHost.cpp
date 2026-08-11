@@ -11,6 +11,8 @@
 #include "../src/Nodes/Effect2D/Effect2DWidget.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Nodes/Trimesh/TrimeshWidget.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
@@ -157,12 +159,22 @@ public:
 class NullResources final : public NodeEditorResources {
 public:
     Effect2DWidget* effect2DWidget(const Node&) override { return nullptr; }
-    TrimeshWidget* trimeshWidget(const Node&) override { return nullptr; }
+    TrimeshWidget* trimeshWidget(const Node& node) override {
+        ++synchronizingTrimeshLookups;
+        if (activeTrimesh != nullptr) {
+            activeTrimesh->syncFromNode(node);
+        }
+        return activeTrimesh;
+    }
+    TrimeshWidget* findTrimeshWidget(const String&) override { return activeTrimesh; }
     TrimeshRenderProfile trimeshRenderProfile(const Node&) const override {
         return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
+
+    TrimeshWidget* activeTrimesh {};
+    int synchronizingTrimeshLookups {};
 };
 
 TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
@@ -1096,6 +1108,60 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resynchronizing",
+        "[cycle-v2][editor][trimesh][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+
+    const auto durableModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(durableModel != nullptr);
+    const float originalAmp = durableModel->mesh().getVerts().front()->values[Vertex::Amp];
+
+    widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.05f;
+    commands.persistTrimeshMeshEdits("mesh", false);
+    const auto firstTransient = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            dispatcher.editingGraph().findNode("mesh")->model);
+    REQUIRE(firstTransient != nullptr);
+    REQUIRE(firstTransient->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp + 0.05f));
+    REQUIRE(document.graph().findNode("mesh")->model->revision() == durableModel->revision());
+
+    widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.1f;
+    commands.persistTrimeshMeshEdits("mesh", true);
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(committed != nullptr);
+    REQUIRE(committed->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp + 0.1f));
+    REQUIRE(resources.synchronizingTrimeshLookups == 0);
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp));
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

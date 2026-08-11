@@ -66,6 +66,155 @@ context leaves are host concerns and must be made replaceable.
 
 ## Current Architecture
 
+## 2026-08-11 Input And Repaint Ownership Audit
+
+The native Trimesh acceptance runner exposed a gap between the intended
+core/host split and the current Cycle v2 bridge. A 30-step OS drag moved the
+pointer to normalized panel position `(0.8840, 0.7354)`, while the closest
+rendered intercept remained at `(0.8598, 0.6582)`, effectively its starting
+position. The previous assertion accepted any topology difference, so a tiny
+incidental edit was reported as a successful drag.
+
+This is not evidence that the mature mesh hit testing should be replaced.
+`Interactor2D` and `Interactor3D` remain authoritative for vertex/cube hit
+testing, selection, collision constraints, and mesh motion. The broken boundary
+is the host layer around them.
+
+### Responsibility Inventory
+
+| Responsibility | Intended owner | Current duplication or leak |
+| --- | --- | --- |
+| Component targeting and mouse capture | JUCE `Component` hierarchy | Trimesh hosts manually check bounds and redirect events to a peer host. |
+| Enter/exit and sibling hover transitions | JUCE `mouseEnter` / `mouseExit` | Hosts retain `mouseInside`, synthesize enter/exit, and poll desktop position at 30 Hz. |
+| Component cursor installation | JUCE component cursor | Panel host, expanded editor, delegate, and `MouseInputSource` all set or force the cursor. |
+| Event coordinates | JUCE event relative to the receiving host | Effect2D reconstructs coordinates from `Desktop::getMousePosition`; Trimesh re-wraps already-local events. |
+| Mesh-element hit testing | Mature `Interactor2D` / `Interactor3D` | Correctly remains in the Interactors; JUCE cannot hit-test vertices drawn inside one GL surface. |
+| Gesture transaction | Cycle v2 command service | Mesh publication is invoked synchronously from each Interactor drag callback. |
+| Local drag presentation | Panel core plus host redraw scheduler | One drag update also rebuilds graph snapshots, the full 3D grid, waveform rasterization, and repaint fan-out. |
+| GL rendering and cache lifetime | Node canvas host/context | Transitional panel hosts still own renderer adapters and explicit bake categories. |
+
+### Concrete Findings
+
+1. `TrimeshPanelHosts::PanelHostComponent` is a second mouse dispatcher. It
+   polls `Desktop::getMousePosition`, creates synthetic `MouseEvent` objects,
+   tracks its own hover state, forwards movement between sibling panels, and
+   calls `MouseInputSource::showMouseCursor`. These mechanisms were added in
+   several bug-fix commits and now interact rather than forming one lifecycle.
+2. Trimesh drag delivery is explicitly discarded when the captured pointer
+   leaves the host bounds. JUCE normally continues delivering a drag to the
+   component that received mouse-down; the Interactor should receive that local
+   position and apply its own domain constraints.
+3. `TrimeshExpandedEditorComponent` adds another 30 Hz desktop-position poller
+   for cursor state even though the controls and panel hosts are real child
+   components with normal JUCE hover delivery.
+4. `CurvePanelHost::HostComponent` independently implements nearly the same
+   adapter, but replaces the delivered event position with the current desktop
+   cursor. Delayed or coalesced delivery can therefore change the semantic
+   input before it reaches the mature Interactor.
+5. `Panel::setComponent` already associates the Interactor as a JUCE mouse
+   listener. Both Cycle v2 hosts then remove that listener and manually call
+   the same mouse methods. This is a transitional double-binding contract with
+   no single owner.
+6. One Trimesh movement synchronously calls `TrimeshPanelBridge::refreshAfterMeshEdit`,
+   serializes a complete immutable mesh snapshot through
+   `NodeEditorCommandService::persistTrimeshMeshEdits`, rebuilds the expanded
+   320-by-96 surface data, rasterizes the waveform, updates 3D intercepts, and
+   requests multiple repaint categories. That work runs on the JUCE message
+   thread before the next native drag event can be handled.
+7. The native smoke contradicted its own semantic-test standard. It checked
+   only that the model differed, not that the dragged intercept followed the
+   pointer within a declared tolerance. Publication, revision, and undo checks
+   are necessary but do not prove interaction fidelity.
+
+### Stable Boundary And Deletion Targets
+
+The Cycle v2 host remains a real transparent JUCE child component so it can
+receive focus, keyboard commands, wheel input, and native pointer events. Its
+input role should be limited to adapting one delivered JUCE event into one
+host-local pointer event and invoking the authoritative Interactor once.
+
+Delete from the Trimesh host:
+
+- the host `Timer` and synthetic `MouseEvent` construction;
+- `hoverPeer`, `mouseInside`, `forwardMouseMoveToPeer`, and
+  `mouseMoveFromPeer`;
+- direct `MouseInputSource::showMouseCursor` calls;
+- the expanded-editor cursor timer and the outside-panel cursor delegate;
+- the bounds-based early return from `mouseDrag`.
+
+Converge the Effect2D host on the same narrow adapter and delete its desktop
+position reconstruction and duplicate hover state. This must be one shared
+host-input adapter, not two corrected copies.
+
+Keep unchanged:
+
+- `Interactor2D` / `Interactor3D` mesh hit testing and edit algorithms;
+- JUCE component focus and key delivery at the host leaf;
+- `PanelHostContext` local-coordinate conversion;
+- renderer/context ownership and dirty-category scheduling while their later
+  extraction remains in progress.
+
+### Required Implementation Order
+
+1. Make the native test fail on cursor-to-intercept endpoint error, selection
+   instability, missing intermediate movement, or failure to commit/undo.
+2. Introduce one JUCE input host used by Trimesh and Effect2D. Forward each
+   delivered `MouseEvent` unchanged to the authoritative Interactor so JUCE
+   retains targeting, capture, coordinates, click count, and drag state.
+3. Remove polling, peer forwarding, manual hover state, and direct cursor-source
+   manipulation. Prove JUCE enter/exit and component cursors through real OS
+   events.
+4. Separate local per-event mesh motion/repaint from graph publication and
+   expensive derived work. The message-thread drag path must not serialize a
+   mesh or rebuild the full 3D grid synchronously. Commit the final semantic
+   snapshot through `GraphCommandDispatcher`, retaining the gesture's durable
+   base revision.
+5. Apply the same host adapter to Effect2D and delete the second implementation.
+6. Only after input fidelity passes, continue the existing render-host phases
+   and retire bridge-local bake/repaint special cases.
+
+Do not add another pointer timer guard, event queue, coordinate fallback, or
+host-local hit-testing implementation. A bounded publication cadence may
+coalesce semantic graph snapshots after the local Interactor has already
+applied and displayed every delivered drag event; it must never sample or
+reconstruct pointer input.
+
+### 2026-08-11 Implemented Input Slice
+
+This input and publication slice is implemented. `PanelInputHostComponent` is
+the one shared Cycle v2 JUCE leaf for Trimesh and Effect2D. It forwards the
+events JUCE delivered, brackets semantic gestures through small host hooks,
+and relies on component cursors and normal enter/exit delivery. The Trimesh and
+Effect2D desktop-position reconstruction, synthetic events, peer forwarding,
+manual hover state, pointer-source cursor forcing, and expanded-editor cursor
+poller were deleted.
+
+`Panel` now exposes the input ownership choice explicitly. Cycle 1 retains the
+legacy direct Interactor mouse listener and hover timer. Cycle v2 host leaves
+disable that listener before association, so an Interactor is never briefly
+installed and then manually removed from the same component.
+
+Trimesh local motion, selection, rasterizer invalidation, and repaint happen
+for every delivered drag event. Durable mesh publication is independently
+coalesced to 30 Hz and is flushed exactly on mouse-up; only the final flush
+rebuilds the full derived 3D data source. Persistence snapshots the already
+edited live widget without first synchronizing the committed graph back into
+it, and canvas graph refreshes do not rebind an editor during a transient
+gesture.
+
+Regression proof now includes two successive transient mesh snapshots in one
+gesture, one commit, downstream state, and undo without a synchronizing widget
+lookup. The native Trimesh fixture selects the actual hit vertex and asserts
+its final phase/amplitude against the OS pointer endpoint instead of accepting
+an arbitrary topology change. The native runner also fails immediately when
+`cliclick` lacks Accessibility permission, preventing a no-op pointer sequence
+from reporting success.
+
+The later render-host/cache phases in this TDD remain open. Native Effect2D
+hover automation also remains strict and currently exposes an unstable second
+curve target after its first reshape; that fixture is not being weakened or
+used as proof for this Trimesh slice.
+
 ### Core-Like Classes
 
 - `lib/src/UI/Panels/Panel.h`

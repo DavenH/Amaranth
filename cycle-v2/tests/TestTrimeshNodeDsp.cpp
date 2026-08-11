@@ -86,21 +86,7 @@ class RecordingTrimeshPanelHostDelegate final : public TrimeshPanelHostDelegate 
 public:
     void requestTrimeshPanelRepaint() override { ++repaintCount; }
 
-    void setTrimeshPanelCursor(const MouseCursor& nextCursor) override {
-        cursor = nextCursor;
-        ++cursorCount;
-    }
-
-    void handleMouseOutsideTrimeshPanels(Point<float> screenPosition) override {
-        outsidePosition = screenPosition;
-        ++outsideCount;
-    }
-
     int repaintCount {};
-    int cursorCount {};
-    int outsideCount {};
-    MouseCursor cursor;
-    Point<float> outsidePosition;
 };
 
 }
@@ -1125,7 +1111,8 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
 }
 
-TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
+        "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
     RecordingTrimeshPanelHostDelegate delegate;
@@ -1135,13 +1122,9 @@ TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v
     Component* panel2DHost = bridge.getPanel2DHostComponent();
 
     bridge.getPanel3D().setPanelMouseCursor(MouseCursor::PointingHandCursor);
-    REQUIRE(delegate.cursorCount == 1);
-    REQUIRE(delegate.cursor == MouseCursor::PointingHandCursor);
     REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::PointingHandCursor);
 
     bridge.getPanel2D().setPanelMouseCursor(MouseCursor::LeftRightResizeCursor);
-    REQUIRE(delegate.cursorCount == 2);
-    REQUIRE(delegate.cursor == MouseCursor::LeftRightResizeCursor);
     REQUIRE(panel2DHost->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
 
     bridge.getPanel2D().requestRepaint(PanelDirtyState::Flag::Overlay);
@@ -1152,7 +1135,7 @@ TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v
     bridge.getPanel3D().setPanelMouseCursor(MouseCursor::NormalCursor);
     bridge.getPanel3D().requestRepaint(PanelDirtyState::Flag::Overlay);
     MessageManager::getInstance()->runDispatchLoopUntil(20);
-    REQUIRE(delegate.cursorCount == 2);
+    REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::NormalCursor);
     REQUIRE(delegate.repaintCount == 1);
 }
 

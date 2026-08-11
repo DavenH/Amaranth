@@ -30,6 +30,7 @@ public:
 
     TrimeshWidget& trimeshWidget(const String& nodeId);
     TrimeshWidget& trimeshWidget(const Node& node);
+    TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
     Effect2DWidget& effect2DWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
