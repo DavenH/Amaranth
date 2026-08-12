@@ -24,14 +24,6 @@ public:
     void paint(Graphics&) override {
     }
 
-    void mouseEnter(const MouseEvent&) override {
-        installCursor();
-    }
-
-    void mouseMove(const MouseEvent&) override {
-        installCursor();
-    }
-
     void mouseDown(const MouseEvent& event) override {
         owner.beginControlDrag(region, ownerPosition(event.position), getScreenBounds());
     }
@@ -45,13 +37,6 @@ public:
     }
 
 private:
-    void installCursor() {
-        owner.setMouseCursor(getMouseCursor());
-        if (Component* editor = owner.getParentComponent()) {
-            editor->setMouseCursor(getMouseCursor());
-        }
-    }
-
     Point<float> ownerPosition(Point<float> position) const {
         return getBounds().toFloat().getTopLeft() + position;
     }

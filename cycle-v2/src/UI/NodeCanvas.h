@@ -158,7 +158,7 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    void updateHoverAt(juce::Point<float> position, juce::MouseInputSource source);
+    void updateHoverAt(juce::Point<float> position);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     void notifyOverlayPresentationChanged();

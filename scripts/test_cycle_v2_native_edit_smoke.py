@@ -663,10 +663,15 @@ class NativeEditSmoke:
             def polarity_candidates():
                 current_inspection = self.inspect("waveshaper")
                 current = self.flat_snapshot(current_inspection)
+                current_zoom = current_inspection["effect2D"]["panelState"]["zoom"]
                 vertices = {vertex["x"]: vertex for vertex in current["vertices"]}
                 found = []
                 internal_vertices = sorted(vertices.values(), key=lambda item: item["x"])[1:-1]
                 for point in current_inspection["effect2D"]["panelState"]["waveformPoints"]:
+                    display_x = (point["x"] - current_zoom["x"]) / current_zoom["w"]
+                    display_y = 1.0 - (point["y"] - current_zoom["y"]) / current_zoom["h"]
+                    if not (0.02 < display_x < 0.98 and 0.02 < display_y < 0.98):
+                        continue
                     vertex = min(internal_vertices, key=lambda item: abs(item["x"] - point["x"]))
                     vertical_delta = vertex["y"] - point["y"]
                     if (vertical_delta * polarity > 0.06
@@ -711,20 +716,41 @@ class NativeEditSmoke:
 
             curve_start = panel_position(curve_point["x"], curve_point["y"])
             if polarity == 1:
-                blank = self.point(panel, 0.5, 0.1)
-                self.click(
-                    f"m:{blank[0] + 8},{blank[1]}",
-                    "w:20",
-                    f"m:{blank[0]},{blank[1]}",
+                current_panel = self.inspect("waveshaper")["effect2D"]["panelState"]
+                current_zoom = current_panel["zoom"]
+                projected_waveform = [
+                    (
+                        (point["x"] - current_zoom["x"]) / current_zoom["w"],
+                        1.0 - (point["y"] - current_zoom["y"]) / current_zoom["h"],
+                    )
+                    for point in current_panel["waveformPoints"]
+                ]
+                blank_fraction = max(
+                    (
+                        (x / 10.0, y / 10.0)
+                        for x in range(1, 10)
+                        for y in range(1, 10)
+                    ),
+                    key=lambda candidate: min(
+                        (candidate[0] - point[0]) ** 2
+                        + (candidate[1] - point[1]) ** 2
+                        for point in projected_waveform
+                    ),
                 )
+                blank = self.point(panel, *blank_fraction)
+                self.move_pointer((1, 1))
+                self.move_pointer(blank)
                 blank_state = self.inspect("waveshaper")["effect2D"]["panelState"]
                 assert not blank_state["curveHover"], "curve hover remained active away from the curve"
                 assert not blank_state["curveResizeCursor"], "curve cursor remained active away from the curve"
+                self.cursor_until("normal")
                 self.capture("effect2d-before-hover", panel)
-            self.click(f"m:{curve_start[0]},{curve_start[1]}")
+            self.move_pointer((1, 1))
+            self.move_pointer(curve_start)
             hover_state = self.inspect("waveshaper")["effect2D"]["panelState"]
             assert hover_state["curveHover"], ("curve hover callback missing", polarity)
             assert hover_state["curveResizeCursor"], ("curve resize cursor missing", polarity)
+            self.cursor_until("upDownResize")
             if polarity == 1:
                 self.capture("effect2d-after-hover", panel)
             hovered_vertex = hover_state["currentVertex"]

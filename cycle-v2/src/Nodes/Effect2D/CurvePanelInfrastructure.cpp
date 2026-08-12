@@ -306,7 +306,6 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
         const_cast<CurvePanelHost*>(this)->requestPanelInvalidation(flag);
     });
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
-        delegate.setCurvePanelCursor(cursor);
         if (hostComponent != nullptr) {
             hostComponent->setMouseCursor(cursor);
         }

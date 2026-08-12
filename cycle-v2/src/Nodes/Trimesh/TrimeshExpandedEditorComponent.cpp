@@ -117,15 +117,15 @@ void TrimeshExpandedEditorComponent::resized() {
 }
 
 void TrimeshExpandedEditorComponent::mouseEnter(const MouseEvent& event) {
-    updateCursor(localPointerPosition(event));
+    updateCursor(event.position);
 }
 
 void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    updateCursor(localPointerPosition(event));
+    updateCursor(event.position);
 }
 
 void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
-    const Point<float> position = localPointerPosition(event);
+    const Point<float> position = event.position;
     if (closeButtonBounds().contains(position)) {
         if (delegate != nullptr) {
             delegate->closeTrimeshEditor();
@@ -139,7 +139,7 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
 }
 
 void TrimeshExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
-    controls.continuePointerInteraction(localPointerPosition(event));
+    controls.continuePointerInteraction(event.position);
 }
 
 void TrimeshExpandedEditorComponent::mouseUp(const MouseEvent&) {
@@ -245,11 +245,6 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {
     setMouseCursor(cursorFor(position));
-}
-
-Point<float> TrimeshExpandedEditorComponent::localPointerPosition(
-        const MouseEvent& event) const {
-    return getLocalPoint(nullptr, event.source.getScreenPosition()).toFloat();
 }
 
 void TrimeshExpandedEditorComponent::updatePanelHosts() {

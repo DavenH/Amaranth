@@ -186,11 +186,11 @@ void NodeCanvas::focusLost(FocusChangeType) {
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
-    updateHoverAt(event.position, event.source);
+    updateHoverAt(event.position);
     requestCanvasRepaint();
 }
 
-void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
+void NodeCanvas::updateHoverAt(Point<float> position) {
     lastMousePosition = position;
     palette.updateHover(position);
     const auto& scene = sceneBuilder.build(
@@ -208,21 +208,6 @@ void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
     }
     probeRailState.hoveredProbeId = std::move(hovered);
 
-    if (Component* expandedEditor = editorCoordinator.host().component()) {
-        const Point<float> editorPosition = expandedEditor->getLocalPoint(
-                this,
-                position.roundToInt()).toFloat();
-        if (expandedEditor->getLocalBounds().toFloat().contains(editorPosition)) {
-            Component* cursorTarget = expandedEditor->getComponentAt(editorPosition.roundToInt());
-            const MouseCursor cursor = cursorTarget != nullptr
-                    ? cursorTarget->getMouseCursor()
-                    : expandedEditor->getMouseCursor();
-            setMouseCursor(cursor);
-            source.showMouseCursor(cursor);
-            return;
-        }
-    }
-
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
@@ -231,7 +216,6 @@ void NodeCanvas::updateHoverAt(Point<float> position, MouseInputSource source) {
                 : MouseCursor::UpDownLeftRightResizeCursor;
     }
     setMouseCursor(cursor);
-    source.showMouseCursor(cursor);
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
@@ -772,8 +756,7 @@ void NodeCanvas::timerCallback() {
 
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
-        auto source = Desktop::getInstance().getMainMouseSource();
-        updateHoverAt(mouse, source);
+        updateHoverAt(mouse);
         requestCanvasRepaint();
     }
 }

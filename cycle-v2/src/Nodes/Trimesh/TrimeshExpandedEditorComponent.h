@@ -59,7 +59,6 @@ private:
     juce::String vertexGuideParameterField(const juce::String& parameterId) const;
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void updateCursor(juce::Point<float> position);
-    juce::Point<float> localPointerPosition(const juce::MouseEvent& event) const;
     void updatePanelHosts();
     void updateControlsHost();
     void setTrimeshPrimaryAxis(const juce::String& axis) override;

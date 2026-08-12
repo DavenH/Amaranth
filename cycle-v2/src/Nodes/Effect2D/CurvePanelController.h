@@ -15,7 +15,6 @@ class CurvePanelControllerDelegate {
 public:
     virtual ~CurvePanelControllerDelegate() = default;
     virtual void repaintCurvePanelController() = 0;
-    virtual void setCurvePanelControllerCursor(const MouseCursor& cursor) = 0;
     virtual void beginCurvePanelControllerEdit() = 0;
     virtual void curvePanelControllerEdited() = 0;
     virtual void commitCurvePanelControllerEdit() = 0;
