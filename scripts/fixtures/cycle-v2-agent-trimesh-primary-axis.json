@@ -1,0 +1,35 @@
+{
+  "commands": [
+    {
+      "command": "openMeshPopup",
+      "nodeId": "waveMesh"
+    },
+    {
+      "command": "setPrimaryAxis",
+      "nodeId": "waveMesh",
+      "axis": "red"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "red"
+    },
+    {
+      "command": "setPrimaryAxis",
+      "nodeId": "waveMesh",
+      "axis": "blue"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "blue"
+    },
+    {
+      "command": "inspectNodeControls",
+      "nodeId": "waveMesh"
+    }
+  ],
+  "quit": true
+}

@@ -1,5 +1,21 @@
 # UI Bug Notes
 
+## Open: Envelope purpose selector test segfaults after its assertions
+
+Context:
+
+- Repository-wide CTest on 2026-08-12 failed
+  `Envelope purpose selector publishes bipolar pitch presentation` at
+  `cycle-v2/tests/TestNodeEditorHost.cpp:694` with `SIGSEGV` after three of its
+  four assertions passed.
+- A focused rerun reproduces the same crash. This is incidental to the shared
+  trilinear dimension-order fix, which does not touch Envelope editor hosting.
+- Repro output is recorded in
+  `build/tests/Testing/Temporary/LastTest.log`.
+
+Current status: open; inspect teardown/lifetime ownership in the Envelope
+purpose selector fixture.
+
 ## Open: GuideCurveOffsetSeeds vertical seed contract fails
 
 Context:
@@ -48,7 +64,7 @@ Context:
 Current status: open; isolate the broad UI test that adds an already-parented
 component and capture its exact call site.
 
-## Open: Trilinear mesh 2D rasterization changes when primary view axis changes
+## Resolved: Trilinear mesh 2D rasterization changed with primary view axis
 
 Context:
 
@@ -58,7 +74,31 @@ Context:
 - Blue is still wrong: the 2D waveshape changes, and the rails/color points appear offset relative to the curve. The visual effect looks similar to control points being associated with a neighboring intercept, or the yellow dimension not being applied consistently except for color points.
 - The same class of behavior was checked in Cycle v1, which suggests this is likely in shared trilinear rasterizer/slicer logic rather than only the Cycle v2 popup bridge.
 
-Current status: open.
+Likely area:
+
+- `lib/src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h`
+- `lib/src/Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.*`
+- primary-view-axis handling across `RasterizationRequest::primaryViewDimension`, `RasterizationRequest::dims`, and `MorphPosition`
+
+Expected invariant:
+
+- For the same mesh and morph position, re-rasterizing the 2D waveshape with a different primary view axis should produce the same 2D waveform and aligned intercept/color-point overlays.
+
+Resolution:
+
+- `MorphPosition::getOtherDims(Vertex::Blue)` returned `(Red, Time)`, while
+  `VertCube::getFace(Vertex::Blue)` stores its face coordinates as
+  `(Time, Red)`. Blue-axis slicing consequently interpolated the face across
+  the wrong edges.
+- The shared dimension order now matches the authoritative `VertCube` face
+  layout, fixing both Cycle v1 and Cycle v2 trilinear callers.
+- Regression coverage renders one fixed mesh/morph point through all three
+  primary axes and requires identical intercepts, color-point overlays, and 2D
+  waveform buffers. A focused native fixture also exercises the red/blue
+  primary-axis controls:
+  `scripts/fixtures/cycle-v2-agent-trimesh-primary-axis.json`.
+
+Current status: resolved on 2026-08-12.
 
 ## Open: Cycle v2 full-suite architecture assertions
 
@@ -73,16 +113,6 @@ Context:
   spectral mapping or Reverb rendering path modified in that work.
 
 Current status: open; failures reproduced in the existing full test binary.
-
-Likely area:
-
-- `lib/src/Curve/Rasterization/Interpolation/TrilinearMeshSlicer.h`
-- `lib/src/Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.*`
-- primary-view-axis handling across `RasterizationRequest::primaryViewDimension`, `RasterizationRequest::dims`, and `MorphPosition`
-
-Expected invariant:
-
-- For the same mesh and morph position, re-rasterizing the 2D waveshape with a different primary view axis should produce the same 2D waveform and aligned intercept/color-point overlays.
 
 ## Open: default Cycle v2 launch asserts while creating Effect2D widgets
 
