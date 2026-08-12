@@ -64,6 +64,11 @@ void TrimeshBlockwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     rasterizer.setGuideCurveProvider(provider);
 }
 
+void TrimeshBlockwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {
+    voiceLifecycleSeed = seed;
+    hasVoiceLifecycleSeed = true;
+}
+
 void TrimeshBlockwiseDsp::setFrequencyMidiNote(int midiNote) {
     frequencyMidiNote = midiNote;
 }
@@ -83,11 +88,14 @@ void TrimeshBlockwiseDsp::configureGuideCurveSeeds(PortDomain domain) {
             ? snapshot->size()
             : Rasterization::GuideCurveOffsetSeeds::capacity;
     const uint32_t stableSeed = GuideCurveSnapshotProvider::visualizationSeed(domain);
+    const auto seed = hasVoiceLifecycleSeed
+            ? Rasterization::GuideCurveSeed::voiceLifecycle(voiceLifecycleSeed)
+            : Rasterization::GuideCurveSeed::visualization(stableSeed);
     rasterizer.updateOffsetSeeds(
             guideCount,
             GuideCurveProvider::tableSize,
-            Rasterization::GuideCurveSeed::visualization(stableSeed));
-    rasterizer.setNoiseSeed((int) (stableSeed % GuideCurveProvider::tableSize));
+            seed);
+    rasterizer.setNoiseSeed((int) (seed.value % GuideCurveProvider::tableSize));
 }
 
 void TrimeshBlockwiseDsp::renderCycle(

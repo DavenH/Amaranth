@@ -229,6 +229,8 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     const int voiceIndex = (int) std::distance(voices.begin(), selected);
     selected->context.voiceIndex = voiceIndex;
     selected->context.events.push_back({ NoteLifecycleType::NoteOn, sampleOffset, voiceIndex });
+    selected->context.lifecycleSeed = event.lifecycleSeed;
+    selected->context.hasLifecycleSeed = true;
     selected->source = event.source;
     selected->startOrder = ++nextVoiceOrder;
     selected->midiChannel = event.channel;

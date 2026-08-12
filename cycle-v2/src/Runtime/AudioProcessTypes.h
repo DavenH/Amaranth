@@ -5,6 +5,7 @@
 #include "SignalBuffer.h"
 
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <vector>
 
@@ -151,6 +152,8 @@ struct AudioVoiceContext {
     std::vector<NoteLifecycleEvent> events;
     AudioVoiceControls controls;
     std::vector<TimedControlEvent> controlEvents;
+    uint32_t lifecycleSeed {};
+    bool hasLifecycleSeed {};
 };
 
 struct AudioProcessWorkArena {

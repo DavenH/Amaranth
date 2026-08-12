@@ -29,6 +29,7 @@ struct RealtimeMidiEvent {
     uint8_t data2 {};
     double timestampSeconds {};
     uint64_t sequence {};
+    uint32_t lifecycleSeed {};
 
     juce::MidiMessage toMidiMessage() const;
 };

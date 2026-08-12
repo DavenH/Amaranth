@@ -164,7 +164,12 @@ public:
         const int primaryAxis = configuration != nullptr
                 ? configuration->primaryViewAxis
                 : Vertex::Time;
-        const int frequencyMidiNote = processVoice(context).controls.noteNumber;
+        const auto& voice = processVoice(context);
+        const int frequencyMidiNote = voice.controls.noteNumber;
+        if (voice.hasLifecycleSeed) {
+            trimeshDsp.setVoiceLifecycleSeed(voice.lifecycleSeed);
+            trimeshGridDsp.setVoiceLifecycleSeed(voice.lifecycleSeed);
+        }
         trimeshDsp.setFrequencyMidiNote(frequencyMidiNote);
         trimeshGridDsp.setFrequencyMidiNote(frequencyMidiNote);
 

@@ -66,6 +66,10 @@ Resolution:
   phase/vertical pair is bounded, unused and out-of-range slots are zero, and
   reset clears both arrays. Existing semantic-identity coverage continues to
   require reproducibility and distinct visualization/voice seeds.
+- Follow-up audit found that Cycle v2 audio was incorrectly using the stable
+  visualization identity. Note-on timestamps and queue sequence now seed each
+  voice lifecycle, preventing identical guide noise on retriggers while keeping
+  deterministic preview rendering.
 
 Current status: resolved on 2026-08-12.
 

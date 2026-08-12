@@ -203,8 +203,12 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
     }));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
     for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
-            parameter.value = "0";
+        if (parameter.id == "noise") {
+            parameter.value = "0.4";
+        } else if (parameter.id == "dcOffset") {
+            parameter.value = "0.3";
+        } else if (parameter.id == "phase") {
+            parameter.value = "0.2";
         }
     }
     Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -287,6 +291,23 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
         blockDifference += std::abs(guidedSamples[(size_t) i] - plainSamples[(size_t) i]);
     }
     REQUIRE(blockDifference > 0.1);
+
+    std::vector<float> firstLifecycle(sampleCount);
+    std::vector<float> repeatedLifecycle(sampleCount);
+    std::vector<float> nextLifecycle(sampleCount);
+    guided.setVoiceLifecycleSeed(0x12345678u);
+    guided.renderCycleInto(
+            Buffer<float>(firstLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    guided.renderCycleInto(
+            Buffer<float>(repeatedLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    guided.setVoiceLifecycleSeed(0x87654321u);
+    guided.renderCycleInto(
+            Buffer<float>(nextLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(firstLifecycle == repeatedLifecycle);
+    REQUIRE(firstLifecycle != nextLifecycle);
 
     constexpr int columnCount = 8;
     std::vector<float> plainGrid(columnCount * sampleCount);
