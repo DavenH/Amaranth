@@ -33,7 +33,8 @@ There must be no per-editor gesture-polarity policy.
   action selection, pointer-to-panel coordinate conversion, and drag capture.
 - `lib/src/Curve/Curve.cpp` and the rasterizer snapshot are authoritative for
   curve evaluation. `TransformParameters::ypole` is raster transform metadata;
-  it must not become a client-specific input-gesture policy.
+  the mature Cycle v1 reshape uses it as the prepared curve's shared response
+  direction, never as a client-specific gesture policy.
 - JUCE component targeting is authoritative for enter, exit, move, drag
   capture, and choosing the cursor of the component under the pointer.
 - Existing Cycle v2 command dispatchers remain authoritative for transient
@@ -119,8 +120,8 @@ publish increasing `waveIdx` boundaries. No editor-specific polarity is used.
 2. resolve the controlling curve geometry in canonical panel/model space;
 3. update selection framing;
 4. ask the existing domain hook for the vertices affected by the edit;
-5. calculate one signed sharpness delta from pointer movement and the shared
-   curve/control relationship;
+5. calculate one signed sharpness delta from pointer movement and the hit
+   curve's prepared Cycle v1 response direction;
 6. constrain and mutate the affected `Vertex::Curve` values;
 7. notify selection listeners and mark the mesh changed only when a retained
    value actually changed.
@@ -233,8 +234,9 @@ This TDD could not be marked
 ## Implementation Review
 
 - `Interactor2D` is the only 2D `doReshapeCurve` implementation. It owns
-  selection framing, domain vertex resolution, signed distance-to-control
-  calculation, clamping, listener notification, and change marking.
+  selection framing, domain vertex resolution, the mature Cycle v1 prepared
+  curve response calculation, clamping, listener notification, and change
+  marking.
 - `CurveReshapeStrategy` is a small pure calculation seam used by that shared
   sequence and covered for upward, downward, reverse, stationary, scaled, and
   clamped edits.

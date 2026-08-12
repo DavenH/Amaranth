@@ -4,16 +4,14 @@
 #include <cmath>
 
 float CurveReshapeStrategy::sharpnessDelta(
-        float gestureStartY,
         float previousPointerY,
         float currentPointerY,
-        float controlY,
+        float curvePole,
         float verticalZoom,
         float dragScale,
         float curveScaleY) {
-    const float directionTowardControl = gestureStartY <= controlY ? 1.f : -1.f;
     const float movement = currentPointerY - previousPointerY;
-    return movement * directionTowardControl * dragScale
+    return movement * curvePole * dragScale
             / (sqrtf(verticalZoom) * (0.1f + curveScaleY));
 }
 
