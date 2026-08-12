@@ -402,6 +402,7 @@ void Interactor2D::doReshapeCurve(const MouseEvent&) {
     const Curve& curve = curves[(size_t) curveIndex];
     const float dragScale = getDragMovementScale(state.currentCube);
     const float delta = CurveReshapeStrategy::sharpnessDelta(
+            state.start.y,
             state.lastMouse.y,
             state.currentMouse.y,
             curve.b.y,

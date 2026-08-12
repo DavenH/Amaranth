@@ -4,16 +4,17 @@
 #include <cmath>
 
 float CurveReshapeStrategy::sharpnessDelta(
+        float gestureStartY,
         float previousPointerY,
         float currentPointerY,
         float controlY,
         float verticalZoom,
         float dragScale,
         float curveScaleY) {
-    const float previousDistance = fabsf(previousPointerY - controlY);
-    const float currentDistance = fabsf(currentPointerY - controlY);
-    const float approach = (previousDistance - currentDistance) / sqrtf(verticalZoom);
-    return approach * dragScale / (0.1f + curveScaleY);
+    const float directionTowardControl = gestureStartY <= controlY ? 1.f : -1.f;
+    const float movement = currentPointerY - previousPointerY;
+    return movement * directionTowardControl * dragScale
+            / (sqrtf(verticalZoom) * (0.1f + curveScaleY));
 }
 
 float CurveReshapeStrategy::applySharpnessDelta(float sharpness, float delta) {

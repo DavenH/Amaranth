@@ -59,9 +59,10 @@ For every 2D curve editor:
 4. For an unclamped edit, the rendered point under the initial pointer follows
    the pointer's vertical direction. An upward drag moves that point upward; a
    downward drag moves it downward.
-5. Dragging toward the curve's controlling intercept increases sharpness;
-   dragging away decreases sharpness. Reversing direction during one gesture
-   reverses the edit without discontinuity.
+5. Dragging in the gesture-start direction toward the curve's controlling
+   intercept increases sharpness and continues increasing after the pointer
+   crosses that intercept, saturating at full sharpness. Reversing direction
+   during one gesture decreases sharpness without discontinuity.
 6. Every drag update mutates the domain-selected vertices once, emits one
    consolidated transient edit, and repaints from the resulting state.
 7. Mouse-up commits one undoable edit. Undo restores the exact pre-gesture
