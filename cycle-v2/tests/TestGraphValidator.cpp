@@ -376,6 +376,34 @@ TEST_CASE("Operation domain inference excludes Envelope and Mesh products",
     REQUIRE(resolution.domains[1] == PortDomain::ControlSignal);
 }
 
+TEST_CASE("Unattached Trimesh domain follows a downstream spectral layer",
+        "[cycle-v2][graph][domains]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({
+            "mesh", "out", "layer", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "layer", "out", "multiply", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "multiply", "out", "ifft", "mag",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+
+    const auto resolution = GraphDomainResolver().resolve(graph);
+
+    REQUIRE(resolution.domains[0] == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(resolution.domains[1] == PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(resolution.domains[2] == PortDomain::SpectralMagnitudeSignal);
+}
+
 TEST_CASE("Domain resolution terminates deterministically for invalid cycles",
         "[cycle-v2][graph][domains]") {
     GraphNodeFactory factory;

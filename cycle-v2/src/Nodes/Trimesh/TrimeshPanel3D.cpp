@@ -11,7 +11,6 @@ TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& sour
     volumeTrans = 0.f;
     guideCurveApplicable = true;
     speedApplicable = false;
-    pendingDeformUpdate = false;
 }
 
 void TrimeshPanel3D::panelResized() {

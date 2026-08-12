@@ -115,7 +115,10 @@ private:
                 const PortDomain domain = voiceContextDomain(*source);
                 if (domain == PortDomain::SpectralMagnitudeSignal
                         && parameterValueForNode(*source, "domain", "waveform") == "spectral") {
-                    return downstreamSpectralDomain(nodeToResolve);
+                    const PortDomain downstream = downstreamSpectralDomain(nodeToResolve);
+                    return downstream == PortDomain::ControlSignal
+                            ? PortDomain::SpectralMagnitudeSignal
+                            : downstream;
                 }
 
                 return domain;
@@ -178,9 +181,7 @@ private:
                     outgoing[destinationIndex].end());
         }
 
-        return resolved == PortDomain::ControlSignal
-                ? PortDomain::SpectralMagnitudeSignal
-                : resolved;
+        return resolved;
     }
 
     PortDomain firstInputDomain(
@@ -226,6 +227,10 @@ private:
         if (sourceDomain == PortDomain::ControlSignal
                 && GraphDomainResolver::isContextResolvedSource(*sourceNode, *source)) {
             sourceDomain = contextDomain(*sourceNode);
+            if (sourceDomain == PortDomain::ControlSignal
+                    && sourceNode->kind == NodeKind::TrilinearMesh) {
+                sourceDomain = downstreamSpectralDomain(*sourceNode);
+            }
         }
         if (sourceDomain == PortDomain::ControlSignal
                 && propagatesUniversalDomain(sourceNode->kind)) {

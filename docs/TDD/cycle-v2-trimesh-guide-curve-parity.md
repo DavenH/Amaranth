@@ -3,8 +3,10 @@
 ## Status
 
 Implemented. Compact Trimesh nodes retain the same authoritative prepared
-widget model as the expanded editor, and spectral grids use one domain-owned
-frequency and value mapping in Trimesh views and signal spies.
+widget model as the expanded editor, spectral grids use one domain-owned
+frequency and value mapping in Trimesh views and signal spies, imported guide
+assignments match Cycle 1's canonical data, and both mesh panels initialize the
+shared assignment-tag resources.
 
 ## Problem
 
@@ -65,6 +67,13 @@ The provisional `guide.vertex.<index>.<field>` authoring route must be migrated
 to cube-component targets and then removed; it must not become a second domain
 model.
 
+For imported presets, Cycle 1's migrated canonical JSON is the authoritative
+source. The port preserves its meshes, layer properties, guide meshes, and
+cube-component assignments unchanged. The boundary translation creates Cycle
+2 graph nodes and routing edges only; it does not reinterpret the domain data.
+The stable end state is a reusable preset conversion path rather than curated
+copies whose guide edges can drift from the source.
+
 Snapshot ownership is outside the audio callback. Blockwise and gridwise DSP
 hold only stable provider/configuration references during processing. Guide
 edits invalidate every attached Trimesh configuration and preview product.
@@ -109,6 +118,8 @@ edits invalidate every attached Trimesh configuration and preview product.
 - Baroque Flute resolves all eleven imported cube-component assignments.
 - African Horn renders its assigned guide in both mesh panels and produces
   guide-affected traversal-grid values.
+- Alto Sax preserves all four guide meshes and its seventeen source-authored
+  cube-component assignments across time and spectral layers.
 
 ## Completion Criteria
 
@@ -121,6 +132,8 @@ edits invalidate every attached Trimesh configuration and preview product.
 - No guide evaluation, deformation, component baking, or rail drawing logic is
   duplicated in Cycle V2.
 - The provisional vertex-target compatibility path and its tests are deleted.
+- African Horn and Alto Sax graph attachments exactly match Cycle 1's migrated
+  canonical preset data.
 - DSP and visualization hot-loop checks, `git diff --check`, applicable
   clang-tidy, focused tests, the Cycle V2 test suite, and UI captures are run;
   unrelated failures or unavailable tools are recorded explicitly.
@@ -156,6 +169,16 @@ edits invalidate every attached Trimesh configuration and preview product.
   African Horn fixture asserts its Curve guide and populated guided panel
   output. The Baroque compact capture is
   `/private/tmp/cycle-v2-baroque-compact-guides.png`.
+- African Horn now restores the source preset's guide-1 phase assignments on
+  cubes 2 and 3; the earlier cube-0 Curve edge was not present in Cycle 1.
+  Cycle 2's 2D and 3D panels no longer suppress the mature Panel tag-atlas
+  refresh, so their numbered assignment markers use the shared renderer.
+- `port_cycle_v1_preset.py` translates canonical Cycle 1 data into graph
+  ownership and routing. Alto Sax preserves its time, magnitude, phase, four
+  guide, envelope, and waveshaper models, its magnitude range/pan/mode, and all
+  seventeen cube-component guide assignments. Downstream domain inference now
+  passes through a spectral-layer node so this mixed time/spectral graph does
+  not need duplicated voice contexts or flattened layer behavior.
 
 Verification completed with `*Guide*` (110 assertions), `[spectral][ui]` (50
 assertions), `[preview]` (140 assertions), `[trimesh]` (674 assertions), the
@@ -163,3 +186,9 @@ Stengah probe fixture, the standalone Cycle V2 build, and `git diff --check`.
 The earlier full 459-case Cycle V2 run passed 457 cases; the two Stengah
 failures are the shared preset-pan issue recorded in `audio-bugs.md`.
 `clang-tidy` was not available in the environment.
+
+The source-fidelity follow-up passed the focused domain and shipped-preset
+suites, the African Horn guide fixture, and the four-preset automation fixture.
+The full Cycle V2 suite passed 8,639 assertions in 479 test cases. The
+standalone Debug build completed, `git diff --check` passed, and no scalar
+`std::<math>` calls were introduced in the changed production paths.

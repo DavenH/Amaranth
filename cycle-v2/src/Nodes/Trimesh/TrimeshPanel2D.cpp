@@ -11,7 +11,6 @@ TrimeshPanel2D::TrimeshPanel2D(SingletonRepo* repo) :
     ,   Panel2D            (repo, "CycleV2TrimeshPanel2D", true, true) {
     guideCurveApplicable = true;
     speedApplicable = false;
-    pendingDeformUpdate = false;
     backgroundTimeRelevant = false;
     applyRenderProfile();
 }
