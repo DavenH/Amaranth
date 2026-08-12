@@ -297,51 +297,6 @@ public:
         return moving;
     }
 
-    void doReshapeCurve(const MouseEvent& event) override {
-        auto snapshot = rasterizerSnapshot();
-
-        if (snapshot.curves().empty()) {
-            return;
-        }
-
-        flag(LoweredRes) = true;
-        const vector<Curve>& curves = snapshot.curves();
-
-        {
-            ScopedLock sl(vertexLock);
-            vector<Vertex*>& selected = getSelected();
-            selected.clear();
-
-            if (state.currentVertex != nullptr) {
-                selected.push_back(state.currentVertex);
-                updateSelectionFrames();
-            }
-        }
-
-        resetFinalSelection();
-
-        Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
-        if (state.currentVertex == nullptr) {
-            return;
-        }
-        const Curve& curve = curves[(size_t) getStateValue(CurrentCurve)];
-        const float diffY = (state.currentMouse.y - state.lastMouse.y)
-                / sqrtf(panel->getZoomPanel()->rect.h);
-        const float gesturePole = state.start.y < state.currentVertex->values[dims.y]
-                ? 1.f
-                : -1.f;
-        const float diff = diffY * gesturePole / (0.1f + curve.tp.scaleY);
-
-        for (auto* vertex : movingVerts) {
-            float& weight = vertex->values[Vertex::Curve];
-            weight += diff;
-            NumberUtils::constrain(weight, 0.f, 1.f);
-        }
-
-        listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
-        flag(DidMeshChange) |= diff != 0.f;
-    }
-
     void doExtraMouseDrag(const MouseEvent& event) override {
         Interactor2D::doExtraMouseDrag(event);
 
@@ -481,6 +436,19 @@ public:
                 root->setProperty("midIntercept", interceptToVar(intercepts[intercepts.size() / 2]));
                 root->setProperty("lastIntercept", interceptToVar(intercepts.back()));
             }
+
+            Array<var> waveformPoints;
+            const Buffer<Float32> waveX = snapshot.waveX();
+            const Buffer<Float32> waveY = snapshot.waveY();
+            for (int index = 0; index < jmin(waveX.size(), waveY.size()); ++index) {
+                auto* point = new DynamicObject();
+                point->setProperty("x", waveX[index]);
+                point->setProperty("y", waveY[index]);
+                point->setProperty("displayX", sx(waveX[index]) / getWidth());
+                point->setProperty("displayY", sy(waveY[index]) / getHeight());
+                waveformPoints.add(point);
+            }
+            root->setProperty("waveformPoints", waveformPoints);
         }
 
         return var(root);

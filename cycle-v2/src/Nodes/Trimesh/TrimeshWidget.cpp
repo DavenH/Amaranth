@@ -3,6 +3,7 @@
 #include "../../Graph/NodeParameterMap.h"
 
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
 
 #include <array>
 #include <utility>
@@ -311,12 +312,34 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     }
     stats.intercepts.reserve(snapshot.intercepts().size());
     stats.displayedIntercepts.reserve(snapshot.intercepts().size());
+    stats.displayedCurvePoints.reserve(snapshot.intercepts().size());
+    stats.curveHover = bridge.getInteractor2D()
+            .state.mouseFlags[PanelState::WithinReshapeThresh];
     for (const auto& intercept : snapshot.intercepts()) {
         stats.intercepts.emplace_back(intercept.x, intercept.y);
         if (hasPanelSize) {
             stats.displayedIntercepts.emplace_back(
                     panel.sx(intercept.x) / panel.getWidth(),
                     panel.sy(intercept.y) / panel.getHeight());
+        }
+    }
+    const Buffer<Float32> waveX = snapshot.waveX();
+    const Buffer<Float32> waveY = snapshot.waveY();
+    if (hasPanelSize
+            && snapshot.intercepts().size() > 1
+            && !waveX.empty()
+            && !waveY.empty()) {
+        for (int index = 0; index + 1 < snapshot.intercepts().size(); ++index) {
+            const float centreX = 0.5f * (
+                    snapshot.intercepts()[index].x
+                    + snapshot.intercepts()[index + 1].x);
+            const int sampleIndex = jlimit(
+                    0,
+                    jmin(waveX.size(), waveY.size()) - 1,
+                    Arithmetic::binarySearch(centreX, waveX));
+            stats.displayedCurvePoints.emplace_back(
+                    panel.sx(waveX[sampleIndex]) / panel.getWidth(),
+                    panel.sy(waveY[sampleIndex]) / panel.getHeight());
         }
     }
     for (const auto& curve : snapshot.curves()) {

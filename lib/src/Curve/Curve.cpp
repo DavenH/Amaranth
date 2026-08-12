@@ -37,19 +37,18 @@ Curve::Curve(Vertex2& one, Vertex2& two, Vertex2& thr) {
 }
 
 Curve::Curve(const Curve& curve) :
-        transformX{},
-        transformY{},
-        tp(),
-        curveRes(0) {
-    this->a = curve.a;
-    this->b = curve.b;
-    this->c = curve.c;
-
-    waveIdx = curve.waveIdx;
-    tableCurveIdx = curve.tableCurveIdx;
-    tableCurvePos = curve.tableCurvePos;
-    resIndex = curve.resIndex;
-    interpolate = curve.interpolate;
+        a               (curve.a)
+    ,   b               (curve.b)
+    ,   c               (curve.c)
+    ,   tp              (curve.tp)
+    ,   resIndex        (curve.resIndex)
+    ,   curveRes        (curve.curveRes)
+    ,   waveIdx         (curve.waveIdx)
+    ,   tableCurveIdx   (curve.tableCurveIdx)
+    ,   tableCurvePos   (curve.tableCurvePos)
+    ,   interpolate     (curve.interpolate) {
+    VecOps::copy(curve.transformX, transformX, resolution);
+    VecOps::copy(curve.transformY, transformY, resolution);
 }
 
 void Curve::validate() {

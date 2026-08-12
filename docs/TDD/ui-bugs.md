@@ -123,3 +123,21 @@ Context:
 
 Current status: open; compare serialized Trimesh float fields with an explicit
 tolerance while retaining exact topology and guide-assignment checks.
+
+## Open: native downstream fixtures can sample incomplete asynchronous state
+
+Context:
+
+- During shared curve interaction verification on 2026-08-12, the Envelope
+  native sequence completed its hover, multi-update reshape, visible-direction,
+  publication, and exact-undo assertions, then `captureAudio` returned JSON
+  `null` entries to the existing final downstream comparison.
+- The existing `causal-trimesh` sequence also observed completed downstream
+  preview products before its immediate snapshot contained the expected
+  `DurablePublication` event. The returned trace continued through later
+  completion events, indicating the fixture sampled an asynchronous boundary.
+- Repro log:
+  `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
+
+Current status: open; make audio capture reject or retry non-finite samples and
+wait explicitly for durable causal completion before evaluating the trace.

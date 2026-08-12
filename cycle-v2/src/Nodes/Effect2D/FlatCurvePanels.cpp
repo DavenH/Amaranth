@@ -273,50 +273,6 @@ public:
     }
 
 protected:
-    void doReshapeCurve(const MouseEvent& event) override {
-        ignoreUnused(event);
-        auto snapshot = rasterizerSnapshot();
-        if (snapshot.curves().empty()) {
-            return;
-        }
-
-        flag(LoweredRes) = true;
-        const vector<Curve>& curves = snapshot.curves();
-        {
-            ScopedLock lock(vertexLock);
-            vector<Vertex*>& selected = getSelected();
-            selected.clear();
-            if (state.currentVertex != nullptr) {
-                selected.push_back(state.currentVertex);
-                updateSelectionFrames();
-            }
-        }
-        resetFinalSelection();
-
-        const Array<Vertex*> movingVertices = getVerticesToMove(state.currentCube, state.currentVertex);
-        const float dragScale = getDragMovementScale(state.currentCube);
-        if (state.currentVertex == nullptr) {
-            return;
-        }
-        const float diffY = (state.currentMouse.y - state.lastMouse.y)
-                / sqrtf(panel->getZoomPanel()->rect.h);
-        const Curve& curve = curves[(size_t) getStateValue(CurrentCurve)];
-        const float gesturePole = state.start.y < state.currentVertex->values[dims.y]
-                ? 1.f
-                : -1.f;
-        const float delta = diffY * dragScale * gesturePole
-                / (0.1f + curve.tp.scaleY);
-
-        for (auto* vertex : movingVertices) {
-            float& weight = vertex->values[Vertex::Curve];
-            weight += delta;
-            NumberUtils::constrain(weight, 0.f, 1.f);
-        }
-
-        listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
-        flag(DidMeshChange) |= delta != 0.f;
-    }
-
     CurvePanelDrawing::Canvas drawingCanvas() {
         return {
             *gfx,

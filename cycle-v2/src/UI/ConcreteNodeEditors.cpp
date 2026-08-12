@@ -769,6 +769,15 @@ public:
             panelDisplayedIntercepts.add(encoded);
         }
         meshState->setProperty("panelDisplayedIntercepts", panelDisplayedIntercepts);
+        Array<var> panelDisplayedCurvePoints;
+        for (const auto& point : panelStats.displayedCurvePoints) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("x", point.x);
+            encoded->setProperty("y", point.y);
+            panelDisplayedCurvePoints.add(encoded);
+        }
+        meshState->setProperty("panelDisplayedCurvePoints", panelDisplayedCurvePoints);
+        meshState->setProperty("panelCurveHover", panelStats.curveHover);
         state.setProperty("trimesh", var(meshState));
     }
     Rectangle<float> panelBoundsForAutomation() const override { return {}; }

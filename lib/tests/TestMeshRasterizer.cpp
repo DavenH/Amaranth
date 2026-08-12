@@ -597,6 +597,24 @@ TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking
     REQUIRE(std::isfinite(curves[1].transformY[0]));
 }
 
+TEST_CASE("Curve snapshots preserve prepared interaction geometry", "[meshrasterizer][pipeline][snapshot]") {
+    CurveTableScope curveTableScope;
+    Curve source(
+            Intercept(0.1f, 0.2f),
+            Intercept(0.4f, 0.8f, nullptr, 0.35f),
+            Intercept(0.9f, 0.3f));
+    source.recalculateCurve();
+
+    const Curve copied(source);
+
+    REQUIRE(copied.tp.ypole == source.tp.ypole);
+    REQUIRE(copied.tp.scaleY == Catch::Approx(source.tp.scaleY));
+    REQUIRE(copied.transformX[Curve::resolution / 2]
+            == Catch::Approx(source.transformX[Curve::resolution / 2]));
+    REQUIRE(copied.transformY[Curve::resolution / 2]
+            == Catch::Approx(source.transformY[Curve::resolution / 2]));
+}
+
 TEST_CASE("TrilinearMeshRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
     CurveTableScope curveTableScope;
     auto mesh = createSyntheticWaveMesh();
