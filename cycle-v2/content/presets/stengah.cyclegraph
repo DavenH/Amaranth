@@ -338,34 +338,34 @@
             "kind": "spectralLayer",
             "definitionVersion": 1,
             "position": { "x": 1689.65515, "y": 538.0 },
-            "parameters": { "pan": 0.75833, "range": 0.625, "mode": "additive" }
+            "parameters": { "pan": 0.5, "range": 0.625, "mode": "additive" }
         },
         {
             "id": "phaseLayer1Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1689.65515, "y": 875.61737 },
+            "position": { "x": 1689.65515, "y": 936.76166 },
             "parameters": { "pan": 1.0, "range": 0.6, "mode": "additive" }
         },
         {
             "id": "phaseLayer2Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1689.65515, "y": 1187.26208 },
+            "position": { "x": 1689.65515, "y": 1254.50342 },
             "parameters": { "pan": 0.0, "range": 0.575, "mode": "additive" }
         },
         {
             "id": "phaseOp2",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1945.0, "y": 1020.7616 },
+            "position": { "x": 1876.03442, "y": 918.76166 },
             "parameters": {}
         },
         {
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2174.65527, "y": 857.61737 },
+            "position": { "x": 2133.27588, "y": 656.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
@@ -446,7 +446,7 @@
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2157.45532, "y": 544.62067 },
+            "position": { "x": 2133.27588, "y": 881.68622 },
             "parameters": { "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -999,15 +999,15 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 3142.40137, "y": 758.21606 },
-            "parameters": { "enabled": true, "size": 0.14286, "post": 0.167, "highPass": 0.0 },
+            "parameters": { "enabled": true, "size": 0.14286, "post": 0.543, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
-                "revision": 18,
+                "revision": 23,
                 "state": {
                     "version": 1,
                     "type": "flatCurve",
-                    "revision": 18,
+                    "revision": 23,
                     "vertices": [
                         { "id": 1, "x": 0.06258, "y": 0.80891, "curve": 0.0 },
                         { "id": 2, "x": 0.06276, "y": 1.0, "curve": 0.33988 },
@@ -1190,9 +1190,9 @@
         { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer2", "destPortId": "guide.cube.4.phase", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
         { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "equalizer", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeEnvelope", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {
@@ -1226,16 +1226,6 @@
             "railOrder": 3
         },
         {
-            "id": "probe4",
-            "sourceNodeId": "ifft",
-            "sourcePortId": "time",
-            "anchorDestNodeId": "volumeMultiply",
-            "anchorDestPortId": "right",
-            "label": "Spy 5",
-            "tapPosition": 0.70364,
-            "railOrder": 4
-        },
-        {
             "id": "probe5",
             "sourceNodeId": "volumeMultiply",
             "sourcePortId": "out",
@@ -1262,7 +1252,7 @@
             "anchorDestNodeId": "phaseOp2",
             "anchorDestPortId": "right",
             "label": "Spy 8",
-            "tapPosition": 0.52606,
+            "tapPosition": 0.52166,
             "railOrder": 7
         }
     ],

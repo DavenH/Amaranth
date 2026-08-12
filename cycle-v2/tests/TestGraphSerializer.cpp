@@ -45,6 +45,34 @@ File contentPreset(const String& name) {
   #endif
 }
 
+bool hasGuideEdge(
+        const NodeGraph& graph,
+        const String& source,
+        const String& destination,
+        const String& port) {
+    return std::any_of(graph.getEdges().begin(), graph.getEdges().end(),
+            [&](const Edge& edge) {
+                return edge.sourceNodeId == source
+                        && edge.sourcePortId == "guide"
+                        && edge.destNodeId == destination
+                        && edge.destPortId == port
+                        && edge.isProcessingAttachment();
+            });
+}
+
+size_t preparedGuideAssignmentCount(const GraphCompileResult& compiled) {
+    size_t result {};
+    for (const auto& step : compiled.plan.steps) {
+        const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+                step.configuration.value);
+        if (configuration != nullptr) {
+            result += configuration->guideAssignmentCount;
+        }
+    }
+
+    return result;
+}
+
 }
 
 TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
@@ -422,6 +450,7 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
   #if defined(CYCLE_V2_SOURCE_DIR)
     Array<File> graphs {
             contentPreset("african-horn.cyclegraph"),
+            contentPreset("alto-sax.cyclegraph"),
             contentPreset("baroque-flute.cyclegraph"),
             contentPreset("stengah.cyclegraph"),
             resource("default.cyclegraph"),
@@ -540,6 +569,21 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
             });
     REQUIRE(directTimePath != loaded.graph.getEdges().end());
 
+    const auto guideEdges = std::count_if(
+            loaded.graph.getEdges().begin(),
+            loaded.graph.getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "guide1"
+                        && edge.sourcePortId == "guide"
+                        && edge.destNodeId == "timeLayer2"
+                        && edge.isProcessingAttachment();
+            });
+    REQUIRE(guideEdges == 2);
+    for (const int cube : { 2, 3 }) {
+        const String destination = "guide.cube." + String(cube) + ".phase";
+        REQUIRE(hasGuideEdge(loaded.graph, "guide1", "timeLayer2", destination));
+    }
+
     const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
     REQUIRE(compiled.succeeded());
     const GraphAudioResult audio = GraphAudioExecutor().process(
@@ -570,47 +614,55 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
   #if defined(CYCLE_V2_SOURCE_DIR)
     const NodeGraph graph = GraphSerializer().fromJsonString(
             contentPreset("baroque-flute.cyclegraph").loadFileAsString());
-    const auto hasGuideEdge = [&graph](const String& source,
-                                      const String& destination,
-                                      const String& port) {
-        return std::any_of(graph.getEdges().begin(), graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return edge.sourceNodeId == source
-                            && edge.sourcePortId == "guide"
-                            && edge.destNodeId == destination
-                            && edge.destPortId == port
-                            && edge.isProcessingAttachment();
-                });
-    };
-
     for (const int cube : { 1, 3, 4, 5, 6 }) {
         REQUIRE(hasGuideEdge(
-                "guide2", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
+                graph, "guide2", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
     }
     for (const int cube : { 1, 4 }) {
         REQUIRE(hasGuideEdge(
-                "guide4", "magnitudeLayer2", "guide.cube." + String(cube) + ".amp"));
+                graph, "guide4", "magnitudeLayer2", "guide.cube." + String(cube) + ".amp"));
     }
     for (const int cube : { 0, 2 }) {
         REQUIRE(hasGuideEdge(
-                "guide1", "magnitudeLayer3", "guide.cube." + String(cube) + ".time"));
+                graph, "guide1", "magnitudeLayer3", "guide.cube." + String(cube) + ".time"));
     }
     for (const int cube : { 0, 1 }) {
         REQUIRE(hasGuideEdge(
-                "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
+                graph, "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
     }
 
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
-    size_t preparedAssignments {};
-    for (const auto& step : compiled.plan.steps) {
-        const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
-                step.configuration.value);
-        if (configuration != nullptr) {
-            preparedAssignments += configuration->guideAssignmentCount;
-        }
+    REQUIRE(preparedGuideAssignmentCount(compiled) == 11);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Alto Sax preserves every authored guide assignment",
+          "[cycle-v2][graph][presets][guides]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const NodeGraph graph = GraphSerializer().fromJsonString(
+            contentPreset("alto-sax.cyclegraph").loadFileAsString());
+    REQUIRE(hasGuideEdge(graph, "guide3", "timeLayer1", "guide.cube.2.phase"));
+    REQUIRE(hasGuideEdge(graph, "guide3", "timeLayer1", "guide.cube.3.phase"));
+    REQUIRE(hasGuideEdge(graph, "guide2", "timeLayer1", "guide.cube.3.amp"));
+    REQUIRE(hasGuideEdge(graph, "guide1", "timeLayer1", "guide.cube.4.amp"));
+    REQUIRE(hasGuideEdge(graph, "guide2", "timeLayer1", "guide.cube.5.amp"));
+    REQUIRE(hasGuideEdge(graph, "guide4", "magnitudeLayer1", "guide.cube.0.amp"));
+    REQUIRE(hasGuideEdge(graph, "guide3", "magnitudeLayer1", "guide.cube.2.phase"));
+    for (const int cube : { 3, 4, 5, 6, 7, 8, 9 }) {
+        REQUIRE(hasGuideEdge(
+                graph, "guide4", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
     }
-    REQUIRE(preparedAssignments == 11);
+    for (const int cube : { 10, 11, 12 }) {
+        REQUIRE(hasGuideEdge(
+                graph, "guide3", "magnitudeLayer1", "guide.cube." + String(cube) + ".phase"));
+    }
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(preparedGuideAssignmentCount(compiled) == 17);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

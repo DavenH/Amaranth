@@ -10,7 +10,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.panelCurveGuideSegmentCount",
+      "path": "expandedNodeControls.trimesh.panelGuideRailSegmentCount",
       "op": "greaterThan",
       "value": 0
     },
@@ -19,6 +19,11 @@
       "path": "expandedNodeControls.trimesh.panelAbsoluteSum",
       "op": "greaterThan",
       "value": 1.0
+    },
+    {
+      "command": "screenshot",
+      "area": "window",
+      "path": "/private/tmp/cycle-v2-african-horn-guide-tags.png"
     },
     {
       "command": "waitForIdle",

@@ -1151,7 +1151,8 @@ Acceptance:
 Current inspection fixtures:
 
 - `content/presets/baroque-flute.cyclegraph`,
-  `content/presets/african-horn.cyclegraph`, and
+  `content/presets/african-horn.cyclegraph`,
+  `content/presets/alto-sax.cyclegraph`, and
   `content/presets/stengah.cyclegraph` preserve the Cycle 1 mesh, curve,
   envelope, modulation, and effect-editor state in native Cycle 2 preset files.
 - Supported fixed-flow processing is expressed with native source, transform,
@@ -1169,7 +1170,10 @@ Current inspection fixtures:
 - Pitch profile, scratch-channel selection, voice-context modulation defaults,
   and stereo spectral-layer pan are designed separately in
   `cycle-v2-voice-context-and-layer-routing.md`.
-- `cycle-v2-agent-ported-presets.json` opens all three preset files and asserts
+- `port_cycle_v1_preset.py` translates Cycle 1's migrated canonical JSON into
+  native graph ownership and routing. It preserves mesh and curve data rather
+  than reimplementing their evaluation behavior.
+- `cycle-v2-agent-ported-presets.json` opens all four preset files and asserts
   their graph identity, successful compilation, and guide-control refresh when
   the same editor identity is reused across files. General Cycle 1 preset import
   remains an incomplete Milestone 9 item.

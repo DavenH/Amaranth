@@ -48,7 +48,7 @@
     {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 13
+      "equals": 14
     },
     {
       "command": "assertState",
@@ -70,6 +70,42 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.firstControl",
       "equals": 0.0
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/alto-sax.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 20
+    },
+    {
+      "command": "assertState",
+      "path": "edgeCount",
+      "equals": 33
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelGuideRailSegmentCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "window",
+      "path": "/private/tmp/cycle-v2-alto-sax-guides.png"
     },
     {
       "command": "openGraph",
