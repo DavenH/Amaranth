@@ -1,6 +1,6 @@
 # UI Bug Notes
 
-## Open: Envelope native curve-hover fixture misses its sampled curve
+## Resolved: Envelope native curve-hover fixture misses its sampled curve
 
 Context:
 
@@ -12,8 +12,17 @@ Context:
   host geometry exists.
 - Repro command: `scripts/test_cycle_v2_native_edit_smoke.py envelope`.
 
-Current status: open; stabilize or correct the fixture's curve-point selection
-against the shared reshape hit-test radius.
+Resolution:
+
+- The fixture now searches the published display-space waveform for a sample
+  that enters the real shared reshape-hover state and has an unclamped control.
+- It asserts cursor entry and exit, exact control mutation, visible movement in
+  the pointer direction, model publication, and exact undo.
+- The focused Envelope sequence completes those interaction assertions; its
+  only remaining failure is the separately recorded asynchronous audio-capture
+  issue at the final downstream check.
+
+Current status: resolved on 2026-08-12.
 
 ## Resolved: Envelope purpose selector inspection crashed before panel hosting
 
@@ -37,7 +46,7 @@ Resolution:
 
 Current status: resolved on 2026-08-12.
 
-## Open: GuideCurveOffsetSeeds vertical seed contract fails
+## Resolved: GuideCurveOffsetSeeds vertical seed contract fails
 
 Context:
 
@@ -49,8 +58,16 @@ Context:
 - A focused rerun failed identically. The modulation work does not modify
   rasterizer seed storage or guide-curve rasterization.
 
-Current status: open; reconcile the paired seed test contract with the current
-`GuideCurveOffsetSeeds` representation.
+Resolution:
+
+- The deterministic-seed migration replaced a counting test RNG but
+  accidentally retained two exact values produced only by that old fake.
+- The ownership test now checks the actual storage contract: every derived
+  phase/vertical pair is bounded, unused and out-of-range slots are zero, and
+  reset clears both arrays. Existing semantic-identity coverage continues to
+  require reproducibility and distinct visualization/voice seeds.
+
+Current status: resolved on 2026-08-12.
 
 ## Open: Cycle v2 automation launch emits Settings assertions
 
