@@ -695,7 +695,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
 
     Effect2DWidget widget(NodeKind::Envelope);
     widget.syncFromNode(*graph.findNode("env"));
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
     auto panelState = widget.automationState();
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
+    REQUIRE_FALSE((bool) panelState.getProperty("hasDisplayCoordinates", {}));
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
 
@@ -705,6 +708,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
+    panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("hasDisplayCoordinates", {}));
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");

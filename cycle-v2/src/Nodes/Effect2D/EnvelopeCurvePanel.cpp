@@ -440,14 +440,20 @@ public:
             Array<var> waveformPoints;
             const Buffer<Float32> waveX = snapshot.waveX();
             const Buffer<Float32> waveY = snapshot.waveY();
+            const bool hasDisplayCoordinates = zoomPanel != nullptr
+                    && getWidth() > 0
+                    && getHeight() > 0;
             for (int index = 0; index < jmin(waveX.size(), waveY.size()); ++index) {
                 auto* point = new DynamicObject();
                 point->setProperty("x", waveX[index]);
                 point->setProperty("y", waveY[index]);
-                point->setProperty("displayX", sx(waveX[index]) / getWidth());
-                point->setProperty("displayY", sy(waveY[index]) / getHeight());
+                if (hasDisplayCoordinates) {
+                    point->setProperty("displayX", sx(waveX[index]) / getWidth());
+                    point->setProperty("displayY", sy(waveY[index]) / getHeight());
+                }
                 waveformPoints.add(point);
             }
+            root->setProperty("hasDisplayCoordinates", hasDisplayCoordinates);
             root->setProperty("waveformPoints", waveformPoints);
         }
 

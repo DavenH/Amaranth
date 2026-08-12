@@ -1,20 +1,41 @@
 # UI Bug Notes
 
-## Open: Envelope purpose selector test segfaults after its assertions
+## Open: Envelope native curve-hover fixture misses its sampled curve
+
+Context:
+
+- The focused Envelope native edit sequence on 2026-08-12 initialized the
+  panel and published valid display-space waveform coordinates, but moving to
+  its selected sample did not set `curveHover` or the resize cursor.
+- The fixture stopped before editing. This is incidental to the pre-host
+  automation inspection fix, which only omits display coordinates while no
+  host geometry exists.
+- Repro command: `scripts/test_cycle_v2_native_edit_smoke.py envelope`.
+
+Current status: open; stabilize or correct the fixture's curve-point selection
+against the shared reshape hit-test radius.
+
+## Resolved: Envelope purpose selector inspection crashed before panel hosting
 
 Context:
 
 - Repository-wide CTest on 2026-08-12 failed
   `Envelope purpose selector publishes bipolar pitch presentation` at
-  `cycle-v2/tests/TestNodeEditorHost.cpp:694` with `SIGSEGV` after three of its
-  four assertions passed.
-- A focused rerun reproduces the same crash. This is incidental to the shared
-  trilinear dimension-order fix, which does not touch Envelope editor hosting.
-- Repro output is recorded in
-  `build/tests/Testing/Temporary/LastTest.log`.
+  `cycle-v2/tests/TestNodeEditorHost.cpp:694` with `SIGSEGV`.
+- LLDB located the crash in `EnvelopeCurvePanel::automationState()`: it called
+  `Panel::sx()` while the intentionally deferred panel host had not created a
+  `ZoomPanel` or supplied component bounds.
 
-Current status: open; inspect teardown/lifetime ownership in the Envelope
-purpose selector fixture.
+Resolution:
+
+- Pre-host automation inspection now publishes model-space waveform points and
+  explicitly reports that display coordinates are unavailable. Once the host
+  is initialized, normalized display coordinates are published as before.
+- Regression assertions cover both lifecycle states and prove that inspection
+  does not force host creation. The focused test completes all 70 assertions
+  and exits cleanly.
+
+Current status: resolved on 2026-08-12.
 
 ## Open: GuideCurveOffsetSeeds vertical seed contract fails
 
