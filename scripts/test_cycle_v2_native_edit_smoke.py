@@ -374,6 +374,22 @@ class NativeEditSmoke:
         }
 
     @staticmethod
+    def displayed_y_at_x(points, x, y_key):
+        ordered = sorted(points, key=lambda point: point["x"])
+        before = max(
+            (point for point in ordered if point["x"] <= x),
+            key=lambda point: point["x"],
+        )
+        after = min(
+            (point for point in ordered if point["x"] >= x),
+            key=lambda point: point["x"],
+        )
+        if after["x"] == before["x"]:
+            return before[y_key]
+        portion = (x - before["x"]) / (after["x"] - before["x"])
+        return before[y_key] + portion * (after[y_key] - before[y_key])
+
+    @staticmethod
     def assert_trimesh_slice(state, context):
         trimesh = state["trimesh"]
         assert trimesh["sliceSampleCount"] > 1, (context, trimesh)
@@ -833,16 +849,12 @@ class NativeEditSmoke:
             )
 
         vertex_point = panel_position(intercept["x"], intercept["y"])
-        curve_point = max(
+        candidates = sorted(
             (
                 point
                 for point in panel_state["waveformPoints"]
-                if (0.05 < (point["x"] - zoom["x"]) / zoom["w"] < 0.95
-                        and 0.05 < (point["y"] - zoom["y"]) / zoom["h"] < 0.95
-                        and min(
-                            panel_state["intercepts"],
-                            key=lambda candidate: abs(candidate["x"] - point["x"]),
-                        )["curve"] < 0.9)
+                if (0.05 < point["displayX"] < 0.95
+                        and 0.05 < point["displayY"] < 0.95)
             ),
             key=lambda point: min(
                 (point["x"] - candidate["x"]) ** 2
@@ -850,19 +862,22 @@ class NativeEditSmoke:
                 for candidate in panel_state["intercepts"]
             ),
         )
-        control = max(
-            (
-                candidate
-                for candidate in panel_state["intercepts"]
-                if candidate["x"] <= curve_point["x"]
-            ),
-            key=lambda candidate: candidate["x"],
-        )
-        curve_source = self.point(panel, curve_point["displayX"], curve_point["displayY"])
-        self.move_pointer((1, 1))
-        self.move_pointer(curve_source)
-        curve_hover = self.inspect("env")["effect2D"]["panelState"]
-        assert curve_hover["curveHover"], curve_hover
+        curve_hover = None
+        for curve_point in candidates:
+            curve_source = self.point(panel, curve_point["displayX"], curve_point["displayY"])
+            self.move_pointer((1, 1))
+            self.move_pointer(curve_source)
+            candidate_hover = self.inspect("env")["effect2D"]["panelState"]
+            if not candidate_hover["curveHover"]:
+                continue
+
+            control = candidate_hover["currentVertex"]
+            if (control["curve"] < 0.9
+                    and abs(control["y"] - curve_point["y"]) > 0.06):
+                curve_hover = candidate_hover
+                break
+
+        assert curve_hover is not None, panel_state
         self.cursor_until("upDownResize")
 
         self.move_pointer((1, 1))
@@ -882,18 +897,37 @@ class NativeEditSmoke:
         self.drag(curve_source, curve_destination, steps=12, step_wait_ms=6)
         curve_after = self.inspect_until(
             "env",
-            lambda inspected: self.model_revision(inspected) > curve_revision,
+            lambda inspected: self.model_revision(inspected) > curve_revision
+            and abs(min(
+                inspected["effect2D"]["panelState"]["intercepts"],
+                key=lambda candidate: abs(candidate["x"] - control["x"]),
+            )["curve"] - control["curve"]) > 0.01,
         )
         assert curve_after["model"]["state"] != curve_before_state
-        moved_curve_point = min(
-            curve_after["effect2D"]["panelState"]["waveformPoints"],
-            key=lambda point: abs(point["x"] - curve_point["x"]),
+        reshaped_control = min(
+            curve_after["effect2D"]["panelState"]["intercepts"],
+            key=lambda candidate: abs(candidate["x"] - control["x"]),
+        )
+        assert abs(reshaped_control["curve"] - control["curve"]) > 0.01, (
+            control,
+            reshaped_control,
         )
         pointer_delta = curve_destination[1] - curve_source[1]
-        rendered_delta = moved_curve_point["displayY"] - curve_point["displayY"]
+        rendered_before = self.displayed_y_at_x(
+            panel_state["waveformPoints"], curve_point["x"], "displayY"
+        )
+        rendered_after = self.displayed_y_at_x(
+            curve_after["effect2D"]["panelState"]["waveformPoints"],
+            curve_point["x"],
+            "displayY",
+        )
+        rendered_delta = rendered_after - rendered_before
         assert pointer_delta * rendered_delta > 0, (
             curve_point,
-            moved_curve_point,
+            control,
+            reshaped_control,
+            rendered_before,
+            rendered_after,
             curve_source,
             curve_destination,
         )
@@ -1095,13 +1129,23 @@ class NativeEditSmoke:
         )
         assert self.trimesh_model(curve_after) != curve_before
         curve_after_model = self.trimesh_model(curve_after)
-        moved_curve_point = min(
-            curve_after["trimesh"]["panelDisplayedCurvePoints"],
-            key=lambda point: abs(point["x"] - curve_point["x"]),
+        rendered_before = self.displayed_y_at_x(
+            state["trimesh"]["panelDisplayedCurvePoints"],
+            curve_point["x"],
+            "y",
         )
-        assert abs(moved_curve_point["y"] - control["y"]) < abs(
-            curve_point["y"] - control["y"]
-        ), (curve_point, moved_curve_point, control)
+        rendered_after = self.displayed_y_at_x(
+            curve_after["trimesh"]["panelDisplayedCurvePoints"],
+            curve_point["x"],
+            "y",
+        )
+        pointer_delta = curve_destination[1] - curve_source[1]
+        assert pointer_delta * (rendered_after - rendered_before) > 0, (
+            curve_point,
+            rendered_before,
+            rendered_after,
+            control,
+        )
         self.key_chord("z")
         curve_undone = self.inspect_until(
             "waveMesh",

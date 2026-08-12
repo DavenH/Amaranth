@@ -3,9 +3,10 @@
 class CurveReshapeStrategy {
 public:
     static float sharpnessDelta(
+            float gestureStartY,
             float previousPointerY,
             float currentPointerY,
-            float curvePole,
+            float controlY,
             float verticalZoom,
             float dragScale,
             float curveScaleY);

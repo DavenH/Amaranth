@@ -33,8 +33,7 @@ There must be no per-editor gesture-polarity policy.
   action selection, pointer-to-panel coordinate conversion, and drag capture.
 - `lib/src/Curve/Curve.cpp` and the rasterizer snapshot are authoritative for
   curve evaluation. `TransformParameters::ypole` is raster transform metadata;
-  the mature Cycle v1 reshape uses it as the prepared curve's shared response
-  direction, never as a client-specific gesture policy.
+  it must not become input-gesture policy.
 - JUCE component targeting is authoritative for enter, exit, move, drag
   capture, and choosing the cursor of the component under the pointer.
 - Existing Cycle v2 command dispatchers remain authoritative for transient
@@ -106,6 +105,10 @@ The retained event traces established two independent association defects:
   already records the exact `Curve::waveIdx` at which each rendered curve
   starts, so the hit segment can resolve its authoritative owning curve
   directly without inferring ownership from pointer position.
+- Trimesh retained vertices carry corner coordinates, not the reduced
+  intercept coordinates visible in the 2D slice. Reshape direction therefore
+  uses the already-selected reduced intercept, while retained-vertex selection
+  remains the domain translation performed by `setExtraElements`.
 
 The shared implementation now preserves the prepared snapshot geometry and
 uses the hit waveform sample to resolve the curve owner. Flat curves retain
@@ -120,11 +123,17 @@ publish increasing `waveIdx` boundaries. No editor-specific polarity is used.
 2. resolve the controlling curve geometry in canonical panel/model space;
 3. update selection framing;
 4. ask the existing domain hook for the vertices affected by the edit;
-5. calculate one signed sharpness delta from pointer movement and the hit
-   curve's prepared Cycle v1 response direction;
+5. calculate one signed sharpness delta from pointer movement and the shared
+   gesture-start relationship to the selected control intercept;
 6. constrain and mutate the affected `Vertex::Curve` values;
 7. notify selection listeners and mark the mesh changed only when a retained
    value actually changed.
+
+The curve segment under the pointer and the curve centered on the selected
+control are separate identities. The sampled waveform owner is authoritative
+for hit testing and hover. Reshape scale is resolved from the selected control's
+nearest intercept plus rasterizer padding, preserving the mature Cycle v1 curve
+identity when a sampled segment is owned by its adjacent curve.
 
 Existing domain variation may remain behind existing domain hooks:
 
@@ -234,9 +243,9 @@ This TDD could not be marked
 ## Implementation Review
 
 - `Interactor2D` is the only 2D `doReshapeCurve` implementation. It owns
-  selection framing, domain vertex resolution, the mature Cycle v1 prepared
-  curve response calculation, clamping, listener notification, and change
-  marking.
+  selection framing, domain vertex resolution, the shared gesture-start
+  relationship to the selected reduced control intercept, clamping, listener
+  notification, and change marking.
 - `CurveReshapeStrategy` is a small pure calculation seam used by that shared
   sequence and covered for upward, downward, reverse, stationary, scaled, and
   clamped edits.

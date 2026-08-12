@@ -373,10 +373,17 @@ void Interactor2D::commitPath(const MouseEvent& e) {
 void Interactor2D::doReshapeCurve(const MouseEvent&) {
     auto snapshot = rasterizerSnapshot();
 
-    const int curveIndex = getStateValue(CurrentCurve);
-    if (state.currentVertex == nullptr
-            || curveIndex < 0
-            || curveIndex >= (int) snapshot.curves().size()) {
+    if (state.currentVertex == nullptr) {
+        return;
+    }
+
+    const int curveIndex = state.currentIcpt >= 0
+            ? state.currentIcpt + snapshot.paddingSize()
+            : curveIndexForClosestIntercept(
+                    snapshot.intercepts(),
+                    state.currentVertex->values[dims.x],
+                    snapshot.paddingSize());
+    if (curveIndex < 0 || curveIndex >= (int) snapshot.curves().size()) {
         return;
     }
 
@@ -384,6 +391,10 @@ void Interactor2D::doReshapeCurve(const MouseEvent&) {
 
     const vector<Curve>& curves = snapshot.curves();
     const Curve& curve = curves[(size_t) curveIndex];
+    const float controlY = state.currentIcpt >= 0
+            && state.currentIcpt < (int) snapshot.intercepts().size()
+            ? snapshot.intercepts()[(size_t) state.currentIcpt].y
+            : state.currentVertex->values[dims.y];
 
     {
         ScopedLock sl(vertexLock);
@@ -402,9 +413,10 @@ void Interactor2D::doReshapeCurve(const MouseEvent&) {
     const Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
     const float dragScale = getDragMovementScale(state.currentCube);
     const float delta = CurveReshapeStrategy::sharpnessDelta(
+            state.start.y,
             state.lastMouse.y,
             state.currentMouse.y,
-            (float) curve.tp.ypole,
+            controlY,
             panel->getZoomPanel()->rect.h,
             dragScale,
             curve.tp.scaleY);
