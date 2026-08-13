@@ -73,7 +73,7 @@ Resolution:
 
 Current status: resolved on 2026-08-12.
 
-## Open: Cycle v2 automation launch emits Settings assertions
+## Resolved: Cycle v2 automation launch emits Settings assertions
 
 Context:
 
@@ -90,8 +90,18 @@ Context:
   `/private/tmp/cycle-v2-modulation-triple-logs.txt`, plus
   `/private/tmp/cycle-v2-voice-context-length-logs.txt`.
 
-Current status: open; inspect the settings property access performed during
-standalone initialization.
+Resolution:
+
+- Cycle v2 owns an in-memory `Settings` instance for canvas defaults but does
+  not configure legacy properties-file persistence.
+- `Settings::~Settings()` nevertheless called `writePropertiesFile()`, whose
+  old implementation asserted that both a configured file and property XML
+  existed. The write now treats absent persistence configuration as the
+  intentional transient-settings lifecycle and returns without touching disk.
+- The Modulation source and EQ editor standalone fixtures now exit without
+  `Settings.cpp` assertions.
+
+Current status: resolved on 2026-08-12.
 
 ## Resolved: Cycle v2 full suite emits JUCE Component assertions
 
@@ -166,7 +176,7 @@ Context:
 
 Current status: open; failures reproduced in the existing full test binary.
 
-## Open: default Cycle v2 launch asserts while creating Effect2D widgets
+## Resolved: default Cycle v2 launch asserts while creating Effect2D widgets
 
 Context:
 
@@ -174,7 +184,17 @@ Context:
 - The assertion is incidental to the EQ/Reverb/Delay popup work; the EQ editor state and response preview were produced successfully.
 - Repro artifacts: `/private/tmp/cycle-v2-eq-editor-report.json` and `/private/tmp/cycle-v2-eq-editor-logs.txt`.
 
-Current status: open.
+Resolution:
+
+- The original `Effect2DWidget` assertion no longer reproduces on the current
+  shared curve-panel architecture. The constructor now receives only supported
+  Envelope, Guide Curve, Impulse Response, and Waveshaper kinds.
+- Re-running the EQ editor fixture reproduced only the shared transient
+  `Settings` shutdown assertions recorded above. With that lifecycle fixed,
+  current Modulation and EQ launches contain neither `Effect2DWidget` nor JUCE
+  assertion failures.
+
+Current status: resolved on 2026-08-12.
 ## Open: Stengah magnitude-pan preset expectation has drifted
 
 Context:
