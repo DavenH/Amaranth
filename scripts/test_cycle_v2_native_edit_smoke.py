@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import math
 import os
 import socket
 import subprocess
@@ -365,6 +366,49 @@ class NativeEditSmoke:
     @staticmethod
     def trimesh_model(state):
         return state["model"]["mesh"]
+
+    @staticmethod
+    def assert_serialized_mesh_equal(expected, actual, path="mesh"):
+        if isinstance(expected, dict):
+            assert isinstance(actual, dict), (path, expected, actual)
+            assert actual.keys() == expected.keys(), (
+                path,
+                sorted(expected.keys()),
+                sorted(actual.keys()),
+            )
+            for key, value in expected.items():
+                NativeEditSmoke.assert_serialized_mesh_equal(
+                    value,
+                    actual[key],
+                    f"{path}.{key}",
+                )
+            return
+
+        if isinstance(expected, list):
+            assert isinstance(actual, list), (path, expected, actual)
+            assert len(actual) == len(expected), (path, len(expected), len(actual))
+            for index, value in enumerate(expected):
+                NativeEditSmoke.assert_serialized_mesh_equal(
+                    value,
+                    actual[index],
+                    f"{path}[{index}]",
+                )
+            return
+
+        if isinstance(expected, float):
+            assert isinstance(actual, (int, float)) and not isinstance(actual, bool), (
+                path,
+                expected,
+                actual,
+            )
+            assert math.isclose(expected, float(actual), rel_tol=0.0, abs_tol=1.0e-5), (
+                path,
+                expected,
+                actual,
+            )
+            return
+
+        assert actual == expected, (path, expected, actual)
 
     @staticmethod
     def selected_vertex_parameters(state):
@@ -1428,7 +1472,7 @@ class NativeEditSmoke:
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
         reloaded_topology = self.trimesh_model(reloaded_state)
-        assert reloaded_topology == topology, (topology, reloaded_topology)
+        self.assert_serialized_mesh_equal(topology, reloaded_topology)
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")

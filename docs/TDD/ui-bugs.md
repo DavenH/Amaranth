@@ -210,7 +210,7 @@ Context:
 Current status: open; decide whether the bundled preset or the canonical preset
 assertion owns the intended authored pan, then update the losing authority.
 
-## Open: Trimesh native smoke compares serialized floats exactly
+## Resolved: Trimesh native smoke compares serialized floats exactly
 
 Context:
 
@@ -223,8 +223,29 @@ Context:
   `trimesh-versioning` sequence, including an immediate second drag after graph
   publication, passes.
 
-Current status: open; compare serialized Trimesh float fields with an explicit
-tolerance while retaining exact topology and guide-assignment checks.
+Resolution:
+
+- The persistence assertion now recursively requires the same object keys,
+  list order and lengths, integer identities, cube vertex IDs, and guide
+  assignments.
+- Floating-point fields alone use an absolute tolerance of `1e-5`, matching
+  the graph serialization precision without weakening topology coverage.
+
+Current status: resolved on 2026-08-12.
+
+## Open: Trimesh native smoke second vertex addition does not commit
+
+Context:
+
+- While verifying the tolerant persistence comparison on 2026-08-12, the full
+  `trimesh` native sequence reached its post-deletion right-click insertion but
+  the vertex count did not increase.
+- The sequence had already completed curve reshape, cube addition, collision
+  rejection, repeated vertex movement, parameter editing, and deletion.
+- Repro command: `scripts/test_cycle_v2_native_edit_smoke.py trimesh`.
+
+Current status: open; determine whether the fixture targets stale/model-space
+intercepts after deletion or whether right-click insertion regressed.
 
 ## Open: native downstream fixtures can sample incomplete asynchronous state
 
