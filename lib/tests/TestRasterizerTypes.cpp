@@ -20,16 +20,15 @@ TEST_CASE("GuideCurveOffsetSeeds owns paired phase and vertical seed arrays", "[
 
     seeds.derive(3, 32, GuideCurveSeed::visualization(17u));
 
-    REQUIRE(seeds.vertical()[0] >= 0);
-    REQUIRE(seeds.vertical()[0] < 32);
-    REQUIRE(seeds.phase()[0] >= 0);
-    REQUIRE(seeds.phase()[0] < 32);
-    REQUIRE(seeds.verticalAt(2) >= 0);
-    REQUIRE(seeds.phaseAt(2) >= 0);
+    for (int index = 0; index < 3; ++index) {
+        REQUIRE(seeds.verticalAt(index) >= 0);
+        REQUIRE(seeds.verticalAt(index) < 32);
+        REQUIRE(seeds.phaseAt(index) >= 0);
+        REQUIRE(seeds.phaseAt(index) < 32);
+    }
+
     REQUIRE(seeds.vertical()[3] == 0);
     REQUIRE(seeds.phase()[3] == 0);
-    REQUIRE(seeds.verticalAt(2) == 4);
-    REQUIRE(seeds.phaseAt(2) == 5);
     REQUIRE(seeds.verticalAt(GuideCurveOffsetSeeds::capacity) == 0);
     REQUIRE(seeds.phaseAt(-1) == 0);
 

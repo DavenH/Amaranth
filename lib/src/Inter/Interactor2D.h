@@ -26,4 +26,11 @@ public:
     void mouseDoubleClick (const MouseEvent& e) override;
     virtual void setExtraElements(float x);
     virtual float getCurveProximityThreshold() const { return 7.f; }
+
+private:
+    int curveIndexForClosestIntercept(
+            const std::vector<Intercept>& intercepts,
+            float x,
+            int paddingSize) const;
+    int curveIndexForWaveIndex(const std::vector<Curve>& curves, int waveIndex) const;
 };

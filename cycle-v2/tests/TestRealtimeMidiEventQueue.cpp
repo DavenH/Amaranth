@@ -25,13 +25,43 @@ TEST_CASE("Realtime MIDI queue preserves supported event data and source",
     REQUIRE(event.data1 == 64);
     REQUIRE(event.data2 == 101);
     REQUIRE(event.timestampSeconds == 12.5);
+    const uint32_t noteLifecycleSeed = event.lifecycleSeed;
 
     REQUIRE(queue.dequeue(event));
     REQUIRE(event.kind == RealtimeMidiEvent::Kind::Controller);
     REQUIRE(event.source == MidiEventSource::Hardware);
     REQUIRE(event.data1 == 1);
     REQUIRE(event.data2 == 93);
+    REQUIRE(event.lifecycleSeed != noteLifecycleSeed);
     REQUIRE_FALSE(queue.dequeue(event));
+}
+
+TEST_CASE("Realtime MIDI retriggers receive distinct clock-scoped lifecycle seeds",
+        "[cycle-v2][midi][realtime][guide]") {
+    RealtimeMidiEventQueue queue;
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::Hardware,
+            42.25));
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::Hardware,
+            42.25));
+
+    RealtimeMidiEvent first;
+    RealtimeMidiEvent retrigger;
+    REQUIRE(queue.dequeue(first));
+    REQUIRE(queue.dequeue(retrigger));
+    REQUIRE(first.lifecycleSeed != retrigger.lifecycleSeed);
+
+    RealtimeMidiEventQueue laterQueue;
+    REQUIRE(laterQueue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::Hardware,
+            42.5));
+    RealtimeMidiEvent later;
+    REQUIRE(laterQueue.dequeue(later));
+    REQUIRE(later.lifecycleSeed != first.lifecycleSeed);
 }
 
 TEST_CASE("Realtime MIDI queue overflow requests source-scoped recovery",

@@ -11,6 +11,8 @@
 #include "../src/Nodes/Effect2D/Effect2DWidget.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 #include "../src/Nodes/Effects/EffectPreviewRenderer.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "../src/Nodes/Trimesh/TrimeshWidget.h"
 #include "../src/Nodes/Unison/UnisonNode.h"
 #include "../src/UI/NodeCanvasAutomationController.h"
 #include "../src/UI/NodeCanvasAutomationInspector.h"
@@ -157,12 +159,22 @@ public:
 class NullResources final : public NodeEditorResources {
 public:
     Effect2DWidget* effect2DWidget(const Node&) override { return nullptr; }
-    TrimeshWidget* trimeshWidget(const Node&) override { return nullptr; }
+    TrimeshWidget* trimeshWidget(const Node& node) override {
+        ++synchronizingTrimeshLookups;
+        if (activeTrimesh != nullptr) {
+            activeTrimesh->syncFromNode(node);
+        }
+        return activeTrimesh;
+    }
+    TrimeshWidget* findTrimeshWidget(const String&) override { return activeTrimesh; }
     TrimeshRenderProfile trimeshRenderProfile(const Node&) const override {
         return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
+
+    TrimeshWidget* activeTrimesh {};
+    int synchronizingTrimeshLookups {};
 };
 
 TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
@@ -518,17 +530,22 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     const Array<var>* targets = pointerObject->getProperty("targets").getArray();
     REQUIRE(targets != nullptr);
 
-    auto hasTarget = [targets](const String& id) {
-        return std::any_of(targets->begin(), targets->end(), [&](const var& targetValue) {
+    auto targetWithId = [targets](const String& id) -> const DynamicObject* {
+        const auto match = std::find_if(targets->begin(), targets->end(), [&](const var& targetValue) {
             const auto* target = targetValue.getDynamicObject();
             return target != nullptr && target->getProperty("id").toString() == id;
         });
+        return match != targets->end() ? match->getDynamicObject() : nullptr;
     };
 
-    REQUIRE(hasTarget("node:mesh"));
-    REQUIRE(hasTarget("expanded:mesh.panel3D"));
-    REQUIRE(hasTarget("expanded:mesh.trimeshMorphRail.yellow"));
-    REQUIRE(hasTarget("expanded:mesh.trimeshVertexParameter.vertex.phase"));
+    REQUIRE(targetWithId("node:mesh") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.panel3D") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
+    REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
+    const DynamicObject* expandedTarget = targetWithId("expanded:mesh");
+    REQUIRE(expandedTarget != nullptr);
+    REQUIRE_FALSE((bool) expandedTarget->getProperty("nativeReady"));
+    REQUIRE(expandedTarget->getProperty("screenBounds").isVoid());
 
     const var snapshot = inspector.exportState(state);
     const auto* snapshotObject = snapshot.getDynamicObject();
@@ -678,7 +695,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
 
     Effect2DWidget widget(NodeKind::Envelope);
     widget.syncFromNode(*graph.findNode("env"));
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
     auto panelState = widget.automationState();
+    REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
+    REQUIRE_FALSE((bool) panelState.getProperty("hasDisplayCoordinates", {}));
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
 
@@ -688,6 +708,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
+    panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("hasDisplayCoordinates", {}));
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
@@ -1091,6 +1113,60 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh drag publishes successive active-mesh snapshots without resynchronizing",
+        "[cycle-v2][editor][trimesh][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    TrimeshWidget widget;
+    widget.syncFromNode(*document.graph().findNode("mesh"));
+    resources.activeTrimesh = &widget;
+
+    const auto durableModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(durableModel != nullptr);
+    const float originalAmp = durableModel->mesh().getVerts().front()->values[Vertex::Amp];
+
+    widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.05f;
+    commands.persistTrimeshMeshEdits("mesh", false);
+    const auto firstTransient = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            dispatcher.editingGraph().findNode("mesh")->model);
+    REQUIRE(firstTransient != nullptr);
+    REQUIRE(firstTransient->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp + 0.05f));
+    REQUIRE(document.graph().findNode("mesh")->model->revision() == durableModel->revision());
+
+    widget.currentMesh().getVerts().front()->values[Vertex::Amp] = originalAmp + 0.1f;
+    commands.persistTrimeshMeshEdits("mesh", true);
+    const auto committed = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(committed != nullptr);
+    REQUIRE(committed->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp + 0.1f));
+    REQUIRE(resources.synchronizingTrimeshLookups == 0);
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+
+    const auto restored = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+            document.graph().findNode("mesh")->model);
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->mesh().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(originalAmp));
 }
 
 TEST_CASE("Equalizer graph drag publishes frequency and gain as one undo transaction",

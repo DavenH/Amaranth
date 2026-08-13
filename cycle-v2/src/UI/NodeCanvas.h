@@ -158,7 +158,7 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    void updateHoverAt(juce::Point<float> position, juce::MouseInputSource source);
+    void updateHoverAt(juce::Point<float> position);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     void notifyOverlayPresentationChanged();
@@ -214,6 +214,7 @@ private:
 
     Effect2DWidget* effect2DWidget(const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
+    TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
     std::array<String, 6> trimeshGuideLabels(const Node& node) override;
     void paintNodePreview(

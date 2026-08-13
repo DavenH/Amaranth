@@ -12,6 +12,10 @@ void TrimeshGridwiseDsp::setGuideCurveProvider(GuideCurveProvider* provider) {
     blockwiseDsp.setGuideCurveProvider(provider);
 }
 
+void TrimeshGridwiseDsp::setVoiceLifecycleSeed(uint32_t seed) {
+    blockwiseDsp.setVoiceLifecycleSeed(seed);
+}
+
 void TrimeshGridwiseDsp::setFrequencyMidiNote(int midiNote) {
     blockwiseDsp.setFrequencyMidiNote(midiNote);
 }

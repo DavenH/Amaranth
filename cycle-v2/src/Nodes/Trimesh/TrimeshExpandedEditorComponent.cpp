@@ -20,7 +20,6 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
     widget.setExpandedPanelHostDelegate(this);
-    startTimerHz(30);
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
@@ -117,15 +116,17 @@ void TrimeshExpandedEditorComponent::resized() {
     updateControlsHost();
 }
 
+void TrimeshExpandedEditorComponent::mouseEnter(const MouseEvent& event) {
+    updateCursor(event.position);
+}
+
 void TrimeshExpandedEditorComponent::mouseMove(const MouseEvent& event) {
-    const MouseCursor cursor = cursorFor(event.position);
-    setMouseCursor(cursor);
-    auto source = event.source;
-    source.showMouseCursor(cursor);
+    updateCursor(event.position);
 }
 
 void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
-    if (closeButtonBounds().contains(event.position)) {
+    const Point<float> position = event.position;
+    if (closeButtonBounds().contains(position)) {
         if (delegate != nullptr) {
             delegate->closeTrimeshEditor();
         }
@@ -133,8 +134,8 @@ void TrimeshExpandedEditorComponent::mouseDown(const MouseEvent& event) {
     }
 
     controls.beginPointerInteraction(
-            event.position,
-            Rectangle<int>(localPointToGlobal(event.position.roundToInt()), { 1, 1 }));
+            position,
+            Rectangle<int>(localPointToGlobal(position.roundToInt()), { 1, 1 }));
 }
 
 void TrimeshExpandedEditorComponent::mouseDrag(const MouseEvent& event) {
@@ -219,14 +220,6 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
     }
 }
 
-void TrimeshExpandedEditorComponent::setTrimeshPanelCursor(const MouseCursor& cursor) {
-    setMouseCursor(cursor);
-}
-
-void TrimeshExpandedEditorComponent::handleMouseOutsideTrimeshPanels(Point<float> screenPosition) {
-    updateCursor(getLocalPoint(nullptr, screenPosition.roundToInt()).toFloat());
-}
-
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
     const Rectangle<float> panel = getLocalBounds().toFloat();
     return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, kHeaderHeight * 0.5f });
@@ -252,36 +245,6 @@ MouseCursor TrimeshExpandedEditorComponent::cursorFor(Point<float> position) {
 
 void TrimeshExpandedEditorComponent::updateCursor(Point<float> position) {
     setMouseCursor(cursorFor(position));
-}
-
-void TrimeshExpandedEditorComponent::timerCallback() {
-    if (!isShowing()) {
-        return;
-    }
-
-    const Point<int> desktopPosition = Desktop::getMousePosition();
-    if (desktopPosition == lastPolledMousePosition) {
-        return;
-    }
-    lastPolledMousePosition = desktopPosition;
-    const Point<float> position = getLocalPoint(
-            nullptr, desktopPosition).toFloat();
-    if (!getLocalBounds().toFloat().contains(position)) {
-        return;
-    }
-
-    for (Component* panel : {
-            widget.getExpandedPanel3DComponentIfCreated(),
-            widget.getExpandedPanel2DComponentIfCreated() }) {
-        if (panel != nullptr && panel->getBounds().toFloat().contains(position)) {
-            return;
-        }
-    }
-
-    const MouseCursor cursor = cursorFor(position);
-    setMouseCursor(cursor);
-    auto source = Desktop::getInstance().getMainMouseSource();
-    source.showMouseCursor(cursor);
 }
 
 void TrimeshExpandedEditorComponent::updatePanelHosts() {

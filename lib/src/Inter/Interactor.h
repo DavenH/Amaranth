@@ -88,7 +88,7 @@ public:
     void addToArray(const Array<Vertex*>& src, vector<VertexFrame>& dst);
     void addListener(InteractorListener* listener) { listeners.add(listener); }
     void removeListener(InteractorListener* listener) { listeners.remove(listener); }
-    void associateTo(Panel* panel);
+    void associateTo(Panel* panel, bool observeComponentInput = true);
     void clearSelectedAndCurrent();
     void clearSelectedAndRepaint();
     void copyVertexPositions();

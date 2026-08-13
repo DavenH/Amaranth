@@ -82,7 +82,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
     return *this;
 }
 
-void TrimeshNodeModel::syncFromNode(const Node& node) {
+bool TrimeshNodeModel::syncFromNode(const Node& node) {
     const NodeParameterMap parameters(node);
     const MorphPosition nextMorph {
             parameters.floatValue("yellow", 0.5f),
@@ -115,19 +115,29 @@ void TrimeshNodeModel::syncFromNode(const Node& node) {
     if (typedModel != nullptr
             && (typedModel != appliedModelState
                     || typedModel->revision() != appliedModelRevision)) {
-        mesh().deepCopy(&typedModel->mesh());
+        const bool meshReplaced = !mesh().equals(typedModel->mesh());
+        if (meshReplaced) {
+            mesh().deepCopy(&typedModel->mesh());
+            bumpMeshContentRevision();
+        }
         appliedModelRevision = typedModel->revision();
         appliedModelState = typedModel;
-        bumpMeshContentRevision();
+        return meshReplaced;
     }
+
+    return false;
 }
 
-void TrimeshNodeModel::applyPreparedGuides(
+bool TrimeshNodeModel::applyPreparedGuides(
         const Mesh& preparedMesh,
         std::shared_ptr<GuideCurveSnapshotProvider> provider) {
-    mesh().deepCopy(&preparedMesh);
+    const bool meshReplaced = !mesh().equals(preparedMesh);
+    if (meshReplaced) {
+        mesh().deepCopy(&preparedMesh);
+    }
     guideCurveProvider = std::move(provider);
     bumpMeshContentRevision();
+    return meshReplaced;
 }
 
 TrimeshRenderData TrimeshNodeModel::renderGrid(

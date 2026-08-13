@@ -286,10 +286,6 @@ void CurveExpandedEditorComponent::repaintCurvePanelController() {
     requestRepaint();
 }
 
-void CurveExpandedEditorComponent::setCurvePanelControllerCursor(const MouseCursor& cursor) {
-    setMouseCursor(cursor);
-}
-
 void CurveExpandedEditorComponent::beginCurvePanelControllerEdit() {
     beginTransaction();
 }

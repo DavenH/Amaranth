@@ -40,8 +40,8 @@ public:
             break;
 
         case Vertex::Blue:
-            dimX = Vertex::Red;
-            dimY = Vertex::Time;
+            dimX = Vertex::Time;
+            dimY = Vertex::Red;
             break;
 
         default:

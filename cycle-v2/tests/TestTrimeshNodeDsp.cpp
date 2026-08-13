@@ -86,21 +86,7 @@ class RecordingTrimeshPanelHostDelegate final : public TrimeshPanelHostDelegate 
 public:
     void requestTrimeshPanelRepaint() override { ++repaintCount; }
 
-    void setTrimeshPanelCursor(const MouseCursor& nextCursor) override {
-        cursor = nextCursor;
-        ++cursorCount;
-    }
-
-    void handleMouseOutsideTrimeshPanels(Point<float> screenPosition) override {
-        outsidePosition = screenPosition;
-        ++outsideCount;
-    }
-
     int repaintCount {};
-    int cursorCount {};
-    int outsideCount {};
-    MouseCursor cursor;
-    Point<float> outsidePosition;
 };
 
 }
@@ -217,8 +203,12 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
     }));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
     for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
-            parameter.value = "0";
+        if (parameter.id == "noise") {
+            parameter.value = "0.4";
+        } else if (parameter.id == "dcOffset") {
+            parameter.value = "0.3";
+        } else if (parameter.id == "phase") {
+            parameter.value = "0.2";
         }
     }
     Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -301,6 +291,23 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
         blockDifference += std::abs(guidedSamples[(size_t) i] - plainSamples[(size_t) i]);
     }
     REQUIRE(blockDifference > 0.1);
+
+    std::vector<float> firstLifecycle(sampleCount);
+    std::vector<float> repeatedLifecycle(sampleCount);
+    std::vector<float> nextLifecycle(sampleCount);
+    guided.setVoiceLifecycleSeed(0x12345678u);
+    guided.renderCycleInto(
+            Buffer<float>(firstLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    guided.renderCycleInto(
+            Buffer<float>(repeatedLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    guided.setVoiceLifecycleSeed(0x87654321u);
+    guided.renderCycleInto(
+            Buffer<float>(nextLifecycle.data(), sampleCount),
+            PortDomain::TimeSignal);
+    REQUIRE(firstLifecycle == repeatedLifecycle);
+    REQUIRE(firstLifecycle != nextLifecycle);
 
     constexpr int columnCount = 8;
     std::vector<float> plainGrid(columnCount * sampleCount);
@@ -777,6 +784,30 @@ TEST_CASE("Trimesh node model replaces equal-revision snapshots from another doc
     populated->destroy();
 }
 
+TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent publications",
+        "[cycle-v2][nodes][trimesh][interaction]") {
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshNodeModel model;
+
+    model.syncFromNode(node);
+    Vertex* liveVertex = model.getMeshForPanel().getVerts().front();
+    liveVertex->values[Vertex::Amp] = 0.15441218f;
+    model.markMeshEdited();
+    node.model = TrimeshNodeModelState::copyOf(model.getMeshForPanel(), 2);
+
+    REQUIRE_FALSE(model.syncFromNode(node));
+    REQUIRE(model.getMeshForPanel().getVerts().front() == liveVertex);
+
+    auto changedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
+    changedMesh->getVerts().front()->values[Vertex::Amp] = 0.17f;
+    node.model = TrimeshNodeModelState::copyOf(*changedMesh, 3);
+    changedMesh->destroy();
+
+    REQUIRE(model.syncFromNode(node));
+    REQUIRE(model.getMeshForPanel().getVerts().front()->values[Vertex::Amp]
+            == Catch::Approx(0.17f));
+}
+
 TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
@@ -1027,6 +1058,30 @@ TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycl
     REQUIRE(bridge.getDataSource().getColumns().front().size() == 10);
 }
 
+TEST_CASE("Trimesh panel bridge clears interaction pointers only for mesh replacement",
+        "[cycle-v2][nodes][trimesh][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+
+    bridge.syncFromNode(node, 10, 3);
+    Vertex* liveVertex = bridge.getModel().getMeshForPanel().getVerts().front();
+    bridge.getInteractor2D().getSelected().push_back(liveVertex);
+    node.model = TrimeshNodeModelState::copyOf(bridge.getModel().getMeshForPanel(), 2);
+
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getInteractor2D().getSelected().size() == 1);
+    REQUIRE(bridge.getInteractor2D().getSelected().front() == liveVertex);
+
+    auto changedMesh = TrimeshMeshFactory::createDefaultMesh("Cycle2TrimeshNode");
+    changedMesh->getVerts().front()->values[Vertex::Amp] = 0.17f;
+    node.model = TrimeshNodeModelState::copyOf(*changedMesh, 3);
+    changedMesh->destroy();
+
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getInteractor2D().getSelected().empty());
+}
+
 TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates",
         "[cycle-v2][nodes][trimesh][spectral][integration]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1077,7 +1132,8 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
 }
 
-TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
+        "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
     RecordingTrimeshPanelHostDelegate delegate;
@@ -1087,13 +1143,9 @@ TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v
     Component* panel2DHost = bridge.getPanel2DHostComponent();
 
     bridge.getPanel3D().setPanelMouseCursor(MouseCursor::PointingHandCursor);
-    REQUIRE(delegate.cursorCount == 1);
-    REQUIRE(delegate.cursor == MouseCursor::PointingHandCursor);
     REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::PointingHandCursor);
 
     bridge.getPanel2D().setPanelMouseCursor(MouseCursor::LeftRightResizeCursor);
-    REQUIRE(delegate.cursorCount == 2);
-    REQUIRE(delegate.cursor == MouseCursor::LeftRightResizeCursor);
     REQUIRE(panel2DHost->getMouseCursor() == MouseCursor::LeftRightResizeCursor);
 
     bridge.getPanel2D().requestRepaint(PanelDirtyState::Flag::Overlay);
@@ -1104,7 +1156,7 @@ TEST_CASE("Trimesh panel hosts report lifecycle through one delegate", "[cycle-v
     bridge.getPanel3D().setPanelMouseCursor(MouseCursor::NormalCursor);
     bridge.getPanel3D().requestRepaint(PanelDirtyState::Flag::Overlay);
     MessageManager::getInstance()->runDispatchLoopUntil(20);
-    REQUIRE(delegate.cursorCount == 2);
+    REQUIRE(panel3DHost->getMouseCursor() == MouseCursor::NormalCursor);
     REQUIRE(delegate.repaintCount == 1);
 }
 

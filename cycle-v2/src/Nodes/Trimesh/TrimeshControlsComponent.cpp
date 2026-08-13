@@ -24,11 +24,6 @@ public:
     void paint(Graphics&) override {
     }
 
-    void mouseMove(const MouseEvent& event) override {
-        auto source = event.source;
-        source.showMouseCursor(getMouseCursor());
-    }
-
     void mouseDown(const MouseEvent& event) override {
         owner.beginControlDrag(region, ownerPosition(event.position), getScreenBounds());
     }

@@ -69,6 +69,11 @@ const TrimeshWidget* NodePreviewResources::findTrimeshWidget(const String& nodeI
     return nullptr;
 }
 
+TrimeshWidget* NodePreviewResources::findTrimeshWidget(const String& nodeId) {
+    return const_cast<TrimeshWidget*>(
+            std::as_const(*this).findTrimeshWidget(nodeId));
+}
+
 void NodePreviewResources::clearCachedSprites() {
     cachedSprites.clear();
 }

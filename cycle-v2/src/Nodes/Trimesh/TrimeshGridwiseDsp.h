@@ -20,6 +20,7 @@ public:
 
     void setCyclic(bool shouldWrap);
     void setGuideCurveProvider(GuideCurveProvider* provider);
+    void setVoiceLifecycleSeed(uint32_t seed);
     void setFrequencyMidiNote(int midiNote);
     void prepareSampling(size_t maximumRowCount);
     void prepare(

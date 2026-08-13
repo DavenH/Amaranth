@@ -129,6 +129,15 @@ void Panel::setInteractor(Interactor* itr) {
     bindInteractorToComponent();
 }
 
+void Panel::setInteractorMouseListenerEnabled(bool enabled) {
+    if (interactorMouseListenerEnabled == enabled) {
+        return;
+    }
+
+    interactorMouseListenerEnabled = enabled;
+    bindInteractorToComponent();
+}
+
 void Panel::repaint() {
     requestRepaint();
 }
@@ -215,7 +224,7 @@ void Panel::bindInteractorToComponent() {
         return;
     }
 
-    interactor->associateTo(this);
+    interactor->associateTo(this, interactorMouseListenerEnabled);
 }
 
 void Panel::render() {

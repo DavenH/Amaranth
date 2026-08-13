@@ -5,6 +5,7 @@
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/PanelHostContext.h>
+#include <UI/Panels/PanelInputHostComponent.h>
 
 using namespace gl;
 
@@ -79,109 +80,40 @@ private:
 
 }
 
-class CurvePanelHost::HostComponent final : public Component {
+class CurvePanelHost::HostComponent final : public PanelInputHostComponent {
 public:
     HostComponent(
             Panel& targetPanel,
             CurvePanelSnapshotCache& snapshot,
             CurvePanelHostDelegate& delegateToUse) :
-            panel(targetPanel)
+            PanelInputHostComponent(targetPanel)
         ,   snapshot(snapshot)
-        ,   delegate(delegateToUse) {
-        setPaintingIsUnclipped(false);
-        setInterceptsMouseClicks(true, true);
-        setOpaque(false);
-        setWantsKeyboardFocus(true);
-    }
+        ,   delegate(delegateToUse) {}
 
     void paint(Graphics& graphics) override {
         snapshot.paint(graphics, getLocalBounds().toFloat(), true);
     }
 
-    void mouseEnter(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        mouseInside = true;
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseEnter(localEvent);
-            interactor->mouseMove(localEvent);
-        }
-    }
-
-    void mouseMove(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseMove(localEvent);
-        }
-    }
-
-    void mouseDown(const MouseEvent& event) override {
-        if (!event.mods.isLeftButtonDown() && !event.mods.isRightButtonDown()) {
-            activePointer = false;
-            return;
-        }
-        activePointer = true;
-        grabKeyboardFocus();
+private:
+    void pointerGestureBegan() override {
         delegate.beginEdit();
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDown(localEvent);
-        }
     }
 
-    void mouseDoubleClick(const MouseEvent& event) override {
-        if (!event.mods.isLeftButtonDown()) {
-            return;
-        }
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDoubleClick(localEvent);
-        }
+    bool acceptsDoubleClick(const MouseEvent& event) const override {
+        return event.mods.isLeftButtonDown();
+    }
+
+    void pointerGestureUpdated() override {
         delegate.publishIntermediateRevision();
     }
 
-    void mouseDrag(const MouseEvent& event) override {
-        if (!activePointer || !event.mods.isLeftButtonDown()) {
-            return;
-        }
-        const MouseEvent localEvent = currentMouseEvent(event);
-        enterIfNeeded(localEvent);
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDrag(localEvent);
-        }
-        delegate.publishIntermediateRevision();
-    }
-
-    void mouseUp(const MouseEvent& event) override {
-        if (!activePointer) {
-            return;
-        }
-        activePointer = false;
-        const MouseEvent localEvent = currentMouseEvent(event);
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseUp(localEvent);
-        }
+    void pointerGestureEnded() override {
         delegate.publishIntermediateRevision();
         delegate.commitEdit();
     }
 
-    void mouseExit(const MouseEvent& event) override {
-        exitIfNeeded(currentMouseEvent(event));
-    }
-
-    void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseWheelMove(currentMouseEvent(event), wheel);
-        }
-    }
-
-    bool keyPressed(const KeyPress& key) override {
-        if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
-            return false;
-        }
-        if (Interactor* interactor = panel.getInteractor().get()) {
+    bool deleteKeyPressed() override {
+        if (Interactor* interactor = panelInteractor()) {
             delegate.beginEdit();
             interactor->eraseSelected();
             interactor->performUpdate(Update);
@@ -192,60 +124,8 @@ public:
         return false;
     }
 
-    void resized() override {
-        panel.panelResized();
-    }
-
-private:
-    MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        const Point<float> localPosition = getLocalPoint(
-                nullptr, Desktop::getMousePosition()).toFloat();
-        const Point<float> localMouseDown = event.eventComponent == this
-                ? event.mouseDownPosition
-                : event.eventComponent != nullptr
-                ? getLocalPoint(event.eventComponent, event.mouseDownPosition).toFloat()
-                : localPosition;
-        return MouseEvent(
-                event.source,
-                localPosition,
-                event.mods,
-                event.pressure,
-                event.orientation,
-                event.rotation,
-                event.tiltX,
-                event.tiltY,
-                const_cast<HostComponent*>(this),
-                event.originalComponent,
-                event.eventTime,
-                localMouseDown,
-                event.mouseDownTime,
-                event.getNumberOfClicks(),
-                event.mouseWasDraggedSinceMouseDown());
-    }
-
-    void enterIfNeeded(const MouseEvent& event) {
-        if (!mouseInside) {
-            mouseInside = true;
-            if (Interactor* interactor = panel.getInteractor().get()) {
-                interactor->mouseEnter(event);
-            }
-        }
-    }
-
-    void exitIfNeeded(const MouseEvent& event) {
-        if (mouseInside) {
-            mouseInside = false;
-            if (Interactor* interactor = panel.getInteractor().get()) {
-                interactor->mouseExit(event);
-            }
-        }
-    }
-
-    Panel& panel;
     CurvePanelSnapshotCache& snapshot;
     CurvePanelHostDelegate& delegate;
-    bool mouseInside {};
-    bool activePointer {};
 };
 
 CurvePanelHost::CurvePanelHost(
@@ -366,8 +246,8 @@ void CurvePanelHost::initialiseComponent() {
     }
     hostComponent = std::make_unique<HostComponent>(
             panel, expandedSnapshot, delegate);
+    panel.setInteractorMouseListenerEnabled(false);
     delegate.initialiseCurvePanel(hostComponent.get());
-    hostComponent->removeMouseListener(panel.getInteractor().get());
     componentInitialised = true;
     delegate.prepareCurvePanel();
 }
@@ -426,7 +306,6 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
         const_cast<CurvePanelHost*>(this)->requestPanelInvalidation(flag);
     });
     result.setCursorCallback([this](Panel*, const MouseCursor& cursor) {
-        delegate.setCurvePanelCursor(cursor);
         if (hostComponent != nullptr) {
             hostComponent->setMouseCursor(cursor);
         }

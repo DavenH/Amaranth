@@ -40,8 +40,13 @@ struct TrimeshPanelRenderStats {
     float minimum {};
     float maximum {};
     float centreSample {};
+    float phaseUnitsPerDisplayX {};
+    float ampUnitsPerDisplayY {};
     double absoluteSum {};
     std::vector<juce::Point<float>> intercepts;
+    std::vector<juce::Point<float>> displayedIntercepts;
+    std::vector<juce::Point<float>> displayedCurvePoints;
+    bool curveHover {};
 };
 
 class TrimeshWidget {

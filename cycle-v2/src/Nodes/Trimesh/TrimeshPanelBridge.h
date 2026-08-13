@@ -18,7 +18,7 @@ struct Intercept;
 
 namespace CycleV2 {
 
-class TrimeshPanelBridge {
+class TrimeshPanelBridge : private juce::Timer {
 public:
     TrimeshPanelBridge();
     ~TrimeshPanelBridge();
@@ -31,6 +31,7 @@ public:
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
     TrimeshPanel2D& getPanel2D() { return panel2D; }
+    const TrimeshPanel2D& getPanel2D() const { return panel2D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
     const TrimeshRenderData& getRenderData() const { return dataSource.getRenderData(); }
     Interactor2D& getInteractor2D() { return interactor2D; }
@@ -56,6 +57,9 @@ public:
 
 private:
     void refreshAfterMeshEdit(TrimeshMeshEditEvent event);
+    void flushPendingMeshEdit(bool gestureComplete);
+    void timerCallback() override;
+    void clearInteractionPointers();
     void updateGuideCurveSeeds();
     void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
@@ -80,6 +84,8 @@ private:
     int lastColumns {};
     int previewMidiNote { 48 };
     int lastPreviewMidiNote { -1 };
+    bool pendingMeshEdit {};
+    bool pendingMeshEditSourceIs3D {};
 };
 
 }

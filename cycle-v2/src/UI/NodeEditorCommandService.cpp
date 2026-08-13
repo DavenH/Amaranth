@@ -536,7 +536,7 @@ void NodeEditorCommandService::persistTrimeshMeshEdits(
         const String& nodeId,
         bool gestureComplete) {
     const Node* node = findNode(nodeId);
-    TrimeshWidget* widget = node != nullptr ? resources.trimeshWidget(*node) : nullptr;
+    TrimeshWidget* widget = node != nullptr ? resources.findTrimeshWidget(nodeId) : nullptr;
     if (node == nullptr || widget == nullptr || node->kind != NodeKind::TrilinearMesh) {
         return;
     }

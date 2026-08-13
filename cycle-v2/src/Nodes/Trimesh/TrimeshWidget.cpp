@@ -3,6 +3,7 @@
 #include "../../Graph/NodeParameterMap.h"
 
 #include <Curve/Mesh/Vertex.h>
+#include <Util/Arithmetic.h>
 
 #include <array>
 #include <utility>
@@ -298,12 +299,48 @@ const TrimeshRenderData& TrimeshWidget::renderDataForAutomation() const {
 TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
     const auto samples = snapshot.waveY();
+    const TrimeshPanel2D& panel = bridge.getPanel2D();
     TrimeshPanelRenderStats stats;
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
+    const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;
+    if (hasPanelSize) {
+        stats.phaseUnitsPerDisplayX = panel.invertScaleX(panel.getWidth())
+                - panel.invertScaleX(0);
+        stats.ampUnitsPerDisplayY = panel.invertScaleY(0)
+                - panel.invertScaleY(panel.getHeight());
+    }
     stats.intercepts.reserve(snapshot.intercepts().size());
+    stats.displayedIntercepts.reserve(snapshot.intercepts().size());
+    stats.displayedCurvePoints.reserve(snapshot.intercepts().size());
+    stats.curveHover = bridge.getInteractor2D()
+            .state.mouseFlags[PanelState::WithinReshapeThresh];
     for (const auto& intercept : snapshot.intercepts()) {
         stats.intercepts.emplace_back(intercept.x, intercept.y);
+        if (hasPanelSize) {
+            stats.displayedIntercepts.emplace_back(
+                    panel.sx(intercept.x) / panel.getWidth(),
+                    panel.sy(intercept.y) / panel.getHeight());
+        }
+    }
+    const Buffer<Float32> waveX = snapshot.waveX();
+    const Buffer<Float32> waveY = snapshot.waveY();
+    if (hasPanelSize
+            && snapshot.intercepts().size() > 1
+            && !waveX.empty()
+            && !waveY.empty()) {
+        for (int index = 0; index + 1 < snapshot.intercepts().size(); ++index) {
+            const float centreX = 0.5f * (
+                    snapshot.intercepts()[index].x
+                    + snapshot.intercepts()[index + 1].x);
+            const int sampleIndex = jlimit(
+                    0,
+                    jmin(waveX.size(), waveY.size()) - 1,
+                    Arithmetic::binarySearch(centreX, waveX));
+            stats.displayedCurvePoints.emplace_back(
+                    panel.sx(waveX[sampleIndex]) / panel.getWidth(),
+                    panel.sy(waveY[sampleIndex]) / panel.getHeight());
+        }
     }
     for (const auto& curve : snapshot.curves()) {
         VertCube* cube = curve.b.cube;

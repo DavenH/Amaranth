@@ -1,4 +1,5 @@
 #include "Interactor2D.h"
+#include "CurveReshapeStrategy.h"
 #include "../Algo/AutoModeller.h"
 #include "../Algo/Resampling.h"
 #include "../App/Settings.h"
@@ -11,6 +12,8 @@
 #include "../Util/NumberUtils.h"
 #include "../Util/ScopedBooleanSwitcher.h"
 #include "../Definitions.h"
+
+#include <limits>
 
 Interactor2D::Interactor2D(SingletonRepo* repo, const String& name, const Dimensions& d) :
         Interactor(repo, name, d)
@@ -38,19 +41,14 @@ bool Interactor2D::locateClosestElement() {
     Vertex* oldVertex = state.currentVertex;
     VertCube* oldCube = state.currentCube;
 
-    int icptIdx = -1;
+    int icptIdx = curveIndexForClosestIntercept(icpts, x, 0);
     int freeIdx = -1;
 
-    int i = 0;
-    for(auto& icpt : icpts) {
-        if (fabsf(icpt.x - x) < dist) {
-            dist = fabsf(icpt.x - x);
-            icptIdx = i;
-        }
-        ++i;
+    if (icptIdx >= 0) {
+        dist = fabsf(icpts[(size_t) icptIdx].x - x);
     }
 
-    i = 0;
+    int i = 0;
     for(auto& vert : depthVerts) {
         if (fabsf(vert.x - x) < dist) {
             dist = fabsf(vert.x - x);
@@ -91,7 +89,10 @@ bool Interactor2D::locateClosestElement() {
     }
 
     if (icptIdx != -1) {
-        getStateValue(CurrentCurve) = icptIdx + getRasterizerPaddingSize();
+        getStateValue(CurrentCurve) = curveIndexForClosestIntercept(
+                icpts,
+                x,
+                getRasterizerPaddingSize());
     }
 
     // call virtual function that subclasses can use if wanted
@@ -187,6 +188,16 @@ void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
 
         if(distToCurve < distThresPX) {
             mouseFlag(WithinReshapeThresh) = true;
+            if (state.currentCube != nullptr || state.currentIcpt >= 0) {
+                getStateValue(CurrentCurve) = curveIndexForWaveIndex(
+                        snapshot.curves(),
+                        startIndex + i);
+            } else if (state.currentVertex != nullptr) {
+                getStateValue(CurrentCurve) = curveIndexForClosestIntercept(
+                        snapshot.intercepts(),
+                        state.currentVertex->values[dims.x],
+                        snapshot.paddingSize());
+            }
             break;
         }
     }
@@ -194,6 +205,39 @@ void Interactor2D::doExtraMouseMoveAt(Point<int> localPos) {
     flag(SimpleRepaint) = true;
 
 //  progressMark
+}
+
+int Interactor2D::curveIndexForClosestIntercept(
+        const vector<Intercept>& intercepts,
+        float x,
+        int paddingSize) const {
+    int closestIndex = -1;
+    float closestDistance = std::numeric_limits<float>::max();
+
+    for (int index = 0; index < (int) intercepts.size(); ++index) {
+        const float distance = fabsf(intercepts[(size_t) index].x - x);
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+        }
+    }
+
+    return closestIndex < 0 ? -1 : closestIndex + paddingSize;
+}
+
+int Interactor2D::curveIndexForWaveIndex(const vector<Curve>& curves, int waveIndex) const {
+    int curveIndex = 0;
+
+    for (int index = 1; index < (int) curves.size(); ++index) {
+        const Curve& curve = curves[(size_t) index];
+        if (curve.waveIdx <= curves[(size_t) (index - 1)].waveIdx
+                || curve.waveIdx > waveIndex) {
+            break;
+        }
+        curveIndex = index;
+    }
+
+    return curveIndex;
 }
 
 void Interactor2D::doExtraMouseDrag(const MouseEvent& e) {
@@ -326,16 +370,31 @@ void Interactor2D::commitPath(const MouseEvent& e) {
     }
 }
 
-void Interactor2D::doReshapeCurve(const MouseEvent& e) {
+void Interactor2D::doReshapeCurve(const MouseEvent&) {
     auto snapshot = rasterizerSnapshot();
 
-    if (snapshot.curves().empty()) {
+    if (state.currentVertex == nullptr) {
+        return;
+    }
+
+    const int curveIndex = state.currentIcpt >= 0
+            ? state.currentIcpt + snapshot.paddingSize()
+            : curveIndexForClosestIntercept(
+                    snapshot.intercepts(),
+                    state.currentVertex->values[dims.x],
+                    snapshot.paddingSize());
+    if (curveIndex < 0 || curveIndex >= (int) snapshot.curves().size()) {
         return;
     }
 
     flag(LoweredRes) = true;
 
     const vector<Curve>& curves = snapshot.curves();
+    const Curve& curve = curves[(size_t) curveIndex];
+    const float controlY = state.currentIcpt >= 0
+            && state.currentIcpt < (int) snapshot.intercepts().size()
+            ? snapshot.intercepts()[(size_t) state.currentIcpt].y
+            : state.currentVertex->values[dims.y];
 
     {
         ScopedLock sl(vertexLock);
@@ -351,23 +410,28 @@ void Interactor2D::doReshapeCurve(const MouseEvent& e) {
 
     resetFinalSelection();
 
-    Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
+    const Array<Vertex*> movingVerts = getVerticesToMove(state.currentCube, state.currentVertex);
+    const float dragScale = getDragMovementScale(state.currentCube);
+    const float delta = CurveReshapeStrategy::sharpnessDelta(
+            state.start.y,
+            state.lastMouse.y,
+            state.currentMouse.y,
+            controlY,
+            panel->getZoomPanel()->rect.h,
+            dragScale,
+            curve.tp.scaleY);
+    bool changed = false;
 
-    float dragScale = getDragMovementScale(state.currentCube);
-    float diffY     = (state.currentMouse.y - state.lastMouse.y) / sqrtf(panel->getZoomPanel()->rect.h);
-    float diff      = diffY * dragScale / (0.1f + curves[getStateValue(CurrentCurve)].tp.scaleY);
-    int pole        = curves[getStateValue(CurrentCurve)].tp.ypole;
-
-    for(auto& vert : movingVerts) {
+    for (auto* vert : movingVerts) {
         float& weight = vert->values[Vertex::Curve];
-        weight += diff * pole;
-
-        NumberUtils::constrain(weight, 0.f, 1.f);
+        const float previous = weight;
+        weight = CurveReshapeStrategy::applySharpnessDelta(weight, delta);
+        changed |= weight != previous;
     }
 
     listeners.call(&InteractorListener::selectionChanged, getMesh(), state.selectedFrame);
 
-    flag(DidMeshChange) |= fabs(diff) > 0;
+    flag(DidMeshChange) |= changed;
 }
 
 void Interactor2D::removeLinesInRange(Range<float> phsRange, const MorphPosition& pos) {

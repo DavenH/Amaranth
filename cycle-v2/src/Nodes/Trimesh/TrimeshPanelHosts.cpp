@@ -7,6 +7,7 @@
 
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
+#include <UI/Panels/PanelInputHostComponent.h>
 
 namespace CycleV2 {
 
@@ -18,236 +19,25 @@ constexpr uint32_t Panel3DBake = 1u << 2;
 
 }
 
-class TrimeshPanelHosts::PanelHostComponent :
-        public Component,
-        private Timer {
+class TrimeshPanelHosts::PanelHostComponent final : public PanelInputHostComponent {
 public:
     explicit PanelHostComponent(Panel& targetPanel) :
-            panel(targetPanel) {
-        setPaintingIsUnclipped(false);
-        setInterceptsMouseClicks(true, true);
-        setOpaque(false);
-        setWantsKeyboardFocus(true);
-        startTimerHz(30);
-    }
-
-    void setHoverPeer(PanelHostComponent* peer) {
-        hoverPeer = peer;
-    }
-
-    void setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
-        delegate = nextDelegate;
-    }
+            PanelInputHostComponent(targetPanel) {}
 
     void paint(Graphics&) override {}
 
-    void mouseEnter(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        mouseInside = true;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseEnter(localEvent);
-        }
-        showCurrentCursor(event.source);
-    }
-
-    void mouseMove(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (!getLocalBounds().contains(localEvent.getPosition())) {
-            exitIfNeeded(localEvent);
-            if (!forwardMouseMoveToPeer(event)) {
-                panel.setPanelMouseCursor(MouseCursor::NormalCursor);
-                showCurrentCursor(event.source);
-            }
-            return;
-        }
-
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseMove(localEvent);
-        }
-        showCurrentCursor(event.source);
-    }
-
-    void mouseDown(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        grabKeyboardFocus();
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDown(localEvent);
-        }
-    }
-
-    void mouseDrag(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (!getLocalBounds().contains(localEvent.getPosition())) {
-            forwardMouseMoveToPeer(event);
-            return;
-        }
-
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseDrag(localEvent);
-        }
-    }
-
-    void mouseUp(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseUp(localEvent);
-        }
-    }
-
-    void mouseExit(const MouseEvent& event) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-        exitIfNeeded(localEvent);
-        showCurrentCursor(event.source);
-    }
-
-    void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseWheelMove(localEvent, wheel);
-        }
-    }
-
-    bool keyPressed(const KeyPress& key) override {
-        if (key != KeyPress::deleteKey && key != KeyPress::backspaceKey) {
-            return false;
-        }
-        if (auto* interactor = dynamic_cast<TrimeshInteractor2D*>(panel.getInteractor().get())) {
-            interactor->deleteSelected();
-            return true;
-        }
-        if (auto* interactor = dynamic_cast<TrimeshInteractor3D*>(panel.getInteractor().get())) {
-            interactor->deleteSelected();
-            return true;
-        }
-        return false;
-    }
-
-    void resized() override {
-        panel.panelResized();
-    }
-
 private:
-    void timerCallback() override {
-        if (!isShowing()) {
-            return;
-        }
-
-        const Point<int> desktopPosition = Desktop::getMousePosition();
-        if (desktopPosition == lastPolledMousePosition) {
-            return;
-        }
-        lastPolledMousePosition = desktopPosition;
-        const Point<float> position = getLocalPoint(
-                nullptr, desktopPosition).toFloat();
-        if (!getLocalBounds().toFloat().contains(position)) {
-            return;
-        }
-
-        auto source = Desktop::getInstance().getMainMouseSource();
-        const Time now = Time::getCurrentTime();
-        const MouseEvent event(
-                source,
-                position,
-                ModifierKeys::getCurrentModifiersRealtime(),
-                0.f,
-                0.f,
-                0.f,
-                0.f,
-                0.f,
-                this,
-                this,
-                now,
-                position,
-                now,
-                0,
-                false);
-        mouseMove(event);
-    }
-
-    MouseEvent currentMouseEvent(const MouseEvent& event) const {
-        return event.getEventRelativeTo(const_cast<PanelHostComponent*>(this));
-    }
-
-    void enterIfNeeded(const MouseEvent& event) {
-        if (mouseInside) {
-            return;
-        }
-
-        mouseInside = true;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseEnter(event);
-        }
-    }
-
-    void exitIfNeeded(const MouseEvent& event) {
-        if (!mouseInside) {
-            return;
-        }
-
-        mouseInside = false;
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseExit(event);
-        }
-    }
-
-    bool forwardMouseMoveToPeer(const MouseEvent& event) {
-        if (hoverPeer == nullptr) {
-            return false;
-        }
-
-        if (hoverPeer->mouseMoveFromPeer(event)) {
-            setMouseCursor(hoverPeer->getMouseCursor());
-            showCurrentCursor(event.source);
+    bool deleteKeyPressed() override {
+        if (auto* interactor = dynamic_cast<TrimeshInteractor2D*>(panelInteractor())) {
+            interactor->deleteSelected();
             return true;
         }
-
-        if (delegate != nullptr) {
-            delegate->handleMouseOutsideTrimeshPanels(Desktop::getMousePosition().toFloat());
+        if (auto* interactor = dynamic_cast<TrimeshInteractor3D*>(panelInteractor())) {
+            interactor->deleteSelected();
+            return true;
         }
-
         return false;
     }
-
-    bool mouseMoveFromPeer(const MouseEvent& event) {
-        const MouseEvent localEvent = currentMouseEvent(event);
-
-        if (!getLocalBounds().contains(localEvent.getPosition())) {
-            exitIfNeeded(localEvent);
-            return false;
-        }
-
-        enterIfNeeded(localEvent);
-
-        if (Interactor* interactor = panel.getInteractor().get()) {
-            interactor->mouseMove(localEvent);
-        }
-        showCurrentCursor(event.source);
-
-        return true;
-    }
-
-    void showCurrentCursor(MouseInputSource source) {
-        source.showMouseCursor(getMouseCursor());
-    }
-
-    Panel& panel;
-    PanelHostComponent* hoverPeer {};
-    TrimeshPanelHostDelegate* delegate {};
-    bool mouseInside {};
-    Point<int> lastPolledMousePosition { -1, -1 };
 };
 
 TrimeshPanelHosts::TrimeshPanelHosts(
@@ -291,13 +81,6 @@ void TrimeshPanelHosts::setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
     panel3D.setHostCallbacks(callbacks);
     panel2D.setHostCallbacks(callbacks);
 
-    if (panel3DHost != nullptr) {
-        panel3DHost->setDelegate(delegate);
-    }
-
-    if (panel2DHost != nullptr) {
-        panel2DHost->setDelegate(delegate);
-    }
 }
 
 void TrimeshPanelHosts::clearDelegate(TrimeshPanelHostDelegate* delegateToClear) {
@@ -314,10 +97,6 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
         requestPanelInvalidation(panel, flag);
     });
     callbacks.setCursorCallback([this](Panel* panel, const MouseCursor& cursor) {
-        if (delegate != nullptr) {
-            delegate->setTrimeshPanelCursor(cursor);
-        }
-
         if (panel == &panel3D && panel3DHost != nullptr) {
             panel3DHost->setMouseCursor(cursor);
         }
@@ -336,14 +115,11 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     }
 
     panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
-    panel3DHost->setDelegate(delegate);
     panel3D.setSharedCanvasMode(true);
+    panel3D.setInteractorMouseListenerEnabled(false);
     panel3D.initWithExternalComponent(panel3DHost.get());
-    panel3DHost->removeMouseListener(&interactor3D);
-    interactor3D.stopTimer();
     interactor3D.updateIntercepts();
     panel3DHostInitialised = true;
-    updatePanelHostPeers();
 }
 
 void TrimeshPanelHosts::initialisePanel2DHost() {
@@ -352,21 +128,9 @@ void TrimeshPanelHosts::initialisePanel2DHost() {
     }
 
     panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
-    panel2DHost->setDelegate(delegate);
+    panel2D.setInteractorMouseListenerEnabled(false);
     panel2D.initWithExternalComponent(panel2DHost.get());
-    panel2DHost->removeMouseListener(&interactor2D);
-    interactor2D.stopTimer();
     panel2DHostInitialised = true;
-    updatePanelHostPeers();
-}
-
-void TrimeshPanelHosts::updatePanelHostPeers() {
-    if (panel3DHost == nullptr || panel2DHost == nullptr) {
-        return;
-    }
-
-    panel3DHost->setHoverPeer(panel2DHost.get());
-    panel2DHost->setHoverPeer(panel3DHost.get());
 }
 
 void TrimeshPanelHosts::initialiseSharedGlResources() {

@@ -98,7 +98,6 @@ private:
     void persistEffectMeshState();
     bool publishModelState();
     void repaintCurvePanelController() override;
-    void setCurvePanelControllerCursor(const MouseCursor& cursor) override;
     void beginCurvePanelControllerEdit() override;
     void curvePanelControllerEdited() override;
     void commitCurvePanelControllerEdit() override;

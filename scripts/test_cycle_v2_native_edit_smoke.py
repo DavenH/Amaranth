@@ -24,6 +24,18 @@ class NativeEditSmoke:
         self.request_id = 0
 
     def start(self):
+        pointer_probe = subprocess.run(
+            [CLICK, "p"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if (pointer_probe.returncode != 0
+                or "Accessibility privileges not enabled" in pointer_probe.stderr):
+            raise AssertionError(
+                "CycleV2 native edit smoke requires Accessibility permission for cliclick"
+            )
+
         environment = os.environ.copy()
         environment["CYCLE_APP_PATH"] = APP
         environment["CYCLE_PROCESS_NAME"] = "CycleV2"
@@ -104,14 +116,20 @@ class NativeEditSmoke:
         ], check=True)
         time.sleep(SETTLE_SECONDS)
 
-    def drag(self, source, destination, force_curve_reshape=False):
+    def drag(
+            self,
+            source,
+            destination,
+            force_curve_reshape=False,
+            steps=6,
+            step_wait_ms=4):
         self.focus_app()
         moves = []
-        for step in range(1, 7):
-            x = round(source[0] + (destination[0] - source[0]) * step / 6)
-            y = round(source[1] + (destination[1] - source[1]) * step / 6)
+        for step in range(1, steps + 1):
+            x = round(source[0] + (destination[0] - source[0]) * step / steps)
+            y = round(source[1] + (destination[1] - source[1]) * step / steps)
             moves.append(f"dm:{x},{y}")
-            moves.append("w:4")
+            moves.append(f"w:{step_wait_ms}")
         down_commands = [
             CLICK,
             "-w",
@@ -158,6 +176,20 @@ class NativeEditSmoke:
         ], check=True)
         time.sleep(SETTLE_SECONDS)
 
+    def begin_drag(self, source):
+        self.focus_app()
+        subprocess.run([
+            CLICK,
+            "-w",
+            "20",
+            f"m:{source[0] + 2},{source[1]}",
+            "w:10",
+            f"m:{source[0]},{source[1]}",
+            "w:20",
+            f"dd:{source[0]},{source[1]}",
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
     def release_drag(self, destination):
         subprocess.run([
             CLICK,
@@ -165,6 +197,15 @@ class NativeEditSmoke:
             "20",
             f"du:{destination[0]},{destination[1]}",
         ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def move_held_drag(self, source, destination, steps=12):
+        moves = []
+        for step in range(1, steps + 1):
+            x = round(source[0] + (destination[0] - source[0]) * step / steps)
+            y = round(source[1] + (destination[1] - source[1]) * step / steps)
+            moves.extend((f"dm:{x},{y}", "w:6"))
+        subprocess.run([CLICK, "-w", "20", *moves], check=True)
         time.sleep(SETTLE_SECONDS)
 
     def capture(self, name, bounds):
@@ -183,7 +224,7 @@ class NativeEditSmoke:
     def open_editor(self, node_id, trimesh=False):
         command = "openMeshPopup" if trimesh else "openNodeEditor"
         self.command({"command": command, "nodeId": node_id})
-        time.sleep(0.2)
+        self.target(f"expanded:{node_id}")
         return self.inspect(node_id)
 
     def inspect(self, node_id):
@@ -198,8 +239,18 @@ class NativeEditSmoke:
         return state
 
     def target(self, target_id):
-        targets = self.command({"command": "inspectPointerTargets"})["targets"]
-        return next(target for target in targets if target["id"] == target_id)["screenBounds"]
+        deadline = time.monotonic() + 1.0
+        while True:
+            targets = self.command({"command": "inspectPointerTargets"})["targets"]
+            target = next((candidate for candidate in targets
+                           if candidate["id"] == target_id), None)
+            if (target is not None
+                    and target.get("nativeReady", True)
+                    and "screenBounds" in target):
+                return target["screenBounds"]
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"native pointer target is not ready: {target_id}")
+            time.sleep(0.01)
 
     def graph_state(self):
         return self.command({"command": "snapshotState"})
@@ -321,6 +372,22 @@ class NativeEditSmoke:
             parameter["id"]: float(parameter["value"])
             for parameter in state["effect2D"]["panelState"]["selectedVertexParameters"]
         }
+
+    @staticmethod
+    def displayed_y_at_x(points, x, y_key):
+        ordered = sorted(points, key=lambda point: point["x"])
+        before = max(
+            (point for point in ordered if point["x"] <= x),
+            key=lambda point: point["x"],
+        )
+        after = min(
+            (point for point in ordered if point["x"] >= x),
+            key=lambda point: point["x"],
+        )
+        if after["x"] == before["x"]:
+            return before[y_key]
+        portion = (x - before["x"]) / (after["x"] - before["x"])
+        return before[y_key] + portion * (after[y_key] - before[y_key])
 
     @staticmethod
     def assert_trimesh_slice(state, context):
@@ -542,7 +609,6 @@ class NativeEditSmoke:
         self.open_editor("magnitudeLayer1", trimesh=True)
         morph = self.target("expanded:magnitudeLayer1.trimeshMorphRail.yellow")
         self.move_pointer(self.point(morph, 0.5, 0.5))
-        self.cursor_until("leftRightResize")
 
         waveshaper = self.target("node:waveshaper")
         waveshaper_before = self.node_bounds(self.graph_state(), "waveshaper")
@@ -554,7 +620,6 @@ class NativeEditSmoke:
             waveshaper_after,
         )
         self.move_pointer(self.point(morph, 0.5, 0.5))
-        self.cursor_until("leftRightResize")
 
     def effect2d_sequence(self):
         initial_audio = self.audio_samples()
@@ -614,11 +679,24 @@ class NativeEditSmoke:
             def polarity_candidates():
                 current_inspection = self.inspect("waveshaper")
                 current = self.flat_snapshot(current_inspection)
+                current_zoom = current_inspection["effect2D"]["panelState"]["zoom"]
                 vertices = {vertex["x"]: vertex for vertex in current["vertices"]}
                 found = []
                 internal_vertices = sorted(vertices.values(), key=lambda item: item["x"])[1:-1]
                 for point in current_inspection["effect2D"]["panelState"]["waveformPoints"]:
-                    vertex = min(internal_vertices, key=lambda item: abs(item["x"] - point["x"]))
+                    display_x = (point["x"] - current_zoom["x"]) / current_zoom["w"]
+                    display_y = 1.0 - (point["y"] - current_zoom["y"]) / current_zoom["h"]
+                    if not (0.02 < display_x < 0.98 and 0.02 < display_y < 0.98):
+                        continue
+                    by_horizontal_distance = sorted(
+                        internal_vertices,
+                        key=lambda item: abs(item["x"] - point["x"]),
+                    )
+                    vertex = by_horizontal_distance[0]
+                    if (len(by_horizontal_distance) > 1
+                            and abs(by_horizontal_distance[1]["x"] - point["x"])
+                            - abs(vertex["x"] - point["x"]) < 0.02):
+                        continue
                     vertical_delta = vertex["y"] - point["y"]
                     if (vertical_delta * polarity > 0.06
                             and vertex["curve"] < 0.9
@@ -662,20 +740,41 @@ class NativeEditSmoke:
 
             curve_start = panel_position(curve_point["x"], curve_point["y"])
             if polarity == 1:
-                blank = self.point(panel, 0.5, 0.1)
-                self.click(
-                    f"m:{blank[0] + 8},{blank[1]}",
-                    "w:20",
-                    f"m:{blank[0]},{blank[1]}",
+                current_panel = self.inspect("waveshaper")["effect2D"]["panelState"]
+                current_zoom = current_panel["zoom"]
+                projected_waveform = [
+                    (
+                        (point["x"] - current_zoom["x"]) / current_zoom["w"],
+                        1.0 - (point["y"] - current_zoom["y"]) / current_zoom["h"],
+                    )
+                    for point in current_panel["waveformPoints"]
+                ]
+                blank_fraction = max(
+                    (
+                        (x / 10.0, y / 10.0)
+                        for x in range(1, 10)
+                        for y in range(1, 10)
+                    ),
+                    key=lambda candidate: min(
+                        (candidate[0] - point[0]) ** 2
+                        + (candidate[1] - point[1]) ** 2
+                        for point in projected_waveform
+                    ),
                 )
+                blank = self.point(panel, *blank_fraction)
+                self.move_pointer((1, 1))
+                self.move_pointer(blank)
                 blank_state = self.inspect("waveshaper")["effect2D"]["panelState"]
                 assert not blank_state["curveHover"], "curve hover remained active away from the curve"
                 assert not blank_state["curveResizeCursor"], "curve cursor remained active away from the curve"
+                self.cursor_until("normal")
                 self.capture("effect2d-before-hover", panel)
-            self.click(f"m:{curve_start[0]},{curve_start[1]}")
+            self.move_pointer((1, 1))
+            self.move_pointer(curve_start)
             hover_state = self.inspect("waveshaper")["effect2D"]["panelState"]
             assert hover_state["curveHover"], ("curve hover callback missing", polarity)
             assert hover_state["curveResizeCursor"], ("curve resize cursor missing", polarity)
+            self.cursor_until("upDownResize")
             if polarity == 1:
                 self.capture("effect2d-after-hover", panel)
             hovered_vertex = hover_state["currentVertex"]
@@ -684,7 +783,13 @@ class NativeEditSmoke:
                 before_drag["vertices"],
                 key=lambda item: abs(item["x"] - hovered_vertex["x"]) + abs(item["y"] - hovered_vertex["y"]),
             )
-            assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.06
+            assert (control_vertex["y"] - curve_point["y"]) * polarity > 0.06, (
+                polarity,
+                curve_point,
+                hovered_vertex,
+                control_vertex,
+                hover_state,
+            )
             print(f"[waveshaper] drag curve {direction} toward control vertex", flush=True)
             self.capture(f"waveshaper-{direction}-before-curve-drag", panel)
             curve_end = panel_position(
@@ -744,6 +849,101 @@ class NativeEditSmoke:
             )
 
         vertex_point = panel_position(intercept["x"], intercept["y"])
+        candidates = sorted(
+            (
+                point
+                for point in panel_state["waveformPoints"]
+                if (0.05 < point["displayX"] < 0.95
+                        and 0.05 < point["displayY"] < 0.95)
+            ),
+            key=lambda point: min(
+                (point["x"] - candidate["x"]) ** 2
+                + (point["y"] - candidate["y"]) ** 2
+                for candidate in panel_state["intercepts"]
+            ),
+        )
+        curve_hover = None
+        for curve_point in candidates:
+            curve_source = self.point(panel, curve_point["displayX"], curve_point["displayY"])
+            self.move_pointer((1, 1))
+            self.move_pointer(curve_source)
+            candidate_hover = self.inspect("env")["effect2D"]["panelState"]
+            if not candidate_hover["curveHover"]:
+                continue
+
+            control = candidate_hover["currentVertex"]
+            if (control["curve"] < 0.9
+                    and abs(control["y"] - curve_point["y"]) > 0.06):
+                curve_hover = candidate_hover
+                break
+
+        assert curve_hover is not None, panel_state
+        self.cursor_until("upDownResize")
+
+        self.move_pointer((1, 1))
+        curve_away = self.inspect("env")["effect2D"]["panelState"]
+        assert not curve_away["curveHover"], curve_away
+
+        self.move_pointer(curve_source)
+        curve_before = self.inspect("env")
+        curve_revision = self.model_revision(curve_before)
+        curve_before_state = curve_before["model"]["state"]
+        control_display_y = 1.0 - (control["y"] - zoom["y"]) / zoom["h"]
+        curve_destination = self.point(
+            panel,
+            curve_point["displayX"],
+            curve_point["displayY"] + (control_display_y - curve_point["displayY"]) * 0.6,
+        )
+        self.drag(curve_source, curve_destination, steps=12, step_wait_ms=6)
+        curve_after = self.inspect_until(
+            "env",
+            lambda inspected: self.model_revision(inspected) > curve_revision
+            and abs(min(
+                inspected["effect2D"]["panelState"]["intercepts"],
+                key=lambda candidate: abs(candidate["x"] - control["x"]),
+            )["curve"] - control["curve"]) > 0.01,
+        )
+        assert curve_after["model"]["state"] != curve_before_state
+        reshaped_control = min(
+            curve_after["effect2D"]["panelState"]["intercepts"],
+            key=lambda candidate: abs(candidate["x"] - control["x"]),
+        )
+        assert abs(reshaped_control["curve"] - control["curve"]) > 0.01, (
+            control,
+            reshaped_control,
+        )
+        pointer_delta = curve_destination[1] - curve_source[1]
+        rendered_before = self.displayed_y_at_x(
+            panel_state["waveformPoints"], curve_point["x"], "displayY"
+        )
+        rendered_after = self.displayed_y_at_x(
+            curve_after["effect2D"]["panelState"]["waveformPoints"],
+            curve_point["x"],
+            "displayY",
+        )
+        rendered_delta = rendered_after - rendered_before
+        assert pointer_delta * rendered_delta > 0, (
+            curve_point,
+            control,
+            reshaped_control,
+            rendered_before,
+            rendered_after,
+            curve_source,
+            curve_destination,
+        )
+        self.key_chord("z")
+        curve_undone = self.inspect_until(
+            "env",
+            lambda inspected: inspected["model"]["state"] == curve_before_state,
+        )
+        assert curve_undone["model"]["state"] == curve_before_state
+        initial_state = self.open_editor("env")
+        panel = self.target("expanded:env.panel2D")
+        panel_state = initial_state["effect2D"]["panelState"]
+        zoom = panel_state["zoom"]
+        intercept = panel_state["intercepts"][1]
+        vertex_point = panel_position(intercept["x"], intercept["y"])
+
         self.click(f"m:{vertex_point[0]},{vertex_point[1]}")
         hovered = self.inspect("env")
         hovered_panel = hovered["effect2D"]["panelState"]
@@ -896,6 +1096,76 @@ class NativeEditSmoke:
         initial_vertex_count = state["trimesh"]["vertexCount"]
         self.assert_trimesh_slice(state, "initial Trimesh slice")
 
+        displayed_intercepts = state["trimesh"]["panelDisplayedIntercepts"]
+        curve_point = max(
+            state["trimesh"]["panelDisplayedCurvePoints"],
+            key=lambda point: min(
+                (point["x"] - intercept["x"]) ** 2
+                + (point["y"] - intercept["y"]) ** 2
+                for intercept in displayed_intercepts
+            ),
+        )
+        curve_source = self.point(panel, curve_point["x"], curve_point["y"])
+        self.move_pointer((1, 1))
+        self.move_pointer(curve_source)
+        curve_hover = self.inspect("waveMesh")
+        assert curve_hover["trimesh"]["panelCurveHover"], curve_hover["trimesh"]
+        self.cursor_until("upDownResize")
+        curve_before = self.trimesh_model(curve_hover)
+        curve_revision = self.model_revision(curve_hover)
+        control = min(
+            displayed_intercepts,
+            key=lambda point: abs(point["x"] - curve_point["x"]),
+        )
+        curve_destination = self.point(
+            panel,
+            curve_point["x"],
+            curve_point["y"] + (control["y"] - curve_point["y"]) * 0.6,
+        )
+        self.drag(curve_source, curve_destination, steps=12, step_wait_ms=6)
+        curve_after = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.model_revision(inspected) > curve_revision,
+        )
+        assert self.trimesh_model(curve_after) != curve_before
+        curve_after_model = self.trimesh_model(curve_after)
+        rendered_before = self.displayed_y_at_x(
+            state["trimesh"]["panelDisplayedCurvePoints"],
+            curve_point["x"],
+            "y",
+        )
+        rendered_after = self.displayed_y_at_x(
+            curve_after["trimesh"]["panelDisplayedCurvePoints"],
+            curve_point["x"],
+            "y",
+        )
+        pointer_delta = curve_destination[1] - curve_source[1]
+        assert pointer_delta * (rendered_after - rendered_before) > 0, (
+            curve_point,
+            rendered_before,
+            rendered_after,
+            control,
+        )
+        self.key_chord("z")
+        curve_undone = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.trimesh_model(inspected) == curve_before,
+        )
+        assert self.trimesh_model(curve_undone) == curve_before
+        self.key_chord("z", shift=True)
+        curve_redone = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.trimesh_model(inspected) == curve_after_model,
+        )
+        assert self.trimesh_model(curve_redone) == curve_after_model
+        self.key_chord("z")
+        self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.trimesh_model(inspected) == curve_before,
+        )
+        state = self.open_editor("waveMesh", trimesh=True)
+        panel = self.target("expanded:waveMesh.panel2D")
+
         intercepts = sorted(state["trimesh"]["panelIntercepts"], key=lambda point: point["x"])
         left, right = max(
             zip(intercepts, intercepts[1:]),
@@ -917,49 +1187,80 @@ class NativeEditSmoke:
 
         initial_intercepts = state["trimesh"]["panelIntercepts"]
         added_intercepts = added_state["trimesh"]["panelIntercepts"]
-        source_intercept = max(
-            added_intercepts,
-            key=lambda point: min(abs(point["x"] - before["x"]) for before in initial_intercepts),
+        source_index = max(
+            range(len(added_intercepts)),
+            key=lambda index: min(
+                abs(added_intercepts[index]["x"] - before["x"])
+                for before in initial_intercepts
+            ),
         )
+        source_intercept = added_intercepts[source_index]
+        source_display = added_state["trimesh"]["panelDisplayedIntercepts"][source_index]
         selected_state = added_state
         self.capture("trimesh-02-selected-added-vertex", panel)
         selected = {
             parameter["id"]: parameter["value"]
             for parameter in selected_state["trimesh"]["selectedVertexParameters"]
         }
-        source = self.point(panel, source_intercept["x"], 1.0 - source_intercept["y"])
-        collision_target = min(
-            initial_intercepts,
-            key=lambda point: abs(point["x"] - source_intercept["x"]),
+        source = self.point(panel, source_display["x"], source_display["y"])
+        collision_index = min(
+            range(len(initial_intercepts)),
+            key=lambda index: abs(initial_intercepts[index]["x"] - source_intercept["x"]),
         )
-        collision_point = self.point(panel, collision_target["x"], 1.0 - collision_target["y"])
+        collision_target = initial_intercepts[collision_index]
+        collision_display = state["trimesh"]["panelDisplayedIntercepts"][collision_index]
+        collision_point = self.point(panel, collision_display["x"], collision_display["y"])
         self.drag(source, collision_point)
         collision_state = self.inspect("waveMesh")
         self.assert_trimesh_slice(collision_state, "Trimesh slice after collision rejection")
         self.capture("trimesh-03-collision-rejected", panel)
-        collision_intercepts = sorted(
-            collision_state["trimesh"]["panelIntercepts"], key=lambda point: point["x"]
+        collision_intercepts_with_display = list(zip(
+            collision_state["trimesh"]["panelIntercepts"],
+            collision_state["trimesh"]["panelDisplayedIntercepts"],
+        ))
+        sorted_collision_intercepts = sorted(
+            collision_intercepts_with_display,
+            key=lambda pair: pair[0]["x"],
         )
+        collision_intercepts = [pair[0] for pair in sorted_collision_intercepts]
         minimum_gap = min(
             right["x"] - left["x"]
             for left, right in zip(collision_intercepts, collision_intercepts[1:])
         )
         assert minimum_gap > 0.002, ("Trimesh collision created overlapping intercepts", minimum_gap)
 
-        source_after_collision = min(
-            collision_intercepts,
-            key=lambda point: abs(point["x"] - source_intercept["x"]),
+        source_after_index = min(
+            range(len(collision_intercepts_with_display)),
+            key=lambda index: abs(
+                collision_intercepts_with_display[index][0]["x"] - source_intercept["x"]
+            ),
         )
-        source = self.point(
-            panel, source_after_collision["x"], 1.0 - source_after_collision["y"]
+        source_after_collision, source_display_after_collision = (
+            collision_intercepts_with_display[source_after_index]
         )
-        destination = self.point(
-            panel,
-            min(0.95, source_after_collision["x"] + 0.025),
-            1.0 - min(0.9, source_after_collision["y"] + 0.08),
-        )
+        source = self.point(panel, source_display_after_collision["x"],
+                            source_display_after_collision["y"])
+        self.begin_drag(source)
+        pointer_down_state = self.inspect("waveMesh")
+        selected_before_drag = {
+            parameter["id"]: parameter["value"]
+            for parameter in pointer_down_state["trimesh"]["selectedVertexParameters"]
+        }
+        phase_display_delta = 0.015 if selected_before_drag["vertex.phase"] < 0.5 else -0.015
+        amp_display_delta = -0.04 if selected_before_drag["vertex.amp"] < 0.5 else 0.04
+        destination_display = {
+            "x": source_display_after_collision["x"] + phase_display_delta,
+            "y": source_display_after_collision["y"] + amp_display_delta,
+        }
+        destination = self.point(panel, destination_display["x"], destination_display["y"])
         topology_before_drag = self.trimesh_model(collision_state)
-        self.drag(source, destination)
+        endpoint_midpoint = (
+            round((source[0] + destination[0]) * 0.5),
+            round((source[1] + destination[1]) * 0.5),
+        )
+        self.move_held_drag(source, endpoint_midpoint, steps=15)
+        self.move_held_drag(endpoint_midpoint, destination, steps=15)
+        self.release_drag(destination)
         moved_state = self.inspect("waveMesh")
         self.assert_trimesh_slice(moved_state, "Trimesh slice after vertex drag")
         self.capture("trimesh-04-moved", panel)
@@ -976,6 +1277,38 @@ class NativeEditSmoke:
             collision_state["trimesh"],
             moved_state["trimesh"],
         )
+        expected_phase = selected_before_drag["vertex.phase"] + (
+            phase_display_delta
+            * collision_state["trimesh"]["panelPhaseUnitsPerDisplayX"]
+        )
+        expected_amp = selected_before_drag["vertex.amp"] - (
+            amp_display_delta
+            * collision_state["trimesh"]["panelAmpUnitsPerDisplayY"]
+        )
+        assert abs(moved["vertex.phase"] - expected_phase) < 0.012, (
+            expected_phase, moved["vertex.phase"], selected_before_drag, destination_display
+        )
+        assert abs(moved["vertex.amp"] - expected_amp) < 0.012, (
+            expected_amp, moved["vertex.amp"], selected_before_drag, destination_display
+        )
+        moved_intercept = moved_state["trimesh"]["panelDisplayedIntercepts"][source_after_index]
+
+        published_revision = self.model_revision(moved_state)
+        published_topology = self.trimesh_model(moved_state)
+        moved_source = self.point(panel, moved_intercept["x"], moved_intercept["y"])
+        moved_destination = self.point(panel, min(0.95, moved_intercept["x"] + 0.012),
+                                       max(0.05, moved_intercept["y"] - 0.03))
+        self.drag(moved_source, moved_destination)
+        moved_state = self.inspect_until(
+            "waveMesh",
+            lambda inspected: self.model_revision(inspected) > published_revision,
+        )
+        self.assert_trimesh_slice(moved_state, "Trimesh slice after repeated vertex drag")
+        assert self.trimesh_model(moved_state) != published_topology
+        moved = {
+            parameter["id"]: parameter["value"]
+            for parameter in moved_state["trimesh"]["selectedVertexParameters"]
+        }
 
         graph_after_mesh_edit = self.graph_state()
         voice_bounds = self.node_bounds(graph_after_mesh_edit, "voice")

@@ -4,6 +4,21 @@ namespace CycleV2 {
 
 using namespace juce;
 
+namespace {
+
+uint32_t mixLifecycleSeed(double timestampSeconds, uint64_t sequence) {
+    const uint64_t timestampMicros = timestampSeconds > 0.0
+            ? (uint64_t) (timestampSeconds * 1000000.0)
+            : 0u;
+    uint64_t value = timestampMicros ^ (sequence + 0x9e3779b97f4a7c15ull);
+    value = (value ^ (value >> 30u)) * 0xbf58476d1ce4e5b9ull;
+    value = (value ^ (value >> 27u)) * 0x94d049bb133111ebull;
+    value ^= value >> 31u;
+    return (uint32_t) value ^ (uint32_t) (value >> 32u);
+}
+
+}
+
 RealtimeMidiEventQueue::RealtimeMidiEventQueue() {
     static_assert((capacity & (capacity - 1)) == 0, "MIDI queue capacity must be a power of two");
     for (size_t index = 0; index < slots.size(); ++index) {
@@ -95,6 +110,7 @@ bool RealtimeMidiEventQueue::convert(
     event.channel = (uint8_t) jlimit(1, 16, message.getChannel());
     event.timestampSeconds = timestampSeconds;
     event.sequence = sequence;
+    event.lifecycleSeed = mixLifecycleSeed(timestampSeconds, sequence);
 
     if (message.isNoteOn()) {
         event.kind = RealtimeMidiEvent::Kind::NoteOn;

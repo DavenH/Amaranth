@@ -750,6 +750,8 @@ public:
         meshState->setProperty("panelMinimum", panelStats.minimum);
         meshState->setProperty("panelMaximum", panelStats.maximum);
         meshState->setProperty("panelCentreSample", panelStats.centreSample);
+        meshState->setProperty("panelPhaseUnitsPerDisplayX", panelStats.phaseUnitsPerDisplayX);
+        meshState->setProperty("panelAmpUnitsPerDisplayY", panelStats.ampUnitsPerDisplayY);
         meshState->setProperty("panelAbsoluteSum", panelStats.absoluteSum);
         Array<var> panelIntercepts;
         for (const auto& intercept : panelStats.intercepts) {
@@ -759,6 +761,23 @@ public:
             panelIntercepts.add(encoded);
         }
         meshState->setProperty("panelIntercepts", panelIntercepts);
+        Array<var> panelDisplayedIntercepts;
+        for (const auto& intercept : panelStats.displayedIntercepts) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("x", intercept.x);
+            encoded->setProperty("y", intercept.y);
+            panelDisplayedIntercepts.add(encoded);
+        }
+        meshState->setProperty("panelDisplayedIntercepts", panelDisplayedIntercepts);
+        Array<var> panelDisplayedCurvePoints;
+        for (const auto& point : panelStats.displayedCurvePoints) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("x", point.x);
+            encoded->setProperty("y", point.y);
+            panelDisplayedCurvePoints.add(encoded);
+        }
+        meshState->setProperty("panelDisplayedCurvePoints", panelDisplayedCurvePoints);
+        meshState->setProperty("panelCurveHover", panelStats.curveHover);
         state.setProperty("trimesh", var(meshState));
     }
     Rectangle<float> panelBoundsForAutomation() const override { return {}; }

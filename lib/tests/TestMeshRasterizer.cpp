@@ -415,6 +415,57 @@ TEST_CASE("TrilinearMeshSlicer matches MeshRasterizer intercept and color-point 
     }
 }
 
+TEST_CASE("Trilinear waveform is invariant to the primary view dimension",
+        "[meshrasterizer][wave][regression]") {
+    CurveTableScope curveTableScope;
+    auto mesh = createSyntheticWaveMesh();
+
+    Rasterization::RasterizationRequest request;
+    request.dims = Dimensions(Vertex::Phase, Vertex::Amp, Vertex::Time, Vertex::Red, Vertex::Blue);
+    request.morph = MorphPosition(0.2f, 0.6f, 0.8f);
+
+    Rasterization::TrilinearMeshRasterizer timeRasterizer;
+    request.primaryViewDimension = Vertex::Time;
+    const auto& timeResult = timeRasterizer.renderWaveform({ *mesh, request, 0.f });
+
+    Rasterization::TrilinearMeshRasterizer redRasterizer;
+    request.primaryViewDimension = Vertex::Red;
+    const auto& redResult = redRasterizer.renderWaveform({ *mesh, request, 0.f });
+
+    Rasterization::TrilinearMeshRasterizer blueRasterizer;
+    request.primaryViewDimension = Vertex::Blue;
+    const auto& blueResult = blueRasterizer.renderWaveform({ *mesh, request, 0.f });
+
+    REQUIRE(timeResult.intercepts.size() == redResult.intercepts.size());
+    REQUIRE(timeResult.intercepts.size() == blueResult.intercepts.size());
+    for (int i = 0; i < (int) timeResult.intercepts.size(); ++i) {
+        INFO("intercept=" << i);
+        RasterizerCompare::requireInterceptNear(timeResult.intercepts[i], redResult.intercepts[i]);
+        RasterizerCompare::requireInterceptNear(timeResult.intercepts[i], blueResult.intercepts[i]);
+    }
+
+    REQUIRE(timeResult.colorPoints.size() == redResult.colorPoints.size());
+    REQUIRE(timeResult.colorPoints.size() == blueResult.colorPoints.size());
+    for (int i = 0; i < (int) timeResult.colorPoints.size(); ++i) {
+        INFO("colorPoint=" << i);
+        RasterizerCompare::requireColorPointNear(timeResult.colorPoints[i], redResult.colorPoints[i]);
+        RasterizerCompare::requireColorPointNear(timeResult.colorPoints[i], blueResult.colorPoints[i]);
+    }
+
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(timeResult.waveform.waveX),
+            RasterizerCompare::copyBuffer(redResult.waveform.waveX));
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(timeResult.waveform.waveY),
+            RasterizerCompare::copyBuffer(redResult.waveform.waveY));
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(timeResult.waveform.waveX),
+            RasterizerCompare::copyBuffer(blueResult.waveform.waveX));
+    RasterizerCompare::requireBufferNear(
+            RasterizerCompare::copyBuffer(timeResult.waveform.waveY),
+            RasterizerCompare::copyBuffer(blueResult.waveform.waveY));
+}
+
 TEST_CASE("Trilinear render-only output does not mutate the published panel snapshot",
         "[meshrasterizer][snapshot][ownership]") {
     CurveTableScope curveTableScope;
@@ -595,6 +646,24 @@ TEST_CASE("CurveWaveformPreparationPolicy prepares curves before waveform baking
     REQUIRE(curves[1].b.shp == 1.f);
     REQUIRE(std::isfinite(curves[1].transformX[0]));
     REQUIRE(std::isfinite(curves[1].transformY[0]));
+}
+
+TEST_CASE("Curve snapshots preserve prepared interaction geometry", "[meshrasterizer][pipeline][snapshot]") {
+    CurveTableScope curveTableScope;
+    Curve source(
+            Intercept(0.1f, 0.2f),
+            Intercept(0.4f, 0.8f, nullptr, 0.35f),
+            Intercept(0.9f, 0.3f));
+    source.recalculateCurve();
+
+    const Curve copied(source);
+
+    REQUIRE(copied.tp.ypole == source.tp.ypole);
+    REQUIRE(copied.tp.scaleY == Catch::Approx(source.tp.scaleY));
+    REQUIRE(copied.transformX[Curve::resolution / 2]
+            == Catch::Approx(source.transformX[Curve::resolution / 2]));
+    REQUIRE(copied.transformY[Curve::resolution / 2]
+            == Catch::Approx(source.transformY[Curve::resolution / 2]));
 }
 
 TEST_CASE("TrilinearMeshRasterizer preserves component guide waveform baking", "[meshrasterizer][pipeline][composer][guide]") {
