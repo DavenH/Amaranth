@@ -233,7 +233,7 @@ Resolution:
 
 Current status: resolved on 2026-08-12.
 
-## Open: Trimesh native smoke second vertex addition does not commit
+## Resolved: Trimesh native smoke second vertex addition does not commit
 
 Context:
 
@@ -244,8 +244,15 @@ Context:
   rejection, repeated vertex movement, parameter editing, and deletion.
 - Repro command: `scripts/test_cycle_v2_native_edit_smoke.py trimesh`.
 
-Current status: open; determine whether the fixture targets stale/model-space
-intercepts after deletion or whether right-click insertion regressed.
+Resolution:
+
+- Interaction logs show `doCreateVertex` and collision validation succeeded,
+  increasing the mesh from 64 to 72 vertices.
+- The fixture inspected the graph immediately and sampled the prior published
+  model. It now waits for both a newer model revision and an increased vertex
+  count before continuing.
+
+Current status: resolved on 2026-08-12.
 
 ## Open: native downstream fixtures can sample incomplete asynchronous state
 

@@ -1454,8 +1454,15 @@ class NativeEditSmoke:
             (second_left["x"] + second_right["x"]) * 0.5,
             1.0 - (second_left["y"] + second_right["y"]) * 0.5,
         )
+        deleted_revision = self.model_revision(deleted_state)
         self.click(f"rc:{second_add[0]},{second_add[1]}")
-        final_state = self.inspect("waveMesh")
+        final_state = self.inspect_until(
+            "waveMesh",
+            lambda inspected: (
+                self.model_revision(inspected) > deleted_revision
+                and inspected["trimesh"]["vertexCount"] > deleted_count
+            ),
+        )
         self.assert_trimesh_slice(final_state, "Trimesh slice after second cube addition")
         final_count = final_state["trimesh"]["vertexCount"]
         assert final_count > deleted_count
