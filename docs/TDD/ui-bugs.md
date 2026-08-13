@@ -162,7 +162,7 @@ Resolution:
 
 Current status: resolved on 2026-08-12.
 
-## Open: Cycle v2 full-suite architecture assertions
+## Resolved: Cycle v2 full-suite architecture assertions
 
 Context:
 
@@ -174,7 +174,16 @@ Context:
 - The focused Reverb preview suite passes. Neither failure exercises the
   spectral mapping or Reverb rendering path modified in that work.
 
-Current status: open; failures reproduced in the existing full test binary.
+Resolution:
+
+- The preview address-lookup test now passes with all eight compiled inputs
+  aliased as expected.
+- The rich Trimesh editor contract now explicitly expects 972 px within the
+  probe-rail-reserved workspace, matching the intended spy-bar layout.
+- Both focused cases and the complete Cycle v2 suite pass on the current
+  branch.
+
+Current status: resolved on 2026-08-12.
 
 ## Resolved: default Cycle v2 launch asserts while creating Effect2D widgets
 
