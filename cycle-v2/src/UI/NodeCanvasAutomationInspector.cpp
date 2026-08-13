@@ -770,6 +770,26 @@ var NodeCanvasAutomationInspector::captureAudio(size_t frameCount) const {
     }
 
     const GraphAudioResult result = context.presentation.captureAudio(context.document.graph(), frameCount);
+    const auto samplesAreFinite = [](const SignalBuffer& samples) {
+        return std::all_of(
+                samples.begin(),
+                samples.end(),
+                [](float sample) {
+                    return std::isfinite(sample);
+                });
+    };
+    const bool finite = samplesAreFinite(result.output.block.samples);
+    Array<var> nonFiniteNodes;
+    for (const auto& node : result.nodes) {
+        if (!samplesAreFinite(node.output.block.samples)) {
+            nonFiniteNodes.add(node.nodeId);
+        }
+    }
+    root->setProperty("nonFiniteNodes", nonFiniteNodes);
+    root->setProperty("finite", finite);
+    if (!finite) {
+        return root;
+    }
     root->setProperty("metrics", AutomationValueEncoder::audioMetricsToVar(result.output, 44100.0));
 
     Array<var> samples;

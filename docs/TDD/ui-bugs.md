@@ -254,7 +254,7 @@ Resolution:
 
 Current status: resolved on 2026-08-12.
 
-## Open: native downstream fixtures can sample incomplete asynchronous state
+## Resolved: native downstream fixtures can sample incomplete asynchronous state
 
 Context:
 
@@ -269,5 +269,14 @@ Context:
 - Repro log:
   `/private/var/folders/zx/hdzf3v1s6vvdz7chbz40bbtc0000gn/T/cycle-v2-native-edit-smoke.log`.
 
-Current status: open; make audio capture reject or retry non-finite samples and
-wait explicitly for durable causal completion before evaluating the trace.
+Resolution:
+
+- Automation audio capture now checks the complete output buffer before
+  encoding metrics or samples. Non-finite DSP output produces an explicit
+  failed command with the first affected node IDs instead of JSON `null`
+  sample values. The current Reverb producer is tracked in `audio-bugs.md`.
+- The primary-axis causal fixture waits for the expected completed
+  `DurablePublication` event before evaluating the trace, matching the existing
+  explicit waits for preview and probe products.
+
+Current status: resolved on 2026-08-12.

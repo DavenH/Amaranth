@@ -4,16 +4,18 @@
 
 Context:
 
-- The default-graph Envelope native sequence completes its editor gesture and
-  causal-update assertions, then `captureAudio` serializes at least one sample
-  as JSON `null`, indicating a non-finite value.
+- The default-graph Envelope native sequence encounters non-finite audio before
+  its editor gesture. Automation capture now rejects the buffer explicitly
+  instead of serializing samples as JSON `null`.
+- Per-node diagnostics identify `reverb` as the first non-finite producer and
+  `out` as the downstream propagation point.
 - `assert_audio_changed` consequently fails while comparing the initial and
   post-edit 2048-frame captures. The issue reproduces when the Envelope
   sequence runs alone and is independent of the Stengah Pan/cursor work.
 
-Current status: open; locate the first non-finite producer in the default graph
-after the live Envelope mesh edit and retain the audio assertion as a failing
-gate rather than accepting or filtering the samples.
+Current status: open; diagnose Reverb initialization/rendering in the
+`with-spies.cyclegraph` offline capture and retain the audio assertion as a
+failing gate rather than accepting or filtering the samples.
 
 ## Open: Stengah phase-pan swap parity no longer matches the bundled preset
 
