@@ -315,6 +315,9 @@ TEST_CASE("Node palette resolves every authored node kind from its visible entry
 
 TEST_CASE("Every registered node kind has a parseable palette icon",
         "[cycle-v2][canvas][palette][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+
     for (const auto& definition : NodeDefinitionRegistry::instance().definitions()) {
         INFO("Missing or invalid icon for node type " << definition.typeId);
         REQUIRE(NodePaletteEntryIconRenderer::hasIcon(definition.kind));
@@ -323,6 +326,9 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
 
 TEST_CASE("Every Envelope purpose has a parseable compact icon",
         "[cycle-v2][canvas][envelope][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+
     Image blank(Image::ARGB, 24, 24, true);
     const uint64_t blankChecksum = imageChecksum(blank);
     std::set<uint64_t> checksums;

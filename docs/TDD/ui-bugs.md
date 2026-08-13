@@ -93,7 +93,7 @@ Context:
 Current status: open; inspect the settings property access performed during
 standalone initialization.
 
-## Open: Cycle v2 full suite emits JUCE Component assertions
+## Resolved: Cycle v2 full suite emits JUCE Component assertions
 
 Context:
 
@@ -103,8 +103,18 @@ Context:
 - The focused Modulation suite and standalone automation fixture do not emit
   the assertion, so it is incidental to the control-source implementation.
 
-Current status: open; isolate the broad UI test that adds an already-parented
-component and capture its exact call site.
+Resolution:
+
+- `juce_Component.cpp:1607` is JUCE's message-thread lock assertion, not an
+  already-parented-component assertion.
+- The palette and Envelope icon contract tests lazily constructed JUCE
+  `Drawable` component trees without initializing or locking the GUI. They
+  produced 734 and 89 assertions respectively when run in isolation.
+- Both tests now establish the same `ScopedJuceInitialiser_GUI` and
+  `MessageManagerLock` fixture used by the repository's other component tests.
+
+Current status: resolved on 2026-08-12; the complete Cycle v2 suite emits no
+JUCE assertion failures.
 
 ## Resolved: Trilinear mesh 2D rasterization changed with primary view axis
 
