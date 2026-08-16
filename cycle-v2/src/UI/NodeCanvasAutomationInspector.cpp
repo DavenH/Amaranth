@@ -778,10 +778,14 @@ var NodeCanvasAutomationInspector::captureAudio(size_t frameCount) const {
                     return std::isfinite(sample);
                 });
     };
-    const bool finite = samplesAreFinite(result.output.block.samples);
+    const auto payloadIsFinite = [&](const SignalPayload& payload) {
+        return samplesAreFinite(payload.block.samples)
+                && (!payload.isStereo() || samplesAreFinite(payload.secondaryBlock.samples));
+    };
+    const bool finite = payloadIsFinite(result.output);
     Array<var> nonFiniteNodes;
     for (const auto& node : result.nodes) {
-        if (!samplesAreFinite(node.output.block.samples)) {
+        if (!payloadIsFinite(node.output)) {
             nonFiniteNodes.add(node.nodeId);
         }
     }

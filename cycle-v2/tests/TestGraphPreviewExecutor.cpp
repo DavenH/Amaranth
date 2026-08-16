@@ -6,6 +6,7 @@
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
 #include "../src/Runtime/GraphAudioExecutor.h"
+#include "../src/Runtime/GraphPresentationModel.h"
 #include "../src/Runtime/GraphPreviewExecutor.h"
 #include "../src/Runtime/NodePreviewProcessor.h"
 #include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
@@ -80,6 +81,20 @@ float absoluteSum(const Values& values) {
     }
 
     return sum;
+}
+
+template<typename Values>
+bool allFinite(const Values& values) {
+    return std::all_of(values.begin(), values.end(), [](float value) {
+        return std::isfinite(value);
+    });
+}
+
+void requireFinite(const SignalPayload& payload) {
+    REQUIRE(allFinite(payload.block.samples));
+    if (payload.isStereo()) {
+        REQUIRE(allFinite(payload.secondaryBlock.samples));
+    }
 }
 
 template<typename LeftValues, typename RightValues>
@@ -362,6 +377,25 @@ TEST_CASE("Graph preview executor renders every probe in the bundled spy graph",
     REQUIRE(absoluteDifferenceSum(addSpy.values, addMag.traversalGrid.values) < 1.0e-5f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Bundled spy graph Reverb capture remains finite at automation block size",
+        "[cycle-v2][runtime][reverb]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File spyGraph = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("resources")
+            .getChildFile("with-spies.cyclegraph");
+
+    REQUIRE(spyGraph.existsAsFile());
+
+    const NodeGraph graph = GraphSerializer().fromJsonString(spyGraph.loadFileAsString());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    const GraphAudioResult audio = presentation.captureAudio(graph, 2048);
+    requireFinite(findAudio(audio, "multiply").output);
+    requireFinite(findAudio(audio, "reverb").output);
+    requireFinite(audio.output);
   #endif
 }
 
