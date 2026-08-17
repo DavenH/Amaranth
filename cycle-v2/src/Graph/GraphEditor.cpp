@@ -120,13 +120,12 @@ GraphEditResult GraphEditor::createGuideCurve(NodeGraph& graph) const {
         ++nextNumber;
     }
 
-    CurveNodeDomainCodec codec(NodeKind::GuideCurve);
     GuideCurveResource guide;
     guide.id = "guide" + String(nextNumber);
     guide.shortLabel = "G" + String(nextNumber);
     guide.colourIndex = nextNumber - 1;
     guide.shelfOrder = (int) graph.getGuideCurves().size();
-    guide.model = codec.createDefault();
+    guide.model = createDefaultGuideCurveModel();
     if (!graph.addGuideCurve(std::move(guide))) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
@@ -137,6 +136,32 @@ GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& gu
     if (!graph.removeGuideCurve(guideId)) {
         return { GraphEditCode::MissingNode, guideId, {} };
     }
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
+GraphEditResult GraphEditor::replaceGuideCurve(
+        NodeGraph& graph,
+        const String& guideId,
+        NodeModelStatePtr model,
+        const std::vector<NodeParameter>& controls) const {
+    GuideCurveResource* guide = graph.findGuideCurveForEditing(guideId);
+    if (guide == nullptr || model == nullptr) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+
+    for (const auto& control : controls) {
+        if (control.id == "enabled") {
+            guide->enabled = control.value.getIntValue() != 0;
+        } else if (control.id == "noise") {
+            guide->noise = jlimit(0.f, 1.f, (float) control.value.getDoubleValue());
+        } else if (control.id == "dcOffset") {
+            guide->dcOffset = jlimit(0.f, 1.f, (float) control.value.getDoubleValue());
+        } else if (control.id == "phase") {
+            guide->phase = jlimit(0.f, 1.f, (float) control.value.getDoubleValue());
+        }
+    }
+    guide->model = std::move(model);
+    graph.markChanged();
     return { GraphEditCode::Connected, guideId, {} };
 }
 

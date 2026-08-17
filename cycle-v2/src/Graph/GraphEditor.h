@@ -56,6 +56,11 @@ public:
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
     GraphEditResult createGuideCurve(NodeGraph& graph) const;
     GraphEditResult removeGuideCurve(NodeGraph& graph, const String& guideId) const;
+    GraphEditResult replaceGuideCurve(
+            NodeGraph& graph,
+            const String& guideId,
+            NodeModelStatePtr model,
+            const std::vector<NodeParameter>& controls) const;
     GraphEditResult assignGuideCurveToTrimeshVertexParameter(
             NodeGraph& graph,
             const String& guideId,

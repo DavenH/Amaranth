@@ -41,6 +41,10 @@ public:
             int vertexIndex,
             const juce::String& parameterField);
     GraphEditResult removeGuideCurve(const juce::String& guideId);
+    GraphEditResult replaceGuideCurve(
+            const juce::String& guideId,
+            NodeModelStatePtr model,
+            const std::vector<NodeParameter>& controls);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,

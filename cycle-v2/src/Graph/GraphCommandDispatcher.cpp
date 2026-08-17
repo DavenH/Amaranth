@@ -174,6 +174,19 @@ GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& gui
     });
 }
 
+GraphEditResult GraphCommandDispatcher::replaceGuideCurve(
+        const juce::String& guideId,
+        NodeModelStatePtr model,
+        const std::vector<NodeParameter>& controls) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().replaceGuideCurve(graph, guideId, std::move(model), controls),
+                { {}, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::setNodeParameter(
         const juce::String& nodeId,
         const juce::String& parameterId,

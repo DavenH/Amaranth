@@ -13,6 +13,7 @@
 #include "../Graph/GraphDocument.h"
 #include "../Graph/NodeGraph.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
+#include "../Nodes/Effect2D/CurveNodeEditors.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Trimesh/TrimeshWidget.h"
@@ -45,6 +46,7 @@ class NodeCanvas :
     ,   private Timer
     ,   private NodeEditorPresentation
     ,   private NodeEditorResources
+    ,   private CurveExpandedEditorDelegate
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
@@ -132,6 +134,8 @@ private:
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
+    std::unique_ptr<Effect2DWidget> guideEditorWidget;
+    std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
     int activeTrimeshVertexIndex { -1 };
     Point<float> lastMousePosition;
@@ -150,6 +154,7 @@ private:
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
+    String expandedGuideId;
     bool resizingProbeRail {};
     bool resizingDockSplit {};
     float probeRailResizeStartHeight {};
@@ -193,6 +198,9 @@ private:
     Rectangle<float> canvasContentBounds() const;
     float tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    void openGuideEditor(const String& guideId);
+    void closeGuideEditor();
+    Node guideEditorPresentationNode(const GuideCurveResource& guide) const;
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;
@@ -225,6 +233,14 @@ private:
             const Node& node,
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
+
+    void closeEffect2DEditor() override;
+    void repaintEffect2DEditorOpenGL() override;
+    bool publishEffect2DState(
+            NodeModelStatePtr model,
+            const std::vector<NodeParameter>& controls) override;
+    void beginEffect2DTransaction() override;
+    void commitEffect2DTransaction() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

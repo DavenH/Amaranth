@@ -347,6 +347,29 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
     REQUIRE(graph.getGuideAssignments().size() == 2);
 }
 
+TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphEditor editor;
+    REQUIRE(editor.createGuideCurve(graph).succeeded());
+
+    const GuideCurveResource* original = graph.findGuideCurve("guide1");
+    REQUIRE(original != nullptr);
+    REQUIRE(editor.replaceGuideCurve(graph, "guide1", original->model, {
+            { "enabled", "Enabled", "0" },
+            { "noise", "Noise", "0.2" },
+            { "dcOffset", "DC Offset", "0.7" },
+            { "phase", "Phase", "0.9" }
+    }).succeeded());
+
+    const GuideCurveResource* edited = graph.findGuideCurve("guide1");
+    REQUIRE(edited != nullptr);
+    REQUIRE_FALSE(edited->enabled);
+    REQUIRE(edited->noise == 0.2f);
+    REQUIRE(edited->dcOffset == 0.7f);
+    REQUIRE(edited->phase == 0.9f);
+    REQUIRE(graph.findNode("guide1") == nullptr);
+}
+
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());

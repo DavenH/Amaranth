@@ -656,7 +656,6 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
 
     std::unordered_set<String, StringHash> guideIds;
     std::unordered_set<String, StringHash> guideLabels;
-    CurveNodeDomainCodec guideCodec(NodeKind::GuideCurve);
     for (const auto& encodedValue : *encodedGuides) {
         const auto* encoded = encodedValue.getDynamicObject();
         GuideCurveResource guide;
@@ -687,7 +686,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         guide.dcOffset = (float) dcOffset;
         guide.phase = (float) phase;
         String error;
-        guide.model = guideCodec.readJSON(encoded->getProperty("model"), error);
+        guide.model = readGuideCurveModelJSON(encoded->getProperty("model"), error);
         if (guide.model == nullptr || !result.graph.addGuideCurve(std::move(guide))) {
             result.issues.push_back({ GraphLoadCode::InvalidModel,
                     "Invalid model for Guide Curve resource: " + error });

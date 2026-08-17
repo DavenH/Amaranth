@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -177,6 +178,9 @@ void NodeCanvas::paint(Graphics& g) {
 
 void NodeCanvas::resized() {
     viewport.setBounds(canvasContentBounds());
+    if (guideEditor != nullptr && guideEditor->isVisible()) {
+        guideEditor->setBounds(canvasContentBounds().reduced(36.f, 24.f).toNearestInt());
+    }
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
     notifyOverlayPresentationChanged();
     requestCanvasRepaint();
@@ -292,7 +296,32 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             dockSplitRatio,
             guideShelfState);
     if (selectedGuide.isNotEmpty()) {
+        if (event.mods.isPopupMenu()) {
+            const int assignmentCount = (int) std::count_if(
+                    graph.getGuideAssignments().begin(),
+                    graph.getGuideAssignments().end(),
+                    [&](const GuideCurveAssignment& assignment) {
+                        return assignment.guideId == selectedGuide;
+                    });
+            const bool confirmed = AlertWindow::showOkCancelBox(
+                    AlertWindow::WarningIcon,
+                    "Delete Guide Curve",
+                    "Delete this Guide Curve and detach " + String(assignmentCount)
+                            + " assignment" + (assignmentCount == 1 ? "?" : "s?"),
+                    "Delete",
+                    "Cancel",
+                    this);
+            if (confirmed && commands.removeGuideCurve(selectedGuide).succeeded()) {
+                guideShelfState.selectedGuideId = {};
+                editStatusMessage = "Guide Curve deleted";
+            }
+            requestCanvasRepaint();
+            return;
+        }
         guideShelfState.selectedGuideId = selectedGuide;
+        if (event.getNumberOfClicks() >= 2) {
+            openGuideEditor(selectedGuide);
+        }
         requestCanvasRepaint();
         return;
     }
@@ -805,6 +834,9 @@ void NodeCanvas::renderOpenGL() {
                 presentationFrame(),
                 (float) openGLContext.getRenderingScale());
         editorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
+        if (guideEditor != nullptr && guideEditor->isVisible()) {
+            guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
+        }
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
@@ -812,6 +844,9 @@ void NodeCanvas::renderOpenGL() {
 
 void NodeCanvas::openGLContextClosing() {
     editorCoordinator.releaseOpenGLResources();
+    if (guideEditorWidget != nullptr) {
+        guideEditorWidget->releaseSharedGlResources();
+    }
 
     renderer.shutdown();
 }
@@ -1395,6 +1430,87 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
 void NodeCanvas::closeNodeEditor() {
     editorCoordinator.close();
     notifyOverlayPresentationChanged();
+}
+
+Node NodeCanvas::guideEditorPresentationNode(const GuideCurveResource& guide) const {
+    Node node;
+    node.id = guide.id;
+    node.kind = NodeKind::GuideCurve;
+    node.model = guide.model;
+    node.parameters = {
+            { "enabled", "Enabled", guide.enabled ? "1" : "0" },
+            { "noise", "Noise", String(guide.noise) },
+            { "dcOffset", "DC Offset", String(guide.dcOffset) },
+            { "phase", "Phase", String(guide.phase) }
+    };
+    return node;
+}
+
+void NodeCanvas::openGuideEditor(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr) {
+        return;
+    }
+
+    if (guideEditor == nullptr) {
+        guideEditorWidget = std::make_unique<Effect2DWidget>(NodeKind::GuideCurve);
+        guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
+        guideEditor->setDelegate(this);
+        addAndMakeVisible(*guideEditor);
+    }
+
+    expandedNodeId = {};
+    editorCoordinator.close();
+    expandedGuideId = guideId;
+    guideEditor->setNode(guideEditorPresentationNode(*guide));
+    guideEditor->setBounds(canvasContentBounds().reduced(36.f, 24.f).toNearestInt());
+    guideEditor->setVisible(true);
+    guideEditor->toFront(false);
+    notifyOverlayPresentationChanged();
+}
+
+void NodeCanvas::closeGuideEditor() {
+    expandedGuideId = {};
+    if (guideEditor != nullptr) {
+        guideEditor->setVisible(false);
+    }
+    notifyOverlayPresentationChanged();
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::closeEffect2DEditor() {
+    closeGuideEditor();
+}
+
+void NodeCanvas::repaintEffect2DEditorOpenGL() {
+    openGLContext.triggerRepaint();
+    if (guideEditor != nullptr) {
+        guideEditor->repaint();
+    }
+}
+
+bool NodeCanvas::publishEffect2DState(
+        NodeModelStatePtr model,
+        const std::vector<NodeParameter>& controls) {
+    if (expandedGuideId.isEmpty()) {
+        return false;
+    }
+    const auto result = commands.replaceGuideCurve(expandedGuideId, std::move(model), controls);
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.refresh(graph, document.revision(), document.lastChange());
+    requestCanvasRepaint();
+    return true;
+}
+
+void NodeCanvas::beginEffect2DTransaction() {
+    commands.beginCompoundEdit();
+}
+
+void NodeCanvas::commitEffect2DTransaction() {
+    commands.commitCompoundEdit();
+    refreshCompiledStateAsync();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {

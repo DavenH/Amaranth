@@ -230,4 +230,7 @@ private:
     NodeKind kind;
 };
 
+NodeModelStatePtr createDefaultGuideCurveModel();
+NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error);
+
 }

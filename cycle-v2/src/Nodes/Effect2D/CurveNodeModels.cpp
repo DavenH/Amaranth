@@ -769,4 +769,41 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     return nullptr;
 }
 
+NodeModelStatePtr createDefaultGuideCurveModel() {
+    FlatCurveModel model("CycleV2GuideCurve");
+    if (!model.replaceVertices({
+                { 1, 0.05f, 0.5f, 1.f },
+                { 2, 0.34f, 0.64f, 0.4f },
+                { 3, 0.62f, 0.36f, 0.4f },
+                { 4, 0.95f, 0.5f, 1.f } })) {
+        return nullptr;
+    }
+    model.setPublicationRevision(1);
+    return CurveNodeModelState::copyOf(model, 1);
+}
+
+NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error) {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr || object->getProperty("schema").toString() != "flatCurve") {
+        error = "Unexpected Guide Curve model schema";
+        return nullptr;
+    }
+    if ((int) object->getProperty("version") != FlatCurveModel::currentVersion) {
+        error = "Unsupported Guide Curve model schema version";
+        return nullptr;
+    }
+    const int64 revision = object->getProperty("revision");
+    if (revision < 1) {
+        error = "Guide Curve model revision must be positive";
+        return nullptr;
+    }
+
+    FlatCurveModel model("CycleV2GuideCurve");
+    if (!model.readJSON(object->getProperty("state")) || model.revision() != (uint64_t) revision) {
+        error = "Invalid Guide Curve model state";
+        return nullptr;
+    }
+    return CurveNodeModelState::copyOf(model, (uint64_t) revision);
+}
+
 }
