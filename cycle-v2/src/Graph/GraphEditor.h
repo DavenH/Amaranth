@@ -56,6 +56,10 @@ public:
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
     GraphEditResult createGuideCurve(NodeGraph& graph) const;
     GraphEditResult removeGuideCurve(NodeGraph& graph, const String& guideId) const;
+    GraphEditResult renameGuideCurve(
+            NodeGraph& graph,
+            const String& guideId,
+            const String& name) const;
     GraphEditResult replaceGuideCurve(
             NodeGraph& graph,
             const String& guideId,

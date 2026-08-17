@@ -2,6 +2,8 @@
 
 #include "CurveNodeModels.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 namespace CycleV2 {
 
 Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
@@ -86,13 +88,12 @@ void Effect2DWidget::syncFromNode(const Node& node) {
 
     controller->syncFromNode(node);
     if (guideResource) {
-        GuideCurveNodeModel model;
-        model.syncFromNode(node);
+        const NodeParameterMap parameters(node);
         controller->setControlValues(
-                model.enabled,
-                model.noise,
-                model.dcOffset,
-                model.phase,
+                parameters.boolValue("enabled", true),
+                jlimit(0.f, 1.f, parameters.floatValue("noise", 0.5f)),
+                jlimit(0.f, 1.f, parameters.floatValue("dcOffset", 0.5f)),
+                jlimit(0.f, 1.f, parameters.floatValue("phase", 0.5f)),
                 0);
     }
 }

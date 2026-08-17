@@ -370,6 +370,16 @@ TEST_CASE("Guide resource edits replace the resource model without creating a no
     REQUIRE(graph.findNode("guide1") == nullptr);
 }
 
+TEST_CASE("Guide resource names are document content and undoable", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.renameGuideCurve("guide1", "Vibrato Bend").succeeded());
+    REQUIRE(document.graph().findGuideCurve("guide1")->name == "Vibrato Bend");
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->name.isEmpty());
+}
+
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());

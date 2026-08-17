@@ -173,6 +173,18 @@ GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& gui
     });
 }
 
+GraphEditResult GraphCommandDispatcher::renameGuideCurve(
+        const juce::String& guideId,
+        const juce::String& name) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().renameGuideCurve(graph, guideId, name),
+                { {}, false, false });
+        result.changes.guidesChanged = result.succeeded() && result.changed;
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::replaceGuideCurve(
         const juce::String& guideId,
         NodeModelStatePtr model,

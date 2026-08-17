@@ -139,6 +139,23 @@ GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& gu
     return { GraphEditCode::Connected, guideId, {} };
 }
 
+GraphEditResult GraphEditor::renameGuideCurve(
+        NodeGraph& graph,
+        const String& guideId,
+        const String& name) const {
+    GuideCurveResource* guide = graph.findGuideCurveForEditing(guideId);
+    const String trimmedName = name.trim();
+    if (guide == nullptr || trimmedName.isEmpty()) {
+        return { GraphEditCode::InvalidParameterValue, guideId, {} };
+    }
+    if (guide->name == trimmedName) {
+        return { GraphEditCode::Connected, guideId, {}, {}, false };
+    }
+    guide->name = trimmedName;
+    graph.markChanged();
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
 GraphEditResult GraphEditor::replaceGuideCurve(
         NodeGraph& graph,
         const String& guideId,

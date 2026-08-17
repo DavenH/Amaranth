@@ -162,16 +162,6 @@ struct ImpulseResponseNodeModel {
     void syncFromNode(const Node& node);
 };
 
-struct GuideCurveNodeModel {
-    FlatCurveModel curve { "CycleV2GuideCurve" };
-    bool enabled { true };
-    float noise { 0.5f };
-    float dcOffset { 0.5f };
-    float phase { 0.5f };
-
-    void syncFromNode(const Node& node);
-};
-
 class CurveNodeModelState : public NodeModelState {
 public:
     static std::shared_ptr<const CurveNodeModelState> copyOf(

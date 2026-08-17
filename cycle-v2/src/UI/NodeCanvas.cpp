@@ -297,21 +297,35 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             guideShelfState);
     if (selectedGuide.isNotEmpty()) {
         if (event.mods.isPopupMenu()) {
+            const GuideCurveResource* guide = graph.findGuideCurve(selectedGuide);
+            if (guide == nullptr) {
+                return;
+            }
             const int assignmentCount = (int) std::count_if(
                     graph.getGuideAssignments().begin(),
                     graph.getGuideAssignments().end(),
                     [&](const GuideCurveAssignment& assignment) {
                         return assignment.guideId == selectedGuide;
                     });
-            const bool confirmed = AlertWindow::showOkCancelBox(
-                    AlertWindow::WarningIcon,
-                    "Delete Guide Curve",
-                    "Delete this Guide Curve and detach " + String(assignmentCount)
-                            + " assignment" + (assignmentCount == 1 ? "?" : "s?"),
-                    "Delete",
-                    "Cancel",
+            AlertWindow dialog(
+                    "Guide Curve",
+                    "Rename this resource, or delete it and detach "
+                            + String(assignmentCount) + " assignment"
+                            + (assignmentCount == 1 ? "." : "s."),
+                    AlertWindow::NoIcon,
                     this);
-            if (confirmed && commands.removeGuideCurve(selectedGuide).succeeded()) {
+            dialog.addTextEditor("name", guide->name, "Name:");
+            dialog.addButton("Rename", 1);
+            dialog.addButton("Delete", 2);
+            dialog.addButton("Cancel", 0);
+            const int action = dialog.runModalLoop();
+            if (action == 1) {
+                if (commands.renameGuideCurve(
+                            selectedGuide,
+                            dialog.getTextEditorContents("name")).succeeded()) {
+                    editStatusMessage = "Guide Curve renamed";
+                }
+            } else if (action == 2 && commands.removeGuideCurve(selectedGuide).succeeded()) {
                 guideShelfState.selectedGuideId = {};
                 editStatusMessage = "Guide Curve deleted";
             }

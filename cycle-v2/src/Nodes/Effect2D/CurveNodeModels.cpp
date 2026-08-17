@@ -568,18 +568,6 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
     }
 }
 
-void GuideCurveNodeModel::syncFromNode(const Node& node) {
-    const NodeParameterMap parameters(node);
-    enabled = parameters.boolValue("enabled", true);
-    noise = jlimit(0.f, 1.f, parameters.floatValue("noise", 0.5f));
-    dcOffset = jlimit(0.f, 1.f, parameters.floatValue("dcOffset", 0.5f));
-    phase = jlimit(0.f, 1.f, parameters.floatValue("phase", 0.5f));
-    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (typed != nullptr && typed->flatCurve() != nullptr) {
-        curve.copyFrom(*typed->flatCurve());
-    }
-}
-
 static var defaultCurveModelState(NodeKind kind) {
     if (kind == NodeKind::Envelope) {
         EnvelopeNodeModel model;

@@ -3,6 +3,8 @@
 #include "CurveEditorPrimitives.h"
 #include "CurveNodeModels.h"
 
+#include "../../Graph/NodeParameterMap.h"
+
 namespace CycleV2 {
 
 struct GuideCurveEditorComponent::Impl {
@@ -63,12 +65,11 @@ void GuideCurveEditorComponent::layoutEditor() {
 }
 
 void GuideCurveEditorComponent::syncEditorFromNode() {
-    GuideCurveNodeModel model;
-    model.syncFromNode(node);
-    impl->enabled.button.setToggleState(model.enabled, dontSendNotification);
-    impl->noise.slider.setValue(model.noise, dontSendNotification);
-    impl->dcOffset.slider.setValue(model.dcOffset, dontSendNotification);
-    impl->phase.slider.setValue(model.phase, dontSendNotification);
+    const NodeParameterMap parameters(node);
+    impl->enabled.button.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
+    impl->noise.slider.setValue(parameters.floatValue("noise", 0.5f), dontSendNotification);
+    impl->dcOffset.slider.setValue(parameters.floatValue("dcOffset", 0.5f), dontSendNotification);
+    impl->phase.slider.setValue(parameters.floatValue("phase", 0.5f), dontSendNotification);
 }
 
 void GuideCurveEditorComponent::applyEditorStateToWidget() {
