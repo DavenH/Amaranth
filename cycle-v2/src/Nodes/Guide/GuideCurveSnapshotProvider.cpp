@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "../../Graph/NodeParameterMap.h"
 #include "../Effect2D/CurveNodeModels.h"
 #include "../Effect2D/FlatCurvePreparation.h"
 
@@ -20,49 +19,6 @@ GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
     ,   phaseScratch (tableSize) {
     GuideCurveTableDsp::initializeNoise(
             Buffer<float>(noise.data(), (int) noise.size()));
-}
-
-bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
-    if (node.kind != NodeKind::GuideCurve) {
-        return false;
-    }
-
-    GuideSnapshot snapshot;
-    snapshot.table.resize(tableSize);
-    const NodeParameterMap parameters(node);
-    snapshot.parameters.noiseLevel = parameters.floatValue("noise", 0.f);
-    snapshot.parameters.verticalOffsetLevel = parameters.floatValue("dcOffset", 0.f);
-    snapshot.parameters.phaseOffsetLevel = parameters.floatValue("phase", 0.f);
-    snapshot.parameters.seed = stableSeed((int) guides.size());
-
-    const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
-    snapshot.density = curve != nullptr ? (int) curve->getVertices().size() : 0;
-
-    if (!parameters.boolValue("enabled", true)) {
-        Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).zero();
-        guides.push_back(std::move(snapshot));
-        return true;
-    }
-
-    FlatCurvePreparation preparation(
-            "CycleV2GuideSnapshot",
-            NodeKind::GuideCurve,
-            node.parameters,
-            node.model,
-            FXRasterizer::Unipolar);
-    if (!preparation.prepare()) {
-        return false;
-    }
-
-    const float interval = (1.f - 2.f * kGuidePadding) / (float) (tableSize - 1);
-    preparation.sampler().sampleWithInterval(
-            Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()),
-            interval,
-            kGuidePadding);
-    Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).add(-0.5f);
-    guides.push_back(std::move(snapshot));
-    return true;
 }
 
 bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
@@ -83,16 +39,8 @@ bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
         return true;
     }
 
-    const std::vector<NodeParameter> parameters {
-        { "enabled", "Enabled", resource.enabled ? "1" : "0" },
-        { "noise", "Noise", String(resource.noise) },
-        { "dcOffset", "DC Offset", String(resource.dcOffset) },
-        { "phase", "Phase", String(resource.phase) }
-    };
     FlatCurvePreparation preparation(
             "CycleV2GuideSnapshot",
-            NodeKind::GuideCurve,
-            parameters,
             resource.model,
             FXRasterizer::Unipolar);
     if (!preparation.prepare()) {
@@ -163,10 +111,6 @@ uint32_t GuideCurveSnapshotProvider::visualizationSeed(PortDomain domain) {
         case PortDomain::SpectralMagnitudeSignal: return 0x53504543u;
         default:                                  return 0x54494d45u;
     }
-}
-
-int GuideCurveSnapshotProvider::stableSeed(int guideIndex) {
-    return GuideCurveTableDsp::stableSeed(guideIndex);
 }
 
 int GuideCurveSnapshotProvider::stableSeed(const GuideCurveResource& resource) {

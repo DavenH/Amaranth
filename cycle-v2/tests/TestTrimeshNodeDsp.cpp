@@ -115,7 +115,8 @@ TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
 
 TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
         "[cycle-v2][nodes][guide][parity]") {
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    GuideCurveResource guide;
+    guide.id = "guide";
     std::vector<FlatCurveVertex> vertices {
             { 1, 0.05f, 0.25f, 1.f },
             { 2, 0.95f, 0.75f, 1.f }
@@ -123,11 +124,9 @@ TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices(std::move(vertices)));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
-            parameter.value = "0";
-        }
-    }
+    guide.noise = 0.f;
+    guide.dcOffset = 0.f;
+    guide.phase = 0.f;
 
     GuideCurveSnapshotProvider provider;
     REQUIRE(provider.addGuide(guide));
@@ -143,22 +142,17 @@ TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
 
 TEST_CASE("Guide snapshot noise and offsets are deterministic",
         "[cycle-v2][nodes][guide][parity]") {
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    GuideCurveResource guide;
+    guide.id = "guide";
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices({
             { 1, 0.05f, 0.2f, 1.f },
             { 2, 0.95f, 0.8f, 1.f }
     }));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise") {
-            parameter.value = "0.4";
-        } else if (parameter.id == "dcOffset") {
-            parameter.value = "0.3";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.2";
-        }
-    }
+    guide.noise = 0.4f;
+    guide.dcOffset = 0.3f;
+    guide.phase = 0.2f;
 
     GuideCurveSnapshotProvider first;
     GuideCurveSnapshotProvider repeated;

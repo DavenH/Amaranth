@@ -28,6 +28,8 @@ namespace AppSettings {
     ,   CollisionDetection
     ,   ProbeEditRefreshPolicy
     ,   PreviewVoiceLengthMilliseconds
+    ,   GuideDockSplitPercent
+    ,   GuideShelfMinimized
 
     ,   numSettings
     };

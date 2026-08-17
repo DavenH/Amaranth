@@ -10,13 +10,9 @@ namespace CycleV2 {
 
 FlatCurvePreparation::FlatCurvePreparation(
         const String& name,
-        NodeKind nodeKind,
-        const std::vector<NodeParameter>& parametersToPrepare,
         NodeModelStatePtr modelToPrepare,
         FXRasterizer::ScalingType scaling) :
-        kind        (nodeKind)
-    ,   parameters  (parametersToPrepare)
-    ,   model       (std::move(modelToPrepare))
+        model       (std::move(modelToPrepare))
     ,   mesh        (name + "Mesh")
     ,   rasterizer  (nullptr, name + "Rasterizer") {
     rasterizer.setDims(Dimensions(Vertex::Phase, Vertex::Amp));
@@ -29,9 +25,6 @@ FlatCurvePreparation::~FlatCurvePreparation() {
 }
 
 bool FlatCurvePreparation::prepare() {
-    if (model == nullptr) {
-        model = CurveNodeDomainCodec(kind).createDefault();
-    }
     const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(model);
     const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
     if (curve == nullptr) {

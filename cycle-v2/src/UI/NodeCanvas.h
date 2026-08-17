@@ -145,10 +145,13 @@ private:
     String draggingSpectralPanNodeId;
     float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
+    GuideCurveShelfState guideShelfState;
+    float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
     bool resizingProbeRail {};
+    bool resizingDockSplit {};
     float probeRailResizeStartHeight {};
     float probeRailResizeStartY {};
     uint32 compiledStateRefreshDueMs {};

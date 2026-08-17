@@ -462,11 +462,18 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
+    guideCurveShelf.paint(
+            graphics,
+            frame.graph,
+            frame.workspaceBounds,
+            frame.probeRailState,
+            frame.dockSplitRatio,
+            frame.guideShelfState);
     signalProbeRail.paintRail(
             graphics,
             frame.graph,
             frame.previewResult,
-            frame.workspaceBounds,
+            GuideCurveShelf::spyWorkspace(frame.workspaceBounds, frame.dockSplitRatio),
             frame.probeRailState);
     signalProbeDetailView.paint(
             graphics,
@@ -483,7 +490,7 @@ void NodeCanvasPresentation::paintContent(
             graphics,
             frame.graph,
             scene.snapshot(),
-            frame.workspaceBounds,
+            GuideCurveShelf::spyWorkspace(frame.workspaceBounds, frame.dockSplitRatio),
             frame.probeRailState);
     paintPendingConnection(graphics, frame);
     paintNodes(graphics, frame);

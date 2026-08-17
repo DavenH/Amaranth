@@ -27,8 +27,6 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
     FlatCurvePreparation curve(
             "CycleV2WaveshaperConfiguration",
-            NodeKind::Waveshaper,
-            parameters,
             model,
             FXRasterizer::Unipolar);
     if (!curve.prepare()) {

@@ -150,34 +150,19 @@ TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cyc
             }));
 }
 
-TEST_CASE("Runtime exposes targeted guide attachments separately from signal inputs", "[cycle-v2][runtime]") {
+TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
             graph,
             "waveMesh",
             4,
-            "curve",
-            { 100.f, 100.f }).succeeded());
+            "curve").succeeded());
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto trace = GraphRuntime().process(graph, compileResult.plan);
-    const auto& wave = findTraceNode(trace, "waveMesh");
-
-    REQUIRE(std::any_of(
-            wave.attachments.begin(),
-            wave.attachments.end(),
-            [](const RuntimeInput& input) {
-                return input.sourceNodeId == "guide"
-                    && input.destPortId == "guide.cube.0.curve";
-            }));
-    REQUIRE(std::none_of(
-            wave.signalInputs.begin(),
-            wave.signalInputs.end(),
-            [](const RuntimeInput& input) {
-                return input.destPortId.startsWith("guide.cube.");
-            }));
+    REQUIRE(graph.getEdges().size() == NodeGraph::createDemoGraph().getEdges().size());
+    REQUIRE(graph.getGuideAssignments().size() == 1);
 }
 
 TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",

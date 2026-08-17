@@ -33,8 +33,6 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             parameterMap.floatValue("size", 0.5f));
     FlatCurvePreparation curve(
             "CycleV2IrConfiguration",
-            NodeKind::ImpulseResponse,
-            parameters,
             model,
             FXRasterizer::Bipolar);
     if (!curve.prepare()) {

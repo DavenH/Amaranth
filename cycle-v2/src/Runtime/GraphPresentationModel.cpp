@@ -489,11 +489,13 @@ GraphPresentationModel::captureProbePreview(
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {
     return change.topologyChanged
+            || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::GraphSemantics);
 }
 
 bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const {
     return change.probesChanged
+            || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
             || hasImpact(change.parameterImpacts, ParameterImpact::Preview)
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);

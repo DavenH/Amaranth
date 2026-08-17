@@ -118,13 +118,23 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
     });
 }
 
+GraphEditResult GraphCommandDispatcher::createGuideCurve() {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().createGuideCurve(graph),
+                { {}, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         const juce::String& guideId,
         const juce::String& meshNodeId,
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
+        auto result = annotateSuccessful(
                 GraphEditor().assignGuideCurveToTrimeshVertexParameter(
                         graph,
                         guideId,
@@ -132,6 +142,8 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
                         vertexIndex,
                         parameterField),
                 { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
     });
 }
 
@@ -140,21 +152,25 @@ GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
+        auto result = annotateSuccessful(
                 GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
                         graph,
                         meshNodeId,
                         vertexIndex,
                         parameterField),
                 { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
     });
 }
 
 GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
+        auto result = annotateSuccessful(
                 GraphEditor().removeGuideCurve(graph, guideId),
                 { {}, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
     });
 }
 
@@ -489,6 +505,7 @@ void GraphCommandDispatcher::accumulateChange(
     destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
     destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
     destination.probesChanged = destination.probesChanged || change.probesChanged;
+    destination.guidesChanged = destination.guidesChanged || change.guidesChanged;
     destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
 }
 

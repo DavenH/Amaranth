@@ -30,6 +30,7 @@ public:
             size_t edgeIndex,
             float tapPosition);
     GraphEditResult spliceNodeIntoEdge(size_t edgeIndex, const juce::String& nodeId);
+    GraphEditResult createGuideCurve();
     GraphEditResult assignGuideCurve(
             const juce::String& guideId,
             const juce::String& meshNodeId,

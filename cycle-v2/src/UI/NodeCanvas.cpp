@@ -133,6 +133,12 @@ NodeCanvas::NodeCanvas() :
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
             : ProbeRefreshMode::OnGestureCommit;
+    dockSplitRatio = jlimit(
+            0.2f,
+            0.8f,
+            settings.getGlobalSettingValue(AppSettings::GuideDockSplitPercent) / 100.f);
+    guideShelfState.minimized = settings.getGlobalSettingValue(
+            AppSettings::GuideShelfMinimized) != 0;
     globalUnisonPreviewContext.voiceDurationSeconds = jlimit(
             CycleDsp::voiceLengthSeconds(0.f),
             CycleDsp::voiceLengthSeconds(1.f),
@@ -200,7 +206,7 @@ void NodeCanvas::updateHoverAt(Point<float> position) {
             document.revision());
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
-            getLocalBounds().toFloat(),
+            GuideCurveShelf::spyWorkspace(getLocalBounds().toFloat(), dockSplitRatio),
             graph,
             probeRailState);
     if (hovered.isEmpty()) {
@@ -235,6 +241,65 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     SignalProbeRail& probeRail = canvasPresentation.probeRail();
+    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
+            workspace,
+            dockSplitRatio);
+    const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (guideShelfState.minimized && guideShelf.contains(event.position)) {
+        guideShelfState.minimized = false;
+        settings.getGlobalSetting(AppSettings::GuideShelfMinimized) = false;
+        requestCanvasRepaint();
+        return;
+    }
+    const float dividerX = GuideCurveShelf::guideWorkspace(workspace, dockSplitRatio).getRight();
+    if (Rectangle<float>(dividerX - 4.f, guideShelf.getY(), 8.f, guideShelf.getHeight())
+                .contains(event.position)) {
+        resizingDockSplit = true;
+        return;
+    }
+    if (GuideCurveShelf::addButtonBounds(
+                workspace,
+                probeRailState,
+                dockSplitRatio,
+                guideShelfState).contains(event.position)) {
+        const GraphEditResult result = commands.createGuideCurve();
+        if (result.succeeded()) {
+            guideShelfState.selectedGuideId = result.nodeId;
+            editStatusMessage = "Guide Curve created";
+        }
+        requestCanvasRepaint();
+        return;
+    }
+    if (GuideCurveShelf::minimizeButtonBounds(
+                workspace,
+                probeRailState,
+                dockSplitRatio,
+                guideShelfState).contains(event.position)) {
+        guideShelfState.minimized = true;
+        settings.getGlobalSetting(AppSettings::GuideShelfMinimized) = true;
+        requestCanvasRepaint();
+        return;
+    }
+    const String selectedGuide = GuideCurveShelf::guideAt(
+            event.position,
+            graph,
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (selectedGuide.isNotEmpty()) {
+        guideShelfState.selectedGuideId = selectedGuide;
+        requestCanvasRepaint();
+        return;
+    }
+    if (guideShelf.contains(event.position)) {
+        requestCanvasRepaint();
+        return;
+    }
     if (probeDetailState.isOpen()) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
@@ -247,7 +312,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    if (probeRail.refreshModeBoundsFor(workspace, probeRailState).contains(event.position)) {
+    if (probeRail.refreshModeBoundsFor(spyWorkspace, probeRailState).contains(event.position)) {
         probeRailState.refreshMode = probeRailState.refreshMode == ProbeRefreshMode::LiveLatest
                 ? ProbeRefreshMode::OnGestureCommit
                 : ProbeRefreshMode::LiveLatest;
@@ -256,7 +321,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
-    if (probeRail.collapseHandleFor(workspace, probeRailState).contains(event.position)) {
+    if (probeRail.collapseHandleFor(spyWorkspace, probeRailState).contains(event.position)) {
         probeRailState.expanded = !probeRailState.expanded;
         if (!probeRailState.expanded) {
             probeDetailState.close();
@@ -265,14 +330,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         resized();
         return;
     }
-    if (probeRail.resizeHandleFor(workspace, probeRailState).contains(event.position)) {
+    if (probeRail.resizeHandleFor(spyWorkspace, probeRailState).contains(event.position)) {
         resizingProbeRail = true;
         probeRailResizeStartHeight = probeRailState.expandedHeight;
         probeRailResizeStartY = event.position.y;
         return;
     }
     const String closeProbe = probeRail.closeProbeAt(
-            event.position, workspace, graph, probeRailState);
+            event.position, spyWorkspace, graph, probeRailState);
     if (closeProbe.isNotEmpty()) {
         applyAuthoringResult(authoring.removeSignalProbe(closeProbe));
         if (probeRailState.selectedProbeId == closeProbe) {
@@ -285,7 +350,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
     const String railProbe = probeRail.probeAt(
-            event.position, workspace, graph, probeRailState);
+            event.position, spyWorkspace, graph, probeRailState);
     if (railProbe.isNotEmpty()) {
         probeRailState.selectedProbeId = railProbe;
         if (event.getNumberOfClicks() >= 2) {
@@ -295,7 +360,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
     probeRailState.selectedProbeId = {};
-    if (probeRail.boundsFor(workspace, probeRailState).contains(event.position)) {
+    if (probeRail.boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
         requestCanvasRepaint();
         return;
     }
@@ -528,6 +593,11 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         resized();
         return;
     }
+    if (resizingDockSplit) {
+        dockSplitRatio = jlimit(0.2f, 0.8f, event.position.x / (float) getWidth());
+        requestCanvasRepaint();
+        return;
+    }
     if (draggingProbeId.isNotEmpty()) {
         requestCanvasRepaint();
         return;
@@ -582,6 +652,11 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         resizingProbeRail = false;
         return;
     }
+    if (resizingDockSplit) {
+        resizingDockSplit = false;
+        settings.getGlobalSetting(AppSettings::GuideDockSplitPercent) = roundToInt(dockSplitRatio * 100.f);
+        return;
+    }
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
@@ -631,15 +706,18 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
+            workspace,
+            dockSplitRatio);
     if (probeRailState.expanded
-            && SignalProbeRail::boundsFor(workspace, probeRailState).contains(event.position)) {
+            && SignalProbeRail::boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
         const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
                 ? wheel.deltaX
                 : wheel.deltaY;
         probeRailState.horizontalOffset = jlimit(
                 0.f,
                 SignalProbeRail::maximumHorizontalOffset(
-                        workspace,
+                        spyWorkspace,
                         (int) graph.getSignalProbes().size()),
                 probeRailState.horizontalOffset - wheelDelta * 420.f);
         requestCanvasRepaint();
@@ -822,6 +900,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             spliceTargetEdgeIndex,
             kUseGlCanvasUnderlay,
             workspace,
+            guideShelfState,
+            dockSplitRatio,
             probeRailState,
             probeDetailState,
             globalUnisonPreviewContext
@@ -1003,7 +1083,9 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
             probeRailState.horizontalOffset = jmin(
                     probeRailState.horizontalOffset,
                     SignalProbeRail::maximumHorizontalOffset(
-                            getLocalBounds().toFloat(),
+                            GuideCurveShelf::spyWorkspace(
+                                    getLocalBounds().toFloat(),
+                                    dockSplitRatio),
                             (int) graph.getSignalProbes().size()));
             if (SignalProbeRail::ordinalForProbe(graph, probeDetailState.probeId) == 0) {
                 probeDetailState.close();
@@ -1035,7 +1117,9 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             globalUnisonPreviewContext.voiceDurationSeconds,
             probeRailState.refreshMode,
             SignalProbeRail::refreshModeBoundsFor(
-                    getLocalBounds().toFloat(),
+                    GuideCurveShelf::spyWorkspace(
+                            getLocalBounds().toFloat(),
+                            dockSplitRatio),
                     probeRailState),
             probeDetailState.probeId,
             probeDetailState.resolution,

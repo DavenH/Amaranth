@@ -34,6 +34,7 @@ struct GraphChangeSet {
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};
+    bool guidesChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
     bool modelChanged {};
     bool editorStateChanged {};
@@ -66,18 +67,6 @@ public:
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField) const;
-    GraphEditResult attachGuideCurveToTrimeshVertexParameter(
-            NodeGraph& graph,
-            const String& guideNodeId,
-            const String& meshNodeId,
-            int vertexIndex,
-            const String& parameterField) const;
-    GraphEditResult createAndAttachGuideCurveToTrimeshVertexParameter(
-            NodeGraph& graph,
-            const String& meshNodeId,
-            int vertexIndex,
-            const String& parameterField,
-            Point<float> guidePosition) const;
     GraphEditResult toggleSignalProbe(NodeGraph& graph, size_t edgeIndex, float tapPosition) const;
     GraphEditResult removeSignalProbe(NodeGraph& graph, const String& probeId) const;
     GraphEditResult reattachSignalProbe(
