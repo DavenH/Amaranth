@@ -19,7 +19,6 @@ std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createVoiceContextAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createModulationSourceAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createModulationTripleAudioProcessor();
-std::unique_ptr<NodeAudioProcessor> createGuideCurveAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createEnvelopeAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createFftAudioProcessor();
 std::unique_ptr<NodeAudioProcessor> createIfftAudioProcessor();

@@ -1435,7 +1435,7 @@ void NodeCanvas::closeNodeEditor() {
 Node NodeCanvas::guideEditorPresentationNode(const GuideCurveResource& guide) const {
     Node node;
     node.id = guide.id;
-    node.kind = NodeKind::GuideCurve;
+    node.kind = NodeKind::GenericProcessor;
     node.model = guide.model;
     node.parameters = {
             { "enabled", "Enabled", guide.enabled ? "1" : "0" },
@@ -1453,9 +1453,10 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     }
 
     if (guideEditor == nullptr) {
-        guideEditorWidget = std::make_unique<Effect2DWidget>(NodeKind::GuideCurve);
+        guideEditorWidget = std::make_unique<Effect2DWidget>(true);
         guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
         guideEditor->setDelegate(this);
+        guideEditor->setTitle("Guide Curve");
         addAndMakeVisible(*guideEditor);
     }
 

@@ -64,5 +64,6 @@ public:
 };
 
 std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind);
+std::unique_ptr<CurvePanelController> createGuideCurvePanelController();
 
 }

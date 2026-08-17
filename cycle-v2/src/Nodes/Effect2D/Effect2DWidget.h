@@ -12,6 +12,7 @@ namespace CycleV2 {
 class Effect2DWidget {
 public:
     explicit Effect2DWidget(NodeKind nodeKind);
+    explicit Effect2DWidget(bool guideResource);
     ~Effect2DWidget();
 
     Component* prepareExpandedPanelComponent(const Node& node, Rectangle<float> contentBounds);
@@ -49,6 +50,7 @@ public:
 
 private:
     NodeKind kind;
+    bool guideResource {};
     std::unique_ptr<CurvePanelController> controller;
 };
 

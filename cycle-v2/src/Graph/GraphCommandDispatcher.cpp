@@ -13,7 +13,6 @@ namespace {
 
 bool isCurveNodeKind(NodeKind kind) {
     return kind == NodeKind::Envelope
-        || kind == NodeKind::GuideCurve
         || kind == NodeKind::ImpulseResponse
         || kind == NodeKind::Waveshaper;
 }

@@ -224,7 +224,6 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::Add,
             AudioModuleRole::Multiply,
             AudioModuleRole::Envelope,
-            AudioModuleRole::GuideCurve,
             AudioModuleRole::ImpulseResponse,
             AudioModuleRole::Waveshaper,
             AudioModuleRole::Reverb,

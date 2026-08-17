@@ -14,6 +14,7 @@ namespace CycleV2 {
 class FlatCurvePanelAdapter final {
 public:
     explicit FlatCurvePanelAdapter(NodeKind nodeKind);
+    explicit FlatCurvePanelAdapter(bool guideResource);
 
     NodeKind kind() const { return nodeKind; }
     Mesh& mesh() { return model.getMesh(); }
@@ -34,6 +35,7 @@ private:
     void addVertex(float x, float y, float curve = 0.f);
 
     NodeKind nodeKind;
+    bool guideResource {};
     FlatCurveModel model { "CycleV2FlatCurve" };
     String syncedNodeId;
     NodeModelStatePtr syncedModel;

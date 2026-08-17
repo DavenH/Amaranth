@@ -966,7 +966,6 @@ var CycleV2Automation::listPaletteItems() const {
     items.add(paletteItemToVar("imageSource", "Source", "Image"));
     items.add(paletteItemToVar("trilinearMesh", "Source", "Mesh"));
     items.add(paletteItemToVar("envelope", "Control", "Envelope"));
-    items.add(paletteItemToVar("guideCurve", "Control", "Guide"));
     items.add(paletteItemToVar("impulseResponse", "FX", "IR"));
     items.add(paletteItemToVar("waveshaper", "FX", "Waveshaper"));
     items.add(paletteItemToVar("reverb", "FX", "Reverb"));

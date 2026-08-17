@@ -72,7 +72,10 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
     graphics.setColour(kText);
     graphics.setFont(FontOptions(14.f, Font::bold));
-    graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
+    graphics.drawText(
+            title.isEmpty() ? labelForNodeKind(node.kind) : title,
+            header.reduced(13.f, 4.f),
+            Justification::centredLeft);
 
     paintEditor(graphics);
 

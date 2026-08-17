@@ -59,6 +59,9 @@ std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(
         NodeKind kind,
         SingletonRepo* repo,
         Mesh& mesh);
+std::unique_ptr<FlatCurvePanelContract> createGuideCurvePanel(
+        SingletonRepo* repo,
+        Mesh& mesh);
 std::unique_ptr<EnvelopeCurvePanelContract> createEnvelopeCurvePanel(
         SingletonRepo* repo,
         TrimeshPanelEnvironment& environment,

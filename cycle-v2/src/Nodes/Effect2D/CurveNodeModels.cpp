@@ -588,14 +588,7 @@ static var defaultCurveModelState(NodeKind kind) {
     }
 
     std::vector<FlatCurveVertex> vertices;
-    if (kind == NodeKind::GuideCurve) {
-        vertices = {
-                { 1, 0.05f, 0.5f, 1.f },
-                { 2, 0.34f, 0.64f, 0.4f },
-                { 3, 0.62f, 0.36f, 0.4f },
-                { 4, 0.95f, 0.5f, 1.f }
-        };
-    } else if (kind == NodeKind::ImpulseResponse) {
+    if (kind == NodeKind::ImpulseResponse) {
         constexpr float padding = 0.0625f;
         vertices = {
                 { 1, padding * 0.5f, 0.5f, 0.f },

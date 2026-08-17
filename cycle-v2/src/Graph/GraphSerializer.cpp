@@ -562,11 +562,6 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::UnknownNodeType, "Unknown node kind '" + kindId + "'" });
             continue;
         }
-        if (definition->kind == NodeKind::GuideCurve) {
-            result.issues.push_back({ GraphLoadCode::InvalidGraph,
-                    "Guide Curves are document resources, not graph nodes" });
-            continue;
-        }
         if ((int) encoded->getProperty("definitionVersion") != definition->version) {
             result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported definition version for node '" + nodeId + "'" });
             continue;

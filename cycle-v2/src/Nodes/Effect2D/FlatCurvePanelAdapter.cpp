@@ -17,13 +17,18 @@ constexpr float kWaveshaperPadding = 0.125f;
 }
 
 FlatCurvePanelAdapter::FlatCurvePanelAdapter(NodeKind kindToUse) : nodeKind(kindToUse) {
-    jassert(nodeKind == NodeKind::GuideCurve
-            || nodeKind == NodeKind::ImpulseResponse
+    jassert(nodeKind == NodeKind::ImpulseResponse
             || nodeKind == NodeKind::Waveshaper);
 }
 
+FlatCurvePanelAdapter::FlatCurvePanelAdapter(bool shouldUseGuideResource) :
+        nodeKind(NodeKind::GenericProcessor)
+    ,   guideResource(shouldUseGuideResource) {
+    jassert(guideResource);
+}
+
 bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
-    if (node.kind != nodeKind) {
+    if (!guideResource && node.kind != nodeKind) {
         return false;
     }
     return node.model != nullptr
@@ -32,7 +37,7 @@ bool FlatCurvePanelAdapter::needsNodeSync(const Node& node) const {
 }
 
 bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
-    if (node.kind != nodeKind) {
+    if (!guideResource && node.kind != nodeKind) {
         return false;
     }
     const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
@@ -52,7 +57,7 @@ void FlatCurvePanelAdapter::initialiseDefaultMesh() {
     if (mesh().getNumVerts() > 0) {
         return;
     }
-    if (nodeKind == NodeKind::GuideCurve) {
+    if (guideResource) {
         addVertex(kGuidePadding, 0.5f, 1.f);
         addVertex(0.34f, 0.64f, 0.4f);
         addVertex(0.62f, 0.36f, 0.4f);

@@ -1823,7 +1823,7 @@ TEST_CASE("Baroque Flute guide topology changes the phase-layer traversal",
     const NodeGraph guidedGraph = GraphSerializer().fromJsonString(
             preset.loadFileAsString());
     NodeGraph plainGraph = guidedGraph;
-    plainGraph.removeEdgesFromOutput("guide1", "guide");
+    REQUIRE(plainGraph.removeGuideCurve("guide1"));
     const auto guidedPlan = GraphCompiler().compile(guidedGraph);
     const auto plainPlan = GraphCompiler().compile(plainGraph);
     REQUIRE(guidedPlan.succeeded());

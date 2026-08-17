@@ -237,8 +237,6 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "env", NodeKind::Envelope },
         { "add", NodeKind::Add },
         { "multiply", NodeKind::Multiply },
-        { "guideCurve", NodeKind::GuideCurve },
-        { "guide", NodeKind::GuideCurve },
         { "impulseResponse", NodeKind::ImpulseResponse },
         { "ir", NodeKind::ImpulseResponse },
         { "waveshaper", NodeKind::Waveshaper },

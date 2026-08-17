@@ -127,7 +127,6 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
         add(kind, curve);
     };
     addCurve(NodeKind::Envelope, { 840.f, 620.f });
-    addCurve(NodeKind::GuideCurve, { 700.f, 380.f });
     addCurve(NodeKind::ImpulseResponse, { 1050.f, 470.f });
     addCurve(NodeKind::Waveshaper, { 540.f, 360.f });
 

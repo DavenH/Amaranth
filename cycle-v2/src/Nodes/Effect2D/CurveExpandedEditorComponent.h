@@ -35,6 +35,7 @@ public:
 
     void setDelegate(CurveExpandedEditorDelegate* nextDelegate);
     void setNode(const Node& nextNode);
+    void setTitle(String nextTitle) { title = std::move(nextTitle); }
     void renderOpenGL(float scaleFactor);
     Rectangle<float> panelBoundsForAutomation() const;
     var automationState() const;
@@ -81,6 +82,7 @@ protected:
 
     Effect2DWidget& widget;
     Node node;
+    String title;
     CurveExpandedEditorDelegate* delegate {};
     bool syncingControls {};
 

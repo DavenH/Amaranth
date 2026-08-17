@@ -36,7 +36,6 @@ enum class NodeKind {
     Envelope,
     Add,
     Multiply,
-    GuideCurve,
     ImpulseResponse,
     Waveshaper,
     Unison,

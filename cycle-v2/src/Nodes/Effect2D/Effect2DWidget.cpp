@@ -10,6 +10,13 @@ Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
     jassert(controller != nullptr);
 }
 
+Effect2DWidget::Effect2DWidget(bool shouldUseGuideResource) :
+        kind    (NodeKind::GenericProcessor)
+    ,   guideResource(shouldUseGuideResource)
+    ,   controller(createGuideCurvePanelController()) {
+    jassert(guideResource && controller != nullptr);
+}
+
 Effect2DWidget::~Effect2DWidget() = default;
 
 Component* Effect2DWidget::prepareExpandedPanelComponent(
@@ -17,7 +24,7 @@ Component* Effect2DWidget::prepareExpandedPanelComponent(
         Rectangle<float> contentBounds) {
     ignoreUnused(contentBounds);
 
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return nullptr;
     }
 
@@ -73,12 +80,12 @@ void Effect2DWidget::resetEnvelopeVerticalRange() {
 }
 
 void Effect2DWidget::syncFromNode(const Node& node) {
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return;
     }
 
     controller->syncFromNode(node);
-    if (kind == NodeKind::GuideCurve) {
+    if (guideResource) {
         GuideCurveNodeModel model;
         model.syncFromNode(node);
         controller->setControlValues(
@@ -95,7 +102,7 @@ void Effect2DWidget::renderExpandedPanelOpenGL(
         Rectangle<float> bounds,
         Rectangle<float> clipBounds,
         float scaleFactor) {
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return;
     }
 
@@ -106,7 +113,7 @@ void Effect2DWidget::renderPreviewSnapshotOpenGL(
         const Node& node,
         Rectangle<float> bounds,
         float scaleFactor) {
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return;
     }
 

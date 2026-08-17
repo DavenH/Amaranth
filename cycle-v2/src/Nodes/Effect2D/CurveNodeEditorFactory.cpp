@@ -10,8 +10,6 @@ std::unique_ptr<CurveExpandedEditorComponent> createCurveNodeEditor(
             return std::make_unique<WaveshaperEditorComponent>(widget);
         case NodeKind::ImpulseResponse:
             return std::make_unique<ImpulseResponseEditorComponent>(widget);
-        case NodeKind::GuideCurve:
-            return std::make_unique<GuideCurveEditorComponent>(widget);
         case NodeKind::Envelope:
             return std::make_unique<EnvelopeEditorComponent>(widget);
         default:

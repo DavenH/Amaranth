@@ -611,7 +611,7 @@ TEST_CASE("Edge queries use the authoritative bulk validation rules", "[cycle-v2
     });
     graph.addNode({
             "guide",
-            NodeKind::GuideCurve,
+            NodeKind::GenericProcessor,
             {},
             {},
             {},

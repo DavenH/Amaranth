@@ -22,7 +22,6 @@ enum class AudioModuleRole {
     Add,
     Multiply,
     Envelope,
-    GuideCurve,
     ImpulseResponse,
     Waveshaper,
     Unison,

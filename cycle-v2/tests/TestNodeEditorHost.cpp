@@ -603,27 +603,39 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
             presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
     const NodeGraph stengah = GraphSerializer().fromJsonString(
             presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
-    const Node* baroqueGuide = baroque.findNode("guide1");
-    const Node* stengahGuide = stengah.findNode("guide1");
+    const GuideCurveResource* baroqueGuide = baroque.findGuideCurve("guide1");
+    const GuideCurveResource* stengahGuide = stengah.findGuideCurve("guide1");
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
 
-    Effect2DWidget widget(NodeKind::GuideCurve);
-    auto editor = createCurveNodeEditor(NodeKind::GuideCurve, widget);
-    editor->setBounds(0, 0, 640, 400);
-    editor->setNode(*baroqueGuide);
+    const auto asPresentationNode = [](const GuideCurveResource& guide) {
+        Node node;
+        node.id = guide.id;
+        node.model = guide.model;
+        node.parameters = {
+                { "enabled", "Enabled", guide.enabled ? "1" : "0" },
+                { "noise", "Noise", String(guide.noise) },
+                { "dcOffset", "DC Offset", String(guide.dcOffset) },
+                { "phase", "Phase", String(guide.phase) }
+        };
+        return node;
+    };
+    Effect2DWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    editor.setBounds(0, 0, 640, 400);
+    editor.setNode(asPresentationNode(*baroqueGuide));
     REQUIRE(widget.vertexCountForAutomation() == 4);
-    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.76562));
-    editor->setNode(*stengahGuide);
+    editor.setNode(asPresentationNode(*stengahGuide));
     REQUIRE(widget.vertexCountForAutomation() == 55);
-    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
 
-    widget.syncFromNode(*baroqueGuide);
+    widget.syncFromNode(asPresentationNode(*baroqueGuide));
     REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
             == Catch::Approx(0.76562));
-    Node revisedGuide = *stengahGuide;
+    Node revisedGuide = asPresentationNode(*stengahGuide);
     for (auto& parameter : revisedGuide.parameters) {
         if (parameter.id == "dcOffset") {
             parameter.value = "0.25";
