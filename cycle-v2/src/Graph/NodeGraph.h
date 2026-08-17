@@ -70,7 +70,6 @@ enum class ConnectionKind {
 enum class AttachmentType {
     None,
     ScratchEnvelope,
-    GuideCurve,
     ModulationTriple,
     Unison
 };

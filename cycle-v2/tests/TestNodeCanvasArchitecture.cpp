@@ -702,55 +702,6 @@ TEST_CASE("Every effect view exposes both its compact preview and hosted editor"
     REQUIRE(delayBounds.getHeight() == Catch::Approx(520.f));
 }
 
-TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.red",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(graph, viewport);
-    REQUIRE(snapshot.edges.size() == 1);
-    REQUIRE(snapshot.edges.front().destination.y
-            == Catch::Approx(viewport.toScreen(graph.findNode("mesh")->bounds.getTopLeft()).y));
-    REQUIRE_FALSE(snapshot.edges.front().destinationPortLike);
-    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
-            .contains(snapshot.edges.front().source));
-    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
-            .contains(snapshot.edges.front().destination));
-    REQUIRE(snapshot.edges.front().hitPath.contains(
-            snapshot.edges.front().cablePath.getPointAlongPath(
-                    snapshot.edges.front().cablePath.getLength() * 0.5f)));
-}
-
-TEST_CASE("Cube-component assignments share one attachment cable per node pair",
-        "[cycle-v2][canvas][scene][attachments]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(graph, viewport);
-    REQUIRE(snapshot.edges.size() == 1);
-    REQUIRE(snapshot.edges.front().edgeIndices == std::vector<int> { 0, 1 });
-    REQUIRE_FALSE(snapshot.edges.front().modulationBundle);
-}
-
 TEST_CASE("Cable endpoints follow node movement before a drag transaction commits",
         "[cycle-v2][canvas][scene][cables]") {
     GraphNodeFactory factory;

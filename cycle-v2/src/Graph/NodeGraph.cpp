@@ -639,7 +639,6 @@ String idForAttachmentType(AttachmentType type) {
     switch (type) {
         case AttachmentType::None:             return "none";
         case AttachmentType::ScratchEnvelope:  return "scratchEnvelope";
-        case AttachmentType::GuideCurve:       return "guideCurve";
         case AttachmentType::ModulationTriple: return "modulationTriple";
         case AttachmentType::Unison:           return "unison";
     }
@@ -666,9 +665,6 @@ std::optional<AttachmentType> attachmentTypeForId(const String& id) {
     }
     if (id == "scratchEnvelope") {
         return AttachmentType::ScratchEnvelope;
-    }
-    if (id == "guideCurve") {
-        return AttachmentType::GuideCurve;
     }
     if (id == "modulationTriple") {
         return AttachmentType::ModulationTriple;

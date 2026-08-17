@@ -189,44 +189,24 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
     mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp) = 1.f;
 
     NodeGraph graph;
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices({
             { 1, 0.05f, 1.f, 1.f },
             { 2, 0.95f, 1.f, 1.f }
     }));
+    GuideCurveResource guide;
+    guide.id = "guide";
+    guide.shortLabel = "G1";
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise") {
-            parameter.value = "0.4";
-        } else if (parameter.id == "dcOffset") {
-            parameter.value = "0.3";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.2";
-        }
-    }
+    guide.noise = 0.4f;
+    guide.dcOffset = 0.3f;
+    guide.phase = 0.2f;
     Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     trimesh.model = TrimeshNodeModelState::copyOf(*mesh, 2);
-    graph.addNode(std::move(guide));
     graph.addNode(std::move(trimesh));
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
-            PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "time"),
-            PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({ "guide", "mesh", { 0, GuideCurveField::Amplitude } }));
+    REQUIRE(graph.assignGuideCurve({ "guide", "mesh", { 0, GuideCurveField::Time } }));
 
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());

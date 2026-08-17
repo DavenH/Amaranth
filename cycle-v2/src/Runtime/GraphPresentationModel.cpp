@@ -509,16 +509,7 @@ void GraphPresentationModel::refreshConfigurations(
     for (auto& step : plan.steps) {
         const bool directlyChanged = nodeIds.empty()
                 || std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) != nodeIds.end();
-        const bool attachedGuideChanged = std::any_of(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return edge.destNodeId == step.nodeId
-                            && edge.attachmentType == AttachmentType::GuideCurve
-                            && std::find(nodeIds.begin(), nodeIds.end(), edge.sourceNodeId)
-                                    != nodeIds.end();
-                });
-        if (!directlyChanged && !attachedGuideChanged) {
+        if (!directlyChanged) {
             continue;
         }
         const Node* node = graph.findNode(step.nodeId);
