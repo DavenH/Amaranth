@@ -53,6 +53,19 @@ class GraphEditor {
 public:
     GraphEditResult addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const;
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
+    GraphEditResult createGuideCurve(NodeGraph& graph) const;
+    GraphEditResult removeGuideCurve(NodeGraph& graph, const String& guideId) const;
+    GraphEditResult assignGuideCurveToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& guideId,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField) const;
+    GraphEditResult createGuideCurveAndAssignToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField) const;
     GraphEditResult attachGuideCurveToTrimeshVertexParameter(
             NodeGraph& graph,
             const String& guideNodeId,

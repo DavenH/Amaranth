@@ -618,14 +618,13 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 }
                 GraphEditResult result { GraphEditCode::ValidationRejected, {}, {} };
                 if (menuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
-                    result = commands.createAndAttachGuideCurve(
-                            nodeId, vertexIndex, parameterField,
-                            presentation.nodeEditorCreationPosition());
+                    result = commands.createAndAssignGuideCurve(
+                            nodeId, vertexIndex, parameterField);
                 } else {
                     for (const auto& item : items) {
                         if (item.menuId == menuId) {
-                            result = commands.attachGuideCurve(
-                                    item.guideNodeId, nodeId, vertexIndex, parameterField);
+                            result = commands.assignGuideCurve(
+                                    item.guideId, nodeId, vertexIndex, parameterField);
                             break;
                         }
                     }

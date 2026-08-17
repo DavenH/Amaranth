@@ -101,6 +101,99 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
     ++revision;
 }
 
+bool NodeGraph::addGuideCurve(GuideCurveResource resource) {
+    if (resource.id.isEmpty() || findGuideCurve(resource.id) != nullptr) {
+        return false;
+    }
+
+    guideCurves.push_back(std::move(resource));
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeGuideCurve(const String& guideId) {
+    const size_t previousCount = guideCurves.size();
+    eraseIf(guideCurves, [&](const GuideCurveResource& resource) {
+        return resource.id == guideId;
+    });
+    if (guideCurves.size() == previousCount) {
+        return false;
+    }
+
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.guideId == guideId;
+    });
+    ++revision;
+    return true;
+}
+
+const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const {
+    for (const auto& resource : guideCurves) {
+        if (resource.id == guideId) {
+            return &resource;
+        }
+    }
+    return nullptr;
+}
+
+GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
+    for (auto& resource : guideCurves) {
+        if (resource.id == guideId) {
+            return &resource;
+        }
+    }
+    return nullptr;
+}
+
+bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
+    GuideCurveResource* existing = findGuideCurveForEditing(resource.id);
+    if (existing == nullptr) {
+        return false;
+    }
+
+    *existing = std::move(resource);
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
+    if (findGuideCurve(assignment.guideId) == nullptr
+            || findNode(assignment.targetNodeId) == nullptr
+            || assignment.target.cubeIndex < 0) {
+        return false;
+    }
+
+    for (auto& existing : guideAssignments) {
+        if (existing.targets(assignment.targetNodeId, assignment.target)) {
+            if (existing.guideId == assignment.guideId) {
+                return false;
+            }
+            existing = std::move(assignment);
+            ++revision;
+            return true;
+        }
+    }
+
+    guideAssignments.push_back(std::move(assignment));
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeGuideAssignment(
+        const String& nodeId,
+        const TrimeshCubeComponentGuideTarget& target) {
+    const size_t previousCount = guideAssignments.size();
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targets(nodeId, target);
+    });
+    if (guideAssignments.size() == previousCount) {
+        return false;
+    }
+
+    ++revision;
+    return true;
+}
+
 void NodeGraph::addSignalProbe(SignalProbe probe) {
     if (findSignalProbe(probe.id) != nullptr
             || findSignalProbeForSource(probe.sourceNodeId, probe.sourcePortId) != nullptr) {
@@ -161,6 +254,9 @@ void NodeGraph::removeNode(const String& nodeId) {
 
     eraseIf(edges, [&](const Edge& edge) {
         return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
+    });
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targetNodeId == nodeId;
     });
     for (auto& probe : signalProbes) {
         if (probe.sourceNodeId == nodeId) {

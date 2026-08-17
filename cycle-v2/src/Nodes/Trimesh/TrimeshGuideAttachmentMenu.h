@@ -9,7 +9,7 @@ namespace CycleV2 {
 struct TrimeshGuideAttachmentMenuItem {
     int menuId {};
     String label;
-    String guideNodeId;
+    String guideId;
     bool createNew {};
     bool attached {};
 };

@@ -808,11 +808,11 @@ TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent public
             == Catch::Approx(0.17f));
 }
 
-TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 20.f, 20.f }).succeeded());
-    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
             "guide2",
             "waveMesh",
@@ -828,11 +828,11 @@ TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes
     REQUIRE(items.size() == 3);
     REQUIRE(items[0].label == "new...");
     REQUIRE(items[0].createNew);
-    REQUIRE(items[1].label == "1");
-    REQUIRE(items[1].guideNodeId == "guide");
+    REQUIRE(items[1].label == "G1");
+    REQUIRE(items[1].guideId == "guide1");
     REQUIRE_FALSE(items[1].attached);
-    REQUIRE(items[2].label == "2");
-    REQUIRE(items[2].guideNodeId == "guide2");
+    REQUIRE(items[2].label == "G2");
+    REQUIRE(items[2].guideId == "guide2");
     REQUIRE(items[2].attached);
 }
 

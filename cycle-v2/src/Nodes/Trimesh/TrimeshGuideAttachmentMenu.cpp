@@ -1,6 +1,8 @@
 #include "TrimeshGuideAttachmentMenu.h"
 #include "TrimeshGuideAttachmentTarget.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor(
@@ -25,31 +27,33 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
                     parameterField)
             : std::vector<String>();
     int guideNumber {};
-
-    for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::GuideCurve) {
-            continue;
-        }
-
+    for (const auto& guide : graph.getGuideCurves()) {
         ++guideNumber;
         bool attached {};
-
-        for (const auto& edge : graph.getEdges()) {
-            if (edge.isProcessingAttachment()
-                    && edge.attachmentType == AttachmentType::GuideCurve
-                    && edge.sourceNodeId == node.id
-                    && edge.destNodeId == meshNodeId
-                    && std::find(targets.begin(), targets.end(), edge.destPortId)
-                            != targets.end()) {
-                attached = true;
-                break;
+        for (const auto& targetPortId : targets) {
+            const auto target = TrimeshGuideAttachmentTarget::parse(targetPortId);
+            if (target.isValid()) {
+                const auto field = TrimeshGuideAttachmentTarget::guideField(target.field);
+                const auto assignment = std::find_if(
+                        graph.getGuideAssignments().begin(),
+                        graph.getGuideAssignments().end(),
+                        [&](const GuideCurveAssignment& candidate) {
+                            return candidate.guideId == guide.id
+                                    && candidate.targets(
+                                            meshNodeId,
+                                            { target.cubeIndex, field });
+                        });
+                if (assignment != graph.getGuideAssignments().end()) {
+                    attached = true;
+                    break;
+                }
             }
         }
 
         items.push_back({
                 firstGuideMenuId + guideNumber - 1,
-                String(guideNumber),
-                node.id,
+                guide.shortLabel.isEmpty() ? String(guideNumber) : guide.shortLabel,
+                guide.id,
                 false,
                 attached
         });

@@ -118,37 +118,43 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
     });
 }
 
-GraphEditResult GraphCommandDispatcher::attachGuideCurve(
-        const juce::String& guideNodeId,
+GraphEditResult GraphCommandDispatcher::assignGuideCurve(
+        const juce::String& guideId,
         const juce::String& meshNodeId,
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
         return annotateSuccessful(
-                GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+                GraphEditor().assignGuideCurveToTrimeshVertexParameter(
                         graph,
-                        guideNodeId,
+                        guideId,
                         meshNodeId,
                         vertexIndex,
                         parameterField),
-                { { guideNodeId, meshNodeId }, true, false });
+                { { meshNodeId }, false, false });
     });
 }
 
-GraphEditResult GraphCommandDispatcher::createAndAttachGuideCurve(
+GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         const juce::String& meshNodeId,
         int vertexIndex,
-        const juce::String& parameterField,
-        juce::Point<float> guidePosition) {
+        const juce::String& parameterField) {
     return apply([&](auto& graph) {
         return annotateSuccessful(
-                GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+                GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
                         graph,
                         meshNodeId,
                         vertexIndex,
-                        parameterField,
-                        guidePosition),
-                { { meshNodeId }, true, true });
+                        parameterField),
+                { { meshNodeId }, false, false });
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
+    return apply([&](auto& graph) {
+        return annotateSuccessful(
+                GraphEditor().removeGuideCurve(graph, guideId),
+                { {}, false, false });
     });
 }
 

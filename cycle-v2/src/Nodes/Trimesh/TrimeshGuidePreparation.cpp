@@ -55,6 +55,18 @@ int vertexDimension(const String& field) {
     return -1;
 }
 
+int vertexDimension(GuideCurveField field) {
+    switch (field) {
+        case GuideCurveField::Time:       return Vertex::Time;
+        case GuideCurveField::Red:        return Vertex::Red;
+        case GuideCurveField::Blue:       return Vertex::Blue;
+        case GuideCurveField::Phase:      return Vertex::Phase;
+        case GuideCurveField::Amplitude:  return Vertex::Amp;
+        case GuideCurveField::Curve:      return Vertex::Curve;
+    }
+    return -1;
+}
+
 void clearGuideAssignments(Mesh& mesh) {
     for (auto* cube : mesh.getCubes()) {
         if (cube == nullptr) {
@@ -106,6 +118,19 @@ size_t applyTarget(
             : 0u;
 }
 
+size_t applyTarget(
+        Mesh& mesh,
+        const TrimeshCubeComponentGuideTarget& target,
+        int guideSlot) {
+    const int dimension = vertexDimension(target.field);
+    if (!isPositiveAndBelow(target.cubeIndex, mesh.getNumCubes())) {
+        return 0;
+    }
+    return assignCube(mesh.getCubes()[(size_t) target.cubeIndex], dimension, guideSlot)
+            ? 1u
+            : 0u;
+}
+
 }
 
 PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
@@ -117,6 +142,32 @@ PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
     result.mesh->deepCopy(&sourceMesh);
     result.provider = std::make_shared<GuideCurveSnapshotProvider>();
     clearGuideAssignments(*result.mesh);
+
+    if (!graph.getGuideAssignments().empty() || !graph.getGuideCurves().empty()) {
+        std::unordered_map<String, int, StringHash> slots;
+        for (const auto& assignment : graph.getGuideAssignments()) {
+            if (assignment.targetNodeId != trimeshNode.id
+                    || slots.find(assignment.guideId) != slots.end()) {
+                continue;
+            }
+            const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
+            if (resource == nullptr || !result.provider->addGuide(*resource)) {
+                continue;
+            }
+            slots.emplace(resource->id, result.provider->size() - 1);
+        }
+
+        for (const auto& assignment : graph.getGuideAssignments()) {
+            if (assignment.targetNodeId != trimeshNode.id) {
+                continue;
+            }
+            const auto slot = slots.find(assignment.guideId);
+            if (slot != slots.end()) {
+                result.assignmentCount += applyTarget(*result.mesh, assignment.target, slot->second);
+            }
+        }
+        return result;
+    }
 
     std::unordered_map<String, int, StringHash> slots;
     for (const auto& node : graph.getNodes()) {
@@ -161,6 +212,28 @@ String TrimeshGuidePreparation::configurationKey(
         const NodeGraph& graph,
         const String& trimeshNodeId) {
     String key;
+    if (!graph.getGuideAssignments().empty() || !graph.getGuideCurves().empty()) {
+        for (const auto& assignment : graph.getGuideAssignments()) {
+            if (assignment.targetNodeId != trimeshNodeId) {
+                continue;
+            }
+            key << ":guide=" << assignment.guideId
+                    << ":cube=" << assignment.target.cubeIndex
+                    << ":field=" << (int) assignment.target.field;
+            const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
+            if (resource != nullptr) {
+                key << ":enabled=" << (resource->enabled ? 1 : 0)
+                        << ":noise=" << resource->noise
+                        << ":dc=" << resource->dcOffset
+                        << ":phase=" << resource->phase;
+                if (resource->model != nullptr) {
+                    key << ":model=" << resource->model->schemaId()
+                            << ":" << String((int64) resource->model->revision());
+                }
+            }
+        }
+        return key;
+    }
     for (const auto& edge : graph.getEdges()) {
         if (!isGuideAttachment(edge, trimeshNodeId)) {
             continue;

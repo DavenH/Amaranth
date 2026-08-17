@@ -4,6 +4,7 @@
 #include "GraphValidator.h"
 #include "NodeDefinition.h"
 
+#include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
@@ -219,6 +220,65 @@ var probeToJSON(const SignalProbe& probe) {
     return var(result.release());
 }
 
+String guideFieldToJSON(GuideCurveField field) {
+    switch (field) {
+        case GuideCurveField::Time:       return "time";
+        case GuideCurveField::Red:        return "red";
+        case GuideCurveField::Blue:       return "blue";
+        case GuideCurveField::Phase:      return "phase";
+        case GuideCurveField::Amplitude:  return "amp";
+        case GuideCurveField::Curve:      return "curve";
+    }
+    return {};
+}
+
+bool guideFieldFromJSON(const String& value, GuideCurveField& field) {
+    if (value == "time") {
+        field = GuideCurveField::Time;
+    } else if (value == "red") {
+        field = GuideCurveField::Red;
+    } else if (value == "blue") {
+        field = GuideCurveField::Blue;
+    } else if (value == "phase") {
+        field = GuideCurveField::Phase;
+    } else if (value == "amp") {
+        field = GuideCurveField::Amplitude;
+    } else if (value == "curve") {
+        field = GuideCurveField::Curve;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+var guideToJSON(const GuideCurveResource& guide) {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("id", guide.id);
+    result->setProperty("shortLabel", guide.shortLabel);
+    result->setProperty("name", guide.name);
+    result->setProperty("colourIndex", guide.colourIndex);
+    result->setProperty("shelfOrder", guide.shelfOrder);
+    result->setProperty("enabled", guide.enabled);
+    result->setProperty("noise", guide.noise);
+    result->setProperty("dcOffset", guide.dcOffset);
+    result->setProperty("phase", guide.phase);
+    result->setProperty("model", guide.model != nullptr ? guide.model->writeJSON() : var());
+    return var(result.release());
+}
+
+var guideAssignmentToJSON(const GuideCurveAssignment& assignment) {
+    auto target = std::make_unique<DynamicObject>();
+    target->setProperty("kind", "trimeshCubeComponent");
+    target->setProperty("cubeIndex", assignment.target.cubeIndex);
+    target->setProperty("field", guideFieldToJSON(assignment.target.field));
+
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("guideId", assignment.guideId);
+    result->setProperty("targetNodeId", assignment.targetNodeId);
+    result->setProperty("target", var(target.release()));
+    return var(result.release());
+}
+
 const Port* findPort(const Node& node, const String& id, bool input) {
     const auto& ports = input ? node.inputs : node.outputs;
     const auto found = std::find_if(ports.begin(), ports.end(), [&](const auto& port) {
@@ -398,6 +458,18 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
     }
     root->setProperty("nodes", var(std::move(nodes)));
 
+    Array<var> guides;
+    for (const auto& guide : graph.getGuideCurves()) {
+        guides.add(guideToJSON(guide));
+    }
+    root->setProperty("guides", var(std::move(guides)));
+
+    Array<var> guideAssignments;
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        guideAssignments.add(guideAssignmentToJSON(assignment));
+    }
+    root->setProperty("guideAssignments", var(std::move(guideAssignments)));
+
     Array<var> edges;
     for (const auto& edge : graph.getEdges()) {
         edges.add(edgeToJSON(edge));
@@ -427,7 +499,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         return result;
     }
     const int formatVersion = (int) root->getProperty("formatVersion");
-    if (formatVersion < 1 || formatVersion > currentFormatVersion) {
+    if (formatVersion != currentFormatVersion) {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
@@ -435,8 +507,12 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const auto* encodedNodes = root->getProperty("nodes").getArray();
     const auto* encodedEdges = root->getProperty("edges").getArray();
     const auto* encodedProbes = root->getProperty("probes").getArray();
-    if (encodedNodes == nullptr || encodedEdges == nullptr || encodedProbes == nullptr) {
-        result.issues.push_back({ GraphLoadCode::InvalidSchema, "Graph nodes, edges, and probes must be arrays" });
+    const auto* encodedGuides = root->getProperty("guides").getArray();
+    const auto* encodedGuideAssignments = root->getProperty("guideAssignments").getArray();
+    if (encodedNodes == nullptr || encodedEdges == nullptr || encodedProbes == nullptr
+            || encodedGuides == nullptr || encodedGuideAssignments == nullptr) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                "Graph nodes, edges, probes, guides, and guide assignments must be arrays" });
         return result;
     }
 
@@ -484,6 +560,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const auto* definition = registry.find(kindId);
         if (definition == nullptr) {
             result.issues.push_back({ GraphLoadCode::UnknownNodeType, "Unknown node kind '" + kindId + "'" });
+            continue;
+        }
+        if (definition->kind == NodeKind::GuideCurve) {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                    "Guide Curves are document resources, not graph nodes" });
             continue;
         }
         if ((int) encoded->getProperty("definitionVersion") != definition->version) {
@@ -573,6 +654,74 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.graph.addNode(std::move(node));
     }
 
+    std::unordered_set<String, StringHash> guideIds;
+    std::unordered_set<String, StringHash> guideLabels;
+    CurveNodeDomainCodec guideCodec(NodeKind::GuideCurve);
+    for (const auto& encodedValue : *encodedGuides) {
+        const auto* encoded = encodedValue.getDynamicObject();
+        GuideCurveResource guide;
+        if (encoded == nullptr
+                || !readRequiredString(*encoded, "id", guide.id)
+                || !readRequiredString(*encoded, "shortLabel", guide.shortLabel)
+                || !guideIds.emplace(guide.id).second
+                || !guideLabels.emplace(guide.shortLabel).second) {
+            result.issues.push_back({ GraphLoadCode::DuplicateIdentity,
+                    "Guide identity and short label must be unique non-empty strings" });
+            continue;
+        }
+        guide.name = encoded->getProperty("name").toString();
+        guide.colourIndex = (int) encoded->getProperty("colourIndex");
+        guide.shelfOrder = (int) encoded->getProperty("shelfOrder");
+        const var enabled = encoded->getProperty("enabled");
+        const double noise = encoded->getProperty("noise");
+        const double dcOffset = encoded->getProperty("dcOffset");
+        const double phase = encoded->getProperty("phase");
+        if (!enabled.isBool() || !std::isfinite(noise) || !std::isfinite(dcOffset)
+                || !std::isfinite(phase)) {
+            result.issues.push_back({ GraphLoadCode::InvalidParameter,
+                    "Guide parameters must be finite and enabled must be boolean" });
+            continue;
+        }
+        guide.enabled = (bool) enabled;
+        guide.noise = (float) noise;
+        guide.dcOffset = (float) dcOffset;
+        guide.phase = (float) phase;
+        String error;
+        guide.model = guideCodec.readJSON(encoded->getProperty("model"), error);
+        if (guide.model == nullptr || !result.graph.addGuideCurve(std::move(guide))) {
+            result.issues.push_back({ GraphLoadCode::InvalidModel,
+                    "Invalid model for Guide Curve resource: " + error });
+        }
+    }
+
+    for (const auto& encodedValue : *encodedGuideAssignments) {
+        const auto* encoded = encodedValue.getDynamicObject();
+        GuideCurveAssignment assignment;
+        const auto* target = encoded != nullptr
+                ? encoded->getProperty("target").getDynamicObject()
+                : nullptr;
+        String field;
+        if (encoded == nullptr
+                || target == nullptr
+                || !readRequiredString(*encoded, "guideId", assignment.guideId)
+                || !readRequiredString(*encoded, "targetNodeId", assignment.targetNodeId)
+                || target->getProperty("kind").toString() != "trimeshCubeComponent"
+                || !readRequiredString(*target, "field", field)
+                || !guideFieldFromJSON(field, assignment.target.field)) {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                    "Guide assignment must contain a typed Trimesh cube-component target" });
+            continue;
+        }
+        assignment.target.cubeIndex = (int) target->getProperty("cubeIndex");
+        const Node* targetNode = result.graph.findNode(assignment.targetNodeId);
+        if (assignment.target.cubeIndex < 0 || targetNode == nullptr
+                || targetNode->kind != NodeKind::TrilinearMesh
+                || !result.graph.assignGuideCurve(std::move(assignment))) {
+            result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                    "Guide assignment references an invalid resource or Trimesh target" });
+        }
+    }
+
     for (const auto& encodedValue : *encodedEdges) {
         const auto* encoded = encodedValue.getDynamicObject();
         Edge edge;
@@ -590,76 +739,45 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         const Port* destination = destinationNode != nullptr
                 ? findPort(*destinationNode, edge.destPortId, true)
                 : nullptr;
-        const bool guideAttachment = destinationNode != nullptr
-                && destinationNode->kind == NodeKind::TrilinearMesh
-                && TrimeshGuideAttachmentTarget::parse(edge.destPortId).isValid();
-        if (source == nullptr || (destination == nullptr && !guideAttachment)) {
+        if (source == nullptr || destination == nullptr) {
             result.issues.push_back({ GraphLoadCode::InvalidGraph, "Edge references an unknown node or static port" });
             continue;
         }
-        const bool legacyScratchAttachment = formatVersion == 1
-                && destination != nullptr
-                && destination->purpose == PortPurpose::ScratchAttachment;
         const bool typedStaticAttachment = source != nullptr
                 && destination != nullptr
                 && source->connectionKind != ConnectionKind::Signal
                 && source->connectionKind == destination->connectionKind
                 && source->attachmentType != AttachmentType::None
                 && source->attachmentType == destination->attachmentType;
-        edge.domain = guideAttachment || legacyScratchAttachment
-                ? PortDomain::EnvelopeSignal
-                : resolvedEdgeDomain(*source, *destination);
+        edge.domain = resolvedEdgeDomain(*source, *destination);
         ConnectionKind inferredConnectionKind = ConnectionKind::Signal;
         AttachmentType inferredAttachmentType = AttachmentType::None;
-        if (guideAttachment) {
-            inferredConnectionKind = ConnectionKind::ProcessingAttachment;
-            inferredAttachmentType = AttachmentType::GuideCurve;
-        } else if (destination->purpose == PortPurpose::ScratchAttachment) {
+        if (destination->purpose == PortPurpose::ScratchAttachment) {
             inferredConnectionKind = ConnectionKind::ProcessingAttachment;
             inferredAttachmentType = AttachmentType::ScratchEnvelope;
         } else if (typedStaticAttachment) {
             inferredConnectionKind = source->connectionKind;
             inferredAttachmentType = source->attachmentType;
         }
-        if (formatVersion == 1) {
-            edge.connectionKind = inferredConnectionKind;
-            edge.attachmentType = inferredAttachmentType;
-        } else {
-            const var encodedConnectionKind = encoded->getProperty("connectionKind");
-            const var encodedAttachmentType = encoded->getProperty("attachmentType");
-            const auto connectionKind = encodedConnectionKind.isVoid()
-                    ? std::optional<ConnectionKind>(inferredConnectionKind)
-                    : connectionKindForId(encodedConnectionKind.toString());
-            const auto attachmentType = encodedAttachmentType.isVoid()
-                    && connectionKind == inferredConnectionKind
-                    ? std::optional<AttachmentType>(inferredAttachmentType)
-                    : attachmentTypeForId(encodedAttachmentType.toString());
-            if (!connectionKind.has_value() || !attachmentType.has_value()) {
+        const var encodedConnectionKind = encoded->getProperty("connectionKind");
+        const var encodedAttachmentType = encoded->getProperty("attachmentType");
+        const auto connectionKind = encodedConnectionKind.isVoid()
+                ? std::optional<ConnectionKind>(inferredConnectionKind)
+                : connectionKindForId(encodedConnectionKind.toString());
+        const auto attachmentType = encodedAttachmentType.isVoid()
+                && connectionKind == inferredConnectionKind
+                ? std::optional<AttachmentType>(inferredAttachmentType)
+                : attachmentTypeForId(encodedAttachmentType.toString());
+        if (!connectionKind.has_value() || !attachmentType.has_value()) {
                 result.issues.push_back({
                         GraphLoadCode::InvalidGraph,
                         "Edge has invalid connection or attachment metadata"
                 });
                 continue;
-            }
-            edge.connectionKind = *connectionKind;
-            edge.attachmentType = *attachmentType;
         }
+        edge.connectionKind = *connectionKind;
+        edge.attachmentType = *attachmentType;
         result.graph.addEdge(std::move(edge));
-        if (legacyScratchAttachment && sourceNode->kind == NodeKind::Envelope) {
-            Node* envelope = result.graph.findNodeForEditing(sourceNode->id);
-            if (envelope != nullptr) {
-                auto purpose = std::find_if(
-                        envelope->parameters.begin(),
-                        envelope->parameters.end(),
-                        [](const NodeParameter& parameter) {
-                            return parameter.id == "purpose";
-                        });
-                if (purpose != envelope->parameters.end()) {
-                    purpose->value = "scratch";
-                    registry.normalize(*envelope);
-                }
-            }
-        }
     }
 
     for (const auto& nodeId : legacyEnvelopeIds) {

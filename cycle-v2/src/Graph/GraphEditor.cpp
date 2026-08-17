@@ -1,5 +1,6 @@
 #include "GraphEditor.h"
 
+#include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 
@@ -111,6 +112,94 @@ GraphEditResult GraphEditor::connect(
 
     graph = std::move(candidate);
     return {};
+}
+
+GraphEditResult GraphEditor::createGuideCurve(NodeGraph& graph) const {
+    int nextNumber = 1;
+    while (graph.findGuideCurve("guide" + String(nextNumber)) != nullptr) {
+        ++nextNumber;
+    }
+
+    CurveNodeDomainCodec codec(NodeKind::GuideCurve);
+    GuideCurveResource guide;
+    guide.id = "guide" + String(nextNumber);
+    guide.shortLabel = "G" + String(nextNumber);
+    guide.colourIndex = nextNumber - 1;
+    guide.shelfOrder = (int) graph.getGuideCurves().size();
+    guide.model = codec.createDefault();
+    if (!graph.addGuideCurve(std::move(guide))) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    return { GraphEditCode::Connected, "guide" + String(nextNumber), {} };
+}
+
+GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& guideId) const {
+    if (!graph.removeGuideCurve(guideId)) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
+GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
+        NodeGraph& graph,
+        const String& guideId,
+        const String& meshNodeId,
+        int vertexIndex,
+        const String& parameterField) const {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    const Node* meshNode = findNode(graph, meshNodeId);
+    if (guide == nullptr || meshNode == nullptr) {
+        return { GraphEditCode::MissingNode, {}, {} };
+    }
+    if (meshNode->kind != NodeKind::TrilinearMesh
+            || std::find(
+                    TrimeshGuideAttachmentTarget::fields().begin(),
+                    TrimeshGuideAttachmentTarget::fields().end(),
+                    parameterField) == TrimeshGuideAttachmentTarget::fields().end()) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+
+    const auto targetPortIds = TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+            *meshNode, vertexIndex, parameterField);
+    if (targetPortIds.empty()) {
+        return { GraphEditCode::ValidationRejected, {}, {} };
+    }
+    for (const auto& targetPortId : targetPortIds) {
+        const auto target = TrimeshGuideAttachmentTarget::parse(targetPortId);
+        if (!target.isValid()) {
+            return { GraphEditCode::ValidationRejected, {}, {} };
+        }
+
+        const TrimeshCubeComponentGuideTarget componentTarget {
+                target.cubeIndex,
+                TrimeshGuideAttachmentTarget::guideField(target.field)
+        };
+        const auto existing = std::find_if(
+                graph.getGuideAssignments().begin(),
+                graph.getGuideAssignments().end(),
+                [&](const GuideCurveAssignment& assignment) {
+                    return assignment.guideId == guideId
+                            && assignment.targets(meshNodeId, componentTarget);
+                });
+        if (existing == graph.getGuideAssignments().end()
+                && !graph.assignGuideCurve({ guideId, meshNodeId, componentTarget })) {
+            return { GraphEditCode::ValidationRejected, {}, {} };
+        }
+    }
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
+GraphEditResult GraphEditor::createGuideCurveAndAssignToTrimeshVertexParameter(
+        NodeGraph& graph,
+        const String& meshNodeId,
+        int vertexIndex,
+        const String& parameterField) const {
+    const auto created = createGuideCurve(graph);
+    if (!created.succeeded()) {
+        return created;
+    }
+    return assignGuideCurveToTrimeshVertexParameter(
+            graph, created.nodeId, meshNodeId, vertexIndex, parameterField);
 }
 
 GraphEditResult GraphEditor::attachGuideCurveToTrimeshVertexParameter(

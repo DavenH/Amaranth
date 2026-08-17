@@ -9,6 +9,8 @@ namespace CycleV2 { struct Node; }
 
 namespace CycleV2 {
 
+enum class GuideCurveField;
+
 struct TrimeshGuideAttachmentTarget {
     int cubeIndex { -1 };
     juce::String field;
@@ -19,6 +21,7 @@ struct TrimeshGuideAttachmentTarget {
 
     static constexpr int fieldCount = 6;
     static const std::array<juce::String, fieldCount>& fields();
+    static GuideCurveField guideField(const juce::String& field);
     static TrimeshGuideAttachmentTarget parse(const juce::String& portId);
     static juce::String portIdForCube(int cubeIndex, const juce::String& field);
     static std::vector<juce::String> cubePortIdsForVertex(

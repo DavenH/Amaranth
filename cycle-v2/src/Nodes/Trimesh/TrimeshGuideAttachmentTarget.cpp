@@ -1,5 +1,7 @@
 #include "TrimeshGuideAttachmentTarget.h"
 
+#include "../../Graph/NodeGraph.h"
+
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 
@@ -21,6 +23,25 @@ TrimeshGuideAttachmentTarget::fields() {
     };
 
     return values;
+}
+
+GuideCurveField TrimeshGuideAttachmentTarget::guideField(const juce::String& field) {
+    if (field == "time") {
+        return GuideCurveField::Time;
+    }
+    if (field == "red") {
+        return GuideCurveField::Red;
+    }
+    if (field == "blue") {
+        return GuideCurveField::Blue;
+    }
+    if (field == "phase") {
+        return GuideCurveField::Phase;
+    }
+    if (field == "amp") {
+        return GuideCurveField::Amplitude;
+    }
+    return GuideCurveField::Curve;
 }
 
 bool TrimeshGuideAttachmentTarget::isValid() const {

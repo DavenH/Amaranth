@@ -75,6 +75,34 @@ enum class AttachmentType {
     Unison
 };
 
+enum class GuideCurveField {
+    Time,
+    Red,
+    Blue,
+    Phase,
+    Amplitude,
+    Curve
+};
+
+struct TrimeshCubeComponentGuideTarget {
+    int cubeIndex { -1 };
+    GuideCurveField field { GuideCurveField::Time };
+
+    bool operator==(const TrimeshCubeComponentGuideTarget& other) const {
+        return cubeIndex == other.cubeIndex && field == other.field;
+    }
+};
+
+struct GuideCurveAssignment {
+    String guideId;
+    String targetNodeId;
+    TrimeshCubeComponentGuideTarget target;
+
+    bool targets(const String& nodeId, const TrimeshCubeComponentGuideTarget& candidate) const {
+        return targetNodeId == nodeId && target == candidate;
+    }
+};
+
 enum class PortSide {
     Left,
     Right,
@@ -126,6 +154,19 @@ public:
 };
 
 using NodeModelStatePtr = std::shared_ptr<const NodeModelState>;
+
+struct GuideCurveResource {
+    String id;
+    String shortLabel;
+    String name;
+    int colourIndex {};
+    int shelfOrder {};
+    bool enabled { true };
+    float noise { 0.5f };
+    float dcOffset { 0.5f };
+    float phase { 0.5f };
+    NodeModelStatePtr model;
+};
 
 struct Node {
     String id;
@@ -214,6 +255,8 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
+    const std::vector<GuideCurveResource>& getGuideCurves() const { return guideCurves; }
+    const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
     const std::optional<Rectangle<float>>& getPerformanceKeyboardBounds() const {
         return performanceKeyboardBounds;
@@ -225,6 +268,15 @@ public:
 
     void addNode(Node node);
     void addEdge(Edge edge);
+    bool addGuideCurve(GuideCurveResource resource);
+    bool removeGuideCurve(const String& guideId);
+    GuideCurveResource* findGuideCurveForEditing(const String& guideId);
+    const GuideCurveResource* findGuideCurve(const String& guideId) const;
+    bool replaceGuideCurve(GuideCurveResource resource);
+    bool assignGuideCurve(GuideCurveAssignment assignment);
+    bool removeGuideAssignment(
+            const String& nodeId,
+            const TrimeshCubeComponentGuideTarget& target);
     void addSignalProbe(SignalProbe probe);
     bool removeSignalProbe(const String& probeId);
     SignalProbe* findSignalProbeForEditing(const String& probeId);
@@ -249,6 +301,8 @@ public:
 private:
     std::vector<Node> nodes;
     std::vector<Edge> edges;
+    std::vector<GuideCurveResource> guideCurves;
+    std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
     std::optional<Rectangle<float>> performanceKeyboardBounds;
     uint64_t revision {};

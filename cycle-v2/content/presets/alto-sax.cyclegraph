@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 2,
+    "formatVersion": 3,
     "nodes": [
         {
             "id": "voice",
@@ -2795,534 +2795,6 @@
             }
         },
         {
-            "id": "guide1",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": {
-                "x": 500,
-                "y": -220
-            },
-            "parameters": {
-                "enabled": true,
-                "noise": 0.0,
-                "dcOffset": 0.0,
-                "phase": 0.0
-            },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        {
-                            "id": 1,
-                            "x": 0.052500002086163,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 2,
-                            "x": 0.501893937587738,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 3,
-                            "x": 0.9375,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 4,
-                            "x": 0.947499990463257,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 5,
-                            "x": 0.572417914867401,
-                            "y": 0.55673760175705,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 6,
-                            "x": 0.608023822307587,
-                            "y": 0.44326239824295,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 7,
-                            "x": 0.647514045238495,
-                            "y": 0.599290788173676,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 8,
-                            "x": 0.682472586631775,
-                            "y": 0.663120567798615,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 9,
-                            "x": 0.698009729385376,
-                            "y": 0.425531923770905,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 10,
-                            "x": 0.727789223194122,
-                            "y": 0.631205677986145,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 11,
-                            "x": 0.745915830135345,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 12,
-                            "x": 0.781521797180176,
-                            "y": 0.457446813583374,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 13,
-                            "x": 0.805474877357483,
-                            "y": 0.68085104227066,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 14,
-                            "x": 0.837196528911591,
-                            "y": 0.507092177867889,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 15,
-                            "x": 0.85661792755127,
-                            "y": 0.393617033958435,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 16,
-                            "x": 0.889634311199188,
-                            "y": 0.606382966041565,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 17,
-                            "x": 0.897402882575989,
-                            "y": 0.400709211826324,
-                            "curve": 0.0
-                        }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide2",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": {
-                "x": 820,
-                "y": -220
-            },
-            "parameters": {
-                "enabled": true,
-                "noise": 0.0,
-                "dcOffset": 0.0,
-                "phase": 0.0
-            },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        {
-                            "id": 1,
-                            "x": 0.052500002086163,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 2,
-                            "x": 0.501893937587738,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 3,
-                            "x": 0.9375,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 4,
-                            "x": 0.947499990463257,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 5,
-                            "x": 0.52839607000351,
-                            "y": 0.65602833032608,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 6,
-                            "x": 0.559470295906067,
-                            "y": 0.354609906673431,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 7,
-                            "x": 0.606729090213776,
-                            "y": 0.418439716100693,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 8,
-                            "x": 0.639745473861694,
-                            "y": 0.645390093326569,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 9,
-                            "x": 0.673409283161163,
-                            "y": 0.304964542388916,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 10,
-                            "x": 0.709662556648254,
-                            "y": 0.691489338874817,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 11,
-                            "x": 0.732968270778656,
-                            "y": 0.336879462003708,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 12,
-                            "x": 0.767926812171936,
-                            "y": 0.758865237236023,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 13,
-                            "x": 0.797706305980682,
-                            "y": 0.468085080385208,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 14,
-                            "x": 0.817775070667267,
-                            "y": 0.241134747862816,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 15,
-                            "x": 0.859207451343536,
-                            "y": 0.567375898361206,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 16,
-                            "x": 0.884455263614655,
-                            "y": 0.301418453454971,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 17,
-                            "x": 0.903876662254333,
-                            "y": 0.492907792329788,
-                            "curve": 0.0
-                        }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide3",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": {
-                "x": 1140,
-                "y": -220
-            },
-            "parameters": {
-                "enabled": true,
-                "noise": 0.0,
-                "dcOffset": 0.0,
-                "phase": 0.0
-            },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        {
-                            "id": 1,
-                            "x": 0.052500002086163,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 2,
-                            "x": 0.493055522441864,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 3,
-                            "x": 0.9375,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 4,
-                            "x": 0.947499990463257,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 5,
-                            "x": 0.52405846118927,
-                            "y": 0.504800796508789,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 6,
-                            "x": 0.53792929649353,
-                            "y": 0.492034882307053,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 7,
-                            "x": 0.566331505775452,
-                            "y": 0.47075828909874,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 8,
-                            "x": 0.569634079933167,
-                            "y": 0.496290177106857,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 9,
-                            "x": 0.598696768283844,
-                            "y": 0.475013613700867,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 10,
-                            "x": 0.620493769645691,
-                            "y": 0.496290177106857,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 11,
-                            "x": 0.65418004989624,
-                            "y": 0.477850496768951,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 12,
-                            "x": 0.662106275558472,
-                            "y": 0.514729917049408,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 13,
-                            "x": 0.672674536705017,
-                            "y": 0.476432055234909,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 14,
-                            "x": 0.687205851078033,
-                            "y": 0.523240506649017,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 15,
-                            "x": 0.716929018497467,
-                            "y": 0.459410786628723,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 16,
-                            "x": 0.725515723228455,
-                            "y": 0.496290177106857,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 17,
-                            "x": 0.731460392475128,
-                            "y": 0.484942674636841,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 18,
-                            "x": 0.75655996799469,
-                            "y": 0.476432055234909,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 19,
-                            "x": 0.77043080329895,
-                            "y": 0.492034882307053,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 20,
-                            "x": 0.782980620861053,
-                            "y": 0.496290177106857,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 21,
-                            "x": 0.822611570358276,
-                            "y": 0.459410786628723,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 22,
-                            "x": 0.852995276451111,
-                            "y": 0.493453323841095,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 23,
-                            "x": 0.872150242328644,
-                            "y": 0.466502964496613,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 24,
-                            "x": 0.899891912937164,
-                            "y": 0.475013613700867,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 25,
-                            "x": 0.891965687274933,
-                            "y": 0.500545501708984,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 26,
-                            "x": 0.894607782363892,
-                            "y": 0.504800796508789,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 27,
-                            "x": 0.881397485733032,
-                            "y": 0.4977086186409,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 28,
-                            "x": 0.83185875415802,
-                            "y": 0.500545501708984,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 29,
-                            "x": 0.812703847885132,
-                            "y": 0.499127089977264,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 30,
-                            "x": 0.743349671363831,
-                            "y": 0.486361116170883,
-                            "curve": 0.0
-                        }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide4",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": {
-                "x": 1460,
-                "y": -220
-            },
-            "parameters": {
-                "enabled": true,
-                "noise": 0.0,
-                "dcOffset": 0.0,
-                "phase": 0.0
-            },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        {
-                            "id": 1,
-                            "x": 0.052500002086163,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 2,
-                            "x": 0.061199612915516,
-                            "y": 0.148936167359352,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 3,
-                            "x": 0.9375,
-                            "y": 0.5,
-                            "curve": 1.0
-                        },
-                        {
-                            "id": 4,
-                            "x": 0.947499990463257,
-                            "y": 0.5,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 5,
-                            "x": 0.582574725151062,
-                            "y": 0.351063847541809,
-                            "curve": 0.0
-                        },
-                        {
-                            "id": 6,
-                            "x": 0.248374551534653,
-                            "y": 0.645390093326569,
-                            "curve": 0.1929070353508
-                        }
-                    ]
-                }
-            }
-        },
-        {
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
@@ -4434,142 +3906,6 @@
             "destPortId": "scratch",
             "connectionKind": "processingAttachment",
             "attachmentType": "scratchEnvelope"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "timeLayer1",
-            "destPortId": "guide.cube.2.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "timeLayer1",
-            "destPortId": "guide.cube.3.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide2",
-            "sourcePortId": "guide",
-            "destNodeId": "timeLayer1",
-            "destPortId": "guide.cube.3.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide1",
-            "sourcePortId": "guide",
-            "destNodeId": "timeLayer1",
-            "destPortId": "guide.cube.4.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide2",
-            "sourcePortId": "guide",
-            "destNodeId": "timeLayer1",
-            "destPortId": "guide.cube.5.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.0.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.2.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.3.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.4.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.5.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.6.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.7.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.8.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide4",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.9.amp",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.10.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.11.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
-        },
-        {
-            "sourceNodeId": "guide3",
-            "sourcePortId": "guide",
-            "destNodeId": "magnitudeLayer1",
-            "destPortId": "guide.cube.12.phase",
-            "connectionKind": "processingAttachment",
-            "attachmentType": "guideCurve"
         }
     ],
     "probes": [],
@@ -4580,5 +3916,674 @@
             "width": 496,
             "height": 184
         }
-    }
+    },
+    "guides": [
+        {
+            "id": "guide1",
+            "shortLabel": "G1",
+            "name": "",
+            "colourIndex": 0,
+            "shelfOrder": 0,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        {
+                            "id": 1,
+                            "x": 0.052500002086163,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 2,
+                            "x": 0.501893937587738,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 3,
+                            "x": 0.9375,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 4,
+                            "x": 0.947499990463257,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 5,
+                            "x": 0.572417914867401,
+                            "y": 0.55673760175705,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 6,
+                            "x": 0.608023822307587,
+                            "y": 0.44326239824295,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 7,
+                            "x": 0.647514045238495,
+                            "y": 0.599290788173676,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 8,
+                            "x": 0.682472586631775,
+                            "y": 0.663120567798615,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 9,
+                            "x": 0.698009729385376,
+                            "y": 0.425531923770905,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 10,
+                            "x": 0.727789223194122,
+                            "y": 0.631205677986145,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 11,
+                            "x": 0.745915830135345,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 12,
+                            "x": 0.781521797180176,
+                            "y": 0.457446813583374,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 13,
+                            "x": 0.805474877357483,
+                            "y": 0.68085104227066,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 14,
+                            "x": 0.837196528911591,
+                            "y": 0.507092177867889,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 15,
+                            "x": 0.85661792755127,
+                            "y": 0.393617033958435,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 16,
+                            "x": 0.889634311199188,
+                            "y": 0.606382966041565,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 17,
+                            "x": 0.897402882575989,
+                            "y": 0.400709211826324,
+                            "curve": 0.0
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide2",
+            "shortLabel": "G2",
+            "name": "",
+            "colourIndex": 1,
+            "shelfOrder": 1,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        {
+                            "id": 1,
+                            "x": 0.052500002086163,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 2,
+                            "x": 0.501893937587738,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 3,
+                            "x": 0.9375,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 4,
+                            "x": 0.947499990463257,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 5,
+                            "x": 0.52839607000351,
+                            "y": 0.65602833032608,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 6,
+                            "x": 0.559470295906067,
+                            "y": 0.354609906673431,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 7,
+                            "x": 0.606729090213776,
+                            "y": 0.418439716100693,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 8,
+                            "x": 0.639745473861694,
+                            "y": 0.645390093326569,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 9,
+                            "x": 0.673409283161163,
+                            "y": 0.304964542388916,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 10,
+                            "x": 0.709662556648254,
+                            "y": 0.691489338874817,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 11,
+                            "x": 0.732968270778656,
+                            "y": 0.336879462003708,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 12,
+                            "x": 0.767926812171936,
+                            "y": 0.758865237236023,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 13,
+                            "x": 0.797706305980682,
+                            "y": 0.468085080385208,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 14,
+                            "x": 0.817775070667267,
+                            "y": 0.241134747862816,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 15,
+                            "x": 0.859207451343536,
+                            "y": 0.567375898361206,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 16,
+                            "x": 0.884455263614655,
+                            "y": 0.301418453454971,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 17,
+                            "x": 0.903876662254333,
+                            "y": 0.492907792329788,
+                            "curve": 0.0
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide3",
+            "shortLabel": "G3",
+            "name": "",
+            "colourIndex": 2,
+            "shelfOrder": 2,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        {
+                            "id": 1,
+                            "x": 0.052500002086163,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 2,
+                            "x": 0.493055522441864,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 3,
+                            "x": 0.9375,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 4,
+                            "x": 0.947499990463257,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 5,
+                            "x": 0.52405846118927,
+                            "y": 0.504800796508789,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 6,
+                            "x": 0.53792929649353,
+                            "y": 0.492034882307053,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 7,
+                            "x": 0.566331505775452,
+                            "y": 0.47075828909874,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 8,
+                            "x": 0.569634079933167,
+                            "y": 0.496290177106857,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 9,
+                            "x": 0.598696768283844,
+                            "y": 0.475013613700867,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 10,
+                            "x": 0.620493769645691,
+                            "y": 0.496290177106857,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 11,
+                            "x": 0.65418004989624,
+                            "y": 0.477850496768951,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 12,
+                            "x": 0.662106275558472,
+                            "y": 0.514729917049408,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 13,
+                            "x": 0.672674536705017,
+                            "y": 0.476432055234909,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 14,
+                            "x": 0.687205851078033,
+                            "y": 0.523240506649017,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 15,
+                            "x": 0.716929018497467,
+                            "y": 0.459410786628723,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 16,
+                            "x": 0.725515723228455,
+                            "y": 0.496290177106857,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 17,
+                            "x": 0.731460392475128,
+                            "y": 0.484942674636841,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 18,
+                            "x": 0.75655996799469,
+                            "y": 0.476432055234909,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 19,
+                            "x": 0.77043080329895,
+                            "y": 0.492034882307053,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 20,
+                            "x": 0.782980620861053,
+                            "y": 0.496290177106857,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 21,
+                            "x": 0.822611570358276,
+                            "y": 0.459410786628723,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 22,
+                            "x": 0.852995276451111,
+                            "y": 0.493453323841095,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 23,
+                            "x": 0.872150242328644,
+                            "y": 0.466502964496613,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 24,
+                            "x": 0.899891912937164,
+                            "y": 0.475013613700867,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 25,
+                            "x": 0.891965687274933,
+                            "y": 0.500545501708984,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 26,
+                            "x": 0.894607782363892,
+                            "y": 0.504800796508789,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 27,
+                            "x": 0.881397485733032,
+                            "y": 0.4977086186409,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 28,
+                            "x": 0.83185875415802,
+                            "y": 0.500545501708984,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 29,
+                            "x": 0.812703847885132,
+                            "y": 0.499127089977264,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 30,
+                            "x": 0.743349671363831,
+                            "y": 0.486361116170883,
+                            "curve": 0.0
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide4",
+            "shortLabel": "G4",
+            "name": "",
+            "colourIndex": 3,
+            "shelfOrder": 3,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        {
+                            "id": 1,
+                            "x": 0.052500002086163,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 2,
+                            "x": 0.061199612915516,
+                            "y": 0.148936167359352,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 3,
+                            "x": 0.9375,
+                            "y": 0.5,
+                            "curve": 1.0
+                        },
+                        {
+                            "id": 4,
+                            "x": 0.947499990463257,
+                            "y": 0.5,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 5,
+                            "x": 0.582574725151062,
+                            "y": 0.351063847541809,
+                            "curve": 0.0
+                        },
+                        {
+                            "id": 6,
+                            "x": 0.248374551534653,
+                            "y": 0.645390093326569,
+                            "curve": 0.1929070353508
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "guideAssignments": [
+        {
+            "guideId": "guide3",
+            "targetNodeId": "timeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 2,
+                "field": "phase"
+            }
+        },
+        {
+            "guideId": "guide3",
+            "targetNodeId": "timeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 3,
+                "field": "phase"
+            }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "timeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 3,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "timeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 4,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "timeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 5,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 0,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide3",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 2,
+                "field": "phase"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 3,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 4,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 5,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 6,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 7,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 8,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 9,
+                "field": "amp"
+            }
+        },
+        {
+            "guideId": "guide3",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 10,
+                "field": "phase"
+            }
+        },
+        {
+            "guideId": "guide3",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 11,
+                "field": "phase"
+            }
+        },
+        {
+            "guideId": "guide3",
+            "targetNodeId": "magnitudeLayer1",
+            "target": {
+                "kind": "trimeshCubeComponent",
+                "cubeIndex": 12,
+                "field": "phase"
+            }
+        }
+    ]
 }
