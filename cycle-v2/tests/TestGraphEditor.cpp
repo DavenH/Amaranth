@@ -302,41 +302,40 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
-TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2][graph]") {
+TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+    const auto result = GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
             graph,
             "waveMesh",
             2,
-            "amp",
-            { 100.f, 100.f });
+            "amp");
 
     REQUIRE(result.succeeded());
-    REQUIRE(result.nodeId == "guide");
+    REQUIRE(result.nodeId == "guide1");
     REQUIRE(GraphValidator().isValid(graph));
 
-    const auto& edge = graph.getEdges().back();
-    REQUIRE(edge.isProcessingAttachment());
-    REQUIRE(edge.sourceNodeId == "guide");
-    REQUIRE(edge.sourcePortId == "guide");
-    REQUIRE(edge.destNodeId == "waveMesh");
-    REQUIRE(edge.destPortId == "guide.cube.0.amp");
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    const auto& assignment = graph.getGuideAssignments().front();
+    REQUIRE(assignment.guideId == "guide1");
+    REQUIRE(assignment.targetNodeId == "waveMesh");
+    REQUIRE(assignment.target.cubeIndex == 0);
+    REQUIRE(assignment.target.field == GuideCurveField::Amplitude);
 }
 
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
 
-    const auto waveResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto waveResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "waveMesh",
             1,
             "phase");
-    const auto magResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto magResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "magMesh",
             3,
             "amp");
@@ -345,28 +344,21 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
     REQUIRE(magResult.succeeded());
     REQUIRE(GraphValidator().isValid(graph));
 
-    int guideAttachments {};
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isProcessingAttachment() && edge.sourceNodeId == "guide") {
-            ++guideAttachments;
-        }
-    }
-
-    REQUIRE(guideAttachments == 2);
+    REQUIRE(graph.getGuideAssignments().size() == 2);
 }
 
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 180.f, 100.f }).succeeded());
-    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "waveMesh",
             2,
             "amp").succeeded());
 
-    const auto result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto result = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
             "guide2",
             "waveMesh",
@@ -376,20 +368,8 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     REQUIRE(result.succeeded());
     REQUIRE(GraphValidator().isValid(graph));
 
-    int targetAttachments {};
-    String attachedGuideId;
-
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isProcessingAttachment()
-                && edge.destNodeId == "waveMesh"
-                && edge.destPortId == "guide.cube.0.amp") {
-            ++targetAttachments;
-            attachedGuideId = edge.sourceNodeId;
-        }
-    }
-
-    REQUIRE(targetAttachments == 1);
-    REQUIRE(attachedGuideId == "guide2");
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    REQUIRE(graph.getGuideAssignments().front().guideId == "guide2");
 }
 
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {

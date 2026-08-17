@@ -509,7 +509,7 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
             }));
 }
 
-TEST_CASE("Trimesh guide targets require guide curve attachment sources", "[cycle-v2][graph]") {
+TEST_CASE("Synthetic Trimesh guide ports are rejected", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     graph.addEdge({ "env", "env", "waveMesh", "guide.cube.0.amp", PortDomain::EnvelopeSignal, ConnectionKind::ProcessingAttachment });
 
@@ -520,7 +520,7 @@ TEST_CASE("Trimesh guide targets require guide curve attachment sources", "[cycl
             issues.begin(),
             issues.end(),
             [](const GraphValidationIssue& issue) {
-                return issue.code == GraphValidationCode::InvalidAttachmentSource;
+                return issue.code == GraphValidationCode::MissingDestinationPort;
             }));
 }
 
