@@ -994,8 +994,8 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
 
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
     REQUIRE(presentation.recordedMovements == 1);
-    REQUIRE(presentation.immediateRefreshes == 1);
-    REQUIRE(presentation.localCommits == 0);
+    REQUIRE(presentation.immediateRefreshes == 0);
+    REQUIRE(presentation.localCommits == 1);
 }
 
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",

@@ -252,6 +252,7 @@ private:
     String activeMorphParameterId;
     uint64_t activeMorphFingerprint {};
     bool activeMorphChanged {};
+    bool activeMorphIsPrimary {};
     String activeVertexNodeId;
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};

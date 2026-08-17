@@ -1360,7 +1360,12 @@ void NodeCanvas::recordNodeEditorMovement(
         const String& nodeId,
         const String& field,
         uint64_t effectiveFingerprint) {
-    const bool deferred = probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
+    const Node* node = commands.editingGraph().findNode(nodeId);
+    const bool primaryTrimeshMorph = node != nullptr
+            && node->kind == NodeKind::TrilinearMesh
+            && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == field;
+    const bool deferred = primaryTrimeshMorph
+            || probeRailState.refreshMode == ProbeRefreshMode::OnGestureCommit;
     presentation.recordEditorMovement(nodeId, field, effectiveFingerprint, deferred);
     if (!deferred) {
         scheduleCompiledStateRefresh();

@@ -1005,6 +1005,11 @@ var CycleV2Automation::captureAudio(const var& commandValue) {
     if (dataObject == nullptr || !(bool) dataObject->getProperty("compileSucceeded")) {
         return failedResult("captureAudio", "Cannot capture audio from an uncompiled graph");
     }
+    if (!(bool) dataObject->getProperty("finite")) {
+        var result = failedResult("captureAudio", "Audio capture contains non-finite samples");
+        objectFor(result)->setProperty("data", data);
+        return result;
+    }
 
     const var metrics = dataObject->getProperty("metrics");
     String message;

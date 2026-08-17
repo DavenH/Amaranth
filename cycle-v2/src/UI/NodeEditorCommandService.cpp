@@ -383,6 +383,9 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
     activeMorphParameterId = parameterId;
     activeMorphFingerprint = 0;
     activeMorphChanged = false;
+    activeMorphIsPrimary = NodeParameterMap(*node).stringValue(
+            "primaryAxis",
+            "yellow") == parameterId;
     presentation.selectEditedNode(nodeId);
     commands.beginTransientEdit();
     return updateTrimeshMorphEditValue(value);
@@ -421,7 +424,8 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     }
     commands.commitTransientEdit();
     if (activeMorphChanged
-            && presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest) {
+            && (activeMorphIsPrimary
+                    || presentation.probeRefreshMode() == ProbeRefreshMode::LiveLatest)) {
         presentation.commitNodeEditorLocalState(
                 activeMorphNodeId,
                 activeMorphParameterId,
@@ -434,6 +438,7 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     activeMorphParameterId = {};
     activeMorphFingerprint = 0;
     activeMorphChanged = false;
+    activeMorphIsPrimary = false;
 }
 
 bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(

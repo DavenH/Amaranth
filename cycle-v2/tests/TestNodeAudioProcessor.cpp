@@ -1533,6 +1533,29 @@ TEST_CASE("FFT cycle processor publishes separate magnitude and phase ports", "[
             == TraversalGridFrequencySampling::LinearBins);
 }
 
+TEST_CASE("FFT expands linked input into resolved stereo output channels",
+        "[cycle-v2][runtime][fft][stereo]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::Fft);
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.inputs = { gridPayload({ -0.5f, -0.25f, 0.25f, 0.5f }, 1, 4) };
+    context.inputs.front().channelLayout = ChannelLayout::LinkedStereo;
+    context.outputPorts = {
+            { "mag", PortDomain::SpectralMagnitudeSignal, ChannelLayout::StereoPair },
+            { "phase", PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair }
+    };
+
+    processor->process(context);
+
+    REQUIRE(context.outputs.size() == 2);
+    for (const auto& spectral : context.outputs) {
+        REQUIRE(spectral.isStereo());
+        REQUIRE(spectral.secondaryBlock.samples == spectral.block.samples);
+        REQUIRE(spectral.secondaryTraversalGrid.values == spectral.traversalGrid.values);
+    }
+}
+
 TEST_CASE("FFT and IFFT cycle processors round trip zero-mean cycle buffers", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
     const std::vector<float> timeColumns {
