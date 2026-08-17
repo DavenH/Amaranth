@@ -8,6 +8,10 @@ editor-safe hosting, and the larger double-click preview are implemented. Tile
 reordering and renaming remain open and must be completed before this TDD
 returns to an implemented state.
 
+`cycle-v2-guide-resource-dock.md` retains the Spy behavior in this TDD while
+placing `SignalProbeRail` beside a Guide resource shelf inside a shared bottom
+workspace dock. Shared dock geometry must not absorb Spy preview semantics.
+
 Supersedes the canvas-node and node-drop interaction described in
 `spy-node.md`. The signal-traversal contract remains authoritative.
 
