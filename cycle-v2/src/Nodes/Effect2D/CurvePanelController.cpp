@@ -257,6 +257,17 @@ public:
         }
     }
 
+    bool syncFromGuideResource(const GuideCurveResource& guide) override {
+        if (!adapter.syncFromGuideResource(guide)) {
+            return false;
+        }
+        auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
+        panel->clearInteractionState();
+        finishGuideSync(guide);
+        flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
+        return true;
+    }
+
     std::vector<CurvePreviewVertex> previewVertices() override {
         return adapter.previewVertices();
     }
@@ -277,6 +288,12 @@ public:
     }
 
 private:
+    void finishGuideSync(const GuideCurveResource& guide) {
+        publicationRevision = guide.model != nullptr ? guide.model->revision() : 1;
+        applyPanelSettings();
+        panel->refreshRasterizer();
+    }
+
     void initialiseDefaultModel() override {
         adapter.initialiseDefaultMesh();
         panel->refreshRasterizer();

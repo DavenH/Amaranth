@@ -53,6 +53,24 @@ bool FlatCurvePanelAdapter::syncFromNode(const Node& node) {
     return true;
 }
 
+bool FlatCurvePanelAdapter::syncFromGuideResource(const GuideCurveResource& guide) {
+    if (!guideResource || guide.model == nullptr
+            || (syncedNodeId == guide.id && syncedModel == guide.model)) {
+        return false;
+    }
+    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(guide.model);
+    if (typed == nullptr || typed->flatCurve() == nullptr
+            || !model.copyFrom(*typed->flatCurve())) {
+        return false;
+    }
+    syncedNodeId = guide.id;
+    syncedModel = guide.model;
+    model.selectVertex(std::nullopt);
+    model.setPublicationRevision(guide.model->revision());
+    syncedMeshState = serializedMeshState();
+    return true;
+}
+
 void FlatCurvePanelAdapter::initialiseDefaultMesh() {
     if (mesh().getNumVerts() > 0) {
         return;

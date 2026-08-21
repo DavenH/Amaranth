@@ -21,6 +21,7 @@ public:
     const Mesh& mesh() const { return model.getMesh(); }
     bool needsNodeSync(const Node& node) const;
     bool syncFromNode(const Node& node);
+    bool syncFromGuideResource(const GuideCurveResource& guide);
     Vertex* selectedMeshVertex() const { return model.selectedMeshVertex(); }
     void initialiseDefaultMesh();
     String serializedMeshState();

@@ -608,42 +608,25 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
 
-    const auto asPresentationNode = [](const GuideCurveResource& guide) {
-        Node node;
-        node.id = guide.id;
-        node.model = guide.model;
-        node.parameters = {
-                { "enabled", "Enabled", guide.enabled ? "1" : "0" },
-                { "noise", "Noise", String(guide.noise) },
-                { "dcOffset", "DC Offset", String(guide.dcOffset) },
-                { "phase", "Phase", String(guide.phase) }
-        };
-        return node;
-    };
     Effect2DWidget widget(true);
     GuideCurveEditorComponent editor(widget);
     editor.setBounds(0, 0, 640, 400);
-    editor.setNode(asPresentationNode(*baroqueGuide));
+    editor.setGuideResource(*baroqueGuide);
     REQUIRE(widget.vertexCountForAutomation() == 4);
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.76562));
-    editor.setNode(asPresentationNode(*stengahGuide));
+    editor.setGuideResource(*stengahGuide);
     REQUIRE(widget.vertexCountForAutomation() == 55);
     REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
 
-    widget.syncFromNode(asPresentationNode(*baroqueGuide));
+    widget.syncFromGuideResource(*baroqueGuide);
     REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
             == Catch::Approx(0.76562));
-    Node revisedGuide = asPresentationNode(*stengahGuide);
-    for (auto& parameter : revisedGuide.parameters) {
-        if (parameter.id == "dcOffset") {
-            parameter.value = "0.25";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.75";
-        }
-    }
-    widget.syncFromNode(revisedGuide);
+    GuideCurveResource revisedGuide = *stengahGuide;
+    revisedGuide.dcOffset = 0.25f;
+    revisedGuide.phase = 0.75f;
+    widget.syncFromGuideResource(revisedGuide);
     const var widgetState = widget.automationState();
     REQUIRE(static_cast<double>(widgetState.getProperty("firstControl", {}))
             == Catch::Approx(0.0025));

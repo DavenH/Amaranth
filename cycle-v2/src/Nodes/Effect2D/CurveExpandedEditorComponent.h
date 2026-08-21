@@ -36,7 +36,7 @@ public:
     void setDelegate(CurveExpandedEditorDelegate* nextDelegate);
     void setNode(const Node& nextNode);
     void setTitle(String nextTitle) { title = std::move(nextTitle); }
-    void renderOpenGL(float scaleFactor);
+    virtual void renderOpenGL(float scaleFactor);
     Rectangle<float> panelBoundsForAutomation() const;
     var automationState() const;
 
@@ -67,6 +67,7 @@ protected:
     void beginTransaction();
     void commitTransaction();
     void requestRepaint();
+    void refreshEditorSubject();
     void bindContinuousControl(LabeledParameterSlider& control);
     void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
     void bindDiscreteControl(ParameterToggle& control);

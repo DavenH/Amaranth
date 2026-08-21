@@ -200,7 +200,6 @@ private:
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
-    Node guideEditorPresentationNode(const GuideCurveResource& guide) const;
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;

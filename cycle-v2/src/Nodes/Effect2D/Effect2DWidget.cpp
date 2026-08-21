@@ -2,8 +2,6 @@
 
 #include "CurveNodeModels.h"
 
-#include "../../Graph/NodeParameterMap.h"
-
 namespace CycleV2 {
 
 Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
@@ -82,20 +80,24 @@ void Effect2DWidget::resetEnvelopeVerticalRange() {
 }
 
 void Effect2DWidget::syncFromNode(const Node& node) {
-    if (!guideResource && node.kind != kind) {
+    if (guideResource || node.kind != kind) {
         return;
     }
 
     controller->syncFromNode(node);
-    if (guideResource) {
-        const NodeParameterMap parameters(node);
-        controller->setControlValues(
-                parameters.boolValue("enabled", true),
-                jlimit(0.f, 1.f, parameters.floatValue("noise", 0.5f)),
-                jlimit(0.f, 1.f, parameters.floatValue("dcOffset", 0.5f)),
-                jlimit(0.f, 1.f, parameters.floatValue("phase", 0.5f)),
-                0);
+}
+
+void Effect2DWidget::syncFromGuideResource(const GuideCurveResource& guide) {
+    if (!guideResource) {
+        return;
     }
+    controller->syncFromGuideResource(guide);
+    controller->setControlValues(
+            guide.enabled,
+            guide.noise,
+            guide.dcOffset,
+            guide.phase,
+            0);
 }
 
 void Effect2DWidget::renderExpandedPanelOpenGL(
@@ -104,6 +106,17 @@ void Effect2DWidget::renderExpandedPanelOpenGL(
         Rectangle<float> clipBounds,
         float scaleFactor) {
     if (!guideResource && node.kind != kind) {
+        return;
+    }
+
+    controller->render(bounds, clipBounds, scaleFactor);
+}
+
+void Effect2DWidget::renderGuideExpandedPanelOpenGL(
+        Rectangle<float> bounds,
+        Rectangle<float> clipBounds,
+        float scaleFactor) {
+    if (!guideResource) {
         return;
     }
 

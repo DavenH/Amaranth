@@ -110,15 +110,9 @@ TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset
     REQUIRE(baroqueGuide->model->revision() == stengahGuide->model->revision());
 
     FlatCurvePanelAdapter adapter(true);
-    Node baroqueGuideNode;
-    baroqueGuideNode.id = baroqueGuide->id;
-    baroqueGuideNode.model = baroqueGuide->model;
-    Node stengahGuideNode;
-    stengahGuideNode.id = stengahGuide->id;
-    stengahGuideNode.model = stengahGuide->model;
-    REQUIRE(adapter.syncFromNode(baroqueGuideNode));
+    REQUIRE(adapter.syncFromGuideResource(*baroqueGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 4);
-    REQUIRE(adapter.syncFromNode(stengahGuideNode));
+    REQUIRE(adapter.syncFromGuideResource(*stengahGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 55);
 }
 

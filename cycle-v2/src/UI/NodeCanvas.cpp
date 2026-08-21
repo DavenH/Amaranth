@@ -1467,20 +1467,6 @@ void NodeCanvas::closeNodeEditor() {
     notifyOverlayPresentationChanged();
 }
 
-Node NodeCanvas::guideEditorPresentationNode(const GuideCurveResource& guide) const {
-    Node node;
-    node.id = guide.id;
-    node.kind = NodeKind::GenericProcessor;
-    node.model = guide.model;
-    node.parameters = {
-            { "enabled", "Enabled", guide.enabled ? "1" : "0" },
-            { "noise", "Noise", String(guide.noise) },
-            { "dcOffset", "DC Offset", String(guide.dcOffset) },
-            { "phase", "Phase", String(guide.phase) }
-    };
-    return node;
-}
-
 void NodeCanvas::openGuideEditor(const String& guideId) {
     const GuideCurveResource* guide = graph.findGuideCurve(guideId);
     if (guide == nullptr) {
@@ -1498,7 +1484,7 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     expandedNodeId = {};
     editorCoordinator.close();
     expandedGuideId = guideId;
-    guideEditor->setNode(guideEditorPresentationNode(*guide));
+    guideEditor->setGuideResource(*guide);
     guideEditor->setBounds(canvasContentBounds().reduced(36.f, 24.f).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);

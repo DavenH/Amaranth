@@ -25,8 +25,13 @@ public:
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void syncFromNode(const Node& node);
+    void syncFromGuideResource(const GuideCurveResource& guide);
     void renderExpandedPanelOpenGL(
             const Node& node,
+            Rectangle<float> bounds,
+            Rectangle<float> clipBounds,
+            float scaleFactor);
+    void renderGuideExpandedPanelOpenGL(
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor);

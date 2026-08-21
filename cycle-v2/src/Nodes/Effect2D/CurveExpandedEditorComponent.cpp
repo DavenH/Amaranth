@@ -43,6 +43,10 @@ void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
     applyEditorStateToWidget();
+    refreshEditorSubject();
+}
+
+void CurveExpandedEditorComponent::refreshEditorSubject() {
     updatePanelHost();
     layoutEditor();
     repaint();

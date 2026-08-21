@@ -42,6 +42,22 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(Effect2DWidget& target) :
 
 GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;
 
+void GuideCurveEditorComponent::setGuideResource(const GuideCurveResource& nextGuide) {
+    guide = nextGuide;
+    widget.syncFromGuideResource(guide);
+    const ScopedValueSetter<bool> guard(syncingControls, true);
+    syncEditorFromNode();
+    applyEditorStateToWidget();
+    refreshEditorSubject();
+}
+
+void GuideCurveEditorComponent::renderOpenGL(float scaleFactor) {
+    widget.renderGuideExpandedPanelOpenGL(
+            editorPanelBounds().translated((float) getX(), (float) getY()),
+            getLocalBounds().toFloat().translated((float) getX(), (float) getY()),
+            scaleFactor);
+}
+
 Rectangle<float> GuideCurveEditorComponent::editorControlBounds() const {
     auto bounds = contentBounds();
     return bounds.removeFromRight(196.f);
@@ -65,11 +81,10 @@ void GuideCurveEditorComponent::layoutEditor() {
 }
 
 void GuideCurveEditorComponent::syncEditorFromNode() {
-    const NodeParameterMap parameters(node);
-    impl->enabled.button.setToggleState(parameters.boolValue("enabled", true), dontSendNotification);
-    impl->noise.slider.setValue(parameters.floatValue("noise", 0.5f), dontSendNotification);
-    impl->dcOffset.slider.setValue(parameters.floatValue("dcOffset", 0.5f), dontSendNotification);
-    impl->phase.slider.setValue(parameters.floatValue("phase", 0.5f), dontSendNotification);
+    impl->enabled.button.setToggleState(guide.enabled, dontSendNotification);
+    impl->noise.slider.setValue(guide.noise, dontSendNotification);
+    impl->dcOffset.slider.setValue(guide.dcOffset, dontSendNotification);
+    impl->phase.slider.setValue(guide.phase, dontSendNotification);
 }
 
 void GuideCurveEditorComponent::applyEditorStateToWidget() {
@@ -83,10 +98,10 @@ void GuideCurveEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> GuideCurveEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
-    addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.button.getToggleState() ? "1" : "0");
-    addEditorParameter(result, node, "noise", "Noise", String(impl->noise.slider.getValue()));
-    addEditorParameter(result, node, "dcOffset", "DC Offset", String(impl->dcOffset.slider.getValue()));
-    addEditorParameter(result, node, "phase", "Phase", String(impl->phase.slider.getValue()));
+    result.push_back({ "enabled", "Enabled", impl->enabled.button.getToggleState() ? "1" : "0" });
+    result.push_back({ "noise", "Noise", String(impl->noise.slider.getValue()) });
+    result.push_back({ "dcOffset", "DC Offset", String(impl->dcOffset.slider.getValue()) });
+    result.push_back({ "phase", "Phase", String(impl->phase.slider.getValue()) });
     return result;
 }
 

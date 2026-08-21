@@ -49,6 +49,9 @@ public:
     explicit GuideCurveEditorComponent(Effect2DWidget& widget);
     ~GuideCurveEditorComponent() override;
 
+    void setGuideResource(const GuideCurveResource& guide);
+    void renderOpenGL(float scaleFactor) override;
+
 private:
     struct Impl;
     Rectangle<float> editorPanelBounds() const override;
@@ -61,6 +64,7 @@ private:
     void appendEditorAutomation(DynamicObject&) const override;
 
     std::unique_ptr<Impl> impl;
+    GuideCurveResource guide;
 };
 
 class EnvelopeEditorComponent final : public CurveExpandedEditorComponent,
