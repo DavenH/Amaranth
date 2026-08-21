@@ -110,7 +110,7 @@ def require_single_active_layer(groups, group_name):
     return active[0]
 
 
-def guide_assignment_edges(layer, destination):
+def guide_assignments_for_layer(layer, destination):
     field_names = {"key": "red", "mod": "blue"}
     result = []
     for cube_index, cube in enumerate(layer["mesh"]["cubes"]):
@@ -118,14 +118,15 @@ def guide_assignment_edges(layer, destination):
             if guide_index < 0:
                 continue
             target_field = field_names.get(field, field)
-            result.append(edge(
-                f"guide{guide_index + 1}",
-                "guide",
-                destination,
-                f"guide.cube.{cube_index}.{target_field}",
-                "processingAttachment",
-                "guideCurve",
-            ))
+            result.append({
+                "guideId": f"guide{guide_index + 1}",
+                "targetNodeId": destination,
+                "target": {
+                    "kind": "trimeshCubeComponent",
+                    "cubeIndex": cube_index,
+                    "field": target_field,
+                },
+            })
     return result
 
 
@@ -213,21 +214,21 @@ def convert(source):
     ])
 
     guide_props = preset["guideCurveProps"]["guides"]
+    guides = []
     for index, layer in enumerate(guide_layers):
         props = guide_props[index]
-        nodes.append(node(
-            f"guide{index + 1}",
-            "guideCurve",
-            500 + index * 320,
-            -220,
-            {
-                "enabled": True,
-                "noise": props["noiseLevel"],
-                "dcOffset": props["offsetLevel"],
-                "phase": props["phaseLevel"],
-            },
-            flat_curve_model(layer["mesh"]),
-        ))
+        guides.append({
+            "id": f"guide{index + 1}",
+            "shortLabel": f"G{index + 1}",
+            "name": "",
+            "colourIndex": index,
+            "shelfOrder": index,
+            "enabled": True,
+            "noise": props["noiseLevel"],
+            "dcOffset": props["offsetLevel"],
+            "phase": props["phaseLevel"],
+            "model": flat_curve_model(layer["mesh"]),
+        })
 
     nodes.append(envelope_node(preset, "volume", "volumeEnvelope", 2050, 180))
     nodes.append(envelope_node(preset, "scratch", "scratchEnvelope", 850, 1080))
@@ -265,14 +266,17 @@ def convert(source):
         edge("scratchEnvelope", "env", "magnitudeLayer1", "scratch",
              "processingAttachment", "scratchEnvelope"),
     ]
-    edges.extend(guide_assignment_edges(time_layer, "timeLayer1"))
-    edges.extend(guide_assignment_edges(magnitude_layer, "magnitudeLayer1"))
-    edges.extend(guide_assignment_edges(phase_layer, "phaseLayer1"))
+    guide_assignments = []
+    guide_assignments.extend(guide_assignments_for_layer(time_layer, "timeLayer1"))
+    guide_assignments.extend(guide_assignments_for_layer(magnitude_layer, "magnitudeLayer1"))
+    guide_assignments.extend(guide_assignments_for_layer(phase_layer, "phaseLayer1"))
 
     return {
         "format": "cycle-v2-graph",
-        "formatVersion": 2,
+        "formatVersion": 3,
         "nodes": nodes,
+        "guides": guides,
+        "guideAssignments": guide_assignments,
         "edges": edges,
         "probes": [],
         "presentation": {
