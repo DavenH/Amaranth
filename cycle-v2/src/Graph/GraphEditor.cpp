@@ -159,6 +159,19 @@ GraphEditResult GraphEditor::duplicateGuideCurve(NodeGraph& graph, const String&
     return created;
 }
 
+GraphEditResult GraphEditor::reorderGuideCurve(
+        NodeGraph& graph,
+        const String& guideId,
+        int shelfOrder) const {
+    if (graph.findGuideCurve(guideId) == nullptr) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+    if (!graph.moveGuideCurve(guideId, shelfOrder)) {
+        return { GraphEditCode::Connected, guideId, {}, {}, false };
+    }
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
 GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& guideId) const {
     if (!graph.removeGuideCurve(guideId)) {
         return { GraphEditCode::MissingNode, guideId, {} };

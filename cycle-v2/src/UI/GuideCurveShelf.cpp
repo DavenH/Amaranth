@@ -20,7 +20,7 @@ const Colour kTileBackground { 0xff11171d };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kPadding = 12.f;
-constexpr float kTileWidth = 132.f;
+constexpr float kTileWidth = 220.f;
 constexpr float kTileGap = 10.f;
 
 Colour colourForGuide(const GuideCurveResource& guide) {
@@ -217,7 +217,10 @@ void GuideCurveShelf::paint(
     graphics.drawText("-", minimize, Justification::centred);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
-    graphics.drawText("Guides", header, Justification::centredLeft);
+    graphics.drawText(
+            "Guides (" + String((int) graph.getGuideCurves().size()) + ")",
+            header,
+            Justification::centredLeft);
     const Rectangle<float> plus = header.removeFromRight(22.f);
     graphics.setColour(Colour(0xff26313d));
     graphics.fillRoundedRectangle(plus, 5.f);
@@ -226,15 +229,15 @@ void GuideCurveShelf::paint(
     graphics.drawText("+", plus, Justification::centred);
 
     if (graph.getGuideCurves().empty()) {
-        Rectangle<float> vacancy = shelf.reduced(24.f, 42.f);
+        Rectangle<float> vacancy(280.f, 92.f);
+        vacancy = vacancy.withCentre(shelf.getCentre().withY(shelf.getCentreY() + 12.f));
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(vacancy, 8.f);
         graphics.setColour(kShelfBorder.withAlpha(0.75f));
         graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
         graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(12.f));
-        graphics.drawText("[ ]", vacancy.removeFromTop(28.f), Justification::centred);
-        graphics.drawText("No Guides - + Add Guide", vacancy, Justification::centred);
+        graphics.setFont(FontOptions(13.f, Font::bold));
+        graphics.drawText("No Guides", vacancy.removeFromTop(44.f), Justification::centred);
         return;
     }
 

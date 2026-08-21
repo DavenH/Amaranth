@@ -15,7 +15,7 @@ const Colour kRailBorder { 0xff445261 };
 const Colour kTileBackground { 0xff11171d };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kTileWidth = 184.f;
+constexpr float kTileWidth = 220.f;
 constexpr float kTileGap = 10.f;
 constexpr float kRailPadding = 12.f;
 
@@ -54,7 +54,7 @@ Rectangle<float> SignalProbeRail::collapseHandleFor(
         const SignalProbeRailState& state) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     return state.expanded
-            ? Rectangle<float>(rail.getRight() - 140.f, rail.getY() - 34.f, 116.f, 34.f)
+            ? Rectangle<float>(rail.getRight() - 128.f, rail.getY() + 8.f, 116.f, 22.f)
             : Rectangle<float>(rail.getRight() - 174.f, rail.getY(), 150.f, rail.getHeight());
 }
 
@@ -65,7 +65,7 @@ Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
         return {};
     }
     const Rectangle<float> collapse = collapseHandleFor(workspace, state);
-    return { collapse.getX() - 102.f, collapse.getY(), 94.f, collapse.getHeight() };
+    return { collapse.getX() - 100.f, collapse.getY(), 92.f, collapse.getHeight() };
 }
 
 Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
@@ -399,6 +399,13 @@ void SignalProbeRail::paintRail(
     graphics.setFont(FontOptions(14.f));
     graphics.drawText("-", minimize, Justification::centred);
 
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(12.f, Font::bold));
+    graphics.drawText(
+            "Spies (" + String((int) probes.size()) + ")",
+            Rectangle<float>(minimize.getRight() + 8.f, minimize.getY(), 110.f, minimize.getHeight()),
+            Justification::centredLeft);
+
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
     graphics.setColour(Colour(0xff26313d));
     graphics.fillRoundedRectangle(refreshMode, 6.f);
@@ -410,16 +417,15 @@ void SignalProbeRail::paintRail(
             Justification::centred);
 
     if (probes.empty()) {
-        Rectangle<float> vacancy = rail.reduced(24.f, 42.f);
+        Rectangle<float> vacancy(280.f, 92.f);
+        vacancy = vacancy.withCentre(rail.getCentre().withY(rail.getCentreY() + 12.f));
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(vacancy, 8.f);
         graphics.setColour(kRailBorder.withAlpha(0.75f));
         graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
         graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(13.f));
-        graphics.drawText("~", vacancy.removeFromTop(28.f), Justification::centred);
-        graphics.setFont(FontOptions(12.f));
-        graphics.drawText("No Spies", vacancy, Justification::centred);
+        graphics.setFont(FontOptions(13.f, Font::bold));
+        graphics.drawText("No Spies", vacancy.removeFromTop(44.f), Justification::centred);
         return;
     }
 

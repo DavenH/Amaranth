@@ -156,6 +156,32 @@ bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
     return true;
 }
 
+bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {
+    const auto source = std::find_if(guideCurves.begin(), guideCurves.end(), [&](const auto& guide) {
+        return guide.id == guideId;
+    });
+    if (source == guideCurves.end()) {
+        return false;
+    }
+
+    const int sourceIndex = (int) std::distance(guideCurves.begin(), source);
+    const int destinationIndex = jlimit(0, (int) guideCurves.size() - 1, shelfOrder);
+    if (sourceIndex == destinationIndex) {
+        return false;
+    }
+
+    if (sourceIndex < destinationIndex) {
+        std::rotate(source, source + 1, guideCurves.begin() + destinationIndex + 1);
+    } else {
+        std::rotate(guideCurves.begin() + destinationIndex, source, source + 1);
+    }
+    for (int index = 0; index < (int) guideCurves.size(); ++index) {
+        guideCurves[(size_t) index].shelfOrder = index;
+    }
+    ++revision;
+    return true;
+}
+
 bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
     if (findGuideCurve(assignment.guideId) == nullptr
             || findNode(assignment.targetNodeId) == nullptr

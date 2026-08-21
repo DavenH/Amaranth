@@ -137,6 +137,18 @@ GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& 
     });
 }
 
+GraphEditResult GraphCommandDispatcher::reorderGuideCurve(
+        const juce::String& guideId,
+        int shelfOrder) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder),
+                { {}, false, false });
+        result.changes.guidesChanged = result.succeeded() && result.changed;
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         const juce::String& guideId,
         const juce::String& meshNodeId,

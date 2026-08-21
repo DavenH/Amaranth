@@ -271,6 +271,7 @@ public:
     GuideCurveResource* findGuideCurveForEditing(const String& guideId);
     const GuideCurveResource* findGuideCurve(const String& guideId) const;
     bool replaceGuideCurve(GuideCurveResource resource);
+    bool moveGuideCurve(const String& guideId, int shelfOrder);
     bool assignGuideCurve(GuideCurveAssignment assignment);
     bool removeGuideAssignment(
             const String& nodeId,

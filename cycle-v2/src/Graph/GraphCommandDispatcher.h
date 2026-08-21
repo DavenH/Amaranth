@@ -32,6 +32,7 @@ public:
     GraphEditResult spliceNodeIntoEdge(size_t edgeIndex, const juce::String& nodeId);
     GraphEditResult createGuideCurve();
     GraphEditResult duplicateGuideCurve(const juce::String& guideId);
+    GraphEditResult reorderGuideCurve(const juce::String& guideId, int shelfOrder);
     GraphEditResult assignGuideCurve(
             const juce::String& guideId,
             const juce::String& meshNodeId,

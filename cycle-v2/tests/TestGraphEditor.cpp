@@ -401,6 +401,26 @@ TEST_CASE("Guide resource duplication copies content without copying assignments
     REQUIRE(document.graph().findGuideCurve("guide2") == nullptr);
 }
 
+TEST_CASE("Guide resource reordering preserves its identity and assignments", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+
+    REQUIRE(commands.reorderGuideCurve("guide2", 0).succeeded());
+    const auto& guides = document.graph().getGuideCurves();
+    REQUIRE(guides[0].id == "guide2");
+    REQUIRE(guides[0].shortLabel == "G2");
+    REQUIRE(guides[0].shelfOrder == 0);
+    REQUIRE(guides[1].id == "guide1");
+    REQUIRE(guides[1].shelfOrder == 1);
+    REQUIRE(document.graph().getGuideAssignments().front().guideId == "guide1");
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().getGuideCurves()[0].id == "guide1");
+}
+
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
