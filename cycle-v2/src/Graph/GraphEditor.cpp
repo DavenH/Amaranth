@@ -132,6 +132,33 @@ GraphEditResult GraphEditor::createGuideCurve(NodeGraph& graph) const {
     return { GraphEditCode::Connected, "guide" + String(nextNumber), {} };
 }
 
+GraphEditResult GraphEditor::duplicateGuideCurve(NodeGraph& graph, const String& guideId) const {
+    const GuideCurveResource* source = graph.findGuideCurve(guideId);
+    if (source == nullptr) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+    const GuideCurveResource sourceCopy = *source;
+
+    const GraphEditResult created = createGuideCurve(graph);
+    if (!created.succeeded()) {
+        return created;
+    }
+
+    GuideCurveResource* duplicate = graph.findGuideCurveForEditing(created.nodeId);
+    jassert(duplicate != nullptr);
+    if (duplicate == nullptr) {
+        return { GraphEditCode::MissingNode, created.nodeId, {} };
+    }
+    duplicate->name = sourceCopy.name.isEmpty() ? "Copy" : sourceCopy.name + " Copy";
+    duplicate->enabled = sourceCopy.enabled;
+    duplicate->noise = sourceCopy.noise;
+    duplicate->dcOffset = sourceCopy.dcOffset;
+    duplicate->phase = sourceCopy.phase;
+    duplicate->model = sourceCopy.model;
+    graph.markChanged();
+    return created;
+}
+
 GraphEditResult GraphEditor::removeGuideCurve(NodeGraph& graph, const String& guideId) const {
     if (!graph.removeGuideCurve(guideId)) {
         return { GraphEditCode::MissingNode, guideId, {} };

@@ -380,6 +380,27 @@ TEST_CASE("Guide resource names are document content and undoable", "[cycle-v2][
     REQUIRE(document.graph().findGuideCurve("guide1")->name.isEmpty());
 }
 
+TEST_CASE("Guide resource duplication copies content without copying assignments", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.renameGuideCurve("guide1", "Vibrato Bend").succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+
+    const auto duplicated = commands.duplicateGuideCurve("guide1");
+    REQUIRE(duplicated.succeeded());
+    REQUIRE(duplicated.nodeId == "guide2");
+    const GuideCurveResource* copy = document.graph().findGuideCurve("guide2");
+    REQUIRE(copy != nullptr);
+    REQUIRE(copy->shortLabel == "G2");
+    REQUIRE(copy->name == "Vibrato Bend Copy");
+    REQUIRE(copy->model == document.graph().findGuideCurve("guide1")->model);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide2") == nullptr);
+}
+
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());

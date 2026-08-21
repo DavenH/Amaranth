@@ -55,6 +55,7 @@ public:
     GraphEditResult addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const;
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
     GraphEditResult createGuideCurve(NodeGraph& graph) const;
+    GraphEditResult duplicateGuideCurve(NodeGraph& graph, const String& guideId) const;
     GraphEditResult removeGuideCurve(NodeGraph& graph, const String& guideId) const;
     GraphEditResult renameGuideCurve(
             NodeGraph& graph,

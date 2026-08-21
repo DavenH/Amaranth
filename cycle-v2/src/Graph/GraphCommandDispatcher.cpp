@@ -127,6 +127,16 @@ GraphEditResult GraphCommandDispatcher::createGuideCurve() {
     });
 }
 
+GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& guideId) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().duplicateGuideCurve(graph, guideId),
+                { {}, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::assignGuideCurve(
         const juce::String& guideId,
         const juce::String& meshNodeId,
