@@ -383,7 +383,7 @@ void SignalProbeRail::paintRail(
     graphics.drawText(
             state.expanded
                     ? "Hide Dock"
-                    : "Guides (" + String(guideCount) + ") · Spies ("
+                    : "Guides (" + String(guideCount) + ") - Spies ("
                             + String((int) probes.size()) + ")",
             collapse,
             Justification::centred);
@@ -397,7 +397,7 @@ void SignalProbeRail::paintRail(
     graphics.fillRoundedRectangle(minimize, 4.f);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(14.f));
-    graphics.drawText("−", minimize, Justification::centred);
+    graphics.drawText("-", minimize, Justification::centred);
 
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
     graphics.setColour(Colour(0xff26313d));
@@ -417,7 +417,7 @@ void SignalProbeRail::paintRail(
         graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
         graphics.setColour(kMutedText);
         graphics.setFont(FontOptions(13.f));
-        graphics.drawText("⌁", vacancy.removeFromTop(28.f), Justification::centred);
+        graphics.drawText("~", vacancy.removeFromTop(28.f), Justification::centred);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No Spies", vacancy, Justification::centred);
         return;

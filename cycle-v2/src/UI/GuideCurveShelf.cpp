@@ -214,7 +214,7 @@ void GuideCurveShelf::paint(
     graphics.fillRoundedRectangle(minimize, 4.f);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(14.f));
-    graphics.drawText("−", minimize, Justification::centred);
+    graphics.drawText("-", minimize, Justification::centred);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
     graphics.drawText("Guides", header, Justification::centredLeft);
@@ -233,8 +233,8 @@ void GuideCurveShelf::paint(
         graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
         graphics.setColour(kMutedText);
         graphics.setFont(FontOptions(12.f));
-        graphics.drawText("◇", vacancy.removeFromTop(28.f), Justification::centred);
-        graphics.drawText("No Guides · + Add Guide", vacancy, Justification::centred);
+        graphics.drawText("[ ]", vacancy.removeFromTop(28.f), Justification::centred);
+        graphics.drawText("No Guides - + Add Guide", vacancy, Justification::centred);
         return;
     }
 
