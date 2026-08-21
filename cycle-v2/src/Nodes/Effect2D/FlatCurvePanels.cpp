@@ -185,6 +185,18 @@ public:
         rasterizer.updateWaveform();
         updateZoomBounds(false);
     }
+    std::vector<CurvePreviewVertex> rasterizedPreviewVertices() const override {
+        const auto snapshot = rasterizer.snapshotView();
+        const Buffer<Float32> waveX = snapshot.waveX();
+        const Buffer<Float32> waveY = snapshot.waveY();
+        const int size = jmin(waveX.size(), waveY.size());
+        std::vector<CurvePreviewVertex> result;
+        result.reserve((size_t) size);
+        for (int index = 0; index < size; ++index) {
+            result.push_back({ waveX[index], waveY[index], 0.f });
+        }
+        return result;
+    }
     void performUpdate(UpdateType updateType) override {
         if (updateType == Update) {
             refreshRasterizer();

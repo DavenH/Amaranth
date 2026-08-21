@@ -42,6 +42,7 @@ public:
     int vertexCountForAutomation() const;
     var automationState() const;
     std::vector<CurvePreviewVertex> previewVertices();
+    std::vector<CurvePreviewVertex> rasterizedPreviewVertices();
     String serializedMeshState();
     NodeModelStatePtr modelPublication();
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision);

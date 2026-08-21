@@ -158,6 +158,10 @@ std::vector<CurvePreviewVertex> Effect2DWidget::previewVertices() {
     return controller->previewVertices();
 }
 
+std::vector<CurvePreviewVertex> Effect2DWidget::rasterizedPreviewVertices() {
+    return controller->rasterizedPreviewVertices();
+}
+
 String Effect2DWidget::serializedMeshState() {
     return controller->serializedMeshState();
 }

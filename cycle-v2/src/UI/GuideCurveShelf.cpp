@@ -2,10 +2,6 @@
 
 #include "SignalProbeRail.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-
-#include <Curve/Mesh/Vertex.h>
-
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -35,42 +31,41 @@ Colour colourForGuide(const GuideCurveResource& guide) {
     return Colour(colours[(size_t) std::abs(guide.colourIndex) % colours.size()]);
 }
 
-void paintCurveThumbnail(
+void paintRasterizedGuidePreview(
         Graphics& graphics,
-        const GuideCurveResource& guide,
+        Effect2DWidget& preview,
         Rectangle<float> bounds) {
-    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(guide.model);
-    if (model == nullptr || model->flatCurve() == nullptr) {
+    const std::vector<CurvePreviewVertex> waveform = preview.rasterizedPreviewVertices();
+    if (waveform.size() < 2) {
         return;
     }
 
-    std::vector<const Vertex*> vertices;
-    for (const Vertex* vertex : model->flatCurve()->getMesh().getVerts()) {
-        if (vertex != nullptr) {
-            vertices.push_back(vertex);
-        }
-    }
-    std::sort(vertices.begin(), vertices.end(), [](const Vertex* left, const Vertex* right) {
-        return left->values[Vertex::Phase] < right->values[Vertex::Phase];
-    });
-    if (vertices.size() < 2) {
-        return;
-    }
+    Graphics::ScopedSaveState clip(graphics);
+    graphics.reduceClipRegion(bounds.toNearestInt());
 
-    Path curve;
-    for (size_t index = 0; index < vertices.size(); ++index) {
-        const Vertex& vertex = *vertices[index];
-        const Point<float> point(
-                bounds.getX() + bounds.getWidth() * vertex.values[Vertex::Phase],
-                bounds.getBottom() - bounds.getHeight() * vertex.values[Vertex::Amp]);
+    Path waveformPath;
+    for (size_t index = 0; index < waveform.size(); ++index) {
+        const CurvePreviewVertex& point = waveform[index];
+        const Point<float> displayPoint(
+                bounds.getX() + bounds.getWidth() * point.x,
+                bounds.getCentreY() - bounds.getHeight() * 0.5f * point.y);
         if (index == 0) {
-            curve.startNewSubPath(point);
+            waveformPath.startNewSubPath(displayPoint);
         } else {
-            curve.lineTo(point);
+            waveformPath.lineTo(displayPoint);
         }
     }
-    graphics.setColour(colourForGuide(guide).withAlpha(0.92f));
-    graphics.strokePath(curve, PathStrokeType(1.5f, PathStrokeType::curved));
+
+    Path fill(waveformPath);
+    fill.lineTo(bounds.getRight(), bounds.getCentreY());
+    fill.lineTo(bounds.getX(), bounds.getCentreY());
+    fill.closeSubPath();
+    graphics.setColour(Colour(0xffe2e8ef).withAlpha(0.20f));
+    graphics.fillPath(fill);
+    graphics.setColour(Colour(0xffe2e8ef).withAlpha(0.92f));
+    graphics.strokePath(
+            waveformPath,
+            PathStrokeType(1.2f, PathStrokeType::curved, PathStrokeType::rounded));
 }
 
 }
@@ -184,6 +179,16 @@ float GuideCurveShelf::maximumHorizontalOffset(
     return jmax(0.f, contentWidth - shelf.getWidth());
 }
 
+Effect2DWidget& GuideCurveShelf::previewFor(const GuideCurveResource& guide) const {
+    std::unique_ptr<Effect2DWidget>& preview = previews[guide.id];
+    if (preview == nullptr) {
+        preview = std::make_unique<Effect2DWidget>(true);
+    }
+
+    preview->syncFromGuideResource(guide);
+    return *preview;
+}
+
 void GuideCurveShelf::paint(
         Graphics& graphics,
         const NodeGraph& graph,
@@ -255,20 +260,18 @@ void GuideCurveShelf::paint(
         graphics.setColour(guide.id == state.selectedGuideId ? Colour(0xff8ac4ff) : colourForGuide(guide));
         graphics.drawRoundedRectangle(tile, 7.f, guide.id == state.selectedGuideId ? 2.f : 1.f);
         Rectangle<float> thumbnail = tile.reduced(10.f);
-        thumbnail.removeFromTop(48.f);
+        thumbnail.removeFromTop(34.f);
         thumbnail.removeFromBottom(12.f);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
-        paintCurveThumbnail(graphics, guide, thumbnail.reduced(4.f, 5.f));
+        paintRasterizedGuidePreview(graphics, previewFor(guide), thumbnail.reduced(4.f, 5.f));
+        String label = guide.shortLabel;
+        if (!guide.name.isEmpty() && guide.name != "Guide Curve") {
+            label += " · " + guide.name;
+        }
         graphics.setColour(kText);
         graphics.setFont(FontOptions(12.f, Font::bold));
-        graphics.drawText(guide.shortLabel, tile.reduced(10.f).removeFromTop(24.f), Justification::centredLeft);
-        graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(11.f));
-        graphics.drawText(
-                guide.name.isEmpty() ? "Guide Curve" : guide.name,
-                tile.reduced(10.f).withTrimmedTop(28.f),
-                Justification::centredLeft);
+        graphics.drawText(label, tile.reduced(10.f).removeFromTop(24.f), Justification::centredLeft);
         const int usageCount = (int) std::count_if(
                 graph.getGuideAssignments().begin(),
                 graph.getGuideAssignments().end(),

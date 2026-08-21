@@ -42,6 +42,7 @@ public:
     virtual int vertexCountForAutomation() const = 0;
     virtual var automationState() const = 0;
     virtual std::vector<CurvePreviewVertex> previewVertices() = 0;
+    virtual std::vector<CurvePreviewVertex> rasterizedPreviewVertices() { return {}; }
     virtual String serializedMeshState() = 0;
     virtual NodeModelStatePtr modelPublication() = 0;
     virtual NodeModelStatePtr prepareModelPublication(uint64_t currentRevision) = 0;

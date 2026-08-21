@@ -621,6 +621,9 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
             == Catch::Approx(0.0025));
 
     widget.syncFromGuideResource(*baroqueGuide);
+    const auto baroqueWaveform = widget.rasterizedPreviewVertices();
+    REQUIRE(baroqueWaveform.size() > 4);
+    REQUIRE(baroqueWaveform.front().x < baroqueWaveform.back().x);
     REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
             == Catch::Approx(0.76562));
     GuideCurveResource revisedGuide = *stengahGuide;
