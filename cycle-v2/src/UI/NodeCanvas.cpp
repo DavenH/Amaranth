@@ -350,6 +350,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             dialog.addButton("Rename", 1);
             dialog.addButton("Delete", 2);
             dialog.addButton("Duplicate", 3);
+            dialog.addButton("Move Left", 4);
+            dialog.addButton("Move Right", 5);
             dialog.addButton("Cancel", 0);
             const int action = dialog.runModalLoop();
             if (action == 1) {
@@ -366,6 +368,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 if (duplicated.succeeded()) {
                     guideShelfState.selectedGuideId = duplicated.nodeId;
                     editStatusMessage = "Guide Curve duplicated";
+                }
+            } else if (action == 4 || action == 5) {
+                const int direction = action == 4 ? -1 : 1;
+                if (commands.reorderGuideCurve(
+                            selectedGuide,
+                            guide->shelfOrder + direction).succeeded()) {
+                    editStatusMessage = "Guide Curve reordered";
                 }
             }
             requestCanvasRepaint();
