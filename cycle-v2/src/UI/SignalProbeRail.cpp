@@ -382,6 +382,20 @@ void SignalProbeRail::paintRail(
             refreshMode,
             Justification::centred);
 
+    if (probes.empty()) {
+        Rectangle<float> vacancy = rail.reduced(24.f, 42.f);
+        graphics.setColour(kTileBackground);
+        graphics.fillRoundedRectangle(vacancy, 8.f);
+        graphics.setColour(kRailBorder.withAlpha(0.75f));
+        graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
+        graphics.setColour(kMutedText);
+        graphics.setFont(FontOptions(13.f));
+        graphics.drawText("⌁", vacancy.removeFromTop(28.f), Justification::centred);
+        graphics.setFont(FontOptions(12.f));
+        graphics.drawText("No Spies", vacancy, Justification::centred);
+        return;
+    }
+
     Graphics::ScopedSaveState tileClip(graphics);
     graphics.reduceClipRegion(rail.toNearestInt());
     for (int index = 0; index < (int) probes.size(); ++index) {

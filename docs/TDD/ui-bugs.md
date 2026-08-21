@@ -223,3 +223,15 @@ Context:
 
 Current status: open; make audio capture reject or retry non-finite samples and
 wait explicitly for durable causal completion before evaluating the trace.
+
+## Open: Guide dock launch capture logs existing settings assertions
+
+Context:
+
+- The Guide/Spy dock capture on 2026-08-21 rendered successfully but logged two
+  `juce_String.cpp:327` assertions followed by `Settings.cpp:225` and `:226`.
+- Repro artifacts: `/tmp/cycle-v2-guide-dock.png` and
+  `/tmp/cycle-v2-guide-dock.log`.
+
+Current status: open; inspect settings-map initialization separately from the
+Guide resource UI work.

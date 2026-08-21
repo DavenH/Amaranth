@@ -145,7 +145,7 @@ NodeCanvas::NodeCanvas() :
             CycleDsp::voiceLengthSeconds(1.f),
             settings.getGlobalSettingValue(
                     AppSettings::PreviewVoiceLengthMilliseconds) / 1000.0);
-    probeRailState.expanded = !graph.getSignalProbes().empty();
+    probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
     refreshCompiledState();
 
     setOpaque(true);
@@ -366,6 +366,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
     if (probeRail.collapseHandleFor(spyWorkspace, probeRailState).contains(event.position)) {
         probeRailState.expanded = !probeRailState.expanded;
+        settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = probeRailState.expanded;
         if (!probeRailState.expanded) {
             probeDetailState.close();
             notifyOverlayPresentationChanged();
@@ -1128,7 +1129,6 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         editorCoordinator.clearPreviewCache();
 
         if (document.lastChange().probesChanged) {
-            probeRailState.expanded = !graph.getSignalProbes().empty();
             probeRailState.horizontalOffset = jmin(
                     probeRailState.horizontalOffset,
                     SignalProbeRail::maximumHorizontalOffset(
