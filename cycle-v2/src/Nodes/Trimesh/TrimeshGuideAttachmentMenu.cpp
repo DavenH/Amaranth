@@ -11,14 +11,6 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
         int vertexIndex,
         const String& parameterField) {
     std::vector<TrimeshGuideAttachmentMenuItem> items;
-    items.push_back({
-            newGuideMenuId,
-            "new...",
-            {},
-            true,
-            false
-    });
-
     const Node* meshNode = graph.findNode(meshNodeId);
     const auto targets = meshNode != nullptr
             ? TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
@@ -26,6 +18,18 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
                     vertexIndex,
                     parameterField)
             : std::vector<TrimeshCubeComponentGuideTarget>();
+    const bool anyAttached = std::any_of(targets.begin(), targets.end(), [&](const auto& target) {
+        return std::any_of(
+                graph.getGuideAssignments().begin(),
+                graph.getGuideAssignments().end(),
+                [&](const GuideCurveAssignment& assignment) {
+                    return assignment.targets(meshNodeId, target);
+                });
+    });
+    if (anyAttached) {
+        items.push_back({ detachGuideMenuId, "detach", {}, false, true, false });
+    }
+    items.push_back({ newGuideMenuId, "new...", {}, true, false, false });
     int guideNumber {};
     for (const auto& guide : graph.getGuideCurves()) {
         ++guideNumber;
@@ -48,6 +52,7 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
                 firstGuideMenuId + guideNumber - 1,
                 guide.shortLabel.isEmpty() ? String(guideNumber) : guide.shortLabel,
                 guide.id,
+                false,
                 false,
                 attached
         });

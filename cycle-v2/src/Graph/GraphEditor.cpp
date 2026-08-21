@@ -249,6 +249,29 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
     return { GraphEditCode::Connected, guideId, {} };
 }
 
+GraphEditResult GraphEditor::detachGuideCurveFromTrimeshVertexParameter(
+        NodeGraph& graph,
+        const String& meshNodeId,
+        int vertexIndex,
+        const String& parameterField) const {
+    const Node* meshNode = findNode(graph, meshNodeId);
+    if (meshNode == nullptr || meshNode->kind != NodeKind::TrilinearMesh) {
+        return { GraphEditCode::MissingNode, meshNodeId, {} };
+    }
+
+    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
+            *meshNode, vertexIndex, parameterField);
+    if (targets.empty()) {
+        return { GraphEditCode::ValidationRejected, meshNodeId, {} };
+    }
+
+    bool detached {};
+    for (const auto& target : targets) {
+        detached = graph.removeGuideAssignment(meshNodeId, target) || detached;
+    }
+    return { detached ? GraphEditCode::Connected : GraphEditCode::ValidationRejected, meshNodeId, {} };
+}
+
 GraphEditResult GraphEditor::createGuideCurveAndAssignToTrimeshVertexParameter(
         NodeGraph& graph,
         const String& meshNodeId,

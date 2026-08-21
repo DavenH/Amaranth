@@ -620,6 +620,8 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 if (menuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
                     result = commands.createAndAssignGuideCurve(
                             nodeId, vertexIndex, parameterField);
+                } else if (menuId == TrimeshGuideAttachmentMenu::detachGuideMenuId) {
+                    result = commands.detachGuideCurve(nodeId, vertexIndex, parameterField);
                 } else {
                     for (const auto& item : items) {
                         if (item.menuId == menuId) {
@@ -637,7 +639,9 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 presentation.selectEditedNode(result.nodeId.isEmpty() ? nodeId : result.nodeId);
                 presentation.refreshNodeEditorPresentation();
                 presentation.rebindNodeEditor();
-                presentation.setNodeEditorStatus("Guide " + parameterField + " attached");
+                presentation.setNodeEditorStatus(menuId == TrimeshGuideAttachmentMenu::detachGuideMenuId
+                        ? "Guide " + parameterField + " detached"
+                        : "Guide " + parameterField + " attached");
                 presentation.repaintNodeEditor(false);
             });
     return true;

@@ -72,6 +72,11 @@ public:
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField) const;
+    GraphEditResult detachGuideCurveFromTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField) const;
     GraphEditResult createGuideCurveAndAssignToTrimeshVertexParameter(
             NodeGraph& graph,
             const String& meshNodeId,

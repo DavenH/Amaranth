@@ -156,6 +156,20 @@ GraphEditResult GraphCommandDispatcher::assignGuideCurve(
     });
 }
 
+GraphEditResult GraphCommandDispatcher::detachGuideCurve(
+        const juce::String& meshNodeId,
+        int vertexIndex,
+        const juce::String& parameterField) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+                        graph, meshNodeId, vertexIndex, parameterField),
+                { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        return result;
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
         const juce::String& meshNodeId,
         int vertexIndex,

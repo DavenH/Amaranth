@@ -37,6 +37,10 @@ public:
             const juce::String& meshNodeId,
             int vertexIndex,
             const juce::String& parameterField);
+    GraphEditResult detachGuideCurve(
+            const juce::String& meshNodeId,
+            int vertexIndex,
+            const juce::String& parameterField);
     GraphEditResult createAndAssignGuideCurve(
             const juce::String& meshNodeId,
             int vertexIndex,

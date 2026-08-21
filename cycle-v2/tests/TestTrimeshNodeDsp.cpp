@@ -799,15 +799,20 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
             2,
             "amp");
 
-    REQUIRE(items.size() == 3);
-    REQUIRE(items[0].label == "new...");
-    REQUIRE(items[0].createNew);
-    REQUIRE(items[1].label == "G1");
-    REQUIRE(items[1].guideId == "guide1");
-    REQUIRE_FALSE(items[1].attached);
-    REQUIRE(items[2].label == "G2");
-    REQUIRE(items[2].guideId == "guide2");
-    REQUIRE(items[2].attached);
+    REQUIRE(items.size() == 4);
+    REQUIRE(items[0].label == "detach");
+    REQUIRE(items[0].detach);
+    REQUIRE(items[1].label == "new...");
+    REQUIRE(items[1].createNew);
+    REQUIRE(items[2].label == "G1");
+    REQUIRE(items[2].guideId == "guide1");
+    REQUIRE_FALSE(items[2].attached);
+    REQUIRE(items[3].label == "G2");
+    REQUIRE(items[3].guideId == "guide2");
+    REQUIRE(items[3].attached);
+    REQUIRE(GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+            graph, "waveMesh", 2, "amp").succeeded());
+    REQUIRE(graph.getGuideAssignments().empty());
 }
 
 TEST_CASE("Trimesh guide attachment target resolves vertex owners directly", "[cycle-v2][nodes][trimesh]") {
