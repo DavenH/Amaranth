@@ -750,6 +750,27 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (!guideShelfState.minimized && guideShelf.contains(event.position)) {
+        const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
+                ? wheel.deltaX
+                : wheel.deltaY;
+        guideShelfState.horizontalOffset = jlimit(
+                0.f,
+                GuideCurveShelf::maximumHorizontalOffset(
+                        workspace,
+                        probeRailState,
+                        dockSplitRatio,
+                        guideShelfState,
+                        (int) graph.getGuideCurves().size()),
+                guideShelfState.horizontalOffset - wheelDelta * 420.f);
+        requestCanvasRepaint();
+        return;
+    }
     const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
             workspace,
             dockSplitRatio);

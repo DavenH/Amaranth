@@ -85,6 +85,21 @@ String GuideCurveShelf::guideAt(
     return {};
 }
 
+float GuideCurveShelf::maximumHorizontalOffset(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& dockState,
+        float splitRatio,
+        const GuideCurveShelfState& state,
+        int guideCount) {
+    if (state.minimized || guideCount < 1) {
+        return 0.f;
+    }
+    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
+    const float contentWidth = kPadding * 2.f + guideCount * kTileWidth
+            + jmax(0, guideCount - 1) * kTileGap;
+    return jmax(0.f, contentWidth - shelf.getWidth());
+}
+
 void GuideCurveShelf::paint(
         Graphics& graphics,
         const NodeGraph& graph,

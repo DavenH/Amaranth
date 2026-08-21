@@ -41,6 +41,12 @@ public:
             const SignalProbeRailState& dockState,
             float splitRatio,
             const GuideCurveShelfState& state);
+    static float maximumHorizontalOffset(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& dockState,
+            float splitRatio,
+            const GuideCurveShelfState& state,
+            int guideCount);
 
     void paint(
             Graphics& graphics,
