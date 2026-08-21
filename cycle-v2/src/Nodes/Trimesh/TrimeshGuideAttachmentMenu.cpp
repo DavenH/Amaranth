@@ -21,32 +21,26 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
 
     const Node* meshNode = graph.findNode(meshNodeId);
     const auto targets = meshNode != nullptr
-            ? TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+            ? TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
                     *meshNode,
                     vertexIndex,
                     parameterField)
-            : std::vector<String>();
+            : std::vector<TrimeshCubeComponentGuideTarget>();
     int guideNumber {};
     for (const auto& guide : graph.getGuideCurves()) {
         ++guideNumber;
         bool attached {};
-        for (const auto& targetPortId : targets) {
-            const auto target = TrimeshGuideAttachmentTarget::parse(targetPortId);
-            if (target.isValid()) {
-                const auto field = TrimeshGuideAttachmentTarget::guideField(target.field);
-                const auto assignment = std::find_if(
-                        graph.getGuideAssignments().begin(),
-                        graph.getGuideAssignments().end(),
-                        [&](const GuideCurveAssignment& candidate) {
-                            return candidate.guideId == guide.id
-                                    && candidate.targets(
-                                            meshNodeId,
-                                            { target.cubeIndex, field });
-                        });
-                if (assignment != graph.getGuideAssignments().end()) {
-                    attached = true;
-                    break;
-                }
+        for (const auto& target : targets) {
+            const auto assignment = std::find_if(
+                    graph.getGuideAssignments().begin(),
+                    graph.getGuideAssignments().end(),
+                    [&](const GuideCurveAssignment& candidate) {
+                        return candidate.guideId == guide.id
+                                && candidate.targets(meshNodeId, target);
+                    });
+            if (assignment != graph.getGuideAssignments().end()) {
+                attached = true;
+                break;
             }
         }
 

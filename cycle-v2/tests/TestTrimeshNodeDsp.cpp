@@ -810,17 +810,17 @@ TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycl
     REQUIRE(items[2].attached);
 }
 
-TEST_CASE("Trimesh guide attachment target parses and formats cube components", "[cycle-v2][nodes][trimesh]") {
-    const auto cubeTarget = TrimeshGuideAttachmentTarget::parse("guide.cube.4.phase");
-    REQUIRE(cubeTarget.isValid());
-    REQUIRE(cubeTarget.isCubeTarget());
-    REQUIRE(cubeTarget.cubeIndex == 4);
-    REQUIRE(cubeTarget.field == "phase");
-    REQUIRE(TrimeshGuideAttachmentTarget::portIdForCube(4, "phase")
-            == "guide.cube.4.phase");
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.amp").isValid());
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.cube.12.unknown").isValid());
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());
+TEST_CASE("Trimesh guide attachment target resolves vertex owners directly", "[cycle-v2][nodes][trimesh]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const Node* mesh = graph.findNode("waveMesh");
+    REQUIRE(mesh != nullptr);
+
+    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(*mesh, 2, "phase");
+    REQUIRE(targets.size() == 1);
+    REQUIRE(targets.front().cubeIndex == 0);
+    REQUIRE(targets.front().field == GuideCurveField::Phase);
+    REQUIRE(TrimeshGuideAttachmentTarget::guideField("amp") == GuideCurveField::Amplitude);
+    REQUIRE(TrimeshGuideAttachmentTarget::guideField("curve") == GuideCurveField::Curve);
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {

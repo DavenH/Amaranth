@@ -228,21 +228,12 @@ GraphEditResult GraphEditor::assignGuideCurveToTrimeshVertexParameter(
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
 
-    const auto targetPortIds = TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
             *meshNode, vertexIndex, parameterField);
-    if (targetPortIds.empty()) {
+    if (targets.empty()) {
         return { GraphEditCode::ValidationRejected, {}, {} };
     }
-    for (const auto& targetPortId : targetPortIds) {
-        const auto target = TrimeshGuideAttachmentTarget::parse(targetPortId);
-        if (!target.isValid()) {
-            return { GraphEditCode::ValidationRejected, {}, {} };
-        }
-
-        const TrimeshCubeComponentGuideTarget componentTarget {
-                target.cubeIndex,
-                TrimeshGuideAttachmentTarget::guideField(target.field)
-        };
+    for (const auto& componentTarget : targets) {
         const auto existing = std::find_if(
                 graph.getGuideAssignments().begin(),
                 graph.getGuideAssignments().end(),

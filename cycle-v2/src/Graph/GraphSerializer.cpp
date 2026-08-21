@@ -6,7 +6,6 @@
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 #include <cmath>
 #include <unordered_set>
