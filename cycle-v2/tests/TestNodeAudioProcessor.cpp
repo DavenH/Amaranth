@@ -196,6 +196,12 @@ void prepareProcessor(
         size_t maximumFrameCount = 0,
         uint64_t revision = 1,
         NodeModelStatePtr model = {}) {
+    if (model == nullptr && role == AudioModuleRole::Waveshaper) {
+        model = CurveNodeDomainCodec(NodeKind::Waveshaper).createDefault();
+    }
+    if (model == nullptr && role == AudioModuleRole::ImpulseResponse) {
+        model = CurveNodeDomainCodec(NodeKind::ImpulseResponse).createDefault();
+    }
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
     spec.sampleRate = context.timing.sampleRate;
