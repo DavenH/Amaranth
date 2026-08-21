@@ -254,7 +254,9 @@ void GuideCurveShelf::paint(
         graphics.fillRoundedRectangle(tile, 7.f);
         graphics.setColour(guide.id == state.selectedGuideId ? Colour(0xff8ac4ff) : colourForGuide(guide));
         graphics.drawRoundedRectangle(tile, 7.f, guide.id == state.selectedGuideId ? 2.f : 1.f);
-        const Rectangle<float> thumbnail = tile.reduced(10.f).withTrimmedTop(48.f).removeFromBottom(12.f);
+        Rectangle<float> thumbnail = tile.reduced(10.f);
+        thumbnail.removeFromTop(48.f);
+        thumbnail.removeFromBottom(12.f);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
         paintCurveThumbnail(graphics, guide, thumbnail.reduced(4.f, 5.f));
