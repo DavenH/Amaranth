@@ -30,6 +30,7 @@ namespace AppSettings {
     ,   PreviewVoiceLengthMilliseconds
     ,   GuideDockSplitPercent
     ,   GuideShelfMinimized
+    ,   SpyShelfMinimized
     ,   GuideSpyDockExpanded
 
     ,   numSettings

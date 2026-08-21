@@ -17,12 +17,34 @@ constexpr float kTileGap = 10.f;
 
 }
 
-Rectangle<float> GuideCurveShelf::guideWorkspace(Rectangle<float> workspace, float splitRatio) {
+Rectangle<float> GuideCurveShelf::guideWorkspace(
+        Rectangle<float> workspace,
+        float splitRatio,
+        bool guidesMinimized,
+        bool spiesMinimized) {
+    if (guidesMinimized && !spiesMinimized) {
+        return workspace.removeFromLeft(minimizedWidth);
+    }
+    if (spiesMinimized && !guidesMinimized) {
+        workspace.removeFromRight(minimizedWidth);
+        return workspace;
+    }
     const float ratio = jlimit(0.2f, 0.8f, splitRatio);
     return workspace.removeFromLeft(workspace.getWidth() * ratio);
 }
 
-Rectangle<float> GuideCurveShelf::spyWorkspace(Rectangle<float> workspace, float splitRatio) {
+Rectangle<float> GuideCurveShelf::spyWorkspace(
+        Rectangle<float> workspace,
+        float splitRatio,
+        bool guidesMinimized,
+        bool spiesMinimized) {
+    if (guidesMinimized && !spiesMinimized) {
+        workspace.removeFromLeft(minimizedWidth);
+        return workspace;
+    }
+    if (spiesMinimized && !guidesMinimized) {
+        return workspace.removeFromRight(minimizedWidth);
+    }
     const float ratio = jlimit(0.2f, 0.8f, splitRatio);
     workspace.removeFromLeft(workspace.getWidth() * ratio);
     return workspace;
@@ -33,7 +55,11 @@ Rectangle<float> GuideCurveShelf::boundsFor(
         const SignalProbeRailState& dockState,
         float splitRatio,
         const GuideCurveShelfState& state) {
-    Rectangle<float> guideWorkspaceBounds = guideWorkspace(workspace, splitRatio);
+    Rectangle<float> guideWorkspaceBounds = guideWorkspace(
+            workspace,
+            splitRatio,
+            state.minimized,
+            dockState.minimized);
     Rectangle<float> dock = SignalProbeRail::boundsFor(guideWorkspaceBounds, dockState);
     if (!state.minimized) {
         return dock;
@@ -112,6 +138,10 @@ void GuideCurveShelf::paint(
     graphics.fillRect(shelf);
     graphics.setColour(kShelfBorder);
     graphics.drawRect(shelf, 1.f);
+
+    if (!dockState.expanded) {
+        return;
+    }
 
     if (state.minimized) {
         graphics.setColour(kText);

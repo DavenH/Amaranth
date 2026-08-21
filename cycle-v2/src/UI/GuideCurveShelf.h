@@ -17,8 +17,16 @@ class GuideCurveShelf {
 public:
     static constexpr float minimizedWidth = 28.f;
 
-    static Rectangle<float> guideWorkspace(Rectangle<float> workspace, float splitRatio);
-    static Rectangle<float> spyWorkspace(Rectangle<float> workspace, float splitRatio);
+    static Rectangle<float> guideWorkspace(
+            Rectangle<float> workspace,
+            float splitRatio,
+            bool guidesMinimized = false,
+            bool spiesMinimized = false);
+    static Rectangle<float> spyWorkspace(
+            Rectangle<float> workspace,
+            float splitRatio,
+            bool guidesMinimized = false,
+            bool spiesMinimized = false);
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,

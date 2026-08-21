@@ -68,6 +68,16 @@ Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
     return { collapse.getX() - 102.f, collapse.getY(), 94.f, collapse.getHeight() };
 }
 
+Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& state) {
+    if (!state.expanded || state.minimized) {
+        return {};
+    }
+    const Rectangle<float> rail = boundsFor(workspace, state);
+    return { rail.getX() + 12.f, rail.getY() + 10.f, 18.f, 18.f };
+}
+
 Rectangle<float> SignalProbeRail::tileBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state,
@@ -250,7 +260,7 @@ String SignalProbeRail::probeAt(
         Rectangle<float> workspace,
         const NodeGraph& graph,
         const SignalProbeRailState& state) const {
-    if (!state.expanded) {
+    if (!state.expanded || state.minimized) {
         return {};
     }
     const auto probes = orderedProbes(graph);
@@ -267,7 +277,7 @@ String SignalProbeRail::closeProbeAt(
         Rectangle<float> workspace,
         const NodeGraph& graph,
         const SignalProbeRailState& state) const {
-    if (!state.expanded) {
+    if (!state.expanded || state.minimized) {
         return {};
     }
     const auto probes = orderedProbes(graph);
@@ -350,7 +360,8 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
+        const SignalProbeRailState& state,
+        int guideCount) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     graphics.setColour(kRailBackground);
     graphics.fillRect(rail);
@@ -358,19 +369,35 @@ void SignalProbeRail::paintRail(
     graphics.drawHorizontalLine(roundToInt(rail.getY()), rail.getX(), rail.getRight());
 
     const auto probes = orderedProbes(graph);
+    if (state.minimized) {
+        graphics.setColour(kText);
+        graphics.setFont(FontOptions(13.f, Font::bold));
+        graphics.drawText("<", rail, Justification::centred);
+        return;
+    }
     const Rectangle<float> collapse = collapseHandleFor(workspace, state);
     graphics.setColour(Colour(0xff26313d));
     graphics.fillRoundedRectangle(collapse, 6.f);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
     graphics.drawText(
-            state.expanded ? "Hide Spies" : "Spies (" + String((int) probes.size()) + ")",
+            state.expanded
+                    ? "Hide Dock"
+                    : "Guides (" + String(guideCount) + ") · Spies ("
+                            + String((int) probes.size()) + ")",
             collapse,
             Justification::centred);
 
     if (!state.expanded) {
         return;
     }
+
+    const Rectangle<float> minimize = minimizeButtonBoundsFor(workspace, state);
+    graphics.setColour(Colour(0xff26313d));
+    graphics.fillRoundedRectangle(minimize, 4.f);
+    graphics.setColour(kText);
+    graphics.setFont(FontOptions(14.f));
+    graphics.drawText("−", minimize, Justification::centred);
 
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
     graphics.setColour(Colour(0xff26313d));

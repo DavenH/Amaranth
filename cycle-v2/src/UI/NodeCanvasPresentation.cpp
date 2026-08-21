@@ -462,19 +462,28 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
-    guideCurveShelf.paint(
-            graphics,
-            frame.graph,
-            frame.workspaceBounds,
-            frame.probeRailState,
-            frame.dockSplitRatio,
-            frame.guideShelfState);
+    if (frame.probeRailState.expanded) {
+        guideCurveShelf.paint(
+                graphics,
+                frame.graph,
+                frame.workspaceBounds,
+                frame.probeRailState,
+                frame.dockSplitRatio,
+                frame.guideShelfState);
+    }
     signalProbeRail.paintRail(
             graphics,
             frame.graph,
             frame.previewResult,
-            GuideCurveShelf::spyWorkspace(frame.workspaceBounds, frame.dockSplitRatio),
-            frame.probeRailState);
+            frame.probeRailState.expanded
+                    ? GuideCurveShelf::spyWorkspace(
+                            frame.workspaceBounds,
+                            frame.dockSplitRatio,
+                            frame.guideShelfState.minimized,
+                            frame.probeRailState.minimized)
+                    : frame.workspaceBounds,
+            frame.probeRailState,
+            (int) frame.graph.getGuideCurves().size());
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,
@@ -490,7 +499,11 @@ void NodeCanvasPresentation::paintContent(
             graphics,
             frame.graph,
             scene.snapshot(),
-            GuideCurveShelf::spyWorkspace(frame.workspaceBounds, frame.dockSplitRatio),
+            GuideCurveShelf::spyWorkspace(
+                    frame.workspaceBounds,
+                    frame.dockSplitRatio,
+                    frame.guideShelfState.minimized,
+                    frame.probeRailState.minimized),
             frame.probeRailState);
     paintPendingConnection(graphics, frame);
     paintNodes(graphics, frame);

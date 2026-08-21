@@ -58,6 +58,7 @@ void Settings::initialiseSettings() {
     addSetting(PreviewVoiceLengthMilliseconds, 1000);
     addSetting(GuideDockSplitPercent, 50);
     addSetting(GuideShelfMinimized,   false);
+    addSetting(SpyShelfMinimized,     false);
     addSetting(GuideSpyDockExpanded,  true);
     addSetting(SelectWithRight,         false);
     addSetting(Tool,                    Tools::Selector);

@@ -92,4 +92,14 @@ TEST_CASE("Guide and Spy shelves divide the dock and retain scroll room",
     guideState.minimized = true;
     REQUIRE(GuideCurveShelf::boundsFor(workspace, dockState, 0.5f, guideState).getWidth()
             == Catch::Approx(GuideCurveShelf::minimizedWidth));
+    REQUIRE(GuideCurveShelf::spyWorkspace(workspace, 0.5f, true, false).getWidth()
+            == Catch::Approx(workspace.getWidth() - GuideCurveShelf::minimizedWidth));
+
+    guideState.minimized = false;
+    dockState.minimized = true;
+    REQUIRE(GuideCurveShelf::guideWorkspace(workspace, 0.5f, false, true).getWidth()
+            == Catch::Approx(workspace.getWidth() - GuideCurveShelf::minimizedWidth));
+    REQUIRE(GuideCurveShelf::spyWorkspace(workspace, 0.5f, false, true).getWidth()
+            == Catch::Approx(GuideCurveShelf::minimizedWidth));
+    REQUIRE(SignalProbeRail::minimizeButtonBoundsFor(spies, dockState).isEmpty());
 }

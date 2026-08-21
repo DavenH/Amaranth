@@ -11,6 +11,7 @@ namespace CycleV2 {
 
 struct SignalProbeRailState {
     bool expanded { true };
+    bool minimized {};
     float expandedHeight { 190.f };
     float horizontalOffset {};
     String selectedProbeId;
@@ -38,6 +39,9 @@ public:
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
     static Rectangle<float> refreshModeBoundsFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& state);
+    static Rectangle<float> minimizeButtonBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
     static Rectangle<float> tileBoundsFor(
@@ -76,7 +80,8 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state);
+            const SignalProbeRailState& state,
+            int guideCount = 0);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);
