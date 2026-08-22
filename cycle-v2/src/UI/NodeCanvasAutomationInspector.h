@@ -24,6 +24,7 @@ struct GuideDockAutomationPresentation {
     float guideHorizontalOffset {};
     float spyHorizontalOffset {};
     juce::String selectedGuideId;
+    juce::String hoveredGuideId;
     juce::String expandedGuideId;
     juce::Rectangle<float> dockBounds;
     juce::Rectangle<float> guideShelfBounds;

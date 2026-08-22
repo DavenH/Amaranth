@@ -166,12 +166,17 @@ public:
 
     static var probePreviewStatsToVar(const GraphPreviewResult::SignalProbePreview& preview) {
         auto* object = new DynamicObject();
+        double absoluteTotal = 0.0;
+        for (float value : preview.values) {
+            absoluteTotal += (double) (value >= 0.f ? value : -value);
+        }
         object->setProperty("probeId", preview.probeId);
         object->setProperty("connected", preview.connected);
         object->setProperty("domain", labelForDomain(preview.domain));
         object->setProperty("gridColumns", (int) preview.gridColumns);
         object->setProperty("gridRows", (int) preview.gridRows);
         object->setProperty("sampleCount", (int) preview.values.size());
+        object->setProperty("absoluteSum", absoluteTotal);
         return object;
     }
 
@@ -522,6 +527,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("guideHorizontalOffset", state.guideDock.guideHorizontalOffset);
     guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
+    guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
+    guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
     guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
     guideDock->setProperty(
             "guideShelfBounds",
@@ -604,6 +611,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         guideObject->setProperty("name", guide.name);
         guideObject->setProperty("colourIndex", guide.colourIndex);
         guideObject->setProperty("shelfOrder", guide.shelfOrder);
+        guideObject->setProperty("usageCount", graph.guideUsageCount(guide.id));
         guideObject->setProperty("enabled", guide.enabled);
         guideObject->setProperty("noise", guide.noise);
         guideObject->setProperty("dcOffset", guide.dcOffset);

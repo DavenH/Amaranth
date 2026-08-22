@@ -2,6 +2,7 @@
 
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 #include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "../Nodes/Trimesh/TrimeshMeshState.h"
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 
 #include <unordered_map>
@@ -53,6 +54,25 @@ void applyEnvelopePurposeSemantics(
         graph.removeEdgeAt(index - 1);
     }
     result.changes.topologyChanged = !result.changes.removedEdges.empty();
+}
+
+void reconcileTrimeshGuideAssignments(
+        NodeGraph& graph,
+        const String& nodeId,
+        GraphEditResult& result) {
+    const Node* node = graph.findNode(nodeId);
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+        return;
+    }
+
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node->model);
+    const int cubeCount = model != nullptr ? model->mesh().getNumCubes() : 0;
+    if (graph.removeGuideAssignmentsOutsideCubeRange(nodeId, cubeCount) == 0) {
+        return;
+    }
+
+    result.changes.guidesChanged = true;
+    result.changes.guidePresentationChanged = true;
 }
 
 }
@@ -614,6 +634,9 @@ GraphEditResult GraphEditor::replaceNodeModel(
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
+    if (result.changed) {
+        reconcileTrimeshGuideAssignments(graph, nodeId, result);
+    }
     result.changes.nodeIds.push_back(nodeId);
     result.changes.modelChanged = result.changed;
     result.changes.parameterImpacts = ParameterImpact::Presentation
@@ -646,6 +669,9 @@ GraphEditResult GraphEditor::replaceTransientNodeModel(
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
+    if (result.changed) {
+        reconcileTrimeshGuideAssignments(graph, nodeId, result);
+    }
     result.changes.nodeIds.push_back(nodeId);
     result.changes.parameterImpacts = ParameterImpact::Presentation
             | ParameterImpact::Preview

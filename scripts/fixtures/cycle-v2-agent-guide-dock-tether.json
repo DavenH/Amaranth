@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guide:guide2",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.selectedGuideId",
+      "equals": "guide2"
+    },
+    {
+      "command": "inspectPointerTargets"
+    }
+  ],
+  "quit": false
+}

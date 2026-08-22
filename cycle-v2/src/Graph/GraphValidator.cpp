@@ -1,6 +1,7 @@
 #include "GraphValidator.h"
 
 #include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -96,8 +97,8 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
     for (const auto& assignment : graph.getGuideAssignments()) {
         const GuideCurveResource* guide = graph.findGuideCurve(assignment.guideId);
         const Node* target = graph.findNode(assignment.targetNodeId);
-        if (guide == nullptr || target == nullptr || target->kind != NodeKind::TrilinearMesh
-                || assignment.target.cubeIndex < 0) {
+        if (guide == nullptr || target == nullptr
+                || !TrimeshGuideAttachmentTarget::isValid(*target, assignment.target)) {
             addIssue(
                     issues,
                     GraphValidationCode::InvalidAttachmentDestination,

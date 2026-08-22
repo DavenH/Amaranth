@@ -132,6 +132,21 @@ bool NodeWorkspace::deleteEdgeForAutomation(int edgeIndex) {
     return canvas.deleteEdgeForAutomation(edgeIndex);
 }
 
+bool NodeWorkspace::deleteGuideCurveForAutomation(const String& guideId) {
+    return canvas.deleteGuideCurveForAutomation(guideId);
+}
+
+bool NodeWorkspace::undoForAutomation() {
+    return canvas.undoForAutomation();
+}
+
+bool NodeWorkspace::setGuideParameterForAutomation(
+        const String& guideId,
+        const String& parameterId,
+        const String& value) {
+    return canvas.setGuideParameterForAutomation(guideId, parameterId, value);
+}
+
 bool NodeWorkspace::setNodeParameterForAutomation(
         const String& nodeId,
         const String& parameterId,

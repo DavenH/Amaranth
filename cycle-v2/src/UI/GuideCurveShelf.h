@@ -16,11 +16,14 @@ struct GuideCurveShelfState {
     bool minimized {};
     float horizontalOffset {};
     String selectedGuideId;
+    String hoveredGuideId;
 };
 
 class GuideCurveShelf {
 public:
     static constexpr float minimizedWidth = WorkspaceDock::drawerWidth;
+
+    static Colour colourForGuide(const GuideCurveResource& guide);
 
     static Rectangle<float> guideWorkspace(
             Rectangle<float> workspace,

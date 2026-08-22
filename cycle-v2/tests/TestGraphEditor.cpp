@@ -6,8 +6,11 @@
 #include "../src/Graph/GraphCommandDispatcher.h"
 #include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
+#include <Curve/Mesh/Mesh.h>
 
 using namespace CycleV2;
 
@@ -346,6 +349,11 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
     REQUIRE(GraphValidator().isValid(graph));
 
     REQUIRE(graph.getGuideAssignments().size() == 2);
+    REQUIRE(graph.guideUsageCount("guide1") == 2);
+    REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
+    REQUIRE(graph.guideTargetNodeIds("guide1")[0] == "waveMesh");
+    REQUIRE(graph.guideTargetNodeIds("guide1")[1] == "magMesh");
+    REQUIRE(graph.guideIdsForTargetNode("waveMesh").front() == "guide1");
 }
 
 TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {
@@ -492,6 +500,54 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
 
     REQUIRE(graph.getGuideAssignments().size() == 1);
     REQUIRE(graph.getGuideAssignments().front().guideId == "guide2");
+    REQUIRE(graph.guideUsageCount("guide1") == 0);
+    REQUIRE(graph.guideUsageCount("guide2") == 1);
+    REQUIRE(graph.guideIdsForTargetNode("waveMesh") == std::vector<String> { "guide2" });
+}
+
+TEST_CASE("Trimesh topology edits reconcile Guide assignments in one undoable command",
+        "[cycle-v2][graph][guides]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(graph.findNode("waveMesh") != nullptr);
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 0, GuideCurveField::Amplitude }
+    }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 1, GuideCurveField::Amplitude }
+    }));
+    REQUIRE(GraphValidator().isValid(graph));
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    const Node* original = document.graph().findNode("waveMesh");
+    REQUIRE(original != nullptr);
+    const uint64_t revision = original->model->revision();
+    Mesh replacement("SingleCubeTrimesh");
+    TrimeshMeshFactory::addVoiceCube(replacement, 0.f, 1.f, 0.2f, 0.8f, 0.5f);
+    const NodeModelStatePtr replacementModel = TrimeshNodeModelState::copyOf(
+            replacement,
+            revision + 1);
+    replacement.destroy();
+
+    const auto result = commands.replaceNodeModel(
+            "waveMesh",
+            revision,
+            replacementModel);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.changes.guidesChanged);
+    REQUIRE(result.changes.guidePresentationChanged);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
+    REQUIRE(document.graph().getGuideAssignments().front().target.cubeIndex == 0);
+    REQUIRE(document.graph().guideUsageCount("guide1") == 1);
+    REQUIRE(GraphValidator().isValid(document.graph()));
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().getGuideAssignments().size() == 2);
+    REQUIRE(document.graph().guideUsageCount("guide1") == 2);
+    REQUIRE(GraphValidator().isValid(document.graph()));
 }
 
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {

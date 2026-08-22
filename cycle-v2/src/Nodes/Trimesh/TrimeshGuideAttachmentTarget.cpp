@@ -44,6 +44,17 @@ GuideCurveField TrimeshGuideAttachmentTarget::guideField(const juce::String& fie
     return GuideCurveField::Curve;
 }
 
+bool TrimeshGuideAttachmentTarget::isValid(
+        const Node& trimeshNode,
+        const TrimeshCubeComponentGuideTarget& target) {
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(trimeshNode.model);
+    const int field = (int) target.field;
+    return trimeshNode.kind == NodeKind::TrilinearMesh
+            && model != nullptr
+            && isPositiveAndBelow(target.cubeIndex, model->mesh().getNumCubes())
+            && isPositiveAndBelow(field, fieldCount);
+}
+
 std::vector<TrimeshCubeComponentGuideTarget> TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
         const Node& trimeshNode,
         int vertexIndex,

@@ -32,6 +32,12 @@ public:
             const String& destPortId);
     bool deleteNodeForAutomation(const String& nodeId);
     bool deleteEdgeForAutomation(int edgeIndex);
+    bool deleteGuideCurveForAutomation(const String& guideId);
+    bool undoForAutomation();
+    bool setGuideParameterForAutomation(
+            const String& guideId,
+            const String& parameterId,
+            const String& value);
     bool setNodeParameterForAutomation(
             const String& nodeId,
             const String& parameterId,

@@ -57,6 +57,9 @@ private:
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);
     var deleteEdge(const var& commandValue);
+    var deleteGuideCurve(const var& commandValue);
+    var undo();
+    var setGuideParameter(const var& commandValue);
     var setNodeParameter(const var& commandValue);
     var inspectNodeControls(const var& commandValue) const;
     var setMorphSlider(const var& commandValue);

@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
-#include <unordered_map>
 
 namespace CycleV2 {
 
@@ -19,18 +18,6 @@ const Colour kMutedText { 0xff8793a1 };
 constexpr float kPadding = 12.f;
 constexpr float kTileWidth = 220.f;
 constexpr float kTileGap = 10.f;
-
-Colour colourForGuide(const GuideCurveResource& guide) {
-    static constexpr std::array<uint32, 6> colours {
-            0xff79b8ff,
-            0xffd2a8ff,
-            0xff7ee787,
-            0xffffc680,
-            0xffff7b72,
-            0xffa5d6ff
-    };
-    return Colour(colours[(size_t) std::abs(guide.colourIndex) % colours.size()]);
-}
 
 bool hasDisplayName(const GuideCurveResource& guide) {
     return !guide.name.isEmpty() && guide.name != "Guide Curve";
@@ -60,6 +47,18 @@ WorkspaceDockState workspaceDockState(
     };
 }
 
+}
+
+Colour GuideCurveShelf::colourForGuide(const GuideCurveResource& guide) {
+    static constexpr std::array<uint32, 6> colours {
+            0xff79b8ff,
+            0xffd2a8ff,
+            0xff7ee787,
+            0xffffc680,
+            0xffff7b72,
+            0xffa5d6ff
+    };
+    return Colour(colours[(size_t) std::abs(guide.colourIndex) % colours.size()]);
 }
 
 Rectangle<float> GuideCurveShelf::guideWorkspace(
@@ -270,11 +269,6 @@ void GuideCurveShelf::paint(
 
     Graphics::ScopedSaveState clip(graphics);
     graphics.reduceClipRegion(shelf.toNearestInt());
-    std::unordered_map<std::string, int> usageCounts;
-    usageCounts.reserve(graph.getGuideCurves().size());
-    for (const auto& assignment : graph.getGuideAssignments()) {
-        ++usageCounts[assignment.guideId.toStdString()];
-    }
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(
@@ -285,8 +279,9 @@ void GuideCurveShelf::paint(
                 index);
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(tile, 7.f);
-        graphics.setColour(guide.id == state.selectedGuideId ? Colour(0xff8ac4ff) : colourForGuide(guide));
-        graphics.drawRoundedRectangle(tile, 7.f, guide.id == state.selectedGuideId ? 2.f : 1.f);
+        const bool active = guide.id == state.selectedGuideId || guide.id == state.hoveredGuideId;
+        graphics.setColour(active ? colourForGuide(guide).brighter(0.22f) : colourForGuide(guide));
+        graphics.drawRoundedRectangle(tile, 7.f, active ? 2.f : 1.f);
         const Rectangle<float> thumbnail = previewBoundsFor(tile, guide);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
@@ -300,8 +295,7 @@ void GuideCurveShelf::paint(
                     tile.reduced(10.f).removeFromTop(24.f),
                     Justification::centredLeft);
         }
-        const auto usage = usageCounts.find(guide.id.toStdString());
-        const int usageCount = usage != usageCounts.end() ? usage->second : 0;
+        const int usageCount = graph.guideUsageCount(guide.id);
         graphics.setColour(kMutedText);
         graphics.setFont(FontOptions(10.f));
         graphics.drawText(

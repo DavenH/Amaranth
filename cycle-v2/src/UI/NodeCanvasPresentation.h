@@ -8,6 +8,7 @@
 #include "NodePalette.h"
 #include "NodePreviewRenderer.h"
 #include "GuideCurveShelf.h"
+#include "GuideRelationshipPresentation.h"
 #include "SignalProbeDetailView.h"
 #include "SignalProbeRail.h"
 #include "../Graph/GraphCompiler.h"

@@ -36,6 +36,31 @@
     },
     {
       "command": "pointer",
+      "event": "move",
+      "targetId": "guide:guide4"
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.hoveredGuideId",
+      "equals": "guide4"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.hoveredGuideId",
+      "equals": "guide2"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "guide:guide1"
+    },
+    {
+      "command": "pointer",
       "event": "doubleClick",
       "targetId": "guide:guide1",
       "waitForIdle": true,

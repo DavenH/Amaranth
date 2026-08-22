@@ -107,6 +107,7 @@ bool NodeGraph::addGuideCurve(GuideCurveResource resource) {
     }
 
     guideCurves.push_back(std::move(resource));
+    guideResourceIndex[guideCurves.back().id] = guideCurves.size() - 1;
     ++revision;
     return true;
 }
@@ -123,26 +124,24 @@ bool NodeGraph::removeGuideCurve(const String& guideId) {
     eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
         return assignment.guideId == guideId;
     });
+    rebuildGuideResourceIndex();
+    rebuildGuideAssignmentIndexes();
     ++revision;
     return true;
 }
 
 const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const {
-    for (const auto& resource : guideCurves) {
-        if (resource.id == guideId) {
-            return &resource;
-        }
-    }
-    return nullptr;
+    const auto found = guideResourceIndex.find(guideId);
+    return found != guideResourceIndex.end() && found->second < guideCurves.size()
+            ? &guideCurves[found->second]
+            : nullptr;
 }
 
 GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
-    for (auto& resource : guideCurves) {
-        if (resource.id == guideId) {
-            return &resource;
-        }
-    }
-    return nullptr;
+    const auto found = guideResourceIndex.find(guideId);
+    return found != guideResourceIndex.end() && found->second < guideCurves.size()
+            ? &guideCurves[found->second]
+            : nullptr;
 }
 
 bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
@@ -178,6 +177,7 @@ bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {
     for (int index = 0; index < (int) guideCurves.size(); ++index) {
         guideCurves[(size_t) index].shelfOrder = index;
     }
+    rebuildGuideResourceIndex();
     ++revision;
     return true;
 }
@@ -189,18 +189,23 @@ bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
         return false;
     }
 
-    for (auto& existing : guideAssignments) {
-        if (existing.targets(assignment.targetNodeId, assignment.target)) {
-            if (existing.guideId == assignment.guideId) {
-                return false;
-            }
-            existing = std::move(assignment);
-            ++revision;
-            return true;
+    const auto target = guideAssignmentTargetIndex.find({
+            assignment.targetNodeId,
+            assignment.target
+    });
+    if (target != guideAssignmentTargetIndex.end()) {
+        GuideCurveAssignment& existing = guideAssignments[target->second];
+        if (existing.guideId == assignment.guideId) {
+            return false;
         }
+        existing = std::move(assignment);
+        rebuildGuideAssignmentIndexes();
+        ++revision;
+        return true;
     }
 
     guideAssignments.push_back(std::move(assignment));
+    rebuildGuideAssignmentIndexes();
     ++revision;
     return true;
 }
@@ -216,8 +221,70 @@ bool NodeGraph::removeGuideAssignment(
         return false;
     }
 
+    rebuildGuideAssignmentIndexes();
     ++revision;
     return true;
+}
+
+int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
+        const String& nodeId,
+        int cubeCount) {
+    const size_t previousCount = guideAssignments.size();
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targetNodeId == nodeId
+                && !isPositiveAndBelow(assignment.target.cubeIndex, cubeCount);
+    });
+    const int removedCount = (int) (previousCount - guideAssignments.size());
+    if (removedCount == 0) {
+        return 0;
+    }
+
+    rebuildGuideAssignmentIndexes();
+    ++revision;
+    return removedCount;
+}
+
+int NodeGraph::guideUsageCount(const String& guideId) const {
+    const auto found = guideUsageCounts.find(guideId);
+    return found != guideUsageCounts.end() ? found->second : 0;
+}
+
+const std::vector<String>& NodeGraph::guideTargetNodeIds(const String& guideId) const {
+    static const std::vector<String> empty;
+    const auto found = guideTargetNodes.find(guideId);
+    return found != guideTargetNodes.end() ? found->second : empty;
+}
+
+const std::vector<String>& NodeGraph::guideIdsForTargetNode(const String& nodeId) const {
+    static const std::vector<String> empty;
+    const auto found = targetNodeGuides.find(nodeId);
+    return found != targetNodeGuides.end() ? found->second : empty;
+}
+
+void NodeGraph::rebuildGuideResourceIndex() {
+    guideResourceIndex.clear();
+    guideResourceIndex.reserve(guideCurves.size());
+    for (size_t index = 0; index < guideCurves.size(); ++index) {
+        guideResourceIndex[guideCurves[index].id] = index;
+    }
+}
+
+void NodeGraph::rebuildGuideAssignmentIndexes() {
+    guideAssignmentTargetIndex.clear();
+    guideUsageCounts.clear();
+    guideTargetNodes.clear();
+    targetNodeGuides.clear();
+    guideAssignmentTargetIndex.reserve(guideAssignments.size());
+    for (size_t index = 0; index < guideAssignments.size(); ++index) {
+        const GuideCurveAssignment& assignment = guideAssignments[index];
+        guideAssignmentTargetIndex[{
+                assignment.targetNodeId,
+                assignment.target
+        }] = index;
+        ++guideUsageCounts[assignment.guideId];
+        guideTargetNodes[assignment.guideId].push_back(assignment.targetNodeId);
+        targetNodeGuides[assignment.targetNodeId].push_back(assignment.guideId);
+    }
 }
 
 void NodeGraph::addSignalProbe(SignalProbe probe) {
@@ -274,6 +341,7 @@ const SignalProbe* NodeGraph::findSignalProbeForSource(
 
 void NodeGraph::removeNode(const String& nodeId) {
     const size_t previousNodeCount = nodes.size();
+    const size_t previousAssignmentCount = guideAssignments.size();
     eraseIf(nodes, [&](const Node& node) {
         return node.id == nodeId;
     });
@@ -284,6 +352,9 @@ void NodeGraph::removeNode(const String& nodeId) {
     eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
         return assignment.targetNodeId == nodeId;
     });
+    if (guideAssignments.size() != previousAssignmentCount) {
+        rebuildGuideAssignmentIndexes();
+    }
     for (auto& probe : signalProbes) {
         if (probe.sourceNodeId == nodeId) {
             probe.sourceNodeId = {};

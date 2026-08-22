@@ -200,6 +200,7 @@ void NodeCanvas::visibilityChanged() {
 
 void NodeCanvas::focusLost(FocusChangeType) {
     probeRailState.selectedProbeId = {};
+    guideShelfState.hoveredGuideId = {};
     requestCanvasRepaint();
 }
 
@@ -216,6 +217,22 @@ void NodeCanvas::updateHoverAt(Point<float> position) {
             viewport,
             presentation.revision(),
             document.revision());
+    guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
+            position,
+            graph,
+            getLocalBounds().toFloat(),
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (guideShelfState.hoveredGuideId.isEmpty()) {
+        const auto hit = NodeCanvasHitTester().hitTest(scene, position);
+        if (hit.has_value() && hit->nodeId.isNotEmpty()) {
+            const auto& guides = graph.guideIdsForTargetNode(hit->nodeId);
+            if (!guides.empty()) {
+                guideShelfState.hoveredGuideId = guides.front();
+            }
+        }
+    }
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
             GuideCurveShelf::spyWorkspace(
@@ -1300,6 +1317,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.guideHorizontalOffset = guideShelfState.horizontalOffset;
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
+    dock.hoveredGuideId = guideShelfState.hoveredGuideId;
     dock.expandedGuideId = expandedGuideId;
     dock.dockBounds = workspaceDock.dock;
     dock.guideShelfBounds = workspaceDock.leftShelf;
@@ -1398,6 +1416,67 @@ bool NodeCanvas::deleteNodeForAutomation(const String& nodeId) {
 
 bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
     return applyAuthoringResult(automation.deleteEdge(edgeIndex));
+}
+
+bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
+    if (!commands.removeGuideCurve(guideId).succeeded()) {
+        return false;
+    }
+
+    if (guideShelfState.selectedGuideId == guideId) {
+        guideShelfState.selectedGuideId = {};
+    }
+    if (expandedGuideId == guideId) {
+        closeGuideEditor();
+    }
+    editStatusMessage = "Guide Curve deleted";
+    requestCanvasRepaint();
+    return true;
+}
+
+bool NodeCanvas::undoForAutomation() {
+    const auto result = authoring.undo();
+    applyAuthoringResult(result);
+    return result.succeeded;
+}
+
+bool NodeCanvas::setGuideParameterForAutomation(
+        const String& guideId,
+        const String& parameterId,
+        const String& value) {
+    const GuideCurveResource* guide = document.graph().findGuideCurve(guideId);
+    if (guide == nullptr || guide->model == nullptr) {
+        return false;
+    }
+
+    std::vector<NodeParameter> controls {
+            { "enabled", "Enabled", guide->enabled ? "1" : "0" },
+            { "noise", "Noise", String(guide->noise) },
+            { "dcOffset", "DC Offset", String(guide->dcOffset) },
+            { "phase", "Phase", String(guide->phase) }
+    };
+    const auto found = std::find_if(controls.begin(), controls.end(), [&](const auto& control) {
+        return control.id == parameterId;
+    });
+    if (found == controls.end()) {
+        return false;
+    }
+    found->value = value;
+
+    commands.beginTransientEdit();
+    const GraphEditResult result = commands.publishGuideCurveState({
+            guideId,
+            guide->model->revision(),
+            guide->model,
+            controls
+    });
+    if (!result.succeeded()) {
+        commands.cancelTransientEdit();
+        return false;
+    }
+    commands.commitTransientEdit();
+    requestCanvasRepaint();
+    return true;
 }
 
 bool NodeCanvas::setNodeParameterForAutomation(

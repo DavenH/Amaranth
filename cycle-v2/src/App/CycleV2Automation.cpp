@@ -757,8 +757,17 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "deleteEdge" || command == "removeEdge") {
         return deleteEdge(commandValue);
     }
+    if (command == "deleteGuideCurve" || command == "removeGuideCurve") {
+        return deleteGuideCurve(commandValue);
+    }
+    if (command == "undo") {
+        return undo();
+    }
     if (command == "setNodeParameter") {
         return setNodeParameter(commandValue);
+    }
+    if (command == "setGuideParameter") {
+        return setGuideParameter(commandValue);
     }
     if (command == "inspectNodeControls") {
         return inspectNodeControls(commandValue);
@@ -1237,6 +1246,37 @@ var CycleV2Automation::deleteEdge(const var& commandValue) {
     }
 
     return okResult("deleteEdge", snapshotState());
+}
+
+var CycleV2Automation::deleteGuideCurve(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    if (guideId.isEmpty()) {
+        return failedResult("deleteGuideCurve", "Missing guideId");
+    }
+    if (!workspace.deleteGuideCurveForAutomation(guideId)) {
+        return failedResult("deleteGuideCurve", "Could not delete Guide: " + guideId);
+    }
+    return okResult("deleteGuideCurve", snapshotState());
+}
+
+var CycleV2Automation::undo() {
+    if (!workspace.undoForAutomation()) {
+        return failedResult("undo", "Nothing to undo");
+    }
+    return okResult("undo", snapshotState());
+}
+
+var CycleV2Automation::setGuideParameter(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    const String parameterId = stringProperty(commandValue, "parameterId");
+    const String value = stringProperty(commandValue, "value");
+    if (guideId.isEmpty() || parameterId.isEmpty()) {
+        return failedResult("setGuideParameter", "Missing guideId or parameterId");
+    }
+    if (!workspace.setGuideParameterForAutomation(guideId, parameterId, value)) {
+        return failedResult("setGuideParameter", "Could not edit Guide: " + guideId);
+    }
+    return okResult("setGuideParameter", snapshotState());
 }
 
 var CycleV2Automation::setNodeParameter(const var& commandValue) {

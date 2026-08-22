@@ -451,6 +451,7 @@ void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     paintGrid(graphics, frame);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
 
     {
         Graphics::ScopedSaveState contentClip(graphics);
@@ -521,6 +522,7 @@ void NodeCanvasPresentation::paintContent(
             frame.probeRailState);
     paintPendingConnection(graphics, frame);
     paintNodes(graphics, frame);
+    GuideRelationshipPresentation::paintHighlights(graphics, frame);
     paintMiniMap(graphics, frame);
     paintLegend(graphics, frame);
     paintPalette(graphics, frame);

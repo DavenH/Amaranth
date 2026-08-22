@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 namespace CycleV2 {
@@ -276,6 +277,12 @@ public:
     bool removeGuideAssignment(
             const String& nodeId,
             const TrimeshCubeComponentGuideTarget& target);
+    int removeGuideAssignmentsOutsideCubeRange(
+            const String& nodeId,
+            int cubeCount);
+    int guideUsageCount(const String& guideId) const;
+    const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
+    const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;
     void addSignalProbe(SignalProbe probe);
     bool removeSignalProbe(const String& probeId);
     SignalProbe* findSignalProbeForEditing(const String& probeId);
@@ -298,12 +305,49 @@ public:
     static NodeGraph createDemoGraph();
 
 private:
+    struct StringHash {
+        size_t operator()(const String& value) const {
+            return (size_t) value.hashCode64();
+        }
+    };
+
+    struct GuideTargetAddress {
+        String nodeId;
+        TrimeshCubeComponentGuideTarget target;
+
+        bool operator==(const GuideTargetAddress& other) const {
+            return nodeId == other.nodeId && target == other.target;
+        }
+    };
+
+    struct GuideTargetAddressHash {
+        size_t operator()(const GuideTargetAddress& value) const {
+            size_t result = (size_t) value.nodeId.hashCode64();
+            result ^= (size_t) value.target.cubeIndex + 0x9e3779b9U
+                    + (result << 6U) + (result >> 2U);
+            result ^= (size_t) value.target.field + 0x9e3779b9U
+                    + (result << 6U) + (result >> 2U);
+            return result;
+        }
+    };
+
+    void rebuildGuideResourceIndex();
+    void rebuildGuideAssignmentIndexes();
+
     std::vector<Node> nodes;
     std::vector<Edge> edges;
     std::vector<GuideCurveResource> guideCurves;
     std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
     std::optional<Rectangle<float>> performanceKeyboardBounds;
+    std::unordered_map<String, size_t, StringHash> guideResourceIndex;
+    std::unordered_map<
+            GuideTargetAddress,
+            size_t,
+            GuideTargetAddressHash> guideAssignmentTargetIndex;
+    std::unordered_map<String, int, StringHash> guideUsageCounts;
+    std::unordered_map<String, std::vector<String>, StringHash> guideTargetNodes;
+    std::unordered_map<String, std::vector<String>, StringHash> targetNodeGuides;
     uint64_t revision {};
 };
 
