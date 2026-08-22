@@ -66,7 +66,7 @@ public:
             NodePreviewRenderer& previewRendererToUse);
 
     void paint(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void renderOpenGL(
+    bool renderOpenGL(
             NodeCanvasRenderer& renderer,
             const NodeCanvasPresentationFrame& frame,
             float scaleFactor);
@@ -79,6 +79,7 @@ public:
             const GraphExecutionPlan& plan,
             const String& unisonNodeId,
             UnisonPreviewContext fallback);
+    bool guideShelfNeedsOpenGLPreviewRender() const;
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:

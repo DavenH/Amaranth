@@ -513,7 +513,7 @@ void NodeCanvasPresentation::paintContent(
     paintHoverConsole(graphics, frame);
 }
 
-void NodeCanvasPresentation::renderOpenGL(
+bool NodeCanvasPresentation::renderOpenGL(
         NodeCanvasRenderer& renderer,
         const NodeCanvasPresentationFrame& frame,
         float scaleFactor) {
@@ -524,6 +524,18 @@ void NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
+    return guideCurveShelf.renderOpenGL(
+            frame.graph,
+            frame.workspaceBounds,
+            frame.canvasBounds,
+            frame.probeRailState,
+            frame.dockSplitRatio,
+            frame.guideShelfState,
+            scaleFactor);
+}
+
+bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
+    return guideCurveShelf.needsOpenGLPreviewRender();
 }
 
 void NodeCanvasPresentation::paintGrid(

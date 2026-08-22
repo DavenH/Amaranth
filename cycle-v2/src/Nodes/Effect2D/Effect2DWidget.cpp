@@ -123,6 +123,16 @@ void Effect2DWidget::renderGuideExpandedPanelOpenGL(
     controller->render(bounds, clipBounds, scaleFactor);
 }
 
+void Effect2DWidget::renderGuidePreviewSnapshotOpenGL(
+        Rectangle<float> bounds,
+        float scaleFactor) {
+    if (!guideResource) {
+        return;
+    }
+
+    controller->renderPreview(bounds, scaleFactor);
+}
+
 void Effect2DWidget::renderPreviewSnapshotOpenGL(
         const Node& node,
         Rectangle<float> bounds,
@@ -156,10 +166,6 @@ var Effect2DWidget::automationState() const {
 
 std::vector<CurvePreviewVertex> Effect2DWidget::previewVertices() {
     return controller->previewVertices();
-}
-
-std::vector<CurvePreviewVertex> Effect2DWidget::rasterizedPreviewVertices() {
-    return controller->rasterizedPreviewVertices();
 }
 
 String Effect2DWidget::serializedMeshState() {

@@ -35,6 +35,7 @@ public:
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor);
+    void renderGuidePreviewSnapshotOpenGL(Rectangle<float> bounds, float scaleFactor);
     void renderPreviewSnapshotOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const;
@@ -42,7 +43,6 @@ public:
     int vertexCountForAutomation() const;
     var automationState() const;
     std::vector<CurvePreviewVertex> previewVertices();
-    std::vector<CurvePreviewVertex> rasterizedPreviewVertices();
     String serializedMeshState();
     NodeModelStatePtr modelPublication();
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision);

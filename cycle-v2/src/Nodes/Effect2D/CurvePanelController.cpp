@@ -272,11 +272,6 @@ public:
         return adapter.previewVertices();
     }
 
-    std::vector<CurvePreviewVertex> rasterizedPreviewVertices() override {
-        const auto& flatPanel = static_cast<const FlatCurvePanelContract&>(*panel);
-        return flatPanel.rasterizedPreviewVertices();
-    }
-
     String serializedMeshState() override {
         return adapter.serializedMeshState();
     }

@@ -40,7 +40,6 @@ class FlatCurvePanelContract : public CurvePanel {
 public:
     virtual Vertex* selectedFlatVertexForModel() = 0;
     virtual void restoreFlatSelection(Vertex* vertex) = 0;
-    virtual std::vector<CurvePreviewVertex> rasterizedPreviewVertices() const = 0;
 };
 
 class EnvelopeCurvePanelContract : public CurvePanel {

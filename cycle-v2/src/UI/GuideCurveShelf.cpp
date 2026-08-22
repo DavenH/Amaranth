@@ -31,43 +31,6 @@ Colour colourForGuide(const GuideCurveResource& guide) {
     return Colour(colours[(size_t) std::abs(guide.colourIndex) % colours.size()]);
 }
 
-void paintRasterizedGuidePreview(
-        Graphics& graphics,
-        Effect2DWidget& preview,
-        Rectangle<float> bounds) {
-    const std::vector<CurvePreviewVertex> waveform = preview.rasterizedPreviewVertices();
-    if (waveform.size() < 2) {
-        return;
-    }
-
-    Graphics::ScopedSaveState clip(graphics);
-    graphics.reduceClipRegion(bounds.toNearestInt());
-
-    Path waveformPath;
-    for (size_t index = 0; index < waveform.size(); ++index) {
-        const CurvePreviewVertex& point = waveform[index];
-        const Point<float> displayPoint(
-                bounds.getX() + bounds.getWidth() * point.x,
-                bounds.getCentreY() - bounds.getHeight() * 0.5f * point.y);
-        if (index == 0) {
-            waveformPath.startNewSubPath(displayPoint);
-        } else {
-            waveformPath.lineTo(displayPoint);
-        }
-    }
-
-    Path fill(waveformPath);
-    fill.lineTo(bounds.getRight(), bounds.getCentreY());
-    fill.lineTo(bounds.getX(), bounds.getCentreY());
-    fill.closeSubPath();
-    graphics.setColour(Colour(0xffe2e8ef).withAlpha(0.20f));
-    graphics.fillPath(fill);
-    graphics.setColour(Colour(0xffe2e8ef).withAlpha(0.92f));
-    graphics.strokePath(
-            waveformPath,
-            PathStrokeType(1.2f, PathStrokeType::curved, PathStrokeType::rounded));
-}
-
 }
 
 Rectangle<float> GuideCurveShelf::guideWorkspace(
@@ -179,14 +142,26 @@ float GuideCurveShelf::maximumHorizontalOffset(
     return jmax(0.f, contentWidth - shelf.getWidth());
 }
 
-Effect2DWidget& GuideCurveShelf::previewFor(const GuideCurveResource& guide) const {
-    std::unique_ptr<Effect2DWidget>& preview = previews[guide.id];
-    if (preview == nullptr) {
-        preview = std::make_unique<Effect2DWidget>(true);
+GuideCurveShelf::Preview& GuideCurveShelf::previewFor(const GuideCurveResource& guide) const {
+    Preview& preview = previews[guide.id];
+    if (preview.widget == nullptr) {
+        preview.widget = std::make_unique<Effect2DWidget>(true);
     }
 
-    preview->syncFromGuideResource(guide);
-    return *preview;
+    if (preview.model != guide.model
+            || preview.enabled != guide.enabled
+            || preview.noise != guide.noise
+            || preview.dcOffset != guide.dcOffset
+            || preview.phase != guide.phase) {
+        preview.widget->syncFromGuideResource(guide);
+        preview.model = guide.model;
+        preview.enabled = guide.enabled;
+        preview.noise = guide.noise;
+        preview.dcOffset = guide.dcOffset;
+        preview.phase = guide.phase;
+        preview.needsOpenGLRender = true;
+    }
+    return preview;
 }
 
 void GuideCurveShelf::paint(
@@ -264,14 +239,16 @@ void GuideCurveShelf::paint(
         thumbnail.removeFromBottom(12.f);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
-        paintRasterizedGuidePreview(graphics, previewFor(guide), thumbnail.reduced(4.f, 5.f));
-        String label = guide.shortLabel;
+        Preview& preview = previewFor(guide);
+        preview.widget->paintPreviewSnapshot(graphics, thumbnail.reduced(4.f, 5.f));
         if (!guide.name.isEmpty() && guide.name != "Guide Curve") {
-            label += " · " + guide.name;
+            graphics.setColour(kText);
+            graphics.setFont(FontOptions(12.f, Font::bold));
+            graphics.drawText(
+                    guide.name,
+                    tile.reduced(10.f).removeFromTop(24.f),
+                    Justification::centredLeft);
         }
-        graphics.setColour(kText);
-        graphics.setFont(FontOptions(12.f, Font::bold));
-        graphics.drawText(label, tile.reduced(10.f).removeFromTop(24.f), Justification::centredLeft);
         const int usageCount = (int) std::count_if(
                 graph.getGuideAssignments().begin(),
                 graph.getGuideAssignments().end(),
@@ -285,6 +262,56 @@ void GuideCurveShelf::paint(
                 tile.reduced(10.f).removeFromBottom(18.f),
                 Justification::centredRight);
     }
+}
+
+bool GuideCurveShelf::needsOpenGLPreviewRender() const {
+    for (const auto& entry : previews) {
+        if (entry.second.needsOpenGLRender) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool GuideCurveShelf::renderOpenGL(
+        const NodeGraph& graph,
+        Rectangle<float> workspace,
+        Rectangle<float> captureWorkspace,
+        const SignalProbeRailState& dockState,
+        float splitRatio,
+        const GuideCurveShelfState& state,
+        float scaleFactor) {
+    if (!dockState.expanded || state.minimized) {
+        return false;
+    }
+
+    bool rendered {};
+    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
+    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
+        const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
+        Preview& preview = previewFor(guide);
+        if (!preview.needsOpenGLRender) {
+            continue;
+        }
+
+        const Rectangle<float> tile(
+                shelf.getX() + kPadding + index * (kTileWidth + kTileGap) - state.horizontalOffset,
+                shelf.getY() + 42.f,
+                kTileWidth,
+                shelf.getHeight() - 54.f);
+        Rectangle<float> thumbnail = tile.reduced(10.f);
+        thumbnail.removeFromTop(34.f);
+        thumbnail.removeFromBottom(12.f);
+        Rectangle<float> captureBounds(
+                captureWorkspace.getX() + 4.f,
+                captureWorkspace.getY() + 4.f,
+                thumbnail.getWidth() - 8.f,
+                thumbnail.getHeight() - 10.f);
+        preview.widget->renderGuidePreviewSnapshotOpenGL(captureBounds, scaleFactor);
+        preview.needsOpenGLRender = false;
+        rendered = true;
+    }
+    return rendered;
 }
 
 }

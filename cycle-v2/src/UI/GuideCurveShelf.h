@@ -67,10 +67,30 @@ public:
             const SignalProbeRailState& dockState,
             float splitRatio,
             const GuideCurveShelfState& state) const;
-private:
-    Effect2DWidget& previewFor(const GuideCurveResource& guide) const;
+    bool needsOpenGLPreviewRender() const;
+    bool renderOpenGL(
+            const NodeGraph& graph,
+            Rectangle<float> workspace,
+            Rectangle<float> captureWorkspace,
+            const SignalProbeRailState& dockState,
+            float splitRatio,
+            const GuideCurveShelfState& state,
+            float scaleFactor);
 
-    mutable std::map<String, std::unique_ptr<Effect2DWidget>> previews;
+private:
+    struct Preview {
+        std::unique_ptr<Effect2DWidget> widget;
+        NodeModelStatePtr model;
+        bool enabled {};
+        float noise {};
+        float dcOffset {};
+        float phase {};
+        bool needsOpenGLRender {};
+    };
+
+    Preview& previewFor(const GuideCurveResource& guide) const;
+
+    mutable std::map<String, Preview> previews;
 };
 
 }

@@ -169,6 +169,9 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = queries.findNode(expandedNodeId);
     canvasPresentation.paint(g, presentationFrame());
+    if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
+        openGLContext.triggerRepaint();
+    }
     if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintExpanded(
                 g,
@@ -926,10 +929,18 @@ void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
         OpenGLHelpers::clear(kCanvasBackground);
-        canvasPresentation.renderOpenGL(
+        const bool guideSnapshotUpdated = canvasPresentation.renderOpenGL(
                 renderer,
                 presentationFrame(),
                 (float) openGLContext.getRenderingScale());
+        if (guideSnapshotUpdated) {
+            Component::SafePointer<NodeCanvas> safeThis(this);
+            MessageManager::callAsync([safeThis]() {
+                if (safeThis != nullptr) {
+                    safeThis->requestCanvasRepaint();
+                }
+            });
+        }
         editorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
         if (guideEditor != nullptr && guideEditor->isVisible()) {
             guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());

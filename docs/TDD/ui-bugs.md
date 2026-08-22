@@ -232,6 +232,10 @@ Context:
   `juce_String.cpp:327` assertions followed by `Settings.cpp:225` and `:226`.
 - Repro artifacts: `/tmp/cycle-v2-guide-dock.png` and
   `/tmp/cycle-v2-guide-dock.log`.
+- The native OpenGL Guide-preview capture on 2026-08-22 reproduced the same
+  settings-write assertions at shifted lines `Settings.cpp:227` and `:228`;
+  all fixture assertions and rendering completed successfully. Repro log:
+  `/private/tmp/cycle-v2-guide-opengl-final-logs.txt`.
 
 Current status: open; inspect settings-map initialization separately from the
 Guide resource UI work.

@@ -1,0 +1,25 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "assertState",
+      "path": "nodeCount",
+      "equals": 19
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}
