@@ -1253,29 +1253,85 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
 }
 
 NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
-    return {
-            selectedNodeId,
-            expandedNodeId,
-            editStatusMessage,
-            selectedEdgeIndex,
-            globalUnisonPreviewContext.voiceDurationSeconds,
-            probeRailState.refreshMode,
-            SignalProbeRail::refreshModeBoundsFor(
-                    GuideCurveShelf::spyWorkspace(
-                            getLocalBounds().toFloat(),
-                            dockSplitRatio,
-                            guideShelfState.minimized,
-                            probeRailState.minimized),
-                    probeRailState),
-            probeDetailState.probeId,
-            probeDetailState.resolution,
-            probeDetailState.renderResult.gridColumns,
-            probeDetailState.renderResult.gridRows,
-            probeDetailState.isOpen()
-                    ? SignalProbeDetailView::boundsFor(canvasContentBounds())
-                    : Rectangle<float> {},
-            canvasContentBounds()
-    };
+    NodeCanvasAutomationPresentation result;
+    result.selectedNodeId = selectedNodeId;
+    result.expandedNodeId = expandedNodeId;
+    result.editStatusMessage = editStatusMessage;
+    result.selectedEdgeIndex = selectedEdgeIndex;
+    result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
+    result.probeRefreshMode = probeRailState.refreshMode;
+    result.probeDetailId = probeDetailState.probeId;
+    result.probeDetailResolution = probeDetailState.resolution;
+    result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
+    result.probeDetailRows = probeDetailState.renderResult.gridRows;
+    result.probeDetailBounds = probeDetailState.isOpen()
+            ? SignalProbeDetailView::boundsFor(canvasContentBounds())
+            : Rectangle<float> {};
+    result.canvasContentBounds = canvasContentBounds();
+
+    const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
+            workspace,
+            dockSplitRatio,
+            guideShelfState.minimized,
+            probeRailState.minimized);
+    result.probeRefreshModeBounds = SignalProbeRail::refreshModeBoundsFor(
+            spyWorkspace,
+            probeRailState);
+
+    auto& dock = result.guideDock;
+    dock.expanded = probeRailState.expanded;
+    dock.guidesMinimized = guideShelfState.minimized;
+    dock.spiesMinimized = probeRailState.minimized;
+    dock.expandedHeight = probeRailState.expandedHeight;
+    dock.splitRatio = dockSplitRatio;
+    dock.guideHorizontalOffset = guideShelfState.horizontalOffset;
+    dock.spyHorizontalOffset = probeRailState.horizontalOffset;
+    dock.selectedGuideId = guideShelfState.selectedGuideId;
+    dock.expandedGuideId = expandedGuideId;
+    dock.dockBounds = SignalProbeRail::boundsFor(workspace, probeRailState);
+    dock.guideShelfBounds = GuideCurveShelf::boundsFor(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    dock.spyShelfBounds = SignalProbeRail::boundsFor(spyWorkspace, probeRailState);
+    const float dividerX = GuideCurveShelf::guideWorkspace(
+            workspace,
+            dockSplitRatio,
+            guideShelfState.minimized,
+            probeRailState.minimized).getRight();
+    dock.dividerBounds = !guideShelfState.minimized && !probeRailState.minimized
+            ? Rectangle<float>(dividerX - 4.f, dock.dockBounds.getY(), 8.f, dock.dockBounds.getHeight())
+            : Rectangle<float> {};
+    dock.collapseBounds = SignalProbeRail::collapseHandleFor(workspace, probeRailState);
+    dock.resizeBounds = SignalProbeRail::resizeHandleFor(workspace, probeRailState);
+    dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    dock.spyMinimizeBounds = SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState);
+    dock.addGuideBounds = GuideCurveShelf::addButtonBounds(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
+            ? guideEditor->getBounds().toFloat()
+            : Rectangle<float> {};
+    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
+        dock.guideTiles.push_back({
+                graph.getGuideCurves()[(size_t) index].id,
+                GuideCurveShelf::tileBoundsFor(
+                        workspace,
+                        probeRailState,
+                        dockSplitRatio,
+                        guideShelfState,
+                        index)
+        });
+    }
+    return result;
 }
 
 void NodeCanvas::scheduleCompiledStateRefresh() {

@@ -46,6 +46,12 @@ public:
             const SignalProbeRailState& dockState,
             float splitRatio,
             const GuideCurveShelfState& state);
+    static Rectangle<float> tileBoundsFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& dockState,
+            float splitRatio,
+            const GuideCurveShelfState& state,
+            int tileIndex);
     static String guideAt(
             Point<float> position,
             const NodeGraph& graph,

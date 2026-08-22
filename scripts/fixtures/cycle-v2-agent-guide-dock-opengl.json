@@ -17,6 +17,39 @@
       "equals": 19
     },
     {
+      "command": "assertState",
+      "path": "guideCount",
+      "equals": 3
+    },
+    {
+      "command": "assertState",
+      "path": "guideAssignmentCount",
+      "equals": 11
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.expanded",
+      "equals": true
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "guide:guide1",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedGuideId",
+      "equals": "guide1"
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
       "command": "inspectTargets",
       "area": "canvas"
     }

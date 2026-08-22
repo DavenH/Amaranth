@@ -490,6 +490,12 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             NodeKind::TrilinearMesh,
             "mesh",
             { 240.f, 180.f }));
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Amplitude }
+    }));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher graphCommands(document);
     NodeEditorCommandService editorCommands(
@@ -511,12 +517,24 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             viewport,
             host
     });
-    const NodeCanvasAutomationPresentation state {
+    NodeCanvasAutomationPresentation state {
             "mesh",
             "mesh",
             "Opened editor: mesh",
             -1
     };
+    state.guideDock.dockBounds = { 0.f, 610.f, 1200.f, 190.f };
+    state.guideDock.guideShelfBounds = { 0.f, 610.f, 600.f, 190.f };
+    state.guideDock.spyShelfBounds = { 600.f, 610.f, 600.f, 190.f };
+    state.guideDock.dividerBounds = { 596.f, 610.f, 8.f, 190.f };
+    state.guideDock.collapseBounds = { 1072.f, 618.f, 116.f, 22.f };
+    state.guideDock.resizeBounds = { 0.f, 610.f, 1200.f, 7.f };
+    state.guideDock.guideMinimizeBounds = { 12.f, 620.f, 18.f, 18.f };
+    state.guideDock.spyMinimizeBounds = { 612.f, 620.f, 18.f, 18.f };
+    state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
+    state.guideDock.expandedGuideId = "guide1";
+    state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
+    state.guideDock.guideTiles.push_back({ "guide1", { 12.f, 652.f, 220.f, 136.f } });
     const uint64_t documentRevision = document.revision();
     const uint64_t presentationRevision = presentation.revision();
     const uint64_t viewportRevision = viewport.getRevision();
@@ -539,6 +557,15 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     };
 
     REQUIRE(targetWithId("node:mesh") != nullptr);
+    REQUIRE(targetWithId("guideDock") != nullptr);
+    REQUIRE(targetWithId("guideDock.collapse") != nullptr);
+    REQUIRE(targetWithId("guideDock.resize") != nullptr);
+    REQUIRE(targetWithId("guideDock.divider") != nullptr);
+    REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("guideShelf.add") != nullptr);
+    REQUIRE(targetWithId("guide:guide1") != nullptr);
+    REQUIRE(targetWithId("guideEditor:guide1") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.panel3D") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
@@ -551,7 +578,20 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     const auto* snapshotObject = snapshot.getDynamicObject();
     REQUIRE(snapshotObject != nullptr);
     REQUIRE((int) snapshotObject->getProperty("nodeCount") == 1);
+    REQUIRE((int) snapshotObject->getProperty("guideCount") == 1);
+    REQUIRE((int) snapshotObject->getProperty("guideAssignmentCount") == 1);
     REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
+    REQUIRE(snapshotObject->getProperty("expandedGuideId").toString() == "guide1");
+    const Array<var>* guides = snapshotObject->getProperty("guides").getArray();
+    REQUIRE(guides != nullptr);
+    REQUIRE(guides->size() == 1);
+    REQUIRE(guides->getReference(0).getProperty("id", {}).toString() == "guide1");
+    const Array<var>* assignments = snapshotObject->getProperty("guideAssignments").getArray();
+    REQUIRE(assignments != nullptr);
+    REQUIRE(assignments->size() == 1);
+    REQUIRE(assignments->getReference(0).getProperty("guideId", {}).toString() == "guide1");
+    REQUIRE(assignments->getReference(0).getProperty("target", {})
+            .getProperty("field", {}).toString() == "amp");
     REQUIRE(inspector.exportGraphJson() == document.toJson());
 
     REQUIRE(editorStats.creations == 0);

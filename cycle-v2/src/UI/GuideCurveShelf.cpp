@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <unordered_map>
 
 namespace CycleV2 {
 
@@ -118,6 +119,21 @@ Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
     return header.removeFromLeft(18.f);
 }
 
+Rectangle<float> GuideCurveShelf::tileBoundsFor(
+        Rectangle<float> workspace,
+        const SignalProbeRailState& dockState,
+        float splitRatio,
+        const GuideCurveShelfState& state,
+        int tileIndex) {
+    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
+    return {
+            shelf.getX() + kPadding + tileIndex * (kTileWidth + kTileGap) - state.horizontalOffset,
+            shelf.getY() + 42.f,
+            kTileWidth,
+            shelf.getHeight() - 54.f
+    };
+}
+
 String GuideCurveShelf::guideAt(
         Point<float> position,
         const NodeGraph& graph,
@@ -128,13 +144,13 @@ String GuideCurveShelf::guideAt(
     if (state.minimized) {
         return {};
     }
-    const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
-        const Rectangle<float> tile(
-                shelf.getX() + kPadding + index * (kTileWidth + kTileGap) - state.horizontalOffset,
-                shelf.getY() + 42.f,
-                kTileWidth,
-                shelf.getHeight() - 54.f);
+        const Rectangle<float> tile = tileBoundsFor(
+                workspace,
+                dockState,
+                splitRatio,
+                state,
+                index);
         if (tile.contains(position)) {
             return graph.getGuideCurves()[(size_t) index].id;
         }
@@ -238,13 +254,19 @@ void GuideCurveShelf::paint(
 
     Graphics::ScopedSaveState clip(graphics);
     graphics.reduceClipRegion(shelf.toNearestInt());
+    std::unordered_map<std::string, int> usageCounts;
+    usageCounts.reserve(graph.getGuideCurves().size());
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        ++usageCounts[assignment.guideId.toStdString()];
+    }
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
-        const Rectangle<float> tile(
-                shelf.getX() + kPadding + index * (kTileWidth + kTileGap) - state.horizontalOffset,
-                shelf.getY() + 42.f,
-                kTileWidth,
-                shelf.getHeight() - 54.f);
+        const Rectangle<float> tile = tileBoundsFor(
+                workspace,
+                dockState,
+                splitRatio,
+                state,
+                index);
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(tile, 7.f);
         graphics.setColour(guide.id == state.selectedGuideId ? Colour(0xff8ac4ff) : colourForGuide(guide));
@@ -262,12 +284,8 @@ void GuideCurveShelf::paint(
                     tile.reduced(10.f).removeFromTop(24.f),
                     Justification::centredLeft);
         }
-        const int usageCount = (int) std::count_if(
-                graph.getGuideAssignments().begin(),
-                graph.getGuideAssignments().end(),
-                [&](const GuideCurveAssignment& assignment) {
-                    return assignment.guideId == guide.id;
-                });
+        const auto usage = usageCounts.find(guide.id.toStdString());
+        const int usageCount = usage != usageCounts.end() ? usage->second : 0;
         graphics.setColour(kMutedText);
         graphics.setFont(FontOptions(10.f));
         graphics.drawText(
@@ -307,11 +325,12 @@ bool GuideCurveShelf::renderOpenGL(
             continue;
         }
 
-        const Rectangle<float> tile(
-                shelf.getX() + kPadding + index * (kTileWidth + kTileGap) - state.horizontalOffset,
-                shelf.getY() + 42.f,
-                kTileWidth,
-                shelf.getHeight() - 54.f);
+        const Rectangle<float> tile = tileBoundsFor(
+                workspace,
+                dockState,
+                splitRatio,
+                state,
+                index);
         const Rectangle<float> thumbnail = previewBoundsFor(tile, guide);
         Rectangle<float> captureBounds(
                 captureWorkspace.getX() + 4.f,
