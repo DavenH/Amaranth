@@ -31,6 +31,21 @@ Colour colourForGuide(const GuideCurveResource& guide) {
     return Colour(colours[(size_t) std::abs(guide.colourIndex) % colours.size()]);
 }
 
+bool hasDisplayName(const GuideCurveResource& guide) {
+    return !guide.name.isEmpty() && guide.name != "Guide Curve";
+}
+
+Rectangle<float> previewBoundsFor(
+        Rectangle<float> tile,
+        const GuideCurveResource& guide) {
+    Rectangle<float> bounds = tile.reduced(10.f);
+    if (hasDisplayName(guide)) {
+        bounds.removeFromTop(28.f);
+    }
+    bounds.removeFromBottom(18.f);
+    return bounds.reduced(4.f, 5.f);
+}
+
 }
 
 Rectangle<float> GuideCurveShelf::guideWorkspace(
@@ -234,14 +249,12 @@ void GuideCurveShelf::paint(
         graphics.fillRoundedRectangle(tile, 7.f);
         graphics.setColour(guide.id == state.selectedGuideId ? Colour(0xff8ac4ff) : colourForGuide(guide));
         graphics.drawRoundedRectangle(tile, 7.f, guide.id == state.selectedGuideId ? 2.f : 1.f);
-        Rectangle<float> thumbnail = tile.reduced(10.f);
-        thumbnail.removeFromTop(34.f);
-        thumbnail.removeFromBottom(12.f);
+        const Rectangle<float> thumbnail = previewBoundsFor(tile, guide);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
         Preview& preview = previewFor(guide);
-        preview.widget->paintPreviewSnapshot(graphics, thumbnail.reduced(4.f, 5.f));
-        if (!guide.name.isEmpty() && guide.name != "Guide Curve") {
+        preview.widget->paintPreviewSnapshot(graphics, thumbnail);
+        if (hasDisplayName(guide)) {
             graphics.setColour(kText);
             graphics.setFont(FontOptions(12.f, Font::bold));
             graphics.drawText(
@@ -299,14 +312,12 @@ bool GuideCurveShelf::renderOpenGL(
                 shelf.getY() + 42.f,
                 kTileWidth,
                 shelf.getHeight() - 54.f);
-        Rectangle<float> thumbnail = tile.reduced(10.f);
-        thumbnail.removeFromTop(34.f);
-        thumbnail.removeFromBottom(12.f);
+        const Rectangle<float> thumbnail = previewBoundsFor(tile, guide);
         Rectangle<float> captureBounds(
                 captureWorkspace.getX() + 4.f,
                 captureWorkspace.getY() + 4.f,
-                thumbnail.getWidth() - 8.f,
-                thumbnail.getHeight() - 10.f);
+                thumbnail.getWidth(),
+                thumbnail.getHeight());
         preview.widget->renderGuidePreviewSnapshotOpenGL(captureBounds, scaleFactor);
         preview.needsOpenGLRender = false;
         rendered = true;

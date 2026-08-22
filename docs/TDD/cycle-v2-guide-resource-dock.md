@@ -2,8 +2,10 @@
 
 ## Status
 
-Proposed (2026-08-17). Product decisions are approved; implementation has not
-started.
+In progress (2026-08-21). The resource model, direct preset conversion, typed
+Trimesh assignments, dock, and resource editor are implemented. Remaining
+completion work is the dock interaction/automation acceptance coverage and the
+final presentation polish.
 
 This TDD supersedes the Guide Curve canvas-node and attachment-edge ownership
 described in `node-graph-workflow.md`. It changes only Cycle V2 authoring and
@@ -71,6 +73,9 @@ shelf with authoring and assignment behavior, not another kind of graph node.
   assignments are document content. Dock height, divider position, minimized
   states, scroll offsets, selection, and global collapse are application UI
   state.
+- Generated short labels remain available in assignment menus and target
+  badges, but unnamed shelf tiles do not display them as titles. A user-authored
+  name is the only Guide tile heading.
 - Deleting an in-use Guide reports the affected assignment count and performs
   detach-all plus deletion as one undoable semantic command.
 - Cycle V2 is undeployed. Repository `.cyclegraph` files are converted directly
@@ -336,8 +341,10 @@ ratio is application UI state.
 An empty expanded shelf does not disappear and does not surrender all its
 width. It contains a subdued node-shaped vacancy tile:
 
-- Guides: `No guides` with a visible `+ Add Guide` action;
-- Spies: `No spies` with a concise instruction to spy on a signal cable.
+- Guides: `No guides` with the shelf's visible add affordance;
+- Spies: `No spies`.
+
+Vacancy labels report state only. They do not contain instructional copy.
 
 The default divider still applies when a shelf is empty. The user may resize it
 down to the shelf minimum. The peer receives effectively full width only when
@@ -368,8 +375,9 @@ dirty or serialize the graph.
 
 Expanded Guide tiles show:
 
-- stable short label and optional name;
-- curve thumbnail rendered through the existing flat-curve presentation path;
+- optional user-authored name, without a generated short-label heading;
+- curve thumbnail rendered through the existing OpenGL flat-curve presentation
+  path, including its grid, fill, vertices, and modulation trace;
 - stable resource colour;
 - usage count;
 - selection state;
