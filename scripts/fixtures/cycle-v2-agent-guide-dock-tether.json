@@ -21,7 +21,8 @@
       "equals": "guide2"
     },
     {
-      "command": "inspectPointerTargets"
+      "command": "inspectTargets",
+      "area": "canvas"
     }
   ],
   "quit": false

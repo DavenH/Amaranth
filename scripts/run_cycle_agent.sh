@@ -367,7 +367,7 @@ PY
         sleep "$OS_SCREENSHOT_PARK_MOUSE_SETTLE_SECONDS"
     fi
 
-    screencapture -x -R "$rect" "$OS_SCREENSHOT_PATH"
+    screencapture -x -R"$rect" "$OS_SCREENSHOT_PATH"
 
     if [[ ! -s "$OS_SCREENSHOT_PATH" ]]; then
         echo "OS screenshot was not written: $OS_SCREENSHOT_PATH" >&2

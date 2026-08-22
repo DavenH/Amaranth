@@ -2,10 +2,10 @@
 
 ## Status
 
-In progress (2026-08-21). The resource model, direct preset conversion, typed
-Trimesh assignments, dock, and resource editor are implemented. Remaining
-completion work is the dock interaction/automation acceptance coverage and the
-final presentation polish.
+Implemented (2026-08-22). Guide Curves are document resources with typed
+cube-component assignments. The Guide and Spy shelves share one persistent,
+resizable workspace dock; native acceptance covers populated, empty,
+minimized, collapsed, editing, relationship, and shared-deletion states.
 
 This TDD supersedes the Guide Curve canvas-node and attachment-edge ownership
 described in `node-graph-workflow.md`. It changes only Cycle V2 authoring and
@@ -713,3 +713,35 @@ resource, but behavior is retained.
   focused graph/runtime/UI tests, the full Cycle V2 suite, standalone build,
   focused agent fixtures, and native UI captures pass; unrelated failures or
   unavailable tools are recorded explicitly.
+
+## Completion Evidence
+
+Completed on macOS through the repository build and native launch scripts:
+
+- standalone `CycleV2` and `CycleV2_tests` targets build with `--parallel 10`;
+- the focused Guide/Guide-dock/automation run passes 224 assertions in 15 test
+  cases;
+- the full Cycle V2 test executable passes 8,761 assertions in 490 test cases;
+- the seven shipped graphs have the exact Guide/assignment counts above and
+  contain zero Guide nodes or synthetic Guide edges;
+- native fixtures pass for the populated OpenGL dock, independent Guide
+  scrolling and drawer restoration, Spy drawer, empty Guide vacancy, global
+  collapse, one relationship tether, Guide editing with Live Spy output, and
+  shared Guide deletion/undo;
+- OS-rendered captures were produced for populated shelves, the empty Guide
+  shelf, both drawers, global collapse, and Guide editing above visible Spies;
+- the launch script's macOS rectangle option was corrected so those captures
+  use the same native runbook rather than a software-rendered substitute;
+- deletion-target searches find no legacy Guide node kind, attachment type,
+  cable bundle, synthetic port, runtime role, or serialized representation in
+  production or shipped graphs;
+- cumulative production changes were re-audited after implementation. The
+  three new UI units remain cohesive and below 500 lines; shared dock geometry,
+  Guide relationship painting, resource commands, and mature OpenGL curve
+  rendering remain separated. The added automation and exact native-preview
+  acceptance account for the change exceeding the original estimate; no
+  compatibility adapter, copied curve behavior, or target-kind switchboard was
+  introduced;
+- `git diff --check`, shell syntax validation, and the scalar-math hot-loop
+  inspection pass. `clang-tidy` could not be run because it is not installed
+  in the development environment.

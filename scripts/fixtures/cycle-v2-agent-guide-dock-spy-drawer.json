@@ -13,7 +13,7 @@
     },
     { "command": "assertState", "path": "guideDock.spiesMinimized", "equals": true },
     { "command": "assertState", "path": "guideDock.guidesMinimized", "equals": false },
-    { "command": "inspectPointerTargets" }
+    { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false
 }

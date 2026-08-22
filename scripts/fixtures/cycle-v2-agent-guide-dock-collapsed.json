@@ -9,7 +9,7 @@
     { "command": "assertState", "path": "guideDock.expanded", "equals": false },
     { "command": "assertState", "path": "guideCount", "equals": 3 },
     { "command": "assertState", "path": "probeCount", "equals": 5 },
-    { "command": "inspectPointerTargets" }
+    { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false
 }
