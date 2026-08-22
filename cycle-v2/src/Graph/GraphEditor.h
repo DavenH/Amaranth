@@ -35,6 +35,7 @@ struct GraphChangeSet {
     bool layoutChanged {};
     bool probesChanged {};
     bool guidesChanged {};
+    bool guidePresentationChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
     bool modelChanged {};
     bool editorStateChanged {};

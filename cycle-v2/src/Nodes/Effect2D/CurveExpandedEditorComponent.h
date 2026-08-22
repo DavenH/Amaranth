@@ -73,6 +73,7 @@ protected:
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
     void publishDiscreteControlChange();
+    void setEditorModelState(NodeModelStatePtr model);
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {
@@ -108,6 +109,7 @@ private:
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
+    NodeModelStatePtr editorModel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)
 };

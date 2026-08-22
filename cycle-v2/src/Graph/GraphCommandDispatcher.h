@@ -15,6 +15,14 @@ struct CurveNodeStatePublication {
     std::vector<NodeParameter> controls;
 };
 
+struct GuideCurveStatePublication {
+    juce::String guideId;
+    // Captured once from GraphDocument::graph() when the gesture begins.
+    uint64_t durableBaseRevision {};
+    NodeModelStatePtr model;
+    std::vector<NodeParameter> controls;
+};
+
 class GraphCommandDispatcher {
 public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
@@ -50,10 +58,7 @@ public:
     GraphEditResult renameGuideCurve(
             const juce::String& guideId,
             const juce::String& name);
-    GraphEditResult replaceGuideCurve(
-            const juce::String& guideId,
-            NodeModelStatePtr model,
-            const std::vector<NodeParameter>& controls);
+    GraphEditResult publishGuideCurveState(const GuideCurveStatePublication& publication);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,

@@ -1567,6 +1567,11 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
 }
 
 void NodeCanvas::closeGuideEditor() {
+    if (guideTransactionBaseRevision.has_value()) {
+        commands.cancelTransientEdit();
+        guideTransactionBaseRevision.reset();
+        refreshCompiledStateAsync();
+    }
     expandedGuideId = {};
     if (guideEditor != nullptr) {
         guideEditor->setVisible(false);
@@ -1592,21 +1597,46 @@ bool NodeCanvas::publishEffect2DState(
     if (expandedGuideId.isEmpty()) {
         return false;
     }
-    const auto result = commands.replaceGuideCurve(expandedGuideId, std::move(model), controls);
+    const GuideCurveResource* durableGuide = document.graph().findGuideCurve(expandedGuideId);
+    if (durableGuide == nullptr) {
+        return false;
+    }
+    const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
+            durableGuide->model != nullptr ? durableGuide->model->revision() : 0);
+    const auto result = commands.publishGuideCurveState({
+            expandedGuideId,
+            durableBaseRevision,
+            std::move(model),
+            controls
+    });
     if (!result.succeeded()) {
         return false;
     }
-    presentation.refresh(graph, document.revision(), document.lastChange());
+    if (probeRailState.refreshMode == ProbeRefreshMode::LiveLatest) {
+        presentation.refresh(
+                commands.editingGraph(),
+                document.revision(),
+                commands.transientChanges());
+    }
     requestCanvasRepaint();
     return true;
 }
 
 void NodeCanvas::beginEffect2DTransaction() {
-    commands.beginCompoundEdit();
+    const GuideCurveResource* guide = document.graph().findGuideCurve(expandedGuideId);
+    if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
+        return;
+    }
+    guideTransactionBaseRevision = guide->model != nullptr ? guide->model->revision() : 0;
+    commands.beginTransientEdit();
 }
 
 void NodeCanvas::commitEffect2DTransaction() {
-    commands.commitCompoundEdit();
+    if (!guideTransactionBaseRevision.has_value()) {
+        return;
+    }
+    commands.commitTransientEdit();
+    guideTransactionBaseRevision.reset();
     refreshCompiledStateAsync();
 }
 

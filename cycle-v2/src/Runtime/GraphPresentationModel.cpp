@@ -2,6 +2,8 @@
 #include "FingerprintBuilder.h"
 #include "PreviewPitchResolver.h"
 
+#include "../Nodes/Trimesh/TrimeshGuidePreparation.h"
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -569,6 +571,10 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         }
         if (node->model != nullptr) {
             nodeFingerprint.add(node->model->schemaId()).add(node->model->revision());
+        }
+        if (change.guidesChanged) {
+            nodeFingerprint.add(
+                    TrimeshGuidePreparation::configurationKey(graph, nodeId));
         }
         effectiveFingerprint = nodeFingerprint.value();
     }

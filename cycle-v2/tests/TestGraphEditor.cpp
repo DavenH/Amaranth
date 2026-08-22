@@ -4,6 +4,7 @@
 
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphCommandDispatcher.h"
+#include "../src/Nodes/Effect2D/CurveNodeModels.h"
 #include "../src/Nodes/Envelope/EnvelopePurpose.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -368,6 +369,53 @@ TEST_CASE("Guide resource edits replace the resource model without creating a no
     REQUIRE(edited->dcOffset == 0.7f);
     REQUIRE(edited->phase == 0.9f);
     REQUIRE(graph.findNode("guide1") == nullptr);
+}
+
+TEST_CASE("Guide resource gestures publish two transient updates and undo once",
+        "[cycle-v2][graph][guides][gesture]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+    const GuideCurveResource* original = document.graph().findGuideCurve("guide1");
+    REQUIRE(original != nullptr);
+    const NodeModelStatePtr originalModel = original->model;
+    const uint64_t durableRevision = originalModel->revision();
+
+    const auto publication = [&](float noise) {
+        return GuideCurveStatePublication {
+                "guide1",
+                durableRevision,
+                originalModel,
+                {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", String(noise) },
+                    { "dcOffset", "DC Offset", "0.5" },
+                    { "phase", "Phase", "0.5" }
+                }
+        };
+    };
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.publishGuideCurveState(publication(0.2f)).succeeded());
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.5f);
+    REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.2f);
+    REQUIRE(commands.publishGuideCurveState(publication(0.8f)).succeeded());
+    REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.8f);
+    REQUIRE(commands.transientChanges().guidesChanged);
+    REQUIRE(commands.transientChanges().nodeIds == std::vector<String> { "waveMesh" });
+    commands.commitTransientEdit();
+
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.8f);
+    REQUIRE(commands.publishGuideCurveState(publication(0.4f)).code
+            == GraphEditCode::ConflictingRevision);
+    GuideCurveStatePublication incomplete = publication(0.4f);
+    incomplete.controls.pop_back();
+    REQUIRE(commands.publishGuideCurveState(incomplete).code
+            == GraphEditCode::InvalidControlValue);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.5f);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
 }
 
 TEST_CASE("Guide resource names are document content and undoable", "[cycle-v2][graph]") {

@@ -155,6 +155,7 @@ private:
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
     String expandedGuideId;
+    std::optional<uint64_t> guideTransactionBaseRevision;
     bool resizingProbeRail {};
     bool resizingDockSplit {};
     float probeRailResizeStartHeight {};

@@ -44,6 +44,7 @@ GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;
 
 void GuideCurveEditorComponent::setGuideResource(const GuideCurveResource& nextGuide) {
     guide = nextGuide;
+    setEditorModelState(guide.model);
     widget.syncFromGuideResource(guide);
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
