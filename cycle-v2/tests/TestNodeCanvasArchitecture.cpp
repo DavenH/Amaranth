@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <set>
 
@@ -15,6 +16,7 @@
 #include "../src/Graph/NodeDefinition.h"
 #include "../src/UI/EnvelopePurposeIconRenderer.h"
 #include "../src/UI/EnvelopePurposeSelector.h"
+#include "../src/UI/GuideRelationshipPresentation.h"
 #include "../src/UI/NodeCanvasScene.h"
 #include "../src/UI/NodeCanvasEditorCoordinator.h"
 #include "../src/UI/NodeCanvasPresentation.h"
@@ -29,6 +31,7 @@
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
 #include "../src/UI/WorkspaceDock.h"
+#include "../src/UI/WorkspaceDockKeyboardNavigation.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
@@ -71,7 +74,8 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     REQUIRE(rail.contains(refreshMode));
     REQUIRE_FALSE(collapse.intersects(refreshMode));
     REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
-            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY() + 42.f));
+            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY()
+                    + WorkspaceDock::headerHeight));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -82,7 +86,8 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
 
     expanded.expanded = false;
-    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
+    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight()
+            == 800.f - WorkspaceDock::collapsedHeight);
 }
 
 TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
@@ -122,6 +127,69 @@ TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
     const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
     REQUIRE(small.leftShelf.getWidth() == Catch::Approx(180.f));
     REQUIRE(small.rightShelf.getWidth() == Catch::Approx(180.f));
+}
+
+TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
+        "[cycle-v2][canvas][guide-dock][keyboard]") {
+    WorkspaceDockKeyboardModel model;
+    model.guideIds = { "guide1", "guide2" };
+    model.spyIds = { "probe1" };
+
+    const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(std::find(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::GuideMenu, "guide1" }) != order.end());
+    REQUIRE(std::find(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::SpyRemove, "probe1" }) != order.end());
+
+    WorkspaceDockFocus focus;
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::tabKey), model, focus));
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::tabKey, ModifierKeys::shiftModifier, 0), model, focus));
+    REQUIRE(focus == order.back());
+
+    focus = { WorkspaceDockFocusTarget::GuideTile, "guide1" };
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::rightKey), model, focus));
+    REQUIRE(focus.itemId == "guide2");
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::downKey), model, focus));
+    const WorkspaceDockFocus expectedSpy {
+            WorkspaceDockFocusTarget::SpyTile,
+            "probe1"
+    };
+    REQUIRE(focus == expectedSpy);
+
+    model.expanded = false;
+    const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(collapsedOrder.size() == 1);
+    REQUIRE(collapsedOrder.front().target == WorkspaceDockFocusTarget::Collapse);
+}
+
+TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
+        "[cycle-v2][canvas][guide-dock][keyboard]") {
+    const float maximumOffset = 900.f;
+    const float first = WorkspaceDock::offsetToRevealTile(420.f, maximumOffset, 500.f, 0);
+    const float last = WorkspaceDock::offsetToRevealTile(0.f, maximumOffset, 500.f, 5);
+
+    REQUIRE(first == Catch::Approx(0.f));
+    REQUIRE(last > 0.f);
+    REQUIRE(last <= maximumOffset);
+}
+
+TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
+        "[cycle-v2][canvas][guide-dock][relationship]") {
+    GuideCurveShelfState state;
+    state.selectedGuideId = "guide1";
+
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide1");
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state).isEmpty());
+
+    state.hoveredGuideId = "guide2";
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide2");
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
 TEST_CASE("Signal probe detail uses the audition-note period resolution",

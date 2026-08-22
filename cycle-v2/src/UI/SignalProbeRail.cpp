@@ -16,9 +16,6 @@ const Colour kRailBorder { 0xff445261 };
 const Colour kTileBackground { 0xff11171d };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kTileWidth = 220.f;
-constexpr float kTileGap = 10.f;
-constexpr float kRailPadding = 12.f;
 
 const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
     return isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())
@@ -67,7 +64,9 @@ Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
         return {};
     }
     const Rectangle<float> rail = boundsFor(workspace, state);
-    return { rail.getRight() - 104.f, rail.getY() + 10.f, 92.f, 18.f };
+    Rectangle<float> header = WorkspaceDock::headerBounds(rail);
+    header.removeFromRight(WorkspaceDock::controlSize + 8.f);
+    return header.removeFromRight(104.f);
 }
 
 Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
@@ -76,29 +75,26 @@ Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
     if (!state.expanded || state.minimized) {
         return {};
     }
-    const Rectangle<float> rail = boundsFor(workspace, state);
-    return { rail.getX() + 12.f, rail.getY() + 10.f, 18.f, 18.f };
+    Rectangle<float> header = WorkspaceDock::headerBounds(boundsFor(workspace, state));
+    return header.removeFromRight(WorkspaceDock::controlSize);
 }
 
 Rectangle<float> SignalProbeRail::tileBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state,
         int tileIndex) {
-    const Rectangle<float> rail = boundsFor(workspace, state);
-    return {
-            rail.getX() + kRailPadding + (float) tileIndex * (kTileWidth + kTileGap)
-                    - state.horizontalOffset,
-            rail.getY() + 42.f,
-            kTileWidth,
-            rail.getHeight() - 54.f
-    };
+    return WorkspaceDock::tileBounds(
+            boundsFor(workspace, state),
+            tileIndex,
+            state.horizontalOffset);
 }
 
 float SignalProbeRail::maximumHorizontalOffset(
         Rectangle<float> workspace,
         int probeCount) {
-    const float gaps = (float) jmax(0, probeCount - 1) * kTileGap;
-    const float contentWidth = kRailPadding * 2.f + (float) probeCount * kTileWidth + gaps;
+    const float gaps = (float) jmax(0, probeCount - 1) * WorkspaceDock::tileGap;
+    const float contentWidth = WorkspaceDock::shelfPadding * 2.f
+            + (float) probeCount * WorkspaceDock::tileWidth + gaps;
     return jmax(0.f, contentWidth - workspace.getWidth());
 }
 
@@ -110,6 +106,14 @@ int SignalProbeRail::ordinalForProbe(const NodeGraph& graph, const String& probe
     return found == probes.end()
             ? 0
             : (int) std::distance(probes.begin(), found) + 1;
+}
+
+std::vector<String> SignalProbeRail::orderedProbeIds(const NodeGraph& graph) {
+    std::vector<String> ids;
+    for (const auto* probe : orderedProbes(graph)) {
+        ids.push_back(probe->id);
+    }
+    return ids;
 }
 
 NodeRenderSemantic SignalProbeRail::renderSemanticForProbe(
@@ -254,7 +258,7 @@ Point<float> SignalProbeRail::markerCentre(
 }
 
 Rectangle<float> SignalProbeRail::closeBounds(Rectangle<float> tile) {
-    return Rectangle<float>(18.f, 18.f).withCentre({ tile.getRight() - 14.f, tile.getY() + 14.f });
+    return Rectangle<float>(27.f, 27.f).withCentre({ tile.getRight() - 17.f, tile.getY() + 17.f });
 }
 
 String SignalProbeRail::probeAt(
@@ -323,7 +327,7 @@ void SignalProbeRail::paintCableAnnotations(
 
         const Colour colour = colourForProbe(probe, graph, scene);
         const bool active = probe.id == state.hoveredProbeId || probe.id == state.selectedProbeId;
-        if (active && state.expanded) {
+        if (probe.id == state.hoveredProbeId && state.expanded) {
             const Point<float> tileTarget = tileBoundsFor(workspace, state, index).getCentre().withY(
                     tileBoundsFor(workspace, state, index).getY());
             Path tether;
@@ -362,7 +366,8 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state) {
+        const SignalProbeRailState& state,
+        const WorkspaceDockFocus& focus) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     graphics.setColour(kRailBackground);
     graphics.fillRect(rail);
@@ -372,12 +377,12 @@ void SignalProbeRail::paintRail(
     const auto probes = orderedProbes(graph);
     if (state.minimized) {
         Rectangle<float> labelArea = rail;
-        Rectangle<float> drawerButton = labelArea.removeFromTop(30.f).reduced(4.f);
-        graphics.setColour(Colour(0xff26313d));
-        graphics.fillRoundedRectangle(drawerButton, 5.f);
-        graphics.setColour(kText);
-        graphics.setFont(FontOptions(12.f, Font::bold));
-        graphics.drawText("<", drawerButton, Justification::centred);
+        Rectangle<float> drawerButton = labelArea.removeFromTop(WorkspaceDock::drawerWidth).reduced(4.f);
+        WorkspaceDock::paintIconButton(
+                graphics,
+                drawerButton,
+                "<",
+                focus.target == WorkspaceDockFocusTarget::SpyDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
                 MathConstants<float>::halfPi,
@@ -395,41 +400,46 @@ void SignalProbeRail::paintRail(
     }
 
     const Rectangle<float> minimize = minimizeButtonBoundsFor(workspace, state);
-    graphics.setColour(Colour(0xff26313d));
-    graphics.fillRoundedRectangle(minimize, 4.f);
-    graphics.setColour(kText);
-    graphics.setFont(FontOptions(14.f));
-    graphics.drawText("-", minimize, Justification::centred);
+    WorkspaceDock::paintIconButton(
+            graphics,
+            minimize,
+            ">",
+            focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
+    const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
     graphics.drawText(
             "Spies (" + String((int) probes.size()) + ")",
-            Rectangle<float>(minimize.getRight() + 8.f, minimize.getY(), 110.f, minimize.getHeight()),
+            header.withTrimmedLeft(22.f).withWidth(110.f),
             Justification::centredLeft);
 
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
     graphics.setColour(Colour(0xff26313d));
-    graphics.fillRoundedRectangle(refreshMode, 6.f);
+    graphics.fillRoundedRectangle(refreshMode, 5.f);
+    graphics.setColour(focus.target == WorkspaceDockFocusTarget::SpyRefresh
+            ? Colour(0xff79b8ff)
+            : kRailBorder);
+    graphics.drawRoundedRectangle(
+            refreshMode,
+            5.f,
+            focus.target == WorkspaceDockFocusTarget::SpyRefresh ? 2.f : 1.f);
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(11.f));
+    graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             state.refreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release",
             refreshMode,
             Justification::centred);
 
     if (probes.empty()) {
-        Rectangle<float> vacancy(
-                jmin(280.f, jmax(40.f, rail.getWidth() - 24.f)),
-                jmin(92.f, jmax(36.f, rail.getHeight() - 54.f)));
-        vacancy = vacancy.withCentre(rail.getCentre().withY(rail.getCentreY() + 12.f));
+        const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(rail);
         graphics.setColour(kTileBackground);
-        graphics.fillRoundedRectangle(vacancy, 8.f);
+        graphics.fillRoundedRectangle(vacancy, 7.f);
         graphics.setColour(kRailBorder.withAlpha(0.75f));
-        graphics.drawRoundedRectangle(vacancy, 8.f, 1.f);
+        graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
         graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(13.f, Font::bold));
-        graphics.drawText("No Spies", vacancy.removeFromTop(44.f), Justification::centred);
+        graphics.setFont(FontOptions(12.f, Font::bold));
+        graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);
         return;
     }
 
@@ -443,10 +453,16 @@ void SignalProbeRail::paintRail(
                 ? colourForDomain(preview->domain)
                 : kMutedText;
         const bool selected = probe.id == state.selectedProbeId;
-        graphics.setColour(kTileBackground);
-        graphics.fillRoundedRectangle(tile, 7.f);
-        graphics.setColour(selected ? colour : kRailBorder);
-        graphics.drawRoundedRectangle(tile, 7.f, selected ? 2.f : 1.f);
+        const bool hovered = probe.id == state.hoveredProbeId;
+        const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
+                && focus.itemId == probe.id;
+        WorkspaceDock::paintTileChrome(
+                graphics,
+                tile,
+                colour,
+                selected,
+                hovered,
+                focused);
 
         Rectangle<float> tileContent = tile;
         Rectangle<float> header = tileContent.removeFromTop(28.f);
@@ -458,7 +474,12 @@ void SignalProbeRail::paintRail(
                 String(index + 1),
                 header.withTrimmedLeft(22.f).withTrimmedRight(28.f),
                 Justification::centredLeft);
-        const Rectangle<float> close = closeBounds(tile).reduced(5.f);
+        const Rectangle<float> close = closeBounds(tile).reduced(7.f);
+        if (focus.target == WorkspaceDockFocusTarget::SpyRemove
+                && focus.itemId == probe.id) {
+            graphics.setColour(Colour(0xff79b8ff));
+            graphics.drawRoundedRectangle(closeBounds(tile).reduced(2.f), 4.f, 2.f);
+        }
         graphics.setColour(kMutedText);
         graphics.drawLine(Line<float>(close.getTopLeft(), close.getBottomRight()), 1.4f);
         graphics.drawLine(Line<float>(close.getTopRight(), close.getBottomLeft()), 1.4f);
@@ -501,6 +522,11 @@ void SignalProbeRail::paintRail(
                 true
         });
     }
+    WorkspaceDock::paintOverflowFeedback(
+            graphics,
+            rail,
+            state.horizontalOffset,
+            maximumHorizontalOffset(workspace, (int) probes.size()));
 }
 
 }

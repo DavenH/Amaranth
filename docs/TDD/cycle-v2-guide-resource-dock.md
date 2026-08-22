@@ -4,8 +4,7 @@
 
 Implemented (2026-08-22). Guide Curves are document resources with typed
 cube-component assignments. The Guide and Spy shelves share one persistent,
-resizable workspace dock; native acceptance covers populated, empty,
-minimized, collapsed, editing, relationship, and shared-deletion states.
+resizable workspace dock, including the completed UI-design conformance pass.
 
 This TDD supersedes the Guide Curve canvas-node and attachment-edge ownership
 described in `node-graph-workflow.md`. It changes only Cycle V2 authoring and
@@ -68,7 +67,7 @@ shelf with authoring and assignment behavior, not another kind of graph node.
 - Selector menus are the authoritative assignment gesture. Dragging a Guide
   onto an editor is deferred until all target-field drop semantics are designed.
 - Guide relationships never have persistent cables. A temporary tether may
-  show one active relationship while its tile or target is hovered or selected.
+  show one active relationship only while its tile or target is hovered.
 - Guide order, stable labels, names, colours, models, parameters, and
   assignments are document content. Dock height, divider position, minimized
   states, scroll offsets, selection, and global collapse are application UI
@@ -308,6 +307,41 @@ No audio-thread allocation or mutable resource sharing is introduced.
 
 ## Workspace Dock
 
+### UI-Design Conformance Follow-Up
+
+The first complete native presentation exposed six interaction and hierarchy
+defects. The dock correction keeps the document/resource architecture and the
+mature Guide and Spy preview renderers unchanged while applying these
+contracts:
+
+- the canvas provides a visible keyboard focus sequence across global dock
+  collapse, shelf controls, and tiles. Forward/reverse Tab traversal, arrow
+  movement within a tile strip, activation, and deletion invoke the same
+  semantic actions as pointer input;
+- selecting a Guide may retain subdued endpoint highlighting, but only a
+  current hover may draw the single relationship tether. Hover state clears
+  when the pointer leaves the canvas, and selection/hover state cannot leak
+  across document loads;
+- global collapse, per-shelf minimize/restore, Guide creation, Spy refresh,
+  tile menus, and tile removal use legible desktop-sized targets and distinct
+  symbols. Shelf controls stay with their own shelf instead of clustering at
+  the divider;
+- Guide and Spy tiles share one chrome grammar: neutral inactive border,
+  resource/domain colour token, optional terse identity, preview region,
+  active focus/selection border, and a trailing action affordance where the
+  domain supports one;
+- vacancy presentation remains visible but occupies one quiet tile slot rather
+  than a large centred card. Per-tile Guide usage sublabels are removed from
+  the shelf; relationship detail remains available through target highlighting
+  and the Guide action dialog;
+- overflowing tile strips show edge and position feedback. Scrolling one shelf
+  remains independent and keyboard tile movement keeps its focused tile in
+  view.
+
+The keyboard navigation and shared chrome are presentation collaborators, not
+new domain authorities. They do not mutate `NodeGraph`, dispatch Guide/Spy
+commands, render curve/signal content, or interpret assignment targets.
+
 ### Ownership
 
 Introduce a narrow workspace-dock coordinator that owns shared bottom geometry,
@@ -322,6 +356,11 @@ The coordinator must not become a Guide/Spy switchboard. Shared code may own
 layout primitives, headers, tile-strip scrolling, and vacancy styling; Guide
 commands and Spy preview behavior remain in their respective components.
 
+`WorkspaceDockInteractionController` is the narrow input-routing peer to that
+geometry coordinator. It owns dock gesture lifetimes, focus traversal, and UI
+state persistence, while delegating Guide commands, Spy authoring, editor
+hosting, and both mature preview renderers to their existing authorities.
+
 ### Geometry
 
 The dock remains at the bottom of the workspace and above all canvas and
@@ -330,7 +369,8 @@ expanded-editor content. Preserve the existing useful vertical contract:
 - expanded height defaults to 190 pixels;
 - minimum expanded height is 120 pixels;
 - maximum height is 40 percent of workspace height;
-- globally collapsed height is 28 pixels;
+- globally collapsed height is 34 pixels so the disclosure control retains a
+  legible 28-pixel target inside the collapsed bar;
 - expanded-editor JUCE bounds, OpenGL viewport/scissor, and input capture use
   the content rectangle above the dock.
 
@@ -379,9 +419,9 @@ Expanded Guide tiles show:
 - curve thumbnail rendered through the existing OpenGL flat-curve presentation
   path, including its grid, fill, vertices, and modulation trace;
 - stable resource colour;
-- usage count;
 - selection state;
-- compact rename, duplicate, and delete affordances where they remain legible.
+- one trailing action menu for rename, duplicate, reorder, usage-aware delete,
+  and the other resource actions.
 
 The tile is an organizer and launcher, not a miniature parameter editor. Noise,
 DC offset, phase, enable, and point editing remain in the full Guide editor.
@@ -423,7 +463,7 @@ and colour. Relationships are disclosed without persistent cables:
 
 - hovering or selecting a target highlights its Guide tile;
 - hovering or selecting a Guide highlights all visible target badges;
-- a temporary tether is drawn only for one active tile-to-target relationship;
+- a temporary tether is drawn only for one hovered tile-to-target relationship;
 - hovering a shared Guide does not fan out several tethers across the canvas;
 - the usage list provides navigation when not all consumers are visible.
 
@@ -655,13 +695,22 @@ reorder the slices rather than introducing a transitional second authority.
   compression.
 - Guide double-click opens the full editor only above the dock and keeps Spy
   tiles visible.
-- Hover/selection highlights matching endpoints and draws at most one
+- Hover/selection highlights matching endpoints; only hover draws at most one
   temporary tether.
 - Assignment menus expose detach, new, and every named Guide without requiring
   a canvas Guide card.
 - Native automation captures both populated shelves, one empty shelf, each
   minimized drawer, global collapse, Guide editing with a changing Spy, and
   deletion of a shared Guide.
+- Tab and Shift-Tab traverse every currently visible dock control and tile;
+  arrow, activation, and deletion keys exercise the same observable actions as
+  pointer input.
+- Selected Guides do not draw tethers. Hover draws at most one tether and
+  leaving the canvas removes it immediately.
+- Loading another graph clears stale Guide/Spy selection, hover, keyboard
+  focus, and horizontal offsets.
+- Both shelves use the shared tile/header grammar, neutral inactive borders,
+  legible metadata, and visible overflow position feedback.
 
 ## Deletion Targets
 
@@ -695,6 +744,10 @@ resource, but behavior is retained.
 - The bottom workspace dock presents Guide and Spy shelves harmoniously with a
   50/50 default, vacancy placeholders, independent scrolling, directional
   drawers, and global collapse.
+- The dock is keyboard operable, its controls have unambiguous shelf ownership,
+  and its active focus is visible.
+- Guide relationship tethers are hover-only and cannot persist across pointer
+  exit or document replacement.
 - Full Guide editing occurs above the dock while Spy feedback remains visible.
 - Trimesh selection menus cover every authoritative component field and
   preserve cube-component assignments without persistent cables.
@@ -719,9 +772,10 @@ resource, but behavior is retained.
 Completed on macOS through the repository build and native launch scripts:
 
 - standalone `CycleV2` and `CycleV2_tests` targets build with `--parallel 10`;
-- the focused Guide/Guide-dock/automation run passes 224 assertions in 15 test
+- the focused Guide-dock run passes 45 assertions in 5 test cases; the broader
+  focused Guide/Guide-dock/automation run remains at 224 assertions in 15 test
   cases;
-- the full Cycle V2 test executable passes 8,761 assertions in 490 test cases;
+- the full Cycle V2 test executable passes 8,781 assertions in 493 test cases;
 - the seven shipped graphs have the exact Guide/assignment counts above and
   contain zero Guide nodes or synthetic Guide edges;
 - native fixtures pass for the populated OpenGL dock, independent Guide
@@ -729,14 +783,17 @@ Completed on macOS through the repository build and native launch scripts:
   collapse, one relationship tether, Guide editing with Live Spy output, and
   shared Guide deletion/undo;
 - OS-rendered captures were produced for populated shelves, the empty Guide
-  shelf, both drawers, global collapse, and Guide editing above visible Spies;
+  shelf, both drawers, global collapse, Guide editing above visible Spies, and
+  a keyboard-focused Guide tile. The final populated/focus capture is
+  `/private/tmp/cycle-v2-guide-focus-native.png`;
 - the launch script's macOS rectangle option was corrected so those captures
   use the same native runbook rather than a software-rendered substitute;
 - deletion-target searches find no legacy Guide node kind, attachment type,
   cable bundle, synthetic port, runtime role, or serialized representation in
   production or shipped graphs;
-- cumulative production changes were re-audited after implementation. The
-  three new UI units remain cohesive and below 500 lines; shared dock geometry,
+- cumulative production changes were re-audited after implementation. The new
+  dock units remain cohesive and below 500 lines, and the extraction reduces
+  `NodeCanvas.cpp` below its pre-pass size. Shared dock geometry, input routing,
   Guide relationship painting, resource commands, and mature OpenGL curve
   rendering remain separated. The added automation and exact native-preview
   acceptance account for the change exceeding the original estimate; no

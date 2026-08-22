@@ -528,6 +528,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
     guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
     guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
+    guideDock->setProperty("keyboardFocusTarget", state.guideDock.keyboardFocusTarget);
+    guideDock->setProperty("keyboardFocusItemId", state.guideDock.keyboardFocusItemId);
     guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
     guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
     guideDock->setProperty(

@@ -51,6 +51,7 @@ public:
             int tileIndex);
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
+    static std::vector<String> orderedProbeIds(const NodeGraph& graph);
     static NodeRenderSemantic renderSemanticForProbe(
             const NodeGraph& graph,
             const String& probeId);
@@ -81,7 +82,8 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state);
+            const SignalProbeRailState& state,
+            const WorkspaceDockFocus& focus);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);

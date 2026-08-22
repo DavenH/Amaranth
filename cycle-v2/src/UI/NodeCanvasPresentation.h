@@ -51,6 +51,7 @@ struct NodeCanvasPresentationFrame {
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };
     SignalProbeRailState probeRailState;
+    WorkspaceDockFocus dockFocus;
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
 };

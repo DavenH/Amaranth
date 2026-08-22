@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <utility>
 
 #if JUCE_MAC || JUCE_LINUX
 #include <sys/socket.h>
@@ -105,6 +106,34 @@ String cursorName(const MouseCursor& cursor) {
         return "crosshair";
     }
     return "normal";
+}
+
+bool automationKeyPress(const String& name, KeyPress& result) {
+    if (name == "tab" || name == "shiftTab") {
+        const ModifierKeys modifiers = name == "shiftTab"
+                ? ModifierKeys::shiftModifier
+                : ModifierKeys {};
+        result = KeyPress(KeyPress::tabKey, modifiers, 0);
+        return true;
+    }
+
+    const std::pair<const char*, int> keys[] {
+            { "left", KeyPress::leftKey },
+            { "right", KeyPress::rightKey },
+            { "up", KeyPress::upKey },
+            { "down", KeyPress::downKey },
+            { "return", KeyPress::returnKey },
+            { "space", KeyPress::spaceKey },
+            { "escape", KeyPress::escapeKey },
+            { "delete", KeyPress::deleteKey }
+    };
+    for (const auto& key : keys) {
+        if (name == key.first) {
+            result = KeyPress(key.second);
+            return true;
+        }
+    }
+    return false;
 }
 
 var rectangleToVar(Rectangle<int> bounds) {
@@ -790,6 +819,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "pointer") {
         return pointer(commandValue);
     }
+    if (command == "key") {
+        return key(commandValue);
+    }
     if (command == "screenshot") {
         return screenshot(commandValue);
     }
@@ -1389,6 +1421,26 @@ var CycleV2Automation::setVertexParameter(const var& commandValue) {
     }
 
     return okResult("setVertexParameter", workspace.inspectNodeControlsForAutomation(nodeId));
+}
+
+var CycleV2Automation::key(const var& commandValue) {
+    const String area = stringProperty(commandValue, "area", "canvas");
+    Component* component = componentForArea(area);
+    if (component == nullptr) {
+        return failedResult("key", "Key area could not be resolved: " + area);
+    }
+
+    const String keyName = stringProperty(commandValue, "key");
+    KeyPress keyPress;
+    if (!automationKeyPress(keyName, keyPress)) {
+        return failedResult("key", "Unknown key: " + keyName);
+    }
+
+    const bool handled = component->keyPressed(keyPress);
+    var data = makeObject();
+    objectFor(data)->setProperty("key", keyName);
+    objectFor(data)->setProperty("handled", handled);
+    return handled ? okResult("key", data) : failedResult("key", "Key was not handled: " + keyName);
 }
 
 var CycleV2Automation::pointer(const var& commandValue) {

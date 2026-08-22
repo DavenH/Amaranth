@@ -68,6 +68,7 @@ private:
     var selectVertex(const var& commandValue);
     var setVertexParameter(const var& commandValue);
     var pointer(const var& commandValue);
+    var key(const var& commandValue);
     var screenshot(const var& commandValue) const;
     var assertState(const var& commandValue) const;
     var assertNodeParameter(const var& commandValue) const;

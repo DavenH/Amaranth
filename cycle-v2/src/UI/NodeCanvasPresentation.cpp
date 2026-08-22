@@ -479,7 +479,8 @@ void NodeCanvasPresentation::paint(
                 frame.workspaceBounds,
                 frame.probeRailState,
                 frame.dockSplitRatio,
-                frame.guideShelfState);
+                frame.guideShelfState,
+                frame.dockFocus);
     }
     signalProbeRail.paintRail(
             graphics,
@@ -492,13 +493,15 @@ void NodeCanvasPresentation::paint(
                             frame.guideShelfState.minimized,
                             frame.probeRailState.minimized)
                     : frame.workspaceBounds,
-            frame.probeRailState);
+            frame.probeRailState,
+            frame.dockFocus);
     WorkspaceDock::paintChrome(
             graphics,
             dock,
             "Guides (" + String((int) frame.graph.getGuideCurves().size()) + ")",
             "Spies (" + String((int) frame.graph.getSignalProbes().size()) + ")",
-            frame.probeRailState.expanded);
+            frame.probeRailState.expanded,
+            frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,

@@ -34,6 +34,7 @@
 #include "NodePreviewRenderer.h"
 #include "NodePreviewResources.h"
 #include "RenderInvalidationAccumulator.h"
+#include "WorkspaceDockInteractionController.h"
 
 namespace CycleV2 {
 
@@ -106,6 +107,7 @@ public:
     void focusLost(FocusChangeType cause) override;
     void mouseDown(const MouseEvent& event) override;
     void mouseMove(const MouseEvent& event) override;
+    void mouseExit(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
@@ -158,14 +160,11 @@ private:
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
+    std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
-    bool resizingProbeRail {};
-    bool resizingDockSplit {};
-    float probeRailResizeStartHeight {};
-    float probeRailResizeStartY {};
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayPresentationChanged;
 
@@ -199,6 +198,9 @@ private:
     bool redo();
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
     bool clearSelection();
+    bool handleDockNavigationKey(const KeyPress& key);
+    void showGuideActions(const String& guideId);
+    void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);

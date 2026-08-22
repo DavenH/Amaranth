@@ -1,0 +1,41 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "pointer", "event": "click", "targetId": "guide:guide1" },
+    { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
+    { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
+    { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
+    {
+      "command": "pointer",
+      "event": "wheel",
+      "targetId": "guideShelf",
+      "deltaY": -1.0
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.selectedGuideId",
+      "op": "notEquals",
+      "value": ""
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.guideHorizontalOffset",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/fft-sawtooth.cyclegraph"
+    },
+    { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "none" },
+    { "command": "assertState", "path": "guideDock.guideHorizontalOffset", "equals": 0 },
+    { "command": "assertState", "path": "guideDock.spyHorizontalOffset", "equals": 0 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

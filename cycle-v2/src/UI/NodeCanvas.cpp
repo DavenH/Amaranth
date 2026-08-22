@@ -14,6 +14,7 @@
 #include "../Graph/NodeParameterMap.h"
 #include "NodeViewModule.h"
 #include "TransformCompactEditor.h"
+#include "WorkspaceDockKeyboardNavigation.h"
 
 #include "../Runtime/GraphAudioExecutor.h"
 
@@ -151,6 +152,26 @@ NodeCanvas::NodeCanvas() :
     probeRailState.expandedHeight = jmax(
             WorkspaceDock::minimumExpandedHeight,
             (float) settings.getGlobalSettingValue(AppSettings::GuideSpyDockHeight));
+    dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
+            commands,
+            authoring,
+            graph,
+            settings,
+            canvasPresentation.probeRail(),
+            probeRailState,
+            guideShelfState,
+            probeDetailState,
+            dockSplitRatio,
+            editStatusMessage,
+            WorkspaceDockInteractionCallbacks {
+                    [this](const String& guideId) { showGuideActions(guideId); },
+                    [this](const String& guideId) { openGuideEditor(guideId); },
+                    [this](const String& probeId) { openProbeDetail(probeId); },
+                    [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
+                    [this]() { requestCanvasRepaint(); },
+                    [this]() { resized(); },
+                    [this]() { notifyOverlayPresentationChanged(); }
+            });
     refreshCompiledState();
 
     setOpaque(true);
@@ -201,11 +222,19 @@ void NodeCanvas::visibilityChanged() {
 void NodeCanvas::focusLost(FocusChangeType) {
     probeRailState.selectedProbeId = {};
     guideShelfState.hoveredGuideId = {};
+    probeRailState.hoveredProbeId = {};
+    dockInteraction->clearFocus();
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     updateHoverAt(event.position);
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::mouseExit(const MouseEvent&) {
+    guideShelfState.hoveredGuideId = {};
+    probeRailState.hoveredProbeId = {};
     requestCanvasRepaint();
 }
 
@@ -273,153 +302,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
-    const WorkspaceDockLayout dock = workspaceDockLayout();
-    SignalProbeRail& probeRail = canvasPresentation.probeRail();
-    if (!probeRailState.expanded
-            && dock.dock.contains(event.position)) {
-        probeRailState.expanded = true;
-        settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = true;
-        resized();
-        return;
-    }
-    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
-            workspace,
-            dockSplitRatio,
-            guideShelfState.minimized,
-            probeRailState.minimized);
-    const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
-            workspace,
-            probeRailState,
-            dockSplitRatio,
-            guideShelfState);
-    if (dock.collapseHandle.contains(event.position)) {
-        probeRailState.expanded = false;
-        settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = false;
-        probeDetailState.close();
-        notifyOverlayPresentationChanged();
-        resized();
-        return;
-    }
-    if (dock.resizeHandle.contains(event.position)) {
-        resizingProbeRail = true;
-        probeRailResizeStartHeight = probeRailState.expandedHeight;
-        probeRailResizeStartY = event.position.y;
-        return;
-    }
-    if (dock.divider.contains(event.position)) {
-        resizingDockSplit = true;
-        return;
-    }
-    if (guideShelfState.minimized && guideShelf.contains(event.position)) {
-        guideShelfState.minimized = false;
-        settings.getGlobalSetting(AppSettings::GuideShelfMinimized) = false;
-        requestCanvasRepaint();
-        return;
-    }
-    if (probeRailState.minimized
-            && SignalProbeRail::boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
-        probeRailState.minimized = false;
-        settings.getGlobalSetting(AppSettings::SpyShelfMinimized) = false;
-        requestCanvasRepaint();
-        return;
-    }
-    if (GuideCurveShelf::addButtonBounds(
-                workspace,
-                probeRailState,
-                dockSplitRatio,
-                guideShelfState).contains(event.position)) {
-        const GraphEditResult result = commands.createGuideCurve();
-        if (result.succeeded()) {
-            guideShelfState.selectedGuideId = result.nodeId;
-            editStatusMessage = "Guide Curve created";
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    if (GuideCurveShelf::minimizeButtonBounds(
-                workspace,
-                probeRailState,
-                dockSplitRatio,
-                guideShelfState).contains(event.position)) {
-        guideShelfState.minimized = true;
-        settings.getGlobalSetting(AppSettings::GuideShelfMinimized) = true;
-        if (probeRailState.minimized) {
-            probeRailState.expanded = false;
-            settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = false;
-            resized();
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    const String selectedGuide = GuideCurveShelf::guideAt(
-            event.position,
-            graph,
-            workspace,
-            probeRailState,
-            dockSplitRatio,
-            guideShelfState);
-    if (selectedGuide.isNotEmpty()) {
-        if (event.mods.isPopupMenu()) {
-            const GuideCurveResource* guide = graph.findGuideCurve(selectedGuide);
-            if (guide == nullptr) {
-                return;
-            }
-            const int assignmentCount = (int) std::count_if(
-                    graph.getGuideAssignments().begin(),
-                    graph.getGuideAssignments().end(),
-                    [&](const GuideCurveAssignment& assignment) {
-                        return assignment.guideId == selectedGuide;
-                    });
-            AlertWindow dialog(
-                    "Guide Curve",
-                    "Rename this resource, or delete it and detach "
-                            + String(assignmentCount) + " assignment"
-                            + (assignmentCount == 1 ? "." : "s."),
-                    AlertWindow::NoIcon,
-                    this);
-            dialog.addTextEditor("name", guide->name, "Name:");
-            dialog.addButton("Rename", 1);
-            dialog.addButton("Delete", 2);
-            dialog.addButton("Duplicate", 3);
-            dialog.addButton("Move Left", 4);
-            dialog.addButton("Move Right", 5);
-            dialog.addButton("Cancel", 0);
-            const int action = dialog.runModalLoop();
-            if (action == 1) {
-                if (commands.renameGuideCurve(
-                            selectedGuide,
-                            dialog.getTextEditorContents("name")).succeeded()) {
-                    editStatusMessage = "Guide Curve renamed";
-                }
-            } else if (action == 2 && commands.removeGuideCurve(selectedGuide).succeeded()) {
-                guideShelfState.selectedGuideId = {};
-                editStatusMessage = "Guide Curve deleted";
-            } else if (action == 3) {
-                const GraphEditResult duplicated = commands.duplicateGuideCurve(selectedGuide);
-                if (duplicated.succeeded()) {
-                    guideShelfState.selectedGuideId = duplicated.nodeId;
-                    editStatusMessage = "Guide Curve duplicated";
-                }
-            } else if (action == 4 || action == 5) {
-                const int direction = action == 4 ? -1 : 1;
-                if (commands.reorderGuideCurve(
-                            selectedGuide,
-                            guide->shelfOrder + direction).succeeded()) {
-                    editStatusMessage = "Guide Curve reordered";
-                }
-            }
-            requestCanvasRepaint();
-            return;
-        }
-        guideShelfState.selectedGuideId = selectedGuide;
-        if (event.getNumberOfClicks() >= 2) {
-            openGuideEditor(selectedGuide);
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    if (guideShelf.contains(event.position)) {
-        requestCanvasRepaint();
+    if (dockInteraction->mouseDown(event, workspace)) {
         return;
     }
     if (probeDetailState.isOpen()) {
@@ -434,54 +317,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    if (probeRail.refreshModeBoundsFor(spyWorkspace, probeRailState).contains(event.position)) {
-        probeRailState.refreshMode = probeRailState.refreshMode == ProbeRefreshMode::LiveLatest
-                ? ProbeRefreshMode::OnGestureCommit
-                : ProbeRefreshMode::LiveLatest;
-        settings.getGlobalSetting(AppSettings::ProbeEditRefreshPolicy) =
-                probeRailState.refreshMode == ProbeRefreshMode::LiveLatest ? 1 : 0;
-        requestCanvasRepaint();
-        return;
-    }
-    if (probeRail.minimizeButtonBoundsFor(spyWorkspace, probeRailState).contains(event.position)) {
-        probeRailState.minimized = true;
-        settings.getGlobalSetting(AppSettings::SpyShelfMinimized) = true;
-        if (guideShelfState.minimized) {
-            probeRailState.expanded = false;
-            settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = false;
-            resized();
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    const String closeProbe = probeRail.closeProbeAt(
-            event.position, spyWorkspace, graph, probeRailState);
-    if (closeProbe.isNotEmpty()) {
-        applyAuthoringResult(authoring.removeSignalProbe(closeProbe));
-        if (probeRailState.selectedProbeId == closeProbe) {
-            probeRailState.selectedProbeId = {};
-        }
-        if (probeDetailState.probeId == closeProbe) {
-            probeDetailState.close();
-            notifyOverlayPresentationChanged();
-        }
-        return;
-    }
-    const String railProbe = probeRail.probeAt(
-            event.position, spyWorkspace, graph, probeRailState);
-    if (railProbe.isNotEmpty()) {
-        probeRailState.selectedProbeId = railProbe;
-        if (event.getNumberOfClicks() >= 2) {
-            openProbeDetail(railProbe);
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    probeRailState.selectedProbeId = {};
-    if (probeRail.boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
-        requestCanvasRepaint();
-        return;
-    }
+    dockInteraction->clearFocus();
 
     if (expandedNodeId.isNotEmpty()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
@@ -585,7 +421,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             viewport,
             presentation.revision(),
             document.revision());
-    const String markerProbe = probeRail.markerProbeAt(event.position, graph, scene);
+    const String markerProbe = canvasPresentation.probeRail().markerProbeAt(
+            event.position, graph, scene);
     if (markerProbe.isNotEmpty()) {
         if (event.mods.isPopupMenu()) {
             const int edgeIndex = hitRouter.edgeAt(scene, event.position);
@@ -702,20 +539,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
 
-    if (resizingProbeRail) {
-        const float maximumHeight = getHeight() * 0.4f;
-        probeRailState.expandedHeight = jlimit(
-                SignalProbeRail::minimumExpandedHeight,
-                maximumHeight,
-                probeRailResizeStartHeight + probeRailResizeStartY - event.position.y);
-        resized();
-        return;
-    }
-    if (resizingDockSplit) {
-        dockSplitRatio = WorkspaceDock::clampedSplitRatio(
-                getLocalBounds().toFloat(),
-                event.position.x / (float) getWidth());
-        requestCanvasRepaint();
+    if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
     if (draggingProbeId.isNotEmpty()) {
@@ -768,15 +592,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
-    if (resizingProbeRail) {
-        resizingProbeRail = false;
-        settings.getGlobalSetting(AppSettings::GuideSpyDockHeight) =
-                roundToInt(probeRailState.expandedHeight);
-        return;
-    }
-    if (resizingDockSplit) {
-        resizingDockSplit = false;
-        settings.getGlobalSetting(AppSettings::GuideDockSplitPercent) = roundToInt(dockSplitRatio * 100.f);
+    if (dockInteraction->mouseUp()) {
         return;
     }
     const auto& scene = sceneBuilder.build(
@@ -902,7 +718,16 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return redo();
     }
 
+    if (handleDockNavigationKey(key)) {
+        return true;
+    }
+
     if (key == KeyPress::escapeKey) {
+        if (dockInteraction->focus().target != WorkspaceDockFocusTarget::None) {
+            dockInteraction->clearFocus();
+            requestCanvasRepaint();
+            return true;
+        }
         if (probeDetailState.isOpen()) {
             probeDetailState.close();
             notifyOverlayPresentationChanged();
@@ -1062,6 +887,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             guideShelfState,
             dockSplitRatio,
             probeRailState,
+            dockInteraction->focus(),
             probeDetailState,
             globalUnisonPreviewContext
     };
@@ -1318,6 +1144,9 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
     dock.hoveredGuideId = guideShelfState.hoveredGuideId;
+    dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
+            dockInteraction->focus().target);
+    dock.keyboardFocusItemId = dockInteraction->focus().itemId;
     dock.expandedGuideId = expandedGuideId;
     dock.dockBounds = workspaceDock.dock;
     dock.guideShelfBounds = workspaceDock.leftShelf;
@@ -1610,8 +1439,8 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        clearDockEphemeralState();
         probeDetailState.close();
-        probeRailState.horizontalOffset = 0.f;
         resized();
     }
     return loaded;
@@ -1626,6 +1455,11 @@ bool NodeCanvas::saveSnapshot() {
 bool NodeCanvas::loadSnapshot() {
     const auto result = authoring.loadSnapshot(snapshotFile());
     applyAuthoringResult(result);
+    if (result.succeeded) {
+        clearDockEphemeralState();
+        probeDetailState.close();
+        resized();
+    }
     return result.handled;
 }
 
@@ -1659,6 +1493,63 @@ bool NodeCanvas::clearSelection() {
         requestCanvasRepaint();
     }
     return cleared;
+}
+
+void NodeCanvas::showGuideActions(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr) {
+        return;
+    }
+
+    const int usageCount = graph.guideUsageCount(guideId);
+    AlertWindow dialog(
+            "Guide Curve",
+            "Rename this resource, or delete it and detach "
+                    + String(usageCount) + " assignment"
+                    + (usageCount == 1 ? "." : "s."),
+            AlertWindow::NoIcon,
+            this);
+    dialog.addTextEditor("name", guide->name, "Name:");
+    dialog.addButton("Rename", 1);
+    dialog.addButton("Delete", 2);
+    dialog.addButton("Duplicate", 3);
+    dialog.addButton("Move Left", 4);
+    dialog.addButton("Move Right", 5);
+    dialog.addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+
+    const int action = dialog.runModalLoop();
+    if (action == 1) {
+        if (commands.renameGuideCurve(
+                    guideId,
+                    dialog.getTextEditorContents("name")).succeeded()) {
+            editStatusMessage = "Guide Curve renamed";
+        }
+    } else if (action == 2 && commands.removeGuideCurve(guideId).succeeded()) {
+        guideShelfState.selectedGuideId = {};
+        dockInteraction->clearFocus();
+        editStatusMessage = "Guide Curve deleted";
+    } else if (action == 3) {
+        const GraphEditResult duplicated = commands.duplicateGuideCurve(guideId);
+        if (duplicated.succeeded()) {
+            guideShelfState.selectedGuideId = duplicated.nodeId;
+            dockInteraction->setFocus({ WorkspaceDockFocusTarget::GuideTile, duplicated.nodeId });
+            editStatusMessage = "Guide Curve duplicated";
+        }
+    } else if (action == 4 || action == 5) {
+        const int direction = action == 4 ? -1 : 1;
+        if (commands.reorderGuideCurve(guideId, guide->shelfOrder + direction).succeeded()) {
+            editStatusMessage = "Guide Curve reordered";
+        }
+    }
+    requestCanvasRepaint();
+}
+
+bool NodeCanvas::handleDockNavigationKey(const KeyPress& key) {
+    return dockInteraction->keyPressed(key, getLocalBounds().toFloat());
+}
+
+void NodeCanvas::clearDockEphemeralState() {
+    dockInteraction->clearEphemeralState();
 }
 
 bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {

@@ -17,12 +17,6 @@ struct StringHash {
     }
 };
 
-String activeGuideId(const GuideCurveShelfState& state) {
-    return state.hoveredGuideId.isNotEmpty()
-            ? state.hoveredGuideId
-            : state.selectedGuideId;
-}
-
 void paintHighlight(
         Graphics& graphics,
         Rectangle<float> bounds,
@@ -59,10 +53,22 @@ const Node* firstVisibleTarget(
 
 }
 
+String GuideRelationshipPresentation::highlightGuideId(
+        const GuideCurveShelfState& state) {
+    return state.hoveredGuideId.isNotEmpty()
+            ? state.hoveredGuideId
+            : state.selectedGuideId;
+}
+
+String GuideRelationshipPresentation::tetherGuideId(
+        const GuideCurveShelfState& state) {
+    return state.hoveredGuideId;
+}
+
 void GuideRelationshipPresentation::paintHighlights(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const String guideId = activeGuideId(frame.guideShelfState);
+    const String guideId = highlightGuideId(frame.guideShelfState);
     const GuideCurveResource* guide = frame.graph.findGuideCurve(guideId);
     if (guide == nullptr) {
         return;
@@ -88,7 +94,7 @@ void GuideRelationshipPresentation::paintTether(
         return;
     }
 
-    const String guideId = activeGuideId(frame.guideShelfState);
+    const String guideId = tetherGuideId(frame.guideShelfState);
     const GuideCurveResource* guide = frame.graph.findGuideCurve(guideId);
     const Node* target = firstVisibleTarget(frame, guideId);
     if (guide == nullptr || target == nullptr) {
