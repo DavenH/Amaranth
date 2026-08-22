@@ -148,6 +148,9 @@ NodeCanvas::NodeCanvas() :
             settings.getGlobalSettingValue(
                     AppSettings::PreviewVoiceLengthMilliseconds) / 1000.0);
     probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
+    probeRailState.expandedHeight = jmax(
+            WorkspaceDock::minimumExpandedHeight,
+            (float) settings.getGlobalSettingValue(AppSettings::GuideSpyDockHeight));
     refreshCompiledState();
 
     setOpaque(true);
@@ -253,9 +256,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const WorkspaceDockLayout dock = workspaceDockLayout();
     SignalProbeRail& probeRail = canvasPresentation.probeRail();
     if (!probeRailState.expanded
-            && SignalProbeRail::boundsFor(workspace, probeRailState).contains(event.position)) {
+            && dock.dock.contains(event.position)) {
         probeRailState.expanded = true;
         settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = true;
         resized();
@@ -271,6 +275,24 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             probeRailState,
             dockSplitRatio,
             guideShelfState);
+    if (dock.collapseHandle.contains(event.position)) {
+        probeRailState.expanded = false;
+        settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = false;
+        probeDetailState.close();
+        notifyOverlayPresentationChanged();
+        resized();
+        return;
+    }
+    if (dock.resizeHandle.contains(event.position)) {
+        resizingProbeRail = true;
+        probeRailResizeStartHeight = probeRailState.expandedHeight;
+        probeRailResizeStartY = event.position.y;
+        return;
+    }
+    if (dock.divider.contains(event.position)) {
+        resizingDockSplit = true;
+        return;
+    }
     if (guideShelfState.minimized && guideShelf.contains(event.position)) {
         guideShelfState.minimized = false;
         settings.getGlobalSetting(AppSettings::GuideShelfMinimized) = false;
@@ -282,17 +304,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         probeRailState.minimized = false;
         settings.getGlobalSetting(AppSettings::SpyShelfMinimized) = false;
         requestCanvasRepaint();
-        return;
-    }
-    const float dividerX = GuideCurveShelf::guideWorkspace(
-            workspace,
-            dockSplitRatio,
-            guideShelfState.minimized,
-            probeRailState.minimized).getRight();
-    if (!guideShelfState.minimized && !probeRailState.minimized
-            && Rectangle<float>(dividerX - 4.f, guideShelf.getY(), 8.f, guideShelf.getHeight())
-                .contains(event.position)) {
-        resizingDockSplit = true;
         return;
     }
     if (GuideCurveShelf::addButtonBounds(
@@ -424,22 +435,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             resized();
         }
         requestCanvasRepaint();
-        return;
-    }
-    if (probeRail.collapseHandleFor(spyWorkspace, probeRailState).contains(event.position)) {
-        probeRailState.expanded = !probeRailState.expanded;
-        settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = probeRailState.expanded;
-        if (!probeRailState.expanded) {
-            probeDetailState.close();
-            notifyOverlayPresentationChanged();
-        }
-        resized();
-        return;
-    }
-    if (probeRail.resizeHandleFor(spyWorkspace, probeRailState).contains(event.position)) {
-        resizingProbeRail = true;
-        probeRailResizeStartHeight = probeRailState.expandedHeight;
-        probeRailResizeStartY = event.position.y;
         return;
     }
     const String closeProbe = probeRail.closeProbeAt(
@@ -700,7 +695,9 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
     if (resizingDockSplit) {
-        dockSplitRatio = jlimit(0.2f, 0.8f, event.position.x / (float) getWidth());
+        dockSplitRatio = WorkspaceDock::clampedSplitRatio(
+                getLocalBounds().toFloat(),
+                event.position.x / (float) getWidth());
         requestCanvasRepaint();
         return;
     }
@@ -756,6 +753,8 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     }
     if (resizingProbeRail) {
         resizingProbeRail = false;
+        settings.getGlobalSetting(AppSettings::GuideSpyDockHeight) =
+                roundToInt(probeRailState.expandedHeight);
         return;
     }
     if (resizingDockSplit) {
@@ -1057,7 +1056,19 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 }
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
-    return SignalProbeRail::contentBoundsFor(getLocalBounds().toFloat(), probeRailState);
+    return workspaceDockLayout().content;
+}
+
+WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
+    return WorkspaceDock::layout(
+            getLocalBounds().toFloat(),
+            {
+                    probeRailState.expanded,
+                    guideShelfState.minimized,
+                    probeRailState.minimized,
+                    probeRailState.expandedHeight,
+                    dockSplitRatio
+            });
 }
 
 float NodeCanvas::tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const {
@@ -1270,6 +1281,7 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.canvasContentBounds = canvasContentBounds();
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const WorkspaceDockLayout workspaceDock = workspaceDockLayout();
     const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
             workspace,
             dockSplitRatio,
@@ -1289,23 +1301,12 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.spyHorizontalOffset = probeRailState.horizontalOffset;
     dock.selectedGuideId = guideShelfState.selectedGuideId;
     dock.expandedGuideId = expandedGuideId;
-    dock.dockBounds = SignalProbeRail::boundsFor(workspace, probeRailState);
-    dock.guideShelfBounds = GuideCurveShelf::boundsFor(
-            workspace,
-            probeRailState,
-            dockSplitRatio,
-            guideShelfState);
-    dock.spyShelfBounds = SignalProbeRail::boundsFor(spyWorkspace, probeRailState);
-    const float dividerX = GuideCurveShelf::guideWorkspace(
-            workspace,
-            dockSplitRatio,
-            guideShelfState.minimized,
-            probeRailState.minimized).getRight();
-    dock.dividerBounds = !guideShelfState.minimized && !probeRailState.minimized
-            ? Rectangle<float>(dividerX - 4.f, dock.dockBounds.getY(), 8.f, dock.dockBounds.getHeight())
-            : Rectangle<float> {};
-    dock.collapseBounds = SignalProbeRail::collapseHandleFor(workspace, probeRailState);
-    dock.resizeBounds = SignalProbeRail::resizeHandleFor(workspace, probeRailState);
+    dock.dockBounds = workspaceDock.dock;
+    dock.guideShelfBounds = workspaceDock.leftShelf;
+    dock.spyShelfBounds = workspaceDock.rightShelf;
+    dock.dividerBounds = workspaceDock.divider;
+    dock.collapseBounds = workspaceDock.collapseHandle;
+    dock.resizeBounds = workspaceDock.resizeHandle;
     dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
             workspace,
             probeRailState,

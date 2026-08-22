@@ -1,5 +1,6 @@
 #include "SignalProbeRail.h"
 
+#include "WorkspaceDock.h"
 #include "../Graph/GraphValidator.h"
 
 #include <algorithm>
@@ -30,32 +31,33 @@ const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
 Rectangle<float> SignalProbeRail::boundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
-    const float maximumHeight = jmax(minimumExpandedHeight, workspace.getHeight() * 0.4f);
-    const float height = state.expanded
-            ? jlimit(minimumExpandedHeight, maximumHeight, state.expandedHeight)
-            : collapsedHeight;
-    return workspace.removeFromBottom(height);
+    return WorkspaceDock::layout(
+            workspace,
+            { state.expanded, false, false, state.expandedHeight, 0.5f }).dock;
 }
 
 Rectangle<float> SignalProbeRail::contentBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
-    return workspace.withTrimmedBottom(boundsFor(workspace, state).getHeight());
+    return WorkspaceDock::layout(
+            workspace,
+            { state.expanded, false, false, state.expandedHeight, 0.5f }).content;
 }
 
 Rectangle<float> SignalProbeRail::resizeHandleFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
-    return state.expanded ? boundsFor(workspace, state).removeFromTop(7.f) : Rectangle<float> {};
+    return WorkspaceDock::layout(
+            workspace,
+            { state.expanded, false, false, state.expandedHeight, 0.5f }).resizeHandle;
 }
 
 Rectangle<float> SignalProbeRail::collapseHandleFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state) {
-    const Rectangle<float> rail = boundsFor(workspace, state);
-    return state.expanded
-            ? Rectangle<float>(rail.getRight() - 128.f, rail.getY() + 8.f, 116.f, 22.f)
-            : Rectangle<float>(rail.getRight() - 174.f, rail.getY(), 150.f, rail.getHeight());
+    return WorkspaceDock::layout(
+            workspace,
+            { state.expanded, false, false, state.expandedHeight, 0.5f }).collapseHandle;
 }
 
 Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
@@ -64,8 +66,8 @@ Rectangle<float> SignalProbeRail::refreshModeBoundsFor(
     if (!state.expanded) {
         return {};
     }
-    const Rectangle<float> collapse = collapseHandleFor(workspace, state);
-    return { collapse.getX() - 100.f, collapse.getY(), 92.f, collapse.getHeight() };
+    const Rectangle<float> rail = boundsFor(workspace, state);
+    return { rail.getRight() - 104.f, rail.getY() + 10.f, 92.f, 18.f };
 }
 
 Rectangle<float> SignalProbeRail::minimizeButtonBoundsFor(
@@ -82,13 +84,13 @@ Rectangle<float> SignalProbeRail::tileBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& state,
         int tileIndex) {
-    Rectangle<float> rail = boundsFor(workspace, state);
-    rail = rail.reduced(kRailPadding, 10.f);
+    const Rectangle<float> rail = boundsFor(workspace, state);
     return {
-            rail.getX() + (float) tileIndex * (kTileWidth + kTileGap) - state.horizontalOffset,
-            rail.getY(),
+            rail.getX() + kRailPadding + (float) tileIndex * (kTileWidth + kTileGap)
+                    - state.horizontalOffset,
+            rail.getY() + 42.f,
             kTileWidth,
-            rail.getHeight()
+            rail.getHeight() - 54.f
     };
 }
 
@@ -360,8 +362,7 @@ void SignalProbeRail::paintRail(
         const NodeGraph& graph,
         const GraphPreviewResult& previews,
         Rectangle<float> workspace,
-        const SignalProbeRailState& state,
-        int guideCount) {
+        const SignalProbeRailState& state) {
     const Rectangle<float> rail = boundsFor(workspace, state);
     graphics.setColour(kRailBackground);
     graphics.fillRect(rail);
@@ -370,24 +371,25 @@ void SignalProbeRail::paintRail(
 
     const auto probes = orderedProbes(graph);
     if (state.minimized) {
+        Rectangle<float> labelArea = rail;
+        Rectangle<float> drawerButton = labelArea.removeFromTop(30.f).reduced(4.f);
+        graphics.setColour(Colour(0xff26313d));
+        graphics.fillRoundedRectangle(drawerButton, 5.f);
         graphics.setColour(kText);
-        graphics.setFont(FontOptions(13.f, Font::bold));
-        graphics.drawText("<", rail, Justification::centred);
+        graphics.setFont(FontOptions(12.f, Font::bold));
+        graphics.drawText("<", drawerButton, Justification::centred);
+        Graphics::ScopedSaveState labelTransform(graphics);
+        graphics.addTransform(AffineTransform::rotation(
+                MathConstants<float>::halfPi,
+                labelArea.getCentreX(),
+                labelArea.getCentreY()));
+        graphics.drawText(
+                "SPIES (" + String((int) probes.size()) + ")",
+                Rectangle<float>(labelArea.getHeight() - 8.f, labelArea.getWidth())
+                        .withCentre(labelArea.getCentre()),
+                Justification::centred);
         return;
     }
-    const Rectangle<float> collapse = collapseHandleFor(workspace, state);
-    graphics.setColour(Colour(0xff26313d));
-    graphics.fillRoundedRectangle(collapse, 6.f);
-    graphics.setColour(kText);
-    graphics.setFont(FontOptions(12.f, Font::bold));
-    graphics.drawText(
-            state.expanded
-                    ? "Hide Dock"
-                    : "Guides (" + String(guideCount) + ") - Spies ("
-                            + String((int) probes.size()) + ")",
-            collapse,
-            Justification::centred);
-
     if (!state.expanded) {
         return;
     }
@@ -417,7 +419,9 @@ void SignalProbeRail::paintRail(
             Justification::centred);
 
     if (probes.empty()) {
-        Rectangle<float> vacancy(280.f, 92.f);
+        Rectangle<float> vacancy(
+                jmin(280.f, jmax(40.f, rail.getWidth() - 24.f)),
+                jmin(92.f, jmax(36.f, rail.getHeight() - 54.f)));
         vacancy = vacancy.withCentre(rail.getCentre().withY(rail.getCentreY() + 12.f));
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(vacancy, 8.f);

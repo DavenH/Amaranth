@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "SignalProbeRail.h"
+#include "WorkspaceDock.h"
 #include "../Graph/NodeGraph.h"
 #include "../Nodes/Effect2D/Effect2DWidget.h"
 
@@ -19,7 +20,7 @@ struct GuideCurveShelfState {
 
 class GuideCurveShelf {
 public:
-    static constexpr float minimizedWidth = 28.f;
+    static constexpr float minimizedWidth = WorkspaceDock::drawerWidth;
 
     static Rectangle<float> guideWorkspace(
             Rectangle<float> workspace,

@@ -60,6 +60,7 @@ void Settings::initialiseSettings() {
     addSetting(GuideShelfMinimized,   false);
     addSetting(SpyShelfMinimized,     false);
     addSetting(GuideSpyDockExpanded,  true);
+    addSetting(GuideSpyDockHeight,     190);
     addSetting(SelectWithRight,         false);
     addSetting(Tool,                    Tools::Selector);
     addSetting(UpdateGfxRealtime,       true);

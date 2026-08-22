@@ -47,6 +47,19 @@ Rectangle<float> previewBoundsFor(
     return bounds.reduced(4.f, 5.f);
 }
 
+WorkspaceDockState workspaceDockState(
+        const SignalProbeRailState& dockState,
+        float splitRatio,
+        const GuideCurveShelfState& guideState) {
+    return {
+            dockState.expanded,
+            guideState.minimized,
+            dockState.minimized,
+            dockState.expandedHeight,
+            splitRatio
+    };
+}
+
 }
 
 Rectangle<float> GuideCurveShelf::guideWorkspace(
@@ -54,15 +67,10 @@ Rectangle<float> GuideCurveShelf::guideWorkspace(
         float splitRatio,
         bool guidesMinimized,
         bool spiesMinimized) {
-    if (guidesMinimized && !spiesMinimized) {
-        return workspace.removeFromLeft(minimizedWidth);
-    }
-    if (spiesMinimized && !guidesMinimized) {
-        workspace.removeFromRight(minimizedWidth);
-        return workspace;
-    }
-    const float ratio = jlimit(0.2f, 0.8f, splitRatio);
-    return workspace.removeFromLeft(workspace.getWidth() * ratio);
+    const WorkspaceDockLayout layout = WorkspaceDock::layout(
+            workspace,
+            { true, guidesMinimized, spiesMinimized, 190.f, splitRatio });
+    return layout.leftShelf.withY(workspace.getY()).withHeight(workspace.getHeight());
 }
 
 Rectangle<float> GuideCurveShelf::spyWorkspace(
@@ -70,16 +78,10 @@ Rectangle<float> GuideCurveShelf::spyWorkspace(
         float splitRatio,
         bool guidesMinimized,
         bool spiesMinimized) {
-    if (guidesMinimized && !spiesMinimized) {
-        workspace.removeFromLeft(minimizedWidth);
-        return workspace;
-    }
-    if (spiesMinimized && !guidesMinimized) {
-        return workspace.removeFromRight(minimizedWidth);
-    }
-    const float ratio = jlimit(0.2f, 0.8f, splitRatio);
-    workspace.removeFromLeft(workspace.getWidth() * ratio);
-    return workspace;
+    const WorkspaceDockLayout layout = WorkspaceDock::layout(
+            workspace,
+            { true, guidesMinimized, spiesMinimized, 190.f, splitRatio });
+    return layout.rightShelf.withY(workspace.getY()).withHeight(workspace.getHeight());
 }
 
 Rectangle<float> GuideCurveShelf::boundsFor(
@@ -87,16 +89,9 @@ Rectangle<float> GuideCurveShelf::boundsFor(
         const SignalProbeRailState& dockState,
         float splitRatio,
         const GuideCurveShelfState& state) {
-    Rectangle<float> guideWorkspaceBounds = guideWorkspace(
+    return WorkspaceDock::layout(
             workspace,
-            splitRatio,
-            state.minimized,
-            dockState.minimized);
-    Rectangle<float> dock = SignalProbeRail::boundsFor(guideWorkspaceBounds, dockState);
-    if (!state.minimized) {
-        return dock;
-    }
-    return dock.removeFromLeft(minimizedWidth);
+            workspaceDockState(dockState, splitRatio, state)).leftShelf;
 }
 
 Rectangle<float> GuideCurveShelf::addButtonBounds(
@@ -104,6 +99,9 @@ Rectangle<float> GuideCurveShelf::addButtonBounds(
         const SignalProbeRailState& dockState,
         float splitRatio,
         const GuideCurveShelfState& state) {
+    if (!dockState.expanded || state.minimized) {
+        return {};
+    }
     Rectangle<float> header = boundsFor(workspace, dockState, splitRatio, state).reduced(kPadding, 8.f);
     header.removeFromTop(24.f);
     return header.removeFromRight(22.f);
@@ -114,6 +112,9 @@ Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
         const SignalProbeRailState& dockState,
         float splitRatio,
         const GuideCurveShelfState& state) {
+    if (!dockState.expanded || state.minimized) {
+        return {};
+    }
     Rectangle<float> header = boundsFor(workspace, dockState, splitRatio, state).reduced(kPadding, 8.f);
     header.removeFromTop(24.f);
     return header.removeFromLeft(18.f);
@@ -213,9 +214,22 @@ void GuideCurveShelf::paint(
     }
 
     if (state.minimized) {
+        Rectangle<float> drawerButton = shelf.removeFromTop(30.f).reduced(4.f);
+        graphics.setColour(Colour(0xff26313d));
+        graphics.fillRoundedRectangle(drawerButton, 5.f);
         graphics.setColour(kText);
-        graphics.setFont(FontOptions(13.f, Font::bold));
-        graphics.drawText(">", shelf, Justification::centred);
+        graphics.setFont(FontOptions(12.f, Font::bold));
+        graphics.drawText(">", drawerButton, Justification::centred);
+        Graphics::ScopedSaveState labelTransform(graphics);
+        graphics.addTransform(AffineTransform::rotation(
+                -MathConstants<float>::halfPi,
+                shelf.getCentreX(),
+                shelf.getCentreY()));
+        graphics.drawText(
+                "GUIDES (" + String((int) graph.getGuideCurves().size()) + ")",
+                Rectangle<float>(shelf.getHeight() - 8.f, shelf.getWidth())
+                        .withCentre(shelf.getCentre()),
+                Justification::centred);
         return;
     }
 
@@ -240,7 +254,9 @@ void GuideCurveShelf::paint(
     graphics.drawText("+", plus, Justification::centred);
 
     if (graph.getGuideCurves().empty()) {
-        Rectangle<float> vacancy(280.f, 92.f);
+        Rectangle<float> vacancy(
+                jmin(280.f, jmax(40.f, shelf.getWidth() - 24.f)),
+                jmin(92.f, jmax(36.f, shelf.getHeight() - 54.f)));
         vacancy = vacancy.withCentre(shelf.getCentre().withY(shelf.getCentreY() + 12.f));
         graphics.setColour(kTileBackground);
         graphics.fillRoundedRectangle(vacancy, 8.f);

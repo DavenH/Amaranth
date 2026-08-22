@@ -4,6 +4,7 @@
 
 #include "NodeCanvasScene.h"
 #include "NodePreviewRenderer.h"
+#include "WorkspaceDock.h"
 #include "../Graph/GraphRenderSemanticResolver.h"
 #include "../Runtime/NodeUpdateGraph.h"
 
@@ -23,8 +24,8 @@ class SignalProbeRail {
 public:
     explicit SignalProbeRail(NodePreviewRenderer& rendererToUse) : renderer(rendererToUse) {}
 
-    static constexpr float collapsedHeight = 28.f;
-    static constexpr float minimumExpandedHeight = 120.f;
+    static constexpr float collapsedHeight = WorkspaceDock::collapsedHeight;
+    static constexpr float minimumExpandedHeight = WorkspaceDock::minimumExpandedHeight;
 
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
@@ -80,8 +81,7 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state,
-            int guideCount = 0);
+            const SignalProbeRailState& state);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);

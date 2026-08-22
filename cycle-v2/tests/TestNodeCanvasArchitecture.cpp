@@ -28,6 +28,7 @@
 #include "../src/UI/SignalProbeRail.h"
 #include "../src/UI/TransformCompactEditor.h"
 #include "../src/UI/VoiceContextCompactEditor.h"
+#include "../src/UI/WorkspaceDock.h"
 #include "../src/Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
@@ -66,11 +67,11 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     const Rectangle<float> collapse = SignalProbeRail::collapseHandleFor(workspace, expanded);
     const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(workspace, expanded);
     const Rectangle<float> rail = SignalProbeRail::boundsFor(workspace, expanded);
-    REQUIRE(collapse.getBottom() <= rail.getY());
-    REQUIRE(refreshMode.getBottom() <= rail.getY());
+    REQUIRE(rail.contains(collapse));
+    REQUIRE(rail.contains(refreshMode));
     REQUIRE_FALSE(collapse.intersects(refreshMode));
     REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
-            < SignalProbeRail::boundsFor(workspace, expanded).getY() + 20.f);
+            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY() + 42.f));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -82,6 +83,45 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
 
     expanded.expanded = false;
     REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
+}
+
+TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
+        "[cycle-v2][canvas][guide-dock]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
+    WorkspaceDockState state;
+    const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
+
+    REQUIRE(balanced.content.getBottom() == balanced.dock.getY());
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(500.f));
+    REQUIRE(balanced.rightShelf.getWidth() == Catch::Approx(500.f));
+    REQUIRE(balanced.leftShelf.getRight() == Catch::Approx(balanced.rightShelf.getX()));
+    REQUIRE(balanced.dock.contains(balanced.collapseHandle));
+    REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
+
+    state.splitRatio = 0.05f;
+    const WorkspaceDockLayout clamped = WorkspaceDock::layout(workspace, state);
+    REQUIRE(clamped.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::minimumShelfWidth));
+
+    state.leftMinimized = true;
+    const WorkspaceDockLayout leftDrawer = WorkspaceDock::layout(workspace, state);
+    REQUIRE(leftDrawer.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::drawerWidth));
+    REQUIRE(leftDrawer.rightShelf.getWidth()
+            == Catch::Approx(workspace.getWidth() - WorkspaceDock::drawerWidth));
+    REQUIRE(leftDrawer.divider.isEmpty());
+
+    state.leftMinimized = false;
+    state.expanded = false;
+    const WorkspaceDockLayout collapsed = WorkspaceDock::layout(workspace, state);
+    REQUIRE(collapsed.dock.getHeight() == Catch::Approx(WorkspaceDock::collapsedHeight));
+    REQUIRE(collapsed.leftShelf.isEmpty());
+    REQUIRE(collapsed.resizeHandle.isEmpty());
+
+    const Rectangle<float> smallWorkspace { 0.f, 0.f, 360.f, 400.f };
+    state.expanded = true;
+    state.splitRatio = 0.8f;
+    const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
+    REQUIRE(small.leftShelf.getWidth() == Catch::Approx(180.f));
+    REQUIRE(small.rightShelf.getWidth() == Catch::Approx(180.f));
 }
 
 TEST_CASE("Signal probe detail uses the audition-note period resolution",

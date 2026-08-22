@@ -462,6 +462,15 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(
+            frame.workspaceBounds,
+            {
+                    frame.probeRailState.expanded,
+                    frame.guideShelfState.minimized,
+                    frame.probeRailState.minimized,
+                    frame.probeRailState.expandedHeight,
+                    frame.dockSplitRatio
+            });
     if (frame.probeRailState.expanded) {
         guideCurveShelf.paint(
                 graphics,
@@ -482,8 +491,13 @@ void NodeCanvasPresentation::paint(
                             frame.guideShelfState.minimized,
                             frame.probeRailState.minimized)
                     : frame.workspaceBounds,
-            frame.probeRailState,
-            (int) frame.graph.getGuideCurves().size());
+            frame.probeRailState);
+    WorkspaceDock::paintChrome(
+            graphics,
+            dock,
+            "Guides (" + String((int) frame.graph.getGuideCurves().size()) + ")",
+            "Spies (" + String((int) frame.graph.getSignalProbes().size()) + ")",
+            frame.probeRailState.expanded);
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,
