@@ -32,6 +32,10 @@
     { "command": "assertState", "path": "guideDock.keyboardFocusItemId", "equals": "probe5" },
     { "command": "key", "area": "canvas", "key": "return" },
     { "command": "assertState", "path": "probeDetailId", "equals": "probe5" },
+    { "command": "key", "area": "canvas", "key": "delete" },
+    { "command": "assertState", "path": "probeCount", "equals": 4 },
+    { "command": "assertState", "path": "probeDetailId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "spyRefresh" },
     { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": true

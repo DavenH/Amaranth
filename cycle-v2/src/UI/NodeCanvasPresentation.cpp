@@ -498,8 +498,8 @@ void NodeCanvasPresentation::paint(
     WorkspaceDock::paintChrome(
             graphics,
             dock,
-            "Guides (" + String((int) frame.graph.getGuideCurves().size()) + ")",
-            "Spies (" + String((int) frame.graph.getSignalProbes().size()) + ")",
+            "Curve Guides",
+            "Spies",
             frame.probeRailState.expanded,
             frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
     signalProbeDetailView.paint(

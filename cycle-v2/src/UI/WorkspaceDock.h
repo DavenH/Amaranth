@@ -25,6 +25,12 @@ struct WorkspaceDockLayout {
     juce::Rectangle<float> collapseHandle;
 };
 
+enum class WorkspaceDockIcon {
+    Add,
+    ChevronLeft,
+    ChevronRight
+};
+
 enum class WorkspaceDockFocusTarget {
     None,
     Collapse,
@@ -35,8 +41,7 @@ enum class WorkspaceDockFocusTarget {
     SpyDrawer,
     SpyMinimize,
     SpyRefresh,
-    SpyTile,
-    SpyRemove
+    SpyTile
 };
 
 struct WorkspaceDockFocus {
@@ -89,7 +94,7 @@ public:
     static void paintIconButton(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds,
-            const juce::String& symbol,
+            WorkspaceDockIcon icon,
             bool focused);
     static void paintTileChrome(
             juce::Graphics& graphics,

@@ -326,14 +326,17 @@ contracts:
   current hover may draw the single relationship tether. Hover state clears
   when the pointer leaves the canvas, and selection/hover state cannot leak
   across document loads;
-- global collapse, per-shelf minimize/restore, Guide creation, Spy refresh,
-  and Spy tile removal use legible desktop-sized targets and distinct
-  symbols. Shelf controls stay with their own shelf instead of clustering at
-  the divider;
-- Guide and Spy tiles share one chrome grammar: neutral inactive border,
-  optional terse identity, preview region, and active focus/selection border.
-  Spy domain colour and its close action remain meaningful; Guide shelf colour
-  tokens and trailing actions do not;
+- global collapse, per-shelf minimize/restore, Guide creation, and Spy refresh
+  use legible desktop-sized targets and distinct symbols. Shelf controls stay
+  with their own shelf instead of clustering at the divider;
+- Guide and Spy tiles share one chrome grammar: consistent geometry, optional
+  terse identity, preview region, and active focus/selection treatment.
+  Spy domain colour remains meaningful as its cable-matched outline; Guide
+  shelf colour tokens and trailing actions do not. Spy tiles likewise have no
+  colour dot or trailing close glyph;
+- shelf disclosure icons are path-rendered rounded chevrons, not font angle
+  brackets. Expanded, drawer, and collapsed labels omit collection counts, and
+  the Guide shelf is named `Curve Guides` in UI copy;
 - vacancy presentation remains visible but occupies one quiet tile slot rather
   than a large centred card. Per-tile Guide usage sublabels are removed from
   the shelf; relationship detail remains available through target highlighting;
@@ -401,14 +404,14 @@ other.
 
 Per-shelf minimization is distinct from global collapse:
 
-- minimizing Guides leaves a narrow vertical `GUIDES (n) >` drawer at the left
+- minimizing Guides leaves a narrow vertical `CURVE GUIDES` drawer at the left
   side of the dock content and gives the Spy shelf the remaining width;
-- minimizing Spies leaves a mirrored `< SPIES (n)` drawer at the right side;
+- minimizing Spies leaves a mirrored `SPIES` drawer at the right side;
 - the chevron points into the area the drawer will occupy when opened;
 - restoring a shelf restores its prior divider ratio and horizontal offset;
 - if both shelves are minimized, the global collapsed presentation is used;
-- global collapse shows both counts and any disconnected-Spy warning while
-  stopping tile rendering; canvas Spy markers remain visible.
+- global collapse names both shelves without counts while stopping tile
+  rendering; canvas Spy markers remain visible.
 
 Dock height, divider ratio, global collapse, per-shelf minimization, horizontal
 offsets, and currently selected Guide/Spy are application UI state and do not
@@ -444,6 +447,15 @@ Phase Layer 1 · Time ×2
 
 Activating a usage selects its node and, when the editor supports it, selects
 or reveals the relevant cube/component.
+
+## Spy Shelf Presentation
+
+Spy tiles use the signal-domain/cable colour as their persistent outline, so
+colour communicates the existing graph relationship rather than decorating an
+otherwise neutral card. They reserve no header row: the preview fills the tile
+inset, with only the terse ordinal overlaid. The former colour dot and trailing
+close glyph/hit target are absent. Keyboard Delete remains the compact removal
+gesture for a focused Spy tile.
 
 ## Assignment Workflow
 
@@ -690,8 +702,8 @@ reorder the slices rather than introducing a transitional second authority.
 - An empty shelf retains its region and node-shaped vacancy indicator.
 - Minimizing one shelf leaves a directional vertical drawer and expands its
   peer; restoring it recovers the prior ratio and scroll offset.
-- Global collapse shows both counts, stops tile rendering, and retains canvas
-  Spy markers.
+- Global collapse names both shelves without counts, stops tile rendering, and
+  retains canvas Spy markers.
 - Guide and Spy scrolling are independent and clipped to their own shelf.
 - At small window sizes the drawer/minimum-width rules prevent unusable tile
   compression.
@@ -711,8 +723,9 @@ reorder the slices rather than introducing a transitional second authority.
   leaving the canvas removes it immediately.
 - Loading another graph clears stale Guide/Spy selection, hover, keyboard
   focus, and horizontal offsets.
-- Both shelves use the shared tile/header grammar, neutral inactive borders,
-  legible metadata, and visible overflow position feedback.
+- Both shelves use the shared tile/header grammar and visible overflow position
+  feedback. Guide borders remain neutral; Spy borders carry their meaningful
+  signal-domain/cable colour.
 
 ## Deletion Targets
 
@@ -811,3 +824,8 @@ Completed on macOS through the repository build and native launch scripts:
   permission was renewed, the native fixture and OS-rendered capture also pass;
   `/private/tmp/cycle-v2-guide-populated-native-v2.png` confirms the simplified
   chrome and expanded authoritative previews.
+- The matching Spy refinement removes colour dots and close glyphs, expands
+  signal previews across the recovered header row, and moves the meaningful
+  cable-domain colour to each tile outline. Rounded path-rendered disclosures,
+  count-free `Curve Guides`/`Spies` labels, keyboard Spy deletion, the focused
+  dock run, the full suite, and the same native capture all pass.

@@ -12,6 +12,30 @@ const juce::Colour kChromeText { 0xffe2e8ef };
 const juce::Colour kFocus { 0xff79b8ff };
 const juce::Colour kTileBackground { 0xff11171d };
 
+void paintIconGlyph(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds,
+        WorkspaceDockIcon icon) {
+    const float centreX = bounds.getCentreX();
+    const float centreY = bounds.getCentreY();
+    juce::Path path;
+    if (icon == WorkspaceDockIcon::Add) {
+        path.startNewSubPath(centreX - 5.f, centreY);
+        path.lineTo(centreX + 5.f, centreY);
+        path.startNewSubPath(centreX, centreY - 5.f);
+        path.lineTo(centreX, centreY + 5.f);
+    } else {
+        const float direction = icon == WorkspaceDockIcon::ChevronRight ? 1.f : -1.f;
+        path.startNewSubPath(centreX - 3.f * direction, centreY - 5.f);
+        path.lineTo(centreX + 3.f * direction, centreY);
+        path.lineTo(centreX - 3.f * direction, centreY + 5.f);
+    }
+    graphics.strokePath(path, juce::PathStrokeType(
+            1.8f,
+            juce::PathStrokeType::curved,
+            juce::PathStrokeType::rounded));
+}
+
 }
 
 float WorkspaceDock::clampedSplitRatio(
@@ -151,15 +175,14 @@ float WorkspaceDock::offsetToRevealTile(
 void WorkspaceDock::paintIconButton(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
-        const juce::String& symbol,
+        WorkspaceDockIcon icon,
         bool focused) {
     graphics.setColour(kChromeBackground);
     graphics.fillRoundedRectangle(bounds, 5.f);
     graphics.setColour(focused ? kFocus : kChromeBorder);
     graphics.drawRoundedRectangle(bounds, 5.f, focused ? 2.f : 1.f);
     graphics.setColour(kChromeText);
-    graphics.setFont(juce::FontOptions(15.f, juce::Font::bold));
-    graphics.drawText(symbol, bounds, juce::Justification::centred);
+    paintIconGlyph(graphics, bounds, icon);
 }
 
 void WorkspaceDock::paintTileChrome(
@@ -173,7 +196,7 @@ void WorkspaceDock::paintTileChrome(
     graphics.fillRoundedRectangle(tile, 7.f);
 
     const bool active = selected || hovered || focused;
-    const juce::Colour border = active ? token.brighter(0.15f) : kChromeBorder;
+    const juce::Colour border = active ? token.brighter(0.15f) : token;
     graphics.setColour(border);
     graphics.drawRoundedRectangle(tile, 7.f, active ? 2.f : 1.f);
     if (focused) {
@@ -255,7 +278,10 @@ void WorkspaceDock::paintChrome(
     chevron.startNewSubPath(centreX - 5.f, centreY - 2.f * direction);
     chevron.lineTo(centreX, centreY + 3.f * direction);
     chevron.lineTo(centreX + 5.f, centreY - 2.f * direction);
-    graphics.strokePath(chevron, juce::PathStrokeType(1.5f));
+    graphics.strokePath(chevron, juce::PathStrokeType(
+            1.5f,
+            juce::PathStrokeType::curved,
+            juce::PathStrokeType::rounded));
 }
 
 }

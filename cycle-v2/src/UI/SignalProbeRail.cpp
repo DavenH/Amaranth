@@ -17,6 +17,15 @@ const Colour kTileBackground { 0xff11171d };
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 
+void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
+    graphics.setColour(kText.withAlpha(0.86f));
+    graphics.setFont(FontOptions(12.f, Font::bold));
+    graphics.drawText(
+            String(ordinal),
+            previewBounds.reduced(7.f).removeFromTop(20.f),
+            Justification::centredLeft);
+}
+
 const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
     return isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())
             ? &graph.getEdges()[(size_t) edgeIndex]
@@ -257,10 +266,6 @@ Point<float> SignalProbeRail::markerCentre(
     return source != scene.targets.end() ? source->bounds.getCentre() : Point<float>();
 }
 
-Rectangle<float> SignalProbeRail::closeBounds(Rectangle<float> tile) {
-    return Rectangle<float>(27.f, 27.f).withCentre({ tile.getRight() - 17.f, tile.getY() + 17.f });
-}
-
 String SignalProbeRail::probeAt(
         Point<float> position,
         Rectangle<float> workspace,
@@ -272,23 +277,6 @@ String SignalProbeRail::probeAt(
     const auto probes = orderedProbes(graph);
     for (int index = 0; index < (int) probes.size(); ++index) {
         if (tileBoundsFor(workspace, state, index).contains(position)) {
-            return probes[(size_t) index]->id;
-        }
-    }
-    return {};
-}
-
-String SignalProbeRail::closeProbeAt(
-        Point<float> position,
-        Rectangle<float> workspace,
-        const NodeGraph& graph,
-        const SignalProbeRailState& state) const {
-    if (!state.expanded || state.minimized) {
-        return {};
-    }
-    const auto probes = orderedProbes(graph);
-    for (int index = 0; index < (int) probes.size(); ++index) {
-        if (closeBounds(tileBoundsFor(workspace, state, index)).contains(position)) {
             return probes[(size_t) index]->id;
         }
     }
@@ -381,7 +369,7 @@ void SignalProbeRail::paintRail(
         WorkspaceDock::paintIconButton(
                 graphics,
                 drawerButton,
-                "<",
+                WorkspaceDockIcon::ChevronLeft,
                 focus.target == WorkspaceDockFocusTarget::SpyDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
@@ -389,7 +377,7 @@ void SignalProbeRail::paintRail(
                 labelArea.getCentreX(),
                 labelArea.getCentreY()));
         graphics.drawText(
-                "SPIES (" + String((int) probes.size()) + ")",
+                "SPIES",
                 Rectangle<float>(labelArea.getHeight() - 8.f, labelArea.getWidth())
                         .withCentre(labelArea.getCentre()),
                 Justification::centred);
@@ -403,14 +391,14 @@ void SignalProbeRail::paintRail(
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
-            ">",
+            WorkspaceDockIcon::ChevronRight,
             focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
     const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
     graphics.drawText(
-            "Spies (" + String((int) probes.size()) + ")",
+            "Spies",
             header.withTrimmedLeft(22.f).withWidth(110.f),
             Justification::centredLeft);
 
@@ -464,30 +452,11 @@ void SignalProbeRail::paintRail(
                 hovered,
                 focused);
 
-        Rectangle<float> tileContent = tile;
-        Rectangle<float> header = tileContent.removeFromTop(28.f);
-        graphics.setColour(colour);
-        graphics.fillEllipse(Rectangle<float>(8.f, 8.f).withCentre({ header.getX() + 12.f, header.getCentreY() }));
-        graphics.setColour(kText);
-        graphics.setFont(FontOptions(12.f, Font::bold));
-        graphics.drawText(
-                String(index + 1),
-                header.withTrimmedLeft(22.f).withTrimmedRight(28.f),
-                Justification::centredLeft);
-        const Rectangle<float> close = closeBounds(tile).reduced(7.f);
-        if (focus.target == WorkspaceDockFocusTarget::SpyRemove
-                && focus.itemId == probe.id) {
-            graphics.setColour(Colour(0xff79b8ff));
-            graphics.drawRoundedRectangle(closeBounds(tile).reduced(2.f), 4.f, 2.f);
-        }
-        graphics.setColour(kMutedText);
-        graphics.drawLine(Line<float>(close.getTopLeft(), close.getBottomRight()), 1.4f);
-        graphics.drawLine(Line<float>(close.getTopRight(), close.getBottomLeft()), 1.4f);
-
-        Rectangle<float> previewBounds = tile.reduced(8.f).withTrimmedTop(22.f);
+        const Rectangle<float> previewBounds = tile.reduced(7.f);
         if (preview == nullptr || !preview->connected) {
             graphics.setColour(kMutedText);
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
+            paintProbeOrdinal(graphics, previewBounds, index + 1);
             continue;
         }
 
@@ -521,6 +490,7 @@ void SignalProbeRail::paintRail(
                 1.f,
                 true
         });
+        paintProbeOrdinal(graphics, previewBounds, index + 1);
     }
     WorkspaceDock::paintOverflowFeedback(
             graphics,

@@ -139,8 +139,8 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
     REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
     REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
             WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
-    REQUIRE(std::find(order.begin(), order.end(), WorkspaceDockFocus {
-            WorkspaceDockFocusTarget::SpyRemove, "probe1" }) != order.end());
+    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::SpyTile, "probe1" }) == 1);
 
     WorkspaceDockFocus focus;
     REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(

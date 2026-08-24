@@ -61,11 +61,6 @@ public:
             Rectangle<float> workspace,
             const NodeGraph& graph,
             const SignalProbeRailState& state) const;
-    String closeProbeAt(
-            Point<float> position,
-            Rectangle<float> workspace,
-            const NodeGraph& graph,
-            const SignalProbeRailState& state) const;
     String markerProbeAt(
             Point<float> position,
             const NodeGraph& graph,
@@ -99,7 +94,6 @@ private:
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);
-    static Rectangle<float> closeBounds(Rectangle<float> tile);
     const GraphPreviewResult::SignalProbePreview* previewFor(
             const GraphPreviewResult& previews,
             const String& probeId) const;

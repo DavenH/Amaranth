@@ -285,12 +285,6 @@ bool WorkspaceDockInteractionController::handleSpyTileDown(
         Rectangle<float> workspace) {
     const Rectangle<float> spies = spyWorkspace(workspace);
     const Rectangle<float> shelf = SignalProbeRail::boundsFor(spies, probeState);
-    const String closeProbe = probeRail.closeProbeAt(event.position, spies, graph, probeState);
-    if (closeProbe.isNotEmpty()) {
-        keyboardFocus = { WorkspaceDockFocusTarget::SpyRemove, closeProbe };
-        removeSpyFromKeyboard(closeProbe);
-        return true;
-    }
     const String probeId = probeRail.probeAt(event.position, spies, graph, probeState);
     if (probeId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::SpyTile, probeId };

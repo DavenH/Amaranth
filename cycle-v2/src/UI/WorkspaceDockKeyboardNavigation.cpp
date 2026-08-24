@@ -28,7 +28,6 @@ std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         order.push_back({ WorkspaceDockFocusTarget::SpyMinimize, {} });
         for (const auto& spyId : model.spyIds) {
             order.push_back({ WorkspaceDockFocusTarget::SpyTile, spyId });
-            order.push_back({ WorkspaceDockFocusTarget::SpyRemove, spyId });
         }
     }
     return order;
@@ -106,7 +105,6 @@ juce::String WorkspaceDockKeyboardNavigation::targetName(
         case WorkspaceDockFocusTarget::SpyMinimize:     return "spyMinimize";
         case WorkspaceDockFocusTarget::SpyRefresh:      return "spyRefresh";
         case WorkspaceDockFocusTarget::SpyTile:         return "spyTile";
-        case WorkspaceDockFocusTarget::SpyRemove:       return "spyRemove";
     }
     return "none";
 }
@@ -159,8 +157,7 @@ void WorkspaceDockKeyboardNavigation::revealFocus(
         float& guideOffset,
         float& spyOffset) {
     const bool guide = focus.target == WorkspaceDockFocusTarget::GuideTile;
-    const bool spy = focus.target == WorkspaceDockFocusTarget::SpyTile
-            || focus.target == WorkspaceDockFocusTarget::SpyRemove;
+    const bool spy = focus.target == WorkspaceDockFocusTarget::SpyTile;
     const auto& ids = guide ? model.guideIds : model.spyIds;
     const auto found = std::find(ids.begin(), ids.end(), focus.itemId);
     if ((!guide && !spy) || found == ids.end()) {
@@ -208,8 +205,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
         case WorkspaceDockFocusTarget::SpyTile:
             delegate.selectSpyFromKeyboard(focus.itemId, true);
             break;
-        case WorkspaceDockFocusTarget::SpyRemove:
-            return remove(focus, delegate);
         case WorkspaceDockFocusTarget::None:
             return false;
     }
@@ -220,8 +215,7 @@ bool WorkspaceDockKeyboardNavigation::activate(
 bool WorkspaceDockKeyboardNavigation::remove(
         WorkspaceDockFocus& focus,
         WorkspaceDockKeyboardDelegate& delegate) {
-    if (focus.target != WorkspaceDockFocusTarget::SpyTile
-            && focus.target != WorkspaceDockFocusTarget::SpyRemove) {
+    if (focus.target != WorkspaceDockFocusTarget::SpyTile) {
         return false;
     }
 

@@ -92,7 +92,7 @@ Rectangle<float> GuideCurveShelf::addButtonBounds(
     }
     const Rectangle<float> header = WorkspaceDock::headerBounds(
             boundsFor(workspace, dockState, splitRatio, state));
-    return { header.getX() + 120.f, header.getY(), WorkspaceDock::controlSize,
+    return { header.getX() + 132.f, header.getY(), WorkspaceDock::controlSize,
             WorkspaceDock::controlSize };
 }
 
@@ -206,7 +206,7 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintIconButton(
                 graphics,
                 drawerButton,
-                ">",
+                WorkspaceDockIcon::ChevronRight,
                 focus.target == WorkspaceDockFocusTarget::GuideDrawer);
         Graphics::ScopedSaveState labelTransform(graphics);
         graphics.addTransform(AffineTransform::rotation(
@@ -214,7 +214,7 @@ void GuideCurveShelf::paint(
                 shelf.getCentreX(),
                 shelf.getCentreY()));
         graphics.drawText(
-                "GUIDES (" + String((int) graph.getGuideCurves().size()) + ")",
+                "CURVE GUIDES",
                 Rectangle<float>(shelf.getHeight() - 8.f, shelf.getWidth())
                         .withCentre(shelf.getCentre()),
                 Justification::centred);
@@ -227,19 +227,19 @@ void GuideCurveShelf::paint(
     WorkspaceDock::paintIconButton(
             graphics,
             minimize,
-            "<",
+            WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     graphics.setColour(kText);
     graphics.setFont(FontOptions(12.f, Font::bold));
     graphics.drawText(
-            "Guides (" + String((int) graph.getGuideCurves().size()) + ")",
-            header.withTrimmedLeft(34.f).withWidth(82.f),
+            "Curve Guides",
+            header.withTrimmedLeft(34.f).withWidth(96.f),
             Justification::centredLeft);
     const Rectangle<float> plus = addButtonBounds(workspace, dockState, splitRatio, state);
     WorkspaceDock::paintIconButton(
             graphics,
             plus,
-            "+",
+            WorkspaceDockIcon::Add,
             focus.target == WorkspaceDockFocusTarget::GuideAdd);
 
     if (graph.getGuideCurves().empty()) {
