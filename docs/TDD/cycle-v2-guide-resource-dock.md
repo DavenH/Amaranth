@@ -75,6 +75,10 @@ shelf with authoring and assignment behavior, not another kind of graph node.
 - Generated short labels remain available in assignment menus and target
   badges, but unnamed shelf tiles do not display them as titles. A user-authored
   name is the only Guide tile heading.
+- Guide shelf tiles do not repeat resource colour as a dot or outline. Colour
+  remains meaningful in assignment badges and temporary relationship
+  presentation. The shelf has no ellipsis or resource-action popover; a tile
+  is a selector and editor launcher.
 - Deleting an in-use Guide reports the affected assignment count and performs
   detach-all plus deletion as one undoable semantic command.
 - Cycle V2 is undeployed. Repository `.cyclegraph` files are converted directly
@@ -316,24 +320,23 @@ contracts:
 
 - the canvas provides a visible keyboard focus sequence across global dock
   collapse, shelf controls, and tiles. Forward/reverse Tab traversal, arrow
-  movement within a tile strip, activation, and deletion invoke the same
+  movement within a tile strip, activation, and Spy deletion invoke the same
   semantic actions as pointer input;
 - selecting a Guide may retain subdued endpoint highlighting, but only a
   current hover may draw the single relationship tether. Hover state clears
   when the pointer leaves the canvas, and selection/hover state cannot leak
   across document loads;
 - global collapse, per-shelf minimize/restore, Guide creation, Spy refresh,
-  tile menus, and tile removal use legible desktop-sized targets and distinct
+  and Spy tile removal use legible desktop-sized targets and distinct
   symbols. Shelf controls stay with their own shelf instead of clustering at
   the divider;
 - Guide and Spy tiles share one chrome grammar: neutral inactive border,
-  resource/domain colour token, optional terse identity, preview region,
-  active focus/selection border, and a trailing action affordance where the
-  domain supports one;
+  optional terse identity, preview region, and active focus/selection border.
+  Spy domain colour and its close action remain meaningful; Guide shelf colour
+  tokens and trailing actions do not;
 - vacancy presentation remains visible but occupies one quiet tile slot rather
   than a large centred card. Per-tile Guide usage sublabels are removed from
-  the shelf; relationship detail remains available through target highlighting
-  and the Guide action dialog;
+  the shelf; relationship detail remains available through target highlighting;
 - overflowing tile strips show edge and position feedback. Scrolling one shelf
   remains independent and keyboard tile movement keeps its focused tile in
   view.
@@ -415,21 +418,20 @@ dirty or serialize the graph.
 
 Expanded Guide tiles show:
 
-- optional user-authored name, without a generated short-label heading;
+- optional user-authored name over the preview, without a generated short-label
+  heading or reserved header row;
 - curve thumbnail rendered through the existing OpenGL flat-curve presentation
-  path, including its grid, fill, vertices, and modulation trace;
-- stable resource colour;
-- selection state;
-- one trailing action menu for rename, duplicate, reorder, usage-aware delete,
-  and the other resource actions.
+  path across the available tile, including its grid, fill, vertices, and
+  modulation trace;
+- neutral selection and hover state, plus the shared keyboard focus treatment.
 
 The tile is an organizer and launcher, not a miniature parameter editor. Noise,
 DC offset, phase, enable, and point editing remain in the full Guide editor.
 
 Single-click selects a Guide and highlights its uses. Double-click opens its
-full editor above the dock. Reordering tiles changes `shelfOrder` through a
-semantic command and does not change short labels, colours, assignments,
-provider seeds, or sound.
+full editor above the dock. The shelf does not open a resource-action popup.
+Reordering commands change `shelfOrder` and do not change short labels,
+colours, assignments, provider seeds, or sound.
 
 An optional usage detail for the selected Guide groups targets by owning node
 and field, for example:
@@ -802,3 +804,10 @@ Completed on macOS through the repository build and native launch scripts:
 - `git diff --check`, shell syntax validation, and the scalar-math hot-loop
   inspection pass. `clang-tidy` could not be run because it is not installed
   in the development environment.
+- The 2026-08-24 shelf simplification removes Guide colour dots/outlines and
+  the resource-action popover, and expands the authoritative OpenGL preview
+  into the recovered header area. Both build targets, the 45-assertion focused
+  dock run, and the full 8,781-assertion suite pass. The native capture rerun
+  was blocked before app launch by macOS's recurring Screen Recording privacy
+  reminder, so the earlier native capture remains the visual baseline rather
+  than evidence for this final cosmetic reduction.

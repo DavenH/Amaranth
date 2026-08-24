@@ -164,7 +164,6 @@ NodeCanvas::NodeCanvas() :
             dockSplitRatio,
             editStatusMessage,
             WorkspaceDockInteractionCallbacks {
-                    [this](const String& guideId) { showGuideActions(guideId); },
                     [this](const String& guideId) { openGuideEditor(guideId); },
                     [this](const String& probeId) { openProbeDetail(probeId); },
                     [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
@@ -1493,55 +1492,6 @@ bool NodeCanvas::clearSelection() {
         requestCanvasRepaint();
     }
     return cleared;
-}
-
-void NodeCanvas::showGuideActions(const String& guideId) {
-    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
-    if (guide == nullptr) {
-        return;
-    }
-
-    const int usageCount = graph.guideUsageCount(guideId);
-    AlertWindow dialog(
-            "Guide Curve",
-            "Rename this resource, or delete it and detach "
-                    + String(usageCount) + " assignment"
-                    + (usageCount == 1 ? "." : "s."),
-            AlertWindow::NoIcon,
-            this);
-    dialog.addTextEditor("name", guide->name, "Name:");
-    dialog.addButton("Rename", 1);
-    dialog.addButton("Delete", 2);
-    dialog.addButton("Duplicate", 3);
-    dialog.addButton("Move Left", 4);
-    dialog.addButton("Move Right", 5);
-    dialog.addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
-
-    const int action = dialog.runModalLoop();
-    if (action == 1) {
-        if (commands.renameGuideCurve(
-                    guideId,
-                    dialog.getTextEditorContents("name")).succeeded()) {
-            editStatusMessage = "Guide Curve renamed";
-        }
-    } else if (action == 2 && commands.removeGuideCurve(guideId).succeeded()) {
-        guideShelfState.selectedGuideId = {};
-        dockInteraction->clearFocus();
-        editStatusMessage = "Guide Curve deleted";
-    } else if (action == 3) {
-        const GraphEditResult duplicated = commands.duplicateGuideCurve(guideId);
-        if (duplicated.succeeded()) {
-            guideShelfState.selectedGuideId = duplicated.nodeId;
-            dockInteraction->setFocus({ WorkspaceDockFocusTarget::GuideTile, duplicated.nodeId });
-            editStatusMessage = "Guide Curve duplicated";
-        }
-    } else if (action == 4 || action == 5) {
-        const int direction = action == 4 ? -1 : 1;
-        if (commands.reorderGuideCurve(guideId, guide->shelfOrder + direction).succeeded()) {
-            editStatusMessage = "Guide Curve reordered";
-        }
-    }
-    requestCanvasRepaint();
 }
 
 bool NodeCanvas::handleDockNavigationKey(const KeyPress& key) {

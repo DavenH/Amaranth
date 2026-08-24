@@ -20,9 +20,7 @@ bool hasDisplayName(const GuideCurveResource& guide) {
 }
 
 Rectangle<float> previewBoundsFor(Rectangle<float> tile) {
-    Rectangle<float> bounds = tile.reduced(7.f);
-    bounds.removeFromTop(27.f);
-    return bounds.reduced(0.f, 3.f);
+    return tile.reduced(7.f);
 }
 
 WorkspaceDockState workspaceDockState(
@@ -111,15 +109,6 @@ Rectangle<float> GuideCurveShelf::minimizeButtonBounds(
     return header.removeFromLeft(WorkspaceDock::controlSize);
 }
 
-Rectangle<float> GuideCurveShelf::menuButtonBounds(Rectangle<float> tile) {
-    return {
-            tile.getRight() - 31.f,
-            tile.getY() + 4.f,
-            27.f,
-            27.f
-    };
-}
-
 Rectangle<float> GuideCurveShelf::tileBoundsFor(
         Rectangle<float> workspace,
         const SignalProbeRailState& dockState,
@@ -150,30 +139,6 @@ String GuideCurveShelf::guideAt(
                 state,
                 index);
         if (tile.contains(position)) {
-            return graph.getGuideCurves()[(size_t) index].id;
-        }
-    }
-    return {};
-}
-
-String GuideCurveShelf::menuGuideAt(
-        Point<float> position,
-        const NodeGraph& graph,
-        Rectangle<float> workspace,
-        const SignalProbeRailState& dockState,
-        float splitRatio,
-        const GuideCurveShelfState& state) {
-    if (state.minimized) {
-        return {};
-    }
-    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
-        const Rectangle<float> tile = tileBoundsFor(
-                workspace,
-                dockState,
-                splitRatio,
-                state,
-                index);
-        if (menuButtonBounds(tile).contains(position)) {
             return graph.getGuideCurves()[(size_t) index].id;
         }
     }
@@ -306,14 +271,10 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                colourForGuide(guide),
+                kShelfBorder,
                 selected,
                 hovered,
                 focused);
-        Rectangle<float> tileHeader = tile.reduced(8.f).removeFromTop(25.f);
-        graphics.setColour(colourForGuide(guide));
-        graphics.fillEllipse(Rectangle<float>(8.f, 8.f).withCentre(
-                { tileHeader.getX() + 5.f, tileHeader.getCentreY() }));
         const Rectangle<float> thumbnail = previewBoundsFor(tile);
         graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
@@ -324,19 +285,9 @@ void GuideCurveShelf::paint(
             graphics.setFont(FontOptions(12.f, Font::bold));
             graphics.drawText(
                     guide.name,
-                    tileHeader.withTrimmedLeft(16.f).withTrimmedRight(28.f),
+                    thumbnail.reduced(8.f).removeFromTop(22.f),
                     Justification::centredLeft);
         }
-        graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(15.f, Font::bold));
-        const Rectangle<float> menu = menuButtonBounds(tile);
-        if (focus.target == WorkspaceDockFocusTarget::GuideMenu
-                && focus.itemId == guide.id) {
-            graphics.setColour(Colour(0xff79b8ff));
-            graphics.drawRoundedRectangle(menu.reduced(2.f), 4.f, 2.f);
-            graphics.setColour(kText);
-        }
-        graphics.drawText("...", menu, Justification::centred);
     }
     WorkspaceDock::paintOverflowFeedback(
             graphics,

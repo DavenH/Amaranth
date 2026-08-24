@@ -18,7 +18,6 @@ std::vector<WorkspaceDockFocus> WorkspaceDockKeyboardNavigation::focusOrder(
         order.push_back({ WorkspaceDockFocusTarget::GuideAdd, {} });
         for (const auto& guideId : model.guideIds) {
             order.push_back({ WorkspaceDockFocusTarget::GuideTile, guideId });
-            order.push_back({ WorkspaceDockFocusTarget::GuideMenu, guideId });
         }
     }
 
@@ -103,7 +102,6 @@ juce::String WorkspaceDockKeyboardNavigation::targetName(
         case WorkspaceDockFocusTarget::GuideMinimize:   return "guideMinimize";
         case WorkspaceDockFocusTarget::GuideAdd:        return "guideAdd";
         case WorkspaceDockFocusTarget::GuideTile:       return "guideTile";
-        case WorkspaceDockFocusTarget::GuideMenu:       return "guideMenu";
         case WorkspaceDockFocusTarget::SpyDrawer:       return "spyDrawer";
         case WorkspaceDockFocusTarget::SpyMinimize:     return "spyMinimize";
         case WorkspaceDockFocusTarget::SpyRefresh:      return "spyRefresh";
@@ -160,8 +158,7 @@ void WorkspaceDockKeyboardNavigation::revealFocus(
         const WorkspaceDockFocus& focus,
         float& guideOffset,
         float& spyOffset) {
-    const bool guide = focus.target == WorkspaceDockFocusTarget::GuideTile
-            || focus.target == WorkspaceDockFocusTarget::GuideMenu;
+    const bool guide = focus.target == WorkspaceDockFocusTarget::GuideTile;
     const bool spy = focus.target == WorkspaceDockFocusTarget::SpyTile
             || focus.target == WorkspaceDockFocusTarget::SpyRemove;
     const auto& ids = guide ? model.guideIds : model.spyIds;
@@ -201,9 +198,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
         case WorkspaceDockFocusTarget::GuideTile:
             delegate.selectGuideFromKeyboard(focus.itemId, true);
             break;
-        case WorkspaceDockFocusTarget::GuideMenu:
-            delegate.showGuideActionsFromKeyboard(focus.itemId);
-            break;
         case WorkspaceDockFocusTarget::SpyDrawer:
         case WorkspaceDockFocusTarget::SpyMinimize:
             delegate.setSpyShelfMinimizedFromKeyboard(!model.spiesMinimized);
@@ -226,11 +220,6 @@ bool WorkspaceDockKeyboardNavigation::activate(
 bool WorkspaceDockKeyboardNavigation::remove(
         WorkspaceDockFocus& focus,
         WorkspaceDockKeyboardDelegate& delegate) {
-    if (focus.target == WorkspaceDockFocusTarget::GuideTile
-            || focus.target == WorkspaceDockFocusTarget::GuideMenu) {
-        delegate.showGuideActionsFromKeyboard(focus.itemId);
-        return true;
-    }
     if (focus.target != WorkspaceDockFocusTarget::SpyTile
             && focus.target != WorkspaceDockFocusTarget::SpyRemove) {
         return false;

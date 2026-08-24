@@ -32,7 +32,6 @@ enum class WorkspaceDockFocusTarget {
     GuideMinimize,
     GuideAdd,
     GuideTile,
-    GuideMenu,
     SpyDrawer,
     SpyMinimize,
     SpyRefresh,

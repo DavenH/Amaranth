@@ -199,7 +199,6 @@ private:
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
     bool clearSelection();
     bool handleDockNavigationKey(const KeyPress& key);
-    void showGuideActions(const String& guideId);
     void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);

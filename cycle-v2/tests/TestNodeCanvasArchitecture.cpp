@@ -137,8 +137,8 @@ TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
 
     const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
     REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
-    REQUIRE(std::find(order.begin(), order.end(), WorkspaceDockFocus {
-            WorkspaceDockFocusTarget::GuideMenu, "guide1" }) != order.end());
+    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
     REQUIRE(std::find(order.begin(), order.end(), WorkspaceDockFocus {
             WorkspaceDockFocusTarget::SpyRemove, "probe1" }) != order.end());
 

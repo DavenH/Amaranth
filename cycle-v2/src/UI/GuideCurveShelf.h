@@ -50,7 +50,6 @@ public:
             const SignalProbeRailState& dockState,
             float splitRatio,
             const GuideCurveShelfState& state);
-    static Rectangle<float> menuButtonBounds(Rectangle<float> tile);
     static Rectangle<float> tileBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& dockState,
@@ -58,13 +57,6 @@ public:
             const GuideCurveShelfState& state,
             int tileIndex);
     static String guideAt(
-            Point<float> position,
-            const NodeGraph& graph,
-            Rectangle<float> workspace,
-            const SignalProbeRailState& dockState,
-            float splitRatio,
-            const GuideCurveShelfState& state);
-    static String menuGuideAt(
             Point<float> position,
             const NodeGraph& graph,
             Rectangle<float> workspace,

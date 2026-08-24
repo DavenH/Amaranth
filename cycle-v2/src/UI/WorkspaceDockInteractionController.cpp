@@ -227,21 +227,12 @@ bool WorkspaceDockInteractionController::handleGuideTileDown(
         Rectangle<float> workspace) {
     const Rectangle<float> shelf = GuideCurveShelf::boundsFor(
             workspace, probeState, splitRatio, guideState);
-    const String menuGuide = GuideCurveShelf::menuGuideAt(
-            event.position, graph, workspace, probeState, splitRatio, guideState);
-    if (menuGuide.isNotEmpty()) {
-        keyboardFocus = { WorkspaceDockFocusTarget::GuideMenu, menuGuide };
-        showGuideActionsFromKeyboard(menuGuide);
-        return true;
-    }
     const String guideId = GuideCurveShelf::guideAt(
             event.position, graph, workspace, probeState, splitRatio, guideState);
     if (guideId.isNotEmpty()) {
         keyboardFocus = { WorkspaceDockFocusTarget::GuideTile, guideId };
         guideState.selectedGuideId = guideId;
-        if (event.mods.isPopupMenu()) {
-            callbacks.showGuideActions(guideId);
-        } else if (event.getNumberOfClicks() >= 2) {
+        if (event.getNumberOfClicks() >= 2) {
             callbacks.openGuideEditor(guideId);
         }
         callbacks.repaint();
@@ -365,11 +356,6 @@ void WorkspaceDockInteractionController::selectGuideFromKeyboard(
     if (openEditor) {
         callbacks.openGuideEditor(guideId);
     }
-}
-
-void WorkspaceDockInteractionController::showGuideActionsFromKeyboard(const String& guideId) {
-    guideState.selectedGuideId = guideId;
-    callbacks.showGuideActions(guideId);
 }
 
 void WorkspaceDockInteractionController::setSpyShelfMinimizedFromKeyboard(bool minimized) {
