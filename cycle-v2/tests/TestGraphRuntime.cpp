@@ -229,7 +229,7 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
     REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.9f);
     REQUIRE(document.undo());
     REQUIRE(document.graph().findGuideCurve("guide1")->enabled);
-    REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.5f);
+    REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.f);
 }
 
 TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",

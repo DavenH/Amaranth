@@ -679,6 +679,51 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
   #endif
 }
 
+TEST_CASE("Guide editor uses compact host and control layout",
+        "[cycle-v2][node-editor-host][guides]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Effect2DWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+
+    const Rectangle<float> host = GuideCurveEditorComponent::preferredHostBounds(
+            { 0.f, 0.f, 1200.f, 800.f });
+    REQUIRE(host.getHeight() == 560.f);
+    REQUIRE(host.getCentreY() == 400.f);
+
+    editor.setBounds(host.toNearestInt());
+    editor.setGuideResource(guide);
+
+    int sliderCount = 0;
+    int textButtonCount = 0;
+    int emptyToggleCount = 0;
+    int enabledLabelCount = 0;
+    int lowestControlBottom = 0;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        Component* child = editor.getChildComponent(index);
+        if (auto* slider = dynamic_cast<Slider*>(child)) {
+            ++sliderCount;
+            REQUIRE(slider->getTextBoxPosition() == Slider::TextBoxRight);
+            lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
+        } else if (dynamic_cast<TextButton*>(child) != nullptr) {
+            ++textButtonCount;
+        } else if (auto* toggle = dynamic_cast<ToggleButton*>(child)) {
+            emptyToggleCount += toggle->getButtonText().isEmpty() ? 1 : 0;
+            lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
+        } else if (auto* label = dynamic_cast<Label*>(child)) {
+            enabledLabelCount += label->getText() == "Enabled" ? 1 : 0;
+        }
+    }
+    REQUIRE(sliderCount == 3);
+    REQUIRE(textButtonCount == 0);
+    REQUIRE(emptyToggleCount == 1);
+    REQUIRE(enabledLabelCount == 1);
+    REQUIRE(lowestControlBottom < 230);
+}
+
 TEST_CASE("Selected flat curve state binds before its panel host exists",
           "[cycle-v2][node-editor-host][presets][selection]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

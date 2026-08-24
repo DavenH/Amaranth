@@ -161,9 +161,9 @@ struct GuideCurveResource {
     int colourIndex {};
     int shelfOrder {};
     bool enabled { true };
-    float noise { 0.5f };
-    float dcOffset { 0.5f };
-    float phase { 0.5f };
+    float noise {};
+    float dcOffset {};
+    float phase {};
     NodeModelStatePtr model;
 };
 

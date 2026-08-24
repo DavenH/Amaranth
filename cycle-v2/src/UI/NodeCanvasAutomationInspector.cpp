@@ -538,6 +538,9 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty(
             "spyShelfBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.spyShelfBounds));
+    guideDock->setProperty(
+            "guideEditorBounds",
+            AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
     root->setProperty("guideDock", guideDock);
 
     Array<var> causalUpdates;

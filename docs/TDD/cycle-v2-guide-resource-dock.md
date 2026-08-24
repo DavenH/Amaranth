@@ -62,6 +62,14 @@ shelf with authoring and assignment behavior, not another kind of graph node.
   drawers.
 - Double-clicking a Guide tile opens the existing full Guide editor above the
   dock. The Spy shelf remains visible.
+- Expanded Guide and Spy detail editors close on the first Escape key press,
+  even when dock navigation or a child control previously held focus.
+- The Guide editor uses a compact, vertically bounded host. Its control rail
+  has one Enabled label, aligned value-bearing sliders, and no inherited
+  channel-add/remove buttons: Guide resources are added in the shelf, not from
+  inside one resource editor.
+- A newly created Guide starts with a flat, centred curve and zero Noise,
+  DC Offset, and Phase. Duplicate preserves the source Guide unchanged.
 - Guide creation is available from the Guide shelf and from assignment menus.
   Guide is removed from the node palette.
 - Selector menus are the authoritative assignment gesture. Dragging a Guide
@@ -764,6 +772,11 @@ resource, but behavior is retained.
 - Guide relationship tethers are hover-only and cannot persist across pointer
   exit or document replacement.
 - Full Guide editing occurs above the dock while Spy feedback remains visible.
+- One Escape closes an expanded Guide editor or Spy detail view. The Guide
+  editor remains vertically compact, uses a single Enabled label, exposes
+  readable values for its three aligned sliders, and contains no dead resource
+  add/remove actions.
+- New Guide resources start flat with Noise, DC Offset, and Phase at zero.
 - Trimesh selection menus cover every authoritative component field and
   preserve cube-component assignments without persistent cables.
 - Shared Guide edits invalidate and refresh every consumer and downstream Spy
@@ -829,3 +842,15 @@ Completed on macOS through the repository build and native launch scripts:
   cable-domain colour to each tile outline. Rounded path-rendered disclosures,
   count-free `Curve Guides`/`Spies` labels, keyboard Spy deletion, the focused
   dock run, the full suite, and the same native capture all pass.
+- The 2026-08-25 Guide editor refinement caps the expanded host at 560 px,
+  removes the dead channel `+`/`-` actions and duplicated Enable text, aligns
+  smaller sliders with two-decimal values, and gives Guide and Spy detail
+  overlays first-Escape priority over retained dock focus. New Guides now use
+  two centred flat endpoints with Noise, DC Offset, and Phase at zero. The
+  focused Guide runs pass 110 assertions in 8 cases, the full suite passes
+  8,801 assertions in 495 cases, the standalone-debug app builds, and both the
+  21-command Escape/default fixture and 17-command OpenGL fixture pass. The
+  OS-rendered result is
+  `/private/tmp/cycle-v2-guide-editor-compact-native.png`. The recurring
+  Settings shutdown assertions and an incidental palette-icon test assertion
+  are recorded in `ui-bugs.md`.

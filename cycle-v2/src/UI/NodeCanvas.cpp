@@ -207,7 +207,8 @@ void NodeCanvas::paint(Graphics& g) {
 void NodeCanvas::resized() {
     viewport.setBounds(canvasContentBounds());
     if (guideEditor != nullptr && guideEditor->isVisible()) {
-        guideEditor->setBounds(canvasContentBounds().reduced(36.f, 24.f).toNearestInt());
+        guideEditor->setBounds(
+                GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
     }
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
     notifyOverlayPresentationChanged();
@@ -717,14 +718,9 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return redo();
     }
 
-    if (handleDockNavigationKey(key)) {
-        return true;
-    }
-
     if (key == KeyPress::escapeKey) {
-        if (dockInteraction->focus().target != WorkspaceDockFocusTarget::None) {
-            dockInteraction->clearFocus();
-            requestCanvasRepaint();
+        if (expandedGuideId.isNotEmpty()) {
+            closeGuideEditor();
             return true;
         }
         if (probeDetailState.isOpen()) {
@@ -733,7 +729,20 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
             requestCanvasRepaint();
             return true;
         }
+        if (expandedNodeId.isNotEmpty()) {
+            closeNodeEditor();
+            return true;
+        }
+        if (dockInteraction->focus().target != WorkspaceDockFocusTarget::None) {
+            dockInteraction->clearFocus();
+            requestCanvasRepaint();
+            return true;
+        }
         return clearSelection();
+    }
+
+    if (handleDockNavigationKey(key)) {
+        return true;
     }
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
@@ -1537,7 +1546,8 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     editorCoordinator.close();
     expandedGuideId = guideId;
     guideEditor->setGuideResource(*guide);
-    guideEditor->setBounds(canvasContentBounds().reduced(36.f, 24.f).toNearestInt());
+    guideEditor->setBounds(
+            GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
     notifyOverlayPresentationChanged();

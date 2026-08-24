@@ -327,6 +327,26 @@ TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2]
     REQUIRE(assignment.target.field == GuideCurveField::Amplitude);
 }
 
+TEST_CASE("New Guide resources start flat with neutral modulation",
+        "[cycle-v2][graph][guides]") {
+    NodeGraph graph;
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+
+    const GuideCurveResource* guide = graph.findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    REQUIRE(guide->noise == 0.f);
+    REQUIRE(guide->dcOffset == 0.f);
+    REQUIRE(guide->phase == 0.f);
+
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(guide->model);
+    REQUIRE(model != nullptr);
+    REQUIRE(model->flatCurve() != nullptr);
+    const auto& vertices = model->flatCurve()->getVertices();
+    REQUIRE(vertices.size() == 2);
+    REQUIRE(vertices.front().y == 0.5f);
+    REQUIRE(vertices.back().y == 0.5f);
+}
+
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
@@ -406,7 +426,7 @@ TEST_CASE("Guide resource gestures publish two transient updates and undo once",
 
     commands.beginTransientEdit();
     REQUIRE(commands.publishGuideCurveState(publication(0.2f)).succeeded());
-    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.5f);
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.f);
     REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.2f);
     REQUIRE(commands.publishGuideCurveState(publication(0.8f)).succeeded());
     REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.8f);
@@ -422,7 +442,7 @@ TEST_CASE("Guide resource gestures publish two transient updates and undo once",
     REQUIRE(commands.publishGuideCurveState(incomplete).code
             == GraphEditCode::InvalidControlValue);
     REQUIRE(document.undo());
-    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.5f);
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.f);
     REQUIRE(document.graph().getGuideAssignments().size() == 1);
 }
 

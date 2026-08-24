@@ -49,6 +49,7 @@ public:
     explicit GuideCurveEditorComponent(Effect2DWidget& widget);
     ~GuideCurveEditorComponent() override;
 
+    static Rectangle<float> preferredHostBounds(Rectangle<float> canvasBounds);
     void setGuideResource(const GuideCurveResource& guide);
     void renderOpenGL(float scaleFactor) override;
 

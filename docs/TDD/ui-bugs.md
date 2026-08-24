@@ -85,13 +85,32 @@ Context:
 - The Voice Context duration fixture still reproduces the assertions at the
   shifted source locations `Settings.cpp:223` and `Settings.cpp:224`; all
   fixture commands and state assertions complete successfully.
+- The compact Guide editor Escape and native-render fixtures on 2026-08-25
+  still reproduce the assertions at `Settings.cpp:228` and `Settings.cpp:229`;
+  all fixture commands and state assertions complete successfully.
 - Repro logs:
   `/private/tmp/cycle-v2-modulation-source-compact-logs.txt` and
   `/private/tmp/cycle-v2-modulation-triple-logs.txt`, plus
+  `/private/tmp/cycle-v2-guide-editor-compact-logs.txt` and
+  `/private/tmp/cycle-v2-guide-editor-visual-logs.txt`, plus
   `/private/tmp/cycle-v2-voice-context-length-logs.txt`.
 
 Current status: open; inspect the settings property access performed during
 standalone initialization.
+
+## Open: Cycle v2 full suite emits palette icon assertion
+
+Context:
+
+- The full `CycleV2_tests` run during compact Guide editor work on 2026-08-25
+  passed all 8,801 assertions in 495 test cases but emitted a JUCE assertion at
+  `NodePaletteEntryIconRenderer.cpp:27`.
+- The assertion is incidental to Guide resource defaults, expanded-editor
+  layout, and Escape routing. It was observed directly in the full-suite output;
+  no focused Guide test or native fixture reproduced it.
+
+Current status: open; inspect icon raster dimensions in the palette renderer
+test path.
 
 ## Resolved: Cycle v2 full suite emits JUCE Component assertions
 

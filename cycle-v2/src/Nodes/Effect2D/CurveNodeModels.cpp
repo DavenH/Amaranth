@@ -754,9 +754,7 @@ NodeModelStatePtr createDefaultGuideCurveModel() {
     FlatCurveModel model("CycleV2GuideCurve");
     if (!model.replaceVertices({
                 { 1, 0.05f, 0.5f, 1.f },
-                { 2, 0.34f, 0.64f, 0.4f },
-                { 3, 0.62f, 0.36f, 0.4f },
-                { 4, 0.95f, 0.5f, 1.f } })) {
+                { 2, 0.95f, 0.5f, 1.f } })) {
         return nullptr;
     }
     model.setPublicationRevision(1);

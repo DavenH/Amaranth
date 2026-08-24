@@ -27,14 +27,14 @@ public:
                 static_cast<float>(y),
                 static_cast<float>(width),
                 static_cast<float>(height));
-        auto rail = row.withSizeKeepingCentre(row.getWidth(), 7.f);
+        auto rail = row.withSizeKeepingCentre(row.getWidth(), 4.f);
         const float knobX = jlimit(rail.getX(), rail.getRight(), sliderPosition);
-        const auto knob = Rectangle<float>(16.f, 16.f).withCentre({ knobX, rail.getCentreY() });
+        const auto knob = Rectangle<float>(12.f, 12.f).withCentre({ knobX, rail.getCentreY() });
 
         graphics.setColour(Colour(0xff384351));
-        graphics.fillRoundedRectangle(rail, 3.5f);
+        graphics.fillRoundedRectangle(rail, 2.f);
         graphics.setColour(Colour(0xffdce3ec).withAlpha(0.78f));
-        graphics.fillRoundedRectangle(rail.withRight(knobX), 3.5f);
+        graphics.fillRoundedRectangle(rail.withRight(knobX), 2.f);
         graphics.setColour(Colour(0xff0d1116));
         graphics.fillEllipse(knob);
         graphics.setColour(Colour(0xffdce3ec));
@@ -75,7 +75,7 @@ void LabeledParameterSlider::setBounds(Rectangle<int> bounds, int labelWidth, in
 
 ParameterToggle::ParameterToggle(Component& owner, const String& labelText) {
     styleParameterLabel(label, labelText);
-    button.setButtonText("Enable");
+    button.setButtonText({});
     owner.addAndMakeVisible(label);
     owner.addAndMakeVisible(button);
 }
