@@ -807,7 +807,7 @@ Completed on macOS through the repository build and native launch scripts:
 - The 2026-08-24 shelf simplification removes Guide colour dots/outlines and
   the resource-action popover, and expands the authoritative OpenGL preview
   into the recovered header area. Both build targets, the 45-assertion focused
-  dock run, and the full 8,781-assertion suite pass. The native capture rerun
-  was blocked before app launch by macOS's recurring Screen Recording privacy
-  reminder, so the earlier native capture remains the visual baseline rather
-  than evidence for this final cosmetic reduction.
+  dock run, and the full 8,781-assertion suite pass. After Screen Recording
+  permission was renewed, the native fixture and OS-rendered capture also pass;
+  `/private/tmp/cycle-v2-guide-populated-native-v2.png` confirms the simplified
+  chrome and expanded authoritative previews.
