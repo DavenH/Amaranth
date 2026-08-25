@@ -192,21 +192,36 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
-TEST_CASE("Guide relationship tethers stay behind expanded editors",
+TEST_CASE("Guide relationship tethers reach every visible unique target behind editors",
         "[cycle-v2][canvas][guide-dock][relationship][occlusion]") {
     NodeGraph graph;
-    Node target;
-    target.id = "mesh";
-    target.bounds = { 310.f, 20.f, 70.f, 60.f };
-    graph.addNode(std::move(target));
+    Node firstTarget;
+    firstTarget.id = "mesh1";
+    firstTarget.bounds = { 310.f, 20.f, 70.f, 60.f };
+    graph.addNode(std::move(firstTarget));
+    Node secondTarget;
+    secondTarget.id = "mesh2";
+    secondTarget.bounds = { 10.f, 20.f, 70.f, 60.f };
+    graph.addNode(std::move(secondTarget));
     GuideCurveResource guide;
     guide.id = "guide1";
     REQUIRE(graph.addGuideCurve(std::move(guide)));
     REQUIRE(graph.assignGuideCurve({
             "guide1",
-            "mesh",
+            "mesh1",
             { 0, GuideCurveField::Time }
     }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh1",
+            { 0, GuideCurveField::Red }
+    }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh2",
+            { 0, GuideCurveField::Time }
+    }));
+    REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
 
     GraphCompileResult compileResult;
     GraphPreviewResult previewResult;
@@ -269,7 +284,21 @@ TEST_CASE("Guide relationship tethers stay behind expanded editors",
     REQUIRE(visiblePixels > 0);
     REQUIRE(occludedPixels == 0);
 
-    frame.canvasOcclusion = { 300.f, 10.f, 90.f, 80.f };
+    const auto alphaCount = [&image](Rectangle<int> bounds) {
+        int count = 0;
+        for (int y = bounds.getY(); y < bounds.getBottom(); ++y) {
+            for (int x = bounds.getX(); x < bounds.getRight(); ++x) {
+                if (image.getPixelAt(x, y).getAlpha() > 0) {
+                    ++count;
+                }
+            }
+        }
+        return count;
+    };
+    REQUIRE(alphaCount({ 339, 74, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 39, 74, 12, 12 }) > 0);
+
+    frame.canvasOcclusion = { 0.f, 10.f, 400.f, 80.f };
     image.clear(image.getBounds(), Colours::transparentBlack);
     GuideRelationshipPresentation::paintTether(graphics, frame);
     REQUIRE(imageChecksum(image) == imageChecksum(

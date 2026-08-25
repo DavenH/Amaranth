@@ -8,6 +8,7 @@
 #include "../Nodes/Envelope/EnvelopePurpose.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace CycleV2 {
 
@@ -275,6 +276,9 @@ void NodeGraph::rebuildGuideAssignmentIndexes() {
     guideTargetNodes.clear();
     targetNodeGuides.clear();
     guideAssignmentTargetIndex.reserve(guideAssignments.size());
+    using StringSet = std::unordered_set<String, StringHash>;
+    std::unordered_map<String, StringSet, StringHash> targetNodesByGuide;
+    std::unordered_map<String, StringSet, StringHash> guidesByTargetNode;
     for (size_t index = 0; index < guideAssignments.size(); ++index) {
         const GuideCurveAssignment& assignment = guideAssignments[index];
         guideAssignmentTargetIndex[{
@@ -282,8 +286,14 @@ void NodeGraph::rebuildGuideAssignmentIndexes() {
                 assignment.target
         }] = index;
         ++guideUsageCounts[assignment.guideId];
-        guideTargetNodes[assignment.guideId].push_back(assignment.targetNodeId);
-        targetNodeGuides[assignment.targetNodeId].push_back(assignment.guideId);
+        if (targetNodesByGuide[assignment.guideId]
+                .insert(assignment.targetNodeId).second) {
+            guideTargetNodes[assignment.guideId].push_back(assignment.targetNodeId);
+        }
+        if (guidesByTargetNode[assignment.targetNodeId]
+                .insert(assignment.guideId).second) {
+            targetNodeGuides[assignment.targetNodeId].push_back(assignment.guideId);
+        }
     }
 }
 

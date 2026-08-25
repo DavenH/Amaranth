@@ -366,14 +366,17 @@ TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[
 
     REQUIRE(waveResult.succeeded());
     REQUIRE(magResult.succeeded());
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 2, GuideCurveField::Amplitude }
+    }));
     REQUIRE(GraphValidator().isValid(graph));
 
-    REQUIRE(graph.getGuideAssignments().size() == 2);
-    REQUIRE(graph.guideUsageCount("guide1") == 2);
+    REQUIRE(graph.getGuideAssignments().size() == 3);
+    REQUIRE(graph.guideUsageCount("guide1") == 3);
     REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
     REQUIRE(graph.guideTargetNodeIds("guide1")[0] == "waveMesh");
     REQUIRE(graph.guideTargetNodeIds("guide1")[1] == "magMesh");
-    REQUIRE(graph.guideIdsForTargetNode("waveMesh").front() == "guide1");
+    REQUIRE(graph.guideIdsForTargetNode("waveMesh") == std::vector<String> { "guide1" });
 }
 
 TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {

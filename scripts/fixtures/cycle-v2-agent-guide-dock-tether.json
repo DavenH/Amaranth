@@ -10,15 +10,15 @@
     },
     {
       "command": "pointer",
-      "event": "click",
-      "targetId": "guide:guide2",
+      "event": "move",
+      "targetId": "guide:guide1",
       "waitForIdle": true,
       "idleDelayMs": 150
     },
     {
       "command": "assertState",
-      "path": "guideDock.selectedGuideId",
-      "equals": "guide2"
+      "path": "guideDock.hoveredGuideId",
+      "equals": "guide1"
     },
     {
       "command": "inspectTargets",

@@ -3,19 +3,11 @@
 #include "GuideCurveShelf.h"
 #include "NodeCanvasPresentation.h"
 
-#include <unordered_set>
-
 namespace CycleV2 {
 
 namespace {
 
 const Colour kCanvasBackground { 0xff101318 };
-
-struct StringHash {
-    size_t operator()(const String& value) const {
-        return (size_t) value.hashCode64();
-    }
-};
 
 void paintHighlight(
         Graphics& graphics,
@@ -38,22 +30,13 @@ void paintHighlight(
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }
 
-const Node* firstVisibleTarget(
+bool isVisibleTarget(
         const NodeCanvasPresentationFrame& frame,
-        const String& guideId) {
-    for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
-        const Node* node = frame.graph.findNode(nodeId);
-        if (node == nullptr) {
-            continue;
-        }
-        const Rectangle<float> bounds = frame.viewport.toScreen(node->bounds);
-        const bool hiddenByEditor = !frame.canvasOcclusion.isEmpty()
-                && bounds.intersects(frame.canvasOcclusion);
-        if (bounds.intersects(frame.canvasBounds) && !hiddenByEditor) {
-            return node;
-        }
-    }
-    return nullptr;
+        const Node& node) {
+    const Rectangle<float> bounds = frame.viewport.toScreen(node.bounds);
+    const bool hiddenByEditor = !frame.canvasOcclusion.isEmpty()
+            && bounds.intersects(frame.canvasOcclusion);
+    return bounds.intersects(frame.canvasBounds) && !hiddenByEditor;
 }
 
 }
@@ -79,14 +62,13 @@ void GuideRelationshipPresentation::paintHighlights(
         return;
     }
 
-    std::unordered_set<String, StringHash> targetNodeIds;
     for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
-        targetNodeIds.insert(nodeId);
-    }
-    for (const auto& node : frame.graph.getNodes()) {
-        const Rectangle<float> bounds = frame.viewport.toScreen(node.bounds);
-        if (targetNodeIds.find(node.id) != targetNodeIds.end()
-                && bounds.intersects(frame.canvasBounds)) {
+        const Node* target = frame.graph.findNode(nodeId);
+        if (target == nullptr) {
+            continue;
+        }
+        const Rectangle<float> bounds = frame.viewport.toScreen(target->bounds);
+        if (bounds.intersects(frame.canvasBounds)) {
             paintHighlight(graphics, bounds, *guide);
         }
     }
@@ -101,8 +83,7 @@ void GuideRelationshipPresentation::paintTether(
 
     const String guideId = tetherGuideId(frame.guideShelfState);
     const GuideCurveResource* guide = frame.graph.findGuideCurve(guideId);
-    const Node* target = firstVisibleTarget(frame, guideId);
-    if (guide == nullptr || target == nullptr) {
+    if (guide == nullptr) {
         return;
     }
 
@@ -112,22 +93,35 @@ void GuideRelationshipPresentation::paintTether(
             frame.dockSplitRatio,
             frame.guideShelfState,
             guide->shelfOrder);
-    const Rectangle<float> destination = frame.viewport.toScreen(target->bounds);
     const Point<float> start { tile.getCentreX(), tile.getY() };
-    const Point<float> end { destination.getCentreX(), destination.getBottom() };
-    const float controlDistance = jmax(48.f, (start.y - end.y) * 0.35f);
-    Path tether;
-    tether.startNewSubPath(start);
-    tether.cubicTo(
-            start.x, start.y - controlDistance,
-            end.x, end.y + controlDistance,
-            end.x, end.y);
+    Path tethers;
+    int visibleTargetCount = 0;
+    for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
+        const Node* target = frame.graph.findNode(nodeId);
+        if (target == nullptr || !isVisibleTarget(frame, *target)) {
+            continue;
+        }
+
+        const Rectangle<float> destination = frame.viewport.toScreen(target->bounds);
+        const Point<float> end { destination.getCentreX(), destination.getBottom() };
+        const float controlDistance = jmax(48.f, (start.y - end.y) * 0.35f);
+        tethers.startNewSubPath(start);
+        tethers.cubicTo(
+                start.x, start.y - controlDistance,
+                end.x, end.y + controlDistance,
+                end.x, end.y);
+        ++visibleTargetCount;
+    }
+    if (visibleTargetCount == 0) {
+        return;
+    }
+
     Graphics::ScopedSaveState overlayClip(graphics);
     if (!frame.canvasOcclusion.isEmpty()) {
         graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
     }
     graphics.setColour(GuideCurveShelf::colourForGuide(*guide).withAlpha(0.48f));
-    graphics.strokePath(tether, PathStrokeType(1.6f));
+    graphics.strokePath(tethers, PathStrokeType(1.6f));
 }
 
 }

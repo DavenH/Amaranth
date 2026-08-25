@@ -74,8 +74,9 @@ shelf with authoring and assignment behavior, not another kind of graph node.
   Guide is removed from the node palette.
 - Selector menus are the authoritative assignment gesture. Dragging a Guide
   onto an editor is deferred until all target-field drop semantics are designed.
-- Guide relationships never have persistent cables. A temporary tether may
-  show one active relationship only while its tile or target is hovered.
+- Guide relationships never have persistent cables. While a Guide tile is
+  hovered, temporary tethers fan out to every visible unique target node.
+  Several component assignments owned by the same node collapse to one route.
 - Temporary Guide tethers use the canvas editor-occlusion geometry already
   owned by `NodeCanvasPresentationFrame`: they never paint over an expanded
   editor, and an assignment target hidden by that editor is not considered a
@@ -335,7 +336,7 @@ contracts:
   movement within a tile strip, activation, and Spy deletion invoke the same
   semantic actions as pointer input;
 - selecting a Guide may retain subdued endpoint highlighting, but only a
-  current hover may draw the single relationship tether. Hover state clears
+  current hover may draw relationship tethers. Hover state clears
   when the pointer leaves the canvas, and selection/hover state cannot leak
   across document loads;
 - global collapse, per-shelf minimize/restore, Guide creation, and Spy refresh
@@ -489,8 +490,8 @@ and colour. Relationships are disclosed without persistent cables:
 
 - hovering or selecting a target highlights its Guide tile;
 - hovering or selecting a Guide highlights all visible target badges;
-- a temporary tether is drawn only for one hovered tile-to-target relationship;
-- hovering a shared Guide does not fan out several tethers across the canvas;
+- hovering a shared Guide fans out one temporary tether to every visible unique
+  target node, without duplicating routes for component assignments on that node;
 - the usage list provides navigation when not all consumers are visible.
 
 The canvas may show a small Guide-usage badge/count on affected nodes, but it
@@ -721,8 +722,8 @@ reorder the slices rather than introducing a transitional second authority.
   compression.
 - Guide double-click opens the full editor only above the dock and keeps Spy
   tiles visible.
-- Hover/selection highlights matching endpoints; only hover draws at most one
-  temporary tether.
+- Hover/selection highlights matching endpoints; only hover draws temporary
+  tethers, one per visible unique target node.
 - Assignment menus expose detach, new, and every named Guide without requiring
   a canvas Guide card.
 - Native automation captures both populated shelves, one empty shelf, each
@@ -731,8 +732,8 @@ reorder the slices rather than introducing a transitional second authority.
 - Tab and Shift-Tab traverse every currently visible dock control and tile;
   arrow, activation, and deletion keys exercise the same observable actions as
   pointer input.
-- Selected Guides do not draw tethers. Hover draws at most one tether and
-  leaving the canvas removes it immediately.
+- Selected Guides do not draw tethers. Hover draws all visible unique target
+  routes and leaving the canvas removes them immediately.
 - Loading another graph clears stale Guide/Spy selection, hover, keyboard
   focus, and horizontal offsets.
 - Both shelves use the shared tile/header grammar and visible overflow position
@@ -775,6 +776,8 @@ resource, but behavior is retained.
   and its active focus is visible.
 - Guide relationship tethers are hover-only and cannot persist across pointer
   exit or document replacement.
+- A hovered shared Guide fans out to every visible unique target node while
+  multiple assignments owned by one node retain a single route.
 - Guide relationship tethers remain below expanded Trimesh/effect editors and
   do not route to targets hidden by editor occlusion.
 - Full Guide editing occurs above the dock while Spy feedback remains visible.
@@ -814,7 +817,7 @@ Completed on macOS through the repository build and native launch scripts:
   contain zero Guide nodes or synthetic Guide edges;
 - native fixtures pass for the populated OpenGL dock, independent Guide
   scrolling and drawer restoration, Spy drawer, empty Guide vacancy, global
-  collapse, one relationship tether, Guide editing with Live Spy output, and
+  collapse, relationship tethers, Guide editing with Live Spy output, and
   shared Guide deletion/undo;
 - OS-rendered captures were produced for populated shelves, the empty Guide
   shelf, both drawers, global collapse, Guide editing above visible Spies, and
@@ -867,3 +870,11 @@ Completed on macOS through the repository build and native launch scripts:
   Trimesh-hover fixture passes. The OS-rendered capture
   `/private/tmp/cycle-v2-guide-tether-editor-occlusion-native.png` confirms no
   Guide tether is composited over either Trimesh panel.
+- The 2026-08-25 shared-Guide refinement maintains assignment usage counts but
+  indexes target-node relationships uniquely. Hover painting therefore fans
+  out once per visible consumer node, even when several cube components on that
+  node use the Guide. The focused relationship run passes 14 assertions in 2
+  cases, the graph relationship case passes 11 assertions, and the full suite
+  passes 8,812 assertions in 496 cases. The updated native Baroque fixture
+  passes and `/private/tmp/cycle-v2-guide-multiple-tethers-native.png` shows
+  Guide 1 routed to both `magnitudeLayer3` and `phaseLayer1`.
