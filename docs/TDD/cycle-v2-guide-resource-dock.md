@@ -583,7 +583,8 @@ continuing.
 - Add detach and replacement behavior for the complete selected-vertex owner
   set.
 - Remove synthetic Guide port IDs from view modules and scene targets.
-- Add stable Guide badges and one-at-a-time hover/selection tether geometry.
+- Add stable Guide badges and hover/selection tether geometry that fans out to
+  visible unique target nodes.
 
 ### Slice 5: Shared Workspace Dock
 

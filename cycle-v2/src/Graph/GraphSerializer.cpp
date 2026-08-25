@@ -480,13 +480,6 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
         probes.add(probeToJSON(probe));
     }
     root->setProperty("probes", var(std::move(probes)));
-    if (graph.getPerformanceKeyboardBounds().has_value()) {
-        auto presentation = std::make_unique<DynamicObject>();
-        presentation->setProperty(
-                "performanceKeyboardBounds",
-                rectangleToJSON(*graph.getPerformanceKeyboardBounds()));
-        root->setProperty("presentation", var(presentation.release()));
-    }
     return var(root.release());
 }
 
@@ -513,30 +506,6 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::InvalidSchema,
                 "Graph nodes, edges, probes, guides, and guide assignments must be arrays" });
         return result;
-    }
-
-    const var presentationValue = root->getProperty("presentation");
-    if (!presentationValue.isVoid()) {
-        const auto* presentation = presentationValue.getDynamicObject();
-        if (presentation == nullptr) {
-            result.issues.push_back({
-                    GraphLoadCode::InvalidSchema,
-                    "Graph presentation metadata is invalid"
-            });
-        } else {
-            const var keyboardValue = presentation->getProperty("performanceKeyboardBounds");
-            if (!keyboardValue.isVoid()) {
-                Rectangle<float> keyboardBounds;
-                if (rectangleFromJSON(keyboardValue, keyboardBounds)) {
-                    result.graph.setPerformanceKeyboardBounds(keyboardBounds);
-                } else {
-                    result.issues.push_back({
-                            GraphLoadCode::InvalidSchema,
-                            "Performance keyboard bounds are invalid"
-                    });
-                }
-            }
-        }
     }
 
     const auto& registry = NodeDefinitionRegistry::instance();

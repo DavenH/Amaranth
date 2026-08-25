@@ -63,15 +63,16 @@ bool actionContains(
 String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryModel& queries) {
     switch (action.kind) {
         case CanvasNodeActionKind::CycleOperationLayout:
-            return "Cycle operation port layout  /  side, uptack, vertical, T";
+            return "Click to change this operation’s port arrangement.";
 
         case CanvasNodeActionKind::CycleMeshOutputSide:
-            return "Cycle output side  /  east, south, north";
+            return "Click to move this mesh output to another side.";
 
         case CanvasNodeActionKind::CycleVoiceDomain:
             if (const Node* node = queries.findNode(action.nodeId)) {
-                return "Voice start domain  /  " + VoiceContextCompactEditor::domainLabel(*node)
-                        + "  /  click to switch";
+                return "This voice starts in the "
+                        + VoiceContextCompactEditor::domainLabel(*node).toLowerCase()
+                        + " domain. Click to switch domains.";
             }
             return {};
 
@@ -164,12 +165,13 @@ String NodeCanvasHitRouter::hoverTextFor(
 
     if (palette.findKindAt(screenPosition, paletteKind)) {
         const Node node = GraphNodeFactory().createNode(paletteKind, {}, {});
-        return "Create " + labelForNodeKind(node.kind) + "  /  " + node.subtitle;
+        return "Add a " + labelForNodeKind(node.kind) + " node to the canvas.";
     }
 
     const int paletteSectionIndex = palette.findSectionAt(screenPosition);
     if (paletteSectionIndex >= 0) {
-        return "Node group  /  " + String(palette.section(paletteSectionIndex).title);
+        return "Show the " + String(palette.section(paletteSectionIndex).title)
+                + " node group.";
     }
 
     if (const auto action = nodeActionAt(viewport, screenPosition)) {

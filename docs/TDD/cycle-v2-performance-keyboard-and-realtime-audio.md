@@ -4,12 +4,11 @@
 
 Closed (2026-08-02).
 
-The standalone realtime acceptance path, presentation-only keyboard, preset
-placement, canvas synchronization and occlusion, octave labels, unlabeled drag
-surface, and focused automation coverage are complete. All deletion targets
-and negative architecture boundaries have been audited; no implementation
-slices remain open in this TDD. The final UI refinements are committed through
-`1e63c9a9`.
+The standalone realtime acceptance path, presentation-only keyboard, octave
+labels, expanded-editor occlusion, and focused automation coverage are
+complete. The former draggable world placement and preset-persistence contract
+is superseded by `cycle-v2-canvas-utility-dock.md`, which makes the keyboard a
+fixed screen-space application control.
 
 ## Problem
 
@@ -32,18 +31,15 @@ running.
 ## Decision
 
 Add a compact **Performance Keyboard** panel to the canvas presentation layer.
-It looks and moves like a node, but it is not a `NodeGraph` node and does not
-participate in graph topology or DSP execution. Its world-space bounds are
-presentation metadata in the preset so authors can place it without obscuring
-nodes and retain that layout when the preset is reopened.
+It is not a `NodeGraph` node and does not participate in graph topology or DSP
+execution. Its fixed screen-space bounds come from the canvas utility dock.
 
 This ownership is intentional:
 
 - the keyboard has no ports and does not participate in graph topology;
 - showing or playing it must not change the graph revision, preset, undo
   history, compilation, or DSP configuration;
-- moving it is one undoable preset-layout edit, but must not trigger graph
-  compilation or alter topology;
+- its dock placement does not participate in document mutation or undo;
 - it must remain immediately playable without expansion; and
 - the same keyboard should audition whichever graph is currently active.
 
@@ -166,30 +162,20 @@ GraphDocument -> compile/configure off realtime -> immutable prepared generation
 
 `NodeWorkspace` owns the keyboard panel and hosts it as an interactive child of
 `NodeCanvas`, following the same OpenGL-safe component-composition boundary as
-expanded node editors. Its bounds are stored in canvas world coordinates, so
-pan and zoom move and scale it with the graph. The graph canvas does not receive
-pointer gestures captured by a key or the panel's drag header.
-
-`NodeCanvas` publishes viewport and expanded-editor presentation changes to the
-workspace synchronously on the message thread. The keyboard transform is
-therefore updated in the same pan/zoom event as node presentation, rather than
-waiting for the audio/status timer. When an expanded editor geometrically
-occludes the keyboard, the keyboard is hidden and releases its held note; it is
-shown again when that occlusion ends. This rule is shared by hosted component
-editors and canvas-painted compact editors, whose differing JUCE z-order cannot
-otherwise express one consistent stacking contract.
+expanded node editors. `CanvasUtilityDock` supplies fixed lower-right screen
+bounds, so graph pan and zoom do not move or scale it and graph content does not
+persist its placement. When an expanded editor geometrically occludes the
+keyboard, the keyboard is hidden and releases its held note; it is shown again
+when that occlusion ends. The graph canvas does not receive pointer gestures
+captured by a key or octave button.
 
 The host supplies a narrow `MidiEventSink` to the widget. The widget does not
 know about `NodeGraph`, compilation, executors, voices, devices, or automation
 reports. It renders keyboard state obtained from `MidiKeyboardState` and emits
 MIDI messages through the sink.
 
-The initial placement is near the bottom-centre of the visible canvas, with a
-compact 496-by-184 world-unit frame and enough margin that the first and last
-key can be hit reliably. A header drag moves the panel through the normal
-compound layout-command boundary so the complete gesture is one undoable
-edit. Exact dimensions are shared by world-to-canvas layout, hit testing, and
-automation target inspection.
+The keyboard is fixed to the lower-right utility dock. Its compact dimensions
+are shared by screen layout, hit testing, and automation target inspection.
 
 ### Interaction Contract
 
@@ -370,13 +356,9 @@ Application shutdown and device restart use this order:
 
 ## Persistence
 
-Graph JSON stores the keyboard's world-space bounds under optional root-level
-`presentation.performanceKeyboardBounds` metadata. This metadata is outside
-the node and edge collections, is ignored by `GraphCompiler`, and is absent in
-older presets. Missing metadata therefore uses the default placement. A header
-drag updates the bounds as one undoable layout edit and marks the document
-dirty; saving and reopening must restore the exact placement without adding a
-node, edge, or execution step.
+Graph JSON stores no keyboard geometry. The utility dock owns its screen-space
+placement as application presentation, so graph saving, loading, compilation,
+revision, and undo are unaffected.
 
 Application properties may store visibility, base octave, MIDI input choices,
 and JUCE audio device setup. Neither preset nor application state may store
@@ -423,13 +405,9 @@ zero-cost when unused. It does not become a parallel renderer.
 - Octave controls update the labels on both visible C keys immediately.
 - A key-playing gesture creates no graph revision, undo entry, compilation, or
   serialized data change.
-- Canvas pan/zoom moves and scales the panel as world-space presentation state.
-- The keyboard screen transform reaches the same viewport revision in the
-  originating pan/zoom event; timer-delayed reconciliation is not acceptable.
+- Canvas pan/zoom does not move or scale the docked panel.
 - An overlapping expanded editor hides the keyboard synchronously and releases
   any held note.
-- One header drag creates one undoable layout edit, persists the final
-  world-space bounds, and creates no node, edge, or compile-plan step.
 
 ### MIDI Ingress And Voices
 
@@ -526,13 +504,10 @@ The feature is complete only when all of the following are true:
 - Realtime instrumentation proves no allocation, lock, graph mutation,
   compilation, preparation, UI access, or retired-object destruction occurs in
   the callback.
-- Key-playing gestures and application settings do not alter preset JSON,
-  graph revisions, or undo history. Moving the panel alters only its preset
-  presentation bounds as one undoable layout edit.
-- Saving and reopening a moved panel restores its world-space placement; the
-  keyboard remains absent from graph topology and the compiled execution plan.
+- Key-playing gestures and utility-dock layout do not alter preset JSON, graph
+  revisions, or undo history.
 - The keyboard never paints or receives gestures over an expanded editor, and
-  it tracks canvas pan/zoom without a delayed visual catch-up.
+  remains fixed while the canvas pans or zooms.
 - Device or graph failure is observable through diagnostics and cannot be
   mistaken for successful playback in acceptance automation.
 
@@ -544,8 +519,7 @@ callback evidence must pass before that manual check is reported as successful.
 ## Negative Architecture Boundaries
 
 - Do not add `NodeKind::Keyboard`, a palette entry, graph ports, graph edges, or
-  keyboard domain-state serialization. Only presentation bounds belong in the
-  preset.
+  keyboard presentation serialization.
 - Do not make `NodeWorkspace`, `NodeCanvas`, or `MainWindow` implement synth
   voice allocation or DSP.
 - Do not call `GraphPresentationModel::captureAudio` from a key gesture.
@@ -643,8 +617,8 @@ The completed implementation follows the ownership in this design. The
 keyboard is a presentation-only canvas child and reuses `AmaranthMidiKeyboard`,
 `MidiKeyboardState`, and JUCE key geometry and drag handling. It adds no node
 kind, ports, graph branches, domain-state serialization, or copied key
-hit-testing. Only its world-space bounds use the existing graph-document
-serialization and compound layout-command boundaries. The widget only
+hit-testing. Its fixed bounds come from `CanvasUtilityDock`; no keyboard state
+uses graph-document serialization or command boundaries. The widget only
 translates keyboard-state notifications to a `MidiEventSink`.
 
 The shared queue contains 512 events and uses a bounded multi-producer,
@@ -709,39 +683,29 @@ non-realtime capture result.
 - Local artifacts: `/private/tmp/cycle-v2-performance-keyboard-node-drag-report.json`,
   `/private/tmp/cycle-v2-performance-keyboard-live.wav`, and
   `/private/tmp/cycle-v2-performance-keyboard.png`.
-- The persistence fixture completed 28 commands without failure, saved
-  `/private/tmp/cycle-v2-performance-keyboard-position.cyclegraph`, and verified
-  the dragged 496-by-184 world bounds. The saved preset contains the bounds as
-  presentation metadata while retaining its original 15 nodes and 15 edges.
-  Serializer coverage proves exact reload and an unchanged compile-plan step
-  count; command coverage proves the complete drag is one undoable edit. A
-  second app session reopened that saved preset and matched the stored X, Y,
-  width, and height in five automation commands without failure; its report is
-  `/private/tmp/cycle-v2-performance-keyboard-reload-report.json`.
+- The former keyboard-position persistence fixture and its saved artifacts are
+  obsolete. Serializer coverage now proves application utility placement is
+  absent from graph content.
 - A native OS capture caught the OpenGL canvas covering the initial workspace
   sibling. The final panel is a child of the OpenGL-attached canvas, matching
   the established expanded-editor composition path.
   `/private/tmp/cycle-v2-keyboard-node-os.png` verifies the compact node-like
   panel after context startup.
-- A native `cliclick` drag moved the header diagonally through five successive
-  updates without losing mouse ownership. The final state retained graph
-  revision 2, no held note, and no active voice.
+- Header dragging and its automation state were removed when the keyboard
+  became fixed application UI.
 - `/private/tmp/cycle-v2-keyboard-label-os.png` verifies the restrained octave
   labels on the two visible C keys; automation reports `C3` and `C4` for the
   default range.
 - `/private/tmp/cycle-v2-keyboard-narrow-os.png` verifies the final 496-unit
   width, reduced exactly 20 percent from the previous 620-unit panel.
-- The focused canvas-composition fixture verifies immediate viewport-revision
-  synchronization, expanded-editor occlusion, and held-note release in 13
-  commands without failure. Its report is
+- The focused canvas-composition fixture verifies fixed dock placement,
+  expanded-editor occlusion, and held-note release without failure. Its report is
   `/private/tmp/cycle-v2-performance-keyboard-canvas-composition-report.json`.
 - `/private/tmp/cycle-v2-keyboard-expanded-occlusion-os.png` confirms the
   expanded Trimesh editor occupies the canvas without the keyboard painting or
   accepting gestures above it.
-- `/private/tmp/cycle-v2-keyboard-unlabelled-os.png` verifies that the final
-  keyboard header contains only the octave controls and drag surface, with no
-  redundant title or audio-readiness text. The 28-command MIDI/audio/drag
-  fixture continued to pass after removing the label.
+- The historical draggable-header capture is superseded by the fixed utility
+  dock acceptance in `cycle-v2-canvas-utility-dock.md`.
 
 The filtered launch log contains the already-recorded JUCE `Settings.cpp:223`
 and `Settings.cpp:224` assertions. They remain tracked in `ui-bugs.md`; they did

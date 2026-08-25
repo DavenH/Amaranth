@@ -7,7 +7,7 @@
     },
     {
       "command": "assertState",
-      "path": "performance.layoutSynchronized",
+      "path": "performance.docked",
       "equals": true
     },
     {
@@ -15,7 +15,7 @@
       "area": "canvas",
       "event": "wheel",
       "x": 1000,
-      "y": 800,
+      "y": 500,
       "deltaX": 0.2,
       "deltaY": 0.1
     },
@@ -27,7 +27,7 @@
     },
     {
       "command": "assertState",
-      "path": "performance.layoutSynchronized",
+      "path": "performance.docked",
       "equals": true
     },
     {

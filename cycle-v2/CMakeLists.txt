@@ -135,6 +135,7 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeSelector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"

@@ -473,15 +473,6 @@ bool NodeGraph::setNodeBounds(const String& nodeId, Rectangle<float> bounds) {
     return true;
 }
 
-bool NodeGraph::setPerformanceKeyboardBounds(Rectangle<float> bounds) {
-    if (performanceKeyboardBounds == bounds) {
-        return false;
-    }
-    performanceKeyboardBounds = bounds;
-    ++revision;
-    return true;
-}
-
 void NodeGraph::translateNodes(const std::vector<String>& nodeIds, Point<float> offset) {
     bool changed = false;
     for (auto& node : nodes) {
@@ -677,17 +668,18 @@ NodeGraph NodeGraph::createDemoGraph() {
 }
 
 Colour colourForDomain(PortDomain domain) {
+    const Colour control { 0xffc5cad3 };
     switch (domain) {
-        case PortDomain::DomainContext:           return Colour(0xff72d49a);
+        case PortDomain::DomainContext:           return control;
         case PortDomain::TimeSignal:              return Colour(0xff35d6d2);
         case PortDomain::SpectralMagnitudeSignal: return Colour(0xffffb347);
         case PortDomain::SpectralPhaseSignal:     return Colour(0xffb284ff);
-        case PortDomain::MeshField:               return Colour(0xff7f95aa);
-        case PortDomain::EnvelopeSignal:          return Colour(0xff67a7ff);
-        case PortDomain::PitchSignal:             return Colour(0xffb8ff5c);
-        case PortDomain::VoiceControlSignal:      return Colour(0xff74e28a);
-        case PortDomain::ControlSignal:           return Colour(0xffc5cad3);
-        default:                                  return Colour(0xffc5cad3);
+        case PortDomain::MeshField:               return control;
+        case PortDomain::EnvelopeSignal:          return control;
+        case PortDomain::PitchSignal:             return control;
+        case PortDomain::VoiceControlSignal:      return control;
+        case PortDomain::ControlSignal:           return control;
+        default:                                  return control;
     }
 }
 

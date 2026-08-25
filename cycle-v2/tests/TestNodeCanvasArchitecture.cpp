@@ -192,6 +192,15 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
+TEST_CASE("Canvas status gives hover help precedence over the last edit",
+        "[cycle-v2][canvas][status]") {
+    REQUIRE(NodeCanvasPresentation::canvasStatusText("Node added", {}) == "Node added");
+    REQUIRE(NodeCanvasPresentation::canvasStatusText(
+            "Node added",
+            "Time signal from Oscillator to Output.")
+            == "Time signal from Oscillator to Output.");
+}
+
 TEST_CASE("Guide relationship tethers reach every visible unique target behind editors",
         "[cycle-v2][canvas][guide-dock][relationship][occlusion]") {
     NodeGraph graph;
@@ -297,6 +306,28 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
     };
     REQUIRE(alphaCount({ 339, 74, 12, 12 }) > 0);
     REQUIRE(alphaCount({ 39, 74, 12, 12 }) > 0);
+    const auto dock = WorkspaceDock::layout(
+            frame.workspaceBounds,
+            {
+                    dockState.expanded,
+                    guideState.minimized,
+                    dockState.minimized,
+                    dockState.expandedHeight,
+                    frame.dockSplitRatio
+            });
+    const auto guideTile = GuideCurveShelf::tileBoundsFor(
+            frame.workspaceBounds,
+            dockState,
+            frame.dockSplitRatio,
+            guideState,
+            0);
+    WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
+    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
+    const Point<int> terminal {
+            roundToInt(guideTile.getCentreX()),
+            roundToInt(dock.dock.getY())
+    };
+    REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
 
     frame.canvasOcclusion = { 0.f, 10.f, 400.f, 80.f };
     image.clear(image.getBounds(), Colours::transparentBlack);
@@ -953,7 +984,7 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
                     *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
-TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
+TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
         "[cycle-v2][canvas][cables]") {
     NodeSceneEdge edge;
     edge.source = { 30.f, 50.f };
@@ -965,12 +996,11 @@ TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
             PortSide::Left,
             1.f);
 
-    const std::array<NodeCableStyle, 5> styles {
+    const std::array<NodeCableStyle, 4> styles {
             NodeCableStyle { Colour(0xff42d3cf), false, false, false, false },
-            NodeCableStyle { Colour(0xff42d3cf), true, false, false, false },
-            NodeCableStyle { Colour(0xffff5a5f), false, true, false, false },
-            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false },
-            NodeCableStyle { Colour(0xff42d3cf), false, false, false, true }
+            NodeCableStyle { Colour(0xffff5a5f), true, false, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, true, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false }
     };
     std::array<uint64_t, styles.size()> checksums {};
 
@@ -987,6 +1017,19 @@ TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
             REQUIRE(checksums[i] != checksums[j]);
         }
     }
+}
+
+TEST_CASE("Canvas legend collapses non-signal domains into Control",
+        "[cycle-v2][canvas][legend]") {
+    const Colour control = colourForDomain(PortDomain::ControlSignal);
+    REQUIRE(colourForDomain(PortDomain::DomainContext) == control);
+    REQUIRE(colourForDomain(PortDomain::MeshField) == control);
+    REQUIRE(colourForDomain(PortDomain::EnvelopeSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::PitchSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::VoiceControlSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::TimeSignal) != control);
+    REQUIRE(colourForDomain(PortDomain::SpectralMagnitudeSignal) != control);
+    REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
 TEST_CASE("Voice context editor resolves every authored control from its painted rows",

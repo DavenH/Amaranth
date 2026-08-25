@@ -502,6 +502,7 @@ void NodeCanvasPresentation::paint(
             "Spies",
             frame.probeRailState.expanded,
             frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,
@@ -529,7 +530,7 @@ void NodeCanvasPresentation::paintContent(
     paintMiniMap(graphics, frame);
     paintLegend(graphics, frame);
     paintPalette(graphics, frame);
-    paintHoverConsole(graphics, frame);
+    paintStatus(graphics, frame);
 }
 
 bool NodeCanvasPresentation::renderOpenGL(
@@ -617,7 +618,6 @@ void NodeCanvasPresentation::paintEdges(
                 : colourForDomain(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
-                edge.isAttachment(),
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,

@@ -12,8 +12,18 @@
     },
     {
       "command": "assertState",
-      "path": "performance.worldWidth",
-      "equals": 496
+      "path": "performance.docked",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.screenWidth",
+      "equals": 420
+    },
+    {
+      "command": "assertState",
+      "path": "performance.screenHeight",
+      "equals": 126
     },
     {
       "command": "assertState",
@@ -39,53 +49,6 @@
       "command": "assertState",
       "path": "performance.audioDeviceReady",
       "equals": true
-    },
-    {
-      "command": "pointer",
-      "targetId": "PerformanceKeyboard.Header",
-      "event": "down",
-      "targetX": 0.3
-    },
-    {
-      "command": "pointer",
-      "targetId": "PerformanceKeyboard.Header",
-      "downTargetId": "PerformanceKeyboard.Header",
-      "event": "drag",
-      "targetX": 0.7,
-      "downTargetX": 0.3
-    },
-    {
-      "command": "pointer",
-      "targetId": "PerformanceKeyboard.Header",
-      "downTargetId": "PerformanceKeyboard.Header",
-      "event": "drag",
-      "targetX": 0.9,
-      "targetY": 0.8,
-      "downTargetX": 0.3,
-      "downTargetY": 0.5
-    },
-    {
-      "command": "pointer",
-      "targetId": "PerformanceKeyboard.Header",
-      "downTargetId": "PerformanceKeyboard.Header",
-      "event": "up",
-      "targetX": 0.7,
-      "downTargetX": 0.3
-    },
-    {
-      "command": "assertState",
-      "path": "performance.moveCount",
-      "op": "greaterThan",
-      "value": 1
-    },
-    {
-      "command": "assertState",
-      "path": "performance.presetPositionStored",
-      "equals": true
-    },
-    {
-      "command": "saveGraph",
-      "path": "/private/tmp/cycle-v2-performance-keyboard-position.cyclegraph"
     },
     {
       "command": "pointer",

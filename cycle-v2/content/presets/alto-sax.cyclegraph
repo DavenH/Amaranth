@@ -3909,14 +3909,6 @@
         }
     ],
     "probes": [],
-    "presentation": {
-        "performanceKeyboardBounds": {
-            "x": 2050,
-            "y": -220,
-            "width": 496,
-            "height": 184
-        }
-    },
     "guides": [
         {
             "id": "guide1",

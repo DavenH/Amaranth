@@ -257,9 +257,6 @@ public:
     const std::vector<GuideCurveResource>& getGuideCurves() const { return guideCurves; }
     const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
-    const std::optional<Rectangle<float>>& getPerformanceKeyboardBounds() const {
-        return performanceKeyboardBounds;
-    }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
@@ -298,7 +295,6 @@ public:
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
-    bool setPerformanceKeyboardBounds(Rectangle<float> bounds);
     void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
     void markChanged() { ++revision; }
 
@@ -339,7 +335,6 @@ private:
     std::vector<GuideCurveResource> guideCurves;
     std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
-    std::optional<Rectangle<float>> performanceKeyboardBounds;
     std::unordered_map<String, size_t, StringHash> guideResourceIndex;
     std::unordered_map<
             GuideTargetAddress,

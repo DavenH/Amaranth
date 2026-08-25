@@ -279,14 +279,6 @@ def convert(source):
         "guideAssignments": guide_assignments,
         "edges": edges,
         "probes": [],
-        "presentation": {
-            "performanceKeyboardBounds": {
-                "x": 2050,
-                "y": -220,
-                "width": 496,
-                "height": 184,
-            },
-        },
     }
 
 

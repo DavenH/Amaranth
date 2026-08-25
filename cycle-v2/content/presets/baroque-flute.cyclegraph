@@ -7530,14 +7530,6 @@
             "railOrder": 4
         }
     ],
-    "presentation": {
-        "performanceKeyboardBounds": {
-            "x": 2244.45044,
-            "y": -336.26077,
-            "width": 496.0,
-            "height": 184.0
-        }
-    },
     "guides": [
         {
             "id": "guide1",

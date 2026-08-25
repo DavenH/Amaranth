@@ -300,37 +300,11 @@ TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph]
     REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
 }
 
-TEST_CASE("Graph JSON persists performance keyboard layout outside topology",
-        "[cycle-v2][graph][layout][keyboard]") {
-    NodeGraph graph = NodeGraph::createDemoGraph();
-    const size_t nodeCount = graph.getNodes().size();
-    const size_t edgeCount = graph.getEdges().size();
-    const auto baseline = GraphCompiler().compile(graph);
-    REQUIRE(baseline.succeeded());
-    REQUIRE(graph.setPerformanceKeyboardBounds({ 123.f, 456.f, 496.f, 184.f }));
-
-    const GraphSerializer serializer;
-    const String encoded = serializer.toJsonString(graph);
-    REQUIRE(encoded.contains("\"presentation\""));
-    REQUIRE(encoded.contains("\"performanceKeyboardBounds\""));
-    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
-
-    REQUIRE(loaded.succeeded());
-    REQUIRE(loaded.graph.getPerformanceKeyboardBounds().has_value());
-    REQUIRE(*loaded.graph.getPerformanceKeyboardBounds()
-            == Rectangle<float>(123.f, 456.f, 496.f, 184.f));
-    REQUIRE(loaded.graph.getNodes().size() == nodeCount);
-    REQUIRE(loaded.graph.getEdges().size() == edgeCount);
-    const auto compiled = GraphCompiler().compile(loaded.graph);
-    REQUIRE(compiled.succeeded());
-    REQUIRE(compiled.plan.steps.size() == baseline.plan.steps.size());
-    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
-
-    var malformed = serializer.writeJSON(graph);
-    malformed.getProperty("presentation", {})
-            .getProperty("performanceKeyboardBounds", {})
-            .getDynamicObject()->removeProperty("width");
-    REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
+TEST_CASE("Graph JSON excludes application utility layout",
+        "[cycle-v2][graph][serialization][keyboard]") {
+    const String encoded = GraphSerializer().toJsonString(NodeGraph::createDemoGraph());
+    REQUIRE_FALSE(encoded.contains("\"presentation\""));
+    REQUIRE_FALSE(encoded.contains("\"performanceKeyboardBounds\""));
 }
 
 TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v2][graph]") {

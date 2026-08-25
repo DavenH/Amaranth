@@ -2,6 +2,7 @@
 
 #include "GuideCurveShelf.h"
 #include "NodeCanvasPresentation.h"
+#include "WorkspaceDock.h"
 
 namespace CycleV2 {
 
@@ -37,6 +38,39 @@ bool isVisibleTarget(
     const bool hiddenByEditor = !frame.canvasOcclusion.isEmpty()
             && bounds.intersects(frame.canvasOcclusion);
     return bounds.intersects(frame.canvasBounds) && !hiddenByEditor;
+}
+
+Point<float> tetherStart(
+        const NodeCanvasPresentationFrame& frame,
+        const GuideCurveResource& guide) {
+    const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
+            frame.workspaceBounds,
+            frame.probeRailState,
+            frame.dockSplitRatio,
+            frame.guideShelfState,
+            guide.shelfOrder);
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(
+            frame.workspaceBounds,
+            {
+                    frame.probeRailState.expanded,
+                    frame.guideShelfState.minimized,
+                    frame.probeRailState.minimized,
+                    frame.probeRailState.expandedHeight,
+                    frame.dockSplitRatio
+            });
+    return { tile.getCentreX(), dock.dock.getY() };
+}
+
+bool hasVisibleTarget(
+        const NodeCanvasPresentationFrame& frame,
+        const String& guideId) {
+    for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
+        const Node* target = frame.graph.findNode(nodeId);
+        if (target != nullptr && isVisibleTarget(frame, *target)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }
@@ -87,13 +121,7 @@ void GuideRelationshipPresentation::paintTether(
         return;
     }
 
-    const Rectangle<float> tile = GuideCurveShelf::tileBoundsFor(
-            frame.workspaceBounds,
-            frame.probeRailState,
-            frame.dockSplitRatio,
-            frame.guideShelfState,
-            guide->shelfOrder);
-    const Point<float> start { tile.getCentreX(), tile.getY() };
+    const Point<float> start = tetherStart(frame, *guide);
     Path tethers;
     int visibleTargetCount = 0;
     for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
@@ -122,6 +150,26 @@ void GuideRelationshipPresentation::paintTether(
     }
     graphics.setColour(GuideCurveShelf::colourForGuide(*guide).withAlpha(0.48f));
     graphics.strokePath(tethers, PathStrokeType(1.6f));
+}
+
+void GuideRelationshipPresentation::paintTetherTerminal(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    if (!frame.probeRailState.expanded || frame.guideShelfState.minimized) {
+        return;
+    }
+
+    const String guideId = tetherGuideId(frame.guideShelfState);
+    const GuideCurveResource* guide = frame.graph.findGuideCurve(guideId);
+    if (guide == nullptr || !hasVisibleTarget(frame, guideId)) {
+        return;
+    }
+
+    const Point<float> start = tetherStart(frame, *guide);
+    graphics.setColour(Colour(0xff101318).withAlpha(0.96f));
+    graphics.fillRoundedRectangle(Rectangle<float>(16.f, 8.f).withCentre(start), 4.f);
+    graphics.setColour(GuideCurveShelf::colourForGuide(*guide).withAlpha(0.92f));
+    graphics.fillRoundedRectangle(Rectangle<float>(11.f, 4.f).withCentre(start), 2.f);
 }
 
 }

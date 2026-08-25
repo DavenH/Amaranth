@@ -310,7 +310,9 @@ void WorkspaceDockInteractionController::setDockExpandedFromKeyboard(bool expand
     settings.getGlobalSetting(AppSettings::GuideSpyDockExpanded) = expanded;
     if (!expanded && probeDetailState.isOpen()) {
         probeDetailState.close();
-        callbacks.overlayChanged();
+        if (callbacks.occlusionChanged) {
+            callbacks.occlusionChanged();
+        }
     }
     callbacks.resized();
 }
@@ -389,7 +391,9 @@ void WorkspaceDockInteractionController::removeSpyFromKeyboard(const String& pro
     callbacks.applyAuthoringResult(authoring.removeSignalProbe(probeId));
     if (probeDetailState.probeId == probeId) {
         probeDetailState.close();
-        callbacks.overlayChanged();
+        if (callbacks.occlusionChanged) {
+            callbacks.occlusionChanged();
+        }
     }
     probeState.selectedProbeId = {};
 }

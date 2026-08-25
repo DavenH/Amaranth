@@ -21,7 +21,7 @@ struct WorkspaceDockInteractionCallbacks {
     std::function<void(const NodeCanvasAuthoringResult&)> applyAuthoringResult;
     std::function<void()> repaint;
     std::function<void()> resized;
-    std::function<void()> overlayChanged;
+    std::function<void()> occlusionChanged;
 };
 
 class WorkspaceDockInteractionController final :

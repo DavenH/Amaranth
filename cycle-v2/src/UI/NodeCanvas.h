@@ -89,17 +89,9 @@ public:
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
-    Rectangle<float> visibleWorldBoundsForOverlay() const;
-    Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
-    Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
+    Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
-    uint64_t viewportRevisionForOverlay() const { return viewport.getRevision(); }
-    void setOverlayPresentationChangedCallback(std::function<void()> callback);
-    std::optional<Rectangle<float>> performanceKeyboardBounds() const;
-    void beginPerformanceKeyboardMove();
-    void movePerformanceKeyboard(Rectangle<float> worldBounds);
-    void endPerformanceKeyboardMove();
-    void storePerformanceKeyboardBounds(Rectangle<float> worldBounds);
+    void setOverlayOcclusionChangedCallback(std::function<void()> callback);
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -166,7 +158,7 @@ private:
     String expandedGuideId;
     std::optional<uint64_t> guideTransactionBaseRevision;
     uint32 compiledStateRefreshDueMs {};
-    std::function<void()> overlayPresentationChanged;
+    std::function<void()> overlayOcclusionChanged;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -175,9 +167,9 @@ private:
     void updateHoverAt(juce::Point<float> position);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
-    void notifyOverlayPresentationChanged();
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
+    void notifyOverlayOcclusionChanged();
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;
 

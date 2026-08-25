@@ -15,6 +15,9 @@ public:
     static void paintTether(
             juce::Graphics& graphics,
             const NodeCanvasPresentationFrame& frame);
+    static void paintTetherTerminal(
+            juce::Graphics& graphics,
+            const NodeCanvasPresentationFrame& frame);
     static void paintHighlights(
             juce::Graphics& graphics,
             const NodeCanvasPresentationFrame& frame);

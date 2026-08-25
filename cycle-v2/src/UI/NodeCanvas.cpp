@@ -11,6 +11,8 @@
 
 #include "NodeCanvas.h"
 
+#include "CanvasUtilityDock.h"
+
 #include "../Graph/NodeParameterMap.h"
 #include "NodeViewModule.h"
 #include "TransformCompactEditor.h"
@@ -169,7 +171,7 @@ NodeCanvas::NodeCanvas() :
                     [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
                     [this]() { requestCanvasRepaint(); },
                     [this]() { resized(); },
-                    [this]() { notifyOverlayPresentationChanged(); }
+                    [this]() { notifyOverlayOcclusionChanged(); }
             });
     refreshCompiledState();
 
@@ -211,7 +213,6 @@ void NodeCanvas::resized() {
                 GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
     }
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -309,7 +310,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
             probeDetailState.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
             return;
         }
@@ -327,7 +328,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
         } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
             const auto control = click.voiceContextEdit->control;
             if (control == VoiceContextEdit::Control::VoiceLength) {
@@ -471,7 +472,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
             editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
         }
 
         requestCanvasRepaint();
@@ -561,7 +562,6 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
     if (const auto* pan = std::get_if<PanDragUpdate>(&update)) {
         viewport.setTransform(pan->pan, viewport.getZoom());
-        notifyOverlayPresentationChanged();
     } else if (const auto* nodeDrag = std::get_if<NodeDragUpdate>(&update)) {
         if (nodeDrag->beginTransaction) {
             authoring.beginNodeMoveGesture();
@@ -695,13 +695,11 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
     constexpr float panScale = 720.f;
     viewport.panBy(Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale));
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     viewport.zoomAround(event.position, scaleFactor);
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -725,7 +723,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         }
         if (probeDetailState.isOpen()) {
             probeDetailState.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
             return true;
         }
@@ -1044,6 +1042,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             midiNote);
     if (!preview.has_value()) {
         probeDetailState.close();
+        notifyOverlayOcclusionChanged();
         return;
     }
 
@@ -1055,7 +1054,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
             resolution);
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
 }
 
 void NodeCanvas::refreshProbeDetail() {
@@ -1105,7 +1104,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     }
     if (result.effects.editorBindingChanged) {
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-        notifyOverlayPresentationChanged();
+        notifyOverlayOcclusionChanged();
     }
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
@@ -1381,19 +1380,14 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
-Rectangle<float> NodeCanvas::visibleWorldBoundsForOverlay() const {
-    return viewport.toWorld(canvasContentBounds());
-}
-
-Rectangle<int> NodeCanvas::boundsForWorldOverlay(Rectangle<float> worldBounds) const {
-    return viewport.toScreen(worldBounds).toNearestInt();
-}
-
-Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) const {
-    return viewport.toWorld(canvasPosition);
+Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
+    return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
+    if (guideEditor != nullptr && guideEditor->isVisible()) {
+        return guideEditor->getBounds().toFloat();
+    }
     if (probeDetailState.isOpen()) {
         return SignalProbeDetailView::boundsFor(canvasContentBounds());
     }
@@ -1404,34 +1398,14 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
             : Rectangle<float> {};
 }
 
-void NodeCanvas::setOverlayPresentationChangedCallback(std::function<void()> callback) {
-    overlayPresentationChanged = std::move(callback);
+void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callback) {
+    overlayOcclusionChanged = std::move(callback);
 }
 
-void NodeCanvas::notifyOverlayPresentationChanged() {
-    if (overlayPresentationChanged) {
-        overlayPresentationChanged();
+void NodeCanvas::notifyOverlayOcclusionChanged() {
+    if (overlayOcclusionChanged) {
+        overlayOcclusionChanged();
     }
-}
-
-std::optional<Rectangle<float>> NodeCanvas::performanceKeyboardBounds() const {
-    return commands.editingGraph().getPerformanceKeyboardBounds();
-}
-
-void NodeCanvas::beginPerformanceKeyboardMove() {
-    commands.beginCompoundEdit();
-}
-
-void NodeCanvas::movePerformanceKeyboard(Rectangle<float> worldBounds) {
-    commands.setPerformanceKeyboardBounds(worldBounds);
-}
-
-void NodeCanvas::endPerformanceKeyboardMove() {
-    commands.commitCompoundEdit();
-}
-
-void NodeCanvas::storePerformanceKeyboardBounds(Rectangle<float> worldBounds) {
-    commands.setPerformanceKeyboardBounds(worldBounds);
 }
 
 File NodeCanvas::snapshotFile() const {
@@ -1497,7 +1471,6 @@ bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
         editorCoordinator.updateHost(nullptr, canvasContentBounds());
-        notifyOverlayPresentationChanged();
         requestCanvasRepaint();
     }
     return cleared;
@@ -1525,7 +1498,7 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
 
 void NodeCanvas::closeNodeEditor() {
     editorCoordinator.close();
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
 }
 
 void NodeCanvas::openGuideEditor(const String& guideId) {
@@ -1550,7 +1523,7 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
             GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
 }
 
 void NodeCanvas::closeGuideEditor() {
@@ -1563,7 +1536,7 @@ void NodeCanvas::closeGuideEditor() {
     if (guideEditor != nullptr) {
         guideEditor->setVisible(false);
     }
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
     requestCanvasRepaint();
 }
 
