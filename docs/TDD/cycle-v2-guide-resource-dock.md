@@ -76,6 +76,10 @@ shelf with authoring and assignment behavior, not another kind of graph node.
   onto an editor is deferred until all target-field drop semantics are designed.
 - Guide relationships never have persistent cables. A temporary tether may
   show one active relationship only while its tile or target is hovered.
+- Temporary Guide tethers use the canvas editor-occlusion geometry already
+  owned by `NodeCanvasPresentationFrame`: they never paint over an expanded
+  editor, and an assignment target hidden by that editor is not considered a
+  visible tether destination.
 - Guide order, stable labels, names, colours, models, parameters, and
   assignments are document content. Dock height, divider position, minimized
   states, scroll offsets, selection, and global collapse are application UI
@@ -771,6 +775,8 @@ resource, but behavior is retained.
   and its active focus is visible.
 - Guide relationship tethers are hover-only and cannot persist across pointer
   exit or document replacement.
+- Guide relationship tethers remain below expanded Trimesh/effect editors and
+  do not route to targets hidden by editor occlusion.
 - Full Guide editing occurs above the dock while Spy feedback remains visible.
 - One Escape closes an expanded Guide editor or Spy detail view. The Guide
   editor remains vertically compact, uses a single Enabled label, exposes
@@ -854,3 +860,10 @@ Completed on macOS through the repository build and native launch scripts:
   `/private/tmp/cycle-v2-guide-editor-compact-native.png`. The recurring
   Settings shutdown assertions and an incidental palette-icon test assertion
   are recorded in `ui-bugs.md`.
+- The 2026-08-25 tether-occlusion fix reuses the expanded-editor occlusion
+  rectangle to reject hidden Guide targets and clip paths to any remaining
+  visible target. The focused relationship run passes 9 assertions in 2 cases,
+  the full suite passes 8,806 assertions in 496 cases, and the 9-command native
+  Trimesh-hover fixture passes. The OS-rendered capture
+  `/private/tmp/cycle-v2-guide-tether-editor-occlusion-native.png` confirms no
+  Guide tether is composited over either Trimesh panel.

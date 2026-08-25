@@ -192,6 +192,90 @@ TEST_CASE("Guide relationship selection highlights without drawing a persistent 
     REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
 }
 
+TEST_CASE("Guide relationship tethers stay behind expanded editors",
+        "[cycle-v2][canvas][guide-dock][relationship][occlusion]") {
+    NodeGraph graph;
+    Node target;
+    target.id = "mesh";
+    target.bounds = { 310.f, 20.f, 70.f, 60.f };
+    graph.addNode(std::move(target));
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Time }
+    }));
+
+    GraphCompileResult compileResult;
+    GraphPreviewResult previewResult;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 400.f, 200.f });
+    viewport.setTransform({}, 1.f);
+    NodePalette palette;
+    GuideCurveShelfState guideState;
+    guideState.hoveredGuideId = "guide1";
+    SignalProbeRailState dockState;
+    dockState.expanded = true;
+    dockState.expandedHeight = 100.f;
+    const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
+    NodeCanvasPresentationFrame frame {
+            graph,
+            compileResult,
+            previewResult,
+            viewport,
+            palette,
+            { 0.f, 0.f, 400.f, 200.f },
+            editorOcclusion,
+            {},
+            {},
+            {},
+            {},
+            std::nullopt,
+            {},
+            0,
+            0,
+            -1,
+            -1,
+            true,
+            { 0.f, 0.f, 400.f, 300.f },
+            guideState,
+            0.5f,
+            dockState,
+            {},
+            {},
+            {}
+    };
+
+    Image image(Image::ARGB, 400, 300, true);
+    Graphics graphics(image);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
+
+    int visiblePixels = 0;
+    int occludedPixels = 0;
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            if (image.getPixelAt(x, y).getAlpha() == 0) {
+                continue;
+            }
+            if (editorOcclusion.contains((float) x, (float) y)) {
+                ++occludedPixels;
+            } else {
+                ++visiblePixels;
+            }
+        }
+    }
+    REQUIRE(visiblePixels > 0);
+    REQUIRE(occludedPixels == 0);
+
+    frame.canvasOcclusion = { 300.f, 10.f, 90.f, 80.f };
+    image.clear(image.getBounds(), Colours::transparentBlack);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
+    REQUIRE(imageChecksum(image) == imageChecksum(
+            Image(Image::ARGB, image.getWidth(), image.getHeight(), true)));
+}
+
 TEST_CASE("Signal probe detail uses the audition-note period resolution",
         "[cycle-v2][canvas][probe][detail]") {
     REQUIRE(SignalProbeDetailView::resolutionForMidiNote(48) == 512);

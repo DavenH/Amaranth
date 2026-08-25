@@ -105,6 +105,9 @@ Context:
 - The full `CycleV2_tests` run during compact Guide editor work on 2026-08-25
   passed all 8,801 assertions in 495 test cases but emitted a JUCE assertion at
   `NodePaletteEntryIconRenderer.cpp:27`.
+- The Guide tether/editor-occlusion follow-up passed all 8,806 assertions in
+  496 cases and reproduced the same assertion. Repro output:
+  `/private/tmp/cycle-v2-guide-tether-full-tests.txt`.
 - The assertion is incidental to Guide resource defaults, expanded-editor
   layout, and Escape routing. It was observed directly in the full-suite output;
   no focused Guide test or native fixture reproduced it.

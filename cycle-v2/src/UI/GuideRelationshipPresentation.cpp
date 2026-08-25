@@ -43,8 +43,13 @@ const Node* firstVisibleTarget(
         const String& guideId) {
     for (const auto& nodeId : frame.graph.guideTargetNodeIds(guideId)) {
         const Node* node = frame.graph.findNode(nodeId);
-        if (node != nullptr
-                && frame.viewport.toScreen(node->bounds).intersects(frame.canvasBounds)) {
+        if (node == nullptr) {
+            continue;
+        }
+        const Rectangle<float> bounds = frame.viewport.toScreen(node->bounds);
+        const bool hiddenByEditor = !frame.canvasOcclusion.isEmpty()
+                && bounds.intersects(frame.canvasOcclusion);
+        if (bounds.intersects(frame.canvasBounds) && !hiddenByEditor) {
             return node;
         }
     }
@@ -117,6 +122,10 @@ void GuideRelationshipPresentation::paintTether(
             start.x, start.y - controlDistance,
             end.x, end.y + controlDistance,
             end.x, end.y);
+    Graphics::ScopedSaveState overlayClip(graphics);
+    if (!frame.canvasOcclusion.isEmpty()) {
+        graphics.excludeClipRegion(frame.canvasOcclusion.toNearestInt());
+    }
     graphics.setColour(GuideCurveShelf::colourForGuide(*guide).withAlpha(0.48f));
     graphics.strokePath(tether, PathStrokeType(1.6f));
 }
