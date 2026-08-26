@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "UI/RenderInvalidationAccumulator.h"
-#include "Nodes/Trimesh/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 
 class CommonGL;
 class GLPanelRenderer;

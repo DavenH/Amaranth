@@ -1,7 +1,7 @@
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 
 #include "Graph/NodeGraph.h"
-#include "Nodes/Trimesh/TrimeshSidePanelRenderer.h"
+#include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 
 using namespace juce;
 

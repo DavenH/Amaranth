@@ -1,5 +1,19 @@
 # Refactor Notes
 
+## Cycle V2 Trimesh model presentation extraction
+
+`cycle-v2/src/Nodes/Trimesh/Model/TrimeshNodeModel.cpp` owns durable/live mesh
+state, but its `renderGrid` path also constructs Trimesh DSP processors and
+applies `TrimeshRenderProfile`. The source-layout migration makes that existing
+Model-to-Dsp/Rendering dependency visible; it does not copy or approximate the
+mature rasterization behavior to hide it.
+
+Extract render-grid preparation behind a Trimesh presentation service that
+accepts the model's prepared mesh/state and delegates to the existing
+blockwise/gridwise DSP and render profile. Keep mesh identity, publication,
+selection, and revision behavior in `TrimeshNodeModel`. Do not move rendering
+policy into the model or introduce a second curve-evaluation implementation.
+
 ## Cycle V2 Envelope curve panel decomposition
 
 `cycle-v2/src/Nodes/Effect2D/EnvelopeCurvePanel.cpp` is a cohesive

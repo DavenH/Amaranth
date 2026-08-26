@@ -11,7 +11,7 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
-#include "Nodes/Trimesh/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"

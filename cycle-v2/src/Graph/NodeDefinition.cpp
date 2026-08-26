@@ -9,7 +9,7 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {

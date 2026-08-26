@@ -10,7 +10,7 @@
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
 #include "Nodes/Effects/EffectPreviewRenderer.h"
-#include "Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {

@@ -7,7 +7,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/TrimeshSidePanelRenderer.h"
+#include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
 
 namespace CycleV2 {

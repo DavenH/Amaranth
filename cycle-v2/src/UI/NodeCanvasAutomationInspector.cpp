@@ -6,7 +6,7 @@
 
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/TrimeshWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 

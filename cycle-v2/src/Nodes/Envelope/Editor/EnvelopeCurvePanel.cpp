@@ -12,7 +12,7 @@
 #include <UI/Panels/Panel2D.h>
 #include <Util/Arithmetic.h>
 
-#include "Nodes/Trimesh/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 
 #include <algorithm>
 #include <cmath>

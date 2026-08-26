@@ -10,8 +10,8 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
-#include "Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
 
 #include <algorithm>
 #include <array>

@@ -7,7 +7,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Trimesh/TrimeshWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 namespace CycleV2 {
 

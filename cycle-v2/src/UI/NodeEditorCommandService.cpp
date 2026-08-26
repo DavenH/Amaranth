@@ -3,9 +3,9 @@
 #include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
-#include "Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "Nodes/Trimesh/TrimeshMeshState.h"
-#include "Nodes/Trimesh/TrimeshWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 namespace CycleV2 {
 

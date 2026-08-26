@@ -3,7 +3,7 @@
 #include "UI/NodePreviewResources.h"
 
 #include "Nodes/Effects/EffectPreviewRenderer.h"
-#include "Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {

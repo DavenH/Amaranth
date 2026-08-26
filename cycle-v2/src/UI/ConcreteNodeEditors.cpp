@@ -10,8 +10,8 @@
 #include "Runtime/NodePreviewProcessor.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
-#include "Nodes/Trimesh/TrimeshWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>

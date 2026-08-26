@@ -9,8 +9,8 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/NodePreviewProcessor.h"
-#include "Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "Nodes/Trimesh/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>

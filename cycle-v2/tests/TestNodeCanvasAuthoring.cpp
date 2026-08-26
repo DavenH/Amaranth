@@ -2,7 +2,7 @@
 
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeParameterMap.h"
-#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeCanvasAuthoring.h"
 

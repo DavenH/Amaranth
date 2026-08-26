@@ -6,8 +6,8 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "Nodes/Trimesh/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>

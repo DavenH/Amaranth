@@ -4,7 +4,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Effects/EffectPreviewRenderer.h"
 #include "Nodes/Effects/EffectPlotPalette.h"
-#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
+#include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 
 #include <array>
 #include <cmath>

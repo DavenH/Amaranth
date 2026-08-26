@@ -8,7 +8,7 @@
 #include "Runtime/NodePreviewProcessor.h"
 #include "Nodes/Effects/EffectPreviewRenderer.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
-#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
+#include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "UI/NodePreviewRenderer.h"
 
 #include <Util/Arithmetic.h>

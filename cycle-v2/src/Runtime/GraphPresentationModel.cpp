@@ -2,7 +2,7 @@
 #include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
 
-#include "Nodes/Trimesh/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
 #include <algorithm>
 

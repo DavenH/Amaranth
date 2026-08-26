@@ -3,8 +3,8 @@
 #include "UI/NodeViewModule.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
-#include "Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 

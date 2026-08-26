@@ -7,7 +7,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
-#include "Nodes/Trimesh/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 namespace CycleV2 {
 
