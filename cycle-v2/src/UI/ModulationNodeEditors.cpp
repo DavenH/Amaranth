@@ -1,6 +1,6 @@
-#include "ModulationNodeEditors.h"
+#include "UI/ModulationNodeEditors.h"
 
-#include "../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 namespace CycleV2 {
 

@@ -1,16 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
-#include "../src/Runtime/GraphPresentationModel.h"
-#include "../src/Runtime/GraphPreviewExecutor.h"
-#include "../src/Runtime/NodePreviewProcessor.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>

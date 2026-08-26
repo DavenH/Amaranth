@@ -2,17 +2,17 @@
 
 #include <JuceHeader.h>
 
-#include "NodeCanvasScene.h"
-#include "NodeCanvasGlRenderer.h"
-#include "NodeCanvasViewport.h"
-#include "NodePalette.h"
-#include "NodePreviewRenderer.h"
-#include "GuideCurveShelf.h"
-#include "GuideRelationshipPresentation.h"
-#include "SignalProbeDetailView.h"
-#include "SignalProbeRail.h"
-#include "../Graph/GraphCompiler.h"
-#include "../Runtime/GraphPreviewExecutor.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/GuideCurveShelf.h"
+#include "UI/GuideRelationshipPresentation.h"
+#include "UI/SignalProbeDetailView.h"
+#include "UI/SignalProbeRail.h"
+#include "Graph/GraphCompiler.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
 

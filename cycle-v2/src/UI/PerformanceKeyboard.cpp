@@ -1,6 +1,6 @@
-#include "PerformanceKeyboard.h"
+#include "UI/PerformanceKeyboard.h"
 
-#include "CanvasUtilityDock.h"
+#include "UI/CanvasUtilityDock.h"
 
 namespace CycleV2 {
 

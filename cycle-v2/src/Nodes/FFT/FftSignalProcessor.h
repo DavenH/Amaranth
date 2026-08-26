@@ -1,7 +1,7 @@
 #pragma once
 
-#include "FftBlockwiseDsp.h"
-#include "../../Runtime/AudioProcessContextUtils.h"
+#include "Nodes/FFT/FftBlockwiseDsp.h"
+#include "Runtime/AudioProcessContextUtils.h"
 
 #include <array>
 #include <memory>

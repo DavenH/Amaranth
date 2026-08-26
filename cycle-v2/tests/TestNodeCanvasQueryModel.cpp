@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/UI/NodeCanvasQueryModel.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphNodeFactory.h"
+#include "UI/NodeCanvasQueryModel.h"
 
 using namespace CycleV2;
 

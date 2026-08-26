@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GraphDomainResolver.h"
+#include "Graph/GraphDomainResolver.h"
 
 namespace CycleV2 {
 

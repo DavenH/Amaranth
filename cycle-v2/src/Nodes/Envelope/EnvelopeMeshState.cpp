@@ -1,4 +1,4 @@
-#include "EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>

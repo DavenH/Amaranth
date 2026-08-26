@@ -1,6 +1,6 @@
-#include "PreviewProcessorFactories.h"
+#include "Runtime/PreviewProcessorFactories.h"
 
-#include "../Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
 
 #include <Algo/FFT.h>
 #include <Audio/CycleDsp/EqualizerCore.h>

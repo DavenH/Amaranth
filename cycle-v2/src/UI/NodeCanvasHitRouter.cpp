@@ -1,8 +1,8 @@
-#include "NodeCanvasHitRouter.h"
+#include "UI/NodeCanvasHitRouter.h"
 
-#include "NodeViewModule.h"
-#include "VoiceContextCompactEditor.h"
-#include "../Graph/GraphNodeFactory.h"
+#include "UI/NodeViewModule.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "Graph/GraphNodeFactory.h"
 
 namespace CycleV2 {
 

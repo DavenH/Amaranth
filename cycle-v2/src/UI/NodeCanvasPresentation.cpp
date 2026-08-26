@@ -1,16 +1,16 @@
-#include "NodeCanvasPresentation.h"
+#include "UI/NodeCanvasPresentation.h"
 
-#include "NodeCableRenderer.h"
-#include "NodeCanvasGlRenderer.h"
-#include "EnvelopePurposeIconRenderer.h"
-#include "ModulationCableBundle.h"
-#include "NodePortGeometry.h"
-#include "NodeViewModule.h"
-#include "VoiceContextCompactEditor.h"
-#include "../Graph/GraphRenderSemanticResolver.h"
-#include "../Graph/GraphValidator.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
+#include "UI/NodeCableRenderer.h"
+#include "UI/NodeCanvasGlRenderer.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodePortGeometry.h"
+#include "UI/NodeViewModule.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/GraphValidator.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "UI/Preview/EffectPlotPalette.h"
 
 #include <cmath>
 

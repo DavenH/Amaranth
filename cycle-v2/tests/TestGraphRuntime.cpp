@@ -1,14 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
-#include "../src/Runtime/GraphPresentationModel.h"
-#include "../src/Runtime/GraphRuntime.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphRuntime.h"
 
 #include <algorithm>
 

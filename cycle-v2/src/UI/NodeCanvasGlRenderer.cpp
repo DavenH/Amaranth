@@ -1,4 +1,4 @@
-#include "NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasGlRenderer.h"
 
 #include <cmath>
 

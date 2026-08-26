@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Graph/NodeGraph.h"
-#include "PreparedVector.h"
-#include "SignalBuffer.h"
+#include "Graph/NodeGraph.h"
+#include "Runtime/PreparedVector.h"
+#include "Runtime/SignalBuffer.h"
 
 #include <array>
 #include <cstdint>

@@ -1,8 +1,8 @@
-#include "WaveshaperSignalProcessor.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
-#include "../../Graph/NodeParameterMap.h"
-#include "../../Graph/NodeDefinition.h"
-#include "../Effect2D/FlatCurvePreparation.h"
+#include "Graph/NodeParameterMap.h"
+#include "Graph/NodeDefinition.h"
+#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
 #include <Util/NumberUtils.h>
 

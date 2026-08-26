@@ -1,8 +1,8 @@
 #pragma once
 
-#include "NodeModuleRegistry.h"
-#include "NodeDspConfiguration.h"
-#include "../Graph/NodeGraph.h"
+#include "Runtime/NodeModuleRegistry.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Graph/NodeGraph.h"
 
 #include <memory>
 #include <vector>

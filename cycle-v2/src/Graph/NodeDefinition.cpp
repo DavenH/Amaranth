@@ -5,12 +5,12 @@
 #include <climits>
 #include <cmath>
 
-#include "NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Unison/UnisonNode.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {
 

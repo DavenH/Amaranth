@@ -2,10 +2,10 @@
 
 #include <algorithm>
 
-#include "AudioProcessContextUtils.h"
-#include "AudioProcessorFactories.h"
-#include "BinarySignalProcessor.h"
-#include "NodeAudioProcessorSupport.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessorFactories.h"
+#include "Runtime/BinarySignalProcessor.h"
+#include "Runtime/NodeAudioProcessorSupport.h"
 
 namespace CycleV2 {
 

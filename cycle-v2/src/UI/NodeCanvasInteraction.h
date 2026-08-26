@@ -5,9 +5,9 @@
 #include <optional>
 #include <variant>
 
-#include "NodeCanvasScene.h"
-#include "NodeCanvasViewport.h"
-#include "../Graph/GraphEditor.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
+#include "Graph/GraphEditor.h"
 
 namespace CycleV2 {
 

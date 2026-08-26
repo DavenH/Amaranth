@@ -5,9 +5,9 @@
 #include <memory>
 #include <vector>
 
-#include "../Graph/NodeGraph.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 namespace CycleV2 {
 
@@ -32,7 +32,7 @@ public:
     TrimeshWidget& trimeshWidget(const Node& node);
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
-    Effect2DWidget& effect2DWidget(const Node& node);
+    CurveEditorWidget& curveEditorWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
 
     const TrimeshWidget* findTrimeshWidget(const String& nodeId) const;
@@ -45,7 +45,7 @@ private:
     NodeEditorCommandService& editorCommands;
     const NodeGraph* graph {};
     std::vector<std::pair<String, std::unique_ptr<TrimeshWidget>>> trimeshWidgets;
-    std::vector<std::pair<String, std::unique_ptr<Effect2DWidget>>> effect2DWidgets;
+    std::vector<std::pair<String, std::unique_ptr<CurveEditorWidget>>> curveEditorWidgets;
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
 };
 

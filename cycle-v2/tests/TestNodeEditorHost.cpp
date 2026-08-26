@@ -1,25 +1,26 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeEditors.h"
-#include "../src/Nodes/Effect2D/CurveEditorPrimitives.h"
-#include "../src/Nodes/Effect2D/CurveExpandedEditorComponent.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Effect2D/Effect2DWidget.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
-#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
-#include "../src/Nodes/Trimesh/TrimeshWidget.h"
-#include "../src/Nodes/Unison/UnisonNode.h"
-#include "../src/UI/NodeCanvasAutomationController.h"
-#include "../src/UI/NodeCanvasAutomationInspector.h"
-#include "../src/UI/EnvelopePurposeSelector.h"
-#include "../src/UI/NodeEditorHost.h"
-#include "../src/UI/NodePreviewRenderer.h"
-#include "../src/UI/NodePreviewResources.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
+#include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
+#include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Nodes/Unison/UnisonNode.h"
+#include "UI/NodeCanvasAutomationController.h"
+#include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/EnvelopePurposeSelector.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodePreviewResources.h"
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
@@ -158,7 +159,7 @@ public:
 
 class NullResources final : public NodeEditorResources {
 public:
-    Effect2DWidget* effect2DWidget(const Node&) override { return nullptr; }
+    CurveEditorWidget* curveEditorWidget(const Node&) override { return nullptr; }
     TrimeshWidget* trimeshWidget(const Node& node) override {
         ++synchronizingTrimeshLookups;
         if (activeTrimesh != nullptr) {
@@ -245,25 +246,25 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
 public:
-    void closeEffect2DEditor() override {}
-    void repaintEffect2DEditorOpenGL() override { events.add("repaint"); }
+    void closeCurveEditor() override {}
+    void repaintCurveEditorOpenGL() override { events.add("repaint"); }
 
-    bool publishEffect2DState(
+    bool publishCurveState(
             NodeModelStatePtr,
             const std::vector<NodeParameter>&) override {
         events.add("publish");
         return true;
     }
 
-    void beginEffect2DTransaction() override { events.add("begin"); }
-    void commitEffect2DTransaction() override { events.add("commit"); }
+    void beginCurveTransaction() override { events.add("begin"); }
+    void commitCurveTransaction() override { events.add("commit"); }
 
     StringArray events;
 };
 
 class LifecycleCurveEditor final : public CurveExpandedEditorComponent {
 public:
-    explicit LifecycleCurveEditor(Effect2DWidget& widget) :
+    explicit LifecycleCurveEditor(CurveEditorWidget& widget) :
             CurveExpandedEditorComponent(widget)
         ,   slider(*this, "Value")
         ,   toggle(*this, "Enabled") {
@@ -604,7 +605,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
 TEST_CASE("Curve editor bindings own continuous and discrete edit lifecycle") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
-    Effect2DWidget widget(NodeKind::Waveshaper);
+    CurveEditorWidget widget(NodeKind::Waveshaper);
     LifecycleCurveEditor editor(widget);
     RecordingCurveDelegate delegate;
 
@@ -648,7 +649,7 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
 
-    Effect2DWidget widget(true);
+    CurveEditorWidget widget(true);
     GuideCurveEditorComponent editor(widget);
     editor.setBounds(0, 0, 640, 400);
     editor.setGuideResource(*baroqueGuide);
@@ -683,7 +684,7 @@ TEST_CASE("Guide editor uses compact host and control layout",
         "[cycle-v2][node-editor-host][guides]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
-    Effect2DWidget widget(true);
+    CurveEditorWidget widget(true);
     GuideCurveEditorComponent editor(widget);
     GuideCurveResource guide;
     guide.id = "guide1";
@@ -739,7 +740,7 @@ TEST_CASE("Selected flat curve state binds before its panel host exists",
     REQUIRE(waveshaper != nullptr);
     REQUIRE((int64) waveshaper->editorState.getProperty("selectedVertexId", {}) > 0);
 
-    Effect2DWidget widget(NodeKind::Waveshaper);
+    CurveEditorWidget widget(NodeKind::Waveshaper);
     widget.syncFromNode(*waveshaper);
 
     REQUIRE_FALSE(widget.selectedVertexParameters().empty());
@@ -773,7 +774,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             "env",
             CurveNodeModelState::copyOf(envelopeModel, envelopeModel.revision() + 1)));
 
-    Effect2DWidget widget(NodeKind::Envelope);
+    CurveEditorWidget widget(NodeKind::Envelope);
     widget.syncFromNode(*graph.findNode("env"));
     REQUIRE(widget.getExpandedPanelComponentIfCreated() == nullptr);
     auto panelState = widget.automationState();
@@ -931,7 +932,7 @@ TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
     REQUIRE(graphEditor.setNodeParameter(
             graph, "env", "logarithmic", "Logarithmic", "1").succeeded());
 
-    Effect2DWidget widget(NodeKind::Envelope);
+    CurveEditorWidget widget(NodeKind::Envelope);
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
@@ -1165,7 +1166,7 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     const uint64_t originalRevision = document.revision();
     std::vector<float> observedDetunes;
     const auto observePreview = [&] {
-        const auto paths = makeUnisonPreviewPaths(
+        const auto paths = UnisonPreviewPainter().makePaths(
                 *dispatcher.editingGraph().findNode("unison"));
         REQUIRE_FALSE(paths.empty());
         observedDetunes.push_back(paths.back().detuneCents);

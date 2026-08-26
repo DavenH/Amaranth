@@ -3,7 +3,7 @@
 #include <array>
 #include <atomic>
 
-#include "EnvelopeConfiguration.h"
+#include "Nodes/Envelope/EnvelopeConfiguration.h"
 
 namespace CycleV2 {
 

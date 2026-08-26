@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AudioProcessTypes.h"
-#include "UnarySignalProcessor.h"
+#include "Runtime/AudioProcessTypes.h"
+#include "Runtime/UnarySignalProcessor.h"
 
 namespace CycleV2 {
 

@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/UI/CanvasUtilityDock.h"
-#include "../src/UI/PerformanceKeyboard.h"
+#include "UI/CanvasUtilityDock.h"
+#include "UI/PerformanceKeyboard.h"
 
 using namespace CycleV2;
 

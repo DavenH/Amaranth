@@ -1,9 +1,9 @@
-#include "GraphEditor.h"
+#include "Graph/GraphEditor.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 #include <unordered_map>
 

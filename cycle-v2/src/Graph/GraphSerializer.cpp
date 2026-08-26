@@ -1,11 +1,11 @@
-#include "GraphSerializer.h"
+#include "Graph/GraphSerializer.h"
 
-#include "GraphNodeFactory.h"
-#include "GraphValidator.h"
-#include "NodeDefinition.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphValidator.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 #include <cmath>
 #include <unordered_set>

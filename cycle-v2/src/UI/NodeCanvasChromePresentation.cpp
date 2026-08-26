@@ -1,8 +1,8 @@
-#include "NodeCanvasPresentation.h"
+#include "UI/NodeCanvasPresentation.h"
 
-#include "CanvasUtilityDock.h"
-#include "NodePaletteEntryIconRenderer.h"
-#include "NodePaletteIconRenderer.h"
+#include "UI/CanvasUtilityDock.h"
+#include "UI/NodePaletteEntryIconRenderer.h"
+#include "UI/NodePaletteIconRenderer.h"
 
 namespace CycleV2 {
 

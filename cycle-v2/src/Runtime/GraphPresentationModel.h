@@ -6,13 +6,13 @@
 #include <mutex>
 #include <optional>
 
-#include "GraphAudioExecutor.h"
-#include "GraphPreviewExecutor.h"
-#include "GraphRuntime.h"
-#include "MessageThreadWorker.h"
-#include "NodeUpdateGraph.h"
-#include "../Graph/GraphCompiler.h"
-#include "../Graph/GraphEditor.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/GraphRuntime.h"
+#include "Runtime/MessageThreadWorker.h"
+#include "Runtime/NodeUpdateGraph.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
 
 namespace CycleV2 {
 

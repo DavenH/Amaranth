@@ -1,6 +1,6 @@
-#include "CycleV2Automation.h"
+#include "App/CycleV2Automation.h"
 
-#include "../UI/NodeWorkspace.h"
+#include "UI/NodeWorkspace.h"
 
 #include <cerrno>
 #include <cmath>

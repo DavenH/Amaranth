@@ -1,4 +1,4 @@
-#include "SignalProbeDetailView.h"
+#include "UI/SignalProbeDetailView.h"
 
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Util/Arithmetic.h>

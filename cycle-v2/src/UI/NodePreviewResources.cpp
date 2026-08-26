@@ -1,8 +1,8 @@
-#include "NodePreviewResources.h"
+#include "UI/NodePreviewResources.h"
 
-#include "NodeEditorHost.h"
+#include "UI/NodeEditorHost.h"
 
-#include "../Runtime/PreviewPitchResolver.h"
+#include "Runtime/PreviewPitchResolver.h"
 
 namespace CycleV2 {
 
@@ -37,15 +37,15 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     return widget;
 }
 
-Effect2DWidget& NodePreviewResources::effect2DWidget(const Node& node) {
-    for (auto& entry : effect2DWidgets) {
+CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
+    for (auto& entry : curveEditorWidgets) {
         if (entry.first == node.id) {
             return *entry.second;
         }
     }
 
-    effect2DWidgets.emplace_back(node.id, std::make_unique<Effect2DWidget>(node.kind));
-    return *effect2DWidgets.back().second;
+    curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
+    return *curveEditorWidgets.back().second;
 }
 
 CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId) {
@@ -83,7 +83,7 @@ void NodePreviewResources::releaseOpenGLResources() {
         entry.second->releaseSharedGlResources();
     }
 
-    for (auto& entry : effect2DWidgets) {
+    for (auto& entry : curveEditorWidgets) {
         entry.second->releaseSharedGlResources();
     }
 }
@@ -106,7 +106,7 @@ void NodePreviewResources::hideExpandedHostsExcept(const String& nodeId) {
         }
     }
 
-    for (auto& entry : effect2DWidgets) {
+    for (auto& entry : curveEditorWidgets) {
         if (entry.first == nodeId) {
             continue;
         }

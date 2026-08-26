@@ -5,9 +5,9 @@
 #include <optional>
 #include <unordered_map>
 
-#include "GraphRuntime.h"
-#include "NodeAudioProcessor.h"
-#include "PreparedOscillatorRegion.h"
+#include "Runtime/GraphRuntime.h"
+#include "Runtime/NodeAudioProcessor.h"
+#include "Runtime/PreparedOscillatorRegion.h"
 
 namespace CycleV2 {
 

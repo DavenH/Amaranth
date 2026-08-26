@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphTransaction.h"
+#include "Graph/GraphTransaction.h"
 
 using namespace CycleV2;
 

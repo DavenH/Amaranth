@@ -8,33 +8,33 @@
 
 #include <App/Settings.h>
 
-#include "../Graph/GraphEditor.h"
-#include "../Graph/GraphCommandDispatcher.h"
-#include "../Graph/GraphDocument.h"
-#include "../Graph/NodeGraph.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Effect2D/CurveNodeEditors.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "../Runtime/GraphPresentationModel.h"
-#include "NodeCanvasAutomationController.h"
-#include "NodeCanvasAuthoring.h"
-#include "NodeCanvasEditorCoordinator.h"
-#include "NodeCanvasPresentation.h"
-#include "NodeCanvasQueryModel.h"
-#include "NodeCableRenderer.h"
-#include "NodeCanvasGlRenderer.h"
-#include "NodeCanvasHitRouter.h"
-#include "NodeCanvasInteraction.h"
-#include "NodeCanvasScene.h"
-#include "NodeCanvasViewport.h"
-#include "NodeEditorHost.h"
-#include "NodePalette.h"
-#include "NodePreviewRenderer.h"
-#include "NodePreviewResources.h"
-#include "RenderInvalidationAccumulator.h"
-#include "WorkspaceDockInteractionController.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "UI/NodeCanvasAutomationController.h"
+#include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasPresentation.h"
+#include "UI/NodeCanvasQueryModel.h"
+#include "UI/NodeCableRenderer.h"
+#include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasHitRouter.h"
+#include "UI/NodeCanvasInteraction.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodePreviewResources.h"
+#include "UI/RenderInvalidationAccumulator.h"
+#include "UI/WorkspaceDockInteractionController.h"
 
 namespace CycleV2 {
 
@@ -134,7 +134,7 @@ private:
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
-    std::unique_ptr<Effect2DWidget> guideEditorWidget;
+    std::unique_ptr<CurveEditorWidget> guideEditorWidget;
     std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
     int activeTrimeshVertexIndex { -1 };
@@ -223,7 +223,7 @@ private:
             uint64_t effectiveFingerprint,
             uint64_t documentRevision) override;
 
-    Effect2DWidget* effect2DWidget(const Node& node) override;
+    CurveEditorWidget* curveEditorWidget(const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
@@ -234,13 +234,13 @@ private:
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
 
-    void closeEffect2DEditor() override;
-    void repaintEffect2DEditorOpenGL() override;
-    bool publishEffect2DState(
+    void closeCurveEditor() override;
+    void repaintCurveEditorOpenGL() override;
+    bool publishCurveState(
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override;
-    void beginEffect2DTransaction() override;
-    void commitEffect2DTransaction() override;
+    void beginCurveTransaction() override;
+    void commitCurveTransaction() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

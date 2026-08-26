@@ -2,12 +2,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Mesh.h>

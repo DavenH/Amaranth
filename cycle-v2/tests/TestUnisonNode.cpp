@@ -4,13 +4,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
-#include "../src/Nodes/Unison/UnisonNode.h"
-#include "../src/Runtime/NodeDspConfiguration.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "Nodes/Unison/UnisonNode.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 using namespace CycleV2;
 
@@ -109,7 +109,7 @@ TEST_CASE("Individual Unison preview follows the structured voice layout",
             { 0.75f, 1.f, 0.6f }
     }, 2);
 
-    const auto paths = makeUnisonPreviewPaths(node, { 60, 1.0 });
+    const auto paths = UnisonPreviewPainter().makePaths(node, { 60, 1.0 });
 
     REQUIRE(paths.size() == 2);
     REQUIRE(paths[0].detuneCents == Catch::Approx(-5.f));
@@ -122,9 +122,9 @@ TEST_CASE("Individual Unison preview follows the structured voice layout",
 
 TEST_CASE("Unison laser colour communicates each voice pan",
         "[cycle-v2][unison][preview][pan]") {
-    const Colour left = unisonLaserColourForPan(0.f);
-    const Colour centre = unisonLaserColourForPan(0.5f);
-    const Colour right = unisonLaserColourForPan(1.f);
+    const Colour left = UnisonPreviewPainter().laserColourForPan(0.f);
+    const Colour centre = UnisonPreviewPainter().laserColourForPan(0.5f);
+    const Colour right = UnisonPreviewPainter().laserColourForPan(1.f);
 
     REQUIRE(left == Colour(0xffff9f43));
     REQUIRE(centre == Colour(0xffc7c7c7));
@@ -134,13 +134,13 @@ TEST_CASE("Unison laser colour communicates each voice pan",
     Node node = GraphNodeFactory().createNode(NodeKind::Unison, "unison", {});
     setParameter(node, "order", "3");
     setParameter(node, "panSpread", "0");
-    const auto centred = makeUnisonPreviewPaths(node);
+    const auto centred = UnisonPreviewPainter().makePaths(node);
     REQUIRE(std::all_of(centred.begin(), centred.end(), [](const auto& path) {
         return path.pan == Catch::Approx(0.5f);
     }));
 
     setParameter(node, "panSpread", "1");
-    const auto spread = makeUnisonPreviewPaths(node);
+    const auto spread = UnisonPreviewPainter().makePaths(node);
     REQUIRE(spread[0].pan == Catch::Approx(1.f));
     REQUIRE(spread[1].pan == Catch::Approx(0.5f));
     REQUIRE(spread[2].pan == Catch::Approx(0.f));
@@ -228,9 +228,9 @@ TEST_CASE("Unison preview paths use pitch duration detune and exact voice phase"
     setParameter(node, "phase", "0");
     setParameter(node, "jitter", "0");
 
-    const auto atMiddleC = makeUnisonPreviewPaths(node, { 60, 1.0 });
-    const auto octaveUp = makeUnisonPreviewPaths(node, { 72, 1.0 });
-    const auto twiceAsLong = makeUnisonPreviewPaths(node, { 60, 2.0 });
+    const auto atMiddleC = UnisonPreviewPainter().makePaths(node, { 60, 1.0 });
+    const auto octaveUp = UnisonPreviewPainter().makePaths(node, { 72, 1.0 });
+    const auto twiceAsLong = UnisonPreviewPainter().makePaths(node, { 60, 2.0 });
 
     REQUIRE(atMiddleC.size() == 3);
     REQUIRE(atMiddleC[0].detuneCents == Catch::Approx(-5.f));
@@ -253,7 +253,7 @@ TEST_CASE("Bypassed Unison preview retains its configured paths",
     setParameter(node, "enabled", "0");
     setParameter(node, "order", "10");
 
-    const auto paths = makeUnisonPreviewPaths(node);
+    const auto paths = UnisonPreviewPainter().makePaths(node);
 
     REQUIRE(paths.size() == 10);
     REQUIRE(paths.front().detuneCents < 0.f);
@@ -270,8 +270,8 @@ TEST_CASE("Unison preview bends from the supplied Voice Context pitch trajectory
 
     const UnisonPreviewContext neutral { 60, 1.0, { 0.5f, 0.5f, 0.5f } };
     const UnisonPreviewContext rising { 60, 1.0, { 0.5f, 0.75f, 1.f } };
-    const auto neutralPaths = makeUnisonPreviewPaths(node, neutral);
-    const auto risingPaths = makeUnisonPreviewPaths(node, rising);
+    const auto neutralPaths = UnisonPreviewPainter().makePaths(node, neutral);
+    const auto risingPaths = UnisonPreviewPainter().makePaths(node, rising);
 
     REQUIRE(travelledCycles(risingPaths.back()) > travelledCycles(neutralPaths.back()));
 }

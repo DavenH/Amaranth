@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 using namespace CycleV2;
 

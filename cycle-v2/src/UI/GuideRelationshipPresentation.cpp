@@ -1,8 +1,8 @@
-#include "GuideRelationshipPresentation.h"
+#include "UI/GuideRelationshipPresentation.h"
 
-#include "GuideCurveShelf.h"
-#include "NodeCanvasPresentation.h"
-#include "WorkspaceDock.h"
+#include "UI/GuideCurveShelf.h"
+#include "UI/NodeCanvasPresentation.h"
+#include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
 

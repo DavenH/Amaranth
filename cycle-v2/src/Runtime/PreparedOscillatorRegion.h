@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NodeDspConfiguration.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 #include <Array/Buffer.h>
 

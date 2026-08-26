@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
-#include "ModulationSource.h"
+#include "Nodes/Control/ModulationSource.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "../../Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessContextUtils.h"
 
 namespace CycleV2 {
 

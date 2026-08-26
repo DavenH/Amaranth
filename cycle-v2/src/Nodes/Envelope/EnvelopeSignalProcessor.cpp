@@ -1,8 +1,8 @@
-#include "EnvelopeSignalProcessor.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "../Effect2D/CurveNodeModels.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 
 #include <Util/Arithmetic.h>
 

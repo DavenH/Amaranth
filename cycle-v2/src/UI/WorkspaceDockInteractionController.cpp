@@ -1,4 +1,4 @@
-#include "WorkspaceDockInteractionController.h"
+#include "UI/WorkspaceDockInteractionController.h"
 
 #include <utility>
 

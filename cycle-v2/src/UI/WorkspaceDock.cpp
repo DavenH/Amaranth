@@ -1,4 +1,4 @@
-#include "WorkspaceDock.h"
+#include "UI/WorkspaceDock.h"
 
 #include <algorithm>
 

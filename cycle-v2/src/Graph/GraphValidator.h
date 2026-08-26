@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GraphDomainResolver.h"
-#include "NodeGraph.h"
+#include "Graph/GraphDomainResolver.h"
+#include "Graph/NodeGraph.h"
 
 #include <vector>
 

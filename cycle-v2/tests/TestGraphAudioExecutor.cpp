@@ -1,19 +1,19 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
-#include "../src/Nodes/Trimesh/TrimeshGridwiseDsp.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
-#include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
-#include "../src/Runtime/GraphPreviewExecutor.h"
-#include "../src/Runtime/RealtimeGraphRenderer.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/RealtimeGraphRenderer.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>

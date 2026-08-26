@@ -1,8 +1,8 @@
-#include "GraphPresentationModel.h"
-#include "FingerprintBuilder.h"
-#include "PreviewPitchResolver.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Runtime/FingerprintBuilder.h"
+#include "Runtime/PreviewPitchResolver.h"
 
-#include "../Nodes/Trimesh/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
 #include <algorithm>
 

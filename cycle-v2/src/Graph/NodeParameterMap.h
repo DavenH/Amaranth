@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 

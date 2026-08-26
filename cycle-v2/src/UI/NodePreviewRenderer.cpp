@@ -1,10 +1,13 @@
-#include "NodePreviewRenderer.h"
+#include "UI/NodePreviewRenderer.h"
 
-#include "../Graph/GraphRenderSemanticResolver.h"
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
-#include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Delay/DelayPreviewPainter.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "Nodes/Reverb/ReverbPreviewPainter.h"
+#include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "UI/Preview/EffectPlotPalette.h"
 
 #include <array>
 #include <cmath>
@@ -294,7 +297,7 @@ bool drawHeatmap(
             highQuality);
 }
 
-void drawEffect2DFallback(
+void drawCurveFallback(
         Graphics& graphics,
         Rectangle<float> area,
         NodeKind kind,
@@ -562,7 +565,7 @@ NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
         resources(resourcesToUse) {
 }
 
-bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
+bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
     return kind == NodeKind::Envelope
             || kind == NodeKind::ImpulseResponse
             || kind == NodeKind::Waveshaper;
@@ -698,11 +701,11 @@ bool NodePreviewRenderer::renderOpenGL(
         const Node& node,
         Rectangle<float> area,
         float scaleFactor) {
-    if (!requiresEffect2DModel(node.kind)) {
+    if (!requiresCurveModel(node.kind)) {
         return false;
     }
 
-    resources.effect2DWidget(node).renderPreviewSnapshotOpenGL(node, area, scaleFactor);
+    resources.curveEditorWidget(node).renderPreviewSnapshotOpenGL(node, area, scaleFactor);
     return true;
 }
 
@@ -719,13 +722,13 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return true;
     }
 
-    if (!requiresEffect2DModel(request.node.kind)) {
+    if (!requiresCurveModel(request.node.kind)) {
         return false;
     }
 
-    Effect2DWidget& widget = resources.effect2DWidget(request.node);
+    CurveEditorWidget& widget = resources.curveEditorWidget(request.node);
     if (!widget.paintPreviewSnapshot(graphics, request.area)) {
-        drawEffect2DFallback(
+        drawCurveFallback(
                 graphics,
                 request.area,
                 request.node.kind,
@@ -771,7 +774,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 EffectPlotPalette::insetBackground,
                 NodeParameterMap(request.node).boolValue("enabled", true)));
         graphics.fillRoundedRectangle(background, 4.f);
-        paintEqualizerResponseData(
+        EqualizerPreviewPainter().paintResponse(
                 graphics,
                 background.reduced(8.f, 6.f),
                 request.node,
@@ -880,15 +883,46 @@ void NodePreviewRenderer::paintQualitative(
         const NodePreviewRenderRequest& request) {
     const NodeKind kind = request.node.kind;
     if (kind == NodeKind::Unison) {
-        paintUnisonPhasePreview(
+        Node displayNode = request.node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "order") {
+                    parameter.value = "5";
+                }
+            }
+        }
+        UnisonPreviewPainter().paint(
                 graphics,
                 request.area,
-                request.node,
+                displayNode,
                 request.zoom,
                 request.unisonContext);
         return;
     }
-    if (paintEffectCompactPreview(graphics, request.area, request.node, request.zoom)) {
+    if (kind == NodeKind::Reverb) {
+        ReverbPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
+        return;
+    }
+    if (kind == NodeKind::Delay) {
+        DelayPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
+        return;
+    }
+    if (kind == NodeKind::Equalizer) {
+        Node displayNode = request.node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "band1Gain" || parameter.id == "band5Gain") {
+                    parameter.value = "0.68";
+                } else if (parameter.id == "band3Gain") {
+                    parameter.value = "0.32";
+                }
+            }
+        }
+        EqualizerPreviewPainter().paint(
+                graphics,
+                request.area.reduced(2.f),
+                displayNode,
+                false);
         return;
     }
 

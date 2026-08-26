@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "../../Graph/NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 

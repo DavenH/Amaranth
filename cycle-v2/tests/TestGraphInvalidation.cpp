@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Runtime/GraphInvalidation.h"
+#include "Runtime/GraphInvalidation.h"
 
 #include <algorithm>
 

@@ -4,10 +4,10 @@
 
 #include <optional>
 
-#include "NodeCanvasQueryModel.h"
-#include "NodeCanvasScene.h"
-#include "NodeCanvasViewport.h"
-#include "NodePalette.h"
+#include "UI/NodeCanvasQueryModel.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodePalette.h"
 
 namespace CycleV2 {
 

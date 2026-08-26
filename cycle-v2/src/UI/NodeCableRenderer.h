@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "NodeCanvasScene.h"
+#include "UI/NodeCanvasScene.h"
 
 namespace CycleV2 {
 

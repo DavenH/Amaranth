@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Runtime/UnarySignalProcessor.h"
-#include "../../Runtime/NodeDspConfiguration.h"
+#include "Runtime/UnarySignalProcessor.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 #include <Algo/Oversampler.h>
 #include <Audio/WaveshaperTransfer.h>

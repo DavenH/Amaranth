@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "GuideCurveShelf.h"
+#include "UI/GuideCurveShelf.h"
 
 namespace CycleV2 {
 

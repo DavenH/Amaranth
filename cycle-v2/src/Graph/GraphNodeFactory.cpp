@@ -1,8 +1,8 @@
-#include "GraphNodeFactory.h"
+#include "Graph/GraphNodeFactory.h"
 
-#include "NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 

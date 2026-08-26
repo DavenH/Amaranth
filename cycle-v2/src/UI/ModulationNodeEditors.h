@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NodeEditorHost.h"
+#include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
 

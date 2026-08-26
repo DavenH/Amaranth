@@ -1,4 +1,4 @@
-#include "GraphRenderSemanticResolver.h"
+#include "Graph/GraphRenderSemanticResolver.h"
 
 namespace CycleV2 {
 

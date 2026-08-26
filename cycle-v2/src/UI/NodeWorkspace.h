@@ -2,9 +2,9 @@
 
 #include <JuceHeader.h>
 
-#include "../App/StandaloneAudioEngine.h"
-#include "NodeCanvas.h"
-#include "PerformanceKeyboard.h"
+#include "App/StandaloneAudioEngine.h"
+#include "UI/NodeCanvas.h"
+#include "UI/PerformanceKeyboard.h"
 
 namespace CycleV2 {
 

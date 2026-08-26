@@ -1,4 +1,4 @@
-#include "GraphDocument.h"
+#include "Graph/GraphDocument.h"
 
 namespace CycleV2 {
 
