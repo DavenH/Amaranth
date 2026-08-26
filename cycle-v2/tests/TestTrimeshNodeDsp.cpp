@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 
 using namespace CycleV2;
 
@@ -482,6 +483,27 @@ TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", 
     REQUIRE(output.block.samples[0] == Catch::Approx(0.f).margin(0.35f));
     REQUIRE(*std::min_element(output.block.samples.begin(), output.block.samples.end())
             < *std::max_element(output.block.samples.begin(), output.block.samples.end()));
+
+    mesh->destroy();
+}
+
+TEST_CASE("Trimesh blockwise DSP initializes resolved linked-stereo channels",
+        "[cycle-v2][nodes][trimesh][stereo]") {
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    TrimeshBlockwiseDsp dsp;
+    SignalPayload output;
+    output.secondaryBlock.samples.assign(32, std::numeric_limits<float>::quiet_NaN());
+
+    dsp.setMesh(mesh.get());
+    dsp.setMorphPosition(MorphPosition(0.5f, 0.5f, 0.5f));
+    dsp.renderCycle(32, PortDomain::SpectralPhaseSignal, ChannelLayout::StereoPair, output);
+
+    REQUIRE(output.isStereo());
+    REQUIRE(output.secondaryBlock.samples == output.block.samples);
+    REQUIRE(std::all_of(
+            output.secondaryBlock.samples.begin(),
+            output.secondaryBlock.samples.end(),
+            [](float sample) { return std::isfinite(sample); }));
 
     mesh->destroy();
 }

@@ -22,7 +22,8 @@ private:
             const SignalPayload& input,
             SignalPayload& magnitude,
             SignalPayload& phase,
-            size_t channel,
+            size_t inputChannel,
+            size_t outputChannel,
             const AudioProcessWorkArena* arena);
     TraversalGridMetadata frequencyMetadataFor(
             const SignalTraversalGrid& inputGrid,

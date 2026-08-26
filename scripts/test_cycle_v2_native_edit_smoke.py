@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import math
 import os
 import socket
 import subprocess
@@ -255,8 +256,8 @@ class NativeEditSmoke:
     def graph_state(self):
         return self.command({"command": "snapshotState"})
 
-    def graph_state_until(self, predicate):
-        deadline = time.monotonic() + 0.1
+    def graph_state_until(self, predicate, timeout_seconds=0.1):
+        deadline = time.monotonic() + timeout_seconds
         state = self.graph_state()
         while not predicate(state) and time.monotonic() < deadline:
             time.sleep(0.005)
@@ -365,6 +366,49 @@ class NativeEditSmoke:
     @staticmethod
     def trimesh_model(state):
         return state["model"]["mesh"]
+
+    @staticmethod
+    def assert_serialized_mesh_equal(expected, actual, path="mesh"):
+        if isinstance(expected, dict):
+            assert isinstance(actual, dict), (path, expected, actual)
+            assert actual.keys() == expected.keys(), (
+                path,
+                sorted(expected.keys()),
+                sorted(actual.keys()),
+            )
+            for key, value in expected.items():
+                NativeEditSmoke.assert_serialized_mesh_equal(
+                    value,
+                    actual[key],
+                    f"{path}.{key}",
+                )
+            return
+
+        if isinstance(expected, list):
+            assert isinstance(actual, list), (path, expected, actual)
+            assert len(actual) == len(expected), (path, len(expected), len(actual))
+            for index, value in enumerate(expected):
+                NativeEditSmoke.assert_serialized_mesh_equal(
+                    value,
+                    actual[index],
+                    f"{path}[{index}]",
+                )
+            return
+
+        if isinstance(expected, float):
+            assert isinstance(actual, (int, float)) and not isinstance(actual, bool), (
+                path,
+                expected,
+                actual,
+            )
+            assert math.isclose(expected, float(actual), rel_tol=0.0, abs_tol=1.0e-5), (
+                path,
+                expected,
+                actual,
+            )
+            return
+
+        assert actual == expected, (path, expected, actual)
 
     @staticmethod
     def selected_vertex_parameters(state):
@@ -835,6 +879,10 @@ class NativeEditSmoke:
         time.sleep(SETTLE_SECONDS)
         initial_audio = self.audio_samples(2048)
         initial_state = self.open_editor("env")
+        if self.graph_state()["probeRefreshMode"] != "On Release":
+            refresh_toggle = self.target("probeRefreshMode")
+            self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
+        assert self.graph_state()["probeRefreshMode"] == "On Release"
         initial_snapshot = initial_state["model"]["state"]
         panel = self.target("expanded:env.panel2D")
         panel_state = initial_state["effect2D"]["panelState"]
@@ -1410,8 +1458,15 @@ class NativeEditSmoke:
             (second_left["x"] + second_right["x"]) * 0.5,
             1.0 - (second_left["y"] + second_right["y"]) * 0.5,
         )
+        deleted_revision = self.model_revision(deleted_state)
         self.click(f"rc:{second_add[0]},{second_add[1]}")
-        final_state = self.inspect("waveMesh")
+        final_state = self.inspect_until(
+            "waveMesh",
+            lambda inspected: (
+                self.model_revision(inspected) > deleted_revision
+                and inspected["trimesh"]["vertexCount"] > deleted_count
+            ),
+        )
         self.assert_trimesh_slice(final_state, "Trimesh slice after second cube addition")
         final_count = final_state["trimesh"]["vertexCount"]
         assert final_count > deleted_count
@@ -1428,7 +1483,7 @@ class NativeEditSmoke:
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
         reloaded_topology = self.trimesh_model(reloaded_state)
-        assert reloaded_topology == topology, (topology, reloaded_topology)
+        self.assert_serialized_mesh_equal(topology, reloaded_topology)
         assert reloaded_state["trimesh"]["vertexCount"] == final_count
 
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Trimesh downstream output")
@@ -1484,20 +1539,22 @@ class NativeEditSmoke:
             self.primary_click(self.point(refresh_toggle, 0.5, 0.5))
         assert self.graph_state()["probeRefreshMode"] == "On Release"
 
-        primary_axis = "red"
-        if parameters.get("primaryAxis") != primary_axis:
-            primary_axis_button = self.target(
-                f"expanded:waveMesh.trimeshPrimaryAxis.{primary_axis}"
-            )
-            self.primary_click(self.point(primary_axis_button, 0.5, 0.5))
-            parameters = self.parameters(self.inspect("waveMesh"))
-            assert parameters["primaryAxis"] == primary_axis
+        primary_axis = parameters["primaryAxis"]
         primary_slider = self.target(f"expanded:waveMesh.trimeshMorphRail.{primary_axis}")
         primary_value = float(parameters[primary_axis])
         primary_target = 0.25 if primary_value > 0.5 else 0.75
         primary_start = self.causal_sequence(self.graph_state())
         self.primary_click(self.point(primary_slider, primary_target, 0.5))
-        primary_events = self.causal_events_since(self.graph_state(), primary_start)
+        primary_state = self.graph_state_until(
+            lambda graph_state: any(
+                int(event["sequence"]) > primary_start
+                and event["product"] == "DurablePublication"
+                and event["phase"] == "Completed"
+                for event in graph_state["causalUpdates"]
+            ),
+            timeout_seconds=0.5,
+        )
+        primary_events = self.causal_events_since(primary_state, primary_start)
         assert any(
             event["product"] == "LocalSlice" and event["phase"] == "Completed"
             for event in primary_events

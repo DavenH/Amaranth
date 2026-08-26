@@ -220,18 +220,19 @@ void Settings::createPropertiesFile(const String& path) {
 }
 
 void Settings::writePropertiesFile() {
-    bool deleted = propertiesFile.deleteFile();
-
-    if (deleted) {
-        std::unique_ptr fileStream(propertiesFile.createOutputStream());
-
-        jassert(fileStream != nullptr);
-        jassert(propsElem != nullptr);
-
-        if (fileStream != nullptr) {
-            String docString = propsElem->toString();
-            fileStream->writeString(docString);
-            fileStream->flush();
-        }
+    if (propertiesFile == File() || propsElem == nullptr) {
+        return;
     }
+
+    if (propertiesFile.existsAsFile() && !propertiesFile.deleteFile()) {
+        return;
+    }
+
+    std::unique_ptr fileStream(propertiesFile.createOutputStream());
+    if (fileStream == nullptr) {
+        return;
+    }
+
+    fileStream->writeString(propsElem->toString());
+    fileStream->flush();
 }

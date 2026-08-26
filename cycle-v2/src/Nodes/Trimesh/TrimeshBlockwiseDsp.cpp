@@ -121,13 +121,20 @@ void TrimeshBlockwiseDsp::renderPrepared(
         return;
     }
 
-    outputBuffer(output).zero();
+    Buffer<float> primary = outputBuffer(output);
+    primary.zero();
 
-    if (mesh == nullptr || !mesh->hasEnoughCubesForCrossSection()) {
-        return;
+    if (mesh != nullptr && mesh->hasEnoughCubesForCrossSection()) {
+        sampleOutput(primary);
     }
 
-    sampleOutput(outputBuffer(output));
+    if (output.isStereo()) {
+        output.secondaryBlock.samples.resize(frameCount);
+        primary.copyTo({
+                output.secondaryBlock.samples.data(),
+                (int) output.secondaryBlock.samples.size()
+        });
+    }
 }
 
 void TrimeshBlockwiseDsp::renderCycleInto(Buffer<float> output, PortDomain domain) {

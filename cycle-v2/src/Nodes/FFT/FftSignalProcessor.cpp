@@ -108,22 +108,25 @@ void FftSignalProcessor::processForward(AudioProcessContext& context) {
 
     auto magnitude = makeOutputPayload(context, 0);
     auto phase = makeOutputPayload(context, 1);
-    const size_t channelCount = payloadChannelCount(*input);
-    if (channelCount == 2) {
+    const bool stereo = input->isStereo() || magnitude.isStereo() || phase.isStereo();
+    const size_t channelCount = stereo ? 2u : 1u;
+    if (stereo) {
         magnitude.channelLayout = ChannelLayout::StereoPair;
         phase.channelLayout = ChannelLayout::StereoPair;
         magnitude.secondaryBlock.samples.resize(context.frameCount);
         phase.secondaryBlock.samples.resize(context.frameCount);
     }
     for (size_t channel = 0; channel < channelCount; ++channel) {
+        const size_t inputChannel = input->isStereo() ? channel : 0;
         blockwiseFor(input->block.samples.size(), channel).forward(
-                payloadBlock(*input, channel),
+                payloadBlock(*input, inputChannel),
                 payloadBlock(magnitude, channel),
                 payloadBlock(phase, channel));
         publishForwardTraversalGrids(
                 *input,
                 magnitude,
                 phase,
+                inputChannel,
                 channel,
                 context.workArena);
     }
@@ -179,9 +182,10 @@ void FftSignalProcessor::publishForwardTraversalGrids(
         const SignalPayload& input,
         SignalPayload& magnitude,
         SignalPayload& phase,
-        size_t channel,
+        size_t inputChannel,
+        size_t outputChannel,
         const AudioProcessWorkArena* arena) {
-    const auto& inputGrid = payloadTraversalGrid(input, channel);
+    const auto& inputGrid = payloadTraversalGrid(input, inputChannel);
     if (!inputGrid.isValid()) {
         return;
     }
@@ -197,13 +201,13 @@ void FftSignalProcessor::publishForwardTraversalGrids(
     }
 
     TraversalGridColumnWriter magnitudeColumns(
-            payloadTraversalGrid(magnitude, channel),
+            payloadTraversalGrid(magnitude, outputChannel),
             inputGrid.columns,
             binRows,
             frequencyMetadataFor(inputGrid, magnitude, binRows),
             arena);
     TraversalGridColumnWriter phaseColumns(
-            payloadTraversalGrid(phase, channel),
+            payloadTraversalGrid(phase, outputChannel),
             inputGrid.columns,
             binRows,
             frequencyMetadataFor(inputGrid, phase, binRows),
