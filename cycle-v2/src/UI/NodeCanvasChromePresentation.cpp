@@ -124,10 +124,9 @@ void NodeCanvasPresentation::paintStatus(
         return;
     }
 
-    CanvasUtilityDock::paintSurface(graphics, status);
-    const Rectangle<float> textBounds = status.reduced(10.f, 1.f);
-    graphics.setFont(FontOptions(10.f));
-    graphics.setColour(kMutedText);
+    const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
+    graphics.setFont(FontOptions(14.f, Font::bold));
+    graphics.setColour(kText.withAlpha(0.96f));
     graphics.drawText(text, textBounds, Justification::centredLeft);
 }
 
