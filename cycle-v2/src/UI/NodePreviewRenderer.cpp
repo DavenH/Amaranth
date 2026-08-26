@@ -2,9 +2,12 @@
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
-#include "Nodes/Effects/EffectPlotPalette.h"
+#include "Nodes/Delay/DelayPreviewPainter.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "Nodes/Reverb/ReverbPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "UI/Preview/EffectPlotPalette.h"
 
 #include <array>
 #include <cmath>
@@ -771,7 +774,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
                 EffectPlotPalette::insetBackground,
                 NodeParameterMap(request.node).boolValue("enabled", true)));
         graphics.fillRoundedRectangle(background, 4.f);
-        paintEqualizerResponseData(
+        EqualizerPreviewPainter().paintResponse(
                 graphics,
                 background.reduced(8.f, 6.f),
                 request.node,
@@ -880,15 +883,46 @@ void NodePreviewRenderer::paintQualitative(
         const NodePreviewRenderRequest& request) {
     const NodeKind kind = request.node.kind;
     if (kind == NodeKind::Unison) {
-        paintUnisonPhasePreview(
+        Node displayNode = request.node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "order") {
+                    parameter.value = "5";
+                }
+            }
+        }
+        UnisonPreviewPainter().paint(
                 graphics,
                 request.area,
-                request.node,
+                displayNode,
                 request.zoom,
                 request.unisonContext);
         return;
     }
-    if (paintEffectCompactPreview(graphics, request.area, request.node, request.zoom)) {
+    if (kind == NodeKind::Reverb) {
+        ReverbPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
+        return;
+    }
+    if (kind == NodeKind::Delay) {
+        DelayPreviewPainter().paint(graphics, request.area, request.node, request.zoom);
+        return;
+    }
+    if (kind == NodeKind::Equalizer) {
+        Node displayNode = request.node;
+        if (displayNode.id.isEmpty()) {
+            for (NodeParameter& parameter : displayNode.parameters) {
+                if (parameter.id == "band1Gain" || parameter.id == "band5Gain") {
+                    parameter.value = "0.68";
+                } else if (parameter.id == "band3Gain") {
+                    parameter.value = "0.32";
+                }
+            }
+        }
+        EqualizerPreviewPainter().paint(
+                graphics,
+                request.area.reduced(2.f),
+                displayNode,
+                false);
         return;
     }
 

@@ -4,8 +4,9 @@
 
 #include "UI/ModulationNodeEditors.h"
 #include "Graph/NodeParameterMap.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
-#include "Nodes/Effects/EffectPlotPalette.h"
+#include "Nodes/Delay/DelayPreviewPainter.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "UI/Preview/EffectPlotPalette.h"
 #include "Nodes/Unison/UnisonNodeEditor.h"
 #include "Runtime/NodePreviewProcessor.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
@@ -211,14 +212,14 @@ public:
             resources.paintNodePreview(graphics, node, response.reduced(5.f));
         } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            paintDelayPingPreview(graphics, response, node, 1.f);
+            DelayPreviewPainter().paint(graphics, response, node, 1.f);
         } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             graphics.setColour(EffectPlotPalette::forEnabledState(
                     EffectPlotPalette::insetBackground,
                     enabledButton.getToggleState()));
             graphics.fillRoundedRectangle(response, 6.f);
-            paintEqualizerResponsePreview(
+            EqualizerPreviewPainter().paint(
                     graphics,
                     response.reduced(12.f, 9.f),
                     node,
@@ -263,7 +264,8 @@ public:
         constexpr float markerHitRadius = 36.f;
         float nearestDistance = markerHitRadius;
         for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
-            const float distance = equalizerBandControlPoint(equalizerGraphArea(), node, band)
+            const float distance = EqualizerPreviewPainter()
+                    .bandControlPoint(equalizerGraphArea(), node, band)
                     .getDistanceFrom(event.position);
             if (distance < nearestDistance) {
                 nearestDistance = distance;

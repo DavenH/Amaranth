@@ -1,7 +1,7 @@
 #include "Nodes/Unison/UnisonNodeEditor.h"
 
 #include "Nodes/Unison/UnisonNode.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Graph/NodeParameterMap.h"
 #include "UI/NodeEditorHost.h"
 
@@ -94,7 +94,7 @@ public:
         graphics.setFont(FontOptions(18.f, Font::bold));
         graphics.drawText("UNISON", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
-            paintUnisonPhasePreview(
+            UnisonPreviewPainter().paint(
                     graphics,
                     Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f),
                     node,

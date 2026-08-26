@@ -2,7 +2,7 @@
 
 #include "UI/NodePreviewResources.h"
 
-#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/GraphPreviewExecutor.h"
 

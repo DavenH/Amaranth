@@ -9,7 +9,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/NodeGraph.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
 

@@ -6,7 +6,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Runtime/NodePreviewProcessor.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Delay/DelayPreviewPainter.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "Nodes/Reverb/ReverbPreviewPainter.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "UI/NodePreviewRenderer.h"
@@ -492,19 +495,22 @@ TEST_CASE("Disabled compact effect previews are greyscale",
 
         Image enabledImage(Image::RGB, 200, 60, true);
         Graphics enabledGraphics(enabledImage);
-        REQUIRE(paintEffectCompactPreview(
-                enabledGraphics,
-                enabledImage.getBounds().toFloat(),
-                enabled,
-                1.f));
+        const auto paint = [](Graphics& graphics, Rectangle<float> area, const Node& node) {
+            if (node.kind == NodeKind::Unison) {
+                UnisonPreviewPainter().paint(graphics, area, node, 1.f);
+            } else if (node.kind == NodeKind::Delay) {
+                DelayPreviewPainter().paint(graphics, area, node, 1.f);
+            } else if (node.kind == NodeKind::Reverb) {
+                ReverbPreviewPainter().paint(graphics, area, node, 1.f);
+            } else {
+                EqualizerPreviewPainter().paint(graphics, area, node, false);
+            }
+        };
+        paint(enabledGraphics, enabledImage.getBounds().toFloat(), enabled);
 
         Image disabledImage(Image::RGB, 200, 60, true);
         Graphics disabledGraphics(disabledImage);
-        REQUIRE(paintEffectCompactPreview(
-                disabledGraphics,
-                disabledImage.getBounds().toFloat(),
-                disabled,
-                1.f));
+        paint(disabledGraphics, disabledImage.getBounds().toFloat(), disabled);
 
         REQUIRE(hasColouredPixel(enabledImage));
         REQUIRE_FALSE(hasColouredPixel(disabledImage));
@@ -528,7 +534,7 @@ TEST_CASE("Disabled Equalizer response retains a greyscale configured curve",
 
     Image enabledImage(Image::RGB, 500, 120, true);
     Graphics enabledGraphics(enabledImage);
-    paintEqualizerResponsePreview(
+    EqualizerPreviewPainter().paint(
             enabledGraphics,
             enabledImage.getBounds().toFloat(),
             enabled,
@@ -536,7 +542,7 @@ TEST_CASE("Disabled Equalizer response retains a greyscale configured curve",
 
     Image disabledImage(Image::RGB, 500, 120, true);
     Graphics disabledGraphics(disabledImage);
-    paintEqualizerResponsePreview(
+    EqualizerPreviewPainter().paint(
             disabledGraphics,
             disabledImage.getBounds().toFloat(),
             disabled,

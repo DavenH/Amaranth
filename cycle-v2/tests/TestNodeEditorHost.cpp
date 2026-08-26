@@ -11,7 +11,7 @@
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -1166,7 +1166,7 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     const uint64_t originalRevision = document.revision();
     std::vector<float> observedDetunes;
     const auto observePreview = [&] {
-        const auto paths = makeUnisonPreviewPaths(
+        const auto paths = UnisonPreviewPainter().makePaths(
                 *dispatcher.editingGraph().findNode("unison"));
         REQUIRE_FALSE(paths.empty());
         observedDetunes.push_back(paths.back().detuneCents);

@@ -10,7 +10,7 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Effects/EffectPlotPalette.h"
+#include "UI/Preview/EffectPlotPalette.h"
 
 #include <cmath>
 

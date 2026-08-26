@@ -150,10 +150,13 @@ within one directory may use a local include.
    split umbrella editor declarations by domain.
 2. **Completed:** Partition Trimesh into Model, Dsp, Editor, Panel, and
    Rendering.
-3. Extract the Reverb, Delay, Equalizer, and Unison vertical domains. Split
-   effect preview painting, signal processors, audio adapters, preview
-   processors, and editor implementations into domain-owned objects. Delete
-   the broad `Nodes/Effects` implementation folder.
+3. **In progress:** Extract the Reverb, Delay, Equalizer, and Unison vertical
+   domains. Compact preview painting is now owned by `ReverbPreviewPainter`,
+   `DelayPreviewPainter`, `EqualizerPreviewPainter`, and
+   `UnisonPreviewPainter`; the mixed `EffectPreviewRenderer` has been deleted.
+   Signal processors, audio adapters, preview processors, and editor
+   implementations still need to move before deleting the remaining broad
+   `Nodes/Effects` implementation folder.
 4. Extract remaining concrete runtime audio and preview implementations from
    function-grouped Runtime files into Envelope, Impulse Response, Waveshaper,
    FFT/IFFT, Spectral Layer, Trimesh, source, math, routing, Voice Context, and
