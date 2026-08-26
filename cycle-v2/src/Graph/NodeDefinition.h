@@ -126,6 +126,7 @@ struct NodeDefinition {
     NodeKind kind { NodeKind::GenericProcessor };
     String displayName;
     String subtitle;
+    String helpText;
     String defaultInstanceIdPrefix;
     std::vector<Port> inputs;
     std::vector<Port> outputs;

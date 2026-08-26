@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:waveshaper",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-hover-help.png"
+    }
+  ],
+  "quit": true
+}

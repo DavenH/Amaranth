@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
+
+Context:
+
+- A focused hover-help fixture on 2026-08-26 failed to open the built app via
+  LaunchServices with `kLSNoExecutableErr`, despite the bundle executable being
+  present and executable.
+- The wrapper then launched the executable directly; AppKit aborted while
+  registering the application on the main thread.
+- Repro artifacts: `/private/tmp/cycle-v2-hover-help-logs.txt` and
+  `/private/tmp/cycle-v2-hover-help-logs.txt.ips`.
+
+Current status: open; investigate the LaunchServices bundle resolution and do
+not use direct executable fallback for GUI automation.
+
 ## Open: Envelope native smoke does not restore curve state on undo
 
 Context:
