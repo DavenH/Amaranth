@@ -5,6 +5,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Delay/DelaySignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"

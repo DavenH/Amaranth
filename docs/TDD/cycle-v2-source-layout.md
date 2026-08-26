@@ -154,9 +154,10 @@ within one directory may use a local include.
    domains. Compact preview painting is now owned by `ReverbPreviewPainter`,
    `DelayPreviewPainter`, `EqualizerPreviewPainter`, and
    `UnisonPreviewPainter`; the mixed `EffectPreviewRenderer` has been deleted.
-   Signal processors, audio adapters, preview processors, and editor
-   implementations still need to move before deleting the remaining broad
-   `Nodes/Effects` implementation folder.
+   Delay now also owns its DSP configuration, signal processor, and audio
+   adapter. The remaining signal processors, audio adapters, preview
+   processors, and editor implementations still need to move before deleting
+   the broad `Nodes/Effects` implementation folder.
 4. Extract remaining concrete runtime audio and preview implementations from
    function-grouped Runtime files into Envelope, Impulse Response, Waveshaper,
    FFT/IFFT, Spectral Layer, Trimesh, source, math, routing, Voice Context, and
