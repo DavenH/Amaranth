@@ -136,6 +136,10 @@ void PrecisionSlider::setKeyboardSteps(double ordinary, double fine) {
     fineKeyboardStep = fine;
 }
 
+void PrecisionSlider::setKeyboardStepper(KeyboardStepper stepper) {
+    keyboardStepper = std::move(stepper);
+}
+
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
     if (!isArrowKey(key)) {
         return Slider::keyPressed(key);
@@ -145,10 +149,15 @@ bool PrecisionSlider::keyPressed(const KeyPress& key) {
         return false;
     }
 
-    const double magnitude = modifiers.isShiftDown()
-            ? fineKeyboardStep
-            : ordinaryKeyboardStep;
-    applyKeyboardStep(increasesValue(key) ? magnitude : -magnitude);
+    const bool increase = increasesValue(key);
+    const bool fine = modifiers.isShiftDown();
+    if (keyboardStepper != nullptr) {
+        const double nextValue = keyboardStepper(getValue(), increase, fine);
+        applyKeyboardStep(nextValue - getValue());
+    } else {
+        const double magnitude = fine ? fineKeyboardStep : ordinaryKeyboardStep;
+        applyKeyboardStep(increase ? magnitude : -magnitude);
+    }
     return true;
 }
 
@@ -198,12 +207,14 @@ PropertySliderRow::~PropertySliderRow() {
 void PropertySliderRow::setBounds(
         Rectangle<int> bounds,
         int requestedLabelWidth,
-        int gap) {
+        int gap,
+        int requestedValueWidth) {
     layout = propertySliderLayout(
             bounds,
             value.isVisible(),
             requestedLabelWidth,
-            gap);
+            gap,
+            requestedValueWidth);
     label.setBounds(layout.label);
     slider.setBounds(layout.slider);
     value.setBounds(layout.value);

@@ -10,6 +10,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -24,6 +25,7 @@
 #include "UI/NodePreviewResources.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
@@ -852,6 +854,86 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE_FALSE(static_cast<bool>(editor.automationState()
             .getProperty("preGainLayout", {})
             .getProperty("valid", {})));
+}
+
+TEST_CASE("Impulse response editor exposes truthful precision properties",
+        "[cycle-v2][node-editor-host][impulse-response][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::ImpulseResponse);
+    ImpulseResponseEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 900, 430);
+    editor.setNode(ir);
+
+    const var state = editor.automationState();
+    const var panel = state.getProperty("panelBounds", {});
+    REQUIRE(static_cast<double>(panel.getProperty("width", {}))
+            > static_cast<double>(panel.getProperty("height", {})));
+    REQUIRE(state.getProperty("sizeLayout", {}).getProperty("display", {}).toString()
+            == "1024 smp");
+    REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
+            == "0.0 dB");
+    REQUIRE(state.getProperty("highPassLayout", {}).getProperty("display", {}).toString()
+            == "12.5% Nyq");
+    for (const Identifier property : {
+            Identifier("sizeLayout"),
+            Identifier("postGainLayout"),
+            Identifier("highPassLayout") }) {
+        REQUIRE(static_cast<int>(state.getProperty(property, {})
+                .getProperty("usableTrackWidth", {}))
+                >= PropertyControlMetrics::minimumUsableTrackWidth);
+    }
+    const Array<var>* landmarks = state.getProperty("landmarks", {}).getArray();
+    REQUIRE(landmarks != nullptr);
+    REQUIRE(landmarks->size() == 5);
+    REQUIRE((int) landmarks->getFirst().getProperty("sample", {}) == 0);
+    REQUIRE((int) landmarks->getLast().getProperty("sample", {}) == 1024);
+    REQUIRE_FALSE((bool) state.getProperty("resourceActionsAvailable", {}));
+
+    int textButtonCount = 0;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        textButtonCount += dynamic_cast<TextButton*>(editor.getChildComponent(index)) != nullptr
+                ? 1 : 0;
+    }
+    REQUIRE(textButtonCount == 0);
+
+    auto* sizeValue = dynamic_cast<Label*>(editor.findChildWithID("irEditor.size.value"));
+    REQUIRE(sizeValue != nullptr);
+    sizeValue->setText("4096 samples", sendNotificationSync);
+    REQUIRE(CycleDsp::irImpulseLength(static_cast<double>(
+            editor.automationState().getProperty("size", {}))) == 4096);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    sizeValue->setText("3000 samples", sendNotificationSync);
+    REQUIRE(CycleDsp::irImpulseLength(static_cast<double>(
+            editor.automationState().getProperty("size", {}))) == 4096);
+    REQUIRE_FALSE((bool) editor.automationState()
+            .getProperty("sizeLayout", {})
+            .getProperty("valid", {}));
+    REQUIRE(delegate.events.isEmpty());
+
+    auto* highPass = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("irEditor.highPass"));
+    REQUIRE(highPass != nullptr);
+    const float cutoffBefore = CycleDsp::irPrefilterAmount(highPass->getValue());
+    REQUIRE(highPass->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(CycleDsp::irPrefilterAmount(highPass->getValue())
+            == Catch::Approx(cutoffBefore + 0.01f).margin(0.00001f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    auto* postGain = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("irEditor.postGain"));
+    REQUIRE(postGain != nullptr);
+    REQUIRE(postGain->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(CycleDsp::irPostGainDecibels(postGain->getValue())
+            == Catch::Approx(1.f).margin(0.001f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",

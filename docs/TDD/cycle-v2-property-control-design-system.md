@@ -2,7 +2,8 @@
 
 ## Status
 
-In Progress (Slice 1 complete, 2026-08-26).
+In Progress (Slices 1 and 2 complete; Slice 3 controls complete and resource
+actions blocked on a command-service boundary, 2026-08-26).
 
 ## Context
 
@@ -690,3 +691,83 @@ Review evidence:
 - Standalone Debug builds successfully with `--parallel 10`; `git diff
   --check` passes. No DSP or visualization hot-loop implementation changed;
   DSP now calls the extracted scalar mapping only during configuration.
+
+### Slice 3: Impulse Response Properties (2026-08-26)
+
+Implemented:
+
+- Migrated Size, Post Gain, and High Pass to shared precision rows with 140
+  pixels of usable travel and 72-pixel semantic value fields.
+- Reused the authoritative eight-stop impulse-length mapping and exposed exact
+  values from `128 smp` through `16384 smp`; direct entry accepts only those
+  powers of two and reset returns to `1024 smp`.
+- Added application-neutral inverse helpers beside the existing IR DSP mapping
+  for the actual exponential post gain and cubic prefilter amount. The editor
+  displays the real post gain (approximately -43.4 to +43.4 dB) and high-pass
+  cutoff as percent of Nyquist rather than copying Cycle 1's inaccurate
+  -30-to-+30 dB presentation or exposing raw normalized values.
+- Added domain-aware keyboard stepping: Post Gain uses 1 dB and 0.1 dB steps;
+  High Pass uses 1% and 0.1% of Nyquist steps after its cubic mapping.
+- Reduced the preferred editor from 1,050 by 470 to 900 by 430 pixels, expanded
+  the property rail from 212 to 348 pixels, and added five sample landmarks to
+  explain the wide time-domain view.
+- Removed the visible Load, Unload, and Model buttons because all three were
+  dead controls in Cycle V2. Automation explicitly reports that resource
+  actions are unavailable rather than presenting false affordances.
+
+Adjustment budgets:
+
+| Control | Domain | Ordinary / fine step | `D` | Alternate precision path |
+| --- | --- | --- | ---: | --- |
+| Size | 128-16,384 samples, 8 ordered powers of two | one discrete stop | 140 px | exact sample entry |
+| Post Gain | approximately -43.4 to +43.4 dB | 1 dB / 0.1 dB | 140 px | signed dB entry |
+| High Pass | 0-100% of Nyquist | 1% / 0.1% Nyquist | 140 px | percentage entry |
+
+Resource-action boundary:
+
+- The authoritative Cycle 1 implementation is `IrModellerUI`: Load imports an
+  external impulse, Model imports audio and converts it into the editable
+  curve, and Unload removes the external wave resource.
+- Cycle V2 currently has no wave-resource document model or semantic command
+  service through which an editor can perform those operations. The existing
+  Curve publication contract can update curve and parameter state, but cannot
+  own a file chooser, imported audio lifetime, serialization, undo, or DSP
+  resource replacement.
+- A future stable implementation should add domain commands for import,
+  import-and-model, and unload. The IR editor should then present Load as the
+  primary import action, Model as the secondary conversion action, and Unload
+  as a contextual destructive action visible only when an external resource
+  exists. The commands must reuse Cycle 1's mature import/modelling behavior
+  through extraction; the editor must not copy it.
+- Until that boundary exists, adding callbacks, local resource ownership, or
+  approximate modelling here would violate the graph mutation and reuse rules.
+  Slice 3 therefore remains partial at this explicit architectural boundary.
+
+Review evidence:
+
+- Shared presentation gained only a generic semantic keyboard-step callback
+  and configurable value width; no node kind, parameter ID, DSP behavior, or
+  resource command entered generic code.
+- Production diff for this slice: 263 lines added and 37 removed across eight
+  production files. The largest changed implementation is the domain-owned
+  `ImpulseResponseEditorComponent.cpp` at 279 total lines.
+- Focused tests pass: authoritative mappings 83 assertions; shared property
+  geometry and semantic stepping 45; IR semantic geometry, entry, validation,
+  landmarks, unavailable actions, and keyboard publication 27.
+- Real-input automation:
+  `/private/tmp/cycle-v2-ir-properties-report.json` has zero failed commands
+  and covers production geometry, semantic displays, two drag updates, commit,
+  model publication, undo, Shift-drag, reset, and the Size default. Filtered
+  log: `/private/tmp/cycle-v2-ir-properties-logs.txt`.
+- Production screenshots: before
+  `/private/tmp/cycle-v2-ir-properties-before.png`; after
+  `/private/tmp/cycle-v2-ir-properties-after.png`. The after report has zero
+  failed commands; filtered log:
+  `/private/tmp/cycle-v2-ir-properties-after-logs.txt`.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. No DSP or visualization hot loop changed; the added mapping
+  helpers run only for UI/configuration conversion. The complete Cycle V2 run
+  passes 10,207 of 10,208 assertions; its sole failure is the pre-existing
+  hit-router hover-help assertion recorded in `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-ir-tests-junit.xml`. A compilation database remains
+  unavailable for focused clang-tidy.

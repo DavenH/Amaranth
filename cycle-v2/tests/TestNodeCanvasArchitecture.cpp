@@ -910,8 +910,8 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto bounds = registry.moduleFor(NodeKind::ImpulseResponse)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
-    REQUIRE(bounds.getWidth() == Catch::Approx(1050.f));
-    REQUIRE(bounds.getHeight() == Catch::Approx(470.f));
+    REQUIRE(bounds.getWidth() == Catch::Approx(900.f));
+    REQUIRE(bounds.getHeight() == Catch::Approx(430.f));
 
     const auto waveshaperBounds = registry.moduleFor(NodeKind::Waveshaper)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);

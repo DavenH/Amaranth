@@ -14,7 +14,11 @@ class LabeledParameterSlider : public PropertySliderRow {
 public:
     LabeledParameterSlider(Component& owner, const String& labelText);
 
-    void setBounds(Rectangle<int> bounds, int labelWidth = 82, int gap = 12);
+    void setBounds(
+            Rectangle<int> bounds,
+            int labelWidth = 82,
+            int gap = 12,
+            int valueWidth = PropertyControlMetrics::valueWidth);
 };
 
 class ParameterToggle {

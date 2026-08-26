@@ -108,3 +108,41 @@ TEST_CASE("Property slider supports semantic entry, invalid correction, and keyb
     REQUIRE(dragStarts == 4);
     REQUIRE(dragEnds == 4);
 }
+
+TEST_CASE("Property slider supports semantic keyboard steps and wider values",
+        "[cycle-v2][ui][property-controls][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    PropertySliderRow row(owner, "Amount");
+    row.slider.setRange(0.0, 1.0, 0.00001);
+    row.configureValuePresentation(
+            formatPercentage,
+            parsePercentage,
+            0.0,
+            0.01,
+            0.001,
+            "Amount help");
+    row.slider.setKeyboardStepper([](double current, bool increase, bool fine) {
+        const double amount = current * current * current;
+        const double nextAmount = jlimit(
+                0.0,
+                1.0,
+                amount + (increase ? 1.0 : -1.0) * (fine ? 0.001 : 0.01));
+        return std::cbrt(nextAmount);
+    });
+    row.setBounds({ 0, 0, 324, 30 }, 88, 8, 72);
+
+    REQUIRE_FALSE(row.currentLayout().compact);
+    REQUIRE(row.currentLayout().value.getWidth() == 72);
+    REQUIRE(row.currentLayout().usableTrackWidth()
+            == PropertyControlMetrics::minimumUsableTrackWidth);
+
+    row.slider.setValue(0.5, sendNotificationSync);
+    REQUIRE(row.slider.keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(std::pow(row.slider.getValue(), 3.0) == Catch::Approx(0.135).margin(0.00001));
+    REQUIRE(row.slider.keyPressed(KeyPress(
+            KeyPress::leftKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(std::pow(row.slider.getValue(), 3.0) == Catch::Approx(0.134).margin(0.00001));
+}

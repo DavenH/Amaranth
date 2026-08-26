@@ -48,10 +48,13 @@ juce::var propertySliderRowAutomationState(const PropertySliderRow& row);
 
 class PrecisionSlider final : public juce::Slider {
 public:
+    using KeyboardStepper = std::function<double(double, bool, bool)>;
+
     PrecisionSlider();
     ~PrecisionSlider() override;
 
     void setKeyboardSteps(double ordinary, double fine);
+    void setKeyboardStepper(KeyboardStepper stepper);
     bool keyPressed(const juce::KeyPress& key) override;
 
 private:
@@ -59,6 +62,7 @@ private:
 
     double ordinaryKeyboardStep { 0.01 };
     double fineKeyboardStep { 0.001 };
+    KeyboardStepper keyboardStepper;
 };
 
 class PropertySliderRow : private juce::Slider::Listener {
@@ -72,7 +76,8 @@ public:
     void setBounds(
             juce::Rectangle<int> bounds,
             int labelWidth = PropertyControlMetrics::labelWidth,
-            int gap = PropertyControlMetrics::inlineGap);
+            int gap = PropertyControlMetrics::inlineGap,
+            int valueWidth = PropertyControlMetrics::valueWidth);
     void configureValuePresentation(
             ValueFormatter formatter,
             ValueParser parser,

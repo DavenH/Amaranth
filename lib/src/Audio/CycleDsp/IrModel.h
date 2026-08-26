@@ -10,7 +10,10 @@ namespace CycleDsp {
 int irImpulseLength(double normalizedValue);
 double irImpulseLengthValue(int length);
 float irPostGain(double normalizedValue);
+float irPostGainDecibels(double normalizedValue);
+double irPostGainValueForDecibels(float decibels);
 float irPrefilterAmount(double normalizedValue);
+double irPrefilterValueForAmount(float amount);
 
 void buildIrPrefilterLevels(Buffer<float> levels, double normalizedValue);
 void rasterizeIrImpulse(

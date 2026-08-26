@@ -7,8 +7,12 @@ namespace CycleV2 {
 LabeledParameterSlider::LabeledParameterSlider(Component& owner, const String& labelText) :
         PropertySliderRow(owner, labelText) {}
 
-void LabeledParameterSlider::setBounds(Rectangle<int> bounds, int labelWidth, int gap) {
-    PropertySliderRow::setBounds(bounds, labelWidth, gap);
+void LabeledParameterSlider::setBounds(
+        Rectangle<int> bounds,
+        int labelWidth,
+        int gap,
+        int valueWidth) {
+    PropertySliderRow::setBounds(bounds, labelWidth, gap, valueWidth);
 }
 
 ParameterToggle::ParameterToggle(Component& owner, const String& labelText) {

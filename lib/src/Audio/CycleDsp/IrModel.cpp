@@ -1,5 +1,6 @@
 #include "IrModel.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace CycleDsp {
@@ -17,8 +18,22 @@ float irPostGain(double normalizedValue) {
     return (float) std::exp(10. * normalizedValue - 5.);
 }
 
+float irPostGainDecibels(double normalizedValue) {
+    constexpr double decibelsPerNaturalExponent = 20.0 / 2.302585092994046;
+    return (float) (decibelsPerNaturalExponent * (10.0 * normalizedValue - 5.0));
+}
+
+double irPostGainValueForDecibels(float decibels) {
+    constexpr double naturalExponentPerDecibel = 2.302585092994046 / 20.0;
+    return std::clamp((naturalExponentPerDecibel * decibels + 5.0) / 10.0, 0.0, 1.0);
+}
+
 float irPrefilterAmount(double normalizedValue) {
     return (float) (normalizedValue * normalizedValue * normalizedValue);
+}
+
+double irPrefilterValueForAmount(float amount) {
+    return std::cbrt(std::clamp(amount, 0.f, 1.f));
 }
 
 void buildIrPrefilterLevels(Buffer<float> levels, double normalizedValue) {
