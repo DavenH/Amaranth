@@ -2,6 +2,8 @@
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
+#include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
@@ -12,9 +14,9 @@ const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 const Colour kPanelBackground { 0xff11161c };
 const Colour kPanelBorder { 0xff34404d };
-constexpr float kLabelWidth = 92.f;
-constexpr float kRowHeight = 28.f;
-constexpr float kRowGap = 7.f;
+constexpr float kLabelWidth = (float) PropertyControlMetrics::labelWidth;
+constexpr float kRowHeight = (float) PropertyControlMetrics::rowHeight;
+constexpr float kRowGap = (float) PropertyControlMetrics::rowGap;
 constexpr float kExpandedHeaderHeight = 44.f;
 constexpr float kSliderReadoutWidth = 92.f;
 constexpr float kColumnGap = 12.f;
@@ -107,7 +109,6 @@ void drawSlider(
         Colour colour,
         const String& readout = {},
         std::initializer_list<SliderTick> ticks = {}) {
-    const float trackY = ticks.size() > 0 ? area.getY() + 7.f : area.getCentreY();
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     area.removeFromLeft(kColumnGap);
     Rectangle<float> readoutArea;
@@ -116,19 +117,17 @@ void drawSlider(
         area.removeFromRight(kColumnGap);
     }
     Rectangle<float> valueArea = area.reduced(2.f, 0.f);
+    const Rectangle<float> sliderArea = ticks.size() > 0
+            ? valueArea.withHeight(14.f)
+            : valueArea;
+    const float trackY = propertySliderTrackBounds(sliderArea).getCentreY();
     const float left = valueArea.getX();
     const float right = valueArea.getRight();
-    const float knobX = jmap(jlimit(0.f, 1.f, normalized), 0.f, 1.f, left, right);
-    const float knobSize = jmax(8.f, area.getHeight() * 0.35f);
 
     graphics.setFont(FontOptions(11.f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
-    graphics.setColour(kMutedText.withAlpha(0.30f));
-    graphics.drawLine(Line<float>({ left, trackY }, { right, trackY }), 1.4f);
-    graphics.setColour(colour.withAlpha(0.76f));
-    graphics.drawLine(Line<float>({ left, trackY }, { knobX, trackY }), 2.2f);
-    graphics.fillEllipse(Rectangle<float>(knobSize, knobSize).withCentre({ knobX, trackY }));
+    paintPropertySlider(graphics, sliderArea, normalized, colour);
     graphics.setFont(FontOptions(9.5f));
     for (const auto& tick : ticks) {
         const float x = jmap(tick.normalized, 0.f, 1.f, left, right);
@@ -249,7 +248,7 @@ void drawStopSlider(
 
 Rectangle<float> VoiceContextCompactEditor::expandedContentBounds(Rectangle<float> panel) {
     panel.removeFromTop(kExpandedHeaderHeight);
-    return panel.removeFromTop(218.f).reduced(24.f, 4.f);
+    return panel.removeFromTop(224.f).reduced(24.f, 4.f);
 }
 
 Rectangle<float> VoiceContextCompactEditor::nodeSelectorBounds(

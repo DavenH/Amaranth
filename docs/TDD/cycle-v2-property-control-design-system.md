@@ -2,8 +2,9 @@
 
 ## Status
 
-In Progress (Slices 1 and 2 complete; Slice 3 controls complete and resource
-actions blocked on a command-service boundary, 2026-08-26).
+In Progress (Slices 1-4 property presentation complete; IR resource actions
+are blocked on a command-service boundary, and Voice Context interaction
+remains partial pending a hosted-control extraction, 2026-08-26).
 
 ## Context
 
@@ -573,6 +574,67 @@ Review evidence:
   is the authoritative one-call graph-marker mapping, not a DSP, sample, bin,
   or pixel loop.
 
+Implementation design for Voice Context presentation:
+
+- The authoritative implementation remains `VoiceContextCompactEditor`: it
+  owns the source-domain selector, parameter mappings, landmark values,
+  readouts, hit geometry, canvas edit routing, and compact node summary.
+- Expose only the shared precision-slider paint primitive already used by the
+  shared LookAndFeel. The primitive accepts a domain accent colour but owns the
+  track thickness, fill, exact hairline thumb, and enabled/hover/focus states;
+  it has no Voice parameter or hit-testing knowledge.
+- Align the expanded Voice rows to the shared 88-pixel label, 30-pixel row,
+  and 6-pixel gap metrics while preserving its single-column macro layout,
+  semantic landmarks, readouts, selector, checkbox, and discrete oversampling
+  control.
+- Voice Context remains a canvas-painted special editor, not a hosted tree of
+  JUCE controls. This slice does not invent keyboard focus, text entry, or undo
+  behavior in paint code. Moving those interactions to real semantic controls
+  requires a separate host extraction that preserves its current canvas edit
+  service and complete gesture semantics.
+
+Implemented:
+
+- Continuous Octave, Voice Length, and Pitch rails now use the same exact
+  indicator, four-pixel track, fill treatment, and state-capable painter as the
+  other migrated property controls, retaining each Voice domain accent.
+- Replaced local row, gap, and label metrics with the shared property metrics.
+  The content block grew by six pixels so all six rows retain their established
+  rhythm without overlap.
+- Retained Voice's explicit ticks, seconds/semitone readouts, source selector,
+  Portamento checkbox, discrete oversampling stops, hit bounds, mappings, and
+  graph-command routing unchanged.
+
+Adjustment budgets:
+
+| Control | Domain | Discrete / displayed increment | `D` | Existing alternate path |
+| --- | --- | --- | ---: | --- |
+| Octave | -2 to +2 octaves | one octave | 256 px | visible five-stop landmarks |
+| Voice Length | 0.05 to 148 seconds, nonlinear | rounded seconds | 256 px | semantic seconds readout and reference ticks |
+| Pitch | -12 to +12 semitones | one semitone | 256 px | semantic semitone readout |
+
+Review evidence:
+
+- Production diff for this slice: 46 lines added and 12 removed across three
+  production files. The shared painter gains geometry and state parameters
+  only; it has no Voice control, mapping, hit, or command branch.
+- The existing painted-row contract passes 36 assertions covering every
+  authored hit region, endpoint, mapping, label, and compact summary.
+- The Voice attachment automation still completes Octave, Pitch,
+  Oversampling, and Voice Length drag gestures and downstream preview updates.
+  Production screenshot:
+  `/private/tmp/cycle-v2-voice-context-properties-after.png`.
+- This is a presentation-complete but interaction-partial migration: exact
+  indicators and shared rhythm are complete; hosted focus, fine adjustment,
+  direct entry, reset, and gesture-level undo remain the explicit extraction
+  boundary described above.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. The complete Cycle V2 run passes 10,251 of 10,252
+  assertions; its sole failure remains the pre-existing hit-router hover-help
+  assertion recorded in `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-voice-context-property-tests-junit.xml`. Existing
+  scalar `std::abs` calls only format two message-thread summary strings.
+
 ### Deferred App-Wide Work
 
 The performance keyboard, output meters, palettes, dock sizing, and complete
@@ -771,9 +833,9 @@ Review evidence:
 - Reused unchanged: `CurveExpandedEditorComponent` transaction/publication,
   Guide resource ownership, model preparation, downstream scheduling, and
   DSP depth semantics.
-- Remaining work: Waveshaper, IR, Voice Context, Delay, Reverb, and Equalizer
-  migrations remain in later slices, so the TDD is intentionally not marked
-  `Implemented`.
+- At completion of this first slice, Waveshaper, IR, Voice Context, Delay,
+  Reverb, and Equalizer remained scheduled for the later slices recorded
+  above, so the TDD was intentionally not marked `Implemented`.
 - Focused tests: property controls 38 assertions; Guide host/interaction 26;
   Guide graph gesture 16; Guide causal runtime gesture 16. All pass.
 - Real-input automation:

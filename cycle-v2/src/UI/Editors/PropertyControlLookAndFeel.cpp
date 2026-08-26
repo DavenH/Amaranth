@@ -109,6 +109,33 @@ Rectangle<float> propertySliderTrackBounds(Rectangle<float> bounds) {
                     PropertyControlMetrics::visibleTrackHeight);
 }
 
+void paintPropertySlider(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        double normalizedValue,
+        Colour fill,
+        bool hovered,
+        bool focused,
+        bool enabled) {
+    const Rectangle<float> track = propertySliderTrackBounds(bounds);
+    const float position = jmap(
+            (float) jlimit(0.0, 1.0, normalizedValue),
+            track.getX(),
+            track.getRight());
+    const SliderPaintGeometry geometry = sliderPaintGeometry(
+            roundToInt(bounds.getX()),
+            roundToInt(bounds.getY()),
+            roundToInt(bounds.getWidth()),
+            roundToInt(bounds.getHeight()),
+            position);
+    paintSliderTrack(graphics, geometry, hovered, enabled);
+    if (fill != kFill) {
+        graphics.setColour(fill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
+        graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
+    }
+    paintSliderThumb(graphics, geometry, focused, enabled);
+}
+
 LookAndFeel& propertyControlLookAndFeel() {
     static PropertyControlLookAndFeel result;
     return result;
