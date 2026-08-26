@@ -192,6 +192,7 @@ NodeCanvas::~NodeCanvas() {
 }
 
 void NodeCanvas::paint(Graphics& g) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const Node* expandedNode = queries.findNode(expandedNodeId);
     canvasPresentation.paint(g, presentationFrame());
     if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
@@ -207,6 +208,8 @@ void NodeCanvas::paint(Graphics& g) {
 }
 
 void NodeCanvas::resized() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
     viewport.setBounds(canvasContentBounds());
     if (guideEditor != nullptr && guideEditor->isVisible()) {
         guideEditor->setBounds(
@@ -217,10 +220,14 @@ void NodeCanvas::resized() {
 }
 
 void NodeCanvas::visibilityChanged() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
     renderInvalidation.notifyAvailabilityChanged();
 }
 
 void NodeCanvas::focusLost(FocusChangeType) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::LayoutLifecycle);
     probeRailState.selectedProbeId = {};
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
@@ -229,11 +236,13 @@ void NodeCanvas::focusLost(FocusChangeType) {
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
     updateHoverAt(event.position);
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseExit(const MouseEvent&) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
     requestCanvasRepaint();
@@ -288,6 +297,8 @@ void NodeCanvas::updateHoverAt(Point<float> position) {
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PointerGesture);
     grabKeyboardFocus();
     palette.updateHover(event.position);
     editStatusMessage = {};
@@ -508,6 +519,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseDrag(const MouseEvent& event) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
 
     if (draggingSpectralPanNodeId.isNotEmpty()) {
@@ -577,6 +590,8 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseUp(const MouseEvent& event) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
     if (draggingSpectralPanNodeId.isNotEmpty()) {
         draggingSpectralPanNodeId = {};
@@ -643,6 +658,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 }
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
             workspace,
@@ -699,11 +715,14 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
     viewport.zoomAround(event.position, scaleFactor);
     requestCanvasRepaint();
 }
 
 bool NodeCanvas::keyPressed(const KeyPress& key) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PointerGesture);
     const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
     const int keyCode = key.getKeyCode();
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
@@ -773,6 +792,8 @@ void NodeCanvas::newOpenGLContextCreated() {
 }
 
 void NodeCanvas::renderOpenGL() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Frame::OpenGlRender);
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
         OpenGLHelpers::clear(kCanvasBackground);
@@ -807,6 +828,7 @@ void NodeCanvas::openGLContextClosing() {
 }
 
 void NodeCanvas::timerCallback() {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Timer);
     if (compiledStateRefreshPending
             && (int32) (Time::getMillisecondCounter() - compiledStateRefreshDueMs) >= 0) {
         flushScheduledCompiledStateRefresh();
@@ -982,6 +1004,8 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
 }
 
 void NodeCanvas::refreshCompiledState() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
     editorCoordinator.clearPreviewCache();
     presentation.refresh(graph, document.revision(), document.lastChange());
@@ -989,6 +1013,8 @@ void NodeCanvas::refreshCompiledState() {
 }
 
 void NodeCanvas::refreshCompiledStateAsync() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     compiledStateRefreshPending = false;
     editorCoordinator.clearPreviewCache();
     const NodeGraph& refreshGraph = commands.editingGraph();
@@ -1003,6 +1029,8 @@ void NodeCanvas::refreshCompiledStateAsync() {
                 if (safeThis == nullptr) {
                     return;
                 }
+                auto callbackMeasurement = safeThis->performanceMetrics.measure(
+                        CanvasPerformanceMetrics::Trigger::PreviewRuntime);
                 if (!safeThis->commands.hasTransientEdit()) {
                     safeThis->editorCoordinator.updateHost(
                             safeThis->commands.editingGraph().findNode(safeThis->expandedNodeId),
@@ -1221,6 +1249,7 @@ bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
 }
 
 bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> position, String& nodeId) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     const auto result = automation.addNode(kindId, position);
     if (!applyAuthoringResult(result)) {
         return false;
@@ -1231,6 +1260,7 @@ bool NodeCanvas::addNodeForAutomation(const String& kindId, Point<float> positio
 }
 
 bool NodeCanvas::moveNodeForAutomation(const String& nodeId, Point<float> position) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     return applyAuthoringResult(automation.moveNode(nodeId, position));
 }
 
@@ -1239,6 +1269,7 @@ bool NodeCanvas::connectPortsForAutomation(
         const String& sourcePortId,
         const String& destNodeId,
         const String& destPortId) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     return applyAuthoringResult(automation.connectPorts(
             sourceNodeId,
             sourcePortId,
@@ -1247,14 +1278,17 @@ bool NodeCanvas::connectPortsForAutomation(
 }
 
 bool NodeCanvas::deleteNodeForAutomation(const String& nodeId) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     return applyAuthoringResult(automation.deleteNode(nodeId));
 }
 
 bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     return applyAuthoringResult(automation.deleteEdge(edgeIndex));
 }
 
 bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     if (!commands.removeGuideCurve(guideId).succeeded()) {
         return false;
     }
@@ -1271,6 +1305,7 @@ bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
 }
 
 bool NodeCanvas::undoForAutomation() {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     const auto result = authoring.undo();
     applyAuthoringResult(result);
     return result.succeeded;
@@ -1280,6 +1315,8 @@ bool NodeCanvas::setGuideParameterForAutomation(
         const String& guideId,
         const String& parameterId,
         const String& value) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     const GuideCurveResource* guide = document.graph().findGuideCurve(guideId);
     if (guide == nullptr || guide->model == nullptr) {
         return false;
@@ -1320,22 +1357,32 @@ bool NodeCanvas::setNodeParameterForAutomation(
         const String& parameterId,
         const String& label,
         const String& value) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.setNodeParameter(nodeId, parameterId, label, value));
 }
 
 bool NodeCanvas::setMorphSliderForAutomation(const String& nodeId, const String& axis, float value) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.setMorph(nodeId, axis, value));
 }
 
 bool NodeCanvas::setPrimaryAxisForAutomation(const String& nodeId, const String& axis) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.setPrimaryAxis(nodeId, axis));
 }
 
 bool NodeCanvas::toggleLinkForAutomation(const String& nodeId, const String& axis) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.toggleLink(nodeId, axis));
 }
 
 bool NodeCanvas::selectVertexForAutomation(const String& nodeId, int vertexIndex) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.selectVertex(nodeId, vertexIndex));
 }
 
@@ -1343,6 +1390,8 @@ bool NodeCanvas::setVertexParameterForAutomation(
         const String& nodeId,
         const String& parameterId,
         float value) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     return applyAuthoringResult(automation.setVertexParameter(nodeId, parameterId, value));
 }
 
@@ -1363,6 +1412,15 @@ var NodeCanvas::inspectPointerTargetsForAutomation() const {
 
 var NodeCanvas::inspectOpenGLDiagnosticsForAutomation() const {
     return automation.inspectOpenGLDiagnostics({ canvasOpenGlAttached, expandedNodeId });
+}
+
+var NodeCanvas::inspectPerformanceMetricsForAutomation() const {
+    return performanceMetrics.toVar(renderInvalidation.diagnostics());
+}
+
+void NodeCanvas::resetPerformanceMetricsForAutomation() {
+    performanceMetrics.reset();
+    renderInvalidation.resetDiagnostics();
 }
 
 var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
@@ -1554,6 +1612,8 @@ void NodeCanvas::repaintCurveEditorOpenGL() {
 bool NodeCanvas::publishCurveState(
         NodeModelStatePtr model,
         const std::vector<NodeParameter>& controls) {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::ParameterEdit);
     if (expandedGuideId.isEmpty()) {
         return false;
     }
@@ -1604,7 +1664,8 @@ void NodeCanvas::repaintNodeEditor(bool openGl) {
     if (openGl) {
         openGLContext.triggerRepaint();
     }
-    requestCanvasRepaint();
+    performanceMetrics.requestRepaint(CanvasPerformanceMetrics::Trigger::ParameterEdit);
+    renderInvalidation.request(NodeCanvasInvalidation::CanvasRepaint);
 }
 
 void NodeCanvas::selectEditedNode(const String& nodeId) {
@@ -1625,6 +1686,8 @@ void NodeCanvas::flushNodeEditorRefresh() {
 }
 
 void NodeCanvas::refreshNodeEditorPresentation() {
+    auto measurement = performanceMetrics.measure(
+            CanvasPerformanceMetrics::Trigger::PreviewRuntime);
     refreshCompiledStateAsync();
 }
 
@@ -1710,6 +1773,7 @@ void NodeCanvas::paintNodePreview(
 }
 
 void NodeCanvas::requestCanvasRepaint() {
+    performanceMetrics.requestRepaint();
     renderInvalidation.request(NodeCanvasInvalidation::CanvasRepaint);
 }
 

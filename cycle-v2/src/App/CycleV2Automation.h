@@ -53,6 +53,8 @@ private:
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;
     var inspectOpenGLDiagnostics() const;
+    var inspectCanvasPerformance() const;
+    var resetCanvasPerformance();
     var moveNode(const var& commandValue);
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);

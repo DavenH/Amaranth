@@ -18,6 +18,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "UI/CanvasPerformanceMetrics.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
@@ -87,6 +88,8 @@ public:
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
+    var inspectPerformanceMetricsForAutomation() const;
+    void resetPerformanceMetricsForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     Rectangle<int> performanceKeyboardDockBounds() const;
@@ -131,6 +134,7 @@ private:
     NodeCanvasEditorCoordinator editorCoordinator;
     NodeCanvasPresentation canvasPresentation;
     NodeCanvasAutomationController automation;
+    CanvasPerformanceMetrics performanceMetrics;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;

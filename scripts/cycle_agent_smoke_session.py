@@ -125,11 +125,12 @@ def run_fixture(args, fixture_name, fixture_path, expected_failure):
 
     reset_commands = []
 
-    reset_commands.append({
-        "command": "dismissTransientUi",
-        "waitForIdle": True,
-        "idleDelayMs": 50,
-    })
+    if not args.skip_ui_reset:
+        reset_commands.append({
+            "command": "dismissTransientUi",
+            "waitForIdle": True,
+            "idleDelayMs": 50,
+        })
 
     if args.reset_preset:
         reset_commands.append({
@@ -141,7 +142,7 @@ def run_fixture(args, fixture_name, fixture_path, expected_failure):
             "delayMs": args.reset_delay_ms,
         })
 
-    if not args.skip_main_tab_reset:
+    if not args.skip_ui_reset and not args.skip_main_tab_reset:
         reset_commands.append({
             "command": "resetMainPanelView",
             "waitForIdle": True,
@@ -215,6 +216,9 @@ def run_fixture(args, fixture_name, fixture_path, expected_failure):
             saw_failure = True
             skipped_after_failure = True
 
+        if args.per_command_delay > 0:
+            time.sleep(args.per_command_delay)
+
     add_boundary_diagnostics(args, fixture_name, "after", len(commands) + 100, results)
 
     fixture_ok = saw_failure if expected_failure else not saw_failure
@@ -261,10 +265,12 @@ def main():
     parser.add_argument("--reset-preset", default="ooh-aah", help="Factory preset opened before each fixture; empty disables reset")
     parser.add_argument("--reset-delay-ms", type=int, default=150, help="Idle wait after preset reset before UI normalization")
     parser.add_argument("--skip-main-tab-reset", action="store_true", help="Do not reset MainPanel top/bottom tabs before each fixture")
+    parser.add_argument("--skip-ui-reset", action="store_true", help="Do not send legacy Cycle UI reset commands before each fixture")
     parser.add_argument("--expected-failure", action="append", default=[], help="Fixture name expected to contain a failing command")
     parser.add_argument("--resume", action="store_true", help="Keep existing report fixtures and skip names already recorded")
     parser.add_argument("--timeout", type=float, default=30.0, help="Socket command timeout in seconds")
     parser.add_argument("--command-delay", type=float, default=0.0, help="Delay after each fixture in seconds")
+    parser.add_argument("--per-command-delay", type=float, default=0.0, help="Delay between fixture commands so the app message loop can settle")
     parser.add_argument("--boundary-log", action="store_true", help="Write fixture boundary markers into the app session log")
     parser.add_argument("--opengl-diagnostics-each-fixture", action="store_true", help="Poll OpenGL diagnostics before and after every fixture")
     args = parser.parse_args()

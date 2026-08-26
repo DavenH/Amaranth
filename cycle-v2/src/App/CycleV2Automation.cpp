@@ -741,6 +741,12 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "inspectOpenGLDiagnostics") {
         return inspectOpenGLDiagnostics();
     }
+    if (command == "inspectCanvasPerformance") {
+        return inspectCanvasPerformance();
+    }
+    if (command == "resetCanvasPerformance") {
+        return resetCanvasPerformance();
+    }
     if (command == "exportGraph") {
         return exportGraph(commandValue);
     }
@@ -1200,6 +1206,17 @@ var CycleV2Automation::inspectPointerCursor() const {
 
 var CycleV2Automation::inspectOpenGLDiagnostics() const {
     return okResult("inspectOpenGLDiagnostics", workspace.inspectOpenGLDiagnosticsForAutomation());
+}
+
+var CycleV2Automation::inspectCanvasPerformance() const {
+    return okResult(
+            "inspectCanvasPerformance",
+            workspace.inspectCanvasPerformanceForAutomation());
+}
+
+var CycleV2Automation::resetCanvasPerformance() {
+    workspace.resetCanvasPerformanceForAutomation();
+    return okResult("resetCanvasPerformance");
 }
 
 var CycleV2Automation::addNode(const var& commandValue) {

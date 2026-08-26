@@ -1,5 +1,22 @@
 # UI Bug Notes
 
+## Open: Canvas edge hover test returns unstable help text
+
+Context:
+
+- The full `standalone-debug` CTest run on 2026-08-26 failed test 415,
+  `Node canvas hit routing preserves action edge and palette placement semantics`,
+  at `TestNodeCanvasHitRouter.cpp:66`: `edgeHelp` did not start with
+  `Time signal from`.
+- The focused rerun failed identically and also logged a
+  `juce_String.cpp:327` assertion. The canvas performance instrumentation does
+  not modify hit routing, scene edge construction, or hover-text generation.
+- Repro output is in
+  `build/standalone-debug/Testing/Temporary/LastTest.log`.
+
+Current status: open; inspect hover-text String lifetime/initialization and the
+scene edge selected at the cable midpoint.
+
 ## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
 
 Context:
