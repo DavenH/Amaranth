@@ -111,7 +111,7 @@ void ParameterRail::layout(
 void styleParameterLabel(Label& label, const String& text) {
     label.setText(text, dontSendNotification);
     label.setColour(Label::textColourId, kMutedText);
-    label.setFont(FontOptions(12.f, Font::bold));
+    label.setFont(FontOptions(12.f));
     label.setJustificationType(Justification::centredRight);
 }
 

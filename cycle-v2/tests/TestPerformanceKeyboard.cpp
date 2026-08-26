@@ -91,7 +91,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
 }
 
-TEST_CASE("Canvas utilities share one right-aligned dock layout",
+TEST_CASE("Canvas utilities keep the console clear at the top left",
         "[cycle-v2][canvas][utility-dock][layout]") {
     const Rectangle<float> content { 0.f, 0.f, 1200.f, 700.f };
     const CanvasUtilityDockLayout layout = CanvasUtilityDock::layout(content);
@@ -100,9 +100,10 @@ TEST_CASE("Canvas utilities share one right-aligned dock layout",
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
+    REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getY()
             == layout.minimap.getBottom() + CanvasUtilityDock::gap);
-    REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
+    REQUIRE_FALSE(layout.status.intersects(layout.minimap));
     REQUIRE(content.contains(layout.minimap));
     REQUIRE(content.contains(layout.legend));
     REQUIRE(content.contains(layout.keyboard));
@@ -110,7 +111,7 @@ TEST_CASE("Canvas utilities share one right-aligned dock layout",
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
-    REQUIRE_FALSE(compact.status.intersects(compact.keyboard));
+    REQUIRE_FALSE(compact.status.intersects(compact.minimap));
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
     REQUIRE(compactContent.contains(compact.keyboard));
     REQUIRE(compactContent.contains(compact.status));

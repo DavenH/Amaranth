@@ -203,7 +203,7 @@ public:
         graphics.setColour(Colour(0xff2b3340));
         graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f, Font::bold));
+        graphics.setFont(FontOptions(18.f));
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);

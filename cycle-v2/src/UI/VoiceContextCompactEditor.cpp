@@ -72,7 +72,7 @@ void drawSourceSelector(Graphics& graphics, Rectangle<float> area, const Node& n
     const Colour spectralColour = colourForDomain(PortDomain::SpectralMagnitudeSignal);
     const Colour activeColour = spectral ? spectralColour : waveformColour;
 
-    graphics.setFont(FontOptions(10.8f, Font::bold));
+    graphics.setFont(FontOptions(10.8f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText("Domain", labelArea.withTrimmedRight(10.f), Justification::centredRight);
 
@@ -121,7 +121,7 @@ void drawSlider(
     const float knobX = jmap(jlimit(0.f, 1.f, normalized), 0.f, 1.f, left, right);
     const float knobSize = jmax(8.f, area.getHeight() * 0.35f);
 
-    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.setFont(FontOptions(11.f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
     graphics.setColour(kMutedText.withAlpha(0.30f));
@@ -140,7 +140,7 @@ void drawSlider(
                 Justification::centred);
     }
     if (readout.isNotEmpty()) {
-        graphics.setFont(FontOptions(10.5f, Font::bold));
+        graphics.setFont(FontOptions(10.5f));
         graphics.setColour(kText.withAlpha(0.88f));
         graphics.drawText(
                 readout,
@@ -175,7 +175,7 @@ void drawCheckbox(
                 PathStrokeType(1.8f, PathStrokeType::curved, PathStrokeType::rounded));
     }
 
-    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.setFont(FontOptions(11.f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
 }
@@ -208,7 +208,7 @@ void drawStopSlider(
             ? left
             : jmap((float) activeIndex, 0.f, (float) values.size() - 1.f, left, right);
 
-    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.setFont(FontOptions(11.f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea.withTrimmedRight(10.f), Justification::centredRight);
     graphics.setColour(kMutedText.withAlpha(0.28f));
@@ -228,7 +228,7 @@ void drawStopSlider(
         graphics.fillEllipse(Rectangle<float>(
                 active ? 9.f : 5.f,
                 active ? 9.f : 5.f).withCentre({ x, trackY }));
-        graphics.setFont(FontOptions(8.5f, Font::bold));
+        graphics.setFont(FontOptions(8.5f));
         graphics.setColour(active
                 ? kText.withAlpha(0.90f)
                 : kMutedText.withAlpha(0.66f));
@@ -237,7 +237,7 @@ void drawStopSlider(
                 Rectangle<float>(x - 14.f, trackY + 5.f, 28.f, 12.f),
                 Justification::centred);
     }
-    graphics.setFont(FontOptions(10.5f, Font::bold));
+    graphics.setFont(FontOptions(10.5f));
     graphics.setColour(kText.withAlpha(0.88f));
     graphics.drawText(
             value,
@@ -371,7 +371,7 @@ void VoiceContextCompactEditor::paintExpanded(
     graphics.setColour(kPanelBorder);
     graphics.drawRoundedRectangle(panel.reduced(0.5f), 10.f, 1.f);
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(17.f, Font::bold));
+    graphics.setFont(FontOptions(17.f));
     graphics.drawText("VOICE CONTEXT", panel.reduced(18.f, 0.f).removeFromTop(42.f),
             Justification::centredLeft);
     graphics.setColour(kMutedText.withAlpha(0.72f));
@@ -471,7 +471,7 @@ void VoiceContextCompactEditor::paintNodeSelector(
                     : pill.getX() + pill.getHeight() * 0.5f,
             pill.getCentreY());
 
-    graphics.setFont(FontOptions(15.1f * zoom, Font::bold));
+    graphics.setFont(FontOptions(18.f * zoom));
     graphics.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
     graphics.drawText("Waveform", waveformLabel, Justification::centredRight);
     graphics.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
@@ -499,7 +499,7 @@ void VoiceContextCompactEditor::paintNodeSummary(
             .withTrimmedBottom(10.f * zoom)
             .reduced(16.f * zoom, 0.f);
     graphics.setColour(kText.withAlpha(0.88f));
-    graphics.setFont(FontOptions(15.1f * zoom, Font::bold));
+    graphics.setFont(FontOptions(18.f * zoom));
     graphics.drawText(
             summaryLabel(node, voiceDurationSeconds),
             summary,

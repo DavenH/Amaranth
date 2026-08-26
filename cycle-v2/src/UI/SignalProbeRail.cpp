@@ -19,7 +19,7 @@ const Colour kMutedText { 0xff8793a1 };
 
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
     graphics.setColour(kText.withAlpha(0.86f));
-    graphics.setFont(FontOptions(12.f, Font::bold));
+    graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             String(ordinal),
             previewBounds.reduced(7.f).removeFromTop(20.f),
@@ -333,7 +333,7 @@ void SignalProbeRail::paintCableAnnotations(
         graphics.fillEllipse(badge.withCentre(marker));
         graphics.setColour(colour);
         graphics.drawEllipse(badge.withCentre(marker), active ? 2.5f : 1.8f);
-        graphics.setFont(FontOptions(9.f, Font::bold));
+        graphics.setFont(FontOptions(9.f));
         graphics.drawText(String(index + 1), badge.withCentre(marker), Justification::centred);
     }
 }
@@ -396,7 +396,7 @@ void SignalProbeRail::paintRail(
 
     const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(12.f, Font::bold));
+    graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             "Spies",
             header.withTrimmedLeft(22.f).withWidth(110.f),
@@ -426,7 +426,7 @@ void SignalProbeRail::paintRail(
         graphics.setColour(kRailBorder.withAlpha(0.75f));
         graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
         graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(12.f, Font::bold));
+        graphics.setFont(FontOptions(12.f));
         graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);
         return;
     }
