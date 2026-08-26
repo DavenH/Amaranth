@@ -410,6 +410,96 @@ domain contract instead of shipping an approximation.
 - Compare all migrated panels together and remove remaining local literals or
   duplicated generic control painting.
 
+Implementation design for Delay and Reverb:
+
+- The authoritative implementation is the current effect editor in
+  `ConcreteNodeEditors.cpp`, together with `DelayPreviewPainter`, the Reverb
+  preview resource, `EffectParameterMapping`, `CycleDelay`, and
+  `NodeEditorCommandService`. Preview geometry, semantic mappings, snapping,
+  enabled behavior, continuous publication, gesture-level undo, and the
+  520-by-520 host silhouette are reused unchanged.
+- Extract domain-owned editor components and factories under `Nodes/Delay` and
+  `Nodes/Reverb`. `ConcreteNodeEditors.cpp` retains registry assembly and the
+  still-pending Equalizer implementation; it no longer chooses Delay or Reverb
+  controls, formatting, snapping, plotting, automation, or layout by node
+  kind.
+- Add only a narrow presentation-to-command binding beside the shared property
+  controls. It translates slider gesture lifecycle and normalized values to
+  `NodeEditorCommands`; it contains no concrete node kind, parameter ID,
+  formatter, mapping, preview, or layout policy.
+- Delay owns its beat mapping, tempo landmarks, Pan Cycle stops, and delay
+  preview. Reverb owns its seven kernel-size stops, seconds display, and
+  spectrogram preview. Percentage properties remain explicit domain members in
+  each editor.
+- Both domains use the shared two-line property-row variant so labels and
+  editable values sit above a nearly full-width track. This preserves the
+  mature panels' useful adjustment distance instead of forcing their macro
+  layout into the narrower graph-editor rail grammar.
+- The stable end state is deletion of all Delay/Reverb branches and members
+  from `ConcreteNodeEditors.cpp`. No compatibility adapter remains; the narrow
+  binding is a stable shared boundary for domain-owned parameter editors.
+
+Implemented:
+
+- Extracted complete Delay and Reverb editor components and factories into
+  their domain directories. The generic registry now selects those factories
+  without containing either domain's layout, mappings, preview, or controls.
+- Preserved both 520-by-520 panels, 150-pixel previews, enabled state,
+  publication path, and preview painters while replacing their local slider
+  presentation with shared two-line property rows and editable semantic value
+  fields.
+- Delay now exposes time in beats with `0.5`, `1`, `2`, `3`, and `4` beat
+  landmarks, Pan Cycle as the exact `1` through `12` stop set, and amount
+  controls as percentages. Reverb exposes its authoritative seven kernel-size
+  stops as seconds at the existing 44.1-kHz reference and its amount controls
+  as percentages.
+- Added one narrow `NodePropertySliderRow` binding for semantic parameter
+  gestures. It owns only command lifecycle translation and suppresses nested
+  JUCE drag notifications so double-click reset remains one transaction.
+- Parameter gesture completion no longer rebuilds the open editor. Domain
+  callbacks already retain the current local presentation, while the durable
+  graph and downstream refresh are committed by the command service. This
+  keeps the interacted control alive across successive gestures.
+
+Adjustment budgets:
+
+| Control family | Domain | Ordinary / fine step | `D` | Alternate precision path |
+| --- | --- | --- | ---: | --- |
+| Delay Time | 0.09-4.00 beats | 0.25 / 0.05 beats | 476 px | editable beat entry |
+| Delay Pan Cycle | 1-12 intervals | one discrete stop | 476 px | exact integer entry |
+| Delay amounts | 0-100% | 1% / 0.1% | 476 px | editable percentage entry |
+| Reverb Size | seven kernel durations | one discrete stop | 476 px | exact displayed-second entry |
+| Reverb amounts | 0-100% | 1% / 0.1% | 476 px | editable percentage entry |
+
+Review evidence:
+
+- Production diff for this slice: 844 lines added and 211 removed across 11
+  production files, for 633 net lines. The largest new implementation is the
+  domain-owned Delay editor at 296 lines. Generic shared code gains no node
+  kind, concrete parameter ID, DSP mapping, preview, or layout branch.
+- Focused host tests cover domain ownership, 140-pixel minimum geometry,
+  semantic entry, and nested slider notification collapse. Existing command
+  service tests retain two-update publication, commit, downstream movement,
+  and undo coverage.
+- Real-input automation reports
+  `/private/tmp/cycle-v2-delay-property-report.json` and
+  `/private/tmp/cycle-v2-reverb-property-report.json` have zero failed commands
+  and cover two drag updates, commit, undo, a subsequent reset in the same
+  control instance, and Shift-drag. The existing Reverb high-pass live-preview
+  fixture also passes after extraction.
+- Production screenshots: Delay before
+  `/private/tmp/cycle-v2-delay-properties-before.png`, Delay after
+  `/private/tmp/cycle-v2-delay-properties-after.png`, Reverb before
+  `/private/tmp/cycle-v2-reverb-properties-before.png`, and Reverb after
+  `/private/tmp/cycle-v2-reverb-properties-after.png`.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. The complete Cycle V2 run passes 10,239 of 10,240
+  assertions; its sole failure remains the pre-existing hit-router hover-help
+  assertion recorded in `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-delay-reverb-tests-junit.xml`. A compilation database
+  remains unavailable for focused clang-tidy. No DSP or visualization hot-loop
+  behavior changed.
+
 ### Deferred App-Wide Work
 
 The performance keyboard, output meters, palettes, dock sizing, and complete

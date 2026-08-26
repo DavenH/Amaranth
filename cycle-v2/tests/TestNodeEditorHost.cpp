@@ -20,10 +20,12 @@
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAutomationInspector.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
 
+#include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Curve.h>
@@ -102,7 +104,7 @@ private:
     MockFactory factory;
 };
 
-class NullCommands final : public NodeEditorCommands {
+class NullCommands : public NodeEditorCommands {
 public:
     bool publishCurveState(const String&, NodeModelStatePtr,
             const std::vector<NodeParameter>&) override { return true; }
@@ -120,6 +122,32 @@ public:
             const String&, const String&, Rectangle<int>) override { return true; }
     bool selectTrimeshVertexIndex(const String&, int) override { return true; }
     void persistTrimeshMeshEdits(const String&, bool) override {}
+};
+
+class RecordingParameterCommands final : public NullCommands {
+public:
+    bool beginNodeParameterEdit(
+            const String&,
+            const String&,
+            const String&,
+            float value) override {
+        ++begins;
+        values.push_back(value);
+        return true;
+    }
+
+    bool updateNodeParameterEditValue(float value) override {
+        ++updates;
+        values.push_back(value);
+        return true;
+    }
+
+    void endNodeParameterEdit() override { ++ends; }
+
+    int begins {};
+    int updates {};
+    int ends {};
+    std::vector<float> values;
 };
 
 class NullPresentation final : public NodeEditorPresentation {
@@ -146,6 +174,7 @@ public:
     void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
+    void rebindNodeEditorTransient() override { ++transientRebinds; }
     void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
         ++recordedMovements;
     }
@@ -164,6 +193,7 @@ public:
     int immediateRefreshes {};
     int localCommits {};
     int rebinds {};
+    int transientRebinds {};
     int recordedMovements {};
 };
 
@@ -485,6 +515,91 @@ TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
     REQUIRE(jitter != nullptr);
     REQUIRE(jitter->isVisible());
     REQUIRE(jitter->getBottom() <= host.component()->getHeight() - 18);
+}
+
+TEST_CASE("Delay and Reverb own shared semantic property rows",
+        "[cycle-v2][editor][delay][reverb][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+
+    const auto controlWithId = [](const DynamicObject& automation, const String& id) {
+        const Array<var>* controls = automation.getProperty("effectParameters")
+                .getProperty("controls", {})
+                .getArray();
+        REQUIRE(controls != nullptr);
+        for (const var& control : *controls) {
+            if (control.getProperty("id", {}).toString() == id) {
+                return control;
+            }
+        }
+        return var();
+    };
+
+    Node delay = GraphNodeFactory().createNode(NodeKind::Delay, "delay", {});
+    REQUIRE(host.bind(&delay, { 0, 0, 520, 520 }));
+    DynamicObject delayAutomation;
+    host.appendAutomationState(delayAutomation);
+    REQUIRE(delayAutomation.getProperty("effectParameters")
+            .getProperty("kind", {}).toString() == "DELAY");
+    const var time = controlWithId(delayAutomation, "time");
+    REQUIRE(time.getProperty("readout", {}).toString() == "1.00 beats");
+    REQUIRE((bool) time.getProperty("compact", {}));
+    REQUIRE((int) time.getProperty("usableTrackWidth", {}) >= 140);
+    const var panCycle = controlWithId(delayAutomation, "spinIters");
+    REQUIRE(panCycle.getProperty("readout", {}).toString() == String::fromUTF8("1×"));
+    auto* timeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "delayEditor.time.value"));
+    REQUIRE(timeValue != nullptr);
+    timeValue->setText("2 beats", sendNotificationSync);
+    DynamicObject editedDelay;
+    host.appendAutomationState(editedDelay);
+    REQUIRE(controlWithId(editedDelay, "time").getProperty("value", {})
+            == Catch::Approx(CycleDsp::delayUnitValueForBeats(2.0, 4)));
+
+    Node reverb = GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {});
+    REQUIRE(host.bind(&reverb, { 0, 0, 520, 520 }));
+    DynamicObject reverbAutomation;
+    host.appendAutomationState(reverbAutomation);
+    REQUIRE(reverbAutomation.getProperty("effectParameters")
+            .getProperty("kind", {}).toString() == "REVERB");
+    const var size = controlWithId(reverbAutomation, "size");
+    REQUIRE(size.getProperty("readout", {}).toString() == "0.74 s");
+    REQUIRE((bool) size.getProperty("compact", {}));
+    REQUIRE((int) size.getProperty("usableTrackWidth", {}) >= 140);
+    const var wet = controlWithId(reverbAutomation, "wet");
+    REQUIRE(wet.getProperty("readout", {}).toString() == "40.0%");
+    auto* sizeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "reverbEditor.size.value"));
+    REQUIRE(sizeValue != nullptr);
+    sizeValue->setText("1.49 s", sendNotificationSync);
+    DynamicObject editedReverb;
+    host.appendAutomationState(editedReverb);
+    REQUIRE(controlWithId(editedReverb, "size").getProperty("readout", {}).toString()
+            == "1.49 s");
+}
+
+TEST_CASE("Property rows collapse nested slider notifications into one gesture",
+        "[cycle-v2][editor][properties][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    RecordingParameterCommands commands;
+    NodePropertySliderRow row(owner, commands, "feedback", "Feedback");
+    row.bind("delay", 0.6);
+
+    row.slider.onDragStart();
+    row.slider.onDragStart();
+    row.slider.setValue(0.5, sendNotificationSync);
+    row.slider.onDragEnd();
+    row.slider.onDragEnd();
+
+    REQUIRE(commands.begins == 1);
+    REQUIRE(commands.updates == 1);
+    REQUIRE(commands.ends == 1);
+    REQUIRE(commands.values == std::vector<float> { 0.6f, 0.5f });
 }
 
 TEST_CASE("Canvas automation inspection is semantic and side effect free",
@@ -1347,7 +1462,8 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.rebinds == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 0);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",
@@ -1400,7 +1516,8 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == "60.000000");
     REQUIRE(presentation.recordedMovements == 3);
     REQUIRE(presentation.repaints == 3);
-    REQUIRE(presentation.rebinds == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 0);
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);

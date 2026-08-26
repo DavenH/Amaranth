@@ -162,7 +162,6 @@ void NodeEditorCommandService::endNodeParameterEdit() {
             presentation.refreshNodeEditorPresentation();
         }
     }
-    presentation.rebindNodeEditor();
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};

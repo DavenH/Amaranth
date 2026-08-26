@@ -15,7 +15,7 @@
     { "command": "openGraph", "path": "/private/tmp/cycle-v2-reverb-editor.cyclegraph" },
     { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "wet", "equals": "0.73" },
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 250 },
-    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.4.readout", "equals": "73%" }
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.4.readout", "equals": "73.0%" }
   ],
   "quit": true
 }

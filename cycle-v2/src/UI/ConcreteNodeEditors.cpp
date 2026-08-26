@@ -1,42 +1,28 @@
-#include <iterator>
-
-#include "UI/NodeEditorHost.h"
-
-#include "UI/ModulationNodeEditors.h"
-#include "Graph/NodeParameterMap.h"
-#include "Nodes/Delay/DelayPreviewPainter.h"
-#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
-#include "UI/Preview/EffectPlotPalette.h"
-#include "Nodes/Unison/UnisonNodeEditor.h"
-#include "Runtime/NodePreviewProcessor.h"
-#include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
-#include "Nodes/Curve/Editor/CurveEditorWidget.h"
-#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
-#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
-
-#include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include <cmath>
+#include <iterator>
+
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
+#include "Nodes/Delay/DelayNodeEditor.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "Nodes/Reverb/ReverbNodeEditor.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Nodes/Unison/UnisonNodeEditor.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "UI/ModulationNodeEditors.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
 
 namespace {
 
-class EffectParameterSlider final : public Slider {
+class EqualizerParameterSlider final : public Slider {
 public:
-    void setDelayTime(bool shouldUseDelayTime) {
-        delayTime = shouldUseDelayTime;
-    }
-
-    void setPanCycle(bool shouldUsePanCycle) {
-        panCycle = shouldUsePanCycle;
-    }
-
-    void setReverbSize(bool shouldUseReverbSize) {
-        reverbSize = shouldUseReverbSize;
-    }
-
     void setEqualizerGain(bool shouldUseEqualizerGain) {
         equalizerGain = shouldUseEqualizerGain;
     }
@@ -46,55 +32,17 @@ public:
     }
 
     double snapValue(double attemptedValue, DragMode dragMode) override {
-        if (panCycle) {
-            return CycleDsp::delaySpinUnitValueForIterations(
-                    CycleDsp::delaySpinIterations(attemptedValue));
-        }
-        if (reverbSize) {
-            const int step = jlimit(
-                    0,
-                    CycleDsp::reverbSizeStepCount - 1,
-                    roundToInt(attemptedValue * (CycleDsp::reverbSizeStepCount - 1)));
-            return CycleDsp::reverbSizeUnitValueForStep(step);
-        }
+        ignoreUnused(dragMode);
         if (equalizerGain) {
             return CycleDsp::equalizerGainSnappedUnitValue(
                     (float) attemptedValue,
                     (float) getWidth());
         }
-        if (!delayTime || dragMode == notDragging) {
-            return attemptedValue;
-        }
-
-        return CycleDsp::delaySnappedUnitValue(
-                (float) attemptedValue,
-                4,
-                (float) getWidth());
+        return attemptedValue;
     }
 
     void paint(Graphics& graphics) override {
         Slider::paint(graphics);
-        if (panCycle) {
-            graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
-            graphics.setFont(FontOptions(8.f));
-            for (int iterations = 1; iterations <= 12; ++iterations) {
-                paintStopTick(
-                        graphics,
-                        CycleDsp::delaySpinUnitValueForIterations(iterations),
-                        String(iterations));
-            }
-            return;
-        }
-        if (reverbSize) {
-            graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
-            graphics.setFont(FontOptions(8.f));
-            for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
-                const float value = CycleDsp::reverbSizeUnitValueForStep(step);
-                const double seconds = CycleDsp::reverbKernelSeconds(value, 44100.0);
-                paintStopTick(graphics, value, String(seconds, seconds < 1.0 ? 2 : 1));
-            }
-            return;
-        }
         if (equalizerGain) {
             graphics.setColour(EffectPlotPalette::label.withAlpha(0.82f));
             graphics.setFont(FontOptions(8.f));
@@ -118,19 +66,6 @@ public:
             }
             return;
         }
-        if (!delayTime) {
-            return;
-        }
-
-        graphics.setColour(EffectPlotPalette::label.withAlpha(0.72f));
-        graphics.setFont(FontOptions(8.f));
-        paintStopTick(graphics, CycleDsp::delayUnitValueForBeats(0.5, 4), "0.5");
-        for (int beat = 1; beat <= 4; ++beat) {
-            paintStopTick(
-                    graphics,
-                    CycleDsp::delayUnitValueForBeats((double) beat, 4),
-                    String(beat));
-        }
     }
 
 private:
@@ -146,24 +81,17 @@ private:
                 Justification::centred);
     }
 
-    bool delayTime {};
-    bool panCycle {};
-    bool reverbSize {};
     bool equalizerGain {};
     bool equalizerFrequency {};
 };
 
-class EffectParameterEditorComponent final : public Component {
+class EqualizerEditorComponent final : public Component {
 public:
-    EffectParameterEditorComponent(
-            NodeKind kindToUse,
+    EqualizerEditorComponent(
             NodeEditorCommands& commandsToUse,
-            NodeEditorPresentation& presentationToUse,
-            NodeEditorResources& resourcesToUse) :
-            kind         (kindToUse)
-        ,   commands     (commandsToUse)
-        ,   presentation (presentationToUse)
-        ,   resources    (resourcesToUse) {
+            NodeEditorPresentation& presentationToUse) :
+            commands     (commandsToUse)
+        ,   presentation (presentationToUse) {
         closeButton.setButtonText(String::fromUTF8("\xc3\x97"));
         closeButton.onClick = [this] { presentation.closeNodeEditor(); };
         addAndMakeVisible(closeButton);
@@ -205,15 +133,7 @@ public:
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f));
         graphics.drawText(title(), 18, 10, getWidth() - 80, 28, Justification::centredLeft);
-        if (kind == NodeKind::Reverb && node.id.isNotEmpty()) {
-            const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            graphics.setColour(EffectPlotPalette::insetBackground);
-            graphics.fillRoundedRectangle(response, 6.f);
-            resources.paintNodePreview(graphics, node, response.reduced(5.f));
-        } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
-            const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            DelayPreviewPainter().paint(graphics, response, node, 1.f);
-        } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
+        if (node.id.isNotEmpty()) {
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             graphics.setColour(EffectPlotPalette::forEnabledState(
                     EffectPlotPalette::insetBackground,
@@ -230,34 +150,21 @@ public:
     void resized() override {
         closeButton.setBounds(getWidth() - 42, 9, 28, 28);
         enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
-        int y = kind == NodeKind::Equalizer
-                ? 242
-                : (kind == NodeKind::Reverb
-                        || kind == NodeKind::Delay ? 216 : 56);
-        if (kind == NodeKind::Equalizer) {
-            gainHeader.setBounds(38, y - 18, (getWidth() - 76) / 2, 18);
-            frequencyHeader.setBounds(
-                    getWidth() / 2 + 32,
-                    y - 18,
-                    (getWidth() - 76) / 2,
-                    18);
-            for (size_t band = 0; band < 5; ++band) {
-                layoutEqualizerRow(band, y);
-                y += 62;
-            }
-            return;
-        }
-        for (auto& control : controls) {
-            if (!control->slider.isVisible()) {
-                continue;
-            }
-            layoutControl(*control, 18, y, getWidth() - 36);
-            y += 58;
+        int y = 242;
+        gainHeader.setBounds(38, y - 18, (getWidth() - 76) / 2, 18);
+        frequencyHeader.setBounds(
+                getWidth() / 2 + 32,
+                y - 18,
+                (getWidth() - 76) / 2,
+                18);
+        for (size_t band = 0; band < 5; ++band) {
+            layoutEqualizerRow(band, y);
+            y += 62;
         }
     }
 
     void mouseDown(const MouseEvent& event) override {
-        if (kind != NodeKind::Equalizer || !equalizerGraphArea().contains(event.position)) {
+        if (!equalizerGraphArea().contains(event.position)) {
             return;
         }
 
@@ -346,7 +253,7 @@ private:
         String name;
         float defaultValue {};
         Label label;
-        EffectParameterSlider slider;
+        EqualizerParameterSlider slider;
         Label readout;
         bool editing {};
     };
@@ -364,20 +271,9 @@ private:
         control->slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         control->slider.setRange(0.0, 1.0, 0.0001);
         control->slider.setDoubleClickReturnValue(true, defaultValue);
-        control->slider.setDelayTime(kind == NodeKind::Delay && id == "time");
-        control->slider.setPanCycle(kind == NodeKind::Delay && id == "spinIters");
-        control->slider.setReverbSize(kind == NodeKind::Reverb && id == "size");
-        control->slider.setEqualizerGain(
-                kind == NodeKind::Equalizer && id.endsWith("Gain"));
-        control->slider.setEqualizerFrequency(
-                kind == NodeKind::Equalizer && id.endsWith("Frequency"));
-        if (kind == NodeKind::Delay && id == "spinIters") {
-            const String explanation =
-                    "One complete stereo pan cycle spans this many delay intervals";
-            control->label.setTooltip(explanation);
-            control->slider.setTooltip(explanation);
-        }
-        if (kind == NodeKind::Equalizer && id.endsWith("Frequency")) {
+        control->slider.setEqualizerGain(id.endsWith("Gain"));
+        control->slider.setEqualizerFrequency(id.endsWith("Frequency"));
+        if (id.endsWith("Frequency")) {
             String explanation = "Fixed-bandwidth centre frequency";
             if (id.startsWith("band1")) {
                 explanation = "Low-shelf corner frequency";
@@ -395,9 +291,6 @@ private:
         };
         control->slider.onValueChange = [this, raw] {
             updateReadout(*raw);
-            if (kind == NodeKind::Delay && raw->id == "time" && controls.size() > 3) {
-                updateReadout(*controls[3]);
-            }
             const float value = (float) raw->slider.getValue();
             if (raw->editing) {
                 commands.updateNodeParameterEditValue(value);
@@ -405,7 +298,7 @@ private:
                 commands.setNodeParameterValue(node.id, raw->id, raw->name, value);
             }
             if (const auto* definition = NodeDefinitionRegistry::instance().findParameter(
-                    kind,
+                    NodeKind::Equalizer,
                     raw->id)) {
                 const String normalized = definition->normalized(String(value, 6));
                 for (auto& parameter : node.parameters) {
@@ -415,9 +308,7 @@ private:
                     }
                 }
             }
-            if (kind == NodeKind::Equalizer) {
-                repaint();
-            }
+            repaint();
         };
         control->slider.onDragEnd = [this, raw] {
             commands.endNodeParameterEdit();
@@ -430,38 +321,18 @@ private:
     }
 
     void createControls() {
-        if (kind == NodeKind::Reverb) {
-            addControl("size", "Size", 0.5f);
-            addControl("damp", "Damping", 0.2f);
-            addControl("width", "Width", 1.f);
-            addControl("highPass", "High Pass", 0.05f);
-            addControl("wet", "Wet", 0.4f);
-        } else if (kind == NodeKind::Delay) {
-            addControl("time", "Time", 0.5f);
-            addControl("feedback", "Feedback", 0.5f);
-            addControl("spin", "Pan Amount", 0.5f);
-            addControl("spinIters", "Pan Cycle", 0.f);
-            addControl("wet", "Wet", 0.5f);
-        } else {
-            const float frequencies[] { 60.f, 250.f, 1200.f, 4000.f, 8000.f };
-            for (int band = 0; band < 5; ++band) {
-                const String prefix = "band" + String(band + 1);
-                addControl(prefix + "Gain", "Band " + String(band + 1) + " Gain", 0.5f);
-                addControl(
-                        prefix + "Frequency",
-                        "Band " + String(band + 1) + " Frequency",
-                        CycleDsp::equalizerFrequencyUnitValue(frequencies[band]));
-                controls[controls.size() - 2]->label.setText(
-                        String(band + 1),
-                        dontSendNotification);
-            }
+        const float frequencies[] { 60.f, 250.f, 1200.f, 4000.f, 8000.f };
+        for (int band = 0; band < 5; ++band) {
+            const String prefix = "band" + String(band + 1);
+            addControl(prefix + "Gain", "Band " + String(band + 1) + " Gain", 0.5f);
+            addControl(
+                    prefix + "Frequency",
+                    "Band " + String(band + 1) + " Frequency",
+                    CycleDsp::equalizerFrequencyUnitValue(frequencies[band]));
+            controls[controls.size() - 2]->label.setText(
+                    String(band + 1),
+                    dontSendNotification);
         }
-    }
-
-    void layoutControl(Control& control, int x, int y, int width) {
-        control.label.setBounds(x, y, width - 76, 18);
-        control.readout.setBounds(x + width - 92, y, 92, 18);
-        control.slider.setBounds(x, y + 20, width, 28);
     }
 
     void layoutEqualizerRow(size_t band, int y) {
@@ -495,41 +366,24 @@ private:
     void updateReadout(Control& control) {
         const float value = (float) control.slider.getValue();
         String text;
-        if (kind == NodeKind::Reverb && control.id == "size") {
-            text = String(CycleDsp::reverbKernelSeconds(value, 44100.0), 2) + " s";
-        } else if (kind == NodeKind::Delay && control.id == "time") {
-            text = String(CycleDsp::delayBeats(value, 4), 2) + " beats";
-        } else if (kind == NodeKind::Delay && control.id == "spinIters") {
-            const int iterations = CycleDsp::delaySpinIterations(value);
-            text = String(iterations) + String::fromUTF8("\xc3\x97");
-        } else if (kind == NodeKind::Equalizer && control.id.endsWith("Gain")) {
+        if (control.id.endsWith("Gain")) {
             const float gain = CycleDsp::equalizerGainDecibels(value);
             text = (gain > 0.f ? "+" : "") + String(gain, 1) + " dB";
-        } else if (kind == NodeKind::Equalizer) {
+        } else {
             const float frequency = CycleDsp::equalizerFrequency(value);
             text = frequency >= 1000.f
                     ? String(frequency / 1000.f, 2) + " kHz"
                     : String(roundToInt(frequency)) + " Hz";
-        } else {
-            text = String(roundToInt(value * 100.f)) + "%";
         }
         control.readout.setText(text, dontSendNotification);
     }
 
     String title() const {
-        if (kind == NodeKind::Reverb) {
-            return "REVERB";
-        }
-        if (kind == NodeKind::Delay) {
-            return "DELAY";
-        }
         return "EQUALIZER";
     }
 
-    NodeKind kind;
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
-    NodeEditorResources& resources;
     Node node;
     TextButton closeButton;
     ToggleButton enabledButton;
@@ -539,10 +393,10 @@ private:
     std::vector<std::unique_ptr<Control>> controls;
 };
 
-class EffectNodeEditor final : public NodeEditor {
+class EqualizerNodeEditor final : public NodeEditor {
 public:
-    EffectNodeEditor(const Node& node, const NodeEditorContext& context) :
-            editor(node.kind, context.commands, context.presentation, context.resources) {}
+    explicit EqualizerNodeEditor(const NodeEditorContext& context) :
+            editor(context.commands, context.presentation) {}
     Component& component() override { return editor; }
     void bind(const Node& node) override { editor.setNode(node); }
     void renderOpenGL(float) override {}
@@ -554,15 +408,16 @@ public:
     }
     void releaseOpenGLResources() override {}
 private:
-    EffectParameterEditorComponent editor;
+    EqualizerEditorComponent editor;
 };
 
-class EffectNodeEditorFactory final : public NodeEditorFactory {
+class EqualizerNodeEditorFactory final : public NodeEditorFactory {
 public:
     std::unique_ptr<NodeEditor> create(
             const Node& node,
             const NodeEditorContext& context) const override {
-        return std::make_unique<EffectNodeEditor>(node, context);
+        ignoreUnused(node);
+        return std::make_unique<EqualizerNodeEditor>(context);
     }
 };
 
@@ -873,9 +728,9 @@ NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
     factories.emplace_back(NodeKind::Waveshaper, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::TrilinearMesh, std::make_unique<TrimeshNodeEditorFactory>());
     factories.emplace_back(NodeKind::Unison, createUnisonNodeEditorFactory());
-    factories.emplace_back(NodeKind::Reverb, std::make_unique<EffectNodeEditorFactory>());
-    factories.emplace_back(NodeKind::Delay, std::make_unique<EffectNodeEditorFactory>());
-    factories.emplace_back(NodeKind::Equalizer, std::make_unique<EffectNodeEditorFactory>());
+    factories.emplace_back(NodeKind::Reverb, createReverbNodeEditorFactory());
+    factories.emplace_back(NodeKind::Delay, createDelayNodeEditorFactory());
+    factories.emplace_back(NodeKind::Equalizer, std::make_unique<EqualizerNodeEditorFactory>());
 }
 
 const NodeEditorFactory* NodeEditorFactoryRegistry::find(NodeKind kind) const {

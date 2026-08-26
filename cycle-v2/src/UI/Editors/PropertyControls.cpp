@@ -3,6 +3,7 @@
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 
 #include <cmath>
+#include <cstdlib>
 
 namespace CycleV2 {
 
@@ -46,14 +47,15 @@ PropertySliderLayout propertySliderLayout(
         bool showsValue,
         int requestedLabelWidth,
         int gap,
-        int requestedValueWidth) {
+        int requestedValueWidth,
+        bool forceCompact) {
     PropertySliderLayout result;
     const int requiredWidth = requestedLabelWidth
             + gap
             + PropertyControlMetrics::minimumUsableTrackWidth
             + (showsValue ? gap + requestedValueWidth : 0)
             + roundToInt(PropertyControlMetrics::thumbWidth);
-    result.compact = showsValue && bounds.getWidth() < requiredWidth;
+    result.compact = showsValue && (forceCompact || bounds.getWidth() < requiredWidth);
 
     if (result.compact) {
         auto heading = bounds.removeFromTop(22);
@@ -93,6 +95,34 @@ void stylePropertyButton(TextButton& button, const String& text) {
     button.setColour(TextButton::buttonOnColourId, Colour(0xff252f3b));
     button.setColour(TextButton::textColourOffId, kText);
     button.setColour(TextButton::textColourOnId, kText);
+}
+
+String formatPropertyPercentage(double value) {
+    return String(value * 100.0, 1) + "%";
+}
+
+std::optional<double> parsePropertyNumber(String text, const String& suffix) {
+    text = text.trim();
+    if (suffix.isNotEmpty() && text.endsWithIgnoreCase(suffix)) {
+        text = text.dropLastCharacters(suffix.length()).trimEnd();
+    }
+    if (text.isEmpty()) {
+        return std::nullopt;
+    }
+    const char* start = text.toRawUTF8();
+    char* end {};
+    const double result = std::strtod(start, &end);
+    if (end == start || *end != '\0' || !std::isfinite(result)) {
+        return std::nullopt;
+    }
+    return result;
+}
+
+std::optional<double> parsePropertyPercentage(const String& text) {
+    const auto percentage = parsePropertyNumber(text, "%");
+    return percentage.has_value()
+            ? std::optional<double>(*percentage / 100.0)
+            : std::nullopt;
 }
 
 var propertySliderRowAutomationState(const PropertySliderRow& row) {
@@ -140,6 +170,15 @@ void PrecisionSlider::setKeyboardStepper(KeyboardStepper stepper) {
     keyboardStepper = std::move(stepper);
 }
 
+void PrecisionSlider::setValueSnapper(ValueSnapper snapper) {
+    valueSnapper = std::move(snapper);
+}
+
+void PrecisionSlider::setLandmarks(std::vector<Landmark> nextLandmarks) {
+    landmarks = std::move(nextLandmarks);
+    repaint();
+}
+
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
     if (!isArrowKey(key)) {
         return Slider::keyPressed(key);
@@ -159,6 +198,36 @@ bool PrecisionSlider::keyPressed(const KeyPress& key) {
         applyKeyboardStep(increase ? magnitude : -magnitude);
     }
     return true;
+}
+
+double PrecisionSlider::snapValue(double attemptedValue, DragMode dragMode) {
+    return valueSnapper != nullptr
+            ? valueSnapper(attemptedValue, dragMode)
+            : attemptedValue;
+}
+
+void PrecisionSlider::paint(Graphics& graphics) {
+    Slider::paint(graphics);
+    if (landmarks.empty()) {
+        return;
+    }
+
+    const Rectangle<float> track = propertySliderTrackBounds(getLocalBounds().toFloat());
+    graphics.setColour(Colour(0xff8793a1).withAlpha(0.72f));
+    graphics.setFont(FontOptions(8.f));
+    for (const auto& landmark : landmarks) {
+        const float x = jmap(
+                (float) jlimit(getMinimum(), getMaximum(), landmark.value),
+                (float) getMinimum(),
+                (float) getMaximum(),
+                track.getX(),
+                track.getRight());
+        graphics.drawVerticalLine(roundToInt(x), track.getY() - 3.f, track.getY());
+        graphics.drawText(
+                landmark.label,
+                Rectangle<float>(x - 14.f, 0.f, 28.f, jmax(0.f, track.getY() - 4.f)),
+                Justification::centred);
+    }
 }
 
 void PrecisionSlider::applyKeyboardStep(double amount) {
@@ -214,13 +283,18 @@ void PropertySliderRow::setBounds(
             value.isVisible(),
             requestedLabelWidth,
             gap,
-            requestedValueWidth);
+            requestedValueWidth,
+            forceCompactLayout);
     label.setBounds(layout.label);
     slider.setBounds(layout.slider);
     value.setBounds(layout.value);
     label.setJustificationType(layout.compact
             ? Justification::centredLeft
             : Justification::centredRight);
+}
+
+void PropertySliderRow::setCompactLayout(bool shouldUseCompactLayout) {
+    forceCompactLayout = shouldUseCompactLayout;
 }
 
 void PropertySliderRow::configureValuePresentation(
