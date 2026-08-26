@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "../src/Graph/GraphCompiler.h"
+#include "../src/Graph/GraphDocument.h"
 #include "../src/Graph/GraphEditor.h"
 #include "../src/Graph/GraphNodeFactory.h"
 #include "../src/Graph/GraphSerializer.h"
@@ -99,6 +100,17 @@ TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
     REQUIRE_FALSE(encoded.contains("<cycleV2Graph"));
     REQUIRE_FALSE(encoded.contains("&quot;"));
     REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph documents save canonical JSON with stable line endings",
+        "[cycle-v2][graph]") {
+    const File destination = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-canonical-graph", ".cyclegraph");
+    GraphDocument document(NodeGraph::createDemoGraph());
+
+    REQUIRE(document.save(destination));
+    REQUIRE(destination.loadFileAsString() == document.toJson());
+    REQUIRE(destination.deleteFile());
 }
 
 TEST_CASE("Graph JSON derives immutable node names from definitions", "[cycle-v2][graph]") {
@@ -448,8 +460,11 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        const String migrated = GraphSerializer().toJsonString(loaded.graph);
-        REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
+        const String canonical = GraphSerializer().toJsonString(loaded.graph);
+        REQUIRE(GraphSerializer().loadJsonString(canonical).succeeded());
+        if (encoded != canonical) {
+            FAIL(name + " is not canonical JSON");
+        }
         REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
