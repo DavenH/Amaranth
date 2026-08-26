@@ -1175,6 +1175,19 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
             ? guideEditor->getBounds().toFloat()
             : Rectangle<float> {};
+    dock.guideEditorState = guideEditor != nullptr && guideEditor->isVisible()
+            ? guideEditor->automationState()
+            : var();
+    if (!dock.guideEditorBounds.isEmpty()) {
+        for (const auto& [semanticId, localBounds] : guideEditor->automationPointerTargets()) {
+            dock.guideEditorTargets.push_back({
+                    semanticId,
+                    localBounds.translated(
+                            dock.guideEditorBounds.getX(),
+                            dock.guideEditorBounds.getY())
+            });
+        }
+    }
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         dock.guideTiles.push_back({
                 graph.getGuideCurves()[(size_t) index].id,

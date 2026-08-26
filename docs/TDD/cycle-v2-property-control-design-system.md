@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-08-26).
+In Progress (Slice 1 complete, 2026-08-26).
 
 ## Context
 
@@ -560,3 +560,72 @@ Before changing status to `Implemented`, record:
 - focused semantic, interaction, accessibility, and automation results;
 - before/after production-size screenshot paths; and
 - final build and filtered-log results.
+
+### Slice 1: Shared Core And Guide (2026-08-26)
+
+Implemented:
+
+- Added a presentation-only property-control core under `UI/Editors` with
+  shared geometry, precision slider mechanics, ordinary/compact row layout,
+  semantic value entry, invalid-entry state, focus/hover/disabled painting,
+  and shared label/button styling.
+- Made `CurveEditorPrimitives` compose that core while leaving the existing
+  Curve transaction and model-publication lifecycle unchanged.
+- Migrated Guide Noise, DC Offset, and Phase to explicit percentages with
+  one-decimal readouts, direct entry, 1% arrow steps, 0.1% Shift-arrow steps,
+  Shift-drag velocity adjustment, and double-click reset to zero.
+- Expanded the Guide rail from 236 to 336 pixels, producing 140 pixels of
+  usable track, and constrained the editor to 1,100 by 560 pixels.
+- Replaced the painted close hit region with a focusable semantic button and
+  exposed Guide subcontrols through Guide-owned automation targets.
+
+Adjustment budget for all three Guide amounts:
+
+| Field | Value |
+| --- | --- |
+| Domain | 0.0-100.0% |
+| Stored resolution | 0.001% without rebinding quantization |
+| Meaningful displayed/fine increment | 0.1% |
+| Ordinary keyboard increment | 1.0% |
+| `D` | 140 px at preferred production size |
+| `R` | 1,000 displayed/fine increments |
+| Ordinary mapping | Absolute horizontal drag |
+| Fine mapping | Shift velocity drag; 0.1% Shift-arrow |
+| Alternate precision path | Editable percentage field |
+| Indication | 8 by 14 px thumb with an exact centre hairline and numeric readout |
+
+Review evidence:
+
+- Production diff: 694 lines added and 144 removed, including 499 lines in
+  four new shared-core files. Largest new implementation files are
+  `PropertyControls.cpp` (269 lines) and
+  `PropertyControlLookAndFeel.cpp` (117 lines); the Guide migration adds 115
+  and removes 28 lines in its implementation.
+- New node-kind branches: zero. Shared code contains no parameter IDs, DSP
+  mappings, Guide ownership, graph mutation, or undo behavior. Guide semantic
+  automation IDs remain in the Guide editor rather than `NodeCanvas`.
+- Reused unchanged: `CurveExpandedEditorComponent` transaction/publication,
+  Guide resource ownership, model preparation, downstream scheduling, and
+  DSP depth semantics.
+- Remaining work: Waveshaper, IR, Voice Context, Delay, Reverb, and Equalizer
+  migrations remain in later slices, so the TDD is intentionally not marked
+  `Implemented`.
+- Focused tests: property controls 38 assertions; Guide host/interaction 26;
+  Guide graph gesture 16; Guide causal runtime gesture 16. All pass.
+- Real-input automation:
+  `/private/tmp/cycle-v2-guide-precision-controls-final-report.json` passes 19
+  commands covering ordinary drag, Shift-drag, model publication, reset, and
+  semantic close. Filtered log:
+  `/private/tmp/cycle-v2-guide-precision-controls-final-logs.txt`.
+- Production screenshots: before
+  `/private/tmp/cycle-v2-guide-precision-before.png`; after
+  `/private/tmp/cycle-v2-guide-precision-final.png`. Final screenshot report
+  has zero failed commands; filtered log:
+  `/private/tmp/cycle-v2-guide-precision-final-logs.txt`.
+- Complete Cycle V2 suite: 505 of 506 cases and 10,155 of 10,156 assertions
+  pass. The consistently reproducible, unrelated hit-router hover-help failure
+  is recorded in `docs/TDD/ui-bugs.md` with JUnit evidence at
+  `/private/tmp/cycle-v2-tests-junit.xml`.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. `clang-tidy` and a compilation database were unavailable in
+  the configured environment. No DSP or visualization hot loop changed.

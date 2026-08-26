@@ -14,9 +14,9 @@ struct ImpulseResponseEditorComponent::Impl {
         for (auto* button : { &load, &unload, &model }) {
             owner.addAndMakeVisible(*button);
         }
-        styleParameterButton(load, "Load");
-        styleParameterButton(unload, "Unload");
-        styleParameterButton(model, "Model");
+        stylePropertyButton(load, "Load");
+        stylePropertyButton(unload, "Unload");
+        stylePropertyButton(model, "Model");
     }
 
     ParameterToggle enabled;

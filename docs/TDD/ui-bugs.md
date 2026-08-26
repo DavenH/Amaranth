@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: Node canvas hit-router test misses edge hover help
+
+Context:
+
+- The complete Cycle V2 suite on 2026-08-26 reported one unrelated failure in
+  `TestNodeCanvasHitRouter.cpp:66`: `edgeHelp.startsWith("Time signal from")`.
+- The focused test reproduces consistently and also logs a JUCE assertion at
+  `juce_String.cpp:327`.
+- The Guide property-control change does not touch hit routing; its focused
+  tests and automation remain green.
+- JUnit evidence: `/private/tmp/cycle-v2-tests-junit.xml`.
+
+Current status: open; inspect why the scene edge midpoint resolves to empty or
+non-edge hover text before changing the product assertion.
+
 ## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
 
 Context:

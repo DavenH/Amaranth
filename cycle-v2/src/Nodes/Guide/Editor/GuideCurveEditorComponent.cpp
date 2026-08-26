@@ -5,20 +5,51 @@
 
 #include "Graph/NodeParameterMap.h"
 
+#include <cmath>
+#include <cstdlib>
+
 namespace CycleV2 {
 
 namespace {
 
-constexpr float kControlRailWidth = 236.f;
+constexpr float kControlRailWidth = 336.f;
+constexpr float kMaximumHostWidth = 1100.f;
 constexpr float kMaximumHostHeight = 560.f;
 
-void showCompactValue(Slider& slider) {
-    slider.setTextBoxStyle(Slider::TextBoxRight, false, 42, 22);
-    slider.setNumDecimalPlacesToDisplay(2);
-    slider.setColour(Slider::textBoxTextColourId, Colour(0xffaeb8c5));
-    slider.setColour(Slider::textBoxBackgroundColourId, Colours::transparentBlack);
-    slider.setColour(Slider::textBoxOutlineColourId, Colours::transparentBlack);
-    slider.setColour(Slider::textBoxHighlightColourId, Colour(0xff354659));
+String formatPercentage(double value) {
+    return String(value * 100.0, 1) + "%";
+}
+
+std::optional<double> parsePercentage(const String& text) {
+    String number = text.trim();
+    if (number.endsWithChar('%')) {
+        number = number.dropLastCharacters(1).trimEnd();
+    }
+    if (number.isEmpty()) {
+        return std::nullopt;
+    }
+
+    const char* start = number.toRawUTF8();
+    char* end {};
+    const double parsed = std::strtod(start, &end);
+    if (end == start || *end != '\0' || !std::isfinite(parsed)) {
+        return std::nullopt;
+    }
+    return parsed / 100.0;
+}
+
+var layoutToVar(const PropertySliderRow& row) {
+    const PropertySliderLayout& layout = row.currentLayout();
+    auto* result = new DynamicObject();
+    result->setProperty("compact", layout.compact);
+    result->setProperty("label", editorBoundsToVar(layout.label.toFloat()));
+    result->setProperty("slider", editorBoundsToVar(layout.slider.toFloat()));
+    result->setProperty("value", editorBoundsToVar(layout.value.toFloat()));
+    result->setProperty("track", editorBoundsToVar(layout.track));
+    result->setProperty("usableTrackWidth", layout.usableTrackWidth());
+    result->setProperty("display", row.valueText());
+    result->setProperty("valid", row.valueTextIsValid());
+    return result;
 }
 
 }
@@ -39,12 +70,37 @@ struct GuideCurveEditorComponent::Impl {
 GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    for (Slider* slider : {
-            &impl->noise.slider,
-            &impl->dcOffset.slider,
-            &impl->phase.slider }) {
-        slider->setRange(0.0, 1.0, 0.00001);
-        showCompactValue(*slider);
+    struct ControlSetup {
+        LabeledParameterSlider* control;
+        const char* id;
+        const char* help;
+    };
+    for (const auto& setup : {
+            ControlSetup {
+                    &impl->noise,
+                    "noise",
+                    "Random noise depth. Shift-drag for fine adjustment; double-click to reset."
+            },
+            ControlSetup {
+                    &impl->dcOffset,
+                    "dcOffset",
+                    "Random DC offset range. Shift-drag for fine adjustment; double-click to reset."
+            },
+            ControlSetup {
+                    &impl->phase,
+                    "phase",
+                    "Random phase range. Shift-drag for fine adjustment; double-click to reset."
+            } }) {
+        setup.control->slider.setRange(0.0, 1.0, 0.00001);
+        setup.control->slider.setComponentID("guideEditor." + String(setup.id));
+        setup.control->value.setComponentID("guideEditor." + String(setup.id) + ".value");
+        setup.control->configureValuePresentation(
+                formatPercentage,
+                parsePercentage,
+                0.0,
+                0.01,
+                0.001,
+                setup.help);
     }
     bindDiscreteControl(impl->enabled);
     bindContinuousControls({ &impl->noise, &impl->dcOffset, &impl->phase });
@@ -54,7 +110,9 @@ GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;
 
 Rectangle<float> GuideCurveEditorComponent::preferredHostBounds(Rectangle<float> canvasBounds) {
     Rectangle<float> available = canvasBounds.reduced(36.f, 24.f);
-    return available.withHeight(jmin(available.getHeight(), kMaximumHostHeight))
+    return available.withSizeKeepingCentre(
+                    jmin(available.getWidth(), kMaximumHostWidth),
+                    jmin(available.getHeight(), kMaximumHostHeight))
             .withCentre(available.getCentre());
 }
 
@@ -75,6 +133,28 @@ void GuideCurveEditorComponent::renderOpenGL(float scaleFactor) {
             scaleFactor);
 }
 
+std::vector<std::pair<String, Rectangle<float>>> GuideCurveEditorComponent::automationPointerTargets() const {
+    const std::pair<const char*, const char*> targetIds[] {
+            { "guideEditor.noise", "guideEditor.noise" },
+            { "guideEditor.noise.value", "guideEditor.noise.value" },
+            { "guideEditor.dcOffset", "guideEditor.dcOffset" },
+            { "guideEditor.dcOffset.value", "guideEditor.dcOffset.value" },
+            { "guideEditor.phase", "guideEditor.phase" },
+            { "guideEditor.phase.value", "guideEditor.phase.value" },
+            { "guideEditor.close", "curveEditor.close" }
+    };
+    std::vector<std::pair<String, Rectangle<float>>> result;
+    for (const auto& [semanticId, componentId] : targetIds) {
+        const Component* target = findChildWithID(componentId);
+        if (target != nullptr) {
+            result.emplace_back(
+                    semanticId,
+                    getLocalArea(target, target->getLocalBounds()).toFloat());
+        }
+    }
+    return result;
+}
+
 Rectangle<float> GuideCurveEditorComponent::editorControlBounds() const {
     auto bounds = contentBounds();
     return bounds.removeFromRight(kControlRailWidth);
@@ -90,17 +170,18 @@ void GuideCurveEditorComponent::paintEditor(Graphics&) {
 }
 
 void GuideCurveEditorComponent::layoutEditor() {
-    Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(16, 18);
-    constexpr int labelWidth = 70;
-    constexpr int labelGap = 10;
-    constexpr int rowHeight = 30;
-    constexpr int rowGap = 10;
-
-    impl->enabled.setBounds(bounds.removeFromTop(rowHeight), labelWidth, labelGap);
-    bounds.removeFromTop(rowGap);
+    Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
+    impl->enabled.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+            PropertyControlMetrics::labelWidth,
+            PropertyControlMetrics::inlineGap);
+    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
     for (auto* slider : { &impl->noise, &impl->dcOffset, &impl->phase }) {
-        slider->setBounds(bounds.removeFromTop(rowHeight), labelWidth, labelGap);
-        bounds.removeFromTop(rowGap);
+        slider->setBounds(
+                bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+                PropertyControlMetrics::labelWidth,
+                PropertyControlMetrics::inlineGap);
+        bounds.removeFromTop(PropertyControlMetrics::rowGap);
     }
 }
 
@@ -109,6 +190,9 @@ void GuideCurveEditorComponent::syncEditorFromNode() {
     impl->noise.slider.setValue(guide.noise, dontSendNotification);
     impl->dcOffset.slider.setValue(guide.dcOffset, dontSendNotification);
     impl->phase.slider.setValue(guide.phase, dontSendNotification);
+    impl->noise.refreshValueText();
+    impl->dcOffset.refreshValueText();
+    impl->phase.refreshValueText();
 }
 
 void GuideCurveEditorComponent::applyEditorStateToWidget() {
@@ -123,9 +207,9 @@ void GuideCurveEditorComponent::applyEditorStateToWidget() {
 std::vector<NodeParameter> GuideCurveEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
     result.push_back({ "enabled", "Enabled", impl->enabled.button.getToggleState() ? "1" : "0" });
-    result.push_back({ "noise", "Noise", String(impl->noise.slider.getValue()) });
-    result.push_back({ "dcOffset", "DC Offset", String(impl->dcOffset.slider.getValue()) });
-    result.push_back({ "phase", "Phase", String(impl->phase.slider.getValue()) });
+    result.push_back({ "noise", "Noise", String(impl->noise.slider.getValue(), 8) });
+    result.push_back({ "dcOffset", "DC Offset", String(impl->dcOffset.slider.getValue(), 8) });
+    result.push_back({ "phase", "Phase", String(impl->phase.slider.getValue(), 8) });
     return result;
 }
 
@@ -134,6 +218,9 @@ void GuideCurveEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("noise", impl->noise.slider.getValue());
     state.setProperty("dcOffset", impl->dcOffset.slider.getValue());
     state.setProperty("phase", impl->phase.slider.getValue());
+    state.setProperty("noiseLayout", layoutToVar(impl->noise));
+    state.setProperty("dcOffsetLayout", layoutToVar(impl->dcOffset));
+    state.setProperty("phaseLayout", layoutToVar(impl->phase));
 }
 
 }

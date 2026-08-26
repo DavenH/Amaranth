@@ -11,6 +11,28 @@ namespace {
 const Colour kText { 0xffe2e8ef };
 constexpr float kHeaderHeight = 34.f;
 
+class EditorCloseButton final : public Button {
+public:
+    EditorCloseButton() : Button("Close editor") {
+        setTitle("Close editor");
+        setDescription("Closes the expanded editor");
+        setTooltip("Close editor");
+        setWantsKeyboardFocus(true);
+        setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+
+    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
+        const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.5f);
+        graphics.setColour(Colour(0xff0e1318).brighter(down ? 0.12f : highlighted ? 0.06f : 0.f));
+        graphics.fillEllipse(bounds);
+        graphics.setColour(hasKeyboardFocus(false) ? Colour(0xff65b8ff) : Colour(0xff354050));
+        graphics.drawEllipse(bounds, hasKeyboardFocus(false) ? 1.5f : 1.f);
+        graphics.setColour(kText);
+        graphics.drawLine(7.f, 7.f, bounds.getRight() - 7.f, bounds.getBottom() - 7.f, 1.4f);
+        graphics.drawLine(bounds.getRight() - 7.f, 7.f, 7.f, bounds.getBottom() - 7.f, 1.4f);
+    }
+};
+
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
     object->setProperty("x", bounds.getX());
@@ -23,9 +45,17 @@ var rectangleToVar(Rectangle<float> bounds) {
 }
 
 CurveExpandedEditorComponent::CurveExpandedEditorComponent(CurveEditorWidget& targetWidget) :
-        widget(targetWidget) {
+        widget(targetWidget)
+    ,   closeButton(std::make_unique<EditorCloseButton>()) {
     setOpaque(false);
     setInterceptsMouseClicks(true, true);
+    closeButton->setComponentID("curveEditor.close");
+    closeButton->onClick = [this] {
+        if (delegate != nullptr) {
+            delegate->closeCurveEditor();
+        }
+    };
+    addAndMakeVisible(*closeButton);
 }
 
 CurveExpandedEditorComponent::~CurveExpandedEditorComponent() {
@@ -84,40 +114,23 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
 
     paintEditor(graphics);
 
-    const Rectangle<float> close = closeButtonBounds();
-    graphics.setColour(Colour(0xff0e1318));
-    graphics.fillEllipse(close);
-    graphics.setColour(Colour(0xff354050));
-    graphics.drawEllipse(close, 1.f);
-    graphics.setColour(kText);
-    graphics.drawLine(close.getX() + 7.f, close.getY() + 7.f,
-            close.getRight() - 7.f, close.getBottom() - 7.f, 1.4f);
-    graphics.drawLine(close.getRight() - 7.f, close.getY() + 7.f,
-            close.getX() + 7.f, close.getBottom() - 7.f, 1.4f);
     graphics.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
     graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.75f), 8.f, 1.3f);
 }
 
 void CurveExpandedEditorComponent::resized() {
+    closeButton->setBounds(closeButtonBounds().toNearestInt());
     updatePanelHost();
     layoutEditor();
 }
 
 void CurveExpandedEditorComponent::mouseMove(const MouseEvent& event) {
     if (!editorMouseMove(event.position)) {
-        setMouseCursor(closeButtonBounds().contains(event.position)
-                ? MouseCursor::PointingHandCursor
-                : MouseCursor::NormalCursor);
+        setMouseCursor(MouseCursor::NormalCursor);
     }
 }
 
 void CurveExpandedEditorComponent::mouseDown(const MouseEvent& event) {
-    if (closeButtonBounds().contains(event.position)) {
-        if (delegate != nullptr) {
-            delegate->closeCurveEditor();
-        }
-        return;
-    }
     beginTransaction();
     editorMouseDown(event.position);
 }

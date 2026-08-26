@@ -109,6 +109,7 @@ private:
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
+    std::unique_ptr<Button> closeButton;
     NodeModelStatePtr editorModel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)

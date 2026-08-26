@@ -535,6 +535,10 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
     state.guideDock.expandedGuideId = "guide1";
     state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
+    state.guideDock.guideEditorTargets.push_back({
+            "guideEditor.noise",
+            { 900.f, 140.f, 148.f, 30.f }
+    });
     state.guideDock.guideTiles.push_back({ "guide1", { 12.f, 652.f, 220.f, 136.f } });
     const uint64_t documentRevision = document.revision();
     const uint64_t presentationRevision = presentation.revision();
@@ -563,6 +567,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(targetWithId("guideDock.resize") != nullptr);
     REQUIRE(targetWithId("guideDock.divider") != nullptr);
     REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("guideEditor.noise") != nullptr);
     REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
     REQUIRE(targetWithId("guideShelf.add") != nullptr);
     REQUIRE(targetWithId("guide:guide1") != nullptr);
@@ -688,11 +693,14 @@ TEST_CASE("Guide editor uses compact host and control layout",
     GuideCurveEditorComponent editor(widget);
     GuideCurveResource guide;
     guide.id = "guide1";
+    guide.noise = 0.76562f;
     guide.model = createDefaultGuideCurveModel();
 
     const Rectangle<float> host = GuideCurveEditorComponent::preferredHostBounds(
             { 0.f, 0.f, 1200.f, 800.f });
     REQUIRE(host.getHeight() == 560.f);
+    REQUIRE(host.getWidth() == 1100.f);
+    REQUIRE(host.getCentreX() == 600.f);
     REQUIRE(host.getCentreY() == 400.f);
 
     editor.setBounds(host.toNearestInt());
@@ -702,12 +710,14 @@ TEST_CASE("Guide editor uses compact host and control layout",
     int textButtonCount = 0;
     int emptyToggleCount = 0;
     int enabledLabelCount = 0;
+    int valueLabelCount = 0;
     int lowestControlBottom = 0;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
         Component* child = editor.getChildComponent(index);
         if (auto* slider = dynamic_cast<Slider*>(child)) {
             ++sliderCount;
-            REQUIRE(slider->getTextBoxPosition() == Slider::TextBoxRight);
+            REQUIRE(slider->getTextBoxPosition() == Slider::NoTextBox);
+            REQUIRE(slider->getComponentID().startsWith("guideEditor."));
             lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
         } else if (dynamic_cast<TextButton*>(child) != nullptr) {
             ++textButtonCount;
@@ -716,13 +726,60 @@ TEST_CASE("Guide editor uses compact host and control layout",
             lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
         } else if (auto* label = dynamic_cast<Label*>(child)) {
             enabledLabelCount += label->getText() == "Enabled" ? 1 : 0;
+            valueLabelCount += label->getComponentID().endsWith(".value") ? 1 : 0;
         }
     }
     REQUIRE(sliderCount == 3);
     REQUIRE(textButtonCount == 0);
     REQUIRE(emptyToggleCount == 1);
     REQUIRE(enabledLabelCount == 1);
+    REQUIRE(valueLabelCount == 3);
     REQUIRE(lowestControlBottom < 230);
+
+    const var state = editor.automationState();
+    const var noiseLayout = state.getProperty("noiseLayout", {});
+    REQUIRE(noiseLayout.getProperty("display", {}).toString() == "76.6%");
+    REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
+            >= PropertyControlMetrics::minimumUsableTrackWidth);
+    REQUIRE_FALSE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+}
+
+TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
+        "[cycle-v2][node-editor-host][guides][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(GuideCurveEditorComponent::preferredHostBounds(
+            { 0.f, 0.f, 1200.f, 800.f }).toNearestInt());
+    editor.setGuideResource(guide);
+
+    PrecisionSlider* noise = nullptr;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        auto* slider = dynamic_cast<PrecisionSlider*>(editor.getChildComponent(index));
+        if (slider != nullptr && slider->getComponentID() == "guideEditor.noise") {
+            noise = slider;
+            break;
+        }
+    }
+    REQUIRE(noise != nullptr);
+    REQUIRE(noise->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(noise->getValue() == Catch::Approx(0.01));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    REQUIRE(noise->keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(noise->getValue() == Catch::Approx(0.011));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",

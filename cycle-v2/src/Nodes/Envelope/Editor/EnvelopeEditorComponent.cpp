@@ -52,14 +52,14 @@ struct EnvelopeEditorComponent::Impl {
             redMorph    (owner, "Red")
         ,   blueMorph   (owner, "Blue")
         ,   tooltipHost (&owner, 500) {
-        styleParameterLabel(timeLabel, "Time");
-        styleParameterLabel(modeLabel, "Mode");
-        styleParameterLabel(vertexModeLabel, "Vertex");
+        stylePropertyLabel(timeLabel, "Time");
+        stylePropertyLabel(modeLabel, "Mode");
+        stylePropertyLabel(vertexModeLabel, "Vertex");
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(modeLabel);
         owner.addAndMakeVisible(mode);
         owner.addAndMakeVisible(vertexModeLabel);
-        styleParameterButton(logarithmic, logarithmic.getButtonText());
+        stylePropertyButton(logarithmic, logarithmic.getButtonText());
         owner.addAndMakeVisible(logarithmic);
         styleCycleV1EnvelopeButton(
                 loop, 4, 3, "Select one envelope vertex to set the loop start", true);

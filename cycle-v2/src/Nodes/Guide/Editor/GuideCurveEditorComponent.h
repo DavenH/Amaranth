@@ -3,6 +3,8 @@
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 namespace CycleV2 {
 
@@ -14,6 +16,7 @@ public:
     static Rectangle<float> preferredHostBounds(Rectangle<float> canvasBounds);
     void setGuideResource(const GuideCurveResource& guide);
     void renderOpenGL(float scaleFactor) override;
+    std::vector<std::pair<String, Rectangle<float>>> automationPointerTargets() const;
 
 private:
     struct Impl;

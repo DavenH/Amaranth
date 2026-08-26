@@ -541,6 +541,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty(
             "guideEditorBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
+    guideDock->setProperty("editor", state.guideDock.guideEditorState);
     root->setProperty("guideDock", guideDock);
 
     Array<var> causalUpdates;
@@ -799,6 +800,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "guideEditor:" + state.guideDock.expandedGuideId,
                 "guideEditor",
                 state.guideDock.guideEditorBounds));
+        for (const auto& target : state.guideDock.guideEditorTargets) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    target.id,
+                    "guideEditorControl",
+                    target.bounds));
+        }
     }
     if (state.probeDetailId.isNotEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(

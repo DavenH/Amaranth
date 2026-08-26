@@ -10,7 +10,7 @@ struct WaveshaperEditorComponent::Impl {
             enabled     (owner, "Enable")
         ,   preGain     (owner, "Pre")
         ,   postGain    (owner, "Post") {
-        styleParameterLabel(oversamplingLabel, "AA factor");
+        stylePropertyLabel(oversamplingLabel, "AA factor");
         owner.addAndMakeVisible(oversamplingLabel);
         owner.addAndMakeVisible(oversampling);
     }

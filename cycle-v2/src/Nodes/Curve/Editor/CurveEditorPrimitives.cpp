@@ -4,77 +4,15 @@
 
 namespace CycleV2 {
 
-namespace {
-
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
-
-class RailLookAndFeel final : public LookAndFeel_V4 {
-public:
-    void drawLinearSlider(
-            Graphics& graphics,
-            int x,
-            int y,
-            int width,
-            int height,
-            float sliderPosition,
-            float,
-            float,
-            Slider::SliderStyle,
-            Slider&) override {
-        auto row = Rectangle<float>(
-                static_cast<float>(x),
-                static_cast<float>(y),
-                static_cast<float>(width),
-                static_cast<float>(height));
-        auto rail = row.withSizeKeepingCentre(row.getWidth(), 4.f);
-        const float knobX = jlimit(rail.getX(), rail.getRight(), sliderPosition);
-        const auto knob = Rectangle<float>(12.f, 12.f).withCentre({ knobX, rail.getCentreY() });
-
-        graphics.setColour(Colour(0xff384351));
-        graphics.fillRoundedRectangle(rail, 2.f);
-        graphics.setColour(Colour(0xffdce3ec).withAlpha(0.78f));
-        graphics.fillRoundedRectangle(rail.withRight(knobX), 2.f);
-        graphics.setColour(Colour(0xff0d1116));
-        graphics.fillEllipse(knob);
-        graphics.setColour(Colour(0xffdce3ec));
-        graphics.drawEllipse(knob, 1.5f);
-    }
-};
-
-RailLookAndFeel& railLookAndFeel() {
-    static RailLookAndFeel result;
-    return result;
-}
-
-void styleParameterSlider(Slider& slider) {
-    slider.setSliderStyle(Slider::LinearHorizontal);
-    slider.setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
-    slider.setRange(0.0, 1.0, 0.001);
-    slider.setLookAndFeel(&railLookAndFeel());
-}
-
-}
-
-LabeledParameterSlider::LabeledParameterSlider(Component& owner, const String& labelText) {
-    styleParameterLabel(label, labelText);
-    styleParameterSlider(slider);
-    owner.addAndMakeVisible(label);
-    owner.addAndMakeVisible(slider);
-}
-
-LabeledParameterSlider::~LabeledParameterSlider() {
-    slider.setLookAndFeel(nullptr);
-}
+LabeledParameterSlider::LabeledParameterSlider(Component& owner, const String& labelText) :
+        PropertySliderRow(owner, labelText) {}
 
 void LabeledParameterSlider::setBounds(Rectangle<int> bounds, int labelWidth, int gap) {
-    label.setBounds(bounds.removeFromLeft(labelWidth));
-    bounds.removeFromLeft(gap);
-    slider.setBounds(bounds.withTrimmedRight(4).withSizeKeepingCentre(bounds.getWidth() - 4, 26));
+    PropertySliderRow::setBounds(bounds, labelWidth, gap);
 }
 
 ParameterToggle::ParameterToggle(Component& owner, const String& labelText) {
-    styleParameterLabel(label, labelText);
+    stylePropertyLabel(label, labelText);
     button.setButtonText({});
     owner.addAndMakeVisible(label);
     owner.addAndMakeVisible(button);
@@ -106,21 +44,6 @@ void ParameterRail::layout(
         button->setBounds(row.removeFromLeft(76).reduced(0, 2));
         bounds.removeFromTop(7);
     }
-}
-
-void styleParameterLabel(Label& label, const String& text) {
-    label.setText(text, dontSendNotification);
-    label.setColour(Label::textColourId, kMutedText);
-    label.setFont(FontOptions(12.f));
-    label.setJustificationType(Justification::centredRight);
-}
-
-void styleParameterButton(TextButton& button, const String& text) {
-    button.setButtonText(text);
-    button.setColour(TextButton::buttonColourId, Colour(0xff161d25));
-    button.setColour(TextButton::buttonOnColourId, Colour(0xff252f3b));
-    button.setColour(TextButton::textColourOffId, kText);
-    button.setColour(TextButton::textColourOnId, kText);
 }
 
 void addEditorParameter(
