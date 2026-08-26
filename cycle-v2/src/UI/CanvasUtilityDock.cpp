@@ -35,16 +35,16 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             keyboardHeight
     };
 
-    const float statusWidth = juce::jmin(560.f, availableWidth);
+    const float statusLeft = contentBounds.getX() + margin;
+    const float statusWidth = juce::jmin(
+            560.f,
+            juce::jmax(0.f, result.minimap.getX() - gap - statusLeft));
     result.status = {
-            contentBounds.getX() + margin,
-            contentBounds.getBottom() - margin - 24.f,
+            statusLeft,
+            contentBounds.getY() + margin,
             statusWidth,
-            24.f
+            30.f
     };
-    if (result.status.intersects(result.keyboard.expanded(gap))) {
-        result.status.setY(result.keyboard.getY() - gap - result.status.getHeight());
-    }
     if (result.legend.intersects(result.keyboard.expanded(gap))) {
         result.legend.setHeight(juce::jmax(0.f, result.keyboard.getY() - gap - result.legend.getY()));
     }

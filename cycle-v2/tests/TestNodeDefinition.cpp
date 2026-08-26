@@ -16,7 +16,11 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
     for (const auto& definition : registry.definitions()) {
         REQUIRE(definition.typeId.isNotEmpty());
         REQUIRE(definition.defaultInstanceIdPrefix.isNotEmpty());
+        REQUIRE(definition.helpText.isNotEmpty());
         REQUIRE(typeIds.insert(definition.typeId).second);
+        for (const auto character : definition.helpText) {
+            REQUIRE(character < 128);
+        }
 
         std::set<String> portIds;
         for (const auto& port : definition.inputs) {

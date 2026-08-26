@@ -27,7 +27,7 @@ void paintHighlight(
     graphics.fillRoundedRectangle(badge, 5.f);
     graphics.setColour(colour);
     graphics.drawRoundedRectangle(badge, 5.f, 1.f);
-    graphics.setFont(FontOptions(10.f, Font::bold));
+    graphics.setFont(FontOptions(10.f));
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }
 

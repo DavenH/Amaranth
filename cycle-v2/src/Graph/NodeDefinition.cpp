@@ -155,6 +155,7 @@ NodeDefinition definition(
             kind,
             std::move(displayName),
             std::move(subtitle),
+            {},
             std::move(prefix),
             std::move(inputs),
             std::move(outputs),
@@ -189,6 +190,11 @@ public:
 
     DefinitionBuilder& model(std::shared_ptr<const NodeModelCodec> codec) {
         value.modelCodec = std::move(codec);
+        return *this;
+    }
+
+    DefinitionBuilder& help(String text) {
+        value.helpText = std::move(text);
         return *this;
     }
 
@@ -292,6 +298,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("genericProcessor", NodeKind::GenericProcessor, "Processor", "generic", "processor",
                     { input("in", "In", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("out", "Out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, true))
+                    .help("Processes the incoming signal.")
                     .runtime(AudioModuleRole::GenericProcessor, PreviewModuleRole::Generic)
                     .finish(),
             buildDefinition(definition("voiceContext", NodeKind::VoiceContext, "Voice Context", "waveform start", "voice", {
@@ -310,6 +317,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             boolean("portamento", "Portamento", false, dsp | presentation),
                             choice("oversampling", "Oversampling", "1x", { "1x", "2x", "4x", "8x" }, dsp | reset | presentation)
                     }))
+                    .help("Sets pitch, timing, and voice behaviour before synthesis.")
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
@@ -324,6 +332,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("controller", "Controller", 1, 0, 127, dsp | preview | presentation),
                             number("constant", "Constant", 0.5f, 0.f, 1.f, dsp | preview | presentation)
                     }))
+                    .help("Uses performance or MIDI data to control another parameter.")
                     .runtime(AudioModuleRole::ModulationSource, PreviewModuleRole::ModulationSource)
                     .presentation({}, { 250.f, 48.f })
                     .finish(),
@@ -353,6 +362,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("blueController", "Blue Controller", 1, 0, 127, dsp | presentation),
                             number("blueConstant", "Blue Constant", 0.5f, 0.f, 1.f, dsp | presentation)
                     }))
+                    .help("Maps three performance controls to the mesh axes.")
                     .runtime(AudioModuleRole::ModulationTriple, PreviewModuleRole::None)
                     .disablePreview()
                     .presentation({}, { 280.f, 126.f })
@@ -363,6 +373,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp | preview),
                             number("amplitude", "Amplitude", 1.f, 0.f, 1.f, preview)
                     }))
+                    .help("Generates a waveform for the current voice.")
                     .execution(NodeExecutionTrait::CycleGenerator)
                     .runtime(AudioModuleRole::WaveSource, PreviewModuleRole::Waveform)
                     .presentation({ 220.f, 90.f })
@@ -372,6 +383,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             number("level", "Level", 1.f, 0.f, 1.f, dsp | preview)
                     }))
+                    .help("Uses an image as a control source.")
                     .runtime(AudioModuleRole::ImageSource, PreviewModuleRole::Image)
                     .presentation({ 220.f, 90.f })
                     .finish(),
@@ -393,6 +405,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation)
                     }))
+                    .help("Shapes a sound by moving through a morphable mesh.")
                     .model(std::make_shared<TrimeshNodeModelCodec>())
                     .execution(NodeExecutionTrait::CycleGenerator)
                     .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
@@ -408,6 +421,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("mode", "Magnitude Mode", "additive",
                                     { "additive", "multiplicative" }, dsp | preview | presentation)
                     }))
+                    .help("Places a spectral layer in the stereo field.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::SpectralLayer, PreviewModuleRole::None,
                             "cycle/src/Audio/Voices/SynthFilterVoice.cpp")
@@ -420,6 +434,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cycle", { "cycle", "fixedWindow" }, graph | dsp | presentation)
                     }))
+                    .help("Opens a waveform into magnitude and phase for spectral editing.")
                     .execution(NodeExecutionTrait::SpectralTransform)
                     .runtime(AudioModuleRole::Fft, PreviewModuleRole::None)
                     .presentation({}, { 278.f, 178.f })
@@ -431,6 +446,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             integer("cycleFrames", "Cycle Frames", 2048, 1, 65536, dsp | reset),
                             choice("mode", "Mode", "cyclic", { "cyclic", "acyclicCarry" }, graph | dsp | presentation)
                     }))
+                    .help("Rebuilds a waveform from its magnitude and phase.")
                     .execution(NodeExecutionTrait::OscillatorMaterializer)
                     .runtime(AudioModuleRole::Ifft, PreviewModuleRole::None)
                     .presentation({}, { 278.f, 178.f })
@@ -451,6 +467,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }))
+                    .help("Draw a curve to control how the sound changes over time.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Envelope))
                     .execution(NodeExecutionTrait::ControlProducer)
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
@@ -460,6 +477,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
+                    .help("Adds two signals together.")
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Add, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -467,6 +485,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("multiply", NodeKind::Multiply, "Multiply", "operation", "multiply",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
                     { output("out", "Out", PortDomain::ControlSignal) }))
+                    .help("Multiplies two signals to shape one with the other.")
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
@@ -479,6 +498,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation)
                     }))
+                    .help("Applies the drawn impulse response to the sound.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::ImpulseResponse))
                     .runtime(AudioModuleRole::ImpulseResponse, PreviewModuleRole::ImpulseResponse,
                             "cycle/src/Audio/Effects/IrModeller.cpp")
@@ -492,6 +512,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
                             choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation)
                     }))
+                    .help("Shapes the waveform with a custom transfer curve.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::Waveshaper))
                     .runtime(AudioModuleRole::Waveshaper, PreviewModuleRole::Waveshaper,
                             "cycle/src/Audio/Effects/WaveShaper.cpp")
@@ -516,6 +537,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("jitter", "Jitter", 0.5f, 0.f, 1.f,
                                     dsp | preview | presentation)
                     }))
+                    .help("Spreads copies of each voice across pitch and stereo space.")
                     .model(std::make_shared<UnisonNodeModelCodec>())
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::None, PreviewModuleRole::None,
@@ -532,6 +554,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("wet", "Wet", 0.4f, 0.f, 1.f, dsp | presentation),
                             number("highPass", "High Pass", 0.05f, 0.f, 1.f, dsp | presentation)
                     }))
+                    .help("Adds a sense of space and room around the sound.")
                     .runtime(AudioModuleRole::Reverb, PreviewModuleRole::ReverbSpectrogram,
                             "cycle/src/Audio/Effects/Reverb.cpp")
                     .finish(),
@@ -545,6 +568,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("spin", "Pan Amount", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation)
                     }))
+                    .help("Creates tempo-synced echoes that move across the stereo field.")
                     .runtime(AudioModuleRole::Delay, PreviewModuleRole::None,
                             "cycle/src/Audio/Effects/Delay.cpp")
                     .finish(),
@@ -563,6 +587,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             number("band4Frequency", "Band 4 Frequency", 0.6619545f, 0.f, 1.f, dsp | preview | presentation),
                             number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation)
                     }))
+                    .help("Shapes the tone with five adjustable frequency bands.")
                     .runtime(AudioModuleRole::Equalizer, PreviewModuleRole::EqualizerResponse,
                             "cycle/src/Audio/Effects/Equalizer.cpp")
                     .presentation({ 230.f, 112.f })
@@ -570,15 +595,18 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("stereoSplit", NodeKind::StereoSplit, "Stereo Split", "L/R breakout", "split",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), output("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) }))
+                    .help("Separates a stereo signal into left and right channels.")
                     .runtime(AudioModuleRole::StereoSplit, PreviewModuleRole::None)
                     .finish(),
             buildDefinition(definition("stereoJoin", NodeKind::StereoJoin, "Stereo Join", "L/R combine", "join",
                     { input("left", "Left", PortDomain::TimeSignal, ChannelLayout::Left), input("right", "Right", PortDomain::TimeSignal, ChannelLayout::Right) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }))
+                    .help("Combines left and right channels into a stereo signal.")
                     .runtime(AudioModuleRole::StereoJoin, PreviewModuleRole::None)
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
+                    .help("Sends the finished sound to the audio output.")
                     .runtime(AudioModuleRole::Output, PreviewModuleRole::None)
                     .presentation({}, { 190.f, 160.f })
                     .finish()

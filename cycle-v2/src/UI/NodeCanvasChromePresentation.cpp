@@ -124,10 +124,9 @@ void NodeCanvasPresentation::paintStatus(
         return;
     }
 
-    CanvasUtilityDock::paintSurface(graphics, status);
-    const Rectangle<float> textBounds = status.reduced(10.f, 1.f);
-    graphics.setFont(FontOptions(10.f));
-    graphics.setColour(kMutedText);
+    const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
+    graphics.setFont(FontOptions(14.f));
+    graphics.setColour(kText.withAlpha(0.8f));
     graphics.drawText(text, textBounds, Justification::centredLeft);
 }
 
@@ -151,7 +150,7 @@ void NodeCanvasPresentation::paintPalette(
                 section.icon,
                 content.reduced(8.f, 4.f),
                 active);
-        graphics.setFont(FontOptions(9.4f, Font::bold));
+        graphics.setFont(FontOptions(9.4f));
         graphics.setColour(kText.withAlpha(active ? 0.92f : 0.70f));
         graphics.drawText(section.shortLabel, label.reduced(3.f, 0.f), Justification::centred);
     }
@@ -177,7 +176,7 @@ void NodeCanvasPresentation::paintPalette(
                 hover);
 
         graphics.setColour(kText.withAlpha(hover ? 0.96f : 0.82f));
-        graphics.setFont(FontOptions(11.2f, Font::bold));
+        graphics.setFont(FontOptions(11.2f));
         graphics.drawText(
                 String::fromUTF8(entry.label),
                 row.withTrimmedLeft(48.f).reduced(0.f, 2.f),

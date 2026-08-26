@@ -1,32 +1,30 @@
 #include "UI/NodeCanvasQueryModel.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/NodeDefinition.h"
 
 namespace CycleV2 {
 
 namespace {
 
-String portDisplayLabel(const Port& port) {
-    const String channel = labelForChannelLayout(port.channelLayout);
-    return channel.isEmpty() ? port.label : port.label + " " + channel;
-}
-
 String nodeDisplayLabel(const Node& node) {
     return labelForNodeKind(node.kind);
 }
 
-String countPhrase(int count, const String& singular) {
-    return String(count) + " " + singular + (count == 1 ? String {} : "s");
-}
+String signalDescription(PortDomain domain) {
+    switch (domain) {
+        case PortDomain::TimeSignal:                 return "Audio";
+        case PortDomain::SpectralMagnitudeSignal:    return "Spectrum levels";
+        case PortDomain::SpectralPhaseSignal:        return "Spectrum timing";
+        case PortDomain::ControlSignal:              return "A control value";
+        case PortDomain::EnvelopeSignal:             return "An envelope";
+        case PortDomain::PitchSignal:                return "Pitch";
+        case PortDomain::VoiceControlSignal:         return "Voice settings";
+        case PortDomain::DomainContext:              return "Voice setup";
+        case PortDomain::MeshField:                  return "A shape";
+    }
 
-String endpointDescription(
-        const Node* node,
-        const Port* port,
-        const String& fallbackNodeId,
-        const String& fallbackPortId) {
-    const String nodeLabel = node != nullptr ? nodeDisplayLabel(*node) : fallbackNodeId;
-    const String portLabel = port != nullptr ? portDisplayLabel(*port) : fallbackPortId;
-    return nodeLabel + " “" + portLabel + "”";
+    return "A signal";
 }
 
 }
@@ -203,78 +201,47 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
-    String text = portDisplayLabel(*port) + " is the "
-            + labelForDomain(port->domain).toLowerCase()
-            + (address.input ? " input on " : " output from ")
-            + nodeDisplayLabel(*node) + ".";
-
     if (port->purpose == PortPurpose::ScratchAttachment) {
-        text += " It accepts a scratch-envelope attachment.";
+        return "Attach a scratch envelope here.";
     }
 
-    if (port->channelLayout != ChannelLayout::Mono) {
-        text += " It carries " + labelForChannelLayout(port->channelLayout) + ".";
-    }
-
-    return text;
+    return signalDescription(port->domain)
+            + (address.input ? " enters " : " leaves ")
+            + nodeDisplayLabel(*node) + " here.";
 }
 
 String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
-    String text = nodeDisplayLabel(node);
-    if (node.subtitle.isNotEmpty()) {
-        text += " — " + node.subtitle + " —";
-    }
-    text += " has "
-            + countPhrase((int) node.inputs.size(), "input") + " and "
-            + countPhrase((int) node.outputs.size(), "output") + ".";
-    const RuntimeNodeTrace* trace = findRuntimeTrace(node.id);
-
-    if (trace != nullptr && !trace->signalOutputs.empty()) {
-        text += " It produces ";
-
-        for (size_t i = 0; i < trace->signalOutputs.size(); ++i) {
-            if (i > 0) {
-                text += ", ";
-            }
-
-            text += labelForDomain(trace->signalOutputs[i].domain)
-                    + " from “" + trace->signalOutputs[i].portId + "”";
-        }
-        text += ".";
+    const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
+    if (definition != nullptr && definition->helpText.isNotEmpty()) {
+        return definition->helpText;
     }
 
-    return text;
+    return nodeDisplayLabel(node) + ".";
 }
 
 String NodeCanvasQueryModel::hoverTextForEdge(const Edge& edge) const {
     const auto issue = validationIssueForEdge(edge);
     const Node* sourceNode = findNode(edge.sourceNodeId);
     const Node* destinationNode = findNode(edge.destNodeId);
-    const Port* sourcePort = sourceNode != nullptr
-            ? findPort(*sourceNode, edge.sourcePortId, false)
-            : nullptr;
-    const Port* destinationPort = destinationNode != nullptr
-            ? findPort(*destinationNode, edge.destPortId, true)
-            : nullptr;
-    const String route = endpointDescription(
-            sourceNode,
-            sourcePort,
-            edge.sourceNodeId,
-            edge.sourcePortId)
+    const String source = sourceNode != nullptr
+            ? nodeDisplayLabel(*sourceNode)
+            : edge.sourceNodeId;
+    const String destination = destinationNode != nullptr
+            ? nodeDisplayLabel(*destinationNode)
+            : edge.destNodeId;
+    const String route = source
             + " to "
-            + endpointDescription(
-                    destinationNode,
-                    destinationPort,
-                    edge.destNodeId,
-                    edge.destPortId);
+            + destination;
 
     if (issue.message.isNotEmpty()) {
         return "This connection is invalid: " + issue.message + ". Route: " + route + ".";
     }
 
-    return labelForDomain(displayDomainForEdge(edge))
-            + (edge.isAttachment() ? " control attachment from " : " signal from ")
-            + route + ".";
+    if (edge.isAttachment()) {
+        return "Controls " + destination + " from " + source + ".";
+    }
+
+    return signalDescription(displayDomainForEdge(edge)) + " flows from " + route + ".";
 }
 
 }

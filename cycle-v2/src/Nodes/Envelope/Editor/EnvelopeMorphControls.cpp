@@ -155,7 +155,7 @@ void EnvelopeMorphControls::drawPlane(
     const auto cursorBounds = Rectangle<float>(8.f, 8.f).withCentre(cursor);
 
     graphics.setColour(kMutedText);
-    graphics.setFont(FontOptions(10.5f, Font::bold));
+    graphics.setFont(FontOptions(10.5f));
     graphics.drawText("morph plane", header, Justification::centred);
     graphics.setColour(Colour(0xff5f91e8).withAlpha(0.20f));
     graphics.fillRect(square);

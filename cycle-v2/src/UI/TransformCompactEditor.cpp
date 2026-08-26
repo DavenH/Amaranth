@@ -25,7 +25,7 @@ void drawModeChoice(
     const Rectangle<float> right = control;
     const Rectangle<float> active = rightActive ? right : left;
 
-    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.setFont(FontOptions(11.f));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea, Justification::centredLeft);
     graphics.setColour(Colour(0xff0e1318));
@@ -39,7 +39,7 @@ void drawModeChoice(
     graphics.setColour(colour.withAlpha(0.82f));
     graphics.drawRoundedRectangle(active, corner, 1.2f);
 
-    graphics.setFont(FontOptions(10.6f, Font::bold));
+    graphics.setFont(FontOptions(10.6f));
     graphics.setColour(rightActive
             ? kMutedText.withAlpha(0.62f)
             : kText.withAlpha(0.92f));

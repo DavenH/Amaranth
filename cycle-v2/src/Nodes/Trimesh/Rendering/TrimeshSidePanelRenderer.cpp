@@ -240,7 +240,7 @@ void drawMorphColumnHeaders(Graphics& g, Rectangle<float> sideArea) {
     const float y = axisRowBounds(sideArea, 0).getY() - 13.f;
 
     g.setColour(kMutedText.withAlpha(0.78f));
-    g.setFont(FontOptions(8.5f, Font::bold));
+    g.setFont(FontOptions(8.5f));
     g.drawText("axis", primary.withY(y).withHeight(10.f), Justification::centred);
     g.drawText("link", link.withY(y).withHeight(10.f), Justification::centred);
 }
@@ -264,7 +264,7 @@ void drawAxisSlider(
     g.fillRect(filled);
 
     g.setColour(kText);
-    g.setFont(FontOptions(12.f, Font::bold));
+    g.setFont(FontOptions(12.f));
     g.drawText(axis.label, axisLabelBounds(row), Justification::centredLeft);
 
     g.setColour(Colour(0xff202328).withAlpha(0.88f));
@@ -334,7 +334,7 @@ void TrimeshSidePanelRenderer::drawSidePanel(
     drawMorphCubePreview(g, morphCubeBounds(area), axes, cubeVertices);
 
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
+    g.setFont(FontOptions(10.5f));
     g.drawText("morph Position", morphControls.removeFromTop(kMorphHeaderH), Justification::centred);
 
     drawMorphColumnHeaders(g, area);
@@ -359,7 +359,7 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
+    g.setFont(FontOptions(10.5f));
     g.drawText("cube display", header, Justification::centred);
 
     area = area.withTrimmedTop(22.f).reduced(3.f, 0.f);
@@ -524,7 +524,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f, Font::bold));
+    g.setFont(FontOptions(10.5f));
     g.drawText("vertex params", header, Justification::centred);
 
     for (int i = 0; i < (int) parameters.size(); ++i) {
@@ -540,7 +540,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         drawSliderRowBody(g, row);
 
         g.setColour(kMutedText);
-        g.setFont(FontOptions(10.5f, Font::bold));
+        g.setFont(FontOptions(10.5f));
         g.drawText(parameter.label.toLowerCase(), labelBox, Justification::centredLeft);
 
         const float range = parameter.maximum - parameter.minimum;
@@ -564,7 +564,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
 
         if (guideLabel.isNotEmpty()) {
             g.setColour(Colour(0xff70a7ff).withAlpha(0.90f));
-            g.setFont(FontOptions(10.5f, Font::bold));
+            g.setFont(FontOptions(10.5f));
             g.drawText(guideLabel, guideBox.reduced(3.f, 0.f), Justification::centred);
         } else {
             g.setColour(kMutedText.withAlpha(0.82f));
