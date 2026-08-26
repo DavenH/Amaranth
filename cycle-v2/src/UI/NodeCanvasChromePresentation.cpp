@@ -125,7 +125,7 @@ void NodeCanvasPresentation::paintStatus(
     }
 
     const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
-    graphics.setFont(FontOptions(14.f, Font::bold));
+    graphics.setFont(FontOptions(14.f));
     graphics.setColour(kText.withAlpha(0.96f));
     graphics.drawText(text, textBounds, Justification::centredLeft);
 }
