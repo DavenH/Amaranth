@@ -807,6 +807,12 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                     target.bounds));
         }
     }
+    for (const auto& target : context.editorHost.pointerTargetsForAutomation()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                target.id,
+                "expandedEditorControl",
+                target.bounds));
+    }
     if (state.probeDetailId.isNotEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "probeDetail:" + state.probeDetailId,

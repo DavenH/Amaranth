@@ -276,6 +276,11 @@ private:
     bool activeParameterChanged {};
 };
 
+struct NodeEditorAutomationTarget {
+    String id;
+    Rectangle<float> bounds;
+};
+
 class NodeEditorHost {
 public:
     NodeEditorHost(
@@ -297,6 +302,7 @@ public:
     Component* component() const;
     void appendAutomationState(DynamicObject& state) const;
     Rectangle<float> panelBoundsForAutomation() const;
+    std::vector<NodeEditorAutomationTarget> pointerTargetsForAutomation() const;
 
 private:
     Component& parent;

@@ -14,6 +14,15 @@ const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 const Colour kInvalid { 0xffdf7272 };
 
+var boundsToVar(Rectangle<float> bounds) {
+    auto* result = new DynamicObject();
+    result->setProperty("x", bounds.getX());
+    result->setProperty("y", bounds.getY());
+    result->setProperty("width", bounds.getWidth());
+    result->setProperty("height", bounds.getHeight());
+    return result;
+}
+
 bool isArrowKey(const KeyPress& key) {
     return key.getKeyCode() == KeyPress::leftKey
             || key.getKeyCode() == KeyPress::rightKey
@@ -84,6 +93,20 @@ void stylePropertyButton(TextButton& button, const String& text) {
     button.setColour(TextButton::buttonOnColourId, Colour(0xff252f3b));
     button.setColour(TextButton::textColourOffId, kText);
     button.setColour(TextButton::textColourOnId, kText);
+}
+
+var propertySliderRowAutomationState(const PropertySliderRow& row) {
+    const PropertySliderLayout& layout = row.currentLayout();
+    auto* result = new DynamicObject();
+    result->setProperty("compact", layout.compact);
+    result->setProperty("label", boundsToVar(layout.label.toFloat()));
+    result->setProperty("slider", boundsToVar(layout.slider.toFloat()));
+    result->setProperty("value", boundsToVar(layout.value.toFloat()));
+    result->setProperty("track", boundsToVar(layout.track));
+    result->setProperty("usableTrackWidth", layout.usableTrackWidth());
+    result->setProperty("display", row.valueText());
+    result->setProperty("valid", row.valueTextIsValid());
+    return result;
 }
 
 PrecisionSlider::PrecisionSlider() {

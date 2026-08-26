@@ -38,20 +38,6 @@ std::optional<double> parsePercentage(const String& text) {
     return parsed / 100.0;
 }
 
-var layoutToVar(const PropertySliderRow& row) {
-    const PropertySliderLayout& layout = row.currentLayout();
-    auto* result = new DynamicObject();
-    result->setProperty("compact", layout.compact);
-    result->setProperty("label", editorBoundsToVar(layout.label.toFloat()));
-    result->setProperty("slider", editorBoundsToVar(layout.slider.toFloat()));
-    result->setProperty("value", editorBoundsToVar(layout.value.toFloat()));
-    result->setProperty("track", editorBoundsToVar(layout.track));
-    result->setProperty("usableTrackWidth", layout.usableTrackWidth());
-    result->setProperty("display", row.valueText());
-    result->setProperty("valid", row.valueTextIsValid());
-    return result;
-}
-
 }
 
 struct GuideCurveEditorComponent::Impl {
@@ -218,9 +204,9 @@ void GuideCurveEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("noise", impl->noise.slider.getValue());
     state.setProperty("dcOffset", impl->dcOffset.slider.getValue());
     state.setProperty("phase", impl->phase.slider.getValue());
-    state.setProperty("noiseLayout", layoutToVar(impl->noise));
-    state.setProperty("dcOffsetLayout", layoutToVar(impl->dcOffset));
-    state.setProperty("phaseLayout", layoutToVar(impl->phase));
+    state.setProperty("noiseLayout", propertySliderRowAutomationState(impl->noise));
+    state.setProperty("dcOffsetLayout", propertySliderRowAutomationState(impl->dcOffset));
+    state.setProperty("phaseLayout", propertySliderRowAutomationState(impl->phase));
 }
 
 }

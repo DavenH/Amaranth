@@ -23,6 +23,22 @@ uint64_t bindingFingerprint(const Node& node) {
     return fingerprint.value();
 }
 
+void appendAutomationTargets(
+        const Component& root,
+        const Component& parent,
+        std::vector<NodeEditorAutomationTarget>& result) {
+    for (int index = 0; index < parent.getNumChildComponents(); ++index) {
+        const Component* child = parent.getChildComponent(index);
+        if (child->getComponentID().isNotEmpty()) {
+            result.push_back({
+                    child->getComponentID(),
+                    root.getLocalArea(child, child->getLocalBounds()).toFloat()
+            });
+        }
+        appendAutomationTargets(root, *child, result);
+    }
+}
+
 }
 
 NodeEditorHost::NodeEditorHost(
@@ -130,6 +146,20 @@ void NodeEditorHost::appendAutomationState(DynamicObject& state) const {
 
 Rectangle<float> NodeEditorHost::panelBoundsForAutomation() const {
     return editor != nullptr ? editor->panelBoundsForAutomation() : Rectangle<float>();
+}
+
+std::vector<NodeEditorAutomationTarget> NodeEditorHost::pointerTargetsForAutomation() const {
+    std::vector<NodeEditorAutomationTarget> result;
+    if (editor == nullptr) {
+        return result;
+    }
+
+    const Component& component = editor->component();
+    appendAutomationTargets(component, component, result);
+    for (auto& target : result) {
+        target.bounds.translate((float) component.getX(), (float) component.getY());
+    }
+    return result;
 }
 
 }

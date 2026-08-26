@@ -7,6 +7,14 @@
 using Catch::Approx;
 
 TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effects][mapping]") {
+    REQUIRE(CycleDsp::waveshaperGainDecibels(0.f) == Approx(-45.f));
+    REQUIRE(CycleDsp::waveshaperGainDecibels(0.5f) == Approx(0.f));
+    REQUIRE(CycleDsp::waveshaperGainDecibels(1.f) == Approx(45.f));
+    for (float decibels : { -45.f, -18.f, 0.f, 12.f, 45.f }) {
+        REQUIRE(CycleDsp::waveshaperGainDecibels(
+                CycleDsp::waveshaperGainUnitValue(decibels)) == Approx(decibels));
+    }
+
     REQUIRE(CycleDsp::equalizerGainDecibels(0.f) == Approx(-30.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(0.5f) == Approx(0.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(1.f) == Approx(30.f));

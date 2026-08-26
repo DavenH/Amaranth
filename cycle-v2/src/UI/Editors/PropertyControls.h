@@ -33,6 +33,8 @@ struct PropertySliderLayout {
     int usableTrackWidth() const;
 };
 
+class PropertySliderRow;
+
 PropertySliderLayout propertySliderLayout(
         juce::Rectangle<int> bounds,
         bool showsValue,
@@ -42,6 +44,7 @@ PropertySliderLayout propertySliderLayout(
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);
+juce::var propertySliderRowAutomationState(const PropertySliderRow& row);
 
 class PrecisionSlider final : public juce::Slider {
 public:

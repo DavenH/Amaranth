@@ -629,3 +629,64 @@ Review evidence:
 - Standalone Debug builds successfully with `--parallel 10`; `git diff
   --check` passes. `clang-tidy` and a compilation database were unavailable in
   the configured environment. No DSP or visualization hot loop changed.
+
+### Slice 2: Waveshaper (2026-08-26)
+
+Implemented:
+
+- Extracted the Cycle 1 `-45` to `+45 dB` gain mapping and inverse into
+  `EffectParameterMapping`; both the Waveshaper DSP configuration and editor
+  now consume that authoritative mapping.
+- Migrated Pre Gain and Post Gain to shared 140-pixel precision rows with
+  signed one-decimal dB readouts, semantic dB entry, 1 dB arrow steps, 0.1 dB
+  Shift-arrow steps, Shift-drag, and 0 dB reset.
+- Exposed antialiasing as a keyboard-operable selector whose complete value
+  set is `1x`, `2x`, `4x`, and `8x`.
+- Changed the production editor bounds from 540 by 360 to 760 by 400, allocated
+  a 336-pixel property rail, preserved a square 318-pixel transfer view, and
+  aligned the property group to the top grid instead of centring a sparse
+  control island.
+- Added generic component-ID automation discovery to `NodeEditorHost`; concrete
+  editors own their semantic IDs while the host and inspector only translate
+  component bounds.
+
+Adjustment budget for Pre Gain and Post Gain:
+
+| Field | Value |
+| --- | --- |
+| Domain | -45.0 to +45.0 dB |
+| Meaningful displayed/fine increment | 0.1 dB |
+| Ordinary keyboard increment | 1.0 dB |
+| `D` | 140 px at production size |
+| `R` | 900 fine increments |
+| Ordinary mapping | Absolute horizontal drag |
+| Fine mapping | Shift velocity drag; 0.1 dB Shift-arrow |
+| Alternate precision path | Editable signed dB field |
+| Indication | Exact centre hairline plus signed dB readout |
+
+Review evidence:
+
+- Production diff for this slice: 173 lines added and 48 removed. The largest
+  changed implementation is `WaveshaperEditorComponent.cpp` at 167 total
+  lines. Generic shared code gains no node-kind, parameter-ID, DSP, or undo
+  branches.
+- Reused unchanged: Curve gesture publication, one-gesture undo, transfer-curve
+  interaction/rasterization, preview invalidation, and oversampling DSP
+  behavior. The former private DSP gain helper is deleted.
+- Focused tests pass: authoritative effect mappings 63 assertions; Waveshaper
+  semantic editor geometry, entry, validation, and discrete values 17;
+  generic editor-host automation targeting 23; view bounds 33; downstream
+  traversal/audio 15; configuration publication 7.
+- Real-input automation:
+  `/private/tmp/cycle-v2-waveshaper-properties-report.json` has zero failed
+  commands and covers two drag updates, commit, visible dB update, model
+  publication, undo, Shift-drag, and reset. Filtered log:
+  `/private/tmp/cycle-v2-waveshaper-properties-logs.txt`.
+- Production screenshots: before
+  `/private/tmp/cycle-v2-waveshaper-properties-before.png`; after
+  `/private/tmp/cycle-v2-waveshaper-properties-after.png`. The after report has
+  zero failed commands; filtered log:
+  `/private/tmp/cycle-v2-waveshaper-properties-after-logs.txt`.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. No DSP or visualization hot-loop implementation changed;
+  DSP now calls the extracted scalar mapping only during configuration.

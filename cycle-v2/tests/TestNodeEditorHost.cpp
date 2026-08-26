@@ -10,6 +10,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -22,6 +23,7 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
@@ -46,7 +48,12 @@ struct EditorStats {
 
 class MockEditor final : public NodeEditor {
 public:
-    explicit MockEditor(EditorStats& statsToUse) : stats(statsToUse) { ++stats.creations; }
+    explicit MockEditor(EditorStats& statsToUse) : stats(statsToUse) {
+        ++stats.creations;
+        control.setComponentID("mock.control");
+        control.setBounds(5, 6, 20, 10);
+        editorComponent.addAndMakeVisible(control);
+    }
     ~MockEditor() override { ++stats.destructions; }
 
     Component& component() override { return editorComponent; }
@@ -64,6 +71,7 @@ public:
 private:
     EditorStats& stats;
     Component editorComponent;
+    TextButton control;
 };
 
 class MockFactory final : public NodeEditorFactory {
@@ -400,6 +408,10 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     REQUIRE(stats.creations == 1);
     REQUIRE(stats.bindings == 1);
     REQUIRE(host.component()->getBounds() == Rectangle<int>(10, 20, 300, 200));
+    const auto pointerTargets = host.pointerTargetsForAutomation();
+    REQUIRE(pointerTargets.size() == 1);
+    REQUIRE(pointerTargets.front().id == "mock.control");
+    REQUIRE(pointerTargets.front().bounds == Rectangle<float>(15.f, 26.f, 20.f, 10.f));
     DynamicObject automation;
     host.appendAutomationState(automation);
     REQUIRE((bool) automation.getProperty("mock"));
@@ -780,6 +792,66 @@ TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
             0)));
     REQUIRE(noise->getValue() == Catch::Approx(0.011));
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+}
+
+TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows",
+        "[cycle-v2][node-editor-host][waveshaper][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    WaveshaperEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "pre") {
+            parameter.value = "0.75";
+        } else if (parameter.id == "post") {
+            parameter.value = "0.25";
+        } else if (parameter.id == "aaFactor") {
+            parameter.value = "4";
+        }
+    }
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 720, 360);
+    editor.setNode(node);
+
+    const var state = editor.automationState();
+    const var panelBounds = state.getProperty("panelBounds", {});
+    REQUIRE(static_cast<double>(panelBounds.getProperty("width", {}))
+            == Catch::Approx(static_cast<double>(panelBounds.getProperty("height", {}))));
+    const var preLayout = state.getProperty("preGainLayout", {});
+    const var postLayout = state.getProperty("postGainLayout", {});
+    REQUIRE(preLayout.getProperty("display", {}).toString() == "+22.5 dB");
+    REQUIRE(postLayout.getProperty("display", {}).toString() == "-22.5 dB");
+    REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
+            >= PropertyControlMetrics::minimumUsableTrackWidth);
+    REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
+    auto* oversampling = dynamic_cast<ComboBox*>(
+            editor.findChildWithID("waveshaperEditor.oversampling"));
+    REQUIRE(oversampling != nullptr);
+    REQUIRE(oversampling->getNumItems() == 4);
+    REQUIRE(oversampling->getItemText(0) == "1x");
+    REQUIRE(oversampling->getItemText(1) == "2x");
+    REQUIRE(oversampling->getItemText(2) == "4x");
+    REQUIRE(oversampling->getItemText(3) == "8x");
+
+    auto* preGainValue = dynamic_cast<Label*>(
+            editor.findChildWithID("waveshaperEditor.preGain.value"));
+    REQUIRE(preGainValue != nullptr);
+    preGainValue->setText("+12 dB", sendNotificationSync);
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("preGain", {}))
+            == Catch::Approx(CycleDsp::waveshaperGainUnitValue(12.f)));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    preGainValue->setText("46 dB", sendNotificationSync);
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("preGain", {}))
+            == Catch::Approx(CycleDsp::waveshaperGainUnitValue(12.f)));
+    REQUIRE(delegate.events.isEmpty());
+    REQUIRE_FALSE(static_cast<bool>(editor.automationState()
+            .getProperty("preGainLayout", {})
+            .getProperty("valid", {})));
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",
