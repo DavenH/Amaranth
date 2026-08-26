@@ -86,7 +86,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
 
     g.setColour(kText);
-    g.setFont(FontOptions(14.f, Font::bold));
+    g.setFont(FontOptions(14.f));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
     g.setColour(kMutedText);
     g.setFont(FontOptions(10.f));

@@ -177,7 +177,7 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     CanvasUtilityDock::paintSurface(graphics, bounds);
     graphics.drawHorizontalLine(headerHeight(), 6.f, (float) getWidth() - 6.f);
     graphics.setColour(Colour(0xff8793a1));
-    graphics.setFont(FontOptions(10.f, Font::bold));
+    graphics.setFont(FontOptions(10.f));
     Rectangle<int> title = headerBounds();
     const int buttonWidth = jmin(28, title.getHeight() + 4);
     title.removeFromLeft(buttonWidth);

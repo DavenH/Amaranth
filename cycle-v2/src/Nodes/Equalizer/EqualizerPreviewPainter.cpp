@@ -110,7 +110,7 @@ void EqualizerPreviewPainter::paintResponse(
     const bool expandedMarkers = area.getWidth() >= 300.f;
     const float markerSize = expandedMarkers ? 12.f : 5.f;
     if (expandedMarkers) {
-        graphics.setFont(FontOptions(8.f, Font::bold));
+        graphics.setFont(FontOptions(8.f));
     }
     for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
         const Rectangle<float> marker = Rectangle<float>(markerSize, markerSize).withCentre(

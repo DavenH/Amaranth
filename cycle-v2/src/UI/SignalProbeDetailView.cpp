@@ -26,7 +26,7 @@ void paintHeader(
             header.getCentreY()
     }));
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(16.f, Font::bold));
+    graphics.setFont(FontOptions(16.f));
     graphics.drawText(
             String(state.ordinal),
             header.withTrimmedLeft(20.f),

@@ -102,7 +102,7 @@ public:
             return;
         }
         graphics.setColour(axisColour());
-        graphics.setFont(FontOptions(14.f, Font::bold));
+        graphics.setFont(FontOptions(14.f));
         graphics.drawText(axisLabel, 0, 0, 26, getHeight(), Justification::centred);
     }
 
@@ -200,7 +200,7 @@ public:
                 10.f,
                 1.f);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f, Font::bold));
+        graphics.setFont(FontOptions(18.f));
         graphics.drawText(
                 kind == NodeKind::ModulationTriple ? "MODULATION TRIPLE" : "MODULATION",
                 18,
