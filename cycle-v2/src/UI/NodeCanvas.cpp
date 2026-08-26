@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
@@ -8,13 +9,16 @@
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
-#include "NodeCanvas.h"
+#include "UI/NodeCanvas.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "NodeViewModule.h"
-#include "TransformCompactEditor.h"
+#include "UI/CanvasUtilityDock.h"
 
-#include "../Runtime/GraphAudioExecutor.h"
+#include "Graph/NodeParameterMap.h"
+#include "UI/NodeViewModule.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
+
+#include "Runtime/GraphAudioExecutor.h"
 
 namespace CycleV2 {
 
@@ -133,12 +137,42 @@ NodeCanvas::NodeCanvas() :
             AppSettings::ProbeEditRefreshPolicy) == 1
             ? ProbeRefreshMode::LiveLatest
             : ProbeRefreshMode::OnGestureCommit;
+    dockSplitRatio = jlimit(
+            0.2f,
+            0.8f,
+            settings.getGlobalSettingValue(AppSettings::GuideDockSplitPercent) / 100.f);
+    guideShelfState.minimized = settings.getGlobalSettingValue(
+            AppSettings::GuideShelfMinimized) != 0;
+    probeRailState.minimized = settings.getGlobalSettingValue(
+            AppSettings::SpyShelfMinimized) != 0;
     globalUnisonPreviewContext.voiceDurationSeconds = jlimit(
             CycleDsp::voiceLengthSeconds(0.f),
             CycleDsp::voiceLengthSeconds(1.f),
             settings.getGlobalSettingValue(
                     AppSettings::PreviewVoiceLengthMilliseconds) / 1000.0);
-    probeRailState.expanded = !graph.getSignalProbes().empty();
+    probeRailState.expanded = settings.getGlobalSettingValue(AppSettings::GuideSpyDockExpanded) != 0;
+    probeRailState.expandedHeight = jmax(
+            WorkspaceDock::minimumExpandedHeight,
+            (float) settings.getGlobalSettingValue(AppSettings::GuideSpyDockHeight));
+    dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
+            commands,
+            authoring,
+            graph,
+            settings,
+            canvasPresentation.probeRail(),
+            probeRailState,
+            guideShelfState,
+            probeDetailState,
+            dockSplitRatio,
+            editStatusMessage,
+            WorkspaceDockInteractionCallbacks {
+                    [this](const String& guideId) { openGuideEditor(guideId); },
+                    [this](const String& probeId) { openProbeDetail(probeId); },
+                    [this](const NodeCanvasAuthoringResult& result) { applyAuthoringResult(result); },
+                    [this]() { requestCanvasRepaint(); },
+                    [this]() { resized(); },
+                    [this]() { notifyOverlayOcclusionChanged(); }
+            });
     refreshCompiledState();
 
     setOpaque(true);
@@ -160,6 +194,9 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     const Node* expandedNode = queries.findNode(expandedNodeId);
     canvasPresentation.paint(g, presentationFrame());
+    if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
+        openGLContext.triggerRepaint();
+    }
     if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
         VoiceContextCompactEditor::paintExpanded(
                 g,
@@ -171,8 +208,11 @@ void NodeCanvas::paint(Graphics& g) {
 
 void NodeCanvas::resized() {
     viewport.setBounds(canvasContentBounds());
+    if (guideEditor != nullptr && guideEditor->isVisible()) {
+        guideEditor->setBounds(
+                GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+    }
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -182,11 +222,20 @@ void NodeCanvas::visibilityChanged() {
 
 void NodeCanvas::focusLost(FocusChangeType) {
     probeRailState.selectedProbeId = {};
+    guideShelfState.hoveredGuideId = {};
+    probeRailState.hoveredProbeId = {};
+    dockInteraction->clearFocus();
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     updateHoverAt(event.position);
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::mouseExit(const MouseEvent&) {
+    guideShelfState.hoveredGuideId = {};
+    probeRailState.hoveredProbeId = {};
     requestCanvasRepaint();
 }
 
@@ -198,9 +247,29 @@ void NodeCanvas::updateHoverAt(Point<float> position) {
             viewport,
             presentation.revision(),
             document.revision());
+    guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
+            position,
+            graph,
+            getLocalBounds().toFloat(),
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (guideShelfState.hoveredGuideId.isEmpty()) {
+        const auto hit = NodeCanvasHitTester().hitTest(scene, position);
+        if (hit.has_value() && hit->nodeId.isNotEmpty()) {
+            const auto& guides = graph.guideIdsForTargetNode(hit->nodeId);
+            if (!guides.empty()) {
+                guideShelfState.hoveredGuideId = guides.front();
+            }
+        }
+    }
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
-            getLocalBounds().toFloat(),
+            GuideCurveShelf::spyWorkspace(
+                    getLocalBounds().toFloat(),
+                    dockSplitRatio,
+                    guideShelfState.minimized,
+                    probeRailState.minimized),
             graph,
             probeRailState);
     if (hovered.isEmpty()) {
@@ -234,12 +303,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     activeTrimeshVertexIndex = -1;
 
     const Rectangle<float> workspace = getLocalBounds().toFloat();
-    SignalProbeRail& probeRail = canvasPresentation.probeRail();
+    if (dockInteraction->mouseDown(event, workspace)) {
+        return;
+    }
     if (probeDetailState.isOpen()) {
         const Rectangle<float> detail = SignalProbeDetailView::boundsFor(canvasContentBounds());
         if (SignalProbeDetailView::closeBounds(detail).contains(event.position)) {
             probeDetailState.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
             return;
         }
@@ -247,58 +318,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
-    if (probeRail.refreshModeBoundsFor(workspace, probeRailState).contains(event.position)) {
-        probeRailState.refreshMode = probeRailState.refreshMode == ProbeRefreshMode::LiveLatest
-                ? ProbeRefreshMode::OnGestureCommit
-                : ProbeRefreshMode::LiveLatest;
-        settings.getGlobalSetting(AppSettings::ProbeEditRefreshPolicy) =
-                probeRailState.refreshMode == ProbeRefreshMode::LiveLatest ? 1 : 0;
-        requestCanvasRepaint();
-        return;
-    }
-    if (probeRail.collapseHandleFor(workspace, probeRailState).contains(event.position)) {
-        probeRailState.expanded = !probeRailState.expanded;
-        if (!probeRailState.expanded) {
-            probeDetailState.close();
-            notifyOverlayPresentationChanged();
-        }
-        resized();
-        return;
-    }
-    if (probeRail.resizeHandleFor(workspace, probeRailState).contains(event.position)) {
-        resizingProbeRail = true;
-        probeRailResizeStartHeight = probeRailState.expandedHeight;
-        probeRailResizeStartY = event.position.y;
-        return;
-    }
-    const String closeProbe = probeRail.closeProbeAt(
-            event.position, workspace, graph, probeRailState);
-    if (closeProbe.isNotEmpty()) {
-        applyAuthoringResult(authoring.removeSignalProbe(closeProbe));
-        if (probeRailState.selectedProbeId == closeProbe) {
-            probeRailState.selectedProbeId = {};
-        }
-        if (probeDetailState.probeId == closeProbe) {
-            probeDetailState.close();
-            notifyOverlayPresentationChanged();
-        }
-        return;
-    }
-    const String railProbe = probeRail.probeAt(
-            event.position, workspace, graph, probeRailState);
-    if (railProbe.isNotEmpty()) {
-        probeRailState.selectedProbeId = railProbe;
-        if (event.getNumberOfClicks() >= 2) {
-            openProbeDetail(railProbe);
-        }
-        requestCanvasRepaint();
-        return;
-    }
-    probeRailState.selectedProbeId = {};
-    if (probeRail.boundsFor(workspace, probeRailState).contains(event.position)) {
-        requestCanvasRepaint();
-        return;
-    }
+    dockInteraction->clearFocus();
 
     if (expandedNodeId.isNotEmpty()) {
         const Node* expandedNode = queries.findNode(expandedNodeId);
@@ -308,7 +328,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 event.position);
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
         } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
             const auto control = click.voiceContextEdit->control;
             if (control == VoiceContextEdit::Control::VoiceLength) {
@@ -402,7 +422,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             viewport,
             presentation.revision(),
             document.revision());
-    const String markerProbe = probeRail.markerProbeAt(event.position, graph, scene);
+    const String markerProbe = canvasPresentation.probeRail().markerProbeAt(
+            event.position, graph, scene);
     if (markerProbe.isNotEmpty()) {
         if (event.mods.isPopupMenu()) {
             const int edgeIndex = hitRouter.edgeAt(scene, event.position);
@@ -451,7 +472,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (event.getNumberOfClicks() >= 2 && hasExpandedEditor(hitNode->kind)) {
             expandedNodeId = expandedNodeId == hitNode->id ? String() : hitNode->id;
             editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
         }
 
         requestCanvasRepaint();
@@ -519,13 +540,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
 
-    if (resizingProbeRail) {
-        const float maximumHeight = getHeight() * 0.4f;
-        probeRailState.expandedHeight = jlimit(
-                SignalProbeRail::minimumExpandedHeight,
-                maximumHeight,
-                probeRailResizeStartHeight + probeRailResizeStartY - event.position.y);
-        resized();
+    if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
     if (draggingProbeId.isNotEmpty()) {
@@ -547,7 +562,6 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
 
     if (const auto* pan = std::get_if<PanDragUpdate>(&update)) {
         viewport.setTransform(pan->pan, viewport.getZoom());
-        notifyOverlayPresentationChanged();
     } else if (const auto* nodeDrag = std::get_if<NodeDragUpdate>(&update)) {
         if (nodeDrag->beginTransaction) {
             authoring.beginNodeMoveGesture();
@@ -578,8 +592,7 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         requestCanvasRepaint();
         return;
     }
-    if (resizingProbeRail) {
-        resizingProbeRail = false;
+    if (dockInteraction->mouseUp()) {
         return;
     }
     const auto& scene = sceneBuilder.build(
@@ -631,15 +644,41 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     const Rectangle<float> workspace = getLocalBounds().toFloat();
-    if (probeRailState.expanded
-            && SignalProbeRail::boundsFor(workspace, probeRailState).contains(event.position)) {
+    const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    if (!guideShelfState.minimized && guideShelf.contains(event.position)) {
+        const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
+                ? wheel.deltaX
+                : wheel.deltaY;
+        guideShelfState.horizontalOffset = jlimit(
+                0.f,
+                GuideCurveShelf::maximumHorizontalOffset(
+                        workspace,
+                        probeRailState,
+                        dockSplitRatio,
+                        guideShelfState,
+                        (int) graph.getGuideCurves().size()),
+                guideShelfState.horizontalOffset - wheelDelta * 420.f);
+        requestCanvasRepaint();
+        return;
+    }
+    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
+            workspace,
+            dockSplitRatio,
+            guideShelfState.minimized,
+            probeRailState.minimized);
+    if (probeRailState.expanded && !probeRailState.minimized
+            && SignalProbeRail::boundsFor(spyWorkspace, probeRailState).contains(event.position)) {
         const float wheelDelta = std::abs(wheel.deltaX) > std::abs(wheel.deltaY)
                 ? wheel.deltaX
                 : wheel.deltaY;
         probeRailState.horizontalOffset = jlimit(
                 0.f,
                 SignalProbeRail::maximumHorizontalOffset(
-                        workspace,
+                        spyWorkspace,
                         (int) graph.getSignalProbes().size()),
                 probeRailState.horizontalOffset - wheelDelta * 420.f);
         requestCanvasRepaint();
@@ -656,13 +695,11 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
     constexpr float panScale = 720.f;
     viewport.panBy(Point<float>(wheel.deltaX * panScale, wheel.deltaY * panScale));
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     viewport.zoomAround(event.position, scaleFactor);
-    notifyOverlayPresentationChanged();
     requestCanvasRepaint();
 }
 
@@ -680,13 +717,30 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     }
 
     if (key == KeyPress::escapeKey) {
+        if (expandedGuideId.isNotEmpty()) {
+            closeGuideEditor();
+            return true;
+        }
         if (probeDetailState.isOpen()) {
             probeDetailState.close();
-            notifyOverlayPresentationChanged();
+            notifyOverlayOcclusionChanged();
+            requestCanvasRepaint();
+            return true;
+        }
+        if (expandedNodeId.isNotEmpty()) {
+            closeNodeEditor();
+            return true;
+        }
+        if (dockInteraction->focus().target != WorkspaceDockFocusTarget::None) {
+            dockInteraction->clearFocus();
             requestCanvasRepaint();
             return true;
         }
         return clearSelection();
+    }
+
+    if (handleDockNavigationKey(key)) {
+        return true;
     }
 
     if (key == KeyPress::deleteKey || key == KeyPress::backspaceKey) {
@@ -722,11 +776,22 @@ void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
         OpenGLHelpers::clear(kCanvasBackground);
-        canvasPresentation.renderOpenGL(
+        const bool guideSnapshotUpdated = canvasPresentation.renderOpenGL(
                 renderer,
                 presentationFrame(),
                 (float) openGLContext.getRenderingScale());
+        if (guideSnapshotUpdated) {
+            Component::SafePointer<NodeCanvas> safeThis(this);
+            MessageManager::callAsync([safeThis]() {
+                if (safeThis != nullptr) {
+                    safeThis->requestCanvasRepaint();
+                }
+            });
+        }
         editorCoordinator.renderOpenGL((float) openGLContext.getRenderingScale());
+        if (guideEditor != nullptr && guideEditor->isVisible()) {
+            guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
+        }
     } else {
         OpenGLHelpers::clear(kCanvasBackground);
     }
@@ -734,6 +799,9 @@ void NodeCanvas::renderOpenGL() {
 
 void NodeCanvas::openGLContextClosing() {
     editorCoordinator.releaseOpenGLResources();
+    if (guideEditorWidget != nullptr) {
+        guideEditorWidget->releaseSharedGlResources();
+    }
 
     renderer.shutdown();
 }
@@ -822,7 +890,10 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             spliceTargetEdgeIndex,
             kUseGlCanvasUnderlay,
             workspace,
+            guideShelfState,
+            dockSplitRatio,
             probeRailState,
+            dockInteraction->focus(),
             probeDetailState,
             globalUnisonPreviewContext
     };
@@ -834,7 +905,19 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 }
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
-    return SignalProbeRail::contentBoundsFor(getLocalBounds().toFloat(), probeRailState);
+    return workspaceDockLayout().content;
+}
+
+WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
+    return WorkspaceDock::layout(
+            getLocalBounds().toFloat(),
+            {
+                    probeRailState.expanded,
+                    guideShelfState.minimized,
+                    probeRailState.minimized,
+                    probeRailState.expandedHeight,
+                    dockSplitRatio
+            });
 }
 
 float NodeCanvas::tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const {
@@ -959,6 +1042,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             midiNote);
     if (!preview.has_value()) {
         probeDetailState.close();
+        notifyOverlayOcclusionChanged();
         return;
     }
 
@@ -970,7 +1054,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             SignalProbeRail::ordinalForProbe(graph, probeId),
             midiNote,
             resolution);
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
 }
 
 void NodeCanvas::refreshProbeDetail() {
@@ -999,11 +1083,14 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         editorCoordinator.clearPreviewCache();
 
         if (document.lastChange().probesChanged) {
-            probeRailState.expanded = !graph.getSignalProbes().empty();
             probeRailState.horizontalOffset = jmin(
                     probeRailState.horizontalOffset,
                     SignalProbeRail::maximumHorizontalOffset(
-                            getLocalBounds().toFloat(),
+                            GuideCurveShelf::spyWorkspace(
+                                    getLocalBounds().toFloat(),
+                                    dockSplitRatio,
+                                    guideShelfState.minimized,
+                                    probeRailState.minimized),
                             (int) graph.getSignalProbes().size()));
             if (SignalProbeRail::ordinalForProbe(graph, probeDetailState.probeId) == 0) {
                 probeDetailState.close();
@@ -1017,7 +1104,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     }
     if (result.effects.editorBindingChanged) {
         editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
-        notifyOverlayPresentationChanged();
+        notifyOverlayOcclusionChanged();
     }
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
@@ -1027,25 +1114,79 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
 }
 
 NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
-    return {
-            selectedNodeId,
-            expandedNodeId,
-            editStatusMessage,
-            selectedEdgeIndex,
-            globalUnisonPreviewContext.voiceDurationSeconds,
-            probeRailState.refreshMode,
-            SignalProbeRail::refreshModeBoundsFor(
-                    getLocalBounds().toFloat(),
-                    probeRailState),
-            probeDetailState.probeId,
-            probeDetailState.resolution,
-            probeDetailState.renderResult.gridColumns,
-            probeDetailState.renderResult.gridRows,
-            probeDetailState.isOpen()
-                    ? SignalProbeDetailView::boundsFor(canvasContentBounds())
-                    : Rectangle<float> {},
-            canvasContentBounds()
-    };
+    NodeCanvasAutomationPresentation result;
+    result.selectedNodeId = selectedNodeId;
+    result.expandedNodeId = expandedNodeId;
+    result.editStatusMessage = editStatusMessage;
+    result.selectedEdgeIndex = selectedEdgeIndex;
+    result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
+    result.probeRefreshMode = probeRailState.refreshMode;
+    result.probeDetailId = probeDetailState.probeId;
+    result.probeDetailResolution = probeDetailState.resolution;
+    result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
+    result.probeDetailRows = probeDetailState.renderResult.gridRows;
+    result.probeDetailBounds = probeDetailState.isOpen()
+            ? SignalProbeDetailView::boundsFor(canvasContentBounds())
+            : Rectangle<float> {};
+    result.canvasContentBounds = canvasContentBounds();
+
+    const Rectangle<float> workspace = getLocalBounds().toFloat();
+    const WorkspaceDockLayout workspaceDock = workspaceDockLayout();
+    const Rectangle<float> spyWorkspace = GuideCurveShelf::spyWorkspace(
+            workspace,
+            dockSplitRatio,
+            guideShelfState.minimized,
+            probeRailState.minimized);
+    result.probeRefreshModeBounds = SignalProbeRail::refreshModeBoundsFor(
+            spyWorkspace,
+            probeRailState);
+
+    auto& dock = result.guideDock;
+    dock.expanded = probeRailState.expanded;
+    dock.guidesMinimized = guideShelfState.minimized;
+    dock.spiesMinimized = probeRailState.minimized;
+    dock.expandedHeight = probeRailState.expandedHeight;
+    dock.splitRatio = dockSplitRatio;
+    dock.guideHorizontalOffset = guideShelfState.horizontalOffset;
+    dock.spyHorizontalOffset = probeRailState.horizontalOffset;
+    dock.selectedGuideId = guideShelfState.selectedGuideId;
+    dock.hoveredGuideId = guideShelfState.hoveredGuideId;
+    dock.keyboardFocusTarget = WorkspaceDockKeyboardNavigation::targetName(
+            dockInteraction->focus().target);
+    dock.keyboardFocusItemId = dockInteraction->focus().itemId;
+    dock.expandedGuideId = expandedGuideId;
+    dock.dockBounds = workspaceDock.dock;
+    dock.guideShelfBounds = workspaceDock.leftShelf;
+    dock.spyShelfBounds = workspaceDock.rightShelf;
+    dock.dividerBounds = workspaceDock.divider;
+    dock.collapseBounds = workspaceDock.collapseHandle;
+    dock.resizeBounds = workspaceDock.resizeHandle;
+    dock.guideMinimizeBounds = GuideCurveShelf::minimizeButtonBounds(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    dock.spyMinimizeBounds = SignalProbeRail::minimizeButtonBoundsFor(spyWorkspace, probeRailState);
+    dock.addGuideBounds = GuideCurveShelf::addButtonBounds(
+            workspace,
+            probeRailState,
+            dockSplitRatio,
+            guideShelfState);
+    dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
+            ? guideEditor->getBounds().toFloat()
+            : Rectangle<float> {};
+    for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
+        dock.guideTiles.push_back({
+                graph.getGuideCurves()[(size_t) index].id,
+                GuideCurveShelf::tileBoundsFor(
+                        workspace,
+                        probeRailState,
+                        dockSplitRatio,
+                        guideShelfState,
+                        index)
+        });
+    }
+    return result;
 }
 
 void NodeCanvas::scheduleCompiledStateRefresh() {
@@ -1113,6 +1254,67 @@ bool NodeCanvas::deleteEdgeForAutomation(int edgeIndex) {
     return applyAuthoringResult(automation.deleteEdge(edgeIndex));
 }
 
+bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
+    if (!commands.removeGuideCurve(guideId).succeeded()) {
+        return false;
+    }
+
+    if (guideShelfState.selectedGuideId == guideId) {
+        guideShelfState.selectedGuideId = {};
+    }
+    if (expandedGuideId == guideId) {
+        closeGuideEditor();
+    }
+    editStatusMessage = "Guide Curve deleted";
+    requestCanvasRepaint();
+    return true;
+}
+
+bool NodeCanvas::undoForAutomation() {
+    const auto result = authoring.undo();
+    applyAuthoringResult(result);
+    return result.succeeded;
+}
+
+bool NodeCanvas::setGuideParameterForAutomation(
+        const String& guideId,
+        const String& parameterId,
+        const String& value) {
+    const GuideCurveResource* guide = document.graph().findGuideCurve(guideId);
+    if (guide == nullptr || guide->model == nullptr) {
+        return false;
+    }
+
+    std::vector<NodeParameter> controls {
+            { "enabled", "Enabled", guide->enabled ? "1" : "0" },
+            { "noise", "Noise", String(guide->noise) },
+            { "dcOffset", "DC Offset", String(guide->dcOffset) },
+            { "phase", "Phase", String(guide->phase) }
+    };
+    const auto found = std::find_if(controls.begin(), controls.end(), [&](const auto& control) {
+        return control.id == parameterId;
+    });
+    if (found == controls.end()) {
+        return false;
+    }
+    found->value = value;
+
+    commands.beginTransientEdit();
+    const GraphEditResult result = commands.publishGuideCurveState({
+            guideId,
+            guide->model->revision(),
+            guide->model,
+            controls
+    });
+    if (!result.succeeded()) {
+        commands.cancelTransientEdit();
+        return false;
+    }
+    commands.commitTransientEdit();
+    requestCanvasRepaint();
+    return true;
+}
+
 bool NodeCanvas::setNodeParameterForAutomation(
         const String& nodeId,
         const String& parameterId,
@@ -1178,19 +1380,14 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
-Rectangle<float> NodeCanvas::visibleWorldBoundsForOverlay() const {
-    return viewport.toWorld(canvasContentBounds());
-}
-
-Rectangle<int> NodeCanvas::boundsForWorldOverlay(Rectangle<float> worldBounds) const {
-    return viewport.toScreen(worldBounds).toNearestInt();
-}
-
-Point<float> NodeCanvas::worldPositionForOverlay(Point<float> canvasPosition) const {
-    return viewport.toWorld(canvasPosition);
+Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
+    return CanvasUtilityDock::layout(canvasContentBounds()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
+    if (guideEditor != nullptr && guideEditor->isVisible()) {
+        return guideEditor->getBounds().toFloat();
+    }
     if (probeDetailState.isOpen()) {
         return SignalProbeDetailView::boundsFor(canvasContentBounds());
     }
@@ -1201,34 +1398,14 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
             : Rectangle<float> {};
 }
 
-void NodeCanvas::setOverlayPresentationChangedCallback(std::function<void()> callback) {
-    overlayPresentationChanged = std::move(callback);
+void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callback) {
+    overlayOcclusionChanged = std::move(callback);
 }
 
-void NodeCanvas::notifyOverlayPresentationChanged() {
-    if (overlayPresentationChanged) {
-        overlayPresentationChanged();
+void NodeCanvas::notifyOverlayOcclusionChanged() {
+    if (overlayOcclusionChanged) {
+        overlayOcclusionChanged();
     }
-}
-
-std::optional<Rectangle<float>> NodeCanvas::performanceKeyboardBounds() const {
-    return commands.editingGraph().getPerformanceKeyboardBounds();
-}
-
-void NodeCanvas::beginPerformanceKeyboardMove() {
-    commands.beginCompoundEdit();
-}
-
-void NodeCanvas::movePerformanceKeyboard(Rectangle<float> worldBounds) {
-    commands.setPerformanceKeyboardBounds(worldBounds);
-}
-
-void NodeCanvas::endPerformanceKeyboardMove() {
-    commands.commitCompoundEdit();
-}
-
-void NodeCanvas::storePerformanceKeyboardBounds(Rectangle<float> worldBounds) {
-    commands.setPerformanceKeyboardBounds(worldBounds);
 }
 
 File NodeCanvas::snapshotFile() const {
@@ -1244,9 +1421,8 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        clearDockEphemeralState();
         probeDetailState.close();
-        probeRailState.expanded = !graph.getSignalProbes().empty();
-        probeRailState.horizontalOffset = 0.f;
         resized();
     }
     return loaded;
@@ -1261,6 +1437,11 @@ bool NodeCanvas::saveSnapshot() {
 bool NodeCanvas::loadSnapshot() {
     const auto result = authoring.loadSnapshot(snapshotFile());
     applyAuthoringResult(result);
+    if (result.succeeded) {
+        clearDockEphemeralState();
+        probeDetailState.close();
+        resized();
+    }
     return result.handled;
 }
 
@@ -1290,10 +1471,17 @@ bool NodeCanvas::clearSelection() {
     const bool cleared = authoring.clearSelection();
     if (cleared) {
         editorCoordinator.updateHost(nullptr, canvasContentBounds());
-        notifyOverlayPresentationChanged();
         requestCanvasRepaint();
     }
     return cleared;
+}
+
+bool NodeCanvas::handleDockNavigationKey(const KeyPress& key) {
+    return dockInteraction->keyPressed(key, getLocalBounds().toFloat());
+}
+
+void NodeCanvas::clearDockEphemeralState() {
+    dockInteraction->clearEphemeralState();
 }
 
 bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
@@ -1310,7 +1498,106 @@ bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {
 
 void NodeCanvas::closeNodeEditor() {
     editorCoordinator.close();
-    notifyOverlayPresentationChanged();
+    notifyOverlayOcclusionChanged();
+}
+
+void NodeCanvas::openGuideEditor(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr) {
+        return;
+    }
+
+    if (guideEditor == nullptr) {
+        guideEditorWidget = std::make_unique<CurveEditorWidget>(true);
+        guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
+        guideEditor->setDelegate(this);
+        guideEditor->setTitle("Guide Curve");
+        addAndMakeVisible(*guideEditor);
+    }
+
+    expandedNodeId = {};
+    editorCoordinator.close();
+    expandedGuideId = guideId;
+    guideEditor->setGuideResource(*guide);
+    guideEditor->setBounds(
+            GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
+    guideEditor->setVisible(true);
+    guideEditor->toFront(false);
+    notifyOverlayOcclusionChanged();
+}
+
+void NodeCanvas::closeGuideEditor() {
+    if (guideTransactionBaseRevision.has_value()) {
+        commands.cancelTransientEdit();
+        guideTransactionBaseRevision.reset();
+        refreshCompiledStateAsync();
+    }
+    expandedGuideId = {};
+    if (guideEditor != nullptr) {
+        guideEditor->setVisible(false);
+    }
+    notifyOverlayOcclusionChanged();
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::closeCurveEditor() {
+    closeGuideEditor();
+}
+
+void NodeCanvas::repaintCurveEditorOpenGL() {
+    openGLContext.triggerRepaint();
+    if (guideEditor != nullptr) {
+        guideEditor->repaint();
+    }
+}
+
+bool NodeCanvas::publishCurveState(
+        NodeModelStatePtr model,
+        const std::vector<NodeParameter>& controls) {
+    if (expandedGuideId.isEmpty()) {
+        return false;
+    }
+    const GuideCurveResource* durableGuide = document.graph().findGuideCurve(expandedGuideId);
+    if (durableGuide == nullptr) {
+        return false;
+    }
+    const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
+            durableGuide->model != nullptr ? durableGuide->model->revision() : 0);
+    const auto result = commands.publishGuideCurveState({
+            expandedGuideId,
+            durableBaseRevision,
+            std::move(model),
+            controls
+    });
+    if (!result.succeeded()) {
+        return false;
+    }
+    if (probeRailState.refreshMode == ProbeRefreshMode::LiveLatest) {
+        presentation.refresh(
+                commands.editingGraph(),
+                document.revision(),
+                commands.transientChanges());
+    }
+    requestCanvasRepaint();
+    return true;
+}
+
+void NodeCanvas::beginCurveTransaction() {
+    const GuideCurveResource* guide = document.graph().findGuideCurve(expandedGuideId);
+    if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
+        return;
+    }
+    guideTransactionBaseRevision = guide->model != nullptr ? guide->model->revision() : 0;
+    commands.beginTransientEdit();
+}
+
+void NodeCanvas::commitCurveTransaction() {
+    if (!guideTransactionBaseRevision.has_value()) {
+        return;
+    }
+    commands.commitTransientEdit();
+    guideTransactionBaseRevision.reset();
+    refreshCompiledStateAsync();
 }
 
 void NodeCanvas::repaintNodeEditor(bool openGl) {
@@ -1384,8 +1671,8 @@ void NodeCanvas::commitNodeEditorLocalState(
             documentRevision);
 }
 
-Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {
-    return &editorCoordinator.previewResources().effect2DWidget(node);
+CurveEditorWidget* NodeCanvas::curveEditorWidget(const Node& node) {
+    return &editorCoordinator.previewResources().curveEditorWidget(node);
 }
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {

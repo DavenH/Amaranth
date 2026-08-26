@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "pointer", "event": "click", "targetId": "guideShelf.add" },
+    { "command": "assertState", "path": "guideCount", "equals": 4 },
+    { "command": "assertState", "path": "guides.3.noise", "equals": 0 },
+    { "command": "assertState", "path": "guides.3.dcOffset", "equals": 0 },
+    { "command": "assertState", "path": "guides.3.phase", "equals": 0 },
+    { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1" },
+    { "command": "assertState", "path": "expandedGuideId", "equals": "guide1" },
+    { "command": "assertState", "path": "guideDock.guideEditorBounds.height", "equals": 560 },
+    { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "assertState", "path": "expandedGuideId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "guideTile" },
+    { "command": "key", "area": "canvas", "key": "down" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "spyTile" },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "probeDetailId", "equals": "probe" },
+    { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "assertState", "path": "probeDetailId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "spyTile" },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-guide-editor-compact.png"
+    }
+  ],
+  "quit": true
+}

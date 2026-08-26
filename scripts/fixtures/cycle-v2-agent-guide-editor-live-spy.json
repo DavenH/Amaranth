@@ -1,0 +1,20 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "pointer", "event": "click", "targetId": "probeRefreshMode" },
+    { "command": "assertState", "path": "probeRefreshMode", "equals": "Live" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1" },
+    { "command": "assertState", "path": "expandedGuideId", "equals": "guide1" },
+    { "command": "setGuideParameter", "guideId": "guide1", "parameterId": "noise", "value": "0.9" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "assertState", "path": "guides.0.noise", "equals": 0.9 },
+    { "command": "assertState", "path": "probePreviewStats.0.sampleCount", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "probePreviewStats.0.absoluteSum", "op": "greaterThan", "value": 0 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

@@ -40,3 +40,19 @@ Context:
 
 Current status: open; reconcile the bundled Stengah phase-layer state and
 spectral materialization parity before restoring this full-suite gate.
+
+## Addressed: Curve FX processor tests omitted required model state
+
+Context:
+
+- The complete `CycleV2_tests "[cycle-v2]"` run on 2026-08-21 reports eight
+  failures at `TestNodeAudioProcessor.cpp:206`: the Waveshaper and IR tests
+  call `NodeDspConfigurationFactory::create` with no typed model and receive
+  `nullptr`.
+- The failures cover the existing Waveshaper/IR processor tests, not Guide
+  resources; focused Guide graph tests and the migrated Baroque Flute guide
+  runtime test pass.
+
+Current status: addressed on 2026-08-21 by supplying canonical typed
+Waveshaper/IR models in the shared fixture helper; the full Cycle V2 suite now
+passes.

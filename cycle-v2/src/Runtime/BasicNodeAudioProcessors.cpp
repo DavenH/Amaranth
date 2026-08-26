@@ -2,10 +2,10 @@
 
 #include <algorithm>
 
-#include "AudioProcessContextUtils.h"
-#include "AudioProcessorFactories.h"
-#include "BinarySignalProcessor.h"
-#include "NodeAudioProcessorSupport.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessorFactories.h"
+#include "Runtime/BinarySignalProcessor.h"
+#include "Runtime/NodeAudioProcessorSupport.h"
 
 namespace CycleV2 {
 
@@ -236,10 +236,6 @@ std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor() {
 
 std::unique_ptr<NodeAudioProcessor> createVoiceContextAudioProcessor() {
     return std::make_unique<SilentAudioProcessor>(AudioModuleRole::VoiceContext);
-}
-
-std::unique_ptr<NodeAudioProcessor> createGuideCurveAudioProcessor() {
-    return std::make_unique<SilentAudioProcessor>(AudioModuleRole::GuideCurve);
 }
 
 }

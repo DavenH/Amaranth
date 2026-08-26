@@ -2,9 +2,9 @@
 
 #include <JuceHeader.h>
 
-#include "../App/StandaloneAudioEngine.h"
-#include "NodeCanvas.h"
-#include "PerformanceKeyboard.h"
+#include "App/StandaloneAudioEngine.h"
+#include "UI/NodeCanvas.h"
+#include "UI/PerformanceKeyboard.h"
 
 namespace CycleV2 {
 
@@ -32,6 +32,12 @@ public:
             const String& destPortId);
     bool deleteNodeForAutomation(const String& nodeId);
     bool deleteEdgeForAutomation(int edgeIndex);
+    bool deleteGuideCurveForAutomation(const String& guideId);
+    bool undoForAutomation();
+    bool setGuideParameterForAutomation(
+            const String& guideId,
+            const String& parameterId,
+            const String& value);
     bool setNodeParameterForAutomation(
             const String& nodeId,
             const String& parameterId,
@@ -63,10 +69,6 @@ private:
     NodeCanvas canvas;
     MidiKeyboardState keyboardState;
     PerformanceKeyboardPanel keyboard;
-    Rectangle<float> performanceWorldBounds;
-    uint64_t performanceMoveCount {};
-    uint64_t performanceLayoutViewportRevision {};
-    bool performanceMoveActive {};
     bool performanceOccludedByExpandedEditor {};
     uint64_t publishedPlanRevision {};
     uint64_t publishedDevicePreparationRevision {};

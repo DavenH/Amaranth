@@ -2,15 +2,17 @@
 
 #include <JuceHeader.h>
 
-#include "NodeCanvasScene.h"
-#include "NodePreviewRenderer.h"
-#include "../Graph/GraphRenderSemanticResolver.h"
-#include "../Runtime/NodeUpdateGraph.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/WorkspaceDock.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
 
 struct SignalProbeRailState {
     bool expanded { true };
+    bool minimized {};
     float expandedHeight { 190.f };
     float horizontalOffset {};
     String selectedProbeId;
@@ -22,8 +24,8 @@ class SignalProbeRail {
 public:
     explicit SignalProbeRail(NodePreviewRenderer& rendererToUse) : renderer(rendererToUse) {}
 
-    static constexpr float collapsedHeight = 28.f;
-    static constexpr float minimumExpandedHeight = 120.f;
+    static constexpr float collapsedHeight = WorkspaceDock::collapsedHeight;
+    static constexpr float minimumExpandedHeight = WorkspaceDock::minimumExpandedHeight;
 
     static Rectangle<float> boundsFor(
             Rectangle<float> workspace,
@@ -40,22 +42,21 @@ public:
     static Rectangle<float> refreshModeBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state);
+    static Rectangle<float> minimizeButtonBoundsFor(
+            Rectangle<float> workspace,
+            const SignalProbeRailState& state);
     static Rectangle<float> tileBoundsFor(
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             int tileIndex);
     static float maximumHorizontalOffset(Rectangle<float> workspace, int probeCount);
     static int ordinalForProbe(const NodeGraph& graph, const String& probeId);
+    static std::vector<String> orderedProbeIds(const NodeGraph& graph);
     static NodeRenderSemantic renderSemanticForProbe(
             const NodeGraph& graph,
             const String& probeId);
 
     String probeAt(
-            Point<float> position,
-            Rectangle<float> workspace,
-            const NodeGraph& graph,
-            const SignalProbeRailState& state) const;
-    String closeProbeAt(
             Point<float> position,
             Rectangle<float> workspace,
             const NodeGraph& graph,
@@ -76,7 +77,8 @@ public:
             const NodeGraph& graph,
             const GraphPreviewResult& previews,
             Rectangle<float> workspace,
-            const SignalProbeRailState& state);
+            const SignalProbeRailState& state,
+            const WorkspaceDockFocus& focus);
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);
@@ -92,7 +94,6 @@ private:
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);
-    static Rectangle<float> closeBounds(Rectangle<float> tile);
     const GraphPreviewResult::SignalProbePreview* previewFor(
             const GraphPreviewResult& previews,
             const String& probeId) const;

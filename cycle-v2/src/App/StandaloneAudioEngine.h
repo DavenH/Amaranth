@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-#include "../Runtime/RealtimeGraphRenderer.h"
+#include "Runtime/RealtimeGraphRenderer.h"
 
 namespace CycleV2 {
 

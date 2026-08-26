@@ -2,8 +2,8 @@
 
 #include <optional>
 
-#include "NodePortGeometry.h"
-#include "../Graph/GraphEditor.h"
+#include "UI/NodePortGeometry.h"
+#include "Graph/GraphEditor.h"
 
 namespace CycleV2 {
 

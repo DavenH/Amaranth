@@ -1,4 +1,4 @@
-#include "FftGridwiseDsp.h"
+#include "Nodes/FFT/FftGridwiseDsp.h"
 
 namespace CycleV2 {
 

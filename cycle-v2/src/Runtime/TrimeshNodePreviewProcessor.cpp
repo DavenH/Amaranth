@@ -3,12 +3,12 @@
 #include <Curve/Mesh/Vertex.h>
 #include <Obj/MorphPosition.h>
 
-#include "PreviewProcessorFactories.h"
+#include "Runtime/PreviewProcessorFactories.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Trimesh/PreparedTrimeshTopology.h"
-#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Model/PreparedTrimeshTopology.h"
+#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 
 #include <algorithm>
 

@@ -1,4 +1,4 @@
-#include "GraphDomainResolver.h"
+#include "Graph/GraphDomainResolver.h"
 
 #include <algorithm>
 #include <deque>

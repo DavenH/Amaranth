@@ -2,13 +2,44 @@
 
 #include <JuceHeader.h>
 
-#include "../Graph/GraphDocument.h"
-#include "../Runtime/GraphPresentationModel.h"
-#include "NodeCanvasScene.h"
-#include "NodeCanvasViewport.h"
-#include "NodeEditorHost.h"
+#include "Graph/GraphDocument.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
+
+struct GuideTileAutomationPresentation {
+    juce::String guideId;
+    juce::Rectangle<float> bounds;
+};
+
+struct GuideDockAutomationPresentation {
+    bool expanded { true };
+    bool guidesMinimized {};
+    bool spiesMinimized {};
+    float expandedHeight { 190.f };
+    float splitRatio { 0.5f };
+    float guideHorizontalOffset {};
+    float spyHorizontalOffset {};
+    juce::String selectedGuideId;
+    juce::String hoveredGuideId;
+    juce::String keyboardFocusTarget;
+    juce::String keyboardFocusItemId;
+    juce::String expandedGuideId;
+    juce::Rectangle<float> dockBounds;
+    juce::Rectangle<float> guideShelfBounds;
+    juce::Rectangle<float> spyShelfBounds;
+    juce::Rectangle<float> dividerBounds;
+    juce::Rectangle<float> collapseBounds;
+    juce::Rectangle<float> resizeBounds;
+    juce::Rectangle<float> guideMinimizeBounds;
+    juce::Rectangle<float> spyMinimizeBounds;
+    juce::Rectangle<float> addGuideBounds;
+    juce::Rectangle<float> guideEditorBounds;
+    std::vector<GuideTileAutomationPresentation> guideTiles;
+};
 
 struct NodeCanvasAutomationPresentation {
     juce::String selectedNodeId;
@@ -24,6 +55,7 @@ struct NodeCanvasAutomationPresentation {
     size_t probeDetailRows {};
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
+    GuideDockAutomationPresentation guideDock;
 };
 
 struct NodeCanvasAutomationContext {

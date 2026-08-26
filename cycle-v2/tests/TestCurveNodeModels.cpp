@@ -1,21 +1,20 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Graph/NodeModelDecodeDiagnostics.h"
-#include "../src/Nodes/Effect2D/CurveNodeEditors.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Effect2D/EnvelopePanelAdapter.h"
-#include "../src/Nodes/Effect2D/FlatCurvePanelAdapter.h"
-#include "../src/Nodes/Envelope/EnvelopeMeshState.h"
-#include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
-#include "../src/Nodes/Effects/EffectSignalProcessors.h"
-#include "../src/Nodes/Trimesh/TrimeshNodeModel.h"
-#include "../src/Nodes/Waveshaper/WaveshaperSignalProcessor.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
-#include "../src/Runtime/GraphPreviewExecutor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Graph/NodeModelDecodeDiagnostics.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
+#include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/VertCube.h>
@@ -103,16 +102,16 @@ TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset
             presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
     const NodeGraph stengah = GraphSerializer().fromJsonString(
             presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
-    const Node* baroqueGuide = baroque.findNode("guide1");
-    const Node* stengahGuide = stengah.findNode("guide1");
+    const GuideCurveResource* baroqueGuide = baroque.findGuideCurve("guide1");
+    const GuideCurveResource* stengahGuide = stengah.findGuideCurve("guide1");
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
     REQUIRE(baroqueGuide->model->revision() == stengahGuide->model->revision());
 
-    FlatCurvePanelAdapter adapter(NodeKind::GuideCurve);
-    REQUIRE(adapter.syncFromNode(*baroqueGuide));
+    FlatCurvePanelAdapter adapter(true);
+    REQUIRE(adapter.syncFromGuideResource(*baroqueGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 4);
-    REQUIRE(adapter.syncFromNode(*stengahGuide));
+    REQUIRE(adapter.syncFromGuideResource(*stengahGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 55);
 }
 
@@ -688,7 +687,6 @@ TEST_CASE("Curve node definitions provide canonical typed defaults",
     for (const NodeKind kind : {
             NodeKind::Waveshaper,
             NodeKind::ImpulseResponse,
-            NodeKind::GuideCurve,
             NodeKind::Envelope }) {
         const Node node = factory.createNode(kind, "curve", {});
         REQUIRE(node.model != nullptr);
@@ -715,7 +713,6 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
         REQUIRE_FALSE(graph.getNodes().empty());
         for (const auto& node : graph.getNodes()) {
             if (node.kind != NodeKind::Envelope
-                    && node.kind != NodeKind::GuideCurve
                     && node.kind != NodeKind::ImpulseResponse
                     && node.kind != NodeKind::Waveshaper) {
                 continue;
@@ -765,8 +762,7 @@ TEST_CASE("Loaded typed models require no JSON decoding during runtime consumpti
         } else if (node.kind == NodeKind::Envelope) {
             EnvelopePanelAdapter adapter;
             REQUIRE(adapter.syncFromNode(node));
-        } else if (node.kind == NodeKind::GuideCurve
-                || node.kind == NodeKind::ImpulseResponse
+        } else if (node.kind == NodeKind::ImpulseResponse
                 || node.kind == NodeKind::Waveshaper) {
             FlatCurvePanelAdapter adapter(node.kind);
             REQUIRE(adapter.syncFromNode(node));

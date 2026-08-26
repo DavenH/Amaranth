@@ -1,0 +1,21 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "openMeshPopup", "nodeId": "magnitudeLayer1" },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "magnitudeLayer1" },
+    { "command": "pointer", "event": "move", "targetId": "guide:guide2" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "guide2" },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-guide-tether-editor-occlusion.png"
+    },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

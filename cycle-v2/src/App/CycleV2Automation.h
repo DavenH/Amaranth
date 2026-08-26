@@ -57,6 +57,9 @@ private:
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);
     var deleteEdge(const var& commandValue);
+    var deleteGuideCurve(const var& commandValue);
+    var undo();
+    var setGuideParameter(const var& commandValue);
     var setNodeParameter(const var& commandValue);
     var inspectNodeControls(const var& commandValue) const;
     var setMorphSlider(const var& commandValue);
@@ -65,6 +68,7 @@ private:
     var selectVertex(const var& commandValue);
     var setVertexParameter(const var& commandValue);
     var pointer(const var& commandValue);
+    var key(const var& commandValue);
     var screenshot(const var& commandValue) const;
     var assertState(const var& commandValue) const;
     var assertNodeParameter(const var& commandValue) const;

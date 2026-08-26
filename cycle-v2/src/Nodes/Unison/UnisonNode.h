@@ -2,7 +2,7 @@
 
 #include <Audio/CycleDsp/UnisonCore.h>
 
-#include "../../Runtime/NodeDspConfiguration.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 namespace CycleV2 {
 

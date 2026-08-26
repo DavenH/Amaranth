@@ -2,13 +2,13 @@
 #include <cmath>
 #include <utility>
 
-#include "NodeCanvasAutomationInspector.h"
+#include "UI/NodeCanvasAutomationInspector.h"
 
-#include "SignalProbeDetailView.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "NodeViewModule.h"
-#include "VoiceContextCompactEditor.h"
+#include "UI/SignalProbeDetailView.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/NodeViewModule.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -47,6 +47,18 @@ String updatePhaseLabel(UpdateTracePhase phase) {
         case UpdateTracePhase::InvariantViolation:       return "InvariantViolation";
     }
     return "Unknown";
+}
+
+String guideFieldLabel(GuideCurveField field) {
+    switch (field) {
+        case GuideCurveField::Time:       return "time";
+        case GuideCurveField::Red:        return "red";
+        case GuideCurveField::Blue:       return "blue";
+        case GuideCurveField::Phase:      return "phase";
+        case GuideCurveField::Amplitude:  return "amp";
+        case GuideCurveField::Curve:      return "curve";
+    }
+    return {};
 }
 
 class AutomationValueEncoder {
@@ -154,12 +166,17 @@ public:
 
     static var probePreviewStatsToVar(const GraphPreviewResult::SignalProbePreview& preview) {
         auto* object = new DynamicObject();
+        double absoluteTotal = 0.0;
+        for (float value : preview.values) {
+            absoluteTotal += (double) (value >= 0.f ? value : -value);
+        }
         object->setProperty("probeId", preview.probeId);
         object->setProperty("connected", preview.connected);
         object->setProperty("domain", labelForDomain(preview.domain));
         object->setProperty("gridColumns", (int) preview.gridColumns);
         object->setProperty("gridRows", (int) preview.gridRows);
         object->setProperty("sampleCount", (int) preview.values.size());
+        object->setProperty("absoluteSum", absoluteTotal);
         return object;
     }
 
@@ -287,8 +304,8 @@ public:
             Array<var>& targets,
             const Node& node,
             Rectangle<float> panel,
-            const DynamicObject& effect2DState) {
-        const var options = effect2DState.getProperty("modeOptions");
+            const DynamicObject& curveEditorState) {
+        const var options = curveEditorState.getProperty("modeOptions");
         if (!options.isArray()) {
             return;
         }
@@ -317,7 +334,7 @@ public:
             Array<var>& targets,
             const Node& node,
             Rectangle<float> panel,
-            const DynamicObject& effect2DState) {
+            const DynamicObject& curveEditorState) {
         const std::array<std::pair<const char*, const char*>, 5> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
@@ -327,7 +344,7 @@ public:
         }};
         for (const auto& [id, boundsProperty] : actions) {
             const auto bounds = AutomationValueEncoder::rectangleFromVar(
-                    effect2DState.getProperty(boundsProperty)).translated(
+                    curveEditorState.getProperty(boundsProperty)).translated(
                             panel.getX(), panel.getY());
             targets.add(pointerTargetToVar(
                     "expanded:" + node.id + ".envelopeAction." + id,
@@ -347,13 +364,13 @@ public:
             const NodeEditorHost& editorHost) {
         DynamicObject editorState;
         editorHost.appendAutomationState(editorState);
-        const var effect2D = editorState.getProperty("effect2D");
-        const auto* effect2DState = effect2D.getDynamicObject();
-        if (effect2DState == nullptr) {
+        const var curveEditorAutomation = editorState.getProperty("effect2D");
+        const auto* curveEditorState = curveEditorAutomation.getDynamicObject();
+        if (curveEditorState == nullptr) {
             return;
         }
-        addEnvelopeModeTargets(targets, node, panel, *effect2DState);
-        addEnvelopeActionTargets(targets, node, panel, *effect2DState);
+        addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
+        addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
     }
 
     static void addExpandedEditorTargets(
@@ -484,6 +501,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());
+    root->setProperty("guideCount", (int) graph.getGuideCurves().size());
+    root->setProperty("guideAssignmentCount", (int) graph.getGuideAssignments().size());
     root->setProperty("probeDetailId", state.probeDetailId);
     root->setProperty("probeDetailOpen", state.probeDetailId.isNotEmpty());
     root->setProperty("probeDetailResolution", (int) state.probeDetailResolution);
@@ -497,6 +516,32 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty(
             "probeRefreshMode",
             state.probeRefreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release");
+    root->setProperty("expandedGuideId", state.guideDock.expandedGuideId);
+
+    auto* guideDock = new DynamicObject();
+    guideDock->setProperty("expanded", state.guideDock.expanded);
+    guideDock->setProperty("guidesMinimized", state.guideDock.guidesMinimized);
+    guideDock->setProperty("spiesMinimized", state.guideDock.spiesMinimized);
+    guideDock->setProperty("expandedHeight", state.guideDock.expandedHeight);
+    guideDock->setProperty("splitRatio", state.guideDock.splitRatio);
+    guideDock->setProperty("guideHorizontalOffset", state.guideDock.guideHorizontalOffset);
+    guideDock->setProperty("spyHorizontalOffset", state.guideDock.spyHorizontalOffset);
+    guideDock->setProperty("selectedGuideId", state.guideDock.selectedGuideId);
+    guideDock->setProperty("hoveredGuideId", state.guideDock.hoveredGuideId);
+    guideDock->setProperty("keyboardFocusTarget", state.guideDock.keyboardFocusTarget);
+    guideDock->setProperty("keyboardFocusItemId", state.guideDock.keyboardFocusItemId);
+    guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
+    guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
+    guideDock->setProperty(
+            "guideShelfBounds",
+            AutomationValueEncoder::rectangleToVar(state.guideDock.guideShelfBounds));
+    guideDock->setProperty(
+            "spyShelfBounds",
+            AutomationValueEncoder::rectangleToVar(state.guideDock.spyShelfBounds));
+    guideDock->setProperty(
+            "guideEditorBounds",
+            AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
+    root->setProperty("guideDock", guideDock);
 
     Array<var> causalUpdates;
     for (const auto& event : context.presentation.updateTrace().snapshot()) {
@@ -563,6 +608,37 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         probes.add(AutomationValueEncoder::probeToVar(probe));
     }
 
+    Array<var> guides;
+    for (const auto& guide : graph.getGuideCurves()) {
+        auto* guideObject = new DynamicObject();
+        guideObject->setProperty("id", guide.id);
+        guideObject->setProperty("shortLabel", guide.shortLabel);
+        guideObject->setProperty("name", guide.name);
+        guideObject->setProperty("colourIndex", guide.colourIndex);
+        guideObject->setProperty("shelfOrder", guide.shelfOrder);
+        guideObject->setProperty("usageCount", graph.guideUsageCount(guide.id));
+        guideObject->setProperty("enabled", guide.enabled);
+        guideObject->setProperty("noise", guide.noise);
+        guideObject->setProperty("dcOffset", guide.dcOffset);
+        guideObject->setProperty("phase", guide.phase);
+        guideObject->setProperty("model", guide.model != nullptr ? guide.model->writeJSON() : var());
+        guides.add(guideObject);
+    }
+
+    Array<var> guideAssignments;
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        auto* target = new DynamicObject();
+        target->setProperty("kind", "trimeshCubeComponent");
+        target->setProperty("cubeIndex", assignment.target.cubeIndex);
+        target->setProperty("field", guideFieldLabel(assignment.target.field));
+
+        auto* assignmentObject = new DynamicObject();
+        assignmentObject->setProperty("guideId", assignment.guideId);
+        assignmentObject->setProperty("targetNodeId", assignment.targetNodeId);
+        assignmentObject->setProperty("target", target);
+        guideAssignments.add(assignmentObject);
+    }
+
     Array<var> validationIssues;
     for (const auto& issue : compileResult.validationIssues) {
         auto* issueObject = new DynamicObject();
@@ -603,6 +679,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("nodes", nodes);
     root->setProperty("edges", edges);
     root->setProperty("probes", probes);
+    root->setProperty("guides", guides);
+    root->setProperty("guideAssignments", guideAssignments);
     root->setProperty("validationIssues", validationIssues);
     root->setProperty("compileIssues", compileIssues);
     root->setProperty("nodeOrder", nodeOrder);
@@ -660,6 +738,68 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             "probeRefreshMode",
             "probeRefreshMode",
             state.probeRefreshModeBounds));
+    targets.add(AutomationValueEncoder::pointerTargetToVar(
+            "guideDock",
+            "guideDock",
+            state.guideDock.dockBounds));
+    targets.add(AutomationValueEncoder::pointerTargetToVar(
+            "guideDock.collapse",
+            "guideDockCollapse",
+            state.guideDock.collapseBounds));
+    if (!state.guideDock.resizeBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideDock.resize",
+                "guideDockResize",
+                state.guideDock.resizeBounds));
+    }
+    if (!state.guideDock.dividerBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideDock.divider",
+                "guideDockDivider",
+                state.guideDock.dividerBounds));
+    }
+    if (state.guideDock.expanded) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideShelf",
+                "guideShelf",
+                state.guideDock.guideShelfBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "spyShelf",
+                "spyShelf",
+                state.guideDock.spyShelfBounds));
+        if (!state.guideDock.guideMinimizeBounds.isEmpty()) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "guideShelf.minimize",
+                    "guideShelfMinimize",
+                    state.guideDock.guideMinimizeBounds));
+        }
+        if (!state.guideDock.spyMinimizeBounds.isEmpty()) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "spyShelf.minimize",
+                    "spyShelfMinimize",
+                    state.guideDock.spyMinimizeBounds));
+        }
+        if (!state.guideDock.addGuideBounds.isEmpty()) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "guideShelf.add",
+                    "guideShelfAdd",
+                    state.guideDock.addGuideBounds));
+        }
+        if (!state.guideDock.guidesMinimized) {
+            for (const auto& tile : state.guideDock.guideTiles) {
+                targets.add(AutomationValueEncoder::pointerTargetToVar(
+                        "guide:" + tile.guideId,
+                        "guide",
+                        tile.bounds));
+            }
+        }
+    }
+    if (!state.guideDock.guideEditorBounds.isEmpty()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "guideEditor:" + state.guideDock.expandedGuideId,
+                "guideEditor",
+                state.guideDock.guideEditorBounds));
+    }
     if (state.probeDetailId.isNotEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(
                 "probeDetail:" + state.probeDetailId,

@@ -4,7 +4,7 @@
 #include <memory>
 #include <optional>
 
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 
@@ -22,7 +22,6 @@ enum class AudioModuleRole {
     Add,
     Multiply,
     Envelope,
-    GuideCurve,
     ImpulseResponse,
     Waveshaper,
     Unison,

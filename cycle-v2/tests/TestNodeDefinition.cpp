@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/NodeDefinition.h"
-#include "../src/UI/NodeCanvasScene.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/NodeCanvasScene.h"
 
 #include <set>
 
@@ -12,7 +12,7 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
     const auto& registry = NodeDefinitionRegistry::instance();
     std::set<String> typeIds;
 
-    REQUIRE(registry.definitions().size() == 23);
+    REQUIRE(registry.definitions().size() == 22);
     for (const auto& definition : registry.definitions()) {
         REQUIRE(definition.typeId.isNotEmpty());
         REQUIRE(definition.defaultInstanceIdPrefix.isNotEmpty());

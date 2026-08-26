@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
 
 using namespace CycleV2;
 

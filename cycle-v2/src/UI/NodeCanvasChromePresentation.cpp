@@ -1,7 +1,8 @@
-#include "NodeCanvasPresentation.h"
+#include "UI/NodeCanvasPresentation.h"
 
-#include "NodePaletteEntryIconRenderer.h"
-#include "NodePaletteIconRenderer.h"
+#include "UI/CanvasUtilityDock.h"
+#include "UI/NodePaletteEntryIconRenderer.h"
+#include "UI/NodePaletteIconRenderer.h"
 
 namespace CycleV2 {
 
@@ -24,15 +25,8 @@ Rectangle<float> graphBounds(const NodeGraph& graph) {
 void NodeCanvasPresentation::paintMiniMap(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const Rectangle<float> map(
-            frame.canvasBounds.getRight() - 180.f,
-            frame.canvasBounds.getY() + 18.f,
-            154.f,
-            92.f);
-    graphics.setColour(Colour(0xaa0b0e13));
-    graphics.fillRoundedRectangle(map, 7.f);
-    graphics.setColour(Colour(0xff354050));
-    graphics.drawRoundedRectangle(map, 7.f, 1.f);
+    const Rectangle<float> map = CanvasUtilityDock::layout(frame.canvasBounds).minimap;
+    CanvasUtilityDock::paintSurface(graphics, map);
 
     if (frame.graph.getNodes().empty()) {
         return;
@@ -73,14 +67,6 @@ void NodeCanvasPresentation::paintMiniMap(
     graphics.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
     graphics.drawRoundedRectangle(viewportInMap, 3.f, 1.f);
 
-    if (frame.statusMessage.isNotEmpty()) {
-        const Rectangle<float> status(map.getX(), map.getBottom() + 8.f, map.getWidth(), 24.f);
-        graphics.setColour(Colour(0xaa0b0e13));
-        graphics.fillRoundedRectangle(status, 5.f);
-        graphics.setColour(kMutedText);
-        graphics.setFont(FontOptions(10.f));
-        graphics.drawText(frame.statusMessage, status.reduced(8.f, 0.f), Justification::centredLeft);
-    }
 }
 
 void NodeCanvasPresentation::paintLegend(
@@ -89,25 +75,15 @@ void NodeCanvasPresentation::paintLegend(
     struct LegendEntry {
         PortDomain domain;
         const char* label;
-        bool attachment;
     };
     const LegendEntry entries[] = {
-            { PortDomain::TimeSignal, "Time", false },
-            { PortDomain::SpectralMagnitudeSignal, "Magnitude", false },
-            { PortDomain::SpectralPhaseSignal, "Phase", false },
-            { PortDomain::EnvelopeSignal, "Envelope", false },
-            { PortDomain::EnvelopeSignal, "Attachment", true },
-            { PortDomain::ControlSignal, "Universal", false }
+            { PortDomain::TimeSignal, "Time" },
+            { PortDomain::SpectralMagnitudeSignal, "Magnitude" },
+            { PortDomain::SpectralPhaseSignal, "Phase" },
+            { PortDomain::ControlSignal, "Control" }
     };
-    const Rectangle<float> legend(
-            frame.canvasBounds.getRight() - 134.f,
-            frame.canvasBounds.getBottom() - 174.f,
-            116.f,
-            138.f);
-    graphics.setColour(Colour(0xaa0b0e13));
-    graphics.fillRoundedRectangle(legend, 5.f);
-    graphics.setColour(Colour(0xff354050));
-    graphics.drawRoundedRectangle(legend, 5.f, 1.f);
+    const Rectangle<float> legend = CanvasUtilityDock::layout(frame.canvasBounds).legend;
+    CanvasUtilityDock::paintSurface(graphics, legend);
     graphics.setFont(FontOptions(9.f));
 
     float y = legend.getY() + 17.f;
@@ -118,15 +94,7 @@ void NodeCanvasPresentation::paintLegend(
         line.lineTo(x + 17.f, y);
         graphics.setColour(colourForDomain(entry.domain).withAlpha(0.90f));
 
-        if (entry.attachment) {
-            Path dashed;
-            PathStrokeType stroke(2.f, PathStrokeType::curved, PathStrokeType::rounded);
-            Array<float> dashes { 5.f, 4.f };
-            stroke.createDashedStroke(dashed, line, dashes.getRawDataPointer(), dashes.size());
-            graphics.strokePath(dashed, stroke);
-        } else {
-            graphics.strokePath(line, PathStrokeType(2.f));
-        }
+        graphics.strokePath(line, PathStrokeType(2.f));
 
         graphics.setColour(kMutedText);
         graphics.drawText(
@@ -137,28 +105,30 @@ void NodeCanvasPresentation::paintLegend(
     }
 }
 
-void NodeCanvasPresentation::paintHoverConsole(
+String NodeCanvasPresentation::canvasStatusText(
+        const String& statusMessage,
+        const String& hoverText) {
+    return hoverText.isNotEmpty() ? hoverText : statusMessage;
+}
+
+void NodeCanvasPresentation::paintStatus(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    if (frame.hoverText.isEmpty()) {
+    const String text = canvasStatusText(frame.statusMessage, frame.hoverText);
+    if (text.isEmpty()) {
         return;
     }
 
-    const Rectangle<float> console(
-            frame.canvasBounds.getX() + 18.f,
-            frame.canvasBounds.getBottom() - 42.f,
-            jmin(560.f, frame.canvasBounds.getWidth() - 220.f),
-            24.f);
-    if (console.getWidth() < 180.f) {
+    const Rectangle<float> status = CanvasUtilityDock::layout(frame.canvasBounds).status;
+    if (status.getWidth() < 180.f) {
         return;
     }
 
-    const Rectangle<float> textBounds = console.reduced(10.f, 1.f);
+    CanvasUtilityDock::paintSurface(graphics, status);
+    const Rectangle<float> textBounds = status.reduced(10.f, 1.f);
     graphics.setFont(FontOptions(10.f));
-    graphics.setColour(Colour(0xff0b0e13).withAlpha(0.76f));
-    graphics.drawText(frame.hoverText, textBounds.translated(0.f, 1.f), Justification::centredLeft);
     graphics.setColour(kMutedText);
-    graphics.drawText(frame.hoverText, textBounds, Justification::centredLeft);
+    graphics.drawText(text, textBounds, Justification::centredLeft);
 }
 
 void NodeCanvasPresentation::paintPalette(

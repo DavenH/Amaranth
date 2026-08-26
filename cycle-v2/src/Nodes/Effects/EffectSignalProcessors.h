@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../../Runtime/UnarySignalProcessor.h"
-#include "../../Runtime/NodeDspConfiguration.h"
-#include "PreparedConvolverPair.h"
+#include "Runtime/UnarySignalProcessor.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Nodes/Effects/PreparedConvolverPair.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/Oversampler.h>
-#include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/EqualizerCore.h>
 #include <Audio/CycleDsp/IrModel.h>
@@ -34,18 +33,6 @@ struct ReverbConfiguration final : public INodeDspConfiguration {
     std::array<std::vector<float>, 2> kernels;
     float width { 1.f };
     float wetLevel { 0.1f };
-};
-
-struct DelayConfiguration final : public INodeDspConfiguration {
-    AudioModuleRole role() const override { return AudioModuleRole::Delay; }
-    bool isEnabled() const override { return enabled; }
-
-    bool enabled { true };
-    float time { 0.5f };
-    float feedback { 0.5f };
-    float spin { 1.f };
-    float wet { 0.9f };
-    float spinIterations {};
 };
 
 struct EqualizerConfiguration final : public INodeDspConfiguration {
@@ -81,22 +68,6 @@ private:
     float postGain { 1.f };
     uint64_t adoptedRevision {};
     std::shared_ptr<const IrConfiguration> configuration;
-};
-
-class DelaySignalProcessor :
-        public IUnarySignalOperation {
-public:
-    void configure(const DelayConfiguration& configuration, const AudioProcessTiming& timing);
-    void beginBlock(size_t frameCount) override;
-    void beginTraversalGrid(size_t columns, size_t rows) override;
-    void processBuffer(Buffer<float> buffer, const SignalProcessPosition& position) override;
-
-private:
-    CycleDsp::CycleDelay blockDelays[2];
-    CycleDsp::CycleDelay traversalDelays[2];
-    bool processingTraversal {};
-    double bpm { 120.0 };
-    int beatsPerMeasure { 4 };
 };
 
 class ReverbSignalProcessor :

@@ -2,11 +2,11 @@
 
 #include <JuceHeader.h>
 
-#include "NodeEditorHost.h"
-#include "NodePreviewRenderer.h"
-#include "NodePreviewResources.h"
-#include "TransformCompactEditor.h"
-#include "VoiceContextCompactEditor.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodePreviewResources.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 

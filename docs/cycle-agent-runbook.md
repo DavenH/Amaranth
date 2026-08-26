@@ -149,6 +149,9 @@ Common command families:
   supply `expectedCursor` (`pointingHand`, `leftRightResize`, `upDownResize`,
   `move`, `crosshair`, or `normal`) to fail at the actual event target when its
   hover affordance regresses; successful pointer results also report `cursor`.
+- `key`: dispatch a named keyboard event (`tab`, `shiftTab`, arrow directions,
+  `return`, `space`, `escape`, or `delete`) to a registered area and report
+  whether its real component interaction path handled the event.
 - `waitForIdle`: fixed message-loop drain/delay when a command needs UI updates
   to settle.
 

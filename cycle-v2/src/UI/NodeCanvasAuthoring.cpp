@@ -3,12 +3,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "NodeCanvasAuthoring.h"
+#include "UI/NodeCanvasAuthoring.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "ModulationCableBundle.h"
-#include "NodeViewModule.h"
-#include "TrimeshGuideCableBundle.h"
+#include "Graph/NodeParameterMap.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeViewModule.h"
 
 namespace CycleV2 {
 
@@ -281,10 +280,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteEdge(int edgeIndex) {
         return {};
     }
 
-    auto indices = TrimeshGuideCableBundle::edgeIndices(document.graph(), edgeIndex);
-    if (indices.size() == 1) {
-        indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
-    }
+    auto indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
     std::sort(indices.begin(), indices.end(), std::greater<int>());
     commands.beginCompoundEdit();
     GraphEditResult edit;

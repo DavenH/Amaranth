@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FftBlockwiseDsp.h"
+#include "Nodes/FFT/FftBlockwiseDsp.h"
 
 namespace CycleV2 {
 

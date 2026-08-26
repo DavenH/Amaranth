@@ -1,0 +1,15 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "assertState", "path": "guideDock.guideTileCount", "equals": 3 },
+    { "command": "pointer", "event": "click", "targetId": "guideDock.collapse" },
+    { "command": "assertState", "path": "guideDock.expanded", "equals": false },
+    { "command": "assertState", "path": "guideCount", "equals": 3 },
+    { "command": "assertState", "path": "probeCount", "equals": 5 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

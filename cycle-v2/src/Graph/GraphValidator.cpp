@@ -1,7 +1,7 @@
-#include "GraphValidator.h"
+#include "Graph/GraphValidator.h"
 
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -27,14 +27,6 @@ const Port* findPort(const Node& node, const String& id, bool input) {
     }
 
     return nullptr;
-}
-
-bool isTrimeshGuideTarget(const Node& node, const String& portId) {
-    if (node.kind != NodeKind::TrilinearMesh) {
-        return false;
-    }
-
-    return TrimeshGuideAttachmentTarget::parse(portId).isValid();
 }
 
 bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, const Port& dest) {
@@ -102,6 +94,18 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
                 reporter);
     }
 
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        const GuideCurveResource* guide = graph.findGuideCurve(assignment.guideId);
+        const Node* target = graph.findNode(assignment.targetNodeId);
+        if (guide == nullptr || target == nullptr
+                || !TrimeshGuideAttachmentTarget::isValid(*target, assignment.target)) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::InvalidAttachmentDestination,
+                    "Guide assignment references an invalid resource or Trimesh cube component");
+        }
+    }
+
     validateOperationInputs(graph, resolution, issues);
 
     return issues;
@@ -156,10 +160,6 @@ void GraphValidator::validateEdge(
 
     const Port* source = findPort(*sourceNode, edge.sourcePortId, false);
     const Port* dest = findPort(*destNode, edge.destPortId, true);
-    const bool trimeshGuideTarget = edge.isProcessingAttachment()
-            && dest == nullptr
-            && isTrimeshGuideTarget(*destNode, edge.destPortId);
-
     if (source == nullptr) {
         report(
                 GraphValidationCode::MissingSourcePort,
@@ -167,7 +167,7 @@ void GraphValidator::validateEdge(
         return;
     }
 
-    if (dest == nullptr && !trimeshGuideTarget) {
+    if (dest == nullptr) {
         report(
                 GraphValidationCode::MissingDestinationPort,
                 "Missing destination port: " + edge.destNodeId + "." + edge.destPortId);
@@ -190,17 +190,6 @@ void GraphValidator::validateEdge(
     }
 
     if (edge.isProcessingAttachment()) {
-        if (trimeshGuideTarget) {
-            if (sourceNode->kind != NodeKind::GuideCurve
-                    || edge.attachmentType != AttachmentType::GuideCurve) {
-                report(
-                        GraphValidationCode::InvalidAttachmentSource,
-                        "Trimesh guide attachments require a Guide Curve source: " + edge.sourceNodeId);
-            }
-
-            return;
-        }
-
         if (sourceNode->kind != NodeKind::Envelope
                 || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch
                 || edge.attachmentType != AttachmentType::ScratchEnvelope) {

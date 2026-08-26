@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/african-horn.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/content/presets/african-horn.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/alto-sax.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/content/presets/alto-sax.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/stengah.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/content/presets/stengah.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/resources/default.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/resources/default.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/resources/fft-sawtooth.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/resources/fft-sawtooth.cyclegraph" },
+    { "command": "openGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" },
+    { "command": "saveGraph", "path": "../../cycle-v2/resources/with-spies.cyclegraph" }
+  ],
+  "quit": true
+}

@@ -4,9 +4,7 @@
 
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
 
-#include <functional>
-
-#include "../Runtime/RealtimeMidiEventQueue.h"
+#include "Runtime/RealtimeMidiEventQueue.h"
 
 namespace CycleV2 {
 
@@ -86,18 +84,10 @@ public:
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
-    Rectangle<float> dragHandleBounds() const;
 
     void releaseAllNotes() { keyboard.releaseAllNotes(); }
     void paint(Graphics& graphics) override;
     void resized() override;
-    void mouseDown(const MouseEvent& event) override;
-    void mouseDrag(const MouseEvent& event) override;
-    void mouseUp(const MouseEvent& event) override;
-
-    std::function<void(Point<int>)> onMoved;
-    std::function<void()> onMoveStarted;
-    std::function<void()> onMoveEnded;
 
 private:
     int headerHeight() const;
@@ -106,8 +96,6 @@ private:
     PerformanceKeyboard keyboard;
     TextButton octaveDown { "-" };
     TextButton octaveUp { "+" };
-    ComponentDragger dragger;
-    bool dragGestureActive {};
 };
 
 }

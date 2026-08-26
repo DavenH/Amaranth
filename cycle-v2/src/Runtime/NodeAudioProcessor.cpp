@@ -1,6 +1,6 @@
-#include "NodeAudioProcessor.h"
+#include "Runtime/NodeAudioProcessor.h"
 
-#include "AudioProcessorFactories.h"
+#include "Runtime/AudioProcessorFactories.h"
 
 namespace CycleV2 {
 
@@ -46,7 +46,6 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::VoiceContext, createVoiceContextAudioProcessor },
             { AudioModuleRole::ModulationSource, createModulationSourceAudioProcessor },
             { AudioModuleRole::ModulationTriple, createModulationTripleAudioProcessor },
-            { AudioModuleRole::GuideCurve, createGuideCurveAudioProcessor },
             { AudioModuleRole::Envelope, createEnvelopeAudioProcessor },
             { AudioModuleRole::Fft, createFftAudioProcessor },
             { AudioModuleRole::Ifft, createIfftAudioProcessor },

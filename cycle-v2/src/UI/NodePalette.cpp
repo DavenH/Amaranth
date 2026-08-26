@@ -1,4 +1,4 @@
-#include "NodePalette.h"
+#include "UI/NodePalette.h"
 
 #include <array>
 #include <iterator>
@@ -37,8 +37,7 @@ const NodePalette::Entry kSourceEntries[] = {
 const NodePalette::Entry kControlEntries[] = {
         { NodeKind::ModulationSource, "Modulation" },
         { NodeKind::ModulationTriple, "Mod Triple" },
-        { NodeKind::Envelope, "Envelope" },
-        { NodeKind::GuideCurve, "Guide" }
+        { NodeKind::Envelope, "Envelope" }
 };
 
 const NodePalette::Entry kFxEntries[] = {

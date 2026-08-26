@@ -2,8 +2,8 @@
 
 #include <JuceHeader.h>
 
-#include "NodePreviewRenderer.h"
-#include "../Runtime/GraphPreviewExecutor.h"
+#include "UI/NodePreviewRenderer.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
 

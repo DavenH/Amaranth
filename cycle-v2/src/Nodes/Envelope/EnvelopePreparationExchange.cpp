@@ -1,6 +1,6 @@
 #include <cstring>
 
-#include "EnvelopePreparationExchange.h"
+#include "Nodes/Envelope/EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
 

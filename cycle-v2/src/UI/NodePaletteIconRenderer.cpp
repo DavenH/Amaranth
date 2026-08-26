@@ -1,4 +1,4 @@
-#include "NodePaletteIconRenderer.h"
+#include "UI/NodePaletteIconRenderer.h"
 
 #include "NodePaletteIconData.h"
 

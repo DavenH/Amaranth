@@ -1,4 +1,4 @@
-#include "SpectralOscillatorRegionRuntime.h"
+#include "Runtime/SpectralOscillatorRegionRuntime.h"
 
 #include <Algo/Resampling.h>
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>

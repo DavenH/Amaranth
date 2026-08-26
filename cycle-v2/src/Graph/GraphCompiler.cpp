@@ -1,10 +1,10 @@
-#include "GraphCompiler.h"
+#include "Graph/GraphCompiler.h"
 
-#include "NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "../Nodes/Control/ModulationTriple.h"
-#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
-#include "../Nodes/Unison/UnisonNode.h"
+#include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 #include <algorithm>
 

@@ -1,6 +1,6 @@
-#include "PreviewPitchResolver.h"
+#include "Runtime/PreviewPitchResolver.h"
 
-#include "../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>

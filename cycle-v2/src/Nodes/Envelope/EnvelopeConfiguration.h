@@ -3,7 +3,7 @@
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
-#include "../../Runtime/NodeDspConfiguration.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 namespace CycleV2 {
 

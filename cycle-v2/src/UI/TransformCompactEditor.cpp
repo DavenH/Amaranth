@@ -1,4 +1,4 @@
-#include "TransformCompactEditor.h"
+#include "UI/TransformCompactEditor.h"
 
 namespace CycleV2 {
 

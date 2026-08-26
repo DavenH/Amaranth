@@ -2,11 +2,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 #include <Audio/CycleDsp/IrModel.h>
+#include <Curve/Mesh/Mesh.h>
 
 using namespace CycleV2;
 
@@ -206,26 +210,6 @@ TEST_CASE("Compound editor movement publishes one durable document revision",
     REQUIRE(publications == 1);
 }
 
-TEST_CASE("Performance keyboard movement is one undoable layout edit",
-        "[cycle-v2][graph][layout][keyboard]") {
-    GraphDocument document(NodeGraph::createDemoGraph());
-    GraphCommandDispatcher commands(document);
-    const uint64_t initialRevision = document.revision();
-
-    commands.beginCompoundEdit();
-    REQUIRE(commands.setPerformanceKeyboardBounds({ 100.f, 200.f, 496.f, 184.f }).succeeded());
-    REQUIRE(commands.setPerformanceKeyboardBounds({ 180.f, 260.f, 496.f, 184.f }).succeeded());
-    REQUIRE(document.revision() == initialRevision);
-    commands.commitCompoundEdit();
-
-    REQUIRE(document.revision() == initialRevision + 1);
-    REQUIRE(document.isDirty());
-    REQUIRE(document.graph().getPerformanceKeyboardBounds()
-            == Rectangle<float>(180.f, 260.f, 496.f, 184.f));
-    REQUIRE(document.undo());
-    REQUIRE_FALSE(document.graph().getPerformanceKeyboardBounds().has_value());
-}
-
 TEST_CASE("Transient editor movement leaves the durable graph unchanged until commit",
         "[cycle-v2][graph][causal]") {
     NodeGraph graph;
@@ -302,71 +286,212 @@ TEST_CASE("Graph editor marks scratch connections as attachments", "[cycle-v2][g
     REQUIRE(graph.getEdges().back().destPortId == "scratch");
 }
 
-TEST_CASE("Graph editor creates targeted Trimesh guide attachments", "[cycle-v2][graph]") {
+TEST_CASE("Graph editor creates targeted Trimesh Guide assignments", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
 
-    const auto result = GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+    const auto result = GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
             graph,
             "waveMesh",
             2,
-            "amp",
-            { 100.f, 100.f });
+            "amp");
 
     REQUIRE(result.succeeded());
-    REQUIRE(result.nodeId == "guide");
+    REQUIRE(result.nodeId == "guide1");
     REQUIRE(GraphValidator().isValid(graph));
 
-    const auto& edge = graph.getEdges().back();
-    REQUIRE(edge.isProcessingAttachment());
-    REQUIRE(edge.sourceNodeId == "guide");
-    REQUIRE(edge.sourcePortId == "guide");
-    REQUIRE(edge.destNodeId == "waveMesh");
-    REQUIRE(edge.destPortId == "guide.cube.0.amp");
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    const auto& assignment = graph.getGuideAssignments().front();
+    REQUIRE(assignment.guideId == "guide1");
+    REQUIRE(assignment.targetNodeId == "waveMesh");
+    REQUIRE(assignment.target.cubeIndex == 0);
+    REQUIRE(assignment.target.field == GuideCurveField::Amplitude);
+}
+
+TEST_CASE("New Guide resources start flat with neutral modulation",
+        "[cycle-v2][graph][guides]") {
+    NodeGraph graph;
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+
+    const GuideCurveResource* guide = graph.findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    REQUIRE(guide->noise == 0.f);
+    REQUIRE(guide->dcOffset == 0.f);
+    REQUIRE(guide->phase == 0.f);
+
+    const auto model = std::dynamic_pointer_cast<const CurveNodeModelState>(guide->model);
+    REQUIRE(model != nullptr);
+    REQUIRE(model->flatCurve() != nullptr);
+    const auto& vertices = model->flatCurve()->getVertices();
+    REQUIRE(vertices.size() == 2);
+    REQUIRE(vertices.front().y == 0.5f);
+    REQUIRE(vertices.back().y == 0.5f);
 }
 
 TEST_CASE("Graph editor shares guide curves across multiple Trimesh targets", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
 
-    const auto waveResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto waveResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "waveMesh",
             1,
             "phase");
-    const auto magResult = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto magResult = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "magMesh",
             3,
             "amp");
 
     REQUIRE(waveResult.succeeded());
     REQUIRE(magResult.succeeded());
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 2, GuideCurveField::Amplitude }
+    }));
     REQUIRE(GraphValidator().isValid(graph));
 
-    int guideAttachments {};
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isProcessingAttachment() && edge.sourceNodeId == "guide") {
-            ++guideAttachments;
-        }
-    }
+    REQUIRE(graph.getGuideAssignments().size() == 3);
+    REQUIRE(graph.guideUsageCount("guide1") == 3);
+    REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
+    REQUIRE(graph.guideTargetNodeIds("guide1")[0] == "waveMesh");
+    REQUIRE(graph.guideTargetNodeIds("guide1")[1] == "magMesh");
+    REQUIRE(graph.guideIdsForTargetNode("waveMesh") == std::vector<String> { "guide1" });
+}
 
-    REQUIRE(guideAttachments == 2);
+TEST_CASE("Guide resource edits replace the resource model without creating a node", "[cycle-v2][graph]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphEditor editor;
+    REQUIRE(editor.createGuideCurve(graph).succeeded());
+
+    const GuideCurveResource* original = graph.findGuideCurve("guide1");
+    REQUIRE(original != nullptr);
+    REQUIRE(editor.replaceGuideCurve(graph, "guide1", original->model, {
+            { "enabled", "Enabled", "0" },
+            { "noise", "Noise", "0.2" },
+            { "dcOffset", "DC Offset", "0.7" },
+            { "phase", "Phase", "0.9" }
+    }).succeeded());
+
+    const GuideCurveResource* edited = graph.findGuideCurve("guide1");
+    REQUIRE(edited != nullptr);
+    REQUIRE_FALSE(edited->enabled);
+    REQUIRE(edited->noise == 0.2f);
+    REQUIRE(edited->dcOffset == 0.7f);
+    REQUIRE(edited->phase == 0.9f);
+    REQUIRE(graph.findNode("guide1") == nullptr);
+}
+
+TEST_CASE("Guide resource gestures publish two transient updates and undo once",
+        "[cycle-v2][graph][guides][gesture]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+    const GuideCurveResource* original = document.graph().findGuideCurve("guide1");
+    REQUIRE(original != nullptr);
+    const NodeModelStatePtr originalModel = original->model;
+    const uint64_t durableRevision = originalModel->revision();
+
+    const auto publication = [&](float noise) {
+        return GuideCurveStatePublication {
+                "guide1",
+                durableRevision,
+                originalModel,
+                {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", String(noise) },
+                    { "dcOffset", "DC Offset", "0.5" },
+                    { "phase", "Phase", "0.5" }
+                }
+        };
+    };
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.publishGuideCurveState(publication(0.2f)).succeeded());
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.f);
+    REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.2f);
+    REQUIRE(commands.publishGuideCurveState(publication(0.8f)).succeeded());
+    REQUIRE(commands.editingGraph().findGuideCurve("guide1")->noise == 0.8f);
+    REQUIRE(commands.transientChanges().guidesChanged);
+    REQUIRE(commands.transientChanges().nodeIds == std::vector<String> { "waveMesh" });
+    commands.commitTransientEdit();
+
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.8f);
+    REQUIRE(commands.publishGuideCurveState(publication(0.4f)).code
+            == GraphEditCode::ConflictingRevision);
+    GuideCurveStatePublication incomplete = publication(0.4f);
+    incomplete.controls.pop_back();
+    REQUIRE(commands.publishGuideCurveState(incomplete).code
+            == GraphEditCode::InvalidControlValue);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->noise == 0.f);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
+}
+
+TEST_CASE("Guide resource names are document content and undoable", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.renameGuideCurve("guide1", "Vibrato Bend").succeeded());
+    REQUIRE(document.graph().findGuideCurve("guide1")->name == "Vibrato Bend");
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->name.isEmpty());
+}
+
+TEST_CASE("Guide resource duplication copies content without copying assignments", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.renameGuideCurve("guide1", "Vibrato Bend").succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+
+    const auto duplicated = commands.duplicateGuideCurve("guide1");
+    REQUIRE(duplicated.succeeded());
+    REQUIRE(duplicated.nodeId == "guide2");
+    const GuideCurveResource* copy = document.graph().findGuideCurve("guide2");
+    REQUIRE(copy != nullptr);
+    REQUIRE(copy->shortLabel == "G2");
+    REQUIRE(copy->name == "Vibrato Bend Copy");
+    REQUIRE(copy->model == document.graph().findGuideCurve("guide1")->model);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide2") == nullptr);
+}
+
+TEST_CASE("Guide resource reordering preserves its identity and assignments", "[cycle-v2][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+
+    REQUIRE(commands.reorderGuideCurve("guide2", 0).succeeded());
+    const auto& guides = document.graph().getGuideCurves();
+    REQUIRE(guides[0].id == "guide2");
+    REQUIRE(guides[0].shortLabel == "G2");
+    REQUIRE(guides[0].shelfOrder == 0);
+    REQUIRE(guides[1].id == "guide1");
+    REQUIRE(guides[1].shelfOrder == 1);
+    REQUIRE(document.graph().getGuideAssignments().front().guideId == "guide1");
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().getGuideCurves()[0].id == "guide1");
 }
 
 TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cycle-v2][graph]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 100.f, 100.f }).succeeded());
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 180.f, 100.f }).succeeded());
-    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
-            "guide",
+            "guide1",
             "waveMesh",
             2,
             "amp").succeeded());
 
-    const auto result = GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    const auto result = GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
             "guide2",
             "waveMesh",
@@ -376,20 +501,56 @@ TEST_CASE("Graph editor replaces existing Trimesh guide attachment target", "[cy
     REQUIRE(result.succeeded());
     REQUIRE(GraphValidator().isValid(graph));
 
-    int targetAttachments {};
-    String attachedGuideId;
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    REQUIRE(graph.getGuideAssignments().front().guideId == "guide2");
+    REQUIRE(graph.guideUsageCount("guide1") == 0);
+    REQUIRE(graph.guideUsageCount("guide2") == 1);
+    REQUIRE(graph.guideIdsForTargetNode("waveMesh") == std::vector<String> { "guide2" });
+}
 
-    for (const auto& edge : graph.getEdges()) {
-        if (edge.isProcessingAttachment()
-                && edge.destNodeId == "waveMesh"
-                && edge.destPortId == "guide.cube.0.amp") {
-            ++targetAttachments;
-            attachedGuideId = edge.sourceNodeId;
-        }
-    }
+TEST_CASE("Trimesh topology edits reconcile Guide assignments in one undoable command",
+        "[cycle-v2][graph][guides]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(graph.findNode("waveMesh") != nullptr);
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 0, GuideCurveField::Amplitude }
+    }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1", "waveMesh", { 1, GuideCurveField::Amplitude }
+    }));
+    REQUIRE(GraphValidator().isValid(graph));
 
-    REQUIRE(targetAttachments == 1);
-    REQUIRE(attachedGuideId == "guide2");
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    const Node* original = document.graph().findNode("waveMesh");
+    REQUIRE(original != nullptr);
+    const uint64_t revision = original->model->revision();
+    Mesh replacement("SingleCubeTrimesh");
+    TrimeshMeshFactory::addVoiceCube(replacement, 0.f, 1.f, 0.2f, 0.8f, 0.5f);
+    const NodeModelStatePtr replacementModel = TrimeshNodeModelState::copyOf(
+            replacement,
+            revision + 1);
+    replacement.destroy();
+
+    const auto result = commands.replaceNodeModel(
+            "waveMesh",
+            revision,
+            replacementModel);
+
+    REQUIRE(result.succeeded());
+    REQUIRE(result.changes.guidesChanged);
+    REQUIRE(result.changes.guidePresentationChanged);
+    REQUIRE(document.graph().getGuideAssignments().size() == 1);
+    REQUIRE(document.graph().getGuideAssignments().front().target.cubeIndex == 0);
+    REQUIRE(document.graph().guideUsageCount("guide1") == 1);
+    REQUIRE(GraphValidator().isValid(document.graph()));
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().getGuideAssignments().size() == 2);
+    REQUIRE(document.graph().guideUsageCount("guide1") == 2);
+    REQUIRE(GraphValidator().isValid(document.graph()));
 }
 
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {

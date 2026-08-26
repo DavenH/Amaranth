@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ChainedOscillatorRegionRuntime.h"
-#include "../Graph/GraphCompiler.h"
-#include "../Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
+#include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Graph/GraphCompiler.h"
+#include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
 
 #include <Array/ScopedAlloc.h>
 

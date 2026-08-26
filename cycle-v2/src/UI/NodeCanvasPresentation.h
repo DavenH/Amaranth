@@ -2,15 +2,17 @@
 
 #include <JuceHeader.h>
 
-#include "NodeCanvasScene.h"
-#include "NodeCanvasGlRenderer.h"
-#include "NodeCanvasViewport.h"
-#include "NodePalette.h"
-#include "NodePreviewRenderer.h"
-#include "SignalProbeDetailView.h"
-#include "SignalProbeRail.h"
-#include "../Graph/GraphCompiler.h"
-#include "../Runtime/GraphPreviewExecutor.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/GuideCurveShelf.h"
+#include "UI/GuideRelationshipPresentation.h"
+#include "UI/SignalProbeDetailView.h"
+#include "UI/SignalProbeRail.h"
+#include "Graph/GraphCompiler.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
 
@@ -46,7 +48,10 @@ struct NodeCanvasPresentationFrame {
     int spliceTargetEdgeIndex { -1 };
     bool openGLUnderlay { true };
     Rectangle<float> workspaceBounds;
+    GuideCurveShelfState guideShelfState;
+    float dockSplitRatio { 0.5f };
     SignalProbeRailState probeRailState;
+    WorkspaceDockFocus dockFocus;
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
 };
@@ -63,7 +68,7 @@ public:
             NodePreviewRenderer& previewRendererToUse);
 
     void paint(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void renderOpenGL(
+    bool renderOpenGL(
             NodeCanvasRenderer& renderer,
             const NodeCanvasPresentationFrame& frame,
             float scaleFactor);
@@ -76,6 +81,10 @@ public:
             const GraphExecutionPlan& plan,
             const String& unisonNodeId,
             UnisonPreviewContext fallback);
+    static String canvasStatusText(
+            const String& statusMessage,
+            const String& hoverText);
+    bool guideShelfNeedsOpenGLPreviewRender() const;
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:
@@ -91,7 +100,7 @@ private:
             const Node& node);
     void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintHoverConsole(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
 
     void renderOpenGLEffectPreviews(
@@ -106,6 +115,7 @@ private:
     NodeCanvasScene& scene;
     NodePreviewRenderer& previewRenderer;
     SignalProbeRail signalProbeRail;
+    GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
 };
 

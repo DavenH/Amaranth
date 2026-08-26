@@ -8,31 +8,33 @@
 
 #include <App/Settings.h>
 
-#include "../Graph/GraphEditor.h"
-#include "../Graph/GraphCommandDispatcher.h"
-#include "../Graph/GraphDocument.h"
-#include "../Graph/NodeGraph.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "../Runtime/GraphPresentationModel.h"
-#include "NodeCanvasAutomationController.h"
-#include "NodeCanvasAuthoring.h"
-#include "NodeCanvasEditorCoordinator.h"
-#include "NodeCanvasPresentation.h"
-#include "NodeCanvasQueryModel.h"
-#include "NodeCableRenderer.h"
-#include "NodeCanvasGlRenderer.h"
-#include "NodeCanvasHitRouter.h"
-#include "NodeCanvasInteraction.h"
-#include "NodeCanvasScene.h"
-#include "NodeCanvasViewport.h"
-#include "NodeEditorHost.h"
-#include "NodePalette.h"
-#include "NodePreviewRenderer.h"
-#include "NodePreviewResources.h"
-#include "RenderInvalidationAccumulator.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "UI/NodeCanvasAutomationController.h"
+#include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasPresentation.h"
+#include "UI/NodeCanvasQueryModel.h"
+#include "UI/NodeCableRenderer.h"
+#include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasHitRouter.h"
+#include "UI/NodeCanvasInteraction.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodePreviewResources.h"
+#include "UI/RenderInvalidationAccumulator.h"
+#include "UI/WorkspaceDockInteractionController.h"
 
 namespace CycleV2 {
 
@@ -45,6 +47,7 @@ class NodeCanvas :
     ,   private Timer
     ,   private NodeEditorPresentation
     ,   private NodeEditorResources
+    ,   private CurveExpandedEditorDelegate
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
@@ -64,6 +67,12 @@ public:
             const String& destPortId);
     bool deleteNodeForAutomation(const String& nodeId);
     bool deleteEdgeForAutomation(int edgeIndex);
+    bool deleteGuideCurveForAutomation(const String& guideId);
+    bool undoForAutomation();
+    bool setGuideParameterForAutomation(
+            const String& guideId,
+            const String& parameterId,
+            const String& value);
     bool setNodeParameterForAutomation(
             const String& nodeId,
             const String& parameterId,
@@ -80,17 +89,9 @@ public:
     var inspectOpenGLDiagnosticsForAutomation() const;
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
-    Rectangle<float> visibleWorldBoundsForOverlay() const;
-    Rectangle<int> boundsForWorldOverlay(Rectangle<float> worldBounds) const;
-    Point<float> worldPositionForOverlay(Point<float> canvasPosition) const;
+    Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
-    uint64_t viewportRevisionForOverlay() const { return viewport.getRevision(); }
-    void setOverlayPresentationChangedCallback(std::function<void()> callback);
-    std::optional<Rectangle<float>> performanceKeyboardBounds() const;
-    void beginPerformanceKeyboardMove();
-    void movePerformanceKeyboard(Rectangle<float> worldBounds);
-    void endPerformanceKeyboardMove();
-    void storePerformanceKeyboardBounds(Rectangle<float> worldBounds);
+    void setOverlayOcclusionChangedCallback(std::function<void()> callback);
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -98,6 +99,7 @@ public:
     void focusLost(FocusChangeType cause) override;
     void mouseDown(const MouseEvent& event) override;
     void mouseMove(const MouseEvent& event) override;
+    void mouseExit(const MouseEvent& event) override;
     void mouseDrag(const MouseEvent& event) override;
     void mouseUp(const MouseEvent& event) override;
     void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override;
@@ -132,6 +134,8 @@ private:
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
+    std::unique_ptr<CurveEditorWidget> guideEditorWidget;
+    std::unique_ptr<GuideCurveEditorComponent> guideEditor;
 
     int activeTrimeshVertexIndex { -1 };
     Point<float> lastMousePosition;
@@ -145,14 +149,16 @@ private:
     String draggingSpectralPanNodeId;
     float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
+    GuideCurveShelfState guideShelfState;
+    float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
+    std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
-    bool resizingProbeRail {};
-    float probeRailResizeStartHeight {};
-    float probeRailResizeStartY {};
+    String expandedGuideId;
+    std::optional<uint64_t> guideTransactionBaseRevision;
     uint32 compiledStateRefreshDueMs {};
-    std::function<void()> overlayPresentationChanged;
+    std::function<void()> overlayOcclusionChanged;
 
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
@@ -161,9 +167,9 @@ private:
     void updateHoverAt(juce::Point<float> position);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
-    void notifyOverlayPresentationChanged();
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
+    void notifyOverlayOcclusionChanged();
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;
 
@@ -184,12 +190,17 @@ private:
     bool redo();
     bool spliceSelectedNodeIntoEdgeAt(Point<float> screenPosition);
     bool clearSelection();
+    bool handleDockNavigationKey(const KeyPress& key);
+    void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    WorkspaceDockLayout workspaceDockLayout() const;
     float tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
+    void openGuideEditor(const String& guideId);
+    void closeGuideEditor();
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;
@@ -212,7 +223,7 @@ private:
             uint64_t effectiveFingerprint,
             uint64_t documentRevision) override;
 
-    Effect2DWidget* effect2DWidget(const Node& node) override;
+    CurveEditorWidget* curveEditorWidget(const Node& node) override;
     TrimeshWidget* trimeshWidget(const Node& node) override;
     TrimeshWidget* findTrimeshWidget(const String& nodeId) override;
     TrimeshRenderProfile trimeshRenderProfile(const Node& node) const override;
@@ -222,6 +233,14 @@ private:
             const Node& node,
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
+
+    void closeCurveEditor() override;
+    void repaintCurveEditorOpenGL() override;
+    bool publishCurveState(
+            NodeModelStatePtr model,
+            const std::vector<NodeParameter>& controls) override;
+    void beginCurveTransaction() override;
+    void commitCurveTransaction() override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(NodeCanvas)
 };

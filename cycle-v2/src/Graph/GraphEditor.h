@@ -1,8 +1,8 @@
 #pragma once
 
-#include "GraphNodeFactory.h"
-#include "NodeDefinition.h"
-#include "GraphValidator.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
+#include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
 
@@ -34,6 +34,8 @@ struct GraphChangeSet {
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};
+    bool guidesChanged {};
+    bool guidePresentationChanged {};
     ParameterImpact parameterImpacts { ParameterImpact::None };
     bool modelChanged {};
     bool editorStateChanged {};
@@ -53,18 +55,35 @@ class GraphEditor {
 public:
     GraphEditResult addNode(NodeGraph& graph, NodeKind kind, Point<float> position) const;
     GraphEditResult connect(NodeGraph& graph, const PortAddress& first, const PortAddress& second) const;
-    GraphEditResult attachGuideCurveToTrimeshVertexParameter(
+    GraphEditResult createGuideCurve(NodeGraph& graph) const;
+    GraphEditResult duplicateGuideCurve(NodeGraph& graph, const String& guideId) const;
+    GraphEditResult reorderGuideCurve(NodeGraph& graph, const String& guideId, int shelfOrder) const;
+    GraphEditResult removeGuideCurve(NodeGraph& graph, const String& guideId) const;
+    GraphEditResult renameGuideCurve(
             NodeGraph& graph,
-            const String& guideNodeId,
+            const String& guideId,
+            const String& name) const;
+    GraphEditResult replaceGuideCurve(
+            NodeGraph& graph,
+            const String& guideId,
+            NodeModelStatePtr model,
+            const std::vector<NodeParameter>& controls) const;
+    GraphEditResult assignGuideCurveToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& guideId,
             const String& meshNodeId,
             int vertexIndex,
             const String& parameterField) const;
-    GraphEditResult createAndAttachGuideCurveToTrimeshVertexParameter(
+    GraphEditResult detachGuideCurveFromTrimeshVertexParameter(
             NodeGraph& graph,
             const String& meshNodeId,
             int vertexIndex,
-            const String& parameterField,
-            Point<float> guidePosition) const;
+            const String& parameterField) const;
+    GraphEditResult createGuideCurveAndAssignToTrimeshVertexParameter(
+            NodeGraph& graph,
+            const String& meshNodeId,
+            int vertexIndex,
+            const String& parameterField) const;
     GraphEditResult toggleSignalProbe(NodeGraph& graph, size_t edgeIndex, float tapPosition) const;
     GraphEditResult removeSignalProbe(NodeGraph& graph, const String& probeId) const;
     GraphEditResult reattachSignalProbe(

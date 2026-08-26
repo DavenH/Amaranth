@@ -56,6 +56,11 @@ void Settings::initialiseSettings() {
     addSetting(PointSizeScale,          ScaleSizes::ScaleSmall);
     addSetting(ProbeEditRefreshPolicy,  0);
     addSetting(PreviewVoiceLengthMilliseconds, 1000);
+    addSetting(GuideDockSplitPercent, 50);
+    addSetting(GuideShelfMinimized,   false);
+    addSetting(SpyShelfMinimized,     false);
+    addSetting(GuideSpyDockExpanded,  true);
+    addSetting(GuideSpyDockHeight,     190);
     addSetting(SelectWithRight,         false);
     addSetting(Tool,                    Tools::Selector);
     addSetting(UpdateGfxRealtime,       true);

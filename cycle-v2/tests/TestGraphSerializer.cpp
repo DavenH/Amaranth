@@ -1,14 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
-#include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -45,18 +46,29 @@ File contentPreset(const String& name) {
   #endif
 }
 
-bool hasGuideEdge(
+bool hasGuideAssignment(
         const NodeGraph& graph,
-        const String& source,
+        const String& guideId,
         const String& destination,
         const String& port) {
-    return std::any_of(graph.getEdges().begin(), graph.getEdges().end(),
-            [&](const Edge& edge) {
-                return edge.sourceNodeId == source
-                        && edge.sourcePortId == "guide"
-                        && edge.destNodeId == destination
-                        && edge.destPortId == port
-                        && edge.isProcessingAttachment();
+    const String prefix = "guide.cube.";
+    if (!port.startsWith(prefix)) {
+        return false;
+    }
+    const String suffix = port.fromFirstOccurrenceOf(prefix, false, false);
+    const int cubeIndex = suffix.upToFirstOccurrenceOf(".", false, false).getIntValue();
+    const String field = suffix.fromFirstOccurrenceOf(".", false, false);
+    const auto expectedField = field == "time" ? GuideCurveField::Time
+            : field == "red" ? GuideCurveField::Red
+            : field == "blue" ? GuideCurveField::Blue
+            : field == "phase" ? GuideCurveField::Phase
+            : field == "amp" ? GuideCurveField::Amplitude
+            : GuideCurveField::Curve;
+    return std::any_of(
+            graph.getGuideAssignments().begin(), graph.getGuideAssignments().end(),
+            [&](const GuideCurveAssignment& assignment) {
+                return assignment.guideId == guideId
+                        && assignment.targets(destination, { cubeIndex, expectedField });
             });
 }
 
@@ -88,6 +100,17 @@ TEST_CASE("Graph JSON is canonical and byte stable", "[cycle-v2][graph]") {
     REQUIRE_FALSE(encoded.contains("<cycleV2Graph"));
     REQUIRE_FALSE(encoded.contains("&quot;"));
     REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph documents save canonical JSON with stable line endings",
+        "[cycle-v2][graph]") {
+    const File destination = File::getSpecialLocation(File::tempDirectory)
+            .getNonexistentChildFile("cycle-v2-canonical-graph", ".cyclegraph");
+    GraphDocument document(NodeGraph::createDemoGraph());
+
+    REQUIRE(document.save(destination));
+    REQUIRE(destination.loadFileAsString() == document.toJson());
+    REQUIRE(destination.deleteFile());
 }
 
 TEST_CASE("Graph JSON derives immutable node names from definitions", "[cycle-v2][graph]") {
@@ -230,8 +253,8 @@ TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",
     REQUIRE(serializer.toJsonString(loaded.graph).contains("\"attachmentType\""));
 }
 
-TEST_CASE("Format one infers typed static configuration attachments",
-        "[cycle-v2][graph][migration][voice-context]") {
+TEST_CASE("Legacy graph formats are rejected after direct Guide resource conversion",
+        "[cycle-v2][graph][serialization][voice-context]") {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationTriple, "triple", {}));
@@ -253,12 +276,8 @@ TEST_CASE("Format one infers typed static configuration attachments",
 
     const GraphLoadResult loaded = serializer.readJSON(encoded);
 
-    REQUIRE(loaded.succeeded());
-    REQUIRE(loaded.graph.getEdges().size() == 1);
-    REQUIRE(loaded.graph.getEdges().front().connectionKind
-            == ConnectionKind::ConfigurationAttachment);
-    REQUIRE(loaded.graph.getEdges().front().attachmentType
-            == AttachmentType::ModulationTriple);
+    REQUIRE_FALSE(loaded.succeeded());
+    REQUIRE_FALSE(loaded.issues.empty());
 }
 
 TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph][layout]") {
@@ -293,37 +312,11 @@ TEST_CASE("Graph JSON persists authored port side overrides", "[cycle-v2][graph]
     REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
 }
 
-TEST_CASE("Graph JSON persists performance keyboard layout outside topology",
-        "[cycle-v2][graph][layout][keyboard]") {
-    NodeGraph graph = NodeGraph::createDemoGraph();
-    const size_t nodeCount = graph.getNodes().size();
-    const size_t edgeCount = graph.getEdges().size();
-    const auto baseline = GraphCompiler().compile(graph);
-    REQUIRE(baseline.succeeded());
-    REQUIRE(graph.setPerformanceKeyboardBounds({ 123.f, 456.f, 496.f, 184.f }));
-
-    const GraphSerializer serializer;
-    const String encoded = serializer.toJsonString(graph);
-    REQUIRE(encoded.contains("\"presentation\""));
-    REQUIRE(encoded.contains("\"performanceKeyboardBounds\""));
-    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
-
-    REQUIRE(loaded.succeeded());
-    REQUIRE(loaded.graph.getPerformanceKeyboardBounds().has_value());
-    REQUIRE(*loaded.graph.getPerformanceKeyboardBounds()
-            == Rectangle<float>(123.f, 456.f, 496.f, 184.f));
-    REQUIRE(loaded.graph.getNodes().size() == nodeCount);
-    REQUIRE(loaded.graph.getEdges().size() == edgeCount);
-    const auto compiled = GraphCompiler().compile(loaded.graph);
-    REQUIRE(compiled.succeeded());
-    REQUIRE(compiled.plan.steps.size() == baseline.plan.steps.size());
-    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
-
-    var malformed = serializer.writeJSON(graph);
-    malformed.getProperty("presentation", {})
-            .getProperty("performanceKeyboardBounds", {})
-            .getDynamicObject()->removeProperty("width");
-    REQUIRE_FALSE(serializer.readJSON(malformed).succeeded());
+TEST_CASE("Graph JSON excludes application utility layout",
+        "[cycle-v2][graph][serialization][keyboard]") {
+    const String encoded = GraphSerializer().toJsonString(NodeGraph::createDemoGraph());
+    REQUIRE_FALSE(encoded.contains("\"presentation\""));
+    REQUIRE_FALSE(encoded.contains("\"performanceKeyboardBounds\""));
 }
 
 TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v2][graph]") {
@@ -467,8 +460,11 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
         REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
-        const String migrated = GraphSerializer().toJsonString(loaded.graph);
-        REQUIRE(GraphSerializer().loadJsonString(migrated).succeeded());
+        const String canonical = GraphSerializer().toJsonString(loaded.graph);
+        REQUIRE(GraphSerializer().loadJsonString(canonical).succeeded());
+        if (encoded != canonical) {
+            FAIL(name + " is not canonical JSON");
+        }
         REQUIRE_FALSE(encoded.contains("\"title\""));
         REQUIRE_FALSE(encoded.contains("&quot;"));
         REQUIRE_FALSE(encoded.contains("mesh.topology"));
@@ -569,19 +565,17 @@ TEST_CASE("African Horn keeps its populated mesh path in the time domain",
             });
     REQUIRE(directTimePath != loaded.graph.getEdges().end());
 
-    const auto guideEdges = std::count_if(
-            loaded.graph.getEdges().begin(),
-            loaded.graph.getEdges().end(),
-            [](const Edge& edge) {
-                return edge.sourceNodeId == "guide1"
-                        && edge.sourcePortId == "guide"
-                        && edge.destNodeId == "timeLayer2"
-                        && edge.isProcessingAttachment();
+    const auto guideAssignments = std::count_if(
+            loaded.graph.getGuideAssignments().begin(),
+            loaded.graph.getGuideAssignments().end(),
+            [](const GuideCurveAssignment& assignment) {
+                return assignment.guideId == "guide1"
+                        && assignment.targetNodeId == "timeLayer2";
             });
-    REQUIRE(guideEdges == 2);
+    REQUIRE(guideAssignments == 2);
     for (const int cube : { 2, 3 }) {
         const String destination = "guide.cube." + String(cube) + ".phase";
-        REQUIRE(hasGuideEdge(loaded.graph, "guide1", "timeLayer2", destination));
+        REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "timeLayer2", destination));
     }
 
     const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
@@ -615,19 +609,19 @@ TEST_CASE("Baroque Flute preserves every authored guide assignment",
     const NodeGraph graph = GraphSerializer().fromJsonString(
             contentPreset("baroque-flute.cyclegraph").loadFileAsString());
     for (const int cube : { 1, 3, 4, 5, 6 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide2", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
     }
     for (const int cube : { 1, 4 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide4", "magnitudeLayer2", "guide.cube." + String(cube) + ".amp"));
     }
     for (const int cube : { 0, 2 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide1", "magnitudeLayer3", "guide.cube." + String(cube) + ".time"));
     }
     for (const int cube : { 0, 1 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide1", "phaseLayer1", "guide.cube." + String(cube) + ".time"));
     }
 
@@ -644,19 +638,19 @@ TEST_CASE("Alto Sax preserves every authored guide assignment",
   #if defined(CYCLE_V2_SOURCE_DIR)
     const NodeGraph graph = GraphSerializer().fromJsonString(
             contentPreset("alto-sax.cyclegraph").loadFileAsString());
-    REQUIRE(hasGuideEdge(graph, "guide3", "timeLayer1", "guide.cube.2.phase"));
-    REQUIRE(hasGuideEdge(graph, "guide3", "timeLayer1", "guide.cube.3.phase"));
-    REQUIRE(hasGuideEdge(graph, "guide2", "timeLayer1", "guide.cube.3.amp"));
-    REQUIRE(hasGuideEdge(graph, "guide1", "timeLayer1", "guide.cube.4.amp"));
-    REQUIRE(hasGuideEdge(graph, "guide2", "timeLayer1", "guide.cube.5.amp"));
-    REQUIRE(hasGuideEdge(graph, "guide4", "magnitudeLayer1", "guide.cube.0.amp"));
-    REQUIRE(hasGuideEdge(graph, "guide3", "magnitudeLayer1", "guide.cube.2.phase"));
+    REQUIRE(hasGuideAssignment(graph, "guide3", "timeLayer1", "guide.cube.2.phase"));
+    REQUIRE(hasGuideAssignment(graph, "guide3", "timeLayer1", "guide.cube.3.phase"));
+    REQUIRE(hasGuideAssignment(graph, "guide2", "timeLayer1", "guide.cube.3.amp"));
+    REQUIRE(hasGuideAssignment(graph, "guide1", "timeLayer1", "guide.cube.4.amp"));
+    REQUIRE(hasGuideAssignment(graph, "guide2", "timeLayer1", "guide.cube.5.amp"));
+    REQUIRE(hasGuideAssignment(graph, "guide4", "magnitudeLayer1", "guide.cube.0.amp"));
+    REQUIRE(hasGuideAssignment(graph, "guide3", "magnitudeLayer1", "guide.cube.2.phase"));
     for (const int cube : { 3, 4, 5, 6, 7, 8, 9 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide4", "magnitudeLayer1", "guide.cube." + String(cube) + ".amp"));
     }
     for (const int cube : { 10, 11, 12 }) {
-        REQUIRE(hasGuideEdge(
+        REQUIRE(hasGuideAssignment(
                 graph, "guide3", "magnitudeLayer1", "guide.cube." + String(cube) + ".phase"));
     }
 
@@ -701,8 +695,8 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(hasEdge("scratchEnvelope", "env", "magnitudeLayer1", "scratch"));
     REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer1", "scratch"));
     REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer2", "scratch"));
-    REQUIRE(hasEdge("guide1", "guide", "phaseLayer1", "guide.cube.0.amp"));
-    REQUIRE(hasEdge("guide1", "guide", "phaseLayer2", "guide.cube.4.phase"));
+    REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer1", "guide.cube.0.amp"));
+    REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer2", "guide.cube.4.phase"));
     REQUIRE(hasEdge("magnitudeLayer1", "out", "magnitudeLayer1Process", "in"));
     REQUIRE(hasEdge("magnitudeLayer1Process", "out", "ifft", "mag"));
     REQUIRE(hasEdge("phaseLayer1", "out", "phaseLayer1Process", "in"));
@@ -741,8 +735,8 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(phaseCubes2.size() > 4);
     REQUIRE(phaseCubes1[0]->guideCurveChans[Vertex::Amp] == 0);
     REQUIRE(phaseCubes2[4]->guideCurveChans[Vertex::Phase] == 0);
-    REQUIRE(loaded.graph.findNode("guide1") != nullptr);
-    REQUIRE(loaded.graph.findNode("guide2") == nullptr);
+    REQUIRE(loaded.graph.findGuideCurve("guide1") != nullptr);
+    REQUIRE(loaded.graph.findGuideCurve("guide2") == nullptr);
 
     const Node* waveshaper = loaded.graph.findNode("waveshaper");
     REQUIRE(waveshaper != nullptr);

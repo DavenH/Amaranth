@@ -1,0 +1,19 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "spyShelf.minimize",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    { "command": "assertState", "path": "guideDock.spiesMinimized", "equals": true },
+    { "command": "assertState", "path": "guideDock.guidesMinimized", "equals": false },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

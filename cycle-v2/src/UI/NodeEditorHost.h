@@ -5,17 +5,17 @@
 #include <memory>
 #include <optional>
 
-#include "../Graph/GraphEditor.h"
-#include "../Graph/GraphCommandDispatcher.h"
-#include "../Graph/GraphDocument.h"
-#include "../Graph/NodeGraph.h"
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Trimesh/TrimeshRenderProfile.h"
-#include "../Runtime/NodeUpdateGraph.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
+#include "Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
 
-class Effect2DWidget;
+class CurveEditorWidget;
 class TrimeshWidget;
 
 class NodeEditorCommands {
@@ -119,7 +119,7 @@ class NodeEditorResources {
 public:
     virtual ~NodeEditorResources() = default;
 
-    virtual Effect2DWidget* effect2DWidget(const Node& node) = 0;
+    virtual CurveEditorWidget* curveEditorWidget(const Node& node) = 0;
     virtual TrimeshWidget* trimeshWidget(const Node& node) = 0;
     virtual TrimeshWidget* findTrimeshWidget(const String& nodeId) = 0;
     virtual TrimeshRenderProfile trimeshRenderProfile(const Node& node) const = 0;

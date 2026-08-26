@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 #include <vector>
 

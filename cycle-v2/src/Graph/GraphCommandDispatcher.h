@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GraphDocument.h"
+#include "Graph/GraphDocument.h"
 
 #include <functional>
 #include <optional>
@@ -9,6 +9,14 @@ namespace CycleV2 {
 
 struct CurveNodeStatePublication {
     juce::String nodeId;
+    // Captured once from GraphDocument::graph() when the gesture begins.
+    uint64_t durableBaseRevision {};
+    NodeModelStatePtr model;
+    std::vector<NodeParameter> controls;
+};
+
+struct GuideCurveStatePublication {
+    juce::String guideId;
     // Captured once from GraphDocument::graph() when the gesture begins.
     uint64_t durableBaseRevision {};
     NodeModelStatePtr model;
@@ -30,16 +38,27 @@ public:
             size_t edgeIndex,
             float tapPosition);
     GraphEditResult spliceNodeIntoEdge(size_t edgeIndex, const juce::String& nodeId);
-    GraphEditResult attachGuideCurve(
-            const juce::String& guideNodeId,
+    GraphEditResult createGuideCurve();
+    GraphEditResult duplicateGuideCurve(const juce::String& guideId);
+    GraphEditResult reorderGuideCurve(const juce::String& guideId, int shelfOrder);
+    GraphEditResult assignGuideCurve(
+            const juce::String& guideId,
             const juce::String& meshNodeId,
             int vertexIndex,
             const juce::String& parameterField);
-    GraphEditResult createAndAttachGuideCurve(
+    GraphEditResult detachGuideCurve(
             const juce::String& meshNodeId,
             int vertexIndex,
-            const juce::String& parameterField,
-            juce::Point<float> guidePosition);
+            const juce::String& parameterField);
+    GraphEditResult createAndAssignGuideCurve(
+            const juce::String& meshNodeId,
+            int vertexIndex,
+            const juce::String& parameterField);
+    GraphEditResult removeGuideCurve(const juce::String& guideId);
+    GraphEditResult renameGuideCurve(
+            const juce::String& guideId,
+            const juce::String& name);
+    GraphEditResult publishGuideCurveState(const GuideCurveStatePublication& publication);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,
@@ -59,8 +78,6 @@ public:
     GraphEditResult translateNodes(
             const std::vector<juce::String>& nodeIds,
             juce::Point<float> offset);
-    GraphEditResult setPerformanceKeyboardBounds(juce::Rectangle<float> bounds);
-
     void beginCompoundEdit();
     void commitCompoundEdit();
     void cancelCompoundEdit();

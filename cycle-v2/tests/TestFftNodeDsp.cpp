@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Nodes/FFT/FftBlockwiseDsp.h"
-#include "../src/Nodes/FFT/FftGridwiseDsp.h"
+#include "Nodes/FFT/FftBlockwiseDsp.h"
+#include "Nodes/FFT/FftGridwiseDsp.h"
 
 using namespace CycleV2;
 

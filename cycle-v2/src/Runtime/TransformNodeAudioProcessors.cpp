@@ -1,7 +1,7 @@
-#include "AudioProcessorFactories.h"
+#include "Runtime/AudioProcessorFactories.h"
 
-#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
-#include "../Nodes/FFT/FftSignalProcessor.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/FFT/FftSignalProcessor.h"
 
 namespace CycleV2 {
 

@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "NodePalette.h"
+#include "UI/NodePalette.h"
 
 namespace CycleV2 {
 

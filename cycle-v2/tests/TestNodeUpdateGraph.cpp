@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Runtime/NodeUpdateGraph.h"
+#include "Runtime/NodeUpdateGraph.h"
 
 #include <map>
 

@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/UI/NodeCanvasHitRouter.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphNodeFactory.h"
+#include "UI/NodeCanvasHitRouter.h"
 
 using namespace CycleV2;
 
@@ -41,7 +41,9 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(action.has_value());
     REQUIRE(action->kind == CanvasNodeActionKind::CycleOperationLayout);
     REQUIRE(action->nodeId == "multiply");
-    REQUIRE(router.hoverTextFor(viewport, {}, actionPoint).contains("port layout"));
+    const String actionHelp = router.hoverTextFor(viewport, {}, actionPoint);
+    REQUIRE(actionHelp.contains("port arrangement"));
+    REQUIRE_FALSE(actionHelp.contains(" / "));
 
     const Node* envelope = graph.findNode("envelope");
     REQUIRE(envelope != nullptr);
@@ -60,7 +62,9 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(router.edgeAt(scene, edgePoint) == 0);
     REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "delay") == 0);
     REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "wave") == -1);
-    REQUIRE(router.hoverTextFor(viewport, scene, edgePoint).contains("Signal edge"));
+    const String edgeHelp = router.hoverTextFor(viewport, scene, edgePoint);
+    REQUIRE(edgeHelp.startsWith("Time signal from"));
+    REQUIRE_FALSE(edgeHelp.contains(" / "));
 
     const Point<float> paletteClick { 80.f, 420.f };
     const Point<float> creationPosition = router.paletteCreationWorldPosition(

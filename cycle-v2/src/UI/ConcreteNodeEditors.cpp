@@ -1,17 +1,18 @@
 #include <iterator>
 
-#include "NodeEditorHost.h"
+#include "UI/NodeEditorHost.h"
 
-#include "ModulationNodeEditors.h"
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
-#include "../Nodes/Unison/UnisonNodeEditor.h"
-#include "../Runtime/NodePreviewProcessor.h"
-#include "../Nodes/Effect2D/CurveNodeEditors.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
+#include "UI/ModulationNodeEditors.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Delay/DelayPreviewPainter.h"
+#include "Nodes/Equalizer/EqualizerPreviewPainter.h"
+#include "UI/Preview/EffectPlotPalette.h"
+#include "Nodes/Unison/UnisonNodeEditor.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -211,14 +212,14 @@ public:
             resources.paintNodePreview(graphics, node, response.reduced(5.f));
         } else if (kind == NodeKind::Delay && node.id.isNotEmpty()) {
             const auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
-            paintDelayPingPreview(graphics, response, node, 1.f);
+            DelayPreviewPainter().paint(graphics, response, node, 1.f);
         } else if (kind == NodeKind::Equalizer && node.id.isNotEmpty()) {
             auto response = Rectangle<float>(18.f, 52.f, (float) getWidth() - 36.f, 150.f);
             graphics.setColour(EffectPlotPalette::forEnabledState(
                     EffectPlotPalette::insetBackground,
                     enabledButton.getToggleState()));
             graphics.fillRoundedRectangle(response, 6.f);
-            paintEqualizerResponsePreview(
+            EqualizerPreviewPainter().paint(
                     graphics,
                     response.reduced(12.f, 9.f),
                     node,
@@ -263,7 +264,8 @@ public:
         constexpr float markerHitRadius = 36.f;
         float nearestDistance = markerHitRadius;
         for (int band = 0; band < CycleDsp::equalizerBandCount; ++band) {
-            const float distance = equalizerBandControlPoint(equalizerGraphArea(), node, band)
+            const float distance = EqualizerPreviewPainter()
+                    .bandControlPoint(equalizerGraphArea(), node, band)
                     .getDistanceFrom(event.position);
             if (distance < nearestDistance) {
                 nearestDistance = distance;
@@ -572,7 +574,7 @@ public:
             const NodeEditorContext& context) :
             commands     (context.commands)
         ,   presentation (context.presentation)
-        ,   editor       (createCurveNodeEditor(node.kind, *context.resources.effect2DWidget(node))) {
+        ,   editor       (createCurveNodeEditor(node.kind, *context.resources.curveEditorWidget(node))) {
         editor->setDelegate(this);
     }
 
@@ -593,29 +595,29 @@ public:
     void releaseOpenGLResources() override {}
 
 private:
-    void closeEffect2DEditor() override {
+    void closeCurveEditor() override {
         presentation.closeNodeEditor();
     }
 
-    void repaintEffect2DEditorOpenGL() override {
+    void repaintCurveEditorOpenGL() override {
         presentation.repaintNodeEditor(true);
     }
 
-    bool publishEffect2DState(
+    bool publishCurveState(
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override {
         return commands.publishCurveState(nodeId, std::move(model), controls);
     }
 
-    void beginEffect2DTransaction() override {
+    void beginCurveTransaction() override {
         commands.beginCurveTransaction();
     }
 
-    void commitEffect2DTransaction() override {
+    void commitCurveTransaction() override {
         commands.commitCurveTransaction();
     }
 
-    void effect2DTransientStateChanged(uint64_t fingerprint) override {
+    void curveTransientStateChanged(uint64_t fingerprint) override {
         presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
     }
 
@@ -867,7 +869,6 @@ NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
             NodeKind::ModulationTriple,
             createModulationNodeEditorFactory());
     factories.emplace_back(NodeKind::Envelope, std::make_unique<CurveNodeEditorFactory>());
-    factories.emplace_back(NodeKind::GuideCurve, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::Waveshaper, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::TrilinearMesh, std::make_unique<TrimeshNodeEditorFactory>());

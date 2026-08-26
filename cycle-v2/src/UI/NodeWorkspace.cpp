@@ -1,21 +1,8 @@
-#include "NodeWorkspace.h"
+#include "UI/NodeWorkspace.h"
 
 namespace CycleV2 {
 
 namespace {
-
-constexpr float performanceKeyboardWorldWidth = 496.f;
-constexpr float performanceKeyboardWorldHeight = 184.f;
-constexpr float performanceKeyboardWorldMargin = 36.f;
-
-Rectangle<float> normalizedPerformanceKeyboardBounds(Rectangle<float> bounds) {
-    return {
-            bounds.getX(),
-            bounds.getY(),
-            performanceKeyboardWorldWidth,
-            performanceKeyboardWorldHeight
-    };
-}
 
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
@@ -42,40 +29,20 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     setOpaque(true);
     addAndMakeVisible(canvas);
     canvas.addAndMakeVisible(keyboard);
-    canvas.setOverlayPresentationChangedCallback([this] {
+    canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
     });
-    keyboard.onMoveStarted = [this] {
-        performanceMoveActive = true;
-        canvas.beginPerformanceKeyboardMove();
-    };
-    keyboard.onMoved = [this](Point<int> canvasPosition) {
-        performanceWorldBounds.setPosition(
-                canvas.worldPositionForOverlay(canvasPosition.toFloat()));
-        canvas.movePerformanceKeyboard(performanceWorldBounds);
-        ++performanceMoveCount;
-    };
-    keyboard.onMoveEnded = [this] {
-        canvas.endPerformanceKeyboardMove();
-        performanceMoveActive = false;
-    };
     startTimerHz(30);
     timerCallback();
 }
 
 NodeWorkspace::~NodeWorkspace() {
     stopTimer();
-    canvas.setOverlayPresentationChangedCallback({});
-    if (performanceMoveActive) {
-        canvas.endPerformanceKeyboardMove();
-    }
+    canvas.setOverlayOcclusionChangedCallback({});
     keyboard.releaseAllNotes();
 }
 
 bool NodeWorkspace::saveGraphToFile(const File& file) {
-    if (!performanceWorldBounds.isEmpty()) {
-        canvas.storePerformanceKeyboardBounds(performanceWorldBounds);
-    }
     return canvas.saveGraphToFile(file);
 }
 
@@ -84,10 +51,6 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     if (!canvas.loadGraphFromFile(file)) {
         return false;
     }
-    const auto storedBounds = canvas.performanceKeyboardBounds();
-    performanceWorldBounds = storedBounds.has_value()
-            ? normalizedPerformanceKeyboardBounds(*storedBounds)
-            : Rectangle<float> {};
     layoutPerformanceKeyboard();
     return true;
 }
@@ -130,6 +93,21 @@ bool NodeWorkspace::deleteNodeForAutomation(const String& nodeId) {
 
 bool NodeWorkspace::deleteEdgeForAutomation(int edgeIndex) {
     return canvas.deleteEdgeForAutomation(edgeIndex);
+}
+
+bool NodeWorkspace::deleteGuideCurveForAutomation(const String& guideId) {
+    return canvas.deleteGuideCurveForAutomation(guideId);
+}
+
+bool NodeWorkspace::undoForAutomation() {
+    return canvas.undoForAutomation();
+}
+
+bool NodeWorkspace::setGuideParameterForAutomation(
+        const String& guideId,
+        const String& parameterId,
+        const String& value) {
+    return canvas.setGuideParameterForAutomation(guideId, parameterId, value);
 }
 
 bool NodeWorkspace::setNodeParameterForAutomation(
@@ -201,12 +179,6 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.octaveUpBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
-    targets->add(pointerTarget(
-            "PerformanceKeyboard.Header",
-            "performanceDragHandle",
-            keyboard.dragHandleBounds().translated(
-                    keyboardBounds.getX(),
-                    keyboardBounds.getY())));
     for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 12; ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
@@ -250,22 +222,14 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty(
             "hostedByCanvas",
             keyboard.getParentComponent() == &canvas);
-    object->setProperty("moveCount", (int64) performanceMoveCount);
-    object->setProperty("worldX", performanceWorldBounds.getX());
-    object->setProperty("worldY", performanceWorldBounds.getY());
-    object->setProperty("worldWidth", performanceWorldBounds.getWidth());
-    object->setProperty("worldHeight", performanceWorldBounds.getHeight());
+    object->setProperty("docked", true);
     object->setProperty("screenX", keyboard.getX());
     object->setProperty("screenY", keyboard.getY());
-    object->setProperty(
-            "layoutSynchronized",
-            performanceLayoutViewportRevision == canvas.viewportRevisionForOverlay());
+    object->setProperty("screenWidth", keyboard.getWidth());
+    object->setProperty("screenHeight", keyboard.getHeight());
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);
-    object->setProperty(
-            "presetPositionStored",
-            canvas.performanceKeyboardBounds().has_value());
     return var(object);
 }
 
@@ -315,15 +279,6 @@ void NodeWorkspace::timerCallback() {
         keyboard.releaseAllNotes();
     }
     previousDeviceReady = status.deviceReady;
-    if (!performanceMoveActive) {
-        const auto storedBounds = canvas.performanceKeyboardBounds();
-        const Rectangle<float> normalizedBounds = storedBounds.has_value()
-                ? normalizedPerformanceKeyboardBounds(*storedBounds)
-                : Rectangle<float> {};
-        if (!normalizedBounds.isEmpty() && normalizedBounds != performanceWorldBounds) {
-            performanceWorldBounds = normalizedBounds;
-        }
-    }
     layoutPerformanceKeyboard();
 
     GraphExecutionPlan plan;
@@ -348,24 +303,7 @@ void NodeWorkspace::layoutPerformanceKeyboard() {
     if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) {
         return;
     }
-    if (performanceWorldBounds.isEmpty()) {
-        const auto storedBounds = canvas.performanceKeyboardBounds();
-        if (storedBounds.has_value()) {
-            performanceWorldBounds = normalizedPerformanceKeyboardBounds(*storedBounds);
-        }
-    }
-    if (performanceWorldBounds.isEmpty()) {
-        const Rectangle<float> visibleWorld = canvas.visibleWorldBoundsForOverlay();
-        performanceWorldBounds = {
-                visibleWorld.getCentreX() - performanceKeyboardWorldWidth * 0.5f,
-                visibleWorld.getBottom()
-                        - performanceKeyboardWorldHeight
-                        - performanceKeyboardWorldMargin,
-                performanceKeyboardWorldWidth,
-                performanceKeyboardWorldHeight
-        };
-    }
-    const Rectangle<int> screenBounds = canvas.boundsForWorldOverlay(performanceWorldBounds);
+    const Rectangle<int> screenBounds = canvas.performanceKeyboardDockBounds();
     const Rectangle<float> expandedBounds = canvas.expandedEditorBoundsForOverlay();
     const bool occluded = !expandedBounds.isEmpty()
             && expandedBounds.intersects(screenBounds.toFloat());
@@ -376,7 +314,6 @@ void NodeWorkspace::layoutPerformanceKeyboard() {
     keyboard.setBounds(screenBounds);
     keyboard.setVisible(!occluded);
     performanceOccludedByExpandedEditor = occluded;
-    performanceLayoutViewportRevision = canvas.viewportRevisionForOverlay();
 }
 
 }

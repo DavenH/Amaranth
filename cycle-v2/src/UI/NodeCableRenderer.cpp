@@ -1,6 +1,6 @@
-#include "NodeCableRenderer.h"
+#include "UI/NodeCableRenderer.h"
 
-#include "NodePortGeometry.h"
+#include "UI/NodePortGeometry.h"
 
 namespace CycleV2 {
 
@@ -70,40 +70,6 @@ void paintSpliceMarker(
             midpoint.x,
             placed.getBottom() - markerSize * 0.30f,
             1.9f * scale);
-}
-
-void paintAttachmentCable(
-        Graphics& graphics,
-        const Path& cable,
-        const NodeCableStyle& style,
-        float scale) {
-    Path dashedCable;
-    const PathStrokeType dashStroke(
-            2.f * scale,
-            PathStrokeType::curved,
-            PathStrokeType::rounded);
-    const Array<float> dashes { 8.f * scale, 7.f * scale };
-    dashStroke.createDashedStroke(
-            dashedCable,
-            cable,
-            dashes.getRawDataPointer(),
-            dashes.size());
-
-    graphics.setColour(style.colour.withAlpha(
-            style.spliceTarget ? 0.62f : (style.selected ? 0.46f : 0.32f)));
-    graphics.strokePath(
-            dashedCable,
-            PathStrokeType(
-                    (style.spliceTarget ? 13.f : (style.selected ? 10.f : 7.f)) * scale,
-                    PathStrokeType::curved,
-                    PathStrokeType::rounded));
-    graphics.setColour(style.colour.withAlpha(0.92f));
-    graphics.strokePath(
-            dashedCable,
-            PathStrokeType(
-                    (style.spliceTarget ? 4.5f : (style.selected ? 3.f : 2.f)) * scale,
-                    PathStrokeType::curved,
-                    PathStrokeType::rounded));
 }
 
 void paintSignalCable(
@@ -219,11 +185,7 @@ void NodeCableRenderer::paint(
         float zoom) {
     const float scale = scaleForZoom(zoom);
 
-    if (style.attachment) {
-        paintAttachmentCable(graphics, edge.cablePath, style, scale);
-    } else {
-        paintSignalCable(graphics, edge.cablePath, style, scale);
-    }
+    paintSignalCable(graphics, edge.cablePath, style, scale);
 
     if (style.spliceTarget) {
         paintSpliceMarker(graphics, edge.cablePath, style.colour, scale);

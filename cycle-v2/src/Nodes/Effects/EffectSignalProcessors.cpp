@@ -1,8 +1,8 @@
-#include "EffectSignalProcessors.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
 
-#include "../../Graph/NodeDefinition.h"
-#include "../../Graph/NodeParameterMap.h"
-#include "../Effect2D/FlatCurvePreparation.h"
+#include "Graph/NodeDefinition.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
@@ -33,8 +33,6 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             parameterMap.floatValue("size", 0.5f));
     FlatCurvePreparation curve(
             "CycleV2IrConfiguration",
-            NodeKind::ImpulseResponse,
-            parameters,
             model,
             FXRasterizer::Bipolar);
     if (!curve.prepare()) {
@@ -158,56 +156,6 @@ void IrSignalProcessor::prepareConvolver(
                     const_cast<float*>(configuration->impulse.data()),
                     (int) configuration->impulse.size()));
     convolvers.prepareScratch(frameCount);
-}
-
-void DelaySignalProcessor::configure(
-        const DelayConfiguration& prepared,
-        const AudioProcessTiming& timing) {
-    bpm = std::max(1.0, timing.bpm);
-    beatsPerMeasure = std::max(1, timing.beatsPerMeasure);
-
-    CycleDsp::DelayConfiguration configuration;
-    configuration.sampleRate = std::max(1.0, timing.sampleRate);
-    configuration.delaySeconds = CycleDsp::delayTimeSeconds(
-            prepared.time,
-            bpm,
-            beatsPerMeasure);
-    configuration.feedback = jlimit(
-            0.f,
-            0.98f,
-            prepared.feedback);
-    configuration.spin = jlimit(0.f, 1.f, prepared.spin);
-    configuration.wet = jlimit(0.f, 1.f, prepared.wet);
-    configuration.spinIterations = CycleDsp::delaySpinIterations(
-            prepared.spinIterations);
-
-    configuration.channel = CycleDsp::DelayChannel::Left;
-    blockDelays[0].configure(configuration);
-    traversalDelays[0].configure(configuration);
-    configuration.channel = CycleDsp::DelayChannel::Right;
-    blockDelays[1].configure(configuration);
-    traversalDelays[1].configure(configuration);
-}
-
-void DelaySignalProcessor::beginBlock(size_t) {
-    processingTraversal = false;
-}
-
-void DelaySignalProcessor::beginTraversalGrid(size_t, size_t rows) {
-    (void) rows;
-    processingTraversal = true;
-    traversalDelays[0].reset();
-    traversalDelays[1].reset();
-}
-
-void DelaySignalProcessor::processBuffer(
-        Buffer<float> buffer,
-        const SignalProcessPosition& position) {
-    const size_t channel = std::min<size_t>(position.channel, 1);
-    auto& delay = processingTraversal
-            ? traversalDelays[channel]
-            : blockDelays[channel];
-    delay.process(buffer);
 }
 
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(

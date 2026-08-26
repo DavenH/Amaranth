@@ -8,6 +8,11 @@ frequency and value mapping in Trimesh views and signal spies, imported guide
 assignments match Cycle 1's canonical data, and both mesh panels initialize the
 shared assignment-tag resources.
 
+`cycle-v2-guide-resource-dock.md` supersedes this TDD's Guide node and graph-edge
+ownership. The provider, preparation, cube-component, DSP, and rendering
+behavior documented here remains authoritative while resources and typed
+assignments replace nodes and edges.
+
 ## Problem
 
 Cycle V2 preserves Cycle 1 guide-curve nodes, cube-component guide metadata,

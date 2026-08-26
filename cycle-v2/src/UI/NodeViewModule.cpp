@@ -1,6 +1,4 @@
-#include "NodeViewModule.h"
-
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "UI/NodeViewModule.h"
 
 #include <functional>
 
@@ -101,17 +99,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     mesh.hostedEditor = true;
     mesh.outputSideControl = true;
     mesh.expandedEditorScale = Point<float>(0.81f, 1.f);
-    add(NodeKind::TrilinearMesh, mesh, [](const Node& node, const String& portId) {
-        const auto target = TrimeshGuideAttachmentTarget::parse(portId);
-        if (!target.isValid()) {
-            return std::optional<Point<float>> {};
-        }
-        return std::optional<Point<float>> {{
-                node.bounds.getX() + node.bounds.getWidth() * ((float) target.fieldIndex() + 1.f)
-                        / ((float) TrimeshGuideAttachmentTarget::fieldCount + 1.f),
-                node.bounds.getY()
-        }};
-    });
+    add(NodeKind::TrilinearMesh, mesh);
     add(NodeKind::SpectralLayer, preview);
 
     NodeViewCapabilities operation;
@@ -127,7 +115,6 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
         add(kind, curve);
     };
     addCurve(NodeKind::Envelope, { 840.f, 620.f });
-    addCurve(NodeKind::GuideCurve, { 700.f, 380.f });
     addCurve(NodeKind::ImpulseResponse, { 1050.f, 470.f });
     addCurve(NodeKind::Waveshaper, { 540.f, 360.f });
 

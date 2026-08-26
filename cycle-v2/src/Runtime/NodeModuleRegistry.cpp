@@ -1,4 +1,4 @@
-#include "NodeModuleRegistry.h"
+#include "Runtime/NodeModuleRegistry.h"
 
 #include <utility>
 
@@ -62,7 +62,6 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::Add:               return "Add";
         case AudioModuleRole::Multiply:          return "Multiply";
         case AudioModuleRole::Envelope:          return "Envelope";
-        case AudioModuleRole::GuideCurve:        return "Guide Curve";
         case AudioModuleRole::ImpulseResponse:   return "Impulse Response";
         case AudioModuleRole::Waveshaper:        return "Waveshaper";
         case AudioModuleRole::Unison:            return "Unison";

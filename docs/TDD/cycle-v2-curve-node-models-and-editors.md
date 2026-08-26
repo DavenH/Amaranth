@@ -4,6 +4,11 @@
 
 Implemented (2026-07-15).
 
+`cycle-v2-guide-resource-dock.md` retains the flat Guide curve model, panel, and
+editor behavior documented here while moving its ownership from a node to a
+document resource. Guide types named for node ownership must be renamed or
+rebound without duplicating this implementation.
+
 Depends on:
 
 - `cycle-v2-node-definition-and-graph-model.md`

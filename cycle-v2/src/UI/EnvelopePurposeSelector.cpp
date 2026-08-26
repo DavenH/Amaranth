@@ -1,6 +1,6 @@
-#include "EnvelopePurposeSelector.h"
+#include "UI/EnvelopePurposeSelector.h"
 
-#include "EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
 
 namespace CycleV2 {
 

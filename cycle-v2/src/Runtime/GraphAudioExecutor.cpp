@@ -1,6 +1,6 @@
-#include "GraphAudioExecutor.h"
-#include "AudioProcessContextUtils.h"
-#include "../Nodes/Control/ModulationTriple.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Nodes/Control/ModulationTriple.h"
 
 #include <algorithm>
 #include <cmath>

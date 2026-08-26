@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 
@@ -29,7 +29,7 @@ struct GraphLoadResult {
 
 class GraphSerializer {
 public:
-    static constexpr int currentFormatVersion = 2;
+    static constexpr int currentFormatVersion = 3;
 
     var writeJSON(const NodeGraph& graph) const;
     GraphLoadResult readJSON(const var& value) const;

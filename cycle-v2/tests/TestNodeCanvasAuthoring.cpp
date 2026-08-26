@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/NodeParameterMap.h"
-#include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../src/UI/ModulationCableBundle.h"
-#include "../src/UI/NodeCanvasAuthoring.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeCanvasAuthoring.h"
 
 using namespace CycleV2;
 
@@ -202,41 +202,6 @@ TEST_CASE("Modulation triple default attachment is one undoable side-socket gest
     REQUIRE(document.graph().getEdges().empty());
     REQUIRE(authoring.redo().succeeded);
     REQUIRE(document.graph().getEdges().size() == 1);
-}
-
-TEST_CASE("Bundled Trimesh guide assignments delete as one undoable gesture",
-        "[cycle-v2][canvas][authoring][attachments]") {
-    NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {}));
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "phase"),
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
-    GraphDocument document(std::move(graph));
-    GraphCommandDispatcher commands(document);
-    GraphPresentationModel presentation;
-    NullEditorCommands editorCommands;
-    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
-
-    REQUIRE(authoring.deleteEdge(0).succeeded);
-    REQUIRE(document.graph().getEdges().empty());
-    REQUIRE(authoring.undo().succeeded);
-    REQUIRE(document.graph().getEdges().size() == 2);
 }
 
 TEST_CASE("Envelope modulation bundle authors red and blue as one gesture",

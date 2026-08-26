@@ -1,13 +1,14 @@
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
-#include "NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "GraphNodeFactory.h"
-#include "NodeDefinition.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace CycleV2 {
 
@@ -101,6 +102,201 @@ void NodeGraph::addEdge(Edge edgeToAdd) {
     ++revision;
 }
 
+bool NodeGraph::addGuideCurve(GuideCurveResource resource) {
+    if (resource.id.isEmpty() || findGuideCurve(resource.id) != nullptr) {
+        return false;
+    }
+
+    guideCurves.push_back(std::move(resource));
+    guideResourceIndex[guideCurves.back().id] = guideCurves.size() - 1;
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeGuideCurve(const String& guideId) {
+    const size_t previousCount = guideCurves.size();
+    eraseIf(guideCurves, [&](const GuideCurveResource& resource) {
+        return resource.id == guideId;
+    });
+    if (guideCurves.size() == previousCount) {
+        return false;
+    }
+
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.guideId == guideId;
+    });
+    rebuildGuideResourceIndex();
+    rebuildGuideAssignmentIndexes();
+    ++revision;
+    return true;
+}
+
+const GuideCurveResource* NodeGraph::findGuideCurve(const String& guideId) const {
+    const auto found = guideResourceIndex.find(guideId);
+    return found != guideResourceIndex.end() && found->second < guideCurves.size()
+            ? &guideCurves[found->second]
+            : nullptr;
+}
+
+GuideCurveResource* NodeGraph::findGuideCurveForEditing(const String& guideId) {
+    const auto found = guideResourceIndex.find(guideId);
+    return found != guideResourceIndex.end() && found->second < guideCurves.size()
+            ? &guideCurves[found->second]
+            : nullptr;
+}
+
+bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
+    GuideCurveResource* existing = findGuideCurveForEditing(resource.id);
+    if (existing == nullptr) {
+        return false;
+    }
+
+    *existing = std::move(resource);
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {
+    const auto source = std::find_if(guideCurves.begin(), guideCurves.end(), [&](const auto& guide) {
+        return guide.id == guideId;
+    });
+    if (source == guideCurves.end()) {
+        return false;
+    }
+
+    const int sourceIndex = (int) std::distance(guideCurves.begin(), source);
+    const int destinationIndex = jlimit(0, (int) guideCurves.size() - 1, shelfOrder);
+    if (sourceIndex == destinationIndex) {
+        return false;
+    }
+
+    if (sourceIndex < destinationIndex) {
+        std::rotate(source, source + 1, guideCurves.begin() + destinationIndex + 1);
+    } else {
+        std::rotate(guideCurves.begin() + destinationIndex, source, source + 1);
+    }
+    for (int index = 0; index < (int) guideCurves.size(); ++index) {
+        guideCurves[(size_t) index].shelfOrder = index;
+    }
+    rebuildGuideResourceIndex();
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
+    if (findGuideCurve(assignment.guideId) == nullptr
+            || findNode(assignment.targetNodeId) == nullptr
+            || assignment.target.cubeIndex < 0) {
+        return false;
+    }
+
+    const auto target = guideAssignmentTargetIndex.find({
+            assignment.targetNodeId,
+            assignment.target
+    });
+    if (target != guideAssignmentTargetIndex.end()) {
+        GuideCurveAssignment& existing = guideAssignments[target->second];
+        if (existing.guideId == assignment.guideId) {
+            return false;
+        }
+        existing = std::move(assignment);
+        rebuildGuideAssignmentIndexes();
+        ++revision;
+        return true;
+    }
+
+    guideAssignments.push_back(std::move(assignment));
+    rebuildGuideAssignmentIndexes();
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeGuideAssignment(
+        const String& nodeId,
+        const TrimeshCubeComponentGuideTarget& target) {
+    const size_t previousCount = guideAssignments.size();
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targets(nodeId, target);
+    });
+    if (guideAssignments.size() == previousCount) {
+        return false;
+    }
+
+    rebuildGuideAssignmentIndexes();
+    ++revision;
+    return true;
+}
+
+int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
+        const String& nodeId,
+        int cubeCount) {
+    const size_t previousCount = guideAssignments.size();
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targetNodeId == nodeId
+                && !isPositiveAndBelow(assignment.target.cubeIndex, cubeCount);
+    });
+    const int removedCount = (int) (previousCount - guideAssignments.size());
+    if (removedCount == 0) {
+        return 0;
+    }
+
+    rebuildGuideAssignmentIndexes();
+    ++revision;
+    return removedCount;
+}
+
+int NodeGraph::guideUsageCount(const String& guideId) const {
+    const auto found = guideUsageCounts.find(guideId);
+    return found != guideUsageCounts.end() ? found->second : 0;
+}
+
+const std::vector<String>& NodeGraph::guideTargetNodeIds(const String& guideId) const {
+    static const std::vector<String> empty;
+    const auto found = guideTargetNodes.find(guideId);
+    return found != guideTargetNodes.end() ? found->second : empty;
+}
+
+const std::vector<String>& NodeGraph::guideIdsForTargetNode(const String& nodeId) const {
+    static const std::vector<String> empty;
+    const auto found = targetNodeGuides.find(nodeId);
+    return found != targetNodeGuides.end() ? found->second : empty;
+}
+
+void NodeGraph::rebuildGuideResourceIndex() {
+    guideResourceIndex.clear();
+    guideResourceIndex.reserve(guideCurves.size());
+    for (size_t index = 0; index < guideCurves.size(); ++index) {
+        guideResourceIndex[guideCurves[index].id] = index;
+    }
+}
+
+void NodeGraph::rebuildGuideAssignmentIndexes() {
+    guideAssignmentTargetIndex.clear();
+    guideUsageCounts.clear();
+    guideTargetNodes.clear();
+    targetNodeGuides.clear();
+    guideAssignmentTargetIndex.reserve(guideAssignments.size());
+    using StringSet = std::unordered_set<String, StringHash>;
+    std::unordered_map<String, StringSet, StringHash> targetNodesByGuide;
+    std::unordered_map<String, StringSet, StringHash> guidesByTargetNode;
+    for (size_t index = 0; index < guideAssignments.size(); ++index) {
+        const GuideCurveAssignment& assignment = guideAssignments[index];
+        guideAssignmentTargetIndex[{
+                assignment.targetNodeId,
+                assignment.target
+        }] = index;
+        ++guideUsageCounts[assignment.guideId];
+        if (targetNodesByGuide[assignment.guideId]
+                .insert(assignment.targetNodeId).second) {
+            guideTargetNodes[assignment.guideId].push_back(assignment.targetNodeId);
+        }
+        if (guidesByTargetNode[assignment.targetNodeId]
+                .insert(assignment.guideId).second) {
+            targetNodeGuides[assignment.targetNodeId].push_back(assignment.guideId);
+        }
+    }
+}
+
 void NodeGraph::addSignalProbe(SignalProbe probe) {
     if (findSignalProbe(probe.id) != nullptr
             || findSignalProbeForSource(probe.sourceNodeId, probe.sourcePortId) != nullptr) {
@@ -155,6 +351,7 @@ const SignalProbe* NodeGraph::findSignalProbeForSource(
 
 void NodeGraph::removeNode(const String& nodeId) {
     const size_t previousNodeCount = nodes.size();
+    const size_t previousAssignmentCount = guideAssignments.size();
     eraseIf(nodes, [&](const Node& node) {
         return node.id == nodeId;
     });
@@ -162,6 +359,12 @@ void NodeGraph::removeNode(const String& nodeId) {
     eraseIf(edges, [&](const Edge& edge) {
         return edge.sourceNodeId == nodeId || edge.destNodeId == nodeId;
     });
+    eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
+        return assignment.targetNodeId == nodeId;
+    });
+    if (guideAssignments.size() != previousAssignmentCount) {
+        rebuildGuideAssignmentIndexes();
+    }
     for (auto& probe : signalProbes) {
         if (probe.sourceNodeId == nodeId) {
             probe.sourceNodeId = {};
@@ -266,15 +469,6 @@ bool NodeGraph::setNodeBounds(const String& nodeId, Rectangle<float> bounds) {
         return false;
     }
     node->bounds = bounds;
-    ++revision;
-    return true;
-}
-
-bool NodeGraph::setPerformanceKeyboardBounds(Rectangle<float> bounds) {
-    if (performanceKeyboardBounds == bounds) {
-        return false;
-    }
-    performanceKeyboardBounds = bounds;
     ++revision;
     return true;
 }
@@ -474,17 +668,18 @@ NodeGraph NodeGraph::createDemoGraph() {
 }
 
 Colour colourForDomain(PortDomain domain) {
+    const Colour control { 0xffc5cad3 };
     switch (domain) {
-        case PortDomain::DomainContext:           return Colour(0xff72d49a);
+        case PortDomain::DomainContext:           return control;
         case PortDomain::TimeSignal:              return Colour(0xff35d6d2);
         case PortDomain::SpectralMagnitudeSignal: return Colour(0xffffb347);
         case PortDomain::SpectralPhaseSignal:     return Colour(0xffb284ff);
-        case PortDomain::MeshField:               return Colour(0xff7f95aa);
-        case PortDomain::EnvelopeSignal:          return Colour(0xff67a7ff);
-        case PortDomain::PitchSignal:             return Colour(0xffb8ff5c);
-        case PortDomain::VoiceControlSignal:      return Colour(0xff74e28a);
-        case PortDomain::ControlSignal:           return Colour(0xffc5cad3);
-        default:                                  return Colour(0xffc5cad3);
+        case PortDomain::MeshField:               return control;
+        case PortDomain::EnvelopeSignal:          return control;
+        case PortDomain::PitchSignal:             return control;
+        case PortDomain::VoiceControlSignal:      return control;
+        case PortDomain::ControlSignal:           return control;
+        default:                                  return control;
     }
 }
 
@@ -543,7 +738,6 @@ String idForAttachmentType(AttachmentType type) {
     switch (type) {
         case AttachmentType::None:             return "none";
         case AttachmentType::ScratchEnvelope:  return "scratchEnvelope";
-        case AttachmentType::GuideCurve:       return "guideCurve";
         case AttachmentType::ModulationTriple: return "modulationTriple";
         case AttachmentType::Unison:           return "unison";
     }
@@ -570,9 +764,6 @@ std::optional<AttachmentType> attachmentTypeForId(const String& id) {
     }
     if (id == "scratchEnvelope") {
         return AttachmentType::ScratchEnvelope;
-    }
-    if (id == "guideCurve") {
-        return AttachmentType::GuideCurve;
     }
     if (id == "modulationTriple") {
         return AttachmentType::ModulationTriple;

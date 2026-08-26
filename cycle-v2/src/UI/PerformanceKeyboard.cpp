@@ -1,4 +1,6 @@
-#include "PerformanceKeyboard.h"
+#include "UI/PerformanceKeyboard.h"
+
+#include "UI/CanvasUtilityDock.h"
 
 namespace CycleV2 {
 
@@ -170,21 +172,17 @@ Rectangle<float> PerformanceKeyboardPanel::octaveUpBounds() const {
     return octaveUp.getBounds().toFloat();
 }
 
-Rectangle<float> PerformanceKeyboardPanel::dragHandleBounds() const {
-    Rectangle<int> header = headerBounds();
-    const int buttonWidth = jmin(28, header.getHeight() + 4);
-    header.removeFromLeft(buttonWidth);
-    header.removeFromRight(buttonWidth);
-    return header.toFloat();
-}
-
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-    graphics.setColour(Colour(0xff171d24));
-    graphics.fillRoundedRectangle(bounds, 7.f);
-    graphics.setColour(Colour(0xff3d4a58));
-    graphics.drawRoundedRectangle(bounds, 7.f, 1.5f);
+    CanvasUtilityDock::paintSurface(graphics, bounds);
     graphics.drawHorizontalLine(headerHeight(), 6.f, (float) getWidth() - 6.f);
+    graphics.setColour(Colour(0xff8793a1));
+    graphics.setFont(FontOptions(10.f, Font::bold));
+    Rectangle<int> title = headerBounds();
+    const int buttonWidth = jmin(28, title.getHeight() + 4);
+    title.removeFromLeft(buttonWidth);
+    title.removeFromRight(buttonWidth);
+    graphics.drawText("Keyboard", title, Justification::centred);
 }
 
 void PerformanceKeyboardPanel::resized() {
@@ -201,37 +199,6 @@ void PerformanceKeyboardPanel::resized() {
 Rectangle<int> PerformanceKeyboardPanel::headerBounds() const {
     Rectangle<int> content = getLocalBounds().reduced(6);
     return content.removeFromTop(headerHeight() - 6);
-}
-
-void PerformanceKeyboardPanel::mouseDown(const MouseEvent& event) {
-    if (dragGestureActive && onMoveEnded) {
-        onMoveEnded();
-    }
-    dragGestureActive = event.position.y <= (float) headerHeight();
-    if (!dragGestureActive) {
-        return;
-    }
-    dragger.startDraggingComponent(this, event);
-    if (onMoveStarted) {
-        onMoveStarted();
-    }
-}
-
-void PerformanceKeyboardPanel::mouseDrag(const MouseEvent& event) {
-    if (!dragGestureActive) {
-        return;
-    }
-    dragger.dragComponent(this, event, nullptr);
-    if (onMoved) {
-        onMoved(getPosition());
-    }
-}
-
-void PerformanceKeyboardPanel::mouseUp(const MouseEvent&) {
-    if (dragGestureActive && onMoveEnded) {
-        onMoveEnded();
-    }
-    dragGestureActive = false;
 }
 
 int PerformanceKeyboardPanel::headerHeight() const {

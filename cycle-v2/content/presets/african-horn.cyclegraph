@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 2,
+    "formatVersion": 3,
     "nodes": [
         {
             "id": "voice",
@@ -241,69 +241,6 @@
             "definitionVersion": 1,
             "position": { "x": 960.0, "y": 520.0 },
             "parameters": {}
-        },
-        {
-            "id": "guide1",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": { "x": 131.1212, "y": 794.92145 },
-            "parameters": { "enabled": true, "noise": 0.0, "dcOffset": 0.0, "phase": 0.0 },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.09623, "y": 0.5, "curve": 0.0 },
-                        { "id": 6, "x": 0.12874, "y": 0.47106, "curve": 0.0 },
-                        { "id": 7, "x": 0.16515, "y": 0.51116, "curve": 0.0 },
-                        { "id": 8, "x": 0.20546, "y": 0.48117, "curve": 0.0 },
-                        { "id": 9, "x": 0.23537, "y": 0.50888, "curve": 0.0 },
-                        { "id": 10, "x": 0.27828, "y": 0.49405, "curve": 0.0 },
-                        { "id": 11, "x": 0.31599, "y": 0.5085, "curve": 0.0 },
-                        { "id": 12, "x": 0.3472, "y": 0.47692, "curve": 0.0 },
-                        { "id": 13, "x": 0.38752, "y": 0.51427, "curve": 0.0 },
-                        { "id": 14, "x": 0.42003, "y": 0.48459, "curve": 0.0 },
-                        { "id": 15, "x": 0.45384, "y": 0.52925, "curve": 0.0 },
-                        { "id": 16, "x": 0.49675, "y": 0.45324, "curve": 0.0 },
-                        { "id": 17, "x": 0.52796, "y": 0.52196, "curve": 0.0 },
-                        { "id": 18, "x": 0.57087, "y": 0.45428, "curve": 0.0 },
-                        { "id": 19, "x": 0.61378, "y": 0.5228, "curve": 0.0 },
-                        { "id": 20, "x": 0.6567, "y": 0.47141, "curve": 0.0 },
-                        { "id": 21, "x": 0.69311, "y": 0.52716, "curve": 0.0 },
-                        { "id": 22, "x": 0.71912, "y": 0.4574, "curve": 0.0 },
-                        { "id": 23, "x": 0.75683, "y": 0.51987, "curve": 0.0 },
-                        { "id": 24, "x": 0.79974, "y": 0.47976, "curve": 0.0 },
-                        { "id": 25, "x": 0.84135, "y": 0.5198, "curve": 0.0 },
-                        { "id": 26, "x": 0.86606, "y": 0.46782, "curve": 0.0 },
-                        { "id": 27, "x": 0.89727, "y": 0.51163, "curve": 0.0 },
-                        { "id": 28, "x": 0.49025, "y": 0.49007, "curve": 0.0 },
-                        { "id": 29, "x": 0.63329, "y": 0.48647, "curve": 0.0 },
-                        { "id": 30, "x": 0.71391, "y": 0.49817, "curve": 0.0 },
-                        { "id": 31, "x": 0.6554, "y": 0.49457, "curve": 0.0 },
-                        { "id": 32, "x": 0.68531, "y": 0.49547, "curve": 0.0 },
-                        { "id": 33, "x": 0.58648, "y": 0.49389, "curve": 0.0 },
-                        { "id": 34, "x": 0.46814, "y": 0.49187, "curve": 0.0 },
-                        { "id": 35, "x": 0.56047, "y": 0.49209, "curve": 0.0 },
-                        { "id": 36, "x": 0.54096, "y": 0.48264, "curve": 0.0 },
-                        { "id": 37, "x": 0.75163, "y": 0.48219, "curve": 0.0 },
-                        { "id": 38, "x": 0.72692, "y": 0.50087, "curve": 0.0 },
-                        { "id": 39, "x": 0.61248, "y": 0.49277, "curve": 0.0 },
-                        { "id": 40, "x": 0.82445, "y": 0.49344, "curve": 0.0 },
-                        { "id": 41, "x": 0.79584, "y": 0.50154, "curve": 0.0 },
-                        { "id": 42, "x": 0.43693, "y": 0.49074, "curve": 0.0 },
-                        { "id": 43, "x": 0.91678, "y": 0.49569, "curve": 0.0 },
-                        { "id": 44, "x": 0.76983, "y": 0.49907, "curve": 0.0 }
-                    ]
-                }
-            }
         },
         {
             "id": "volumeEnvelope",
@@ -1256,6 +1193,87 @@
             "parameters": {}
         }
     ],
+    "guides": [
+        {
+            "id": "guide1",
+            "shortLabel": "G1",
+            "name": "",
+            "colourIndex": 0,
+            "shelfOrder": 0,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
+                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
+                        { "id": 5, "x": 0.09623, "y": 0.5, "curve": 0.0 },
+                        { "id": 6, "x": 0.12874, "y": 0.47106, "curve": 0.0 },
+                        { "id": 7, "x": 0.16515, "y": 0.51116, "curve": 0.0 },
+                        { "id": 8, "x": 0.20546, "y": 0.48117, "curve": 0.0 },
+                        { "id": 9, "x": 0.23537, "y": 0.50888, "curve": 0.0 },
+                        { "id": 10, "x": 0.27828, "y": 0.49405, "curve": 0.0 },
+                        { "id": 11, "x": 0.31599, "y": 0.5085, "curve": 0.0 },
+                        { "id": 12, "x": 0.3472, "y": 0.47692, "curve": 0.0 },
+                        { "id": 13, "x": 0.38752, "y": 0.51427, "curve": 0.0 },
+                        { "id": 14, "x": 0.42003, "y": 0.48459, "curve": 0.0 },
+                        { "id": 15, "x": 0.45384, "y": 0.52925, "curve": 0.0 },
+                        { "id": 16, "x": 0.49675, "y": 0.45324, "curve": 0.0 },
+                        { "id": 17, "x": 0.52796, "y": 0.52196, "curve": 0.0 },
+                        { "id": 18, "x": 0.57087, "y": 0.45428, "curve": 0.0 },
+                        { "id": 19, "x": 0.61378, "y": 0.5228, "curve": 0.0 },
+                        { "id": 20, "x": 0.6567, "y": 0.47141, "curve": 0.0 },
+                        { "id": 21, "x": 0.69311, "y": 0.52716, "curve": 0.0 },
+                        { "id": 22, "x": 0.71912, "y": 0.4574, "curve": 0.0 },
+                        { "id": 23, "x": 0.75683, "y": 0.51987, "curve": 0.0 },
+                        { "id": 24, "x": 0.79974, "y": 0.47976, "curve": 0.0 },
+                        { "id": 25, "x": 0.84135, "y": 0.5198, "curve": 0.0 },
+                        { "id": 26, "x": 0.86606, "y": 0.46782, "curve": 0.0 },
+                        { "id": 27, "x": 0.89727, "y": 0.51163, "curve": 0.0 },
+                        { "id": 28, "x": 0.49025, "y": 0.49007, "curve": 0.0 },
+                        { "id": 29, "x": 0.63329, "y": 0.48647, "curve": 0.0 },
+                        { "id": 30, "x": 0.71391, "y": 0.49817, "curve": 0.0 },
+                        { "id": 31, "x": 0.6554, "y": 0.49457, "curve": 0.0 },
+                        { "id": 32, "x": 0.68531, "y": 0.49547, "curve": 0.0 },
+                        { "id": 33, "x": 0.58648, "y": 0.49389, "curve": 0.0 },
+                        { "id": 34, "x": 0.46814, "y": 0.49187, "curve": 0.0 },
+                        { "id": 35, "x": 0.56047, "y": 0.49209, "curve": 0.0 },
+                        { "id": 36, "x": 0.54096, "y": 0.48264, "curve": 0.0 },
+                        { "id": 37, "x": 0.75163, "y": 0.48219, "curve": 0.0 },
+                        { "id": 38, "x": 0.72692, "y": 0.50087, "curve": 0.0 },
+                        { "id": 39, "x": 0.61248, "y": 0.49277, "curve": 0.0 },
+                        { "id": 40, "x": 0.82445, "y": 0.49344, "curve": 0.0 },
+                        { "id": 41, "x": 0.79584, "y": 0.50154, "curve": 0.0 },
+                        { "id": 42, "x": 0.43693, "y": 0.49074, "curve": 0.0 },
+                        { "id": 43, "x": 0.91678, "y": 0.49569, "curve": 0.0 },
+                        { "id": 44, "x": 0.76983, "y": 0.49907, "curve": 0.0 }
+                    ]
+                }
+            }
+        }
+    ],
+    "guideAssignments": [
+        {
+            "guideId": "guide1",
+            "targetNodeId": "timeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "phase" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "timeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 3, "field": "phase" }
+        }
+    ],
     "edges": [
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer2", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
@@ -1268,8 +1286,6 @@
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
         { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.cube.2.phase", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "timeLayer2", "destPortId": "guide.cube.3.phase", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
         { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
@@ -1283,8 +1299,5 @@
             "tapPosition": 0.42555,
             "railOrder": 1
         }
-    ],
-    "presentation": {
-        "performanceKeyboardBounds": { "x": 1183.34827, "y": 830.9812, "width": 496.0, "height": 184.0 }
-    }
+    ]
 }

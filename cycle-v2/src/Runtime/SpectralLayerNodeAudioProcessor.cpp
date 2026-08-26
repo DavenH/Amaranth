@@ -1,8 +1,8 @@
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <vector>
 
-#include "AudioProcessContextUtils.h"
-#include "AudioProcessorFactories.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessorFactories.h"
 
 namespace CycleV2 {
 

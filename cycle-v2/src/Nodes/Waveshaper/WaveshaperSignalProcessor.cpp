@@ -1,8 +1,8 @@
-#include "WaveshaperSignalProcessor.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
-#include "../../Graph/NodeParameterMap.h"
-#include "../../Graph/NodeDefinition.h"
-#include "../Effect2D/FlatCurvePreparation.h"
+#include "Graph/NodeParameterMap.h"
+#include "Graph/NodeDefinition.h"
+#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
 #include <Util/NumberUtils.h>
 
@@ -27,8 +27,6 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     auto preparedTransfer = std::make_shared<WaveshaperTransfer>();
     FlatCurvePreparation curve(
             "CycleV2WaveshaperConfiguration",
-            NodeKind::Waveshaper,
-            parameters,
             model,
             FXRasterizer::Unipolar);
     if (!curve.prepare()) {

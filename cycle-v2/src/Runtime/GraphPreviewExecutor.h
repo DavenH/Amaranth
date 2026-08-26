@@ -1,8 +1,8 @@
 #pragma once
 
-#include "NodePreviewProcessor.h"
-#include "GraphAudioExecutor.h"
-#include "../Graph/GraphCompiler.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Graph/GraphCompiler.h"
 
 namespace CycleV2 {
 

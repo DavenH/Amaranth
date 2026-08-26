@@ -1,4 +1,4 @@
-#include "GraphDocument.h"
+#include "Graph/GraphDocument.h"
 
 namespace CycleV2 {
 
@@ -24,7 +24,7 @@ bool GraphDocument::save(const juce::File& destination) {
         return false;
     }
     destination.getParentDirectory().createDirectory();
-    if (!destination.replaceWithText(toJson())) {
+    if (!destination.replaceWithText(toJson(), false, false, "\n")) {
         return false;
     }
 

@@ -5,12 +5,12 @@
 #include <climits>
 #include <cmath>
 
-#include "NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Unison/UnisonNode.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {
 
@@ -470,18 +470,6 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::Multiply, PreviewModuleRole::None)
                     .presentation({ 58.f, 44.f }, { 150.f, 118.f })
-                    .finish(),
-            buildDefinition(definition("guideCurve", NodeKind::GuideCurve, "Guide", "mesh attachment", "guide", {},
-                    { output("guide", "Guide", PortDomain::EnvelopeSignal) }, {
-                            boolean("enabled", "Enabled", true, dsp | preview | presentation),
-                            number("noise", "Noise", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("dcOffset", "DC Offset", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("phase", "Phase", 0.5f, 0.f, 1.f, dsp | preview | presentation)
-                    }))
-                    .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::GuideCurve))
-                    .runtime(AudioModuleRole::GuideCurve, PreviewModuleRole::Envelope,
-                            "cycle/src/UI/VertexPanels/GuideCurvePanel.cpp")
-                    .presentation({ 269.2f, 100.f })
                     .finish(),
             buildDefinition(definition("impulseResponse", NodeKind::ImpulseResponse, "IR", "convolution", "ir",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },

@@ -13,3 +13,19 @@ Context:
 Current status: open; compare the restored model fields and determine whether
 the gesture commits an incomplete undo snapshot or the fixture includes
 non-semantic state in its equality assertion.
+
+## Open: Guide dock launch capture logs existing settings assertions
+
+Context:
+
+- The Guide/Spy dock capture on 2026-08-21 rendered successfully but logged two
+  `juce_String.cpp:327` assertions followed by `Settings.cpp:225` and `:226`.
+- Repro artifacts: `/tmp/cycle-v2-guide-dock.png` and
+  `/tmp/cycle-v2-guide-dock.log`.
+- The native OpenGL Guide-preview capture on 2026-08-22 reproduced the same
+  settings-write assertions at shifted lines `Settings.cpp:227` and `:228`;
+  all fixture assertions and rendering completed successfully. Repro log:
+  `/private/tmp/cycle-v2-guide-opengl-final-logs.txt`.
+
+Current status: open; inspect settings-map initialization separately from the
+Guide resource UI work.

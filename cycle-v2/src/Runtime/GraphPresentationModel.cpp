@@ -1,6 +1,8 @@
-#include "GraphPresentationModel.h"
-#include "FingerprintBuilder.h"
-#include "PreviewPitchResolver.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Runtime/FingerprintBuilder.h"
+#include "Runtime/PreviewPitchResolver.h"
+
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
 #include <algorithm>
 
@@ -489,11 +491,13 @@ GraphPresentationModel::captureProbePreview(
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {
     return change.topologyChanged
+            || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::GraphSemantics);
 }
 
 bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const {
     return change.probesChanged
+            || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)
             || hasImpact(change.parameterImpacts, ParameterImpact::Preview)
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
@@ -507,16 +511,7 @@ void GraphPresentationModel::refreshConfigurations(
     for (auto& step : plan.steps) {
         const bool directlyChanged = nodeIds.empty()
                 || std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) != nodeIds.end();
-        const bool attachedGuideChanged = std::any_of(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return edge.destNodeId == step.nodeId
-                            && edge.attachmentType == AttachmentType::GuideCurve
-                            && std::find(nodeIds.begin(), nodeIds.end(), edge.sourceNodeId)
-                                    != nodeIds.end();
-                });
-        if (!directlyChanged && !attachedGuideChanged) {
+        if (!directlyChanged) {
             continue;
         }
         const Node* node = graph.findNode(step.nodeId);
@@ -576,6 +571,10 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
         }
         if (node->model != nullptr) {
             nodeFingerprint.add(node->model->schemaId()).add(node->model->revision());
+        }
+        if (change.guidesChanged) {
+            nodeFingerprint.add(
+                    TrimeshGuidePreparation::configurationKey(graph, nodeId));
         }
         effectiveFingerprint = nodeFingerprint.value();
     }

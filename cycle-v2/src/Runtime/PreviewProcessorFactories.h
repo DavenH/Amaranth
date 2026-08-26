@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "NodePreviewProcessor.h"
+#include "Runtime/NodePreviewProcessor.h"
 
 namespace CycleV2 {
 

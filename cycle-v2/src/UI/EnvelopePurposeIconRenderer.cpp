@@ -1,6 +1,6 @@
 #include <map>
 
-#include "EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
 #include "EnvelopePurposeIconData.h"
 
 namespace CycleV2 {

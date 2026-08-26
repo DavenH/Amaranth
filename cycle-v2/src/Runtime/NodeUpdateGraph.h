@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-#include "../Graph/GraphCompiler.h"
+#include "Graph/GraphCompiler.h"
 
 namespace CycleV2 {
 

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/App/GraphFileHistory.h"
+#include "App/GraphFileHistory.h"
 
 using namespace juce;
 using namespace CycleV2;

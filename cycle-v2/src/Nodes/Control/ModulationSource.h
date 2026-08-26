@@ -4,8 +4,8 @@
 
 #include <array>
 
-#include "../../Runtime/NodeAudioProcessor.h"
-#include "../../Runtime/NodePreviewProcessor.h"
+#include "Runtime/NodeAudioProcessor.h"
+#include "Runtime/NodePreviewProcessor.h"
 
 namespace CycleV2 {
 

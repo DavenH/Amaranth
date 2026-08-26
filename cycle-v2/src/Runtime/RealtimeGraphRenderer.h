@@ -6,9 +6,9 @@
 #include <atomic>
 #include <memory>
 
-#include "GraphAudioExecutor.h"
-#include "MidiControlState.h"
-#include "RealtimeMidiEventQueue.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/MidiControlState.h"
+#include "Runtime/RealtimeMidiEventQueue.h"
 
 namespace CycleV2 {
 

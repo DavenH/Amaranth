@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/UI/RenderInvalidationAccumulator.h"
+#include "UI/RenderInvalidationAccumulator.h"
 
 using namespace CycleV2;
 

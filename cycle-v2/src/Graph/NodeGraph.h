@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 namespace CycleV2 {
@@ -36,7 +37,6 @@ enum class NodeKind {
     Envelope,
     Add,
     Multiply,
-    GuideCurve,
     ImpulseResponse,
     Waveshaper,
     Unison,
@@ -70,9 +70,36 @@ enum class ConnectionKind {
 enum class AttachmentType {
     None,
     ScratchEnvelope,
-    GuideCurve,
     ModulationTriple,
     Unison
+};
+
+enum class GuideCurveField {
+    Time,
+    Red,
+    Blue,
+    Phase,
+    Amplitude,
+    Curve
+};
+
+struct TrimeshCubeComponentGuideTarget {
+    int cubeIndex { -1 };
+    GuideCurveField field { GuideCurveField::Time };
+
+    bool operator==(const TrimeshCubeComponentGuideTarget& other) const {
+        return cubeIndex == other.cubeIndex && field == other.field;
+    }
+};
+
+struct GuideCurveAssignment {
+    String guideId;
+    String targetNodeId;
+    TrimeshCubeComponentGuideTarget target;
+
+    bool targets(const String& nodeId, const TrimeshCubeComponentGuideTarget& candidate) const {
+        return targetNodeId == nodeId && target == candidate;
+    }
 };
 
 enum class PortSide {
@@ -126,6 +153,19 @@ public:
 };
 
 using NodeModelStatePtr = std::shared_ptr<const NodeModelState>;
+
+struct GuideCurveResource {
+    String id;
+    String shortLabel;
+    String name;
+    int colourIndex {};
+    int shelfOrder {};
+    bool enabled { true };
+    float noise {};
+    float dcOffset {};
+    float phase {};
+    NodeModelStatePtr model;
+};
 
 struct Node {
     String id;
@@ -214,10 +254,9 @@ class NodeGraph {
 public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
+    const std::vector<GuideCurveResource>& getGuideCurves() const { return guideCurves; }
+    const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
-    const std::optional<Rectangle<float>>& getPerformanceKeyboardBounds() const {
-        return performanceKeyboardBounds;
-    }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
@@ -225,6 +264,22 @@ public:
 
     void addNode(Node node);
     void addEdge(Edge edge);
+    bool addGuideCurve(GuideCurveResource resource);
+    bool removeGuideCurve(const String& guideId);
+    GuideCurveResource* findGuideCurveForEditing(const String& guideId);
+    const GuideCurveResource* findGuideCurve(const String& guideId) const;
+    bool replaceGuideCurve(GuideCurveResource resource);
+    bool moveGuideCurve(const String& guideId, int shelfOrder);
+    bool assignGuideCurve(GuideCurveAssignment assignment);
+    bool removeGuideAssignment(
+            const String& nodeId,
+            const TrimeshCubeComponentGuideTarget& target);
+    int removeGuideAssignmentsOutsideCubeRange(
+            const String& nodeId,
+            int cubeCount);
+    int guideUsageCount(const String& guideId) const;
+    const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
+    const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;
     void addSignalProbe(SignalProbe probe);
     bool removeSignalProbe(const String& probeId);
     SignalProbe* findSignalProbeForEditing(const String& probeId);
@@ -240,17 +295,54 @@ public:
     bool replaceNodeModel(const String& nodeId, NodeModelStatePtr model);
     bool replaceNodeEditorState(const String& nodeId, var editorState);
     bool setNodeBounds(const String& nodeId, Rectangle<float> bounds);
-    bool setPerformanceKeyboardBounds(Rectangle<float> bounds);
     void translateNodes(const std::vector<String>& nodeIds, Point<float> offset);
     void markChanged() { ++revision; }
 
     static NodeGraph createDemoGraph();
 
 private:
+    struct StringHash {
+        size_t operator()(const String& value) const {
+            return (size_t) value.hashCode64();
+        }
+    };
+
+    struct GuideTargetAddress {
+        String nodeId;
+        TrimeshCubeComponentGuideTarget target;
+
+        bool operator==(const GuideTargetAddress& other) const {
+            return nodeId == other.nodeId && target == other.target;
+        }
+    };
+
+    struct GuideTargetAddressHash {
+        size_t operator()(const GuideTargetAddress& value) const {
+            size_t result = (size_t) value.nodeId.hashCode64();
+            result ^= (size_t) value.target.cubeIndex + 0x9e3779b9U
+                    + (result << 6U) + (result >> 2U);
+            result ^= (size_t) value.target.field + 0x9e3779b9U
+                    + (result << 6U) + (result >> 2U);
+            return result;
+        }
+    };
+
+    void rebuildGuideResourceIndex();
+    void rebuildGuideAssignmentIndexes();
+
     std::vector<Node> nodes;
     std::vector<Edge> edges;
+    std::vector<GuideCurveResource> guideCurves;
+    std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
-    std::optional<Rectangle<float>> performanceKeyboardBounds;
+    std::unordered_map<String, size_t, StringHash> guideResourceIndex;
+    std::unordered_map<
+            GuideTargetAddress,
+            size_t,
+            GuideTargetAddressHash> guideAssignmentTargetIndex;
+    std::unordered_map<String, int, StringHash> guideUsageCounts;
+    std::unordered_map<String, std::vector<String>, StringHash> guideTargetNodes;
+    std::unordered_map<String, std::vector<String>, StringHash> targetNodeGuides;
     uint64_t revision {};
 };
 

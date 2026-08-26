@@ -1,42 +1,46 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <set>
 
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Graph/NodeDefinition.h"
-#include "../src/UI/EnvelopePurposeIconRenderer.h"
-#include "../src/UI/EnvelopePurposeSelector.h"
-#include "../src/UI/NodeCanvasScene.h"
-#include "../src/UI/NodeCanvasEditorCoordinator.h"
-#include "../src/UI/NodeCanvasPresentation.h"
-#include "../src/UI/NodeCableRenderer.h"
-#include "../src/UI/NodeCanvasViewport.h"
-#include "../src/UI/NodePalette.h"
-#include "../src/UI/NodePaletteEntryIconRenderer.h"
-#include "../src/UI/NodePreviewRenderer.h"
-#include "../src/UI/NodeViewModule.h"
-#include "../src/UI/SignalProbeDetailView.h"
-#include "../src/UI/SignalProbeRail.h"
-#include "../src/UI/TransformCompactEditor.h"
-#include "../src/UI/VoiceContextCompactEditor.h"
-#include "../src/Runtime/GraphPresentationModel.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopePurposeSelector.h"
+#include "UI/GuideRelationshipPresentation.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasPresentation.h"
+#include "UI/NodeCableRenderer.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePaletteEntryIconRenderer.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodeViewModule.h"
+#include "UI/SignalProbeDetailView.h"
+#include "UI/SignalProbeRail.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "UI/WorkspaceDock.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
+#include "Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
 
-TEST_CASE("EQ response preview does not require an Effect2D model",
+TEST_CASE("EQ response preview does not require a Curve model",
         "[cycle-v2][canvas][equalizer][regression]") {
-    REQUIRE_FALSE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Equalizer));
-    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Envelope));
-    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Waveshaper));
+    REQUIRE_FALSE(NodePreviewRenderer::requiresCurveModel(NodeKind::Equalizer));
+    REQUIRE(NodePreviewRenderer::requiresCurveModel(NodeKind::Envelope));
+    REQUIRE(NodePreviewRenderer::requiresCurveModel(NodeKind::Waveshaper));
 }
 
 namespace {
@@ -66,11 +70,12 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     const Rectangle<float> collapse = SignalProbeRail::collapseHandleFor(workspace, expanded);
     const Rectangle<float> refreshMode = SignalProbeRail::refreshModeBoundsFor(workspace, expanded);
     const Rectangle<float> rail = SignalProbeRail::boundsFor(workspace, expanded);
-    REQUIRE(collapse.getBottom() <= rail.getY());
-    REQUIRE(refreshMode.getBottom() <= rail.getY());
+    REQUIRE(rail.contains(collapse));
+    REQUIRE(rail.contains(refreshMode));
     REQUIRE_FALSE(collapse.intersects(refreshMode));
     REQUIRE(SignalProbeRail::tileBoundsFor(workspace, expanded, 0).getY()
-            < SignalProbeRail::boundsFor(workspace, expanded).getY() + 20.f);
+            == Catch::Approx(SignalProbeRail::boundsFor(workspace, expanded).getY()
+                    + WorkspaceDock::headerHeight));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -81,7 +86,254 @@ TEST_CASE("Signal probe rail reserves editor-safe workspace bounds", "[cycle-v2]
     REQUIRE(editor.getHeight() == Catch::Approx(content.getHeight() - 36.f));
 
     expanded.expanded = false;
-    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight() == 772.f);
+    REQUIRE(SignalProbeRail::contentBoundsFor(workspace, expanded).getHeight()
+            == 800.f - WorkspaceDock::collapsedHeight);
+}
+
+TEST_CASE("Workspace dock is the single clamped Guide and Spy layout authority",
+        "[cycle-v2][canvas][guide-dock]") {
+    const Rectangle<float> workspace { 0.f, 0.f, 1000.f, 700.f };
+    WorkspaceDockState state;
+    const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
+
+    REQUIRE(balanced.content.getBottom() == balanced.dock.getY());
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(500.f));
+    REQUIRE(balanced.rightShelf.getWidth() == Catch::Approx(500.f));
+    REQUIRE(balanced.leftShelf.getRight() == Catch::Approx(balanced.rightShelf.getX()));
+    REQUIRE(balanced.dock.contains(balanced.collapseHandle));
+    REQUIRE(balanced.resizeHandle.getY() == balanced.dock.getY());
+
+    state.splitRatio = 0.05f;
+    const WorkspaceDockLayout clamped = WorkspaceDock::layout(workspace, state);
+    REQUIRE(clamped.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::minimumShelfWidth));
+
+    state.leftMinimized = true;
+    const WorkspaceDockLayout leftDrawer = WorkspaceDock::layout(workspace, state);
+    REQUIRE(leftDrawer.leftShelf.getWidth() == Catch::Approx(WorkspaceDock::drawerWidth));
+    REQUIRE(leftDrawer.rightShelf.getWidth()
+            == Catch::Approx(workspace.getWidth() - WorkspaceDock::drawerWidth));
+    REQUIRE(leftDrawer.divider.isEmpty());
+
+    state.leftMinimized = false;
+    state.expanded = false;
+    const WorkspaceDockLayout collapsed = WorkspaceDock::layout(workspace, state);
+    REQUIRE(collapsed.dock.getHeight() == Catch::Approx(WorkspaceDock::collapsedHeight));
+    REQUIRE(collapsed.leftShelf.isEmpty());
+    REQUIRE(collapsed.resizeHandle.isEmpty());
+
+    const Rectangle<float> smallWorkspace { 0.f, 0.f, 360.f, 400.f };
+    state.expanded = true;
+    state.splitRatio = 0.8f;
+    const WorkspaceDockLayout small = WorkspaceDock::layout(smallWorkspace, state);
+    REQUIRE(small.leftShelf.getWidth() == Catch::Approx(180.f));
+    REQUIRE(small.rightShelf.getWidth() == Catch::Approx(180.f));
+}
+
+TEST_CASE("Workspace dock keyboard traversal exposes every visible action",
+        "[cycle-v2][canvas][guide-dock][keyboard]") {
+    WorkspaceDockKeyboardModel model;
+    model.guideIds = { "guide1", "guide2" };
+    model.spyIds = { "probe1" };
+
+    const auto order = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(order.front().target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::GuideTile, "guide1" }) == 1);
+    REQUIRE(std::count(order.begin(), order.end(), WorkspaceDockFocus {
+            WorkspaceDockFocusTarget::SpyTile, "probe1" }) == 1);
+
+    WorkspaceDockFocus focus;
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::tabKey), model, focus));
+    REQUIRE(focus.target == WorkspaceDockFocusTarget::Collapse);
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::tabKey, ModifierKeys::shiftModifier, 0), model, focus));
+    REQUIRE(focus == order.back());
+
+    focus = { WorkspaceDockFocusTarget::GuideTile, "guide1" };
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::rightKey), model, focus));
+    REQUIRE(focus.itemId == "guide2");
+    REQUIRE(WorkspaceDockKeyboardNavigation::moveFocus(
+            KeyPress(KeyPress::downKey), model, focus));
+    const WorkspaceDockFocus expectedSpy {
+            WorkspaceDockFocusTarget::SpyTile,
+            "probe1"
+    };
+    REQUIRE(focus == expectedSpy);
+
+    model.expanded = false;
+    const auto collapsedOrder = WorkspaceDockKeyboardNavigation::focusOrder(model);
+    REQUIRE(collapsedOrder.size() == 1);
+    REQUIRE(collapsedOrder.front().target == WorkspaceDockFocusTarget::Collapse);
+}
+
+TEST_CASE("Workspace dock reveals keyboard-focused overflow tiles",
+        "[cycle-v2][canvas][guide-dock][keyboard]") {
+    const float maximumOffset = 900.f;
+    const float first = WorkspaceDock::offsetToRevealTile(420.f, maximumOffset, 500.f, 0);
+    const float last = WorkspaceDock::offsetToRevealTile(0.f, maximumOffset, 500.f, 5);
+
+    REQUIRE(first == Catch::Approx(0.f));
+    REQUIRE(last > 0.f);
+    REQUIRE(last <= maximumOffset);
+}
+
+TEST_CASE("Guide relationship selection highlights without drawing a persistent tether",
+        "[cycle-v2][canvas][guide-dock][relationship]") {
+    GuideCurveShelfState state;
+    state.selectedGuideId = "guide1";
+
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide1");
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state).isEmpty());
+
+    state.hoveredGuideId = "guide2";
+    REQUIRE(GuideRelationshipPresentation::highlightGuideId(state) == "guide2");
+    REQUIRE(GuideRelationshipPresentation::tetherGuideId(state) == "guide2");
+}
+
+TEST_CASE("Canvas status gives hover help precedence over the last edit",
+        "[cycle-v2][canvas][status]") {
+    REQUIRE(NodeCanvasPresentation::canvasStatusText("Node added", {}) == "Node added");
+    REQUIRE(NodeCanvasPresentation::canvasStatusText(
+            "Node added",
+            "Time signal from Oscillator to Output.")
+            == "Time signal from Oscillator to Output.");
+}
+
+TEST_CASE("Guide relationship tethers reach every visible unique target behind editors",
+        "[cycle-v2][canvas][guide-dock][relationship][occlusion]") {
+    NodeGraph graph;
+    Node firstTarget;
+    firstTarget.id = "mesh1";
+    firstTarget.bounds = { 310.f, 20.f, 70.f, 60.f };
+    graph.addNode(std::move(firstTarget));
+    Node secondTarget;
+    secondTarget.id = "mesh2";
+    secondTarget.bounds = { 10.f, 20.f, 70.f, 60.f };
+    graph.addNode(std::move(secondTarget));
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh1",
+            { 0, GuideCurveField::Time }
+    }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh1",
+            { 0, GuideCurveField::Red }
+    }));
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh2",
+            { 0, GuideCurveField::Time }
+    }));
+    REQUIRE(graph.guideTargetNodeIds("guide1").size() == 2);
+
+    GraphCompileResult compileResult;
+    GraphPreviewResult previewResult;
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 400.f, 200.f });
+    viewport.setTransform({}, 1.f);
+    NodePalette palette;
+    GuideCurveShelfState guideState;
+    guideState.hoveredGuideId = "guide1";
+    SignalProbeRailState dockState;
+    dockState.expanded = true;
+    dockState.expandedHeight = 100.f;
+    const Rectangle<float> editorOcclusion { 100.f, 90.f, 200.f, 100.f };
+    NodeCanvasPresentationFrame frame {
+            graph,
+            compileResult,
+            previewResult,
+            viewport,
+            palette,
+            { 0.f, 0.f, 400.f, 200.f },
+            editorOcclusion,
+            {},
+            {},
+            {},
+            {},
+            std::nullopt,
+            {},
+            0,
+            0,
+            -1,
+            -1,
+            true,
+            { 0.f, 0.f, 400.f, 300.f },
+            guideState,
+            0.5f,
+            dockState,
+            {},
+            {},
+            {}
+    };
+
+    Image image(Image::ARGB, 400, 300, true);
+    Graphics graphics(image);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
+
+    int visiblePixels = 0;
+    int occludedPixels = 0;
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            if (image.getPixelAt(x, y).getAlpha() == 0) {
+                continue;
+            }
+            if (editorOcclusion.contains((float) x, (float) y)) {
+                ++occludedPixels;
+            } else {
+                ++visiblePixels;
+            }
+        }
+    }
+    REQUIRE(visiblePixels > 0);
+    REQUIRE(occludedPixels == 0);
+
+    const auto alphaCount = [&image](Rectangle<int> bounds) {
+        int count = 0;
+        for (int y = bounds.getY(); y < bounds.getBottom(); ++y) {
+            for (int x = bounds.getX(); x < bounds.getRight(); ++x) {
+                if (image.getPixelAt(x, y).getAlpha() > 0) {
+                    ++count;
+                }
+            }
+        }
+        return count;
+    };
+    REQUIRE(alphaCount({ 339, 74, 12, 12 }) > 0);
+    REQUIRE(alphaCount({ 39, 74, 12, 12 }) > 0);
+    const auto dock = WorkspaceDock::layout(
+            frame.workspaceBounds,
+            {
+                    dockState.expanded,
+                    guideState.minimized,
+                    dockState.minimized,
+                    dockState.expandedHeight,
+                    frame.dockSplitRatio
+            });
+    const auto guideTile = GuideCurveShelf::tileBoundsFor(
+            frame.workspaceBounds,
+            dockState,
+            frame.dockSplitRatio,
+            guideState,
+            0);
+    WorkspaceDock::paintChrome(graphics, dock, "Curve Guides", "Spies", true, false);
+    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
+    const Point<int> terminal {
+            roundToInt(guideTile.getCentreX()),
+            roundToInt(dock.dock.getY())
+    };
+    REQUIRE(alphaCount(Rectangle<int>(12, 12).withCentre(terminal)) > 0);
+
+    frame.canvasOcclusion = { 0.f, 10.f, 400.f, 80.f };
+    image.clear(image.getBounds(), Colours::transparentBlack);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
+    REQUIRE(imageChecksum(image) == imageChecksum(
+            Image(Image::ARGB, image.getWidth(), image.getHeight(), true)));
 }
 
 TEST_CASE("Signal probe detail uses the audition-note period resolution",
@@ -702,55 +954,6 @@ TEST_CASE("Every effect view exposes both its compact preview and hosted editor"
     REQUIRE(delayBounds.getHeight() == Catch::Approx(520.f));
 }
 
-TEST_CASE("Registered view modules contribute dynamic attachment geometry", "[cycle-v2][canvas][scene]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.red",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(graph, viewport);
-    REQUIRE(snapshot.edges.size() == 1);
-    REQUIRE(snapshot.edges.front().destination.y
-            == Catch::Approx(viewport.toScreen(graph.findNode("mesh")->bounds.getTopLeft()).y));
-    REQUIRE_FALSE(snapshot.edges.front().destinationPortLike);
-    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
-            .contains(snapshot.edges.front().source));
-    REQUIRE(snapshot.edges.front().cablePath.getBounds().expanded(0.1f)
-            .contains(snapshot.edges.front().destination));
-    REQUIRE(snapshot.edges.front().hitPath.contains(
-            snapshot.edges.front().cablePath.getPointAlongPath(
-                    snapshot.edges.front().cablePath.getLength() * 0.5f)));
-}
-
-TEST_CASE("Cube-component assignments share one attachment cable per node pair",
-        "[cycle-v2][canvas][scene][attachments]") {
-    GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::GuideCurve, "guide", { 40.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 420.f, 80.f }));
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.time",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-    graph.addEdge({ "guide", "guide", "mesh", "guide.cube.0.amp",
-            PortDomain::ControlSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve });
-
-    NodeCanvasViewport viewport;
-    NodeCanvasScene scene;
-    const auto& snapshot = scene.build(graph, viewport);
-    REQUIRE(snapshot.edges.size() == 1);
-    REQUIRE(snapshot.edges.front().edgeIndices == std::vector<int> { 0, 1 });
-    REQUIRE_FALSE(snapshot.edges.front().modulationBundle);
-}
-
 TEST_CASE("Cable endpoints follow node movement before a drag transaction commits",
         "[cycle-v2][canvas][scene][cables]") {
     GraphNodeFactory factory;
@@ -781,7 +984,7 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
                     *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
-TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
+TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
         "[cycle-v2][canvas][cables]") {
     NodeSceneEdge edge;
     edge.source = { 30.f, 50.f };
@@ -793,12 +996,11 @@ TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
             PortSide::Left,
             1.f);
 
-    const std::array<NodeCableStyle, 5> styles {
+    const std::array<NodeCableStyle, 4> styles {
             NodeCableStyle { Colour(0xff42d3cf), false, false, false, false },
-            NodeCableStyle { Colour(0xff42d3cf), true, false, false, false },
-            NodeCableStyle { Colour(0xffff5a5f), false, true, false, false },
-            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false },
-            NodeCableStyle { Colour(0xff42d3cf), false, false, false, true }
+            NodeCableStyle { Colour(0xffff5a5f), true, false, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, true, false, false },
+            NodeCableStyle { Colour(0xff42d3cf), false, false, true, false }
     };
     std::array<uint64_t, styles.size()> checksums {};
 
@@ -815,6 +1017,19 @@ TEST_CASE("Cable renderer exposes ordinary attachment and edit-state semantics",
             REQUIRE(checksums[i] != checksums[j]);
         }
     }
+}
+
+TEST_CASE("Canvas legend collapses non-signal domains into Control",
+        "[cycle-v2][canvas][legend]") {
+    const Colour control = colourForDomain(PortDomain::ControlSignal);
+    REQUIRE(colourForDomain(PortDomain::DomainContext) == control);
+    REQUIRE(colourForDomain(PortDomain::MeshField) == control);
+    REQUIRE(colourForDomain(PortDomain::EnvelopeSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::PitchSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::VoiceControlSignal) == control);
+    REQUIRE(colourForDomain(PortDomain::TimeSignal) != control);
+    REQUIRE(colourForDomain(PortDomain::SpectralMagnitudeSignal) != control);
+    REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
 TEST_CASE("Voice context editor resolves every authored control from its painted rows",

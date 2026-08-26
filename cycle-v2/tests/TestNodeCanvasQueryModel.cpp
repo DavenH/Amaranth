@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/UI/NodeCanvasQueryModel.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphNodeFactory.h"
+#include "UI/NodeCanvasQueryModel.h"
 
 using namespace CycleV2;
 
@@ -38,7 +38,13 @@ TEST_CASE("Node canvas queries expose graph execution and presentation semantics
     REQUIRE(queries.executionIndexForNode("wave") >= 0);
     REQUIRE(queries.attachmentCount() == 0);
 
-    REQUIRE(queries.hoverTextForPort({ "wave", "out", false }).contains("Output port"));
-    REQUIRE(queries.hoverTextForNode(*wave).contains("emits out=Time"));
-    REQUIRE(queries.hoverTextForEdge(graph.getEdges().front()).contains("Signal edge"));
+    const String portHelp = queries.hoverTextForPort({ "wave", "out", false });
+    const String nodeHelp = queries.hoverTextForNode(*wave);
+    const String edgeHelp = queries.hoverTextForEdge(graph.getEdges().front());
+    REQUIRE(portHelp.contains("output from"));
+    REQUIRE(nodeHelp.contains("It produces Time"));
+    REQUIRE(edgeHelp.startsWith("Time signal from"));
+    REQUIRE_FALSE(portHelp.contains(" / "));
+    REQUIRE_FALSE(nodeHelp.contains(" / "));
+    REQUIRE_FALSE(edgeHelp.contains(" / "));
 }

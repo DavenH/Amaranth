@@ -1,6 +1,6 @@
-#include "NodeEditorHost.h"
+#include "UI/NodeEditorHost.h"
 
-#include "../Runtime/FingerprintBuilder.h"
+#include "Runtime/FingerprintBuilder.h"
 
 namespace CycleV2 {
 

@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Runtime/AudioProcessContextUtils.h"
-#include "../src/Runtime/NodeAudioProcessor.h"
-#include "../src/Runtime/SmoothedMorphPosition.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopeMeshState.h"
-#include "../src/Nodes/Envelope/EnvelopePreparationExchange.h"
-#include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/NodeAudioProcessor.h"
+#include "Runtime/SmoothedMorphPosition.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopePreparationExchange.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -196,6 +196,12 @@ void prepareProcessor(
         size_t maximumFrameCount = 0,
         uint64_t revision = 1,
         NodeModelStatePtr model = {}) {
+    if (model == nullptr && role == AudioModuleRole::Waveshaper) {
+        model = CurveNodeDomainCodec(NodeKind::Waveshaper).createDefault();
+    }
+    if (model == nullptr && role == AudioModuleRole::ImpulseResponse) {
+        model = CurveNodeDomainCodec(NodeKind::ImpulseResponse).createDefault();
+    }
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
     spec.sampleRate = context.timing.sampleRate;
@@ -224,7 +230,6 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::Add,
             AudioModuleRole::Multiply,
             AudioModuleRole::Envelope,
-            AudioModuleRole::GuideCurve,
             AudioModuleRole::ImpulseResponse,
             AudioModuleRole::Waveshaper,
             AudioModuleRole::Reverb,
