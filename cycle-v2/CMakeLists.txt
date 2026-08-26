@@ -203,6 +203,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelayAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelaySignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Equalizer/EqualizerPreviewPainter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Equalizer/EqualizerNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Reverb/ReverbPreviewPainter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Reverb/ReverbNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonPreviewPainter.cpp"

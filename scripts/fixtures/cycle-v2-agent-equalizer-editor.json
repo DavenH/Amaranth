@@ -75,13 +75,13 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "path": "expandedNodeControls.effectParameters.controls.4.value",
       "op": "greaterThan",
       "value": 0.8
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.7.value",
+      "path": "expandedNodeControls.effectParameters.controls.5.value",
       "op": "greaterThan",
       "value": 0.6
     },
@@ -106,7 +106,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effectParameters.controls.6.value",
+      "path": "expandedNodeControls.effectParameters.controls.4.value",
       "op": "greaterThan",
       "value": 0.8
     }

@@ -602,6 +602,50 @@ TEST_CASE("Property rows collapse nested slider notifications into one gesture",
     REQUIRE(commands.values == std::vector<float> { 0.6f, 0.5f });
 }
 
+TEST_CASE("Equalizer retains paired columns with semantic shared rows",
+        "[cycle-v2][editor][equalizer][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node equalizer = GraphNodeFactory().createNode(NodeKind::Equalizer, "eq", {});
+
+    REQUIRE(host.bind(&equalizer, { 0, 0, 760, 650 }));
+    DynamicObject automation;
+    host.appendAutomationState(automation);
+    const Array<var>* controls = automation.getProperty("effectParameters")
+            .getProperty("controls", {})
+            .getArray();
+    REQUIRE(controls != nullptr);
+    REQUIRE(controls->size() == 10);
+    REQUIRE(controls->getReference(0).getProperty("readout", {}).toString() == "0.0 dB");
+    REQUIRE(controls->getReference(1).getProperty("readout", {}).toString() == "60 Hz");
+    REQUIRE((bool) controls->getReference(0).getProperty("compact", {}));
+    REQUIRE((int) controls->getReference(0).getProperty("usableTrackWidth", {}) >= 140);
+
+    auto* gainValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "equalizerEditor.band1Gain.value"));
+    auto* frequencyValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "equalizerEditor.band1Frequency.value"));
+    REQUIRE(gainValue != nullptr);
+    REQUIRE(frequencyValue != nullptr);
+    gainValue->setText("+6 dB", sendNotificationSync);
+    frequencyValue->setText("1.5 kHz", sendNotificationSync);
+
+    DynamicObject edited;
+    host.appendAutomationState(edited);
+    const Array<var>* editedControls = edited.getProperty("effectParameters")
+            .getProperty("controls", {})
+            .getArray();
+    REQUIRE(editedControls != nullptr);
+    REQUIRE(editedControls->getReference(0).getProperty("value", {})
+            == Catch::Approx(CycleDsp::equalizerGainUnitValue(6.f)));
+    REQUIRE(editedControls->getReference(1).getProperty("value", {})
+            == Catch::Approx(CycleDsp::equalizerFrequencyUnitValue(1500.f)));
+}
+
 TEST_CASE("Canvas automation inspection is semantic and side effect free",
         "[cycle-v2][canvas][automation]") {
     ScopedJuceInitialiser_GUI juce;

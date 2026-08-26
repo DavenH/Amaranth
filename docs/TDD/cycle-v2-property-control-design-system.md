@@ -500,6 +500,79 @@ Review evidence:
   remains unavailable for focused clang-tidy. No DSP or visualization hot-loop
   behavior changed.
 
+Implementation design for Equalizer:
+
+- The authoritative implementation is the current Equalizer editor in
+  `ConcreteNodeEditors.cpp`, `EqualizerPreviewPainter`, and the gain/frequency
+  functions in `EffectParameterMapping`. The five-band topology, shelf/peak
+  semantics, response graph, marker hit geometry, graph-to-paired-parameter
+  gesture, defaults, and 620-by-550 silhouette remain unchanged.
+- Extract the complete editor and factory under `Nodes/Equalizer`; the generic
+  registry retains only factory registration. This deletes the final
+  effect-domain implementation from `ConcreteNodeEditors.cpp`.
+- Compose two shared compact property rows per band inside the existing paired
+  Gain/Frequency columns. The paired macro layout remains domain-owned; the
+  shared rows provide exact hairline thumbs, editable semantic values, focus,
+  reset, fine adjustment, and component geometry.
+- Gain retains the authoritative -30-to-+30 dB mapping and strong pixel-based
+  0 dB detent. Frequency retains the authoritative continuous 20 Hz-to-20 kHz
+  logarithmic mapping; its visible landmarks are references and never hard
+  snap points. Direct entry accepts `Hz` and `kHz`.
+- Direct slider gestures use `NodePropertySliderRow`. Dragging a response-graph
+  band marker continues to use the existing paired parameter transaction and
+  updates the same two domain rows without notification. No graph interaction
+  or response calculation enters shared presentation code.
+
+Implemented:
+
+- Extracted the complete Equalizer editor and factory under
+  `Nodes/Equalizer`; `ConcreteNodeEditors.cpp` now contains only the remaining
+  Curve and Trimesh host adapters plus factory registration.
+- Preserved the five-band paired columns, response painter, marker hit
+  geometry, paired graph gesture, continuous logarithmic frequency mapping,
+  shelf/peak explanations, and 620-by-550 panel.
+- Replaced the local slider, label, readout, and gesture implementation with
+  shared compact property rows. Every gain and frequency value is now an
+  editable semantic field, and all sliders use the shared exact hairline thumb,
+  focus, fine adjustment, keyboard, and reset behavior.
+- Ordinary Gain dragging retains the strong pixel-based 0 dB detent. Fine
+  dragging bypasses that detent so a user can intentionally select small
+  non-zero values; direct entry and reset still resolve exactly.
+
+Adjustment budgets:
+
+| Control | Domain | Ordinary / fine step | `D` | Alternate precision path |
+| --- | --- | --- | ---: | --- |
+| Band Gain | -30.0 to +30.0 dB | 0.6 / 0.06 dB | 241 px | editable signed dB entry |
+| Band Frequency | 20 Hz to 20 kHz, continuous logarithmic | 0.01 / 0.001 normalized | 241 px | editable Hz or kHz entry |
+
+Review evidence:
+
+- Production diff for this slice: 456 lines added and 408 removed across five
+  production files, for 48 net lines. The 442-line domain editor replaces the
+  final 408-line mixed effect implementation; the additional surface is the
+  semantic parsing, shared-row composition, and explicit graph-gesture
+  separation. Generic shared code gains no Equalizer branch.
+- Focused host tests cover paired-row ownership, semantic gain/frequency
+  entry, formatted units, and minimum track geometry. The existing paired
+  graph-command test passes nine assertions for one transaction and undo.
+- `/private/tmp/cycle-v2-equalizer-property-report.json` has zero failed
+  commands and covers two slider updates, commit, undo, fine drag outside the
+  ordinary detent, and reset. The corrected existing graph fixture report
+  `/private/tmp/cycle-v2-equalizer-editor-report.json` has zero failed commands
+  and covers paired marker drag plus save/open persistence.
+- Production screenshots: before
+  `/private/tmp/cycle-v2-equalizer-properties-before.png`; after
+  `/private/tmp/cycle-v2-equalizer-properties-after.png`.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. The complete Cycle V2 run passes 10,251 of 10,252
+  assertions; its sole failure remains the pre-existing hit-router hover-help
+  assertion recorded in `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-equalizer-tests-junit.xml`. A compilation database
+  remains unavailable for focused clang-tidy. The retained scalar `std::pow`
+  is the authoritative one-call graph-marker mapping, not a DSP, sample, bin,
+  or pixel loop.
+
 ### Deferred App-Wide Work
 
 The performance keyboard, output meters, palettes, dock sizing, and complete
