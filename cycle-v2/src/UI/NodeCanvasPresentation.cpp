@@ -169,11 +169,11 @@ void paintSingleModulationNode(
     graphics.fillRoundedRectangle(badge, 8.f * scale);
     graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - 8.f * scale));
     graphics.setColour(kMutedText);
-    graphics.setFont(FontOptions(10.f * zoom));
+    graphics.setFont(FontOptions(12.f * zoom));
     graphics.drawText("MOD", badge, Justification::centred);
 
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(17.f * zoom));
+    graphics.setFont(FontOptions(20.f * zoom));
     graphics.drawText(
             modulationSourceLabel(node),
             bounds.reduced(14.f * zoom, 2.f * zoom),
@@ -213,11 +213,11 @@ void paintTripleModulationNode(
                 rowHeight);
         graphics.setColour(colourForMorphDimension(dimensions[row]).withAlpha(0.88f));
         graphics.fillRoundedRectangle(rowBounds.removeFromLeft(6.f * zoom), 3.f * scale);
-        graphics.setFont(FontOptions(12.f * zoom));
+        graphics.setFont(FontOptions(14.f * zoom));
         graphics.drawText(prefixes[row].substring(0, 1).toUpperCase(),
                 rowBounds.removeFromLeft(30.f * zoom), Justification::centred);
         graphics.setColour(kText);
-        graphics.setFont(FontOptions(16.f * zoom));
+        graphics.setFont(FontOptions(19.f * zoom));
         graphics.drawText(
                 modulationSourceLabel(node, prefixes[row]),
                 rowBounds.reduced(6.f * zoom, 2.f * zoom),
@@ -783,7 +783,7 @@ void NodeCanvasPresentation::paintNode(
             graphics.drawRoundedRectangle(nodeBounds.expanded(2.f), corner + 2.f, 2.f);
         }
 
-        graphics.setFont(FontOptions(15.f * zoom));
+        graphics.setFont(FontOptions(18.f * zoom));
         graphics.setColour(kText);
         graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
                           Justification::centredLeft);

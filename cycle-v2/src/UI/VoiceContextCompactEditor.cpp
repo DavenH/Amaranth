@@ -471,7 +471,7 @@ void VoiceContextCompactEditor::paintNodeSelector(
                     : pill.getX() + pill.getHeight() * 0.5f,
             pill.getCentreY());
 
-    graphics.setFont(FontOptions(15.1f * zoom));
+    graphics.setFont(FontOptions(18.f * zoom));
     graphics.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
     graphics.drawText("Waveform", waveformLabel, Justification::centredRight);
     graphics.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
@@ -499,7 +499,7 @@ void VoiceContextCompactEditor::paintNodeSummary(
             .withTrimmedBottom(10.f * zoom)
             .reduced(16.f * zoom, 0.f);
     graphics.setColour(kText.withAlpha(0.88f));
-    graphics.setFont(FontOptions(15.1f * zoom));
+    graphics.setFont(FontOptions(18.f * zoom));
     graphics.drawText(
             summaryLabel(node, voiceDurationSeconds),
             summary,
