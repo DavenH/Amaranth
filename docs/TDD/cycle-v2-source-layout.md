@@ -17,14 +17,22 @@ Cycle V2 has grown without internal directory boundaries in four areas:
 - `src/Nodes/Trimesh` is one cohesive domain, but its 56 files leave model,
   DSP, editing, panel hosting, and rendering ownership implicit.
 
+The same problem also appears inside function-grouped translation units.
+`EffectPreviewRenderer`, `EffectSignalProcessors`, `EffectNodeAudioProcessors`,
+`CurvePreviewProcessors`, `ConcreteNodeEditors`, and `NodePreviewRenderer`
+collect behavior for unrelated node kinds. Functions such as `paintReverb` and
+`paintDelay` make the implementation searchable only if a reader already knows
+which generic switchboard owns it, and adding a node expands central branches
+instead of its domain module.
+
 The graph layer is large but cohesive and remains under `src/Graph`.
 
 ## Authoritative Implementations And Preserved Behavior
 
-This is a behavior-neutral source-layout migration. Every existing production
-type remains authoritative for its current behavior. Files move intact except
-for include paths, narrow naming corrections, and already-documented source
-decomposition:
+This is a behavior-neutral source-layout and ownership migration. Every
+existing production algorithm remains authoritative for its current behavior.
+Files move intact where already cohesive; mixed-domain translation units are
+split into domain objects without changing their algorithms:
 
 - graph mutation continues through `GraphCommandDispatcher`;
 - runtime and preview execution retain their existing processors and lifecycle;
@@ -48,7 +56,6 @@ src/
     Processing/
     Graph/
     Realtime/
-    Preview/
     Oscillator/
   UI/
     Canvas/
@@ -56,7 +63,6 @@ src/
       Rendering/
     Editors/
     Palette/
-    Preview/
     Workspace/
   Nodes/
     Curve/
@@ -73,6 +79,20 @@ src/
       Editor/
       Panel/
       Rendering/
+    Reverb/
+    Delay/
+    Equalizer/
+    Unison/
+    FFT/
+    SpectralLayer/
+    WaveSource/
+    ImageSource/
+    VoiceContext/
+    Add/
+    Multiply/
+    StereoSplit/
+    StereoJoin/
+    Output/
 ```
 
 Tests mirror the major `Graph`, `Runtime`, `UI`, and `Nodes` ownership
@@ -86,8 +106,7 @@ within one directory may use a local include.
 - `Runtime/Graph` owns runtime graph configuration, causal updates,
   invalidation, module registration, and presentation coordination.
 - `Runtime/Realtime` owns live/offline audio graph execution, MIDI state and
-  queues, and concrete audio-processor registration units.
-- `Runtime/Preview` owns graphic execution and preview processor registration.
+  queues. It does not own concrete node processors.
 - `Runtime/Oscillator` owns prepared oscillator regions and chained/spectral
   region rendering.
 - `UI/Canvas` owns canvas orchestration, geometry, interaction, and queries;
@@ -98,18 +117,53 @@ within one directory may use a local include.
   Domain editors live with Envelope, Guide, Impulse Response, and Waveshaper.
 - Trimesh subdirectories separate model state, DSP/preparation, editing,
   context-bound panels, and rendering without copying behavior between them.
+- Each concrete node domain owns its Cycle V2 audio adapter, DSP configuration,
+  runtime-preview adapter, compact-preview painter, and editor/factory as
+  applicable. A reader looking for Reverb behavior starts in `Nodes/Reverb`.
+- Domain preview painters are objects implementing a narrow preview-painting
+  capability. `ReverbPreviewPainter::paint()` and
+  `DelayPreviewPainter::paint()` replace generic `paintReverb`/`paintDelay`
+  functions.
+- Generic registries may map a `NodeKind` to a domain factory or capability.
+  Registration code contains no rendering, interaction, DSP, or parameter
+  policy and must not become another switchboard.
+- Shared processing and presentation contracts live outside domains only when
+  they contain no concrete `NodeKind` branches or domain-specific parameter
+  identifiers.
+
+## Negative Boundaries
+
+- `Runtime` and generic `UI` files do not implement concrete node algorithms.
+- A generic preview renderer does not branch across Reverb, Delay, Equalizer,
+  Unison, FFT, Spectral Layer, source, routing, and output presentation.
+- A generic editor does not branch on effect kind to choose controls, snapping,
+  plotting, automation, or layout.
+- A broad `Nodes/Effects` folder does not remain as the owner of distinct
+  Reverb, Delay, Equalizer, Impulse Response, Waveshaper, and Unison behavior.
+- Domain extraction must not copy the existing paint, DSP, or interaction
+  algorithms. The existing implementation moves behind the domain object.
 
 ## Migration Slices
 
-1. Replace the `Effect2D` folder with shared Curve infrastructure and
-   domain-owned editors. Rename misleading shared `Effect2D` types and split
-   umbrella editor declarations by domain.
-2. Partition Trimesh into Model, Dsp, Editor, Panel, and Rendering.
-3. Partition Runtime into Processing, Graph, Realtime, Preview, and Oscillator.
-4. Partition UI into Canvas, Editors, Palette, Preview, and Workspace. Apply
-   the existing `ConcreteNodeEditors.cpp` registry decomposition while moving
-   it so domain editor adapters live with their domain.
-5. Mirror tests by ownership, normalize remaining project includes, and
+1. **Completed:** Replace the `Effect2D` folder with shared Curve infrastructure
+   and domain-owned editors. Rename misleading shared `Effect2D` types and
+   split umbrella editor declarations by domain.
+2. **Completed:** Partition Trimesh into Model, Dsp, Editor, Panel, and
+   Rendering.
+3. Extract the Reverb, Delay, Equalizer, and Unison vertical domains. Split
+   effect preview painting, signal processors, audio adapters, preview
+   processors, and editor implementations into domain-owned objects. Delete
+   the broad `Nodes/Effects` implementation folder.
+4. Extract remaining concrete runtime audio and preview implementations from
+   function-grouped Runtime files into Envelope, Impulse Response, Waveshaper,
+   FFT/IFFT, Spectral Layer, Trimesh, source, math, routing, Voice Context, and
+   Output domains. Runtime retains only contracts and orchestration.
+5. Replace the node-kind branches in `NodePreviewRenderer` with registered
+   domain preview painters, and reduce `ConcreteNodeEditors.cpp` to registry
+   assembly from domain factories.
+6. Partition the remaining generic UI and Runtime orchestration files by their
+   cohesive lifecycle boundaries.
+7. Mirror tests by ownership, normalize remaining project includes, and
    simplify the CMake source manifests around the resulting modules.
 
 Each slice receives a production-diff review, style check, focused/full tests
@@ -132,6 +186,15 @@ without an ownership design.
 - Shared Curve code contains no unnecessary node-kind switchboard introduced
   by the migration.
 - Trimesh model, DSP, editor, panel, and rendering files have explicit homes.
+- Reverb, Delay, Equalizer, Unison, and every other concrete node behavior can
+  be found under its domain folder.
+- `EffectPreviewRenderer`, `EffectSignalProcessors`,
+  `EffectNodeAudioProcessors`, and the other mixed-domain processor files are
+  deleted after their implementations move behind domain objects.
+- Generic Runtime and UI orchestration contain no multi-domain behavior
+  switchboards; central kind lists perform registration only.
+- Preview painting and editor behavior are invoked through domain-owned
+  objects rather than `paintFoo`/`drawFoo` branches in generic files.
 - Runtime and UI directories communicate their lifecycle and ownership
   boundaries without generic `Helpers` or `Utils` modules.
 - Tests mirror major production ownership boundaries.
