@@ -1,4 +1,4 @@
-#include "TrimeshGridwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshGridwiseDsp.h"
 
 #include <Curve/Mesh/Vertex.h>
 

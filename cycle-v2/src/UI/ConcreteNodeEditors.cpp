@@ -1,17 +1,17 @@
 #include <iterator>
 
-#include "NodeEditorHost.h"
+#include "UI/NodeEditorHost.h"
 
-#include "ModulationNodeEditors.h"
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
-#include "../Nodes/Unison/UnisonNodeEditor.h"
-#include "../Runtime/NodePreviewProcessor.h"
-#include "../Nodes/Effect2D/CurveNodeEditors.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
-#include "../Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
+#include "UI/ModulationNodeEditors.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Effects/EffectPlotPalette.h"
+#include "Nodes/Unison/UnisonNodeEditor.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
+#include "Nodes/Trimesh/TrimeshWidget.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -572,7 +572,7 @@ public:
             const NodeEditorContext& context) :
             commands     (context.commands)
         ,   presentation (context.presentation)
-        ,   editor       (createCurveNodeEditor(node.kind, *context.resources.effect2DWidget(node))) {
+        ,   editor       (createCurveNodeEditor(node.kind, *context.resources.curveEditorWidget(node))) {
         editor->setDelegate(this);
     }
 
@@ -593,29 +593,29 @@ public:
     void releaseOpenGLResources() override {}
 
 private:
-    void closeEffect2DEditor() override {
+    void closeCurveEditor() override {
         presentation.closeNodeEditor();
     }
 
-    void repaintEffect2DEditorOpenGL() override {
+    void repaintCurveEditorOpenGL() override {
         presentation.repaintNodeEditor(true);
     }
 
-    bool publishEffect2DState(
+    bool publishCurveState(
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) override {
         return commands.publishCurveState(nodeId, std::move(model), controls);
     }
 
-    void beginEffect2DTransaction() override {
+    void beginCurveTransaction() override {
         commands.beginCurveTransaction();
     }
 
-    void commitEffect2DTransaction() override {
+    void commitCurveTransaction() override {
         commands.commitCurveTransaction();
     }
 
-    void effect2DTransientStateChanged(uint64_t fingerprint) override {
+    void curveTransientStateChanged(uint64_t fingerprint) override {
         presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
     }
 

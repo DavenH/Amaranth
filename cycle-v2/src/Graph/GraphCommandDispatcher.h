@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GraphDocument.h"
+#include "Graph/GraphDocument.h"
 
 #include <functional>
 #include <optional>

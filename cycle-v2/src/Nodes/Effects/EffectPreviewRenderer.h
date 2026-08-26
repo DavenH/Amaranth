@@ -2,7 +2,7 @@
 
 #include <Audio/CycleDsp/UnisonCore.h>
 
-#include "../../Graph/NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 

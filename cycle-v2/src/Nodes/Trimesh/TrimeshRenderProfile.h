@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Graph/GraphRenderSemanticResolver.h"
-#include "../../Graph/NodeGraph.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/NodeGraph.h"
 
 #include <Array/Buffer.h>
 #include <Obj/Color.h>

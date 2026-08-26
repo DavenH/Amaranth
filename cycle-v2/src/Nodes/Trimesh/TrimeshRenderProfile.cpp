@@ -1,4 +1,4 @@
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 #include <Binary/Gradients.h>
 #include <Util/Arithmetic.h>

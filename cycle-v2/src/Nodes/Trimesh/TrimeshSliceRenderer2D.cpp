@@ -1,4 +1,4 @@
-#include "TrimeshSliceRenderer2D.h"
+#include "Nodes/Trimesh/TrimeshSliceRenderer2D.h"
 
 namespace CycleV2 {
 

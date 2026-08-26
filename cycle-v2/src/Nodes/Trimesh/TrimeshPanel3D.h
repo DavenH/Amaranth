@@ -1,7 +1,7 @@
 #pragma once
 
-#include "TrimeshPanelDataSource.h"
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <UI/Panels/Panel3D.h>

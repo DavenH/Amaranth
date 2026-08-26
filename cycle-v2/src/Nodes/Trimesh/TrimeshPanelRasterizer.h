@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 

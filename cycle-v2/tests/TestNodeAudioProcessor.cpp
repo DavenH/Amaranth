@@ -1,13 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Runtime/AudioProcessContextUtils.h"
-#include "../src/Runtime/NodeAudioProcessor.h"
-#include "../src/Runtime/SmoothedMorphPosition.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopeMeshState.h"
-#include "../src/Nodes/Envelope/EnvelopePreparationExchange.h"
-#include "../src/Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/NodeAudioProcessor.h"
+#include "Runtime/SmoothedMorphPosition.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopePreparationExchange.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>

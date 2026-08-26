@@ -2,13 +2,13 @@
 #include <cmath>
 #include <utility>
 
-#include "NodeCanvasAutomationInspector.h"
+#include "UI/NodeCanvasAutomationInspector.h"
 
-#include "SignalProbeDetailView.h"
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshWidget.h"
-#include "NodeViewModule.h"
-#include "VoiceContextCompactEditor.h"
+#include "UI/SignalProbeDetailView.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/TrimeshWidget.h"
+#include "UI/NodeViewModule.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -304,8 +304,8 @@ public:
             Array<var>& targets,
             const Node& node,
             Rectangle<float> panel,
-            const DynamicObject& effect2DState) {
-        const var options = effect2DState.getProperty("modeOptions");
+            const DynamicObject& curveEditorState) {
+        const var options = curveEditorState.getProperty("modeOptions");
         if (!options.isArray()) {
             return;
         }
@@ -334,7 +334,7 @@ public:
             Array<var>& targets,
             const Node& node,
             Rectangle<float> panel,
-            const DynamicObject& effect2DState) {
+            const DynamicObject& curveEditorState) {
         const std::array<std::pair<const char*, const char*>, 5> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
@@ -344,7 +344,7 @@ public:
         }};
         for (const auto& [id, boundsProperty] : actions) {
             const auto bounds = AutomationValueEncoder::rectangleFromVar(
-                    effect2DState.getProperty(boundsProperty)).translated(
+                    curveEditorState.getProperty(boundsProperty)).translated(
                             panel.getX(), panel.getY());
             targets.add(pointerTargetToVar(
                     "expanded:" + node.id + ".envelopeAction." + id,
@@ -364,13 +364,13 @@ public:
             const NodeEditorHost& editorHost) {
         DynamicObject editorState;
         editorHost.appendAutomationState(editorState);
-        const var effect2D = editorState.getProperty("effect2D");
-        const auto* effect2DState = effect2D.getDynamicObject();
-        if (effect2DState == nullptr) {
+        const var curveEditorAutomation = editorState.getProperty("effect2D");
+        const auto* curveEditorState = curveEditorAutomation.getDynamicObject();
+        if (curveEditorState == nullptr) {
             return;
         }
-        addEnvelopeModeTargets(targets, node, panel, *effect2DState);
-        addEnvelopeActionTargets(targets, node, panel, *effect2DState);
+        addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
+        addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
     }
 
     static void addExpandedEditorTargets(

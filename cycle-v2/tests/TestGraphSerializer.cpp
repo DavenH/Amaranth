@@ -1,15 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Nodes/Envelope/EnvelopePurpose.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshState.h"
-#include "../src/Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/TrimeshMeshState.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Runtime/GraphAudioExecutor.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>

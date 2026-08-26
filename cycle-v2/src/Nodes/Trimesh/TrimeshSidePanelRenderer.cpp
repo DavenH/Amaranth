@@ -1,4 +1,4 @@
-#include "TrimeshSidePanelRenderer.h"
+#include "Nodes/Trimesh/TrimeshSidePanelRenderer.h"
 
 #include <limits>
 

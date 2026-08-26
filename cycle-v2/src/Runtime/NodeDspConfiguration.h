@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AudioProcessTypes.h"
-#include "NodeModuleRegistry.h"
+#include "Runtime/AudioProcessTypes.h"
+#include "Runtime/NodeModuleRegistry.h"
 
 #include <cstdint>
 #include <functional>

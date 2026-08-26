@@ -1,6 +1,6 @@
-#include "TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/TrimeshPanelDataSource.h"
 
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 namespace CycleV2 {
 

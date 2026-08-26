@@ -4,7 +4,7 @@
 
 #include <UI/Widgets/AmaranthMidiKeyboard.h>
 
-#include "../Runtime/RealtimeMidiEventQueue.h"
+#include "Runtime/RealtimeMidiEventQueue.h"
 
 namespace CycleV2 {
 

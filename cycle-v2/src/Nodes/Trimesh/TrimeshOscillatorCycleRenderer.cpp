@@ -1,4 +1,4 @@
-#include "TrimeshOscillatorCycleRenderer.h"
+#include "Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Curve/Curve.h>

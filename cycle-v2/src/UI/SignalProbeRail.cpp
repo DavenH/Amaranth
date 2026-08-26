@@ -1,7 +1,7 @@
-#include "SignalProbeRail.h"
+#include "UI/SignalProbeRail.h"
 
-#include "WorkspaceDock.h"
-#include "../Graph/GraphValidator.h"
+#include "UI/WorkspaceDock.h"
+#include "Graph/GraphValidator.h"
 
 #include <algorithm>
 #include <limits>

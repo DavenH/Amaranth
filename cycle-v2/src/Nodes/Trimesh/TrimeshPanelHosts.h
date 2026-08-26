@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshPanelHostDelegate.h"
+#include "Nodes/Trimesh/TrimeshPanelHostDelegate.h"
 
 #include <atomic>
 #include <memory>
@@ -8,7 +8,7 @@
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/PanelHostContext.h>
 
-#include "../../UI/RenderInvalidationAccumulator.h"
+#include "UI/RenderInvalidationAccumulator.h"
 
 class CommonGL;
 class GLPanelRenderer;

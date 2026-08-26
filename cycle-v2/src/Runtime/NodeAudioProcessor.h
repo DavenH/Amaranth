@@ -1,8 +1,8 @@
 #pragma once
 
-#include "AudioProcessTypes.h"
-#include "NodeDspConfiguration.h"
-#include "NodeModuleRegistry.h"
+#include "Runtime/AudioProcessTypes.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/NodeModuleRegistry.h"
 
 #include <memory>
 

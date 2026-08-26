@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "../Guide/GuideCurveSnapshotProvider.h"
+#include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 
 class Mesh;
 

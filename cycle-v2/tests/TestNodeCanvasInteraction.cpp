@@ -1,8 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/UI/NodeCanvasInteraction.h"
+#include "Graph/GraphNodeFactory.h"
+#include "UI/NodeCanvasInteraction.h"
 
 using namespace CycleV2;
 

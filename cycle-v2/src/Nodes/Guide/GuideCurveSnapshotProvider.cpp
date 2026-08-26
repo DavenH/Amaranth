@@ -1,10 +1,10 @@
-#include "GuideCurveSnapshotProvider.h"
+#include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 
 #include <algorithm>
 #include <cstdint>
 
-#include "../Effect2D/CurveNodeModels.h"
-#include "../Effect2D/FlatCurvePreparation.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
 namespace CycleV2 {
 

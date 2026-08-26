@@ -1,4 +1,4 @@
-#include "TrimeshInvalidation.h"
+#include "Nodes/Trimesh/TrimeshInvalidation.h"
 
 namespace CycleV2 {
 

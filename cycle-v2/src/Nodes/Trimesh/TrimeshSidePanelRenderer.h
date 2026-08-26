@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshNodeModel.h"
+#include "Nodes/Trimesh/TrimeshNodeModel.h"
 
 #include <JuceHeader.h>
 

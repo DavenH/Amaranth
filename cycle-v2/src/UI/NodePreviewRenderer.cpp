@@ -1,10 +1,10 @@
-#include "NodePreviewRenderer.h"
+#include "UI/NodePreviewRenderer.h"
 
-#include "../Graph/GraphRenderSemanticResolver.h"
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Effects/EffectPlotPalette.h"
-#include "../Nodes/Trimesh/TrimeshSurfaceRenderer.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Effects/EffectPlotPalette.h"
+#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 #include <array>
 #include <cmath>
@@ -294,7 +294,7 @@ bool drawHeatmap(
             highQuality);
 }
 
-void drawEffect2DFallback(
+void drawCurveFallback(
         Graphics& graphics,
         Rectangle<float> area,
         NodeKind kind,
@@ -562,7 +562,7 @@ NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
         resources(resourcesToUse) {
 }
 
-bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
+bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
     return kind == NodeKind::Envelope
             || kind == NodeKind::ImpulseResponse
             || kind == NodeKind::Waveshaper;
@@ -698,11 +698,11 @@ bool NodePreviewRenderer::renderOpenGL(
         const Node& node,
         Rectangle<float> area,
         float scaleFactor) {
-    if (!requiresEffect2DModel(node.kind)) {
+    if (!requiresCurveModel(node.kind)) {
         return false;
     }
 
-    resources.effect2DWidget(node).renderPreviewSnapshotOpenGL(node, area, scaleFactor);
+    resources.curveEditorWidget(node).renderPreviewSnapshotOpenGL(node, area, scaleFactor);
     return true;
 }
 
@@ -719,13 +719,13 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
         return true;
     }
 
-    if (!requiresEffect2DModel(request.node.kind)) {
+    if (!requiresCurveModel(request.node.kind)) {
         return false;
     }
 
-    Effect2DWidget& widget = resources.effect2DWidget(request.node);
+    CurveEditorWidget& widget = resources.curveEditorWidget(request.node);
     if (!widget.paintPreviewSnapshot(graphics, request.area)) {
-        drawEffect2DFallback(
+        drawCurveFallback(
                 graphics,
                 request.area,
                 request.node.kind,

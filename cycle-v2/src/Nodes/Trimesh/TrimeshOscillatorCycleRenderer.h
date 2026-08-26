@@ -1,7 +1,7 @@
 #pragma once
 
-#include "TrimeshBlockwiseDsp.h"
-#include "../../Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Runtime/ChainedOscillatorRegionRuntime.h"
 
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 

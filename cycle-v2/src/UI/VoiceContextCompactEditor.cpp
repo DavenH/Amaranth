@@ -2,7 +2,7 @@
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
-#include "VoiceContextCompactEditor.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 

@@ -2,11 +2,11 @@
 
 #include <JuceHeader.h>
 
-#include "NodeCanvasScene.h"
-#include "NodePreviewRenderer.h"
-#include "WorkspaceDock.h"
-#include "../Graph/GraphRenderSemanticResolver.h"
-#include "../Runtime/NodeUpdateGraph.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/WorkspaceDock.h"
+#include "Graph/GraphRenderSemanticResolver.h"
+#include "Runtime/NodeUpdateGraph.h"
 
 namespace CycleV2 {
 

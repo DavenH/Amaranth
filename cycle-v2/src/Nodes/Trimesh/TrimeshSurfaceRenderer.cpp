@@ -1,4 +1,4 @@
-#include "TrimeshSurfaceRenderer.h"
+#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 namespace CycleV2 {
 

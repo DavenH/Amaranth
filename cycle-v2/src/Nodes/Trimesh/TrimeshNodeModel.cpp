@@ -1,11 +1,11 @@
-#include "TrimeshNodeModel.h"
+#include "Nodes/Trimesh/TrimeshNodeModel.h"
 
-#include "TrimeshBlockwiseDsp.h"
-#include "TrimeshGridwiseDsp.h"
-#include "TrimeshMeshFactory.h"
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 #include <Array/Buffer.h>
 #include <Curve/Mesh/Mesh.h>

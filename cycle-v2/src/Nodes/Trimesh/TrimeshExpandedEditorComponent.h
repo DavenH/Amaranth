@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../../Graph/NodeGraph.h"
-#include "TrimeshControlsComponent.h"
-#include "TrimeshPanelHostDelegate.h"
-#include "TrimeshWidget.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Trimesh/TrimeshControlsComponent.h"
+#include "Nodes/Trimesh/TrimeshPanelHostDelegate.h"
+#include "Nodes/Trimesh/TrimeshWidget.h"
 
 #include <JuceHeader.h>
 

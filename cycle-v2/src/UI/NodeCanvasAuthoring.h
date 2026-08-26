@@ -2,11 +2,11 @@
 
 #include <JuceHeader.h>
 
-#include "NodeEditorHost.h"
-#include "TransformCompactEditor.h"
-#include "VoiceContextCompactEditor.h"
-#include "../Graph/GraphCommandDispatcher.h"
-#include "../Runtime/GraphPresentationModel.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Runtime/GraphPresentationModel.h"
 
 namespace CycleV2 {
 

@@ -1,11 +1,11 @@
-#include "TrimeshPanelRasterizer.h"
+#include "Nodes/Trimesh/TrimeshPanelRasterizer.h"
 
-#include "TrimeshInteractor2D.h"
-#include "TrimeshInteractor3D.h"
-#include "TrimeshNodeModel.h"
-#include "TrimeshPanel2D.h"
-#include "TrimeshPanel3D.h"
-#include "TrimeshPanelHosts.h"
+#include "Nodes/Trimesh/TrimeshInteractor2D.h"
+#include "Nodes/Trimesh/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/TrimeshPanel2D.h"
+#include "Nodes/Trimesh/TrimeshPanel3D.h"
+#include "Nodes/Trimesh/TrimeshPanelHosts.h"
 
 namespace CycleV2 {
 

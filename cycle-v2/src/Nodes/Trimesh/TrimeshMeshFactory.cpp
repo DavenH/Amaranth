@@ -1,4 +1,4 @@
-#include "TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>

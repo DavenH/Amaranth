@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpectralOscillatorFrameRenderer.h"
+#include "Runtime/SpectralOscillatorFrameRenderer.h"
 
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Audio/CycleDsp/UnisonCore.h>

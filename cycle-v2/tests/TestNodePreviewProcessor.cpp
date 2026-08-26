@@ -5,11 +5,11 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Runtime/NodePreviewProcessor.h"
-#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
-#include "../src/Nodes/Effects/EffectSignalProcessors.h"
-#include "../src/Nodes/Trimesh/TrimeshSurfaceRenderer.h"
-#include "../src/UI/NodePreviewRenderer.h"
+#include "Runtime/NodePreviewProcessor.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
+#include "UI/NodePreviewRenderer.h"
 
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>

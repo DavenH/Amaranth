@@ -1,8 +1,8 @@
-#include "GraphCommandDispatcher.h"
+#include "Graph/GraphCommandDispatcher.h"
 
-#include "NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "../Nodes/Effect2D/CurveNodeModels.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 
 #include <algorithm>
 #include <cmath>

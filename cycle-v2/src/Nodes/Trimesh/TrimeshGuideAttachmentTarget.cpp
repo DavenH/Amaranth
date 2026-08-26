@@ -1,13 +1,13 @@
-#include "TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
-#include "../../Graph/NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
 
-#include "TrimeshMeshState.h"
+#include "Nodes/Trimesh/TrimeshMeshState.h"
 
 namespace CycleV2 {
 

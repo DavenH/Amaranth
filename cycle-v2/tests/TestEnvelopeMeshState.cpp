@@ -4,7 +4,7 @@
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 
-#include "../src/Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
 
 using namespace CycleV2;
 

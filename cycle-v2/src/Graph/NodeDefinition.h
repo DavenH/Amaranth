@@ -4,7 +4,7 @@
 #include <memory>
 #include <optional>
 
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 namespace CycleV2 {
 

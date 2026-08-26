@@ -1,9 +1,9 @@
 #pragma once
 
-#include "GraphDomainResolver.h"
-#include "GraphValidator.h"
-#include "../Runtime/NodeDspConfiguration.h"
-#include "../Runtime/NodeModuleRegistry.h"
+#include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphValidator.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/NodeModuleRegistry.h"
 
 #include <Audio/CycleDsp/UnisonCore.h>
 

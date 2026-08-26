@@ -1,4 +1,4 @@
-#include "NodeWorkspace.h"
+#include "UI/NodeWorkspace.h"
 
 namespace CycleV2 {
 

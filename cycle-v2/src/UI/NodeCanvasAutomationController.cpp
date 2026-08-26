@@ -1,6 +1,6 @@
-#include "NodeCanvasAutomationController.h"
+#include "UI/NodeCanvasAutomationController.h"
 
-#include "NodeViewModule.h"
+#include "UI/NodeViewModule.h"
 
 namespace CycleV2 {
 

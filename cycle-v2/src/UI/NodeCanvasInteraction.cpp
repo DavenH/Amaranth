@@ -1,5 +1,5 @@
-#include "NodeCanvasInteraction.h"
-#include "ModulationCableBundle.h"
+#include "UI/NodeCanvasInteraction.h"
+#include "UI/ModulationCableBundle.h"
 
 #include <limits>
 

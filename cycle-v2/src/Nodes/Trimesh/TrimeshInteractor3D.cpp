@@ -1,4 +1,4 @@
-#include "TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/TrimeshInteractor3D.h"
 
 #include <App/SingletonRepo.h>
 #include <App/Settings.h>

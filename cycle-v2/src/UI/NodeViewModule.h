@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Graph/NodeDefinition.h"
-#include "NodeEditorHost.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/NodeEditorHost.h"
 
 #include <memory>
 #include <optional>

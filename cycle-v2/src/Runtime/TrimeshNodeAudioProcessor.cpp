@@ -4,13 +4,13 @@
 #include <Curve/Rasterization/ScratchPositionPolicy.h>
 #include <Obj/MorphPosition.h>
 
-#include "AudioProcessContextUtils.h"
-#include "AudioProcessorFactories.h"
-#include "SmoothedMorphPosition.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessorFactories.h"
+#include "Runtime/SmoothedMorphPosition.h"
 
-#include "../Nodes/Trimesh/PreparedTrimeshTopology.h"
-#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshGridwiseDsp.h"
+#include "Nodes/Trimesh/PreparedTrimeshTopology.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshGridwiseDsp.h"
 
 namespace CycleV2 {
 

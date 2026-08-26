@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Graph/GraphCompiler.h"
+#include "Graph/GraphCompiler.h"
 
 #include <vector>
 

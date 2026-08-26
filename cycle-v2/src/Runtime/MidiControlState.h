@@ -4,7 +4,7 @@
 
 #include <JuceHeader.h>
 
-#include "AudioProcessTypes.h"
+#include "Runtime/AudioProcessTypes.h"
 
 namespace CycleV2 {
 

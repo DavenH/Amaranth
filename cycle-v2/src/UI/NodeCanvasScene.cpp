@@ -1,7 +1,7 @@
-#include "NodeCanvasScene.h"
-#include "ModulationCableBundle.h"
-#include "NodePortGeometry.h"
-#include "NodeViewModule.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodePortGeometry.h"
+#include "UI/NodeViewModule.h"
 
 #include <algorithm>
 

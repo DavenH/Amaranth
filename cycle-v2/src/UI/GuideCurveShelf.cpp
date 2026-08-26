@@ -1,6 +1,6 @@
-#include "GuideCurveShelf.h"
+#include "UI/GuideCurveShelf.h"
 
-#include "SignalProbeRail.h"
+#include "UI/SignalProbeRail.h"
 
 #include <algorithm>
 #include <array>
@@ -164,7 +164,7 @@ float GuideCurveShelf::maximumHorizontalOffset(
 GuideCurveShelf::Preview& GuideCurveShelf::previewFor(const GuideCurveResource& guide) const {
     Preview& preview = previews[guide.id];
     if (preview.widget == nullptr) {
-        preview.widget = std::make_unique<Effect2DWidget>(true);
+        preview.widget = std::make_unique<CurveEditorWidget>(true);
     }
 
     if (preview.model != guide.model

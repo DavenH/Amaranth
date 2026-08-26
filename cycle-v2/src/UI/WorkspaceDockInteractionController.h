@@ -7,11 +7,11 @@
 
 #include <App/Settings.h>
 
-#include "GuideCurveShelf.h"
-#include "NodeCanvasAuthoring.h"
-#include "SignalProbeDetailView.h"
-#include "WorkspaceDockKeyboardNavigation.h"
-#include "../Graph/GraphCommandDispatcher.h"
+#include "UI/GuideCurveShelf.h"
+#include "UI/NodeCanvasAuthoring.h"
+#include "UI/SignalProbeDetailView.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
+#include "Graph/GraphCommandDispatcher.h"
 
 namespace CycleV2 {
 

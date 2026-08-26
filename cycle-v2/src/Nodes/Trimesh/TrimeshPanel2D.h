@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 #include <UI/Panels/Panel2D.h>
 

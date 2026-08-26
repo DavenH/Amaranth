@@ -1,8 +1,8 @@
-#include "EffectSignalProcessors.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
 
-#include "../../Graph/NodeDefinition.h"
-#include "../../Graph/NodeParameterMap.h"
-#include "../Effect2D/FlatCurvePreparation.h"
+#include "Graph/NodeDefinition.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>

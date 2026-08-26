@@ -9,16 +9,16 @@
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
-#include "NodeCanvas.h"
+#include "UI/NodeCanvas.h"
 
-#include "CanvasUtilityDock.h"
+#include "UI/CanvasUtilityDock.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "NodeViewModule.h"
-#include "TransformCompactEditor.h"
-#include "WorkspaceDockKeyboardNavigation.h"
+#include "Graph/NodeParameterMap.h"
+#include "UI/NodeViewModule.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
 
-#include "../Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphAudioExecutor.h"
 
 namespace CycleV2 {
 
@@ -1508,7 +1508,7 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     }
 
     if (guideEditor == nullptr) {
-        guideEditorWidget = std::make_unique<Effect2DWidget>(true);
+        guideEditorWidget = std::make_unique<CurveEditorWidget>(true);
         guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
         guideEditor->setDelegate(this);
         guideEditor->setTitle("Guide Curve");
@@ -1540,18 +1540,18 @@ void NodeCanvas::closeGuideEditor() {
     requestCanvasRepaint();
 }
 
-void NodeCanvas::closeEffect2DEditor() {
+void NodeCanvas::closeCurveEditor() {
     closeGuideEditor();
 }
 
-void NodeCanvas::repaintEffect2DEditorOpenGL() {
+void NodeCanvas::repaintCurveEditorOpenGL() {
     openGLContext.triggerRepaint();
     if (guideEditor != nullptr) {
         guideEditor->repaint();
     }
 }
 
-bool NodeCanvas::publishEffect2DState(
+bool NodeCanvas::publishCurveState(
         NodeModelStatePtr model,
         const std::vector<NodeParameter>& controls) {
     if (expandedGuideId.isEmpty()) {
@@ -1582,7 +1582,7 @@ bool NodeCanvas::publishEffect2DState(
     return true;
 }
 
-void NodeCanvas::beginEffect2DTransaction() {
+void NodeCanvas::beginCurveTransaction() {
     const GuideCurveResource* guide = document.graph().findGuideCurve(expandedGuideId);
     if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
         return;
@@ -1591,7 +1591,7 @@ void NodeCanvas::beginEffect2DTransaction() {
     commands.beginTransientEdit();
 }
 
-void NodeCanvas::commitEffect2DTransaction() {
+void NodeCanvas::commitCurveTransaction() {
     if (!guideTransactionBaseRevision.has_value()) {
         return;
     }
@@ -1671,8 +1671,8 @@ void NodeCanvas::commitNodeEditorLocalState(
             documentRevision);
 }
 
-Effect2DWidget* NodeCanvas::effect2DWidget(const Node& node) {
-    return &editorCoordinator.previewResources().effect2DWidget(node);
+CurveEditorWidget* NodeCanvas::curveEditorWidget(const Node& node) {
+    return &editorCoordinator.previewResources().curveEditorWidget(node);
 }
 
 TrimeshWidget* NodeCanvas::trimeshWidget(const Node& node) {

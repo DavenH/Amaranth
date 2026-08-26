@@ -1,4 +1,4 @@
-#include "NodeViewModule.h"
+#include "UI/NodeViewModule.h"
 
 #include <functional>
 

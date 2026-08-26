@@ -1,4 +1,4 @@
-#include "EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 #include <algorithm>
 

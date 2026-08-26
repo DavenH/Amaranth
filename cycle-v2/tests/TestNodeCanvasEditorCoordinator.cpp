@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/UI/NodeCanvasEditorCoordinator.h"
+#include "Graph/GraphNodeFactory.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
 
 using namespace CycleV2;
 

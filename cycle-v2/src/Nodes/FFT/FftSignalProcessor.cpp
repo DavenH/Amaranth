@@ -1,6 +1,6 @@
-#include "FftSignalProcessor.h"
+#include "Nodes/FFT/FftSignalProcessor.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 #include <algorithm>
 

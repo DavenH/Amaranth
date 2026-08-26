@@ -4,7 +4,7 @@
 
 #include <vector>
 
-#include "WorkspaceDock.h"
+#include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
 

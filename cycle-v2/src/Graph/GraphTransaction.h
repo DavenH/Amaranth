@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GraphEditor.h"
+#include "Graph/GraphEditor.h"
 
 namespace CycleV2 {
 

@@ -5,8 +5,8 @@
 
 #include <vector>
 
-#include "../../Runtime/NodeAudioProcessor.h"
-#include "../Guide/GuideCurveSnapshotProvider.h"
+#include "Runtime/NodeAudioProcessor.h"
+#include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 
 class Mesh;
 

@@ -4,13 +4,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effects/EffectPreviewRenderer.h"
-#include "../src/Nodes/Unison/UnisonNode.h"
-#include "../src/Runtime/NodeDspConfiguration.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Unison/UnisonNode.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 using namespace CycleV2;
 

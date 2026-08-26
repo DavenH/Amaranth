@@ -1,20 +1,20 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Nodes/Control/ModulationSource.h"
-#include "../src/Nodes/Control/ModulationTriple.h"
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Runtime/AudioProcessContextUtils.h"
-#include "../src/Runtime/GraphAudioExecutor.h"
-#include "../src/Runtime/MidiControlState.h"
-#include "../src/UI/NodeEditorHost.h"
-#include "../src/UI/ModulationCableBundle.h"
-#include "../src/UI/NodeCanvasInteraction.h"
-#include "../src/UI/NodeCanvasScene.h"
-#include "../src/UI/NodeViewModule.h"
+#include "Nodes/Control/ModulationSource.h"
+#include "Nodes/Control/ModulationTriple.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/MidiControlState.h"
+#include "UI/NodeEditorHost.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeCanvasInteraction.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeViewModule.h"
 
 using namespace CycleV2;
 

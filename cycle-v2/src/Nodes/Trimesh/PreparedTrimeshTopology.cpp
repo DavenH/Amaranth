@@ -1,6 +1,6 @@
-#include "PreparedTrimeshTopology.h"
+#include "Nodes/Trimesh/PreparedTrimeshTopology.h"
 
-#include "TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
 
 namespace CycleV2 {
 

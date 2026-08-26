@@ -1,6 +1,6 @@
-#include "NodeCanvasQueryModel.h"
+#include "UI/NodeCanvasQueryModel.h"
 
-#include "../Graph/GraphRenderSemanticResolver.h"
+#include "Graph/GraphRenderSemanticResolver.h"
 
 namespace CycleV2 {
 

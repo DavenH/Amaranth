@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../Runtime/UnarySignalProcessor.h"
-#include "../../Runtime/NodeDspConfiguration.h"
-#include "PreparedConvolverPair.h"
+#include "Runtime/UnarySignalProcessor.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Nodes/Effects/PreparedConvolverPair.h"
 
 #include <Algo/ConvReverb.h>
 #include <Algo/Oversampler.h>

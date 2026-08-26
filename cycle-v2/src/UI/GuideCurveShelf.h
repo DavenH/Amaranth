@@ -5,10 +5,10 @@
 #include <map>
 #include <memory>
 
-#include "SignalProbeRail.h"
-#include "WorkspaceDock.h"
-#include "../Graph/NodeGraph.h"
-#include "../Nodes/Effect2D/Effect2DWidget.h"
+#include "UI/SignalProbeRail.h"
+#include "UI/WorkspaceDock.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
 
 namespace CycleV2 {
 
@@ -90,7 +90,7 @@ public:
 
 private:
     struct Preview {
-        std::unique_ptr<Effect2DWidget> widget;
+        std::unique_ptr<CurveEditorWidget> widget;
         NodeModelStatePtr model;
         bool enabled {};
         float noise {};

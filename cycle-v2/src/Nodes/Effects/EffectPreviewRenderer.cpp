@@ -4,12 +4,12 @@
 
 #include <cmath>
 
-#include "EffectPreviewRenderer.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
 
-#include "EffectPlotPalette.h"
+#include "Nodes/Effects/EffectPlotPalette.h"
 
-#include "../../Graph/NodeParameterMap.h"
-#include "../Unison/UnisonNode.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Unison/UnisonNode.h"
 
 namespace CycleV2 {
 

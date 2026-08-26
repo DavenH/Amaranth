@@ -1,6 +1,6 @@
-#include "NodeAudioProcessor.h"
+#include "Runtime/NodeAudioProcessor.h"
 
-#include "AudioProcessorFactories.h"
+#include "Runtime/AudioProcessorFactories.h"
 
 namespace CycleV2 {
 

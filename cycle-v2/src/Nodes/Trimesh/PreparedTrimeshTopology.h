@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../Graph/NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 
 #include <Curve/Mesh/Mesh.h>
 

@@ -1,4 +1,4 @@
-#include "TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/TrimeshGuidePreparation.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Runtime/NodeModuleRegistry.h"
+#include "Runtime/NodeModuleRegistry.h"
 
 using namespace CycleV2;
 

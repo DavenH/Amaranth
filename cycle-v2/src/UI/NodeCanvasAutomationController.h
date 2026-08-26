@@ -4,9 +4,9 @@
 
 #include <optional>
 
-#include "NodeCanvasAutomationInspector.h"
-#include "NodeCanvasAuthoring.h"
-#include "NodePreviewResources.h"
+#include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/NodeCanvasAuthoring.h"
+#include "UI/NodePreviewResources.h"
 
 namespace CycleV2 {
 

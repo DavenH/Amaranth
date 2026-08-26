@@ -1,9 +1,9 @@
-#include "UnisonNodeEditor.h"
+#include "Nodes/Unison/UnisonNodeEditor.h"
 
-#include "UnisonNode.h"
-#include "../Effects/EffectPreviewRenderer.h"
-#include "../../Graph/NodeParameterMap.h"
-#include "../../UI/NodeEditorHost.h"
+#include "Nodes/Unison/UnisonNode.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Graph/NodeParameterMap.h"
+#include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
 

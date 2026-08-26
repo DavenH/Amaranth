@@ -1,8 +1,8 @@
 #pragma once
 
-#include "TrimeshMeshState.h"
+#include "Nodes/Trimesh/TrimeshMeshState.h"
 
-#include "../../Graph/NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
 #include <Obj/MorphPosition.h>
 

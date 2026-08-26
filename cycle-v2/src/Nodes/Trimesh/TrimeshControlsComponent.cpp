@@ -1,4 +1,4 @@
-#include "TrimeshControlsComponent.h"
+#include "Nodes/Trimesh/TrimeshControlsComponent.h"
 
 #include <algorithm>
 #include <utility>

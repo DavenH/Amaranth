@@ -1,15 +1,15 @@
 #pragma once
 
-#include "TrimeshPanel2D.h"
-#include "TrimeshPanel3D.h"
-#include "TrimeshPanelEnvironment.h"
-#include "TrimeshPanelHostDelegate.h"
-#include "TrimeshPanelHosts.h"
-#include "TrimeshPanelRasterizer.h"
-#include "TrimeshInteractor2D.h"
-#include "TrimeshInteractor3D.h"
-#include "TrimeshInvalidation.h"
-#include "TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/TrimeshPanel2D.h"
+#include "Nodes/Trimesh/TrimeshPanel3D.h"
+#include "Nodes/Trimesh/TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/TrimeshPanelHostDelegate.h"
+#include "Nodes/Trimesh/TrimeshPanelHosts.h"
+#include "Nodes/Trimesh/TrimeshPanelRasterizer.h"
+#include "Nodes/Trimesh/TrimeshInteractor2D.h"
+#include "Nodes/Trimesh/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/TrimeshInvalidation.h"
+#include "Nodes/Trimesh/TrimeshGuidePreparation.h"
 
 #include <cstdint>
 #include <functional>

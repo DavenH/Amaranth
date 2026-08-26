@@ -1,4 +1,4 @@
-#include "TrimeshPanel3D.h"
+#include "Nodes/Trimesh/TrimeshPanel3D.h"
 
 namespace CycleV2 {
 

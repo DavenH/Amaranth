@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ModulationSource.h"
+#include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
 

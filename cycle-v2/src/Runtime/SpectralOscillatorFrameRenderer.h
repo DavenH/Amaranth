@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Graph/GraphCompiler.h"
-#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Graph/GraphCompiler.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 
 #include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>

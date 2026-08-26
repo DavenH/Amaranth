@@ -1,10 +1,10 @@
-#include "TrimeshMeshState.h"
+#include "Nodes/Trimesh/TrimeshMeshState.h"
 
-#include "../../Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelDecodeDiagnostics.h"
 
 #include <Curve/Mesh/Mesh.h>
 
-#include "TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
 
 namespace CycleV2 {
 

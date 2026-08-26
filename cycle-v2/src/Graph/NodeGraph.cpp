@@ -1,11 +1,11 @@
-#include "NodeGraph.h"
+#include "Graph/NodeGraph.h"
 
-#include "NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "GraphNodeFactory.h"
-#include "NodeDefinition.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
 
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 #include <algorithm>
 #include <unordered_set>

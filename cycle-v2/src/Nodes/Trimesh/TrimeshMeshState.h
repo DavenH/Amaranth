@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "../../Graph/NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 
 class Mesh;
 

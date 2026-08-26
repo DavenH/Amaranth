@@ -3,11 +3,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "NodeCanvasAuthoring.h"
+#include "UI/NodeCanvasAuthoring.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "ModulationCableBundle.h"
-#include "NodeViewModule.h"
+#include "Graph/NodeParameterMap.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeViewModule.h"
 
 namespace CycleV2 {
 

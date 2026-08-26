@@ -1,9 +1,9 @@
-#include "TrimeshPanelHosts.h"
+#include "Nodes/Trimesh/TrimeshPanelHosts.h"
 
-#include "TrimeshInteractor2D.h"
-#include "TrimeshInteractor3D.h"
-#include "TrimeshPanel2D.h"
-#include "TrimeshPanel3D.h"
+#include "Nodes/Trimesh/TrimeshInteractor2D.h"
+#include "Nodes/Trimesh/TrimeshInteractor3D.h"
+#include "Nodes/Trimesh/TrimeshPanel2D.h"
+#include "Nodes/Trimesh/TrimeshPanel3D.h"
 
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>

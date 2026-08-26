@@ -1,4 +1,4 @@
-#include "NodePalette.h"
+#include "UI/NodePalette.h"
 
 #include <array>
 #include <iterator>

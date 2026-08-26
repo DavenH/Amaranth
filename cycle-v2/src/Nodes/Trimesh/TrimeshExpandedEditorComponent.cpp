@@ -1,4 +1,4 @@
-#include "TrimeshExpandedEditorComponent.h"
+#include "Nodes/Trimesh/TrimeshExpandedEditorComponent.h"
 
 #include <utility>
 

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Nodes/Trimesh/TrimeshInvalidation.h"
+#include "Nodes/Trimesh/TrimeshInvalidation.h"
 
 using namespace CycleV2;
 

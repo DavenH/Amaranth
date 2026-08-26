@@ -1,6 +1,6 @@
-#include "SpectralOscillatorFrameRenderer.h"
+#include "Runtime/SpectralOscillatorFrameRenderer.h"
 
-#include "../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>

@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/NodeDefinition.h"
-#include "../src/UI/NodeCanvasScene.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/NodeCanvasScene.h"
 
 #include <set>
 

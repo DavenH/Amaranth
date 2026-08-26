@@ -1,7 +1,7 @@
 #pragma once
 
-#include "NodeCanvasViewport.h"
-#include "../Graph/GraphEditor.h"
+#include "UI/NodeCanvasViewport.h"
+#include "Graph/GraphEditor.h"
 
 #include <optional>
 #include <vector>

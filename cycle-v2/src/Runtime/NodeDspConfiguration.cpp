@@ -1,18 +1,18 @@
 #include <Curve/Mesh/Mesh.h>
 
-#include "NodeDspConfiguration.h"
+#include "Runtime/NodeDspConfiguration.h"
 
-#include "../Graph/NodeParameterMap.h"
-#include "../Nodes/Control/ModulationSource.h"
-#include "../Nodes/Control/ModulationTriple.h"
-#include "../Nodes/Effects/EffectSignalProcessors.h"
-#include "../Nodes/Envelope/EnvelopeSignalProcessor.h"
-#include "../Nodes/Trimesh/TrimeshBlockwiseDsp.h"
-#include "../Nodes/Trimesh/TrimeshGuidePreparation.h"
-#include "../Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "../Nodes/Trimesh/TrimeshMeshState.h"
-#include "../Nodes/Unison/UnisonNode.h"
-#include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Control/ModulationSource.h"
+#include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshGuidePreparation.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshMeshState.h"
+#include "Nodes/Unison/UnisonNode.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
 namespace CycleV2 {
 

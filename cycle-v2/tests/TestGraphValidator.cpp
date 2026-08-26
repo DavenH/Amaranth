@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphDomainResolver.h"
-#include "../src/Graph/GraphValidator.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphDomainResolver.h"
+#include "Graph/GraphValidator.h"
 
 #include <algorithm>
 

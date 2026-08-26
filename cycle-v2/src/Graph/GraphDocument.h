@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GraphEditor.h"
-#include "GraphSerializer.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphSerializer.h"
 
 #include <functional>
 #include <vector>

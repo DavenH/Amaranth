@@ -3,15 +3,15 @@
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 
-#include "../src/Runtime/ChainedOscillatorRegionRuntime.h"
-#include "../src/Runtime/SpectralOscillatorFrameRenderer.h"
-#include "../src/Runtime/SpectralOscillatorRegionRuntime.h"
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Trimesh/TrimeshMeshFactory.h"
-#include "../src/Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
+#include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/SpectralOscillatorFrameRenderer.h"
+#include "Runtime/SpectralOscillatorRegionRuntime.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Trimesh/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/TrimeshOscillatorCycleRenderer.h"
 
 #include <algorithm>
 #include <array>

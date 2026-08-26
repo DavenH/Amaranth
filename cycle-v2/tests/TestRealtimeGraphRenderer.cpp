@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/NodeGraph.h"
-#include "../src/Runtime/RealtimeGraphRenderer.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/NodeGraph.h"
+#include "Runtime/RealtimeGraphRenderer.h"
 
 using namespace CycleV2;
 using namespace juce;

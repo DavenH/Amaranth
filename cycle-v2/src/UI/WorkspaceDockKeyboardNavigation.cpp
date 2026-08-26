@@ -1,4 +1,4 @@
-#include "WorkspaceDockKeyboardNavigation.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
 
 #include <algorithm>
 

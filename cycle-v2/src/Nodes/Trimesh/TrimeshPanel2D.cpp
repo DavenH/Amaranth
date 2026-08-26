@@ -1,4 +1,4 @@
-#include "TrimeshPanel2D.h"
+#include "Nodes/Trimesh/TrimeshPanel2D.h"
 
 #include <UI/Panels/CommonGfx.h>
 #include <Util/Arithmetic.h>

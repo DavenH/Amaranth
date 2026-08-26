@@ -1,8 +1,8 @@
-#include "UnisonNode.h"
+#include "Nodes/Unison/UnisonNode.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
-#include "../../Graph/NodeModelDecodeDiagnostics.h"
+#include "Graph/NodeModelDecodeDiagnostics.h"
 
 #include <algorithm>
 #include <cmath>

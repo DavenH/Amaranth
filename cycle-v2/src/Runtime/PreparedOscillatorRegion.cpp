@@ -1,11 +1,11 @@
 #include <algorithm>
 
-#include "PreparedOscillatorRegion.h"
-#include "ChainedOscillatorRecipeRenderer.h"
-#include "ChainedOscillatorRegionRuntime.h"
-#include "SpectralOscillatorFrameRenderer.h"
-#include "SpectralOscillatorRegionRuntime.h"
-#include "../Graph/GraphCompiler.h"
+#include "Runtime/PreparedOscillatorRegion.h"
+#include "Runtime/ChainedOscillatorRecipeRenderer.h"
+#include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/SpectralOscillatorFrameRenderer.h"
+#include "Runtime/SpectralOscillatorRegionRuntime.h"
+#include "Graph/GraphCompiler.h"
 
 #include <Util/Arithmetic.h>
 

@@ -1,4 +1,4 @@
-#include "TrimeshPanelEnvironment.h"
+#include "Nodes/Trimesh/TrimeshPanelEnvironment.h"
 
 #include <App/AppConstants.h>
 #include <App/EditWatcher.h>

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AudioProcessTypes.h"
-#include "../Graph/NodeDefinition.h"
+#include "Runtime/AudioProcessTypes.h"
+#include "Graph/NodeDefinition.h"
 
 #include <Array/Buffer.h>
 #include <Array/VecOps.h>

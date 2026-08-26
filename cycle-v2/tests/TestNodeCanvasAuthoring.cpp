@@ -1,10 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/NodeParameterMap.h"
-#include "../src/Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
-#include "../src/UI/ModulationCableBundle.h"
-#include "../src/UI/NodeCanvasAuthoring.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeCanvasAuthoring.h"
 
 using namespace CycleV2;
 

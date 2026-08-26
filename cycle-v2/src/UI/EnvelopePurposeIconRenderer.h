@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 
-#include "../Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 

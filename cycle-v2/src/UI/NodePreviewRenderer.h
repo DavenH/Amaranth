@@ -1,10 +1,10 @@
 #pragma once
 
-#include "NodePreviewResources.h"
+#include "UI/NodePreviewResources.h"
 
-#include "../Nodes/Effects/EffectPreviewRenderer.h"
-#include "../Nodes/Trimesh/TrimeshRenderProfile.h"
-#include "../Runtime/GraphPreviewExecutor.h"
+#include "Nodes/Effects/EffectPreviewRenderer.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "Runtime/GraphPreviewExecutor.h"
 
 namespace CycleV2 {
 
@@ -23,7 +23,7 @@ class NodePreviewRenderer {
 public:
     explicit NodePreviewRenderer(NodePreviewResources& resources);
 
-    static bool requiresEffect2DModel(NodeKind kind);
+    static bool requiresCurveModel(NodeKind kind);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
             bool desaturated = false);

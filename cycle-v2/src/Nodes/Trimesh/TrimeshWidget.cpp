@@ -1,6 +1,6 @@
-#include "TrimeshWidget.h"
+#include "Nodes/Trimesh/TrimeshWidget.h"
 
-#include "../../Graph/NodeParameterMap.h"
+#include "Graph/NodeParameterMap.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>

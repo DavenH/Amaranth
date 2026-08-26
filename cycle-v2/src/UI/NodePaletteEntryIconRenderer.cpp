@@ -1,6 +1,6 @@
-#include "NodePaletteEntryIconRenderer.h"
+#include "UI/NodePaletteEntryIconRenderer.h"
 
-#include "../Graph/NodeDefinition.h"
+#include "Graph/NodeDefinition.h"
 #include "NodeIconData.h"
 
 #include <map>

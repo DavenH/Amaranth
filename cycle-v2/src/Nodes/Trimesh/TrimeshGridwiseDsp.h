@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 
 class Mesh;
 

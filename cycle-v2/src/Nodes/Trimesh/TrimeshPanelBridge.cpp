@@ -1,4 +1,4 @@
-#include "TrimeshPanelBridge.h"
+#include "Nodes/Trimesh/TrimeshPanelBridge.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <Util/LogRegionMapping.h>

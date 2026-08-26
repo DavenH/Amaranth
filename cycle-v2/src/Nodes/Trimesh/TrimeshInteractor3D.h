@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TrimeshMeshEditEvent.h"
+#include "Nodes/Trimesh/TrimeshMeshEditEvent.h"
 
 #include <Inter/Interactor3D.h>
 

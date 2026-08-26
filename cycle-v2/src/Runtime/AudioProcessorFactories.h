@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "NodeAudioProcessor.h"
+#include "Runtime/NodeAudioProcessor.h"
 
 namespace CycleV2 {
 

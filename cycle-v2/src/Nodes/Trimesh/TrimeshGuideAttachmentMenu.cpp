@@ -1,5 +1,5 @@
-#include "TrimeshGuideAttachmentMenu.h"
-#include "TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 #include <algorithm>
 

@@ -8,39 +8,39 @@
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
-#include "../src/Graph/GraphCommandDispatcher.h"
-#include "../src/Graph/GraphDocument.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Graph/GraphSerializer.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
-#include "../src/Graph/NodeDefinition.h"
-#include "../src/UI/EnvelopePurposeIconRenderer.h"
-#include "../src/UI/EnvelopePurposeSelector.h"
-#include "../src/UI/GuideRelationshipPresentation.h"
-#include "../src/UI/NodeCanvasScene.h"
-#include "../src/UI/NodeCanvasEditorCoordinator.h"
-#include "../src/UI/NodeCanvasPresentation.h"
-#include "../src/UI/NodeCableRenderer.h"
-#include "../src/UI/NodeCanvasViewport.h"
-#include "../src/UI/NodePalette.h"
-#include "../src/UI/NodePaletteEntryIconRenderer.h"
-#include "../src/UI/NodePreviewRenderer.h"
-#include "../src/UI/NodeViewModule.h"
-#include "../src/UI/SignalProbeDetailView.h"
-#include "../src/UI/SignalProbeRail.h"
-#include "../src/UI/TransformCompactEditor.h"
-#include "../src/UI/VoiceContextCompactEditor.h"
-#include "../src/UI/WorkspaceDock.h"
-#include "../src/UI/WorkspaceDockKeyboardNavigation.h"
-#include "../src/Runtime/GraphPresentationModel.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Graph/NodeDefinition.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopePurposeSelector.h"
+#include "UI/GuideRelationshipPresentation.h"
+#include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasPresentation.h"
+#include "UI/NodeCableRenderer.h"
+#include "UI/NodeCanvasViewport.h"
+#include "UI/NodePalette.h"
+#include "UI/NodePaletteEntryIconRenderer.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/NodeViewModule.h"
+#include "UI/SignalProbeDetailView.h"
+#include "UI/SignalProbeRail.h"
+#include "UI/TransformCompactEditor.h"
+#include "UI/VoiceContextCompactEditor.h"
+#include "UI/WorkspaceDock.h"
+#include "UI/WorkspaceDockKeyboardNavigation.h"
+#include "Runtime/GraphPresentationModel.h"
 
 using namespace CycleV2;
 
-TEST_CASE("EQ response preview does not require an Effect2D model",
+TEST_CASE("EQ response preview does not require a Curve model",
         "[cycle-v2][canvas][equalizer][regression]") {
-    REQUIRE_FALSE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Equalizer));
-    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Envelope));
-    REQUIRE(NodePreviewRenderer::requiresEffect2DModel(NodeKind::Waveshaper));
+    REQUIRE_FALSE(NodePreviewRenderer::requiresCurveModel(NodeKind::Equalizer));
+    REQUIRE(NodePreviewRenderer::requiresCurveModel(NodeKind::Envelope));
+    REQUIRE(NodePreviewRenderer::requiresCurveModel(NodeKind::Waveshaper));
 }
 
 namespace {

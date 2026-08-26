@@ -1,4 +1,4 @@
-#include "TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/TrimeshBlockwiseDsp.h"
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>

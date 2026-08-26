@@ -1,10 +1,10 @@
-#include "NodeCanvasEditorCoordinator.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
 
-#include "NodeViewModule.h"
-#include "../Graph/GraphCommandDispatcher.h"
-#include "../Graph/GraphDocument.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "UI/NodeViewModule.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentMenu.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 
@@ -16,7 +16,7 @@ bool hasHostedEditor(const Node& node) {
     return NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities().hostedEditor;
 }
 
-bool hasEffect2DModel(const Node& node) {
+bool hasCurveModel(const Node& node) {
     return node.kind == NodeKind::Envelope
             || node.kind == NodeKind::ImpulseResponse
             || node.kind == NodeKind::Waveshaper;
@@ -127,8 +127,8 @@ void NodeCanvasEditorCoordinator::renderOpenGL(float scaleFactor) {
 
 void NodeCanvasEditorCoordinator::syncEffectNodes(const NodeGraph& graph) {
     for (const auto& node : graph.getNodes()) {
-        if (hasEffect2DModel(node)) {
-            resources.effect2DWidget(node).syncFromNode(node);
+        if (hasCurveModel(node)) {
+            resources.curveEditorWidget(node).syncFromNode(node);
         }
     }
 }

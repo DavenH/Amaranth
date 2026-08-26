@@ -1,8 +1,8 @@
 #pragma once
 
-#include "GraphNodeFactory.h"
-#include "NodeDefinition.h"
-#include "GraphValidator.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeDefinition.h"
+#include "Graph/GraphValidator.h"
 
 namespace CycleV2 {
 

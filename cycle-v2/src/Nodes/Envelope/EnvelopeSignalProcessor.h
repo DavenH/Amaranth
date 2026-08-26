@@ -5,12 +5,12 @@
 #include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
-#include "../../Runtime/AudioProcessContextUtils.h"
-#include "../../Runtime/NodeDspConfiguration.h"
-#include "../../Runtime/SmoothedMorphPosition.h"
-#include "EnvelopeConfiguration.h"
-#include "EnvelopeMeshState.h"
-#include "EnvelopePreparationExchange.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/NodeDspConfiguration.h"
+#include "Runtime/SmoothedMorphPosition.h"
+#include "Nodes/Envelope/EnvelopeConfiguration.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
 

@@ -1,9 +1,9 @@
-#include "AudioProcessContextUtils.h"
-#include "AudioProcessorFactories.h"
-#include "NodeAudioProcessorSupport.h"
+#include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessorFactories.h"
+#include "Runtime/NodeAudioProcessorSupport.h"
 
-#include "../Nodes/Effects/EffectSignalProcessors.h"
-#include "../Nodes/Waveshaper/WaveshaperSignalProcessor.h"
+#include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 
 namespace CycleV2 {
 

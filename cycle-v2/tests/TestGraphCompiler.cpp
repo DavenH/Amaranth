@@ -1,11 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
-#include "../src/Graph/GraphCompiler.h"
-#include "../src/Graph/GraphEditor.h"
-#include "../src/Nodes/Control/ModulationTriple.h"
-#include "../src/Graph/GraphNodeFactory.h"
-#include "../src/Nodes/Effect2D/CurveNodeModels.h"
+#include "Graph/GraphCompiler.h"
+#include "Graph/GraphEditor.h"
+#include "Nodes/Control/ModulationTriple.h"
+#include "Graph/GraphNodeFactory.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 
 #include <algorithm>
 

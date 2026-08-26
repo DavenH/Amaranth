@@ -1,7 +1,7 @@
-#include "GraphValidator.h"
+#include "Graph/GraphValidator.h"
 
-#include "../Nodes/Envelope/EnvelopePurpose.h"
-#include "../Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/TrimeshGuideAttachmentTarget.h"
 
 namespace CycleV2 {
 

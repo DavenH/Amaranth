@@ -1,6 +1,6 @@
-#include "ModulationTriple.h"
+#include "Nodes/Control/ModulationTriple.h"
 
-#include "../../Runtime/AudioProcessContextUtils.h"
+#include "Runtime/AudioProcessContextUtils.h"
 
 namespace CycleV2 {
 

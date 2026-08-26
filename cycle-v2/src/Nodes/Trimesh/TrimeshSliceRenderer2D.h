@@ -1,7 +1,7 @@
 #pragma once
 
-#include "TrimeshNodeModel.h"
-#include "TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
 
 #include <JuceHeader.h>
 

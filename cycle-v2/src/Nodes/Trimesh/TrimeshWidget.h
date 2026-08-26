@@ -1,11 +1,11 @@
 #pragma once
 
-#include "TrimeshPanelBridge.h"
-#include "TrimeshPanelHostDelegate.h"
-#include "TrimeshRenderProfile.h"
-#include "TrimeshSidePanelRenderer.h"
-#include "TrimeshSliceRenderer2D.h"
-#include "TrimeshSurfaceRenderer.h"
+#include "Nodes/Trimesh/TrimeshPanelBridge.h"
+#include "Nodes/Trimesh/TrimeshPanelHostDelegate.h"
+#include "Nodes/Trimesh/TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/TrimeshSidePanelRenderer.h"
+#include "Nodes/Trimesh/TrimeshSliceRenderer2D.h"
+#include "Nodes/Trimesh/TrimeshSurfaceRenderer.h"
 
 #include <JuceHeader.h>
 

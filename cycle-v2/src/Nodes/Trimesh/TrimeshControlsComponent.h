@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Graph/NodeGraph.h"
-#include "TrimeshWidget.h"
+#include "Graph/NodeGraph.h"
+#include "Nodes/Trimesh/TrimeshWidget.h"
 
 #include <JuceHeader.h>
 
