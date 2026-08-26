@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "../src/UI/CanvasUtilityDock.h"
 #include "../src/UI/PerformanceKeyboard.h"
 
 using namespace CycleV2;
@@ -74,7 +75,7 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PerformanceKeyboard);
 }
 
-TEST_CASE("Performance keyboard panel exposes compact canvas interaction targets",
+TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
         "[cycle-v2][keyboard][ui]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
@@ -82,11 +83,35 @@ TEST_CASE("Performance keyboard panel exposes compact canvas interaction targets
     PerformanceKeyboardPanel panel(state, sink);
     panel.setBounds(0, 0, 360, 108);
 
-    REQUIRE_FALSE(panel.dragHandleBounds().isEmpty());
     REQUIRE_FALSE(panel.octaveDownBounds().isEmpty());
     REQUIRE_FALSE(panel.octaveUpBounds().isEmpty());
     REQUIRE_FALSE(panel.noteBounds(60).isEmpty());
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(60)));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
+}
+
+TEST_CASE("Canvas utilities share one right-aligned dock layout",
+        "[cycle-v2][canvas][utility-dock][layout]") {
+    const Rectangle<float> content { 0.f, 0.f, 1200.f, 700.f };
+    const CanvasUtilityDockLayout layout = CanvasUtilityDock::layout(content);
+
+    REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
+    REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
+    REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
+    REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
+    REQUIRE(layout.legend.getY()
+            == layout.minimap.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
+    REQUIRE(content.contains(layout.minimap));
+    REQUIRE(content.contains(layout.legend));
+    REQUIRE(content.contains(layout.keyboard));
+    REQUIRE(content.contains(layout.status));
+
+    const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
+    const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
+    REQUIRE_FALSE(compact.status.intersects(compact.keyboard));
+    REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
+    REQUIRE(compactContent.contains(compact.keyboard));
+    REQUIRE(compactContent.contains(compact.status));
 }

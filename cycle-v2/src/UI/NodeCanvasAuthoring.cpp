@@ -8,7 +8,6 @@
 #include "../Graph/NodeParameterMap.h"
 #include "ModulationCableBundle.h"
 #include "NodeViewModule.h"
-#include "TrimeshGuideCableBundle.h"
 
 namespace CycleV2 {
 
@@ -281,10 +280,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::deleteEdge(int edgeIndex) {
         return {};
     }
 
-    auto indices = TrimeshGuideCableBundle::edgeIndices(document.graph(), edgeIndex);
-    if (indices.size() == 1) {
-        indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
-    }
+    auto indices = ModulationCableBundle::edgeIndices(document.graph(), edgeIndex);
     std::sort(indices.begin(), indices.end(), std::greater<int>());
     commands.beginCompoundEdit();
     GraphEditResult edit;

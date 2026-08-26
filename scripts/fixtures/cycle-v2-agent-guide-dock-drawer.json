@@ -1,0 +1,78 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.add"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.add"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.add"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.add"
+    },
+    {
+      "command": "pointer",
+      "event": "wheel",
+      "targetId": "guideShelf",
+      "deltaY": -1.0
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.guideHorizontalOffset",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.minimize"
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.guidesMinimized",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf"
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.guidesMinimized",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.guideHorizontalOffset",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "guideShelf.minimize",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

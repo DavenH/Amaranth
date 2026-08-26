@@ -11,6 +11,24 @@ String portDisplayLabel(const Port& port) {
     return channel.isEmpty() ? port.label : port.label + " " + channel;
 }
 
+String nodeDisplayLabel(const Node& node) {
+    return labelForNodeKind(node.kind);
+}
+
+String countPhrase(int count, const String& singular) {
+    return String(count) + " " + singular + (count == 1 ? String {} : "s");
+}
+
+String endpointDescription(
+        const Node* node,
+        const Port* port,
+        const String& fallbackNodeId,
+        const String& fallbackPortId) {
+    const String nodeLabel = node != nullptr ? nodeDisplayLabel(*node) : fallbackNodeId;
+    const String portLabel = port != nullptr ? portDisplayLabel(*port) : fallbackPortId;
+    return nodeLabel + " “" + portLabel + "”";
+}
+
 }
 
 NodeCanvasQueryModel::NodeCanvasQueryModel(
@@ -185,39 +203,44 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
-    String text = labelForNodeKind(node->kind) + "  /  " + (address.input ? "Input" : "Output")
-            + " port " + portDisplayLabel(*port)
-            + "  /  " + labelForDomain(port->domain);
+    String text = portDisplayLabel(*port) + " is the "
+            + labelForDomain(port->domain).toLowerCase()
+            + (address.input ? " input on " : " output from ")
+            + nodeDisplayLabel(*node) + ".";
 
     if (port->purpose == PortPurpose::ScratchAttachment) {
-        text += " scratch attachment";
+        text += " It accepts a scratch-envelope attachment.";
     }
 
     if (port->channelLayout != ChannelLayout::Mono) {
-        text += "  /  " + labelForChannelLayout(port->channelLayout);
+        text += " It carries " + labelForChannelLayout(port->channelLayout) + ".";
     }
 
     return text;
 }
 
 String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
-    String text = labelForNodeKind(node.kind) + "  /  " + node.subtitle
-            + "  /  inputs " + String((int) node.inputs.size())
-            + "  /  outputs " + String((int) node.outputs.size());
+    String text = nodeDisplayLabel(node);
+    if (node.subtitle.isNotEmpty()) {
+        text += " — " + node.subtitle + " —";
+    }
+    text += " has "
+            + countPhrase((int) node.inputs.size(), "input") + " and "
+            + countPhrase((int) node.outputs.size(), "output") + ".";
     const RuntimeNodeTrace* trace = findRuntimeTrace(node.id);
 
     if (trace != nullptr && !trace->signalOutputs.empty()) {
-        text += "  /  emits ";
+        text += " It produces ";
 
         for (size_t i = 0; i < trace->signalOutputs.size(); ++i) {
             if (i > 0) {
                 text += ", ";
             }
 
-            text += trace->signalOutputs[i].portId
-                    + "="
-                    + labelForDomain(trace->signalOutputs[i].domain);
+            text += labelForDomain(trace->signalOutputs[i].domain)
+                    + " from “" + trace->signalOutputs[i].portId + "”";
         }
+        text += ".";
     }
 
     return text;
@@ -225,17 +248,33 @@ String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
 
 String NodeCanvasQueryModel::hoverTextForEdge(const Edge& edge) const {
     const auto issue = validationIssueForEdge(edge);
+    const Node* sourceNode = findNode(edge.sourceNodeId);
+    const Node* destinationNode = findNode(edge.destNodeId);
+    const Port* sourcePort = sourceNode != nullptr
+            ? findPort(*sourceNode, edge.sourcePortId, false)
+            : nullptr;
+    const Port* destinationPort = destinationNode != nullptr
+            ? findPort(*destinationNode, edge.destPortId, true)
+            : nullptr;
+    const String route = endpointDescription(
+            sourceNode,
+            sourcePort,
+            edge.sourceNodeId,
+            edge.sourcePortId)
+            + " to "
+            + endpointDescription(
+                    destinationNode,
+                    destinationPort,
+                    edge.destNodeId,
+                    edge.destPortId);
 
     if (issue.message.isNotEmpty()) {
-        return "Invalid edge  /  " + issue.message
-                + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
-                + " -> " + edge.destNodeId + "." + edge.destPortId;
+        return "This connection is invalid: " + issue.message + ". Route: " + route + ".";
     }
 
-    return String(edge.isAttachment() ? "Attachment" : "Signal")
-            + " edge  /  " + labelForDomain(displayDomainForEdge(edge))
-            + "  /  " + edge.sourceNodeId + "." + edge.sourcePortId
-            + " -> " + edge.destNodeId + "." + edge.destPortId;
+    return labelForDomain(displayDomainForEdge(edge))
+            + (edge.isAttachment() ? " control attachment from " : " signal from ")
+            + route + ".";
 }
 
 }

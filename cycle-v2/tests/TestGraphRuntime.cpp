@@ -150,34 +150,86 @@ TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cyc
             }));
 }
 
-TEST_CASE("Runtime exposes targeted guide attachments separately from signal inputs", "[cycle-v2][runtime]") {
+TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
             graph,
             "waveMesh",
             4,
-            "curve",
-            { 100.f, 100.f }).succeeded());
+            "curve").succeeded());
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
 
-    const auto trace = GraphRuntime().process(graph, compileResult.plan);
-    const auto& wave = findTraceNode(trace, "waveMesh");
+    REQUIRE(graph.getEdges().size() == NodeGraph::createDemoGraph().getEdges().size());
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+}
 
-    REQUIRE(std::any_of(
-            wave.attachments.begin(),
-            wave.attachments.end(),
-            [](const RuntimeInput& input) {
-                return input.sourceNodeId == "guide"
-                    && input.destPortId == "guide.cube.0.curve";
-            }));
-    REQUIRE(std::none_of(
-            wave.signalInputs.begin(),
-            wave.signalInputs.end(),
-            [](const RuntimeInput& input) {
-                return input.destPortId.startsWith("guide.cube.");
-            }));
+TEST_CASE("Unused Guide organization changes do not rebuild DSP presentation",
+        "[cycle-v2][runtime][guides][causal]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const size_t initialCompilations = presentation.compilationCount();
+    const size_t initialPreviewRenders = presentation.previewRenderCount();
+
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(document.lastChange().guidePresentationChanged);
+    REQUIRE_FALSE(document.lastChange().guidesChanged);
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(commands.renameGuideCurve("guide1", "Vibrato Bend").succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+
+    REQUIRE(presentation.compilationCount() == initialCompilations);
+    REQUIRE(presentation.previewRenderCount() == initialPreviewRenders);
+}
+
+TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one undo",
+        "[cycle-v2][runtime][guides][causal][gesture]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+    REQUIRE(commands.toggleSignalProbe(3).succeeded());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+
+    const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    const uint64_t durableRevision = guide->model->revision();
+    const auto publication = [&](bool enabled, float dcOffset) {
+        return GuideCurveStatePublication {
+                "guide1",
+                durableRevision,
+                guide->model,
+                {
+                    { "enabled", "Enabled", enabled ? "1" : "0" },
+                    { "noise", "Noise", "0.5" },
+                    { "dcOffset", "DC Offset", String(dcOffset) },
+                    { "phase", "Phase", "0.5" }
+                }
+        };
+    };
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.publishGuideCurveState(publication(false, 0.5f)).succeeded());
+    REQUIRE(presentation.refresh(
+            commands.editingGraph(), document.revision(), commands.transientChanges()));
+    const auto firstSpy = presentation.previewResult().probes.front().values;
+    REQUIRE(commands.publishGuideCurveState(publication(true, 0.9f)).succeeded());
+    REQUIRE(presentation.refresh(
+            commands.editingGraph(), document.revision(), commands.transientChanges()));
+    const auto secondSpy = presentation.previewResult().probes.front().values;
+    REQUIRE(firstSpy != secondSpy);
+    commands.commitTransientEdit();
+
+    REQUIRE(document.graph().findGuideCurve("guide1")->enabled);
+    REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.9f);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->enabled);
+    REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.f);
 }
 
 TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",

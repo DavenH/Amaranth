@@ -8,7 +8,6 @@ namespace CycleV2 {
 
 struct NodeCableStyle {
     Colour colour;
-    bool attachment {};
     bool invalid {};
     bool selected {};
     bool spliceTarget {};

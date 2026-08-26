@@ -1,6 +1,8 @@
 #include "TrimeshGuideAttachmentMenu.h"
 #include "TrimeshGuideAttachmentTarget.h"
 
+#include <algorithm>
+
 namespace CycleV2 {
 
 std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor(
@@ -9,38 +11,38 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
         int vertexIndex,
         const String& parameterField) {
     std::vector<TrimeshGuideAttachmentMenuItem> items;
-    items.push_back({
-            newGuideMenuId,
-            "new...",
-            {},
-            true,
-            false
-    });
-
     const Node* meshNode = graph.findNode(meshNodeId);
     const auto targets = meshNode != nullptr
-            ? TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+            ? TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
                     *meshNode,
                     vertexIndex,
                     parameterField)
-            : std::vector<String>();
+            : std::vector<TrimeshCubeComponentGuideTarget>();
+    const bool anyAttached = std::any_of(targets.begin(), targets.end(), [&](const auto& target) {
+        return std::any_of(
+                graph.getGuideAssignments().begin(),
+                graph.getGuideAssignments().end(),
+                [&](const GuideCurveAssignment& assignment) {
+                    return assignment.targets(meshNodeId, target);
+                });
+    });
+    if (anyAttached) {
+        items.push_back({ detachGuideMenuId, "detach", {}, false, true, false });
+    }
+    items.push_back({ newGuideMenuId, "new...", {}, true, false, false });
     int guideNumber {};
-
-    for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::GuideCurve) {
-            continue;
-        }
-
+    for (const auto& guide : graph.getGuideCurves()) {
         ++guideNumber;
         bool attached {};
-
-        for (const auto& edge : graph.getEdges()) {
-            if (edge.isProcessingAttachment()
-                    && edge.attachmentType == AttachmentType::GuideCurve
-                    && edge.sourceNodeId == node.id
-                    && edge.destNodeId == meshNodeId
-                    && std::find(targets.begin(), targets.end(), edge.destPortId)
-                            != targets.end()) {
+        for (const auto& target : targets) {
+            const auto assignment = std::find_if(
+                    graph.getGuideAssignments().begin(),
+                    graph.getGuideAssignments().end(),
+                    [&](const GuideCurveAssignment& candidate) {
+                        return candidate.guideId == guide.id
+                                && candidate.targets(meshNodeId, target);
+                    });
+            if (assignment != graph.getGuideAssignments().end()) {
                 attached = true;
                 break;
             }
@@ -48,8 +50,9 @@ std::vector<TrimeshGuideAttachmentMenuItem> TrimeshGuideAttachmentMenu::itemsFor
 
         items.push_back({
                 firstGuideMenuId + guideNumber - 1,
-                String(guideNumber),
-                node.id,
+                guide.shortLabel.isEmpty() ? String(guideNumber) : guide.shortLabel,
+                guide.id,
+                false,
                 false,
                 attached
         });

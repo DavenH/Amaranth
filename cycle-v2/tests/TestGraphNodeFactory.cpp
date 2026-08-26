@@ -169,7 +169,6 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     const Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
     const Node wave = GraphNodeFactory().createNode(NodeKind::WaveSource, "wave", {});
     const Node image = GraphNodeFactory().createNode(NodeKind::ImageSource, "image", {});
-    const Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
     const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
 
     REQUIRE(voice.outputs.front().domain == PortDomain::DomainContext);
@@ -181,8 +180,6 @@ TEST_CASE("Graph node factory creates menu node families", "[cycle-v2][graph]") 
     REQUIRE(wave.inputs.front().domain == PortDomain::DomainContext);
     REQUIRE(wave.outputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(image.inputs.front().domain == PortDomain::DomainContext);
-    REQUIRE(guide.outputs.front().domain == PortDomain::EnvelopeSignal);
-    REQUIRE(guide.bounds.getWidth() == 295.2f);
     REQUIRE(ir.inputs.front().domain == PortDomain::TimeSignal);
     REQUIRE(ir.outputs.front().domain == PortDomain::TimeSignal);
 }

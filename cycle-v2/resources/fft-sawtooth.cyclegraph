@@ -1,13 +1,13 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 1,
+    "formatVersion": 3,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": -129.31035, "y": 0.0 },
-            "parameters": { "domain": "waveform", "voices": 1, "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "saw",
@@ -94,12 +94,14 @@
             "parameters": {}
         }
     ],
+    "guides": [],
+    "guideAssignments": [],
     "edges": [
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "saw", "destPortId": "context" },
-        { "sourceNodeId": "saw", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time" },
-        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "ifft", "destPortId": "mag" },
-        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "ifft", "destPortId": "phase" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time" }
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "saw", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "saw", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

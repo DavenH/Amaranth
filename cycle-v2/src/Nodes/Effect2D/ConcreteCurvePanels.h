@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../Graph/NodeGraph.h"
+#include "CurvePanelAdapterTypes.h"
 #include "../Trimesh/TrimeshNodeModel.h"
 
 #include <JuceHeader.h>
@@ -57,6 +58,9 @@ public:
 
 std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(
         NodeKind kind,
+        SingletonRepo* repo,
+        Mesh& mesh);
+std::unique_ptr<FlatCurvePanelContract> createGuideCurvePanel(
         SingletonRepo* repo,
         Mesh& mesh);
 std::unique_ptr<EnvelopeCurvePanelContract> createEnvelopeCurvePanel(

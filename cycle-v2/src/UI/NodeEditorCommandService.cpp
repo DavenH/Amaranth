@@ -623,14 +623,15 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 }
                 GraphEditResult result { GraphEditCode::ValidationRejected, {}, {} };
                 if (menuId == TrimeshGuideAttachmentMenu::newGuideMenuId) {
-                    result = commands.createAndAttachGuideCurve(
-                            nodeId, vertexIndex, parameterField,
-                            presentation.nodeEditorCreationPosition());
+                    result = commands.createAndAssignGuideCurve(
+                            nodeId, vertexIndex, parameterField);
+                } else if (menuId == TrimeshGuideAttachmentMenu::detachGuideMenuId) {
+                    result = commands.detachGuideCurve(nodeId, vertexIndex, parameterField);
                 } else {
                     for (const auto& item : items) {
                         if (item.menuId == menuId) {
-                            result = commands.attachGuideCurve(
-                                    item.guideNodeId, nodeId, vertexIndex, parameterField);
+                            result = commands.assignGuideCurve(
+                                    item.guideId, nodeId, vertexIndex, parameterField);
                             break;
                         }
                     }
@@ -643,7 +644,9 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
                 presentation.selectEditedNode(result.nodeId.isEmpty() ? nodeId : result.nodeId);
                 presentation.refreshNodeEditorPresentation();
                 presentation.rebindNodeEditor();
-                presentation.setNodeEditorStatus("Guide " + parameterField + " attached");
+                presentation.setNodeEditorStatus(menuId == TrimeshGuideAttachmentMenu::detachGuideMenuId
+                        ? "Guide " + parameterField + " detached"
+                        : "Guide " + parameterField + " attached");
                 presentation.repaintNodeEditor(false);
             });
     return true;

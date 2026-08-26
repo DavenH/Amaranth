@@ -13,7 +13,7 @@ class GuideCurveSnapshotProvider final : public GuideCurveProvider {
 public:
     GuideCurveSnapshotProvider();
 
-    bool addGuide(const Node& node);
+    bool addGuide(const GuideCurveResource& resource);
 
     float getTableValue(
             int guideIndex,
@@ -36,7 +36,7 @@ private:
         int density {};
     };
 
-    static int stableSeed(int guideIndex);
+    static int stableSeed(const GuideCurveResource& resource);
     GuideSnapshot* guideAt(int guideIndex);
 
     std::vector<float> noise;

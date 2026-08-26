@@ -335,9 +335,6 @@ void drawEffect2DFallback(
     Rectangle<float> frame = graph;
     if (kind == NodeKind::Waveshaper) {
         frame = graph.reduced(graph.getWidth() * 0.125f, graph.getHeight() * 0.125f);
-    } else if (kind == NodeKind::GuideCurve) {
-        frame = graph.withTrimmedLeft(graph.getWidth() * 0.05f)
-                .withTrimmedRight(graph.getWidth() * 0.05f);
     } else if (kind == NodeKind::ImpulseResponse) {
         frame = graph.withTrimmedLeft(graph.getWidth() * 0.0625f);
     }
@@ -567,7 +564,6 @@ NodePreviewRenderer::NodePreviewRenderer(NodePreviewResources& resourcesToUse) :
 
 bool NodePreviewRenderer::requiresEffect2DModel(NodeKind kind) {
     return kind == NodeKind::Envelope
-            || kind == NodeKind::GuideCurve
             || kind == NodeKind::ImpulseResponse
             || kind == NodeKind::Waveshaper;
 }

@@ -135,6 +135,7 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeSelector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ModulationCableBundle.cpp"
@@ -154,12 +155,13 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TrimeshGuideCableBundle.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideCurveShelf.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideRelationshipPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
@@ -168,6 +170,9 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockInteractionController.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockKeyboardNavigation.cpp"
 )
 
 set(NODE_SOURCES

@@ -10,6 +10,13 @@ Effect2DWidget::Effect2DWidget(NodeKind nodeKind) :
     jassert(controller != nullptr);
 }
 
+Effect2DWidget::Effect2DWidget(bool shouldUseGuideResource) :
+        kind    (NodeKind::GenericProcessor)
+    ,   guideResource(shouldUseGuideResource)
+    ,   controller(createGuideCurvePanelController()) {
+    jassert(guideResource && controller != nullptr);
+}
+
 Effect2DWidget::~Effect2DWidget() = default;
 
 Component* Effect2DWidget::prepareExpandedPanelComponent(
@@ -17,7 +24,7 @@ Component* Effect2DWidget::prepareExpandedPanelComponent(
         Rectangle<float> contentBounds) {
     ignoreUnused(contentBounds);
 
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return nullptr;
     }
 
@@ -73,21 +80,24 @@ void Effect2DWidget::resetEnvelopeVerticalRange() {
 }
 
 void Effect2DWidget::syncFromNode(const Node& node) {
-    if (node.kind != kind) {
+    if (guideResource || node.kind != kind) {
         return;
     }
 
     controller->syncFromNode(node);
-    if (kind == NodeKind::GuideCurve) {
-        GuideCurveNodeModel model;
-        model.syncFromNode(node);
-        controller->setControlValues(
-                model.enabled,
-                model.noise,
-                model.dcOffset,
-                model.phase,
-                0);
+}
+
+void Effect2DWidget::syncFromGuideResource(const GuideCurveResource& guide) {
+    if (!guideResource) {
+        return;
     }
+    controller->syncFromGuideResource(guide);
+    controller->setControlValues(
+            guide.enabled,
+            guide.noise,
+            guide.dcOffset,
+            guide.phase,
+            0);
 }
 
 void Effect2DWidget::renderExpandedPanelOpenGL(
@@ -95,18 +105,39 @@ void Effect2DWidget::renderExpandedPanelOpenGL(
         Rectangle<float> bounds,
         Rectangle<float> clipBounds,
         float scaleFactor) {
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return;
     }
 
     controller->render(bounds, clipBounds, scaleFactor);
 }
 
+void Effect2DWidget::renderGuideExpandedPanelOpenGL(
+        Rectangle<float> bounds,
+        Rectangle<float> clipBounds,
+        float scaleFactor) {
+    if (!guideResource) {
+        return;
+    }
+
+    controller->render(bounds, clipBounds, scaleFactor);
+}
+
+void Effect2DWidget::renderGuidePreviewSnapshotOpenGL(
+        Rectangle<float> bounds,
+        float scaleFactor) {
+    if (!guideResource) {
+        return;
+    }
+
+    controller->renderPreview(bounds, scaleFactor);
+}
+
 void Effect2DWidget::renderPreviewSnapshotOpenGL(
         const Node& node,
         Rectangle<float> bounds,
         float scaleFactor) {
-    if (node.kind != kind) {
+    if (!guideResource && node.kind != kind) {
         return;
     }
 

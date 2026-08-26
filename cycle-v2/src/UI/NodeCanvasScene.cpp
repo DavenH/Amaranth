@@ -2,7 +2,6 @@
 #include "ModulationCableBundle.h"
 #include "NodePortGeometry.h"
 #include "NodeViewModule.h"
-#include "TrimeshGuideCableBundle.h"
 
 #include <algorithm>
 
@@ -216,13 +215,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const auto& edge = graph.getEdges()[(size_t) edgeIndex];
         const auto modulationBundle = ModulationCableBundle::bundleBeginningAt(graph, edgeIndex);
         const auto modulationIndices = ModulationCableBundle::edgeIndices(graph, edgeIndex);
-        const auto guideBundle = TrimeshGuideCableBundle::bundleBeginningAt(graph, edgeIndex);
-        const auto guideIndices = TrimeshGuideCableBundle::edgeIndices(graph, edgeIndex);
-        const auto bundleIndices = guideBundle.has_value()
-                ? *guideBundle
-                : modulationIndices;
-        if ((modulationIndices.size() > 1 && !modulationBundle.has_value())
-                || (guideIndices.size() > 1 && !guideBundle.has_value())) {
+        const auto bundleIndices = modulationIndices;
+        if (modulationIndices.size() > 1 && !modulationBundle.has_value()) {
             continue;
         }
         const Node* sourceNode = findNode(graph, edge.sourceNodeId);

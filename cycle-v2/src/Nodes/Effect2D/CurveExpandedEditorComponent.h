@@ -35,7 +35,8 @@ public:
 
     void setDelegate(CurveExpandedEditorDelegate* nextDelegate);
     void setNode(const Node& nextNode);
-    void renderOpenGL(float scaleFactor);
+    void setTitle(String nextTitle) { title = std::move(nextTitle); }
+    virtual void renderOpenGL(float scaleFactor);
     Rectangle<float> panelBoundsForAutomation() const;
     var automationState() const;
 
@@ -66,11 +67,13 @@ protected:
     void beginTransaction();
     void commitTransaction();
     void requestRepaint();
+    void refreshEditorSubject();
     void bindContinuousControl(LabeledParameterSlider& control);
     void bindContinuousControls(std::initializer_list<LabeledParameterSlider*> controls);
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
     void publishDiscreteControlChange();
+    void setEditorModelState(NodeModelStatePtr model);
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {
@@ -81,6 +84,7 @@ protected:
 
     Effect2DWidget& widget;
     Node node;
+    String title;
     CurveExpandedEditorDelegate* delegate {};
     bool syncingControls {};
 
@@ -105,6 +109,7 @@ private:
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
+    NodeModelStatePtr editorModel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)
 };

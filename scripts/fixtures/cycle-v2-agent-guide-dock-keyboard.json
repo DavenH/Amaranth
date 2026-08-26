@@ -1,0 +1,42 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "collapse" },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "guideDock.expanded", "equals": false },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "guideDock.expanded", "equals": true },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    {
+      "command": "assertState",
+      "path": "guideDock.keyboardFocusTarget",
+      "equals": "guideMinimize"
+    },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "guideDock.guidesMinimized", "equals": true },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "guideDrawer" },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "guideDock.guidesMinimized", "equals": false },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "guideTile" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusItemId", "equals": "guide1" },
+    { "command": "key", "area": "canvas", "key": "right" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusItemId", "equals": "guide2" },
+    { "command": "key", "area": "canvas", "key": "down" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "spyTile" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusItemId", "equals": "probe5" },
+    { "command": "key", "area": "canvas", "key": "return" },
+    { "command": "assertState", "path": "probeDetailId", "equals": "probe5" },
+    { "command": "key", "area": "canvas", "key": "delete" },
+    { "command": "assertState", "path": "probeCount", "equals": 4 },
+    { "command": "assertState", "path": "probeDetailId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "spyRefresh" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

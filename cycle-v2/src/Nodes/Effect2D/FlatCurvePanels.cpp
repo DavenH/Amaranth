@@ -423,14 +423,17 @@ std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(
         NodeKind kind,
         SingletonRepo* repo,
         Mesh& mesh) {
-    if (kind == NodeKind::GuideCurve) {
-        return std::make_unique<GuideCurvePanel>(repo, mesh);
-    }
     if (kind == NodeKind::ImpulseResponse) {
         return std::make_unique<ImpulseResponseCurvePanel>(repo, mesh);
     }
     jassert(kind == NodeKind::Waveshaper);
     return std::make_unique<WaveshaperCurvePanel>(repo, mesh);
+}
+
+std::unique_ptr<FlatCurvePanelContract> createGuideCurvePanel(
+        SingletonRepo* repo,
+        Mesh& mesh) {
+    return std::make_unique<GuideCurvePanel>(repo, mesh);
 }
 
 }

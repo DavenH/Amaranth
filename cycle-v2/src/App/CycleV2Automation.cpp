@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <cmath>
 #include <cstring>
+#include <utility>
 
 #if JUCE_MAC || JUCE_LINUX
 #include <sys/socket.h>
@@ -105,6 +106,34 @@ String cursorName(const MouseCursor& cursor) {
         return "crosshair";
     }
     return "normal";
+}
+
+bool automationKeyPress(const String& name, KeyPress& result) {
+    if (name == "tab" || name == "shiftTab") {
+        const ModifierKeys modifiers = name == "shiftTab"
+                ? ModifierKeys::shiftModifier
+                : ModifierKeys {};
+        result = KeyPress(KeyPress::tabKey, modifiers, 0);
+        return true;
+    }
+
+    const std::pair<const char*, int> keys[] {
+            { "left", KeyPress::leftKey },
+            { "right", KeyPress::rightKey },
+            { "up", KeyPress::upKey },
+            { "down", KeyPress::downKey },
+            { "return", KeyPress::returnKey },
+            { "space", KeyPress::spaceKey },
+            { "escape", KeyPress::escapeKey },
+            { "delete", KeyPress::deleteKey }
+    };
+    for (const auto& key : keys) {
+        if (name == key.first) {
+            result = KeyPress(key.second);
+            return true;
+        }
+    }
+    return false;
 }
 
 var rectangleToVar(Rectangle<int> bounds) {
@@ -757,8 +786,17 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "deleteEdge" || command == "removeEdge") {
         return deleteEdge(commandValue);
     }
+    if (command == "deleteGuideCurve" || command == "removeGuideCurve") {
+        return deleteGuideCurve(commandValue);
+    }
+    if (command == "undo") {
+        return undo();
+    }
     if (command == "setNodeParameter") {
         return setNodeParameter(commandValue);
+    }
+    if (command == "setGuideParameter") {
+        return setGuideParameter(commandValue);
     }
     if (command == "inspectNodeControls") {
         return inspectNodeControls(commandValue);
@@ -780,6 +818,9 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     }
     if (command == "pointer") {
         return pointer(commandValue);
+    }
+    if (command == "key") {
+        return key(commandValue);
     }
     if (command == "screenshot") {
         return screenshot(commandValue);
@@ -966,7 +1007,6 @@ var CycleV2Automation::listPaletteItems() const {
     items.add(paletteItemToVar("imageSource", "Source", "Image"));
     items.add(paletteItemToVar("trilinearMesh", "Source", "Mesh"));
     items.add(paletteItemToVar("envelope", "Control", "Envelope"));
-    items.add(paletteItemToVar("guideCurve", "Control", "Guide"));
     items.add(paletteItemToVar("impulseResponse", "FX", "IR"));
     items.add(paletteItemToVar("waveshaper", "FX", "Waveshaper"));
     items.add(paletteItemToVar("reverb", "FX", "Reverb"));
@@ -1245,6 +1285,37 @@ var CycleV2Automation::deleteEdge(const var& commandValue) {
     return okResult("deleteEdge", snapshotState());
 }
 
+var CycleV2Automation::deleteGuideCurve(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    if (guideId.isEmpty()) {
+        return failedResult("deleteGuideCurve", "Missing guideId");
+    }
+    if (!workspace.deleteGuideCurveForAutomation(guideId)) {
+        return failedResult("deleteGuideCurve", "Could not delete Guide: " + guideId);
+    }
+    return okResult("deleteGuideCurve", snapshotState());
+}
+
+var CycleV2Automation::undo() {
+    if (!workspace.undoForAutomation()) {
+        return failedResult("undo", "Nothing to undo");
+    }
+    return okResult("undo", snapshotState());
+}
+
+var CycleV2Automation::setGuideParameter(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    const String parameterId = stringProperty(commandValue, "parameterId");
+    const String value = stringProperty(commandValue, "value");
+    if (guideId.isEmpty() || parameterId.isEmpty()) {
+        return failedResult("setGuideParameter", "Missing guideId or parameterId");
+    }
+    if (!workspace.setGuideParameterForAutomation(guideId, parameterId, value)) {
+        return failedResult("setGuideParameter", "Could not edit Guide: " + guideId);
+    }
+    return okResult("setGuideParameter", snapshotState());
+}
+
 var CycleV2Automation::setNodeParameter(const var& commandValue) {
     const String nodeId = stringProperty(commandValue, "nodeId");
     const String parameterId = stringProperty(commandValue, "parameterId");
@@ -1355,6 +1426,26 @@ var CycleV2Automation::setVertexParameter(const var& commandValue) {
     }
 
     return okResult("setVertexParameter", workspace.inspectNodeControlsForAutomation(nodeId));
+}
+
+var CycleV2Automation::key(const var& commandValue) {
+    const String area = stringProperty(commandValue, "area", "canvas");
+    Component* component = componentForArea(area);
+    if (component == nullptr) {
+        return failedResult("key", "Key area could not be resolved: " + area);
+    }
+
+    const String keyName = stringProperty(commandValue, "key");
+    KeyPress keyPress;
+    if (!automationKeyPress(keyName, keyPress)) {
+        return failedResult("key", "Unknown key: " + keyName);
+    }
+
+    const bool handled = component->keyPressed(keyPress);
+    var data = makeObject();
+    objectFor(data)->setProperty("key", keyName);
+    objectFor(data)->setProperty("handled", handled);
+    return handled ? okResult("key", data) : failedResult("key", "Key was not handled: " + keyName);
 }
 
 var CycleV2Automation::pointer(const var& commandValue) {

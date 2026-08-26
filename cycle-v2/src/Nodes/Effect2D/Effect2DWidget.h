@@ -12,6 +12,7 @@ namespace CycleV2 {
 class Effect2DWidget {
 public:
     explicit Effect2DWidget(NodeKind nodeKind);
+    explicit Effect2DWidget(bool guideResource);
     ~Effect2DWidget();
 
     Component* prepareExpandedPanelComponent(const Node& node, Rectangle<float> contentBounds);
@@ -24,11 +25,17 @@ public:
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void syncFromNode(const Node& node);
+    void syncFromGuideResource(const GuideCurveResource& guide);
     void renderExpandedPanelOpenGL(
             const Node& node,
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor);
+    void renderGuideExpandedPanelOpenGL(
+            Rectangle<float> bounds,
+            Rectangle<float> clipBounds,
+            float scaleFactor);
+    void renderGuidePreviewSnapshotOpenGL(Rectangle<float> bounds, float scaleFactor);
     void renderPreviewSnapshotOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const;
@@ -49,6 +56,7 @@ public:
 
 private:
     NodeKind kind;
+    bool guideResource {};
     std::unique_ptr<CurvePanelController> controller;
 };
 

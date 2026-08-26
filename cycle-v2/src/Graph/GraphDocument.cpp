@@ -24,7 +24,7 @@ bool GraphDocument::save(const juce::File& destination) {
         return false;
     }
     destination.getParentDirectory().createDirectory();
-    if (!destination.replaceWithText(toJson())) {
+    if (!destination.replaceWithText(toJson(), false, false, "\n")) {
         return false;
     }
 

@@ -18,7 +18,6 @@ bool hasHostedEditor(const Node& node) {
 
 bool hasEffect2DModel(const Node& node) {
     return node.kind == NodeKind::Envelope
-            || node.kind == NodeKind::GuideCurve
             || node.kind == NodeKind::ImpulseResponse
             || node.kind == NodeKind::Waveshaper;
 }

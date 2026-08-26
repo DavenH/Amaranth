@@ -1,5 +1,7 @@
 #include "TrimeshGuideAttachmentTarget.h"
 
+#include "../../Graph/NodeGraph.h"
+
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 
@@ -23,51 +25,37 @@ TrimeshGuideAttachmentTarget::fields() {
     return values;
 }
 
-bool TrimeshGuideAttachmentTarget::isValid() const {
-    return cubeIndex >= 0 && fieldIndex() >= 0;
-}
-
-int TrimeshGuideAttachmentTarget::fieldIndex() const {
-    const auto& values = fields();
-
-    for (int i = 0; i < (int) values.size(); ++i) {
-        if (values[(size_t) i] == field) {
-            return i;
-        }
+GuideCurveField TrimeshGuideAttachmentTarget::guideField(const juce::String& field) {
+    if (field == "time") {
+        return GuideCurveField::Time;
     }
-
-    return -1;
-}
-
-TrimeshGuideAttachmentTarget TrimeshGuideAttachmentTarget::parse(const juce::String& portId) {
-    const juce::String prefix = "guide.cube.";
-    if (!portId.startsWith(prefix)) {
-        return {};
+    if (field == "red") {
+        return GuideCurveField::Red;
     }
-
-    const juce::String suffix = portId.fromFirstOccurrenceOf(prefix, false, false);
-    const juce::String targetIndexText = suffix.upToFirstOccurrenceOf(".", false, false);
-    const juce::String fieldText = suffix.fromFirstOccurrenceOf(".", false, false);
-
-    if (targetIndexText.isEmpty() || !targetIndexText.containsOnly("0123456789")) {
-        return {};
+    if (field == "blue") {
+        return GuideCurveField::Blue;
     }
-
-    TrimeshGuideAttachmentTarget target {
-            targetIndexText.getIntValue(),
-            fieldText
-    };
-
-    return target.isValid() ? target : TrimeshGuideAttachmentTarget {};
+    if (field == "phase") {
+        return GuideCurveField::Phase;
+    }
+    if (field == "amp") {
+        return GuideCurveField::Amplitude;
+    }
+    return GuideCurveField::Curve;
 }
 
-juce::String TrimeshGuideAttachmentTarget::portIdForCube(
-        int cubeIndex,
-        const juce::String& field) {
-    return "guide.cube." + juce::String(cubeIndex) + "." + field;
+bool TrimeshGuideAttachmentTarget::isValid(
+        const Node& trimeshNode,
+        const TrimeshCubeComponentGuideTarget& target) {
+    const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(trimeshNode.model);
+    const int field = (int) target.field;
+    return trimeshNode.kind == NodeKind::TrilinearMesh
+            && model != nullptr
+            && isPositiveAndBelow(target.cubeIndex, model->mesh().getNumCubes())
+            && isPositiveAndBelow(field, fieldCount);
 }
 
-std::vector<juce::String> TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
+std::vector<TrimeshCubeComponentGuideTarget> TrimeshGuideAttachmentTarget::cubeTargetsForVertex(
         const Node& trimeshNode,
         int vertexIndex,
         const juce::String& field) {
@@ -78,13 +66,14 @@ std::vector<juce::String> TrimeshGuideAttachmentTarget::cubePortIdsForVertex(
 
     Mesh& mesh = *const_cast<Mesh*>(&model->mesh());
     Vertex* vertex = mesh.getVerts()[(size_t) vertexIndex];
-    std::vector<juce::String> targets;
+    std::vector<TrimeshCubeComponentGuideTarget> targets;
     for (auto* owner : vertex->owners) {
         const auto found = std::find(mesh.getCubes().begin(), mesh.getCubes().end(), owner);
         if (found != mesh.getCubes().end()) {
-            targets.push_back(portIdForCube(
+            targets.push_back({
                     (int) std::distance(mesh.getCubes().begin(), found),
-                    field));
+                    guideField(field)
+            });
         }
     }
     return targets;

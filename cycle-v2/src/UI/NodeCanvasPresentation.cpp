@@ -451,6 +451,7 @@ void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     paintGrid(graphics, frame);
+    GuideRelationshipPresentation::paintTether(graphics, frame);
 
     {
         Graphics::ScopedSaveState contentClip(graphics);
@@ -462,12 +463,46 @@ void NodeCanvasPresentation::paint(
         paintContent(graphics, frame);
     }
 
+    const WorkspaceDockLayout dock = WorkspaceDock::layout(
+            frame.workspaceBounds,
+            {
+                    frame.probeRailState.expanded,
+                    frame.guideShelfState.minimized,
+                    frame.probeRailState.minimized,
+                    frame.probeRailState.expandedHeight,
+                    frame.dockSplitRatio
+            });
+    if (frame.probeRailState.expanded) {
+        guideCurveShelf.paint(
+                graphics,
+                frame.graph,
+                frame.workspaceBounds,
+                frame.probeRailState,
+                frame.dockSplitRatio,
+                frame.guideShelfState,
+                frame.dockFocus);
+    }
     signalProbeRail.paintRail(
             graphics,
             frame.graph,
             frame.previewResult,
-            frame.workspaceBounds,
-            frame.probeRailState);
+            frame.probeRailState.expanded
+                    ? GuideCurveShelf::spyWorkspace(
+                            frame.workspaceBounds,
+                            frame.dockSplitRatio,
+                            frame.guideShelfState.minimized,
+                            frame.probeRailState.minimized)
+                    : frame.workspaceBounds,
+            frame.probeRailState,
+            frame.dockFocus);
+    WorkspaceDock::paintChrome(
+            graphics,
+            dock,
+            "Curve Guides",
+            "Spies",
+            frame.probeRailState.expanded,
+            frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
     signalProbeDetailView.paint(
             graphics,
             frame.canvasBounds,
@@ -483,17 +518,22 @@ void NodeCanvasPresentation::paintContent(
             graphics,
             frame.graph,
             scene.snapshot(),
-            frame.workspaceBounds,
+            GuideCurveShelf::spyWorkspace(
+                    frame.workspaceBounds,
+                    frame.dockSplitRatio,
+                    frame.guideShelfState.minimized,
+                    frame.probeRailState.minimized),
             frame.probeRailState);
     paintPendingConnection(graphics, frame);
     paintNodes(graphics, frame);
+    GuideRelationshipPresentation::paintHighlights(graphics, frame);
     paintMiniMap(graphics, frame);
     paintLegend(graphics, frame);
     paintPalette(graphics, frame);
-    paintHoverConsole(graphics, frame);
+    paintStatus(graphics, frame);
 }
 
-void NodeCanvasPresentation::renderOpenGL(
+bool NodeCanvasPresentation::renderOpenGL(
         NodeCanvasRenderer& renderer,
         const NodeCanvasPresentationFrame& frame,
         float scaleFactor) {
@@ -504,6 +544,18 @@ void NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
+    return guideCurveShelf.renderOpenGL(
+            frame.graph,
+            frame.workspaceBounds,
+            frame.canvasBounds,
+            frame.probeRailState,
+            frame.dockSplitRatio,
+            frame.guideShelfState,
+            scaleFactor);
+}
+
+bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
+    return guideCurveShelf.needsOpenGLPreviewRender();
 }
 
 void NodeCanvasPresentation::paintGrid(
@@ -566,7 +618,6 @@ void NodeCanvasPresentation::paintEdges(
                 : colourForDomain(edgeDomain(frame.graph, edge));
         NodeCableRenderer::paint(graphics, sceneEdge, {
                 colour,
-                edge.isAttachment(),
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,

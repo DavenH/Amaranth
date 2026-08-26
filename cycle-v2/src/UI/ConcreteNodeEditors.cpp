@@ -867,7 +867,6 @@ NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
             NodeKind::ModulationTriple,
             createModulationNodeEditorFactory());
     factories.emplace_back(NodeKind::Envelope, std::make_unique<CurveNodeEditorFactory>());
-    factories.emplace_back(NodeKind::GuideCurve, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::ImpulseResponse, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::Waveshaper, std::make_unique<CurveNodeEditorFactory>());
     factories.emplace_back(NodeKind::TrilinearMesh, std::make_unique<TrimeshNodeEditorFactory>());

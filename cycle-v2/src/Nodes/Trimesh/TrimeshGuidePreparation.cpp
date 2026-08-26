@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "TrimeshGuideAttachmentTarget.h"
-
 namespace CycleV2 {
 
 namespace {
@@ -26,32 +24,15 @@ std::shared_ptr<Mesh> copyMesh() {
     });
 }
 
-bool isGuideAttachment(const Edge& edge, const String& trimeshNodeId) {
-    return edge.destNodeId == trimeshNodeId
-            && edge.isProcessingAttachment()
-            && edge.attachmentType == AttachmentType::GuideCurve;
-}
-
-int vertexDimension(const String& field) {
-    if (field == "time") {
-        return Vertex::Time;
+int vertexDimension(GuideCurveField field) {
+    switch (field) {
+        case GuideCurveField::Time:       return Vertex::Time;
+        case GuideCurveField::Red:        return Vertex::Red;
+        case GuideCurveField::Blue:       return Vertex::Blue;
+        case GuideCurveField::Phase:      return Vertex::Phase;
+        case GuideCurveField::Amplitude:  return Vertex::Amp;
+        case GuideCurveField::Curve:      return Vertex::Curve;
     }
-    if (field == "red") {
-        return Vertex::Red;
-    }
-    if (field == "blue") {
-        return Vertex::Blue;
-    }
-    if (field == "phase") {
-        return Vertex::Phase;
-    }
-    if (field == "amp") {
-        return Vertex::Amp;
-    }
-    if (field == "curve") {
-        return Vertex::Curve;
-    }
-
     return -1;
 }
 
@@ -95,7 +76,7 @@ bool assignCube(VertCube* cube, int dimension, int guideSlot) {
 
 size_t applyTarget(
         Mesh& mesh,
-        const TrimeshGuideAttachmentTarget& target,
+        const TrimeshCubeComponentGuideTarget& target,
         int guideSlot) {
     const int dimension = vertexDimension(target.field);
     if (!isPositiveAndBelow(target.cubeIndex, mesh.getNumCubes())) {
@@ -119,39 +100,25 @@ PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
     clearGuideAssignments(*result.mesh);
 
     std::unordered_map<String, int, StringHash> slots;
-    for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::GuideCurve) {
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        if (assignment.targetNodeId != trimeshNode.id
+                || slots.find(assignment.guideId) != slots.end()) {
             continue;
         }
-
-        const bool attached = std::any_of(
-                graph.getEdges().begin(),
-                graph.getEdges().end(),
-                [&](const Edge& edge) {
-                    return isGuideAttachment(edge, trimeshNode.id)
-                            && edge.sourceNodeId == node.id;
-                });
-        if (!attached || !result.provider->addGuide(node)) {
-            continue;
+        const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
+        if (resource != nullptr && result.provider->addGuide(*resource)) {
+            slots.emplace(resource->id, result.provider->size() - 1);
         }
-
-        slots.emplace(node.id, result.provider->size() - 1);
     }
-
-    for (const auto& edge : graph.getEdges()) {
-        if (!isGuideAttachment(edge, trimeshNode.id)) {
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        if (assignment.targetNodeId != trimeshNode.id) {
             continue;
         }
-
-        const auto slot = slots.find(edge.sourceNodeId);
+        const auto slot = slots.find(assignment.guideId);
         if (slot == slots.end()) {
             continue;
         }
-
-        result.assignmentCount += applyTarget(
-                *result.mesh,
-                TrimeshGuideAttachmentTarget::parse(edge.destPortId),
-                slot->second);
+        result.assignmentCount += applyTarget(*result.mesh, assignment.target, slot->second);
     }
 
     return result;
@@ -161,22 +128,23 @@ String TrimeshGuidePreparation::configurationKey(
         const NodeGraph& graph,
         const String& trimeshNodeId) {
     String key;
-    for (const auto& edge : graph.getEdges()) {
-        if (!isGuideAttachment(edge, trimeshNodeId)) {
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        if (assignment.targetNodeId != trimeshNodeId) {
             continue;
         }
-
-        key << ":guide=" << edge.sourceNodeId << ":target=" << edge.destPortId;
-        const Node* source = graph.findNode(edge.sourceNodeId);
-        if (source == nullptr) {
-            continue;
-        }
-        for (const auto& parameter : source->parameters) {
-            key << ":" << parameter.id << "=" << parameter.value;
-        }
-        if (source->model != nullptr) {
-            key << ":model=" << source->model->schemaId()
-                    << ":" << String((int64) source->model->revision());
+        key << ":guide=" << assignment.guideId
+                << ":cube=" << assignment.target.cubeIndex
+                << ":field=" << (int) assignment.target.field;
+        const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
+        if (resource != nullptr) {
+            key << ":enabled=" << (resource->enabled ? 1 : 0)
+                    << ":noise=" << resource->noise
+                    << ":dc=" << resource->dcOffset
+                    << ":phase=" << resource->phase;
+            if (resource->model != nullptr) {
+                key << ":model=" << resource->model->schemaId()
+                        << ":" << String((int64) resource->model->revision());
+            }
         }
     }
     return key;

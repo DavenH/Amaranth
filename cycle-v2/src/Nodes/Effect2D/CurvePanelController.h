@@ -25,6 +25,7 @@ public:
     virtual ~CurvePanelController() = default;
 
     virtual void syncFromNode(const Node& node) = 0;
+    virtual bool syncFromGuideResource(const GuideCurveResource&) { return false; }
     virtual Component* panelHostComponent() = 0;
     virtual Component* panelHostComponentIfCreated() = 0;
     virtual void setDelegate(CurvePanelControllerDelegate* delegate) = 0;
@@ -64,5 +65,6 @@ public:
 };
 
 std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind);
+std::unique_ptr<CurvePanelController> createGuideCurvePanelController();
 
 }

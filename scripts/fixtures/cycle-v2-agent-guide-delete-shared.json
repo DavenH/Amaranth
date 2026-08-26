@@ -1,0 +1,20 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "assertState", "path": "guides.0.id", "equals": "guide1" },
+    { "command": "assertState", "path": "guides.0.usageCount", "equals": 4 },
+    { "command": "assertState", "path": "guideAssignmentCount", "equals": 11 },
+    { "command": "deleteGuideCurve", "guideId": "guide1" },
+    { "command": "assertState", "path": "guideCount", "equals": 2 },
+    { "command": "assertState", "path": "guideAssignmentCount", "equals": 7 },
+    { "command": "undo" },
+    { "command": "assertState", "path": "guideCount", "equals": 3 },
+    { "command": "assertState", "path": "guides.0.id", "equals": "guide1" },
+    { "command": "assertState", "path": "guides.0.usageCount", "equals": 4 },
+    { "command": "assertState", "path": "guideAssignmentCount", "equals": 11 },
+    { "command": "quit", "success": true }
+  ]
+}

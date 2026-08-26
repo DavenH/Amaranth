@@ -568,18 +568,6 @@ void ImpulseResponseNodeModel::syncFromNode(const Node& node) {
     }
 }
 
-void GuideCurveNodeModel::syncFromNode(const Node& node) {
-    const NodeParameterMap parameters(node);
-    enabled = parameters.boolValue("enabled", true);
-    noise = jlimit(0.f, 1.f, parameters.floatValue("noise", 0.5f));
-    dcOffset = jlimit(0.f, 1.f, parameters.floatValue("dcOffset", 0.5f));
-    phase = jlimit(0.f, 1.f, parameters.floatValue("phase", 0.5f));
-    const auto typed = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
-    if (typed != nullptr && typed->flatCurve() != nullptr) {
-        curve.copyFrom(*typed->flatCurve());
-    }
-}
-
 static var defaultCurveModelState(NodeKind kind) {
     if (kind == NodeKind::Envelope) {
         EnvelopeNodeModel model;
@@ -588,14 +576,7 @@ static var defaultCurveModelState(NodeKind kind) {
     }
 
     std::vector<FlatCurveVertex> vertices;
-    if (kind == NodeKind::GuideCurve) {
-        vertices = {
-                { 1, 0.05f, 0.5f, 1.f },
-                { 2, 0.34f, 0.64f, 0.4f },
-                { 3, 0.62f, 0.36f, 0.4f },
-                { 4, 0.95f, 0.5f, 1.f }
-        };
-    } else if (kind == NodeKind::ImpulseResponse) {
+    if (kind == NodeKind::ImpulseResponse) {
         constexpr float padding = 0.0625f;
         vertices = {
                 { 1, padding * 0.5f, 0.5f, 0.f },
@@ -767,6 +748,41 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     }
     error = "Invalid structured node model state";
     return nullptr;
+}
+
+NodeModelStatePtr createDefaultGuideCurveModel() {
+    FlatCurveModel model("CycleV2GuideCurve");
+    if (!model.replaceVertices({
+                { 1, 0.05f, 0.5f, 1.f },
+                { 2, 0.95f, 0.5f, 1.f } })) {
+        return nullptr;
+    }
+    model.setPublicationRevision(1);
+    return CurveNodeModelState::copyOf(model, 1);
+}
+
+NodeModelStatePtr readGuideCurveModelJSON(const var& value, String& error) {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr || object->getProperty("schema").toString() != "flatCurve") {
+        error = "Unexpected Guide Curve model schema";
+        return nullptr;
+    }
+    if ((int) object->getProperty("version") != FlatCurveModel::currentVersion) {
+        error = "Unsupported Guide Curve model schema version";
+        return nullptr;
+    }
+    const int64 revision = object->getProperty("revision");
+    if (revision < 1) {
+        error = "Guide Curve model revision must be positive";
+        return nullptr;
+    }
+
+    FlatCurveModel model("CycleV2GuideCurve");
+    if (!model.readJSON(object->getProperty("state")) || model.revision() != (uint64_t) revision) {
+        error = "Invalid Guide Curve model state";
+        return nullptr;
+    }
+    return CurveNodeModelState::copyOf(model, (uint64_t) revision);
 }
 
 }

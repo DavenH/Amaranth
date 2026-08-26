@@ -14,12 +14,14 @@ namespace CycleV2 {
 class FlatCurvePanelAdapter final {
 public:
     explicit FlatCurvePanelAdapter(NodeKind nodeKind);
+    explicit FlatCurvePanelAdapter(bool guideResource);
 
     NodeKind kind() const { return nodeKind; }
     Mesh& mesh() { return model.getMesh(); }
     const Mesh& mesh() const { return model.getMesh(); }
     bool needsNodeSync(const Node& node) const;
     bool syncFromNode(const Node& node);
+    bool syncFromGuideResource(const GuideCurveResource& guide);
     Vertex* selectedMeshVertex() const { return model.selectedMeshVertex(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
@@ -34,6 +36,7 @@ private:
     void addVertex(float x, float y, float curve = 0.f);
 
     NodeKind nodeKind;
+    bool guideResource {};
     FlatCurveModel model { "CycleV2FlatCurve" };
     String syncedNodeId;
     NodeModelStatePtr syncedModel;

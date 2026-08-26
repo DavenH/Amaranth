@@ -1,13 +1,13 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 1,
+    "formatVersion": 3,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 8.05236, "y": 457.91464 },
-            "parameters": { "domain": "waveform", "voices": 6, "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "waveMesh",
@@ -405,29 +405,6 @@
             }
         },
         {
-            "id": "guide",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": { "x": 819.05798, "y": 820.0 },
-            "parameters": { "enabled": true, "noise": 0.5, "dcOffset": 0.5, "phase": 0.5 },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.05, "y": 0.5, "curve": 1.0 },
-                        { "id": 2, "x": 0.34, "y": 0.64, "curve": 0.4 },
-                        { "id": 3, "x": 0.62, "y": 0.36, "curve": 0.4 },
-                        { "id": 4, "x": 0.95, "y": 0.5, "curve": 1.0 }
-                    ]
-                }
-            }
-        },
-        {
             "id": "addPhase",
             "kind": "add",
             "definitionVersion": 1,
@@ -784,23 +761,53 @@
             "parameters": { "enabled": true, "size": 0.4999, "damp": 1.0, "width": 0.6186, "wet": 0.795, "highPass": 0.0667 }
         }
     ],
+    "guides": [
+        {
+            "id": "guide",
+            "shortLabel": "G1",
+            "name": "",
+            "colourIndex": 0,
+            "shelfOrder": 0,
+            "enabled": true,
+            "noise": 0.5,
+            "dcOffset": 0.5,
+            "phase": 0.5,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.05, "y": 0.5, "curve": 1.0 },
+                        { "id": 2, "x": 0.34, "y": 0.64, "curve": 0.4 },
+                        { "id": 3, "x": 0.62, "y": 0.36, "curve": 0.4 },
+                        { "id": 4, "x": 0.95, "y": 0.5, "curve": 1.0 }
+                    ]
+                }
+            }
+        }
+    ],
+    "guideAssignments": [],
     "edges": [
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "waveMesh", "destPortId": "context" },
-        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "waveMesh", "destPortId": "scratch", "connectionKind": "processingAttachment" },
-        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "magMesh", "destPortId": "scratch", "connectionKind": "processingAttachment" },
-        { "sourceNodeId": "magMesh", "sourcePortId": "out", "destNodeId": "addMag", "destPortId": "right" },
-        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "addPhase", "destPortId": "left" },
-        { "sourceNodeId": "phaseMesh", "sourcePortId": "out", "destNodeId": "addPhase", "destPortId": "right" },
-        { "sourceNodeId": "addMag", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag" },
-        { "sourceNodeId": "addPhase", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time" },
-        { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "ir", "destPortId": "time" },
-        { "sourceNodeId": "ir", "sourcePortId": "time", "destNodeId": "multiply", "destPortId": "left" },
-        { "sourceNodeId": "env", "sourcePortId": "env", "destNodeId": "multiply", "destPortId": "right" },
-        { "sourceNodeId": "waveMesh", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time" },
-        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "addMag", "destPortId": "left" },
-        { "sourceNodeId": "multiply", "sourcePortId": "out", "destNodeId": "reverb", "destPortId": "time" },
-        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time" }
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "waveMesh", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "waveMesh", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "magMesh", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
+        { "sourceNodeId": "magMesh", "sourcePortId": "out", "destNodeId": "addMag", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "addPhase", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseMesh", "sourcePortId": "out", "destNodeId": "addPhase", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "addMag", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "addPhase", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "ir", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ir", "sourcePortId": "time", "destNodeId": "multiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "env", "sourcePortId": "env", "destNodeId": "multiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "waveMesh", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "addMag", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "multiply", "sourcePortId": "out", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "out", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

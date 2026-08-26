@@ -9,14 +9,16 @@ namespace CycleV2 {
 struct TrimeshGuideAttachmentMenuItem {
     int menuId {};
     String label;
-    String guideNodeId;
+    String guideId;
     bool createNew {};
+    bool detach {};
     bool attached {};
 };
 
 class TrimeshGuideAttachmentMenu {
 public:
     static constexpr int newGuideMenuId = 1;
+    static constexpr int detachGuideMenuId = 2;
     static constexpr int firstGuideMenuId = 100;
 
     static std::vector<TrimeshGuideAttachmentMenuItem> itemsFor(

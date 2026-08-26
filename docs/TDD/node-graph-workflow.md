@@ -222,6 +222,11 @@ changes. The graph source of truth remains node schema plus typed edges.
 
 ### Explicit Assignments
 
+`cycle-v2-guide-resource-dock.md` supersedes the Guide Curve portions of this
+section. Guide Curves are document resources with typed cube-component
+assignments, not nodes or `ProcessingAttachment` edges. Scratch and other
+assignment categories retain the graph treatment described below.
+
 Some of Cycle's current behavior comes from assignments that are hard to see in
 the UI. Scratch channels, guide curves, and other mesh-derived modifiers may
 apply to one mesh layer, a subset of layers, or frequency-domain layers without
@@ -1302,19 +1307,13 @@ Current file workflow:
 - Envelope nodes should follow Cycle 1.x point-curve semantics, not ADSR-first
   envelope semantics. ADSR-style controls may appear only as a later preset or
   convenience editing mode over the same point-curve model.
-- Guide curves should be visible as attachments to mesh nodes, with the target
-  scope described more granularly than node-wide attachment. The initial Cycle
-  2 authoring slice exposed `guide.vertex.<index>.<field>` targets, but the
-  authoritative Cycle 1 contract stores a guide channel on each `VertCube`
-  component (`guideCurveChans[field]`). Those scopes are not interchangeable:
-  a vertex edge cannot faithfully represent a cube-component assignment. The
-  graph now accepts and serializes stable `guide.cube.<index>.<field>` targets;
-  connect those targets to the shared guide snapshot/provider boundary described
-  in `shared-cycle-dsp-core.md`. Retire the provisional vertex target after the
-  remaining manual authoring path has migrated.
+- Guide curves must preserve the authoritative `VertCube` component scope
+  (`guideCurveChans[field]`). `cycle-v2-guide-resource-dock.md` replaces the
+  initial `guide.cube.<index>.<field>` edges with typed document-resource
+  assignments while retaining that exact cube-component meaning and the shared
+  guide snapshot/provider boundary described in `shared-cycle-dsp-core.md`.
 - Stengah is the parity fixture for that work. Its imported mesh snapshots retain
   guide channel 0 on phase-layer-1 cube 0's amplitude component and phase-layer-2
-  cube 4's phase component. The preset has cube-component edges for both
-  assignments alongside the preserved mesh metadata; its unreferenced second
-  guide is omitted. Baroque Flute likewise exposes all eleven assignments from
-  its embedded cube metadata. Provider-backed sampling remains incomplete.
+  cube 4's phase component. Its typed assignments preserve both relationships;
+  Baroque Flute likewise exposes all eleven assignments from its embedded cube
+  metadata.

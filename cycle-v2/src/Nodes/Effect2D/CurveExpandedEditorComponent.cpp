@@ -39,10 +39,15 @@ void CurveExpandedEditorComponent::setDelegate(CurveExpandedEditorDelegate* next
 
 void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
+    setEditorModelState(node.model);
     widget.syncFromNode(node);
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
     applyEditorStateToWidget();
+    refreshEditorSubject();
+}
+
+void CurveExpandedEditorComponent::refreshEditorSubject() {
     updatePanelHost();
     layoutEditor();
     repaint();
@@ -72,7 +77,10 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
     graphics.setColour(kText);
     graphics.setFont(FontOptions(14.f, Font::bold));
-    graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
+    graphics.drawText(
+            title.isEmpty() ? labelForNodeKind(node.kind) : title,
+            header.reduced(13.f, 4.f),
+            Justification::centredLeft);
 
     paintEditor(graphics);
 
@@ -183,24 +191,29 @@ void CurveExpandedEditorComponent::publishCurrentState() {
 bool CurveExpandedEditorComponent::publishModelState() {
     const uint64_t currentRevision = transactionActive
             ? transactionBaseRevision
-            : (node.model != nullptr ? node.model->revision() : 0);
+            : (editorModel != nullptr ? editorModel->revision() : 0);
     const auto publication = widget.prepareModelPublication(currentRevision);
     const auto controls = editorControls();
     if (publication == nullptr || !delegate->publishEffect2DState(publication, controls)) {
         return false;
     }
     node.parameters = controls;
+    editorModel = publication;
     node.model = std::move(publication);
     return true;
 }
 
 void CurveExpandedEditorComponent::beginTransaction() {
     if (!transactionActive && delegate != nullptr) {
-        transactionBaseRevision = node.model != nullptr ? node.model->revision() : 0;
+        transactionBaseRevision = editorModel != nullptr ? editorModel->revision() : 0;
         delegate->beginEffect2DTransaction();
         transactionActive = true;
         transientStateChanged = false;
     }
+}
+
+void CurveExpandedEditorComponent::setEditorModelState(NodeModelStatePtr model) {
+    editorModel = std::move(model);
 }
 
 void CurveExpandedEditorComponent::commitTransaction() {

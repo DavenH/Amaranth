@@ -490,6 +490,12 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             NodeKind::TrilinearMesh,
             "mesh",
             { 240.f, 180.f }));
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(graph.assignGuideCurve({
+            "guide1",
+            "mesh",
+            { 0, GuideCurveField::Amplitude }
+    }));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher graphCommands(document);
     NodeEditorCommandService editorCommands(
@@ -511,12 +517,24 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
             viewport,
             host
     });
-    const NodeCanvasAutomationPresentation state {
+    NodeCanvasAutomationPresentation state {
             "mesh",
             "mesh",
             "Opened editor: mesh",
             -1
     };
+    state.guideDock.dockBounds = { 0.f, 610.f, 1200.f, 190.f };
+    state.guideDock.guideShelfBounds = { 0.f, 610.f, 600.f, 190.f };
+    state.guideDock.spyShelfBounds = { 600.f, 610.f, 600.f, 190.f };
+    state.guideDock.dividerBounds = { 596.f, 610.f, 8.f, 190.f };
+    state.guideDock.collapseBounds = { 1072.f, 618.f, 116.f, 22.f };
+    state.guideDock.resizeBounds = { 0.f, 610.f, 1200.f, 7.f };
+    state.guideDock.guideMinimizeBounds = { 12.f, 620.f, 18.f, 18.f };
+    state.guideDock.spyMinimizeBounds = { 612.f, 620.f, 18.f, 18.f };
+    state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
+    state.guideDock.expandedGuideId = "guide1";
+    state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
+    state.guideDock.guideTiles.push_back({ "guide1", { 12.f, 652.f, 220.f, 136.f } });
     const uint64_t documentRevision = document.revision();
     const uint64_t presentationRevision = presentation.revision();
     const uint64_t viewportRevision = viewport.getRevision();
@@ -539,6 +557,15 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     };
 
     REQUIRE(targetWithId("node:mesh") != nullptr);
+    REQUIRE(targetWithId("guideDock") != nullptr);
+    REQUIRE(targetWithId("guideDock.collapse") != nullptr);
+    REQUIRE(targetWithId("guideDock.resize") != nullptr);
+    REQUIRE(targetWithId("guideDock.divider") != nullptr);
+    REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("guideShelf.add") != nullptr);
+    REQUIRE(targetWithId("guide:guide1") != nullptr);
+    REQUIRE(targetWithId("guideEditor:guide1") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.panel3D") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshMorphRail.yellow") != nullptr);
     REQUIRE(targetWithId("expanded:mesh.trimeshVertexParameter.vertex.phase") != nullptr);
@@ -551,7 +578,20 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     const auto* snapshotObject = snapshot.getDynamicObject();
     REQUIRE(snapshotObject != nullptr);
     REQUIRE((int) snapshotObject->getProperty("nodeCount") == 1);
+    REQUIRE((int) snapshotObject->getProperty("guideCount") == 1);
+    REQUIRE((int) snapshotObject->getProperty("guideAssignmentCount") == 1);
     REQUIRE(snapshotObject->getProperty("selectedNodeId").toString() == "mesh");
+    REQUIRE(snapshotObject->getProperty("expandedGuideId").toString() == "guide1");
+    const Array<var>* guides = snapshotObject->getProperty("guides").getArray();
+    REQUIRE(guides != nullptr);
+    REQUIRE(guides->size() == 1);
+    REQUIRE(guides->getReference(0).getProperty("id", {}).toString() == "guide1");
+    const Array<var>* assignments = snapshotObject->getProperty("guideAssignments").getArray();
+    REQUIRE(assignments != nullptr);
+    REQUIRE(assignments->size() == 1);
+    REQUIRE(assignments->getReference(0).getProperty("guideId", {}).toString() == "guide1");
+    REQUIRE(assignments->getReference(0).getProperty("target", {})
+            .getProperty("field", {}).toString() == "amp");
     REQUIRE(inspector.exportGraphJson() == document.toJson());
 
     REQUIRE(editorStats.creations == 0);
@@ -603,35 +643,30 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
             presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
     const NodeGraph stengah = GraphSerializer().fromJsonString(
             presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
-    const Node* baroqueGuide = baroque.findNode("guide1");
-    const Node* stengahGuide = stengah.findNode("guide1");
+    const GuideCurveResource* baroqueGuide = baroque.findGuideCurve("guide1");
+    const GuideCurveResource* stengahGuide = stengah.findGuideCurve("guide1");
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
 
-    Effect2DWidget widget(NodeKind::GuideCurve);
-    auto editor = createCurveNodeEditor(NodeKind::GuideCurve, widget);
-    editor->setBounds(0, 0, 640, 400);
-    editor->setNode(*baroqueGuide);
+    Effect2DWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    editor.setBounds(0, 0, 640, 400);
+    editor.setGuideResource(*baroqueGuide);
     REQUIRE(widget.vertexCountForAutomation() == 4);
-    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.76562));
-    editor->setNode(*stengahGuide);
+    editor.setGuideResource(*stengahGuide);
     REQUIRE(widget.vertexCountForAutomation() == 55);
-    REQUIRE(static_cast<double>(editor->automationState().getProperty("noise", {}))
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("noise", {}))
             == Catch::Approx(0.0025));
 
-    widget.syncFromNode(*baroqueGuide);
+    widget.syncFromGuideResource(*baroqueGuide);
     REQUIRE(static_cast<double>(widget.automationState().getProperty("firstControl", {}))
             == Catch::Approx(0.76562));
-    Node revisedGuide = *stengahGuide;
-    for (auto& parameter : revisedGuide.parameters) {
-        if (parameter.id == "dcOffset") {
-            parameter.value = "0.25";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.75";
-        }
-    }
-    widget.syncFromNode(revisedGuide);
+    GuideCurveResource revisedGuide = *stengahGuide;
+    revisedGuide.dcOffset = 0.25f;
+    revisedGuide.phase = 0.75f;
+    widget.syncFromGuideResource(revisedGuide);
     const var widgetState = widget.automationState();
     REQUIRE(static_cast<double>(widgetState.getProperty("firstControl", {}))
             == Catch::Approx(0.0025));
@@ -642,6 +677,51 @@ TEST_CASE("Curve editor bindings resynchronize reused preset node identities",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Guide editor uses compact host and control layout",
+        "[cycle-v2][node-editor-host][guides]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Effect2DWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+
+    const Rectangle<float> host = GuideCurveEditorComponent::preferredHostBounds(
+            { 0.f, 0.f, 1200.f, 800.f });
+    REQUIRE(host.getHeight() == 560.f);
+    REQUIRE(host.getCentreY() == 400.f);
+
+    editor.setBounds(host.toNearestInt());
+    editor.setGuideResource(guide);
+
+    int sliderCount = 0;
+    int textButtonCount = 0;
+    int emptyToggleCount = 0;
+    int enabledLabelCount = 0;
+    int lowestControlBottom = 0;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        Component* child = editor.getChildComponent(index);
+        if (auto* slider = dynamic_cast<Slider*>(child)) {
+            ++sliderCount;
+            REQUIRE(slider->getTextBoxPosition() == Slider::TextBoxRight);
+            lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
+        } else if (dynamic_cast<TextButton*>(child) != nullptr) {
+            ++textButtonCount;
+        } else if (auto* toggle = dynamic_cast<ToggleButton*>(child)) {
+            emptyToggleCount += toggle->getButtonText().isEmpty() ? 1 : 0;
+            lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
+        } else if (auto* label = dynamic_cast<Label*>(child)) {
+            enabledLabelCount += label->getText() == "Enabled" ? 1 : 0;
+        }
+    }
+    REQUIRE(sliderCount == 3);
+    REQUIRE(textButtonCount == 0);
+    REQUIRE(emptyToggleCount == 1);
+    REQUIRE(enabledLabelCount == 1);
+    REQUIRE(lowestControlBottom < 230);
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",

@@ -116,7 +116,8 @@ TEST_CASE("Trimesh topology snapshots preserve the authoritative Mesh contract",
 
 TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
         "[cycle-v2][nodes][guide][parity]") {
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    GuideCurveResource guide;
+    guide.id = "guide";
     std::vector<FlatCurveVertex> vertices {
             { 1, 0.05f, 0.25f, 1.f },
             { 2, 0.95f, 0.75f, 1.f }
@@ -124,11 +125,9 @@ TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices(std::move(vertices)));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise" || parameter.id == "dcOffset" || parameter.id == "phase") {
-            parameter.value = "0";
-        }
-    }
+    guide.noise = 0.f;
+    guide.dcOffset = 0.f;
+    guide.phase = 0.f;
 
     GuideCurveSnapshotProvider provider;
     REQUIRE(provider.addGuide(guide));
@@ -144,22 +143,17 @@ TEST_CASE("Guide snapshots preserve Cycle 1 padded bipolar tables",
 
 TEST_CASE("Guide snapshot noise and offsets are deterministic",
         "[cycle-v2][nodes][guide][parity]") {
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
+    GuideCurveResource guide;
+    guide.id = "guide";
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices({
             { 1, 0.05f, 0.2f, 1.f },
             { 2, 0.95f, 0.8f, 1.f }
     }));
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise") {
-            parameter.value = "0.4";
-        } else if (parameter.id == "dcOffset") {
-            parameter.value = "0.3";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.2";
-        }
-    }
+    guide.noise = 0.4f;
+    guide.dcOffset = 0.3f;
+    guide.phase = 0.2f;
 
     GuideCurveSnapshotProvider first;
     GuideCurveSnapshotProvider repeated;
@@ -196,44 +190,24 @@ TEST_CASE("Prepared Trimesh guides affect blockwise and gridwise rendering",
     mesh->getCubes().front()->guideCurveGainAt(Vertex::Amp) = 1.f;
 
     NodeGraph graph;
-    Node guide = GraphNodeFactory().createNode(NodeKind::GuideCurve, "guide", {});
     FlatCurveModel curve;
     REQUIRE(curve.replaceVertices({
             { 1, 0.05f, 1.f, 1.f },
             { 2, 0.95f, 1.f, 1.f }
     }));
+    GuideCurveResource guide;
+    guide.id = "guide";
+    guide.shortLabel = "G1";
     guide.model = CurveNodeModelState::copyOf(curve, 2);
-    for (auto& parameter : guide.parameters) {
-        if (parameter.id == "noise") {
-            parameter.value = "0.4";
-        } else if (parameter.id == "dcOffset") {
-            parameter.value = "0.3";
-        } else if (parameter.id == "phase") {
-            parameter.value = "0.2";
-        }
-    }
+    guide.noise = 0.4f;
+    guide.dcOffset = 0.3f;
+    guide.phase = 0.2f;
     Node trimesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     trimesh.model = TrimeshNodeModelState::copyOf(*mesh, 2);
-    graph.addNode(std::move(guide));
     graph.addNode(std::move(trimesh));
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "amp"),
-            PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
-    graph.addEdge({
-            "guide",
-            "guide",
-            "mesh",
-            TrimeshGuideAttachmentTarget::portIdForCube(0, "time"),
-            PortDomain::EnvelopeSignal,
-            ConnectionKind::ProcessingAttachment,
-            AttachmentType::GuideCurve
-    });
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({ "guide", "mesh", { 0, GuideCurveField::Amplitude } }));
+    REQUIRE(graph.assignGuideCurve({ "guide", "mesh", { 0, GuideCurveField::Time } }));
 
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -830,11 +804,11 @@ TEST_CASE("Trimesh node model preserves live mesh pointers for equivalent public
             == Catch::Approx(0.17f));
 }
 
-TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes", "[cycle-v2][nodes][trimesh]") {
+TEST_CASE("Trimesh guide attachment menu lists document Guide resources", "[cycle-v2][nodes][trimesh]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 10.f, 10.f }).succeeded());
-    REQUIRE(GraphEditor().addNode(graph, NodeKind::GuideCurve, { 20.f, 20.f }).succeeded());
-    REQUIRE(GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().createGuideCurve(graph).succeeded());
+    REQUIRE(GraphEditor().assignGuideCurveToTrimeshVertexParameter(
             graph,
             "guide2",
             "waveMesh",
@@ -847,28 +821,33 @@ TEST_CASE("Trimesh guide attachment menu lists new item and numbered guide nodes
             2,
             "amp");
 
-    REQUIRE(items.size() == 3);
-    REQUIRE(items[0].label == "new...");
-    REQUIRE(items[0].createNew);
-    REQUIRE(items[1].label == "1");
-    REQUIRE(items[1].guideNodeId == "guide");
-    REQUIRE_FALSE(items[1].attached);
-    REQUIRE(items[2].label == "2");
-    REQUIRE(items[2].guideNodeId == "guide2");
-    REQUIRE(items[2].attached);
+    REQUIRE(items.size() == 4);
+    REQUIRE(items[0].label == "detach");
+    REQUIRE(items[0].detach);
+    REQUIRE(items[1].label == "new...");
+    REQUIRE(items[1].createNew);
+    REQUIRE(items[2].label == "G1");
+    REQUIRE(items[2].guideId == "guide1");
+    REQUIRE_FALSE(items[2].attached);
+    REQUIRE(items[3].label == "G2");
+    REQUIRE(items[3].guideId == "guide2");
+    REQUIRE(items[3].attached);
+    REQUIRE(GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+            graph, "waveMesh", 2, "amp").succeeded());
+    REQUIRE(graph.getGuideAssignments().empty());
 }
 
-TEST_CASE("Trimesh guide attachment target parses and formats cube components", "[cycle-v2][nodes][trimesh]") {
-    const auto cubeTarget = TrimeshGuideAttachmentTarget::parse("guide.cube.4.phase");
-    REQUIRE(cubeTarget.isValid());
-    REQUIRE(cubeTarget.isCubeTarget());
-    REQUIRE(cubeTarget.cubeIndex == 4);
-    REQUIRE(cubeTarget.field == "phase");
-    REQUIRE(TrimeshGuideAttachmentTarget::portIdForCube(4, "phase")
-            == "guide.cube.4.phase");
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.vertex.12.amp").isValid());
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("guide.cube.12.unknown").isValid());
-    REQUIRE_FALSE(TrimeshGuideAttachmentTarget::parse("scratch").isValid());
+TEST_CASE("Trimesh guide attachment target resolves vertex owners directly", "[cycle-v2][nodes][trimesh]") {
+    const NodeGraph graph = NodeGraph::createDemoGraph();
+    const Node* mesh = graph.findNode("waveMesh");
+    REQUIRE(mesh != nullptr);
+
+    const auto targets = TrimeshGuideAttachmentTarget::cubeTargetsForVertex(*mesh, 2, "phase");
+    REQUIRE(targets.size() == 1);
+    REQUIRE(targets.front().cubeIndex == 0);
+    REQUIRE(targets.front().field == GuideCurveField::Phase);
+    REQUIRE(TrimeshGuideAttachmentTarget::guideField("amp") == GuideCurveField::Amplitude);
+    REQUIRE(TrimeshGuideAttachmentTarget::guideField("curve") == GuideCurveField::Curve);
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {

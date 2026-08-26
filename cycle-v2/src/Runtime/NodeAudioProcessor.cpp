@@ -46,7 +46,6 @@ std::unique_ptr<NodeAudioProcessor> NodeAudioProcessorFactory::create(AudioModul
             { AudioModuleRole::VoiceContext, createVoiceContextAudioProcessor },
             { AudioModuleRole::ModulationSource, createModulationSourceAudioProcessor },
             { AudioModuleRole::ModulationTriple, createModulationTripleAudioProcessor },
-            { AudioModuleRole::GuideCurve, createGuideCurveAudioProcessor },
             { AudioModuleRole::Envelope, createEnvelopeAudioProcessor },
             { AudioModuleRole::Fft, createFftAudioProcessor },
             { AudioModuleRole::Ifft, createIfftAudioProcessor },

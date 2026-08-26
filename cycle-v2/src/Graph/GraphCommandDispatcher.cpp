@@ -5,6 +5,8 @@
 #include "../Nodes/Effect2D/CurveNodeModels.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <unordered_set>
 
 namespace CycleV2 {
@@ -13,7 +15,6 @@ namespace {
 
 bool isCurveNodeKind(NodeKind kind) {
     return kind == NodeKind::Envelope
-        || kind == NodeKind::GuideCurve
         || kind == NodeKind::ImpulseResponse
         || kind == NodeKind::Waveshaper;
 }
@@ -23,6 +24,69 @@ struct EditAnnotation {
     bool topologyChanged {};
     bool layoutChanged {};
 };
+
+std::vector<String> guideConsumerNodeIds(
+        const NodeGraph& graph,
+        const String& guideId) {
+    std::vector<String> result;
+    for (const auto& assignment : graph.getGuideAssignments()) {
+        if (assignment.guideId == guideId
+                && std::find(result.begin(), result.end(), assignment.targetNodeId)
+                    == result.end()) {
+            result.push_back(assignment.targetNodeId);
+        }
+    }
+    return result;
+}
+
+bool parseGuideControl(const String& value, float& parsed) {
+    const char* start = value.toRawUTF8();
+    char* end {};
+    parsed = std::strtof(start, &end);
+    return end != start && *end == '\0' && std::isfinite(parsed);
+}
+
+bool guideControlsAreValid(const std::vector<NodeParameter>& controls) {
+    std::unordered_set<std::string> remaining {
+            "enabled", "noise", "dcOffset", "phase"
+    };
+    for (const auto& control : controls) {
+        if (remaining.erase(control.id.toStdString()) != 1) {
+            return false;
+        }
+        float value {};
+        if (!parseGuideControl(control.value, value)) {
+            return false;
+        }
+        if (control.id == "enabled") {
+            if (value != 0.f && value != 1.f) {
+                return false;
+            }
+        } else if (value < 0.f || value > 1.f) {
+            return false;
+        }
+    }
+    return remaining.empty();
+}
+
+bool guideControlsMatch(
+        const GuideCurveResource& guide,
+        const std::vector<NodeParameter>& controls) {
+    if (!guideControlsAreValid(controls)) {
+        return false;
+    }
+    for (const auto& control : controls) {
+        float value {};
+        parseGuideControl(control.value, value);
+        if ((control.id == "enabled" && guide.enabled != (value != 0.f))
+                || (control.id == "noise" && guide.noise != value)
+                || (control.id == "dcOffset" && guide.dcOffset != value)
+                || (control.id == "phase" && guide.phase != value)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 GraphEditResult annotateSuccessful(
         GraphEditResult result,
@@ -118,37 +182,193 @@ GraphEditResult GraphCommandDispatcher::spliceNodeIntoEdge(
     });
 }
 
-GraphEditResult GraphCommandDispatcher::attachGuideCurve(
-        const juce::String& guideNodeId,
+GraphEditResult GraphCommandDispatcher::createGuideCurve() {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().createGuideCurve(graph),
+                { {}, false, false });
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::duplicateGuideCurve(const juce::String& guideId) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().duplicateGuideCurve(graph, guideId),
+                { {}, false, false });
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::reorderGuideCurve(
+        const juce::String& guideId,
+        int shelfOrder) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().reorderGuideCurve(graph, guideId, shelfOrder),
+                { {}, false, false });
+        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::assignGuideCurve(
+        const juce::String& guideId,
         const juce::String& meshNodeId,
         int vertexIndex,
         const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().attachGuideCurveToTrimeshVertexParameter(
+        auto result = annotateSuccessful(
+                GraphEditor().assignGuideCurveToTrimeshVertexParameter(
                         graph,
-                        guideNodeId,
+                        guideId,
                         meshNodeId,
                         vertexIndex,
                         parameterField),
-                { { guideNodeId, meshNodeId }, true, false });
+                { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
     });
 }
 
-GraphEditResult GraphCommandDispatcher::createAndAttachGuideCurve(
+GraphEditResult GraphCommandDispatcher::detachGuideCurve(
         const juce::String& meshNodeId,
         int vertexIndex,
-        const juce::String& parameterField,
-        juce::Point<float> guidePosition) {
+        const juce::String& parameterField) {
     return apply([&](auto& graph) {
-        return annotateSuccessful(
-                GraphEditor().createAndAttachGuideCurveToTrimeshVertexParameter(
+        auto result = annotateSuccessful(
+                GraphEditor().detachGuideCurveFromTrimeshVertexParameter(
+                        graph, meshNodeId, vertexIndex, parameterField),
+                { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::createAndAssignGuideCurve(
+        const juce::String& meshNodeId,
+        int vertexIndex,
+        const juce::String& parameterField) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
                         graph,
                         meshNodeId,
                         vertexIndex,
-                        parameterField,
-                        guidePosition),
-                { { meshNodeId }, true, true });
+                        parameterField),
+                { { meshNodeId }, false, false });
+        result.changes.guidesChanged = result.succeeded();
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::removeGuideCurve(const juce::String& guideId) {
+    return apply([&](auto& graph) {
+        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
+        auto result = annotateSuccessful(
+                GraphEditor().removeGuideCurve(graph, guideId),
+                { consumers, false, false });
+        result.changes.guidesChanged = result.succeeded() && !consumers.empty();
+        result.changes.guidePresentationChanged = result.succeeded();
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::renameGuideCurve(
+        const juce::String& guideId,
+        const juce::String& name) {
+    return apply([&](auto& graph) {
+        auto result = annotateSuccessful(
+                GraphEditor().renameGuideCurve(graph, guideId, name),
+                { {}, false, false });
+        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
+        const GuideCurveStatePublication& publication) {
+    return apply([&](auto& graph) {
+        const GuideCurveResource* guide = graph.findGuideCurve(publication.guideId);
+        const GuideCurveResource* durableGuide = document.graph().findGuideCurve(publication.guideId);
+        if (guide == nullptr || durableGuide == nullptr) {
+            return GraphEditResult { GraphEditCode::MissingNode, publication.guideId, {} };
+        }
+        if (publication.model == nullptr) {
+            return GraphEditResult {
+                    GraphEditCode::InvalidTypedSnapshot,
+                    publication.guideId,
+                    {}
+            };
+        }
+        if (!guideControlsAreValid(publication.controls)) {
+            return GraphEditResult {
+                    GraphEditCode::InvalidControlValue,
+                    publication.guideId,
+                    {}
+            };
+        }
+
+        const uint64_t currentRevision = guide->model != nullptr ? guide->model->revision() : 0;
+        const uint64_t durableRevision = durableGuide->model != nullptr
+                ? durableGuide->model->revision()
+                : 0;
+        const bool hasValidTransientBase = transientEdit.has_value()
+                && publication.durableBaseRevision == durableRevision;
+        if ((!hasValidTransientBase && publication.durableBaseRevision != currentRevision)
+                || publication.model->revision() < currentRevision) {
+            return GraphEditResult { GraphEditCode::StaleRevision, publication.guideId, {} };
+        }
+        const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
+                publication.model);
+        if (typedModel == nullptr || typedModel->flatCurve() == nullptr) {
+            return GraphEditResult {
+                    GraphEditCode::InvalidTypedSnapshot,
+                    publication.guideId,
+                    {}
+            };
+        }
+        const bool exactRetry = guide->model != nullptr
+                && publication.model->revision() == currentRevision
+                && guide->model->equals(*publication.model)
+                && guideControlsMatch(*guide, publication.controls);
+        if (exactRetry) {
+            return GraphEditResult {
+                    GraphEditCode::Connected,
+                    publication.guideId,
+                    {},
+                    {},
+                    false
+            };
+        }
+        if (!transientEdit.has_value()
+                && publication.model->revision() == currentRevision) {
+            return GraphEditResult {
+                    GraphEditCode::ConflictingRevision,
+                    publication.guideId,
+                    {}
+            };
+        }
+
+        const bool modelChanged = guide->model == nullptr
+                || !guide->model->equals(*publication.model);
+        const std::vector<String> consumers = guideConsumerNodeIds(graph, publication.guideId);
+        auto result = annotateSuccessful(
+                GraphEditor().replaceGuideCurve(
+                        graph,
+                        publication.guideId,
+                        publication.model,
+                        publication.controls),
+                { consumers, false, false });
+        result.changes.guidesChanged = result.succeeded() && !consumers.empty();
+        result.changes.guidePresentationChanged = result.succeeded();
+        result.changes.modelChanged = result.succeeded() && modelChanged;
+        return result;
     });
 }
 
@@ -350,16 +570,6 @@ GraphEditResult GraphCommandDispatcher::translateNodes(
     });
 }
 
-GraphEditResult GraphCommandDispatcher::setPerformanceKeyboardBounds(
-        juce::Rectangle<float> bounds) {
-    return apply([&](auto& graph) {
-        GraphEditResult result;
-        result.changed = graph.setPerformanceKeyboardBounds(bounds);
-        result.changes.layoutChanged = result.changed;
-        return result;
-    });
-}
-
 void GraphCommandDispatcher::beginCompoundEdit() {
     if (compoundActive) {
         ++compoundDepth;
@@ -483,7 +693,12 @@ void GraphCommandDispatcher::accumulateChange(
     destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
     destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
     destination.probesChanged = destination.probesChanged || change.probesChanged;
+    destination.guidesChanged = destination.guidesChanged || change.guidesChanged;
+    destination.guidePresentationChanged = destination.guidePresentationChanged
+            || change.guidePresentationChanged;
     destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
+    destination.modelChanged = destination.modelChanged || change.modelChanged;
+    destination.editorStateChanged = destination.editorStateChanged || change.editorStateChanged;
 }
 
 GraphEditResult GraphCommandDispatcher::setNodeBounds(

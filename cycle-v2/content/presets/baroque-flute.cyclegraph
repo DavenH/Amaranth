@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 2,
+    "formatVersion": 3,
     "nodes": [
         {
             "id": "voice",
@@ -631,89 +631,6 @@
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
-            "id": "guide1",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": { "x": 941.03217, "y": -93.29897 },
-            "parameters": { "enabled": true, "noise": 0.76562, "dcOffset": 0.0, "phase": 0.0 },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide2",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": { "x": 1309.79993, "y": -391.01123 },
-            "parameters": { "enabled": true, "noise": 0.0, "dcOffset": 0.0, "phase": 0.0 },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0716, "y": 0.00296, "curve": 1.0 },
-                        { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.14044, "y": 0.55325, "curve": 0.3322 },
-                        { "id": 4, "x": 0.06892, "y": 0.5503, "curve": 0.7569 }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide4",
-            "kind": "guideCurve",
-            "definitionVersion": 1,
-            "position": { "x": 1676.43542, "y": -412.98059 },
-            "parameters": { "enabled": true, "noise": 0.0, "dcOffset": 0.0, "phase": 0.0 },
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.09753, "y": 0.85904, "curve": 0.0 },
-                        { "id": 6, "x": 0.16645, "y": 0.22618, "curve": 0.64 },
-                        { "id": 7, "x": 0.23277, "y": 0.95117, "curve": 0.0 },
-                        { "id": 8, "x": 0.41352, "y": 0.18639, "curve": 0.64 },
-                        { "id": 9, "x": 0.49415, "y": 0.93637, "curve": 0.0 },
-                        { "id": 10, "x": 0.53576, "y": 0.14793, "curve": 0.64 },
-                        { "id": 11, "x": 0.59948, "y": 0.98398, "curve": 0.0 },
-                        { "id": 12, "x": 0.79974, "y": 0.16272, "curve": 0.64 },
-                        { "id": 13, "x": 0.86996, "y": 0.83063, "curve": 0.0 },
-                        { "id": 14, "x": 0.28869, "y": 0.2071, "curve": 0.64 },
-                        { "id": 15, "x": 0.36931, "y": 1.0, "curve": 0.0 },
-                        { "id": 16, "x": 0.6671, "y": 0.1568, "curve": 0.64 },
-                        { "id": 17, "x": 0.72692, "y": 1.0, "curve": 0.0 },
-                        { "id": 18, "x": 0.92718, "y": 0.18343, "curve": 0.0 }
-                    ]
-                }
-            }
-        },
-        {
             "id": "volumeEnvelope",
             "kind": "envelope",
             "definitionVersion": 1,
@@ -1301,6 +1218,160 @@
             "parameters": {}
         }
     ],
+    "guides": [
+        {
+            "id": "guide1",
+            "shortLabel": "G1",
+            "name": "",
+            "colourIndex": 0,
+            "shelfOrder": 0,
+            "enabled": true,
+            "noise": 0.76562,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
+                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide2",
+            "shortLabel": "G2",
+            "name": "",
+            "colourIndex": 1,
+            "shelfOrder": 1,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0716, "y": 0.00296, "curve": 1.0 },
+                        { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.14044, "y": 0.55325, "curve": 0.3322 },
+                        { "id": 4, "x": 0.06892, "y": 0.5503, "curve": 0.7569 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide4",
+            "shortLabel": "G3",
+            "name": "",
+            "colourIndex": 2,
+            "shelfOrder": 2,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
+                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
+                        { "id": 5, "x": 0.09753, "y": 0.85904, "curve": 0.0 },
+                        { "id": 6, "x": 0.16645, "y": 0.22618, "curve": 0.64 },
+                        { "id": 7, "x": 0.23277, "y": 0.95117, "curve": 0.0 },
+                        { "id": 8, "x": 0.41352, "y": 0.18639, "curve": 0.64 },
+                        { "id": 9, "x": 0.49415, "y": 0.93637, "curve": 0.0 },
+                        { "id": 10, "x": 0.53576, "y": 0.14793, "curve": 0.64 },
+                        { "id": 11, "x": 0.59948, "y": 0.98398, "curve": 0.0 },
+                        { "id": 12, "x": 0.79974, "y": 0.16272, "curve": 0.64 },
+                        { "id": 13, "x": 0.86996, "y": 0.83063, "curve": 0.0 },
+                        { "id": 14, "x": 0.28869, "y": 0.2071, "curve": 0.64 },
+                        { "id": 15, "x": 0.36931, "y": 1.0, "curve": 0.0 },
+                        { "id": 16, "x": 0.6671, "y": 0.1568, "curve": 0.64 },
+                        { "id": 17, "x": 0.72692, "y": 1.0, "curve": 0.0 },
+                        { "id": 18, "x": 0.92718, "y": 0.18343, "curve": 0.0 }
+                    ]
+                }
+            }
+        }
+    ],
+    "guideAssignments": [
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 3, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 4, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 5, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 6, "field": "amp" }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "amp" }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 4, "field": "amp" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "magnitudeLayer3",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "magnitudeLayer3",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "time" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "phaseLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "phaseLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "time" }
+        }
+    ],
     "edges": [
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
@@ -1318,17 +1389,6 @@
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "guide2", "sourcePortId": "guide", "destNodeId": "magnitudeLayer1", "destPortId": "guide.cube.1.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide2", "sourcePortId": "guide", "destNodeId": "magnitudeLayer1", "destPortId": "guide.cube.3.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide2", "sourcePortId": "guide", "destNodeId": "magnitudeLayer1", "destPortId": "guide.cube.4.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide2", "sourcePortId": "guide", "destNodeId": "magnitudeLayer1", "destPortId": "guide.cube.5.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide2", "sourcePortId": "guide", "destNodeId": "magnitudeLayer1", "destPortId": "guide.cube.6.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide4", "sourcePortId": "guide", "destNodeId": "magnitudeLayer2", "destPortId": "guide.cube.1.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide4", "sourcePortId": "guide", "destNodeId": "magnitudeLayer2", "destPortId": "guide.cube.4.amp", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "magnitudeLayer3", "destPortId": "guide.cube.0.time", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "magnitudeLayer3", "destPortId": "guide.cube.2.time", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer1", "destPortId": "guide.cube.0.time", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
-        { "sourceNodeId": "guide1", "sourcePortId": "guide", "destNodeId": "phaseLayer1", "destPortId": "guide.cube.1.time", "connectionKind": "processingAttachment", "attachmentType": "guideCurve" },
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "pitchEnvelope", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "scratchEnvelope", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
@@ -1386,8 +1446,5 @@
             "tapPosition": 0.56253,
             "railOrder": 4
         }
-    ],
-    "presentation": {
-        "performanceKeyboardBounds": { "x": 2244.45044, "y": -336.26077, "width": 496.0, "height": 184.0 }
-    }
+    ]
 }

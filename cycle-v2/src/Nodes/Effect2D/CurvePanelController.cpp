@@ -235,6 +235,14 @@ public:
         initialiseDefaultModel();
     }
 
+    explicit FlatPanelController(bool guideResource) :
+            adapter(guideResource) {
+        panel = createGuideCurvePanel(
+                &environment.services().getRepo(), adapter.mesh());
+        initialiseHost();
+        initialiseDefaultModel();
+    }
+
     void syncFromNode(const Node& node) override {
         if (!adapter.needsNodeSync(node)) {
             return;
@@ -247,6 +255,17 @@ public:
         } else {
             flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
         }
+    }
+
+    bool syncFromGuideResource(const GuideCurveResource& guide) override {
+        if (!adapter.syncFromGuideResource(guide)) {
+            return false;
+        }
+        auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
+        panel->clearInteractionState();
+        finishGuideSync(guide);
+        flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
+        return true;
     }
 
     std::vector<CurvePreviewVertex> previewVertices() override {
@@ -269,6 +288,12 @@ public:
     }
 
 private:
+    void finishGuideSync(const GuideCurveResource& guide) {
+        publicationRevision = guide.model != nullptr ? guide.model->revision() : 1;
+        applyPanelSettings();
+        panel->refreshRasterizer();
+    }
+
     void initialiseDefaultModel() override {
         adapter.initialiseDefaultMesh();
         panel->refreshRasterizer();
@@ -437,12 +462,15 @@ std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind) 
     if (kind == NodeKind::Envelope) {
         return std::make_unique<EnvelopePanelController>();
     }
-    if (kind == NodeKind::GuideCurve
-            || kind == NodeKind::ImpulseResponse
+    if (kind == NodeKind::ImpulseResponse
             || kind == NodeKind::Waveshaper) {
         return std::make_unique<FlatPanelController>(kind);
     }
     return nullptr;
+}
+
+std::unique_ptr<CurvePanelController> createGuideCurvePanelController() {
+    return std::make_unique<FlatPanelController>(true);
 }
 
 }

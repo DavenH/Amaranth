@@ -103,16 +103,16 @@ TEST_CASE("Curve panel adapters resynchronize equal-revision models after preset
             presetDirectory.getChildFile("baroque-flute.cyclegraph").loadFileAsString());
     const NodeGraph stengah = GraphSerializer().fromJsonString(
             presetDirectory.getChildFile("stengah.cyclegraph").loadFileAsString());
-    const Node* baroqueGuide = baroque.findNode("guide1");
-    const Node* stengahGuide = stengah.findNode("guide1");
+    const GuideCurveResource* baroqueGuide = baroque.findGuideCurve("guide1");
+    const GuideCurveResource* stengahGuide = stengah.findGuideCurve("guide1");
     REQUIRE(baroqueGuide != nullptr);
     REQUIRE(stengahGuide != nullptr);
     REQUIRE(baroqueGuide->model->revision() == stengahGuide->model->revision());
 
-    FlatCurvePanelAdapter adapter(NodeKind::GuideCurve);
-    REQUIRE(adapter.syncFromNode(*baroqueGuide));
+    FlatCurvePanelAdapter adapter(true);
+    REQUIRE(adapter.syncFromGuideResource(*baroqueGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 4);
-    REQUIRE(adapter.syncFromNode(*stengahGuide));
+    REQUIRE(adapter.syncFromGuideResource(*stengahGuide));
     REQUIRE(adapter.mesh().getNumVerts() == 55);
 }
 
@@ -688,7 +688,6 @@ TEST_CASE("Curve node definitions provide canonical typed defaults",
     for (const NodeKind kind : {
             NodeKind::Waveshaper,
             NodeKind::ImpulseResponse,
-            NodeKind::GuideCurve,
             NodeKind::Envelope }) {
         const Node node = factory.createNode(kind, "curve", {});
         REQUIRE(node.model != nullptr);
@@ -715,7 +714,6 @@ TEST_CASE("Repository Cycle V2 presets contain canonical typed curve state",
         REQUIRE_FALSE(graph.getNodes().empty());
         for (const auto& node : graph.getNodes()) {
             if (node.kind != NodeKind::Envelope
-                    && node.kind != NodeKind::GuideCurve
                     && node.kind != NodeKind::ImpulseResponse
                     && node.kind != NodeKind::Waveshaper) {
                 continue;
@@ -765,8 +763,7 @@ TEST_CASE("Loaded typed models require no JSON decoding during runtime consumpti
         } else if (node.kind == NodeKind::Envelope) {
             EnvelopePanelAdapter adapter;
             REQUIRE(adapter.syncFromNode(node));
-        } else if (node.kind == NodeKind::GuideCurve
-                || node.kind == NodeKind::ImpulseResponse
+        } else if (node.kind == NodeKind::ImpulseResponse
                 || node.kind == NodeKind::Waveshaper) {
             FlatCurvePanelAdapter adapter(node.kind);
             REQUIRE(adapter.syncFromNode(node));

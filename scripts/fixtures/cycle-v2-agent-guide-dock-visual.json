@@ -1,0 +1,19 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "assertState", "path": "guideDock.selectedGuideId", "equals": "" },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "key", "area": "canvas", "key": "tab" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusTarget", "equals": "guideTile" },
+    { "command": "assertState", "path": "guideDock.keyboardFocusItemId", "equals": "guide1" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "../../Graph/NodeParameterMap.h"
 #include "../Effect2D/CurveNodeModels.h"
 #include "../Effect2D/FlatCurvePreparation.h"
 
@@ -22,24 +21,19 @@ GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
             Buffer<float>(noise.data(), (int) noise.size()));
 }
 
-bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
-    if (node.kind != NodeKind::GuideCurve) {
-        return false;
-    }
-
+bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
     GuideSnapshot snapshot;
     snapshot.table.resize(tableSize);
-    const NodeParameterMap parameters(node);
-    snapshot.parameters.noiseLevel = parameters.floatValue("noise", 0.f);
-    snapshot.parameters.verticalOffsetLevel = parameters.floatValue("dcOffset", 0.f);
-    snapshot.parameters.phaseOffsetLevel = parameters.floatValue("phase", 0.f);
-    snapshot.parameters.seed = stableSeed((int) guides.size());
+    snapshot.parameters.noiseLevel = resource.noise;
+    snapshot.parameters.verticalOffsetLevel = resource.dcOffset;
+    snapshot.parameters.phaseOffsetLevel = resource.phase;
+    snapshot.parameters.seed = stableSeed(resource);
 
-    const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(node.model);
+    const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(resource.model);
     const FlatCurveModel* curve = typedModel != nullptr ? typedModel->flatCurve() : nullptr;
     snapshot.density = curve != nullptr ? (int) curve->getVertices().size() : 0;
 
-    if (!parameters.boolValue("enabled", true)) {
+    if (!resource.enabled) {
         Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).zero();
         guides.push_back(std::move(snapshot));
         return true;
@@ -47,9 +41,7 @@ bool GuideCurveSnapshotProvider::addGuide(const Node& node) {
 
     FlatCurvePreparation preparation(
             "CycleV2GuideSnapshot",
-            NodeKind::GuideCurve,
-            node.parameters,
-            node.model,
+            resource.model,
             FXRasterizer::Unipolar);
     if (!preparation.prepare()) {
         return false;
@@ -121,8 +113,8 @@ uint32_t GuideCurveSnapshotProvider::visualizationSeed(PortDomain domain) {
     }
 }
 
-int GuideCurveSnapshotProvider::stableSeed(int guideIndex) {
-    return GuideCurveTableDsp::stableSeed(guideIndex);
+int GuideCurveSnapshotProvider::stableSeed(const GuideCurveResource& resource) {
+    return GuideCurveTableDsp::stableSeed(resource.id.hashCode());
 }
 
 GuideCurveSnapshotProvider::GuideSnapshot* GuideCurveSnapshotProvider::guideAt(
