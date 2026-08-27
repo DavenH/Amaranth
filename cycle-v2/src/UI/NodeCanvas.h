@@ -111,6 +111,12 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
+    enum class HoverRepaint {
+        None,
+        Status,
+        Canvas
+    };
+
     OpenGLContext openGLContext;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
@@ -171,11 +177,14 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    bool updateHoverAt(juce::Point<float> position);
+    HoverRepaint updateHoverAt(juce::Point<float> position);
+    static HoverRepaint hoverRepaintFor(bool canvasChanged, bool statusChanged);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
+    void requestCanvasStatusRepaint();
+    void requestHoverRepaint(HoverRepaint repaint);
     void notifyOverlayOcclusionChanged();
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;

@@ -8,6 +8,7 @@
       "command": "waitForIdle",
       "idleDelayMs": 500
     },
+    { "command": "resetCanvasPerformance" },
     {
       "command": "pointer",
       "event": "move",
@@ -19,6 +20,16 @@
       "command": "assertState",
       "path": "guideDock.hoveredGuideId",
       "equals": "guide1"
+    },
+    {
+      "command": "assertState",
+      "path": "canvasRepaintRequestCount",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "statusRepaintRequestCount",
+      "equals": 0
     },
     {
       "command": "inspectTargets",

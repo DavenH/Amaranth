@@ -84,6 +84,7 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
+    void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
@@ -100,7 +101,6 @@ private:
             const Node& node);
     void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
 
     void renderOpenGLEffectPreviews(

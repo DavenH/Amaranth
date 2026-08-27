@@ -123,6 +123,29 @@ TEST_CASE("Canvas metrics reset starts an empty independent observation window",
         REQUIRE(trigger.handlerDuration.count == 0);
         REQUIRE(trigger.repaintLatency.count == 0);
     }
+    for (const uint64_t scopeRequests : snapshot.repaintScopes) {
+        REQUIRE(scopeRequests == 0);
+    }
+}
+
+TEST_CASE("Canvas metrics distinguish full and status-region repaint requests",
+        "[cycle-v2][canvas][performance]") {
+    fakeNow = 100;
+    CanvasPerformanceMetrics metrics(fakeClock);
+
+    metrics.requestRepaint(CanvasPerformanceMetrics::RepaintScope::Status);
+    metrics.requestRepaint(CanvasPerformanceMetrics::Trigger::GraphEdit);
+
+    const auto snapshot = metrics.snapshot();
+    REQUIRE(snapshot.repaintScopes[static_cast<size_t>(
+            CanvasPerformanceMetrics::RepaintScope::Canvas)] == 1);
+    REQUIRE(snapshot.repaintScopes[static_cast<size_t>(
+            CanvasPerformanceMetrics::RepaintScope::Status)] == 1);
+
+    const var exported = metrics.toVar({});
+    const var& repaintScopes = property(exported, "repaintScopes");
+    REQUIRE((int64) property(repaintScopes, "canvas") == 1);
+    REQUIRE((int64) property(repaintScopes, "status") == 1);
 }
 
 TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",

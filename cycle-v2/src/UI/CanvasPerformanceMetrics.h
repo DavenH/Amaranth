@@ -32,6 +32,12 @@ public:
         Count
     };
 
+    enum class RepaintScope : uint8_t {
+        Canvas,
+        Status,
+        Count
+    };
+
     enum class Operation : uint8_t {
         HoverResolution,
         NodeParameterUpdate,
@@ -46,6 +52,7 @@ public:
 
     static constexpr size_t triggerCount = static_cast<size_t>(Trigger::Count);
     static constexpr size_t frameCount = static_cast<size_t>(Frame::Count);
+    static constexpr size_t repaintScopeCount = static_cast<size_t>(RepaintScope::Count);
     static constexpr size_t operationCount = static_cast<size_t>(Operation::Count);
     using Distribution = PerformanceDistribution;
 
@@ -61,6 +68,7 @@ public:
         uint64_t elapsedMicroseconds {};
         std::array<TriggerSnapshot, triggerCount> triggers;
         std::array<Distribution, frameCount> frames;
+        std::array<uint64_t, repaintScopeCount> repaintScopes {};
         std::array<Distribution, operationCount> operations;
         uint64_t hoverStateChanges {};
         uint64_t hoverStateUnchanged {};
@@ -108,8 +116,8 @@ public:
     ScopedTrigger measure(Trigger trigger);
     ScopedFrame measure(Frame frame);
     uint64_t timestamp() const { return now(); }
-    void requestRepaint();
-    void requestRepaint(Trigger trigger);
+    void requestRepaint(RepaintScope scope = RepaintScope::Canvas);
+    void requestRepaint(Trigger trigger, RepaintScope scope = RepaintScope::Canvas);
     void recordOperation(Operation operation, uint64_t elapsedMicroseconds);
     void recordHoverState(bool changed, bool occluded = false);
     void nodeEditorOperationCompleted(
@@ -122,6 +130,7 @@ public:
 
     static const char* label(Trigger trigger);
     static const char* label(Frame frame);
+    static const char* label(RepaintScope scope);
     static const char* label(Operation operation);
     static double percentileMilliseconds(const Distribution& distribution, double percentile);
 
@@ -148,6 +157,7 @@ private:
     uint64_t windowStartMicroseconds {};
     std::array<TriggerData, triggerCount> triggerData;
     std::array<Distribution, frameCount> frameData;
+    std::array<uint64_t, repaintScopeCount> repaintScopeData {};
     std::array<Distribution, operationCount> operationData;
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};

@@ -25,6 +25,7 @@ namespace CycleV2 {
 namespace NodeCanvasInvalidation {
 
 constexpr uint32_t CanvasRepaint = 1u << 0;
+constexpr uint32_t StatusRepaint = 1u << 1;
 
 }
 
@@ -82,6 +83,10 @@ bool inlinePanDialContains(
     const Rectangle<float> dial = inlinePanDialBounds(viewport, node);
     const float radius = jmin(dial.getWidth(), dial.getHeight()) * 0.5f;
     return dial.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
+}
+
+Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
+    return CanvasUtilityDock::layout(canvasBounds).status.expanded(2.f).toNearestInt();
 }
 
 GraphDocument createStartupDocument() {
@@ -194,7 +199,14 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const Node* expandedNode = queries.findNode(expandedNodeId);
-    canvasPresentation.paint(g, presentationFrame());
+    const NodeCanvasPresentationFrame frame = presentationFrame();
+    const Rectangle<int> status = statusRepaintBounds(frame.canvasBounds);
+    if (!status.isEmpty() && status.contains(g.getClipBounds())) {
+        canvasPresentation.paintStatus(g, frame);
+        return;
+    }
+
+    canvasPresentation.paint(g, frame);
     if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
     }
@@ -237,28 +249,26 @@ void NodeCanvas::focusLost(FocusChangeType) {
 
 void NodeCanvas::mouseMove(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
-    if (updateHoverAt(event.position)) {
-        requestCanvasRepaint();
-    }
+    requestHoverRepaint(updateHoverAt(event.position));
 }
 
 void NodeCanvas::mouseExit(const MouseEvent&) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Hover);
     const bool paletteChanged = palette.close();
-    const bool changed = guideShelfState.hoveredGuideId.isNotEmpty()
+    const bool canvasChanged = guideShelfState.hoveredGuideId.isNotEmpty()
             || probeRailState.hoveredProbeId.isNotEmpty()
-            || resolvedHoverText.isNotEmpty()
             || paletteChanged;
+    const bool statusChanged = resolvedHoverText.isNotEmpty();
     pointerInsideCanvas = false;
     resolvedHoverText = {};
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
-    if (changed) {
-        requestCanvasRepaint();
-    }
+    const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
+    performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
+    requestHoverRepaint(repaint);
 }
 
-bool NodeCanvas::updateHoverAt(Point<float> position) {
+NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const uint64_t startedAt = performanceMetrics.timestamp();
     const int previousPaletteSection = palette.activeSection();
     const String previousGuideId = guideShelfState.hoveredGuideId;
@@ -272,15 +282,16 @@ bool NodeCanvas::updateHoverAt(Point<float> position) {
         resolvedHoverText = {};
         guideShelfState.hoveredGuideId = {};
         probeRailState.hoveredProbeId = {};
-        const bool changed = paletteChanged
-                || previousHoverText.isNotEmpty()
+        const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty();
+        const bool statusChanged = previousHoverText.isNotEmpty();
+        const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
         performanceMetrics.recordOperation(
                 CanvasPerformanceMetrics::Operation::HoverResolution,
                 performanceMetrics.timestamp() - startedAt);
-        performanceMetrics.recordHoverState(changed, true);
-        return changed;
+        performanceMetrics.recordHoverState(repaint != HoverRepaint::None, true);
+        return repaint;
     }
     palette.updateHover(position);
     const auto& scene = sceneBuilder.build(
@@ -330,12 +341,25 @@ bool NodeCanvas::updateHoverAt(Point<float> position) {
     performanceMetrics.recordOperation(
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
-    const bool changed = previousPaletteSection != palette.activeSection()
-            || previousHoverText != resolvedHoverText
+    const bool canvasChanged = previousPaletteSection != palette.activeSection()
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeRailState.hoveredProbeId;
-    performanceMetrics.recordHoverState(changed);
-    return changed;
+    const bool statusChanged = previousHoverText != resolvedHoverText;
+    const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
+    performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
+    return repaint;
+}
+
+NodeCanvas::HoverRepaint NodeCanvas::hoverRepaintFor(
+        bool canvasChanged,
+        bool statusChanged) {
+    if (canvasChanged) {
+        return HoverRepaint::Canvas;
+    }
+    if (statusChanged) {
+        return HoverRepaint::Status;
+    }
+    return HoverRepaint::None;
 }
 
 void NodeCanvas::mouseDown(const MouseEvent& event) {
@@ -890,9 +914,11 @@ void NodeCanvas::timerCallback() {
     if (getLocalBounds().toFloat().contains(mouse)
             && (mouse != lastMousePosition || previousPaletteSectionIndex != palette.activeSection())) {
         const bool paletteChanged = previousPaletteSectionIndex != palette.activeSection();
-        if (updateHoverAt(mouse) || paletteChanged) {
-            requestCanvasRepaint();
+        HoverRepaint repaint = updateHoverAt(mouse);
+        if (paletteChanged) {
+            repaint = HoverRepaint::Canvas;
         }
+        requestHoverRepaint(repaint);
     }
 }
 
@@ -1194,8 +1220,13 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.selectedNodeId = selectedNodeId;
     result.expandedNodeId = expandedNodeId;
     result.editStatusMessage = editStatusMessage;
-    result.hoverRepaintRequestCount = performanceMetrics.snapshot().triggers[
+    const CanvasPerformanceMetrics::Snapshot metrics = performanceMetrics.snapshot();
+    result.hoverRepaintRequestCount = metrics.triggers[
             static_cast<size_t>(CanvasPerformanceMetrics::Trigger::Hover)].repaintRequests;
+    result.canvasRepaintRequestCount = metrics.repaintScopes[
+            static_cast<size_t>(CanvasPerformanceMetrics::RepaintScope::Canvas)];
+    result.statusRepaintRequestCount = metrics.repaintScopes[
+            static_cast<size_t>(CanvasPerformanceMetrics::RepaintScope::Status)];
     result.selectedEdgeIndex = selectedEdgeIndex;
     result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
     result.probeRefreshMode = probeRailState.refreshMode;
@@ -1837,13 +1868,37 @@ void NodeCanvas::requestCanvasRepaint() {
     renderInvalidation.request(NodeCanvasInvalidation::CanvasRepaint);
 }
 
+void NodeCanvas::requestCanvasStatusRepaint() {
+    performanceMetrics.requestRepaint(CanvasPerformanceMetrics::RepaintScope::Status);
+    renderInvalidation.request(NodeCanvasInvalidation::StatusRepaint);
+}
+
+void NodeCanvas::requestHoverRepaint(HoverRepaint repaint) {
+    switch (repaint) {
+        case HoverRepaint::None:
+            break;
+        case HoverRepaint::Status:
+            requestCanvasStatusRepaint();
+            break;
+        case HoverRepaint::Canvas:
+            requestCanvasRepaint();
+            break;
+    }
+}
+
 uint32_t NodeCanvas::availableRenderInvalidations() const {
-    return isShowing() ? NodeCanvasInvalidation::CanvasRepaint : 0;
+    return isShowing()
+            ? NodeCanvasInvalidation::CanvasRepaint | NodeCanvasInvalidation::StatusRepaint
+            : 0;
 }
 
 void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
     if ((categories & NodeCanvasInvalidation::CanvasRepaint) != 0) {
         Component::repaint();
+        return;
+    }
+    if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
+        Component::repaint(statusRepaintBounds(canvasContentBounds()));
     }
 }
 

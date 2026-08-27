@@ -18,6 +18,16 @@
       "equals": 1
     },
     {
+      "command": "assertState",
+      "path": "canvasRepaintRequestCount",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "statusRepaintRequestCount",
+      "equals": 1
+    },
+    {
       "command": "pointer",
       "event": "move",
       "targetId": "node:magnitudeLayer1",
@@ -39,6 +49,16 @@
     {
       "command": "assertState",
       "path": "hoverRepaintRequestCount",
+      "equals": 2
+    },
+    {
+      "command": "assertState",
+      "path": "canvasRepaintRequestCount",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "statusRepaintRequestCount",
       "equals": 2
     },
     {

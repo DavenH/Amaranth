@@ -537,6 +537,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
     root->setProperty("hoverRepaintRequestCount", (int64) state.hoverRepaintRequestCount);
+    root->setProperty("canvasRepaintRequestCount", (int64) state.canvasRepaintRequestCount);
+    root->setProperty("statusRepaintRequestCount", (int64) state.statusRepaintRequestCount);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());

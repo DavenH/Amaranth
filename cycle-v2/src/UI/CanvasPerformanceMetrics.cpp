@@ -14,6 +14,10 @@ size_t indexFor(CanvasPerformanceMetrics::Frame frame) {
     return static_cast<size_t>(frame);
 }
 
+size_t indexFor(CanvasPerformanceMetrics::RepaintScope scope) {
+    return static_cast<size_t>(scope);
+}
+
 size_t indexFor(CanvasPerformanceMetrics::Operation operation) {
     return static_cast<size_t>(operation);
 }
@@ -90,13 +94,14 @@ CanvasPerformanceMetrics::ScopedFrame CanvasPerformanceMetrics::measure(Frame fr
     return ScopedFrame(*this, frame);
 }
 
-void CanvasPerformanceMetrics::requestRepaint() {
-    requestRepaint(activeMetrics == this ? activeTrigger : Trigger::Other);
+void CanvasPerformanceMetrics::requestRepaint(RepaintScope scope) {
+    requestRepaint(activeMetrics == this ? activeTrigger : Trigger::Other, scope);
 }
 
-void CanvasPerformanceMetrics::requestRepaint(Trigger trigger) {
+void CanvasPerformanceMetrics::requestRepaint(Trigger trigger, RepaintScope scope) {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
+    ++repaintScopeData[indexFor(scope)];
     auto& data = triggerData[indexFor(trigger)];
     ++data.repaintRequests;
     if (data.firstPendingRepaintMicroseconds == 0) {
@@ -157,6 +162,7 @@ void CanvasPerformanceMetrics::reset() {
     windowStartMicroseconds = timestamp;
     triggerData = {};
     frameData = {};
+    repaintScopeData = {};
     operationData = {};
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
@@ -178,6 +184,7 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
         };
     }
     result.frames = frameData;
+    result.repaintScopes = repaintScopeData;
     result.operations = operationData;
     result.hoverStateChanges = hoverStateChanges;
     result.hoverStateUnchanged = hoverStateUnchanged;
@@ -235,6 +242,13 @@ var CanvasPerformanceMetrics::toVar(
     }
     root->setProperty("frames", var(frames));
 
+    auto* repaintScopes = new DynamicObject();
+    for (size_t index = 0; index < repaintScopeCount; ++index) {
+        const auto scope = static_cast<RepaintScope>(index);
+        repaintScopes->setProperty(label(scope), (int64) current.repaintScopes[index]);
+    }
+    root->setProperty("repaintScopes", var(repaintScopes));
+
     auto* operations = new DynamicObject();
     for (size_t index = 0; index < operationCount; ++index) {
         const auto operation = static_cast<Operation>(index);
@@ -280,6 +294,15 @@ const char* CanvasPerformanceMetrics::label(Frame frame) {
         case Frame::JucePaint:       return "jucePaint";
         case Frame::OpenGlRender:    return "openGlRender";
         case Frame::Count:           break;
+    }
+    return "unknown";
+}
+
+const char* CanvasPerformanceMetrics::label(RepaintScope scope) {
+    switch (scope) {
+        case RepaintScope::Canvas:  return "canvas";
+        case RepaintScope::Status:  return "status";
+        case RepaintScope::Count:   break;
     }
     return "unknown";
 }

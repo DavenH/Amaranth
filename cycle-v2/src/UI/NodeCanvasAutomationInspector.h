@@ -59,6 +59,8 @@ struct NodeCanvasAutomationPresentation {
     juce::Rectangle<float> canvasContentBounds;
     GuideDockAutomationPresentation guideDock;
     uint64_t hoverRepaintRequestCount {};
+    uint64_t canvasRepaintRequestCount {};
+    uint64_t statusRepaintRequestCount {};
 };
 
 struct NodeCanvasAutomationContext {
