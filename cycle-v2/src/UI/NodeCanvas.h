@@ -90,6 +90,7 @@ public:
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectPerformanceMetricsForAutomation() const;
     void resetPerformanceMetricsForAutomation();
+    void requestOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     Rectangle<int> performanceKeyboardDockBounds() const;

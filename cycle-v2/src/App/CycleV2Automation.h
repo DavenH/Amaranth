@@ -55,6 +55,7 @@ private:
     var inspectOpenGLDiagnostics() const;
     var inspectCanvasPerformance() const;
     var resetCanvasPerformance();
+    var requestCanvasOpenGLFrame();
     var moveNode(const var& commandValue);
     var connectPorts(const var& commandValue);
     var deleteNode(const var& commandValue);

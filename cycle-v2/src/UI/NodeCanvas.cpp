@@ -1463,6 +1463,10 @@ void NodeCanvas::resetPerformanceMetricsForAutomation() {
     renderInvalidation.resetDiagnostics();
 }
 
+void NodeCanvas::requestOpenGLFrameForAutomation() {
+    openGLContext.triggerRepaint();
+}
+
 var NodeCanvas::captureAudioForAutomation(size_t frameCount) const {
     return automation.captureAudio(frameCount);
 }

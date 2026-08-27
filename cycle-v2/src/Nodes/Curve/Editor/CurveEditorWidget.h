@@ -57,6 +57,7 @@ public:
 private:
     NodeKind kind;
     bool guideResource {};
+    uint64_t previewPresentationRevision { 1 };
     std::unique_ptr<CurvePanelController> controller;
 };
 

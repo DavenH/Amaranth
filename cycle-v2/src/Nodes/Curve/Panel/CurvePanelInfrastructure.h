@@ -35,6 +35,37 @@ private:
     bool visibleContent {};
 };
 
+class CurvePanelPreviewRenderCache {
+public:
+    struct Key {
+        float width {};
+        float height {};
+        float scaleFactor {};
+        uint64_t modelRevision {};
+        uint64_t contentRevision {};
+        uint64_t presentationRevision {};
+        uint64_t invalidationGeneration {};
+
+        bool operator==(const Key& other) const;
+    };
+
+    struct Diagnostics {
+        uint64_t hits {};
+        uint64_t misses {};
+    };
+
+    bool canReuse(const Key& key);
+    void didRender(Key key);
+    void invalidate();
+    Diagnostics diagnostics() const;
+
+private:
+    Key renderedKey;
+    bool valid {};
+    std::atomic<uint64_t> hits {};
+    std::atomic<uint64_t> misses {};
+};
+
 class CurvePanelInteractionAdapter {
 public:
     virtual ~CurvePanelInteractionAdapter() = default;
@@ -61,7 +92,13 @@ public:
     Component* component();
     Component* componentIfCreated();
     void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
-    void renderPreview(Rectangle<float> bounds, float scaleFactor, bool preserveInteractiveZoom);
+    void renderPreview(
+            Rectangle<float> bounds,
+            float scaleFactor,
+            bool preserveInteractiveZoom,
+            uint64_t modelRevision,
+            uint64_t contentRevision,
+            uint64_t presentationRevision);
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool usesCursor(const MouseCursor& cursor) const;
@@ -69,6 +106,10 @@ public:
 
     RenderInvalidationAccumulator::Diagnostics invalidationDiagnostics() const {
         return invalidation.diagnostics();
+    }
+
+    CurvePanelPreviewRenderCache::Diagnostics previewRenderDiagnostics() const {
+        return previewRenderCache.diagnostics();
     }
 
 private:
@@ -81,6 +122,16 @@ private:
             float scaleFactor,
             Image& destination,
             bool& hasVisibleContent) const;
+    CurvePanelPreviewRenderCache::Key previewRenderKey(
+            Rectangle<float> bounds,
+            float scaleFactor,
+            uint64_t modelRevision,
+            uint64_t contentRevision,
+            uint64_t presentationRevision) const;
+    void renderPreviewUncached(
+            Rectangle<float> bounds,
+            float scaleFactor,
+            bool preserveInteractiveZoom);
     PanelHostCallbacks callbacks() const;
     void requestPanelInvalidation(PanelDirtyState::Flag flag);
     uint32_t availableRenderInvalidations() const override;
@@ -93,7 +144,9 @@ private:
     CommonGL* panelGfx {};
     CurvePanelSnapshotCache previewSnapshot;
     CurvePanelSnapshotCache expandedSnapshot;
+    CurvePanelPreviewRenderCache previewRenderCache;
     RenderInvalidationAccumulator invalidation;
+    std::atomic<uint64_t> previewInvalidationGeneration {};
     bool componentInitialised {};
     std::atomic<bool> sharedGlResourcesInitialised {};
     std::atomic<bool> renderSurfaceVisible {};
