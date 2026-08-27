@@ -72,6 +72,15 @@ const SignalPayload& outputForPort(const NodeAudioResult& node, const String& po
     return found->second;
 }
 
+float peakOf(const SignalBlock& block) {
+    if (block.samples.empty()) {
+        return 0.f;
+    }
+
+    const auto extrema = std::minmax_element(block.samples.begin(), block.samples.end());
+    return jmax(std::abs(*extrema.first), std::abs(*extrema.second));
+}
+
 template<typename Values>
 float absoluteSum(const Values& values) {
     float sum = 0.f;
@@ -557,6 +566,30 @@ TEST_CASE("Graph preview executor captures a probe after Reverb", "[cycle-v2][ru
     REQUIRE_FALSE(probe.values.empty());
 }
 
+TEST_CASE("Graph preview executor meters the captured Output payload", "[cycle-v2][runtime][ui]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", { 300.f, 0.f }));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+
+    const auto compileResult = GraphCompiler().compile(graph);
+    REQUIRE(compileResult.succeeded());
+    const auto audio = GraphAudioExecutor().process(graph, compileResult.plan, 128);
+    const auto previews = GraphPreviewExecutor().render(compileResult.plan, audio, 4);
+    const auto& outputAudio = findAudio(audio, "out").output;
+    const auto& outputPreview = findPreview(previews, "out");
+
+    REQUIRE(outputPreview.role == PreviewModuleRole::OutputMeters);
+    REQUIRE(outputPreview.primary.size() == 4);
+    REQUIRE(outputPreview.secondary.size() == 4);
+    REQUIRE(outputPreview.primary.front() == Catch::Approx(peakOf(outputAudio.block)));
+    const SignalBlock& right = outputAudio.isStereo()
+            ? outputAudio.secondaryBlock
+            : outputAudio.block;
+    REQUIRE(outputPreview.secondary.front() == Catch::Approx(peakOf(right)));
+}
+
 TEST_CASE("Graph preview executor captures a probe after splicing Reverb into the demo output",
         "[cycle-v2][runtime][probe]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
@@ -623,12 +656,9 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
     REQUIRE(findPreview(result, "waveMesh").gridRows == 4);
     REQUIRE(findPreview(result, "waveMesh").domain == PortDomain::TimeSignal);
     REQUIRE(findPreview(result, "env").role == PreviewModuleRole::Envelope);
-    REQUIRE(std::none_of(
-            result.nodes.begin(),
-            result.nodes.end(),
-            [](const NodePreviewResult& preview) {
-                return preview.nodeId == "out";
-            }));
+    REQUIRE(findPreview(result, "out").role == PreviewModuleRole::OutputMeters);
+    REQUIRE(findPreview(result, "out").primary == std::vector<float>(4, 0.f));
+    REQUIRE(findPreview(result, "out").secondary == std::vector<float>(4, 0.f));
 }
 
 TEST_CASE("Incremental preview rendering preserves clean cached nodes",

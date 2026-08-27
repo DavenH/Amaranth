@@ -1,0 +1,31 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "previewStats.7.nodeId",
+      "equals": "out"
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.7.role",
+      "equals": "Output Meters"
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.7.sampleCount",
+      "equals": 40
+    },
+    {
+      "command": "assertState",
+      "path": "previewStats.7.maximum",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-agent-output-meter.png"
+    }
+  ],
+  "quit": true
+}

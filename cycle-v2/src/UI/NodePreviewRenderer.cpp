@@ -1,4 +1,5 @@
 #include "UI/NodePreviewRenderer.h"
+#include "UI/OutputMeterPresentation.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -9,7 +10,6 @@
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
-#include <array>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -153,43 +153,7 @@ void drawMeters(
     const float right = preview.secondary.empty()
             ? left
             : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(
-            area.getWidth() * 0.20f,
-            area.getHeight() * 0.08f);
-    const float width = meterArea.getWidth() * 0.28f;
-    const std::array<std::pair<Rectangle<float>, float>, 2> meters {{
-            { meterArea.removeFromLeft(width), left },
-            { meterArea.removeFromRight(width), right }
-    }};
-
-    for (const auto& meter : meters) {
-        constexpr int segments = 12;
-        const float gap = jmax(1.f, meter.first.getHeight() * 0.015f);
-        const float segmentHeight = (meter.first.getHeight() - gap * (float) (segments - 1))
-                / (float) segments;
-        const int litSegments = jlimit(0, segments, roundToInt(meter.second * (float) segments));
-
-        for (int index = 0; index < segments; ++index) {
-            const int levelIndex = segments - 1 - index;
-            const Rectangle<float> segment(
-                    meter.first.getX(),
-                    meter.first.getY() + (float) index * (segmentHeight + gap),
-                    meter.first.getWidth(),
-                    segmentHeight);
-            const float normalized = (float) levelIndex / (float) (segments - 1);
-            Colour segmentColour = colour;
-
-            if (normalized > 0.78f) {
-                segmentColour = Colour(0xffff705f);
-            } else if (normalized > 0.58f) {
-                segmentColour = Colour(0xfff4d35e);
-            }
-
-            const bool lit = levelIndex < litSegments;
-            graphics.setColour(segmentColour.withAlpha(lit ? 0.82f : 0.14f));
-            graphics.fillRoundedRectangle(segment, 1.4f);
-        }
-    }
+    OutputMeterPresentation::paint(graphics, area, left, right, colour);
 }
 
 std::vector<float> mappedSurface(
@@ -948,9 +912,7 @@ void NodePreviewRenderer::paintQualitative(
     if (kind == NodeKind::Output) {
         const NodePreviewResult meters {
                 request.node.id,
-                PreviewModuleRole::OutputMeters,
-                { 0.64f },
-                { 0.58f }
+                PreviewModuleRole::OutputMeters
         };
         drawMeters(
                 graphics,

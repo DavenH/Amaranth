@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numeric>
 
@@ -13,6 +14,7 @@
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "UI/NodePreviewRenderer.h"
+#include "UI/OutputMeterPresentation.h"
 
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
@@ -856,7 +858,7 @@ TEST_CASE("Preview processors read node parameters from process context", "[cycl
     REQUIRE(context.secondary == std::vector<float> { 1.f, 0.5f, 1.f });
 }
 
-TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-v2][runtime]") {
+TEST_CASE("Preview processors cover mesh and image summaries", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
 
     PreviewProcessContext mesh;
@@ -874,26 +876,94 @@ TEST_CASE("Preview processors cover mesh, image, and output summaries", "[cycle-
     image.pointCount = 4;
     factory.create(PreviewModuleRole::Image)->render(image);
     REQUIRE(image.primary == std::vector<float> { 0.f, 1.f / 3.f, 2.f / 3.f, 1.f });
+}
 
-    PreviewProcessContext meters;
-    meters.pointCount = 3;
-    factory.create(PreviewModuleRole::OutputMeters)->render(meters);
-    REQUIRE(meters.primary == std::vector<float> { 0.65f, 0.65f, 0.65f });
-    REQUIRE(meters.secondary == std::vector<float> { 0.62f, 0.62f, 0.62f });
+TEST_CASE("Output meters report captured mono and stereo peaks", "[cycle-v2][runtime][ui]") {
+    NodePreviewProcessorFactory factory;
+
+    PreviewProcessContext missing;
+    missing.pointCount = 2;
+    factory.create(PreviewModuleRole::OutputMeters)->render(missing);
+    REQUIRE(missing.primary == std::vector<float> { 0.f, 0.f });
+    REQUIRE(missing.secondary == std::vector<float> { 0.f, 0.f });
+
+    SignalPayload empty;
+    PreviewProcessContext emptyContext;
+    emptyContext.pointCount = 1;
+    emptyContext.capturedOutput = &empty;
+    factory.create(PreviewModuleRole::OutputMeters)->render(emptyContext);
+    REQUIRE(emptyContext.primary == std::vector<float> { 0.f });
+    REQUIRE(emptyContext.secondary == std::vector<float> { 0.f });
+
+    SignalPayload mono;
+    mono.block.samples = SignalBuffer { -0.8f, 0.25f, 0.5f };
+    PreviewProcessContext monoContext;
+    monoContext.pointCount = 2;
+    monoContext.capturedOutput = &mono;
+    factory.create(PreviewModuleRole::OutputMeters)->render(monoContext);
+    REQUIRE(monoContext.primary == std::vector<float> { 0.8f, 0.8f });
+    REQUIRE(monoContext.secondary == std::vector<float> { 0.8f, 0.8f });
+
+    SignalPayload stereo;
+    stereo.channelLayout = ChannelLayout::StereoPair;
+    stereo.block.samples = SignalBuffer { -0.25f, 0.4f };
+    stereo.secondaryBlock.samples = SignalBuffer { 0.1f, -1.4f };
+    PreviewProcessContext stereoContext;
+    stereoContext.pointCount = 3;
+    stereoContext.capturedOutput = &stereo;
+    factory.create(PreviewModuleRole::OutputMeters)->render(stereoContext);
+    REQUIRE(stereoContext.primary == std::vector<float> { 0.4f, 0.4f, 0.4f });
+    REQUIRE(stereoContext.secondary == std::vector<float> { 1.f, 1.f, 1.f });
+}
+
+TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") {
+    const std::array<Rectangle<float>, 3> areas {
+            Rectangle<float>(0.f, 0.f, 72.f, 64.f),
+            Rectangle<float>(0.f, 0.f, 190.f, 132.f),
+            Rectangle<float>(0.f, 0.f, 320.f, 220.f)
+    };
+
+    for (const auto area : areas) {
+        const auto layout = OutputMeterPresentation::layout(area);
+        const float channelGap = layout.right.getX() - layout.left.getRight();
+
+        REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
+        REQUIRE(layout.left.getRight() <= layout.right.getX());
+        REQUIRE(channelGap >= 4.f);
+        REQUIRE(channelGap <= 8.f);
+        REQUIRE(area.contains(layout.left));
+        REQUIRE(area.contains(layout.right));
+    }
+
+    const auto natural = OutputMeterPresentation::layout({ 0.f, 0.f, 190.f, 132.f });
+    const float occupiedFraction = (natural.left.getWidth() + natural.right.getWidth()) / 190.f;
+    REQUIRE(occupiedFraction >= 0.60f);
+
+    const Rectangle<float> channel(10.f, 20.f, 30.f, 100.f);
+    REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.f).getHeight() == 0.f);
+    REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.25f)
+            == Rectangle<float>(10.f, 95.f, 30.f, 25.f));
+    REQUIRE(OutputMeterPresentation::fillBounds(channel, 2.f) == channel);
+}
+
+TEST_CASE("Output meter painting reveals a low nonzero level", "[cycle-v2][ui]") {
+    auto render = [](float level) {
+        Image image(Image::ARGB, 190, 132, true);
+        Graphics graphics(image);
+        OutputMeterPresentation::paint(
+                graphics,
+                image.getBounds().toFloat(),
+                level,
+                level,
+                Colour(0xff2fd9d2));
+        return image;
+    };
+
+    REQUIRE_FALSE(imagesMatch(render(0.f), render(0.01f)));
 }
 
 TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
-
-    PreviewProcessContext meters;
-    meters.pointCount = 2;
-    const std::vector<float> meterSummary { 0.2f, 0.6f };
-    meters.input.summary = &meterSummary;
-    factory.create(PreviewModuleRole::OutputMeters)->render(meters);
-
-    REQUIRE(meters.primary == std::vector<float> { 0.4f, 0.4f });
-    REQUIRE(meters.secondary.size() == 2);
-    REQUIRE(meters.secondary[0] == Catch::Approx(0.38f));
 
     PreviewProcessContext mesh;
     mesh.pointCount = 3;

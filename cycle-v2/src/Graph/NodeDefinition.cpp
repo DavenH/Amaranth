@@ -607,7 +607,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
                     .help("Sends the finished sound to the audio output.")
-                    .runtime(AudioModuleRole::Output, PreviewModuleRole::None)
+                    .runtime(AudioModuleRole::Output, PreviewModuleRole::OutputMeters)
                     .presentation({}, { 190.f, 160.f })
                     .finish()
     };
