@@ -1101,6 +1101,32 @@ Resource-action boundary:
   approximate modelling here would violate the graph mutation and reuse rules.
   Slice 3 therefore remains partial at this explicit architectural boundary.
 
+Reuse audit update (2026-08-27):
+
+- Cycle 1 does not currently expose these operations as an extractable domain
+  service. `IrModellerUI::buttonClicked` asks the application `Dialogs` object
+  to load directly into the live `IrModeller::PitchedSample`; the DSP object
+  then trims, resizes, rasterizes, and switches its private `usingWavFile`
+  state through pending actions.
+- `IrModellerUI::modelLoadedWave` owns the `AutoModeller` call, mutates the
+  editor mesh while holding both audio and vertex locks, changes the Size
+  parameter, and explicitly records the edit as having no undo. Load follows
+  the same no-undo path. Cycle 1 persistence stores an external file path and
+  attempts to reload it later.
+- A narrow adapter therefore cannot reuse the behavior unchanged: it would
+  either retain Cycle 1 UI/DSP ownership inside Cycle V2 or copy trimming,
+  modelling, resource lifetime, and state switching into a new command. The
+  stable solution requires extracting a UI-independent import/modelling core
+  and defining durable resource state before adding editor actions.
+- The next design must decide whether imported audio is embedded, copied into
+  a project asset store, or retained as an external reference; what immutable
+  payload or asset identity undo restores; whether direct-audio and modelled
+  curve modes belong in the IR node model or a separate resource object; and
+  where asynchronous file selection ends and the semantic graph command
+  begins. These choices affect document portability, missing-file behavior,
+  undo memory, serialization, compilation, and audio-thread publication, so
+  this UI TDD does not select them implicitly.
+
 Review evidence:
 
 - Shared presentation gained only a generic semantic keyboard-step callback
