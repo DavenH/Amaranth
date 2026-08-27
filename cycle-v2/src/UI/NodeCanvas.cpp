@@ -247,7 +247,10 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     const bool paletteChanged = palette.close();
     const bool changed = guideShelfState.hoveredGuideId.isNotEmpty()
             || probeRailState.hoveredProbeId.isNotEmpty()
+            || resolvedHoverText.isNotEmpty()
             || paletteChanged;
+    pointerInsideCanvas = false;
+    resolvedHoverText = {};
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
     if (changed) {
@@ -260,13 +263,17 @@ bool NodeCanvas::updateHoverAt(Point<float> position) {
     const int previousPaletteSection = palette.activeSection();
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeRailState.hoveredProbeId;
+    const String previousHoverText = resolvedHoverText;
     const bool occluded = expandedEditorBoundsForOverlay().contains(position);
+    pointerInsideCanvas = true;
     lastMousePosition = position;
     if (occluded) {
         const bool paletteChanged = palette.close();
+        resolvedHoverText = {};
         guideShelfState.hoveredGuideId = {};
         probeRailState.hoveredProbeId = {};
         const bool changed = paletteChanged
+                || previousHoverText.isNotEmpty()
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty();
         performanceMetrics.recordOperation(
@@ -281,6 +288,7 @@ bool NodeCanvas::updateHoverAt(Point<float> position) {
             viewport,
             presentation.revision(),
             document.revision());
+    resolvedHoverText = hitRouter.hoverTextFor(viewport, scene, position);
     guideShelfState.hoveredGuideId = GuideCurveShelf::guideAt(
             position,
             graph,
@@ -323,6 +331,7 @@ bool NodeCanvas::updateHoverAt(Point<float> position) {
             CanvasPerformanceMetrics::Operation::HoverResolution,
             performanceMetrics.timestamp() - startedAt);
     const bool changed = previousPaletteSection != palette.activeSection()
+            || previousHoverText != resolvedHoverText
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeRailState.hoveredProbeId;
     performanceMetrics.recordHoverState(changed);
@@ -335,6 +344,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     grabKeyboardFocus();
     palette.updateHover(event.position);
     editStatusMessage = {};
+    pointerInsideCanvas = true;
     lastMousePosition = event.position;
     interaction.reset();
     spliceTargetEdgeIndex = -1;
@@ -907,6 +917,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     const Rectangle<float> occlusion = editorCoordinator.blocksCanvas(expandedNode)
             ? editorCoordinator.boundsFor(expandedNode, content)
             : Rectangle<float> {};
+    const bool pointerOccluded = expandedEditorBoundsForOverlay().contains(lastMousePosition);
     std::optional<PendingConnectionPresentation> pending;
     if (const auto* connection = std::get_if<PortConnectionGesture>(&interaction.gesture())) {
         pending = PendingConnectionPresentation { connection->source, connection->endpoint };
@@ -938,7 +949,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            hitRouter.hoverTextFor(viewport, scene, lastMousePosition),
+            pointerInsideCanvas && !pointerOccluded
+                    ? hitRouter.hoverTextFor(viewport, scene, lastMousePosition)
+                    : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),
@@ -1181,6 +1194,8 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.selectedNodeId = selectedNodeId;
     result.expandedNodeId = expandedNodeId;
     result.editStatusMessage = editStatusMessage;
+    result.hoverRepaintRequestCount = performanceMetrics.snapshot().triggers[
+            static_cast<size_t>(CanvasPerformanceMetrics::Trigger::Hover)].repaintRequests;
     result.selectedEdgeIndex = selectedEdgeIndex;
     result.previewVoiceLengthSeconds = globalUnisonPreviewContext.voiceDurationSeconds;
     result.probeRefreshMode = probeRailState.refreshMode;

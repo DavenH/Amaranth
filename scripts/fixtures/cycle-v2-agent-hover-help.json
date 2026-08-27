@@ -4,14 +4,42 @@
       "command": "openGraph",
       "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
     },
+    { "command": "resetCanvasPerformance" },
     {
       "command": "pointer",
       "event": "move",
-      "targetId": "node:waveshaper",
+      "targetId": "node:magnitudeLayer1",
       "targetX": 0.5,
-      "targetY": 0.5,
-      "waitForIdle": true,
-      "idleDelayMs": 250
+      "targetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "hoverRepaintRequestCount",
+      "equals": 1
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1",
+      "targetX": 0.55,
+      "targetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "hoverRepaintRequestCount",
+      "equals": 1
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "hoverRepaintRequestCount",
+      "equals": 2
     },
     {
       "command": "screenshot",

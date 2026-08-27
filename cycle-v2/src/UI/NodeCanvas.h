@@ -144,6 +144,8 @@ private:
 
     int activeTrimeshVertexIndex { -1 };
     Point<float> lastMousePosition;
+    String resolvedHoverText;
+    bool pointerInsideCanvas {};
     bool draggingTrimeshMorph {};
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
