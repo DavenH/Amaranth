@@ -31,30 +31,15 @@ std::optional<double> parseGain(const String& text) {
 }
 
 String formatFrequency(double value) {
-    const float frequency = CycleDsp::equalizerFrequency((float) value);
-    return frequency >= 1000.f
-            ? formatPropertyReal(frequency / 1000.f) + " kHz"
-            : String(roundToInt(frequency)) + " Hz";
+    return formatPropertyFrequency(CycleDsp::equalizerFrequency((float) value));
 }
 
-std::optional<double> parseFrequency(String text) {
-    text = text.trim();
-    double multiplier = 1.0;
-    if (text.endsWithIgnoreCase("kHz")) {
-        text = text.dropLastCharacters(3).trimEnd();
-        multiplier = 1000.0;
-    } else if (text.endsWithIgnoreCase("Hz")) {
-        text = text.dropLastCharacters(2).trimEnd();
-    }
-    const auto number = parsePropertyNumber(text);
-    if (!number.has_value()) {
+std::optional<double> parseFrequency(const String& text) {
+    const auto frequency = parsePropertyFrequency(text, 20.0, 20000.0);
+    if (!frequency.has_value()) {
         return std::nullopt;
     }
-    const double frequency = *number * multiplier;
-    if (frequency < 20.0 || frequency > 20000.0) {
-        return std::nullopt;
-    }
-    return CycleDsp::equalizerFrequencyUnitValue((float) frequency);
+    return CycleDsp::equalizerFrequencyUnitValue((float) *frequency);
 }
 
 String frequencyHelp(const String& id) {

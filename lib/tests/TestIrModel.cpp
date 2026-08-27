@@ -12,6 +12,10 @@ TEST_CASE("IR model mappings preserve Cycle 1 parameter behavior", "[cycle-dsp][
     REQUIRE(CycleDsp::irImpulseLengthValue(16384) == Catch::Approx(1.));
     REQUIRE(CycleDsp::irPostGain(0.5) == Catch::Approx(1.f));
     REQUIRE(CycleDsp::irPrefilterAmount(0.5) == Catch::Approx(0.125f));
+    REQUIRE(CycleDsp::irPrefilterFrequency(0.5, 44100.0)
+            == Catch::Approx(2756.25f));
+    REQUIRE(CycleDsp::irPrefilterValueForFrequency(2756.25f, 44100.0)
+            == Catch::Approx(0.5));
 }
 
 TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp][ir]") {

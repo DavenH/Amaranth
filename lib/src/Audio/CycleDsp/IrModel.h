@@ -14,6 +14,8 @@ float irPostGainDecibels(double normalizedValue);
 double irPostGainValueForDecibels(float decibels);
 float irPrefilterAmount(double normalizedValue);
 double irPrefilterValueForAmount(float amount);
+float irPrefilterFrequency(double normalizedValue, double sampleRate);
+double irPrefilterValueForFrequency(float frequency, double sampleRate);
 int irTrimmedSampleCount(Buffer<float> samples, bool* silent = nullptr);
 
 void buildIrPrefilterLevels(Buffer<float> levels, double normalizedValue);

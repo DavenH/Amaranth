@@ -38,6 +38,17 @@ double irPrefilterValueForAmount(float amount) {
     return std::cbrt(std::clamp(amount, 0.f, 1.f));
 }
 
+float irPrefilterFrequency(double normalizedValue, double sampleRate) {
+    return irPrefilterAmount(normalizedValue) * (float) std::max(0.0, sampleRate * 0.5);
+}
+
+double irPrefilterValueForFrequency(float frequency, double sampleRate) {
+    if (sampleRate <= 0.0) {
+        return 0.0;
+    }
+    return irPrefilterValueForAmount((float) (frequency / (sampleRate * 0.5)));
+}
+
 int irTrimmedSampleCount(Buffer<float> samples, bool* silent) {
     if (samples.size() < 64) {
         if (silent != nullptr) {

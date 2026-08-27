@@ -19,6 +19,7 @@ constexpr int kValueWidth = 72;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
 constexpr int kToggleControlInset = 12;
+constexpr double kReferenceSampleRate = 44100.0;
 
 std::optional<double> parseNumber(String text) {
     text = text.trim();
@@ -82,22 +83,21 @@ std::optional<double> parsePostGain(String text) {
 }
 
 String formatHighPass(double value) {
-    return formatPropertyReal(CycleDsp::irPrefilterAmount(value) * 100.f) + "% Nyq";
+    return formatPropertyFrequency(
+            CycleDsp::irPrefilterFrequency(value, kReferenceSampleRate));
 }
 
-std::optional<double> parseHighPass(String text) {
-    text = text.trim();
-    if (text.endsWithIgnoreCase("nyq")) {
-        text = text.dropLastCharacters(3).trimEnd();
-    }
-    if (text.endsWithChar('%')) {
-        text = text.dropLastCharacters(1).trimEnd();
-    }
-    const auto percentage = parseNumber(text);
-    if (!percentage.has_value() || *percentage < 0.0 || *percentage > 100.0) {
+std::optional<double> parseHighPass(const String& text) {
+    const auto frequency = parsePropertyFrequency(
+            text,
+            0.0,
+            kReferenceSampleRate * 0.5);
+    if (!frequency.has_value()) {
         return std::nullopt;
     }
-    return CycleDsp::irPrefilterValueForAmount((float) (*percentage / 100.0));
+    return CycleDsp::irPrefilterValueForFrequency(
+            (float) *frequency,
+            kReferenceSampleRate);
 }
 
 void configureSizeControl(LabeledParameterSlider& control) {
@@ -140,16 +140,20 @@ void configureHighPassControl(LabeledParameterSlider& control) {
             formatHighPass,
             parseHighPass,
             0.0,
-            0.01,
-            0.001,
-            "High-pass cutoff as a percentage of Nyquist. Shift-drag for fine adjustment.");
+            100.0,
+            10.0,
+            "High-pass cutoff at the 44.1 kHz reference sample rate. Shift-drag for fine adjustment.");
     control.slider.setKeyboardStepper([](double current, bool increase, bool fine) {
-        const float amount = CycleDsp::irPrefilterAmount(current);
-        const double step = fine ? 0.001 : 0.01;
-        return CycleDsp::irPrefilterValueForAmount((float) jlimit(
-                0.0,
-                1.0,
-                amount + (increase ? step : -step)));
+        const float frequency = CycleDsp::irPrefilterFrequency(
+                current,
+                kReferenceSampleRate);
+        const float step = fine ? 10.f : 100.f;
+        return CycleDsp::irPrefilterValueForFrequency(
+                jlimit(
+                        0.f,
+                        (float) (kReferenceSampleRate * 0.5),
+                        frequency + (increase ? step : -step)),
+                kReferenceSampleRate);
     });
 }
 

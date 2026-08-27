@@ -109,6 +109,8 @@ The property rail adds a separate IR sample section below processing controls:
 The graph view remains the largest region. The panel does not narrate ordinary
 empty, active, or inactive state in a persistent sublabel: binding and mode are
 already expressed by the available actions and the rendered editor state.
+The High Pass readout uses Hz or kHz at the established 44.1 kHz editor
+reference rate rather than exposing a percentage of Nyquist.
 Actions use real focusable buttons, preserve host Escape behavior, and expose
 stable automation IDs.
 
@@ -205,11 +207,11 @@ no clipped status or stranded rail space.
   Busy state stays on the initiating action and errors use the editor status
   surface. Decode and modelling run on the existing worker boundary and publish
   the completed immutable edit on the message thread.
-- Focused Cycle V2 tests pass with 86 audio-resource assertions and 59 IR
+- Focused Cycle V2 tests pass with 86 audio-resource assertions and 62 IR
   property assertions. The Standalone Debug target builds with `--parallel
   10`; the 31-command focused automation includes first-Escape close, and the
   screenshot fixture passes with no filtered-log warnings.
-- The complete Cycle V2 run passes 10,408 of 10,409 assertions; its sole
+- The complete Cycle V2 run passes 10,416 of 10,417 assertions; its sole
   failure is the pre-existing hit-router hover-help assertion already recorded
   in `ui-bugs.md`.
 - The IR sample refinement removes persistent state narration, aligns Enabled
@@ -217,6 +219,10 @@ no clipped status or stranded rail space.
   action row. Focused property tests cover its geometry and error-status route;
   the production screenshot is
   `/private/tmp/cycle-v2-ir-compact-actions.png`.
+- The High Pass control displays the shared Hz/kHz frequency format at the
+  44.1 kHz editor reference rate, accepts either unit for direct entry, and
+  steps by 100 Hz or 10 Hz with Shift. The visually reviewed screenshot is
+  `/private/tmp/cycle-v2-ir-hertz-readout.png`.
 - Final production volume is 949 added and 73 removed lines (876 net), within
   the review threshold. The new domain preparation implementation is 124
   lines; no generic adapter exceeds 150 lines, and generic graph, serializer,

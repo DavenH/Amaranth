@@ -147,6 +147,34 @@ std::optional<double> parsePropertyPercentage(const String& text) {
             : std::nullopt;
 }
 
+String formatPropertyFrequency(double frequency) {
+    return frequency >= 1000.0
+            ? formatPropertyReal(frequency / 1000.0) + " kHz"
+            : String(roundToInt(frequency)) + " Hz";
+}
+
+std::optional<double> parsePropertyFrequency(
+        String text,
+        double minimum,
+        double maximum) {
+    text = text.trim();
+    double multiplier = 1.0;
+    if (text.endsWithIgnoreCase("kHz")) {
+        text = text.dropLastCharacters(3).trimEnd();
+        multiplier = 1000.0;
+    } else if (text.endsWithIgnoreCase("Hz")) {
+        text = text.dropLastCharacters(2).trimEnd();
+    }
+    const auto number = parsePropertyNumber(text);
+    if (!number.has_value()) {
+        return std::nullopt;
+    }
+    const double frequency = *number * multiplier;
+    return frequency >= minimum && frequency <= maximum
+            ? std::optional<double>(frequency)
+            : std::nullopt;
+}
+
 var propertySliderRowAutomationState(const PropertySliderRow& row) {
     const PropertySliderLayout& layout = row.currentLayout();
     auto* result = new DynamicObject();

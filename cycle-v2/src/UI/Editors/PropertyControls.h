@@ -52,6 +52,11 @@ std::optional<double> parsePropertyNumber(
         const juce::String& suffix = {});
 juce::String formatPropertyPercentage(double value);
 std::optional<double> parsePropertyPercentage(const juce::String& text);
+juce::String formatPropertyFrequency(double frequency);
+std::optional<double> parsePropertyFrequency(
+        juce::String text,
+        double minimum,
+        double maximum);
 juce::var propertySliderRowAutomationState(const PropertySliderRow& row);
 
 class PrecisionSlider final : public juce::Slider {

@@ -1199,7 +1199,7 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
             == "0 dB");
     REQUIRE(state.getProperty("highPassLayout", {}).getProperty("display", {}).toString()
-            == "13% Nyq");
+            == "2.8 kHz");
     for (const Identifier property : {
             Identifier("sizeLayout"),
             Identifier("postGainLayout"),
@@ -1271,10 +1271,21 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     auto* highPass = dynamic_cast<PrecisionSlider*>(
             editor.findChildWithID("irEditor.highPass"));
     REQUIRE(highPass != nullptr);
-    const float cutoffBefore = CycleDsp::irPrefilterAmount(highPass->getValue());
+    const float cutoffBefore = CycleDsp::irPrefilterFrequency(
+            highPass->getValue(),
+            44100.0);
     REQUIRE(highPass->keyPressed(KeyPress(KeyPress::rightKey)));
-    REQUIRE(CycleDsp::irPrefilterAmount(highPass->getValue())
-            == Catch::Approx(cutoffBefore + 0.01f).margin(0.00001f));
+    REQUIRE(CycleDsp::irPrefilterFrequency(highPass->getValue(), 44100.0)
+            == Catch::Approx(cutoffBefore + 100.f).margin(0.1f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    auto* highPassValue = dynamic_cast<Label*>(
+            editor.findChildWithID("irEditor.highPass.value"));
+    REQUIRE(highPassValue != nullptr);
+    highPassValue->setText("880 Hz", sendNotificationSync);
+    REQUIRE(CycleDsp::irPrefilterFrequency(highPass->getValue(), 44100.0)
+            == Catch::Approx(880.f).margin(0.1f));
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.events.clear();

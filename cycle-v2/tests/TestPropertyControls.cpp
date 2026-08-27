@@ -38,6 +38,13 @@ TEST_CASE("Property values use two significant figures without redundant decimal
     REQUIRE(formatPropertyReal(-24.4) == "-24");
     REQUIRE(formatPropertyPercentage(0.5) == "50%");
     REQUIRE(formatPropertyPercentage(0.76562) == "77%");
+    REQUIRE(formatPropertyFrequency(880.0) == "880 Hz");
+    REQUIRE(formatPropertyFrequency(2756.25) == "2.8 kHz");
+    REQUIRE(parsePropertyFrequency("880 Hz", 0.0, 22050.0).value()
+            == Catch::Approx(880.0));
+    REQUIRE(parsePropertyFrequency("2.8 kHz", 0.0, 22050.0).value()
+            == Catch::Approx(2800.0));
+    REQUIRE_FALSE(parsePropertyFrequency("23 kHz", 0.0, 22050.0).has_value());
 }
 
 TEST_CASE("Property slider indicator remains centred at fractional positions",

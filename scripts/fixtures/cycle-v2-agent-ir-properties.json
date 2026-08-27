@@ -37,7 +37,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.highPassLayout.display",
-      "equals": "13% Nyq"
+      "equals": "2.8 kHz"
     },
     {
       "command": "assertState",
