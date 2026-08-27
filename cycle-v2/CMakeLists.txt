@@ -153,6 +153,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasEditorCoordinator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasHitRouter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasNodeLayerCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasQueryModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"

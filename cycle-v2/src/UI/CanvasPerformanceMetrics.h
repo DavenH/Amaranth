@@ -76,6 +76,10 @@ public:
         std::array<uint64_t, repaintScopeCount> repaintScopes {};
         std::array<Distribution, operationCount> operations;
         std::array<Distribution, presentationStageCount> presentationStages;
+        uint64_t nodeLayerCacheHits {};
+        uint64_t nodeLayerCacheMisses {};
+        Distribution nodeLayerCacheHitDuration;
+        Distribution nodeLayerCacheMissDuration;
         uint64_t hoverStateChanges {};
         uint64_t hoverStateUnchanged {};
         uint64_t occludedHoverResolutions {};
@@ -133,6 +137,10 @@ public:
     void presentationStageCompleted(
             NodeCanvasPresentationStage stage,
             uint64_t elapsedMicroseconds) override;
+    void nodeLayerCacheCompleted(
+            uint64_t hits,
+            uint64_t misses,
+            uint64_t elapsedMicroseconds) override;
     void reset();
 
     Snapshot snapshot() const;
@@ -171,6 +179,10 @@ private:
     std::array<uint64_t, repaintScopeCount> repaintScopeData {};
     std::array<Distribution, operationCount> operationData;
     std::array<Distribution, presentationStageCount> presentationStageData;
+    uint64_t nodeLayerCacheHits {};
+    uint64_t nodeLayerCacheMisses {};
+    Distribution nodeLayerCacheHitDuration;
+    Distribution nodeLayerCacheMissDuration;
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};
     uint64_t occludedHoverResolutions {};

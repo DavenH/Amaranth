@@ -34,6 +34,7 @@ public:
     void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
     CurveEditorWidget& curveEditorWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
+    uint64_t nodePresentationFingerprint(const String& nodeId) const;
 
     const TrimeshWidget* findTrimeshWidget(const String& nodeId) const;
     void clearCachedSprites();

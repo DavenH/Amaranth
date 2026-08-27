@@ -1,5 +1,21 @@
 # UI Bug Notes
 
+## Open: Palette icon registry asserts during Trimesh performance session
+
+Context:
+
+- The Cycle V2 Trimesh/Spy external performance session on 2026-08-27 rendered
+  and completed its edit sequence, but logged
+  `NodePaletteEntryIconRenderer.cpp:27` because an icon source name did not
+  resolve through `NodeDefinitionRegistry`.
+- The same session subsequently logged the already-observed
+  `juce_String.cpp:327` assertions. The node-layer cache does not alter palette
+  registration or icon lookup.
+- Repro log: `/private/tmp/cycle-v2-node-sprite-cache.log`.
+
+Current status: open; identify the unmatched `NodeIconData` source name and
+align it with the authoritative node definition id.
+
 ## Open: Canvas edge hover test returns unstable help text
 
 Context:

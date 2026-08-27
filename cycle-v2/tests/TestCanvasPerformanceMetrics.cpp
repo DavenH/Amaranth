@@ -165,6 +165,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     metrics.presentationStageCompleted(
             NodeCanvasPresentationStage::SpyRail,
             900);
+    metrics.nodeLayerCacheCompleted(12, 2, 5800);
+    metrics.nodeLayerCacheCompleted(14, 0, 220);
 
     const auto snapshot = metrics.snapshot();
     const auto& nodes = snapshot.presentationStages[static_cast<size_t>(
@@ -178,11 +180,20 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(3.0));
     REQUIRE((double) property(property(stages, "spyRail"), "maxMs")
             == Catch::Approx(0.9));
+    const var& nodeLayerCache = property(property(exported, "presentationCache"), "nodeLayer");
+    REQUIRE((int64) property(nodeLayerCache, "hits") == 26);
+    REQUIRE((int64) property(nodeLayerCache, "misses") == 2);
+    REQUIRE((double) property(property(nodeLayerCache, "hitDuration"), "meanMs")
+            == Catch::Approx(0.22));
+    REQUIRE((double) property(property(nodeLayerCache, "missDuration"), "meanMs")
+            == Catch::Approx(5.8));
 
     metrics.reset();
     for (const auto& stage : metrics.snapshot().presentationStages) {
         REQUIRE(stage.count == 0);
     }
+    REQUIRE(metrics.snapshot().nodeLayerCacheHits == 0);
+    REQUIRE(metrics.snapshot().nodeLayerCacheMisses == 0);
 }
 
 TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",

@@ -709,6 +709,10 @@ bool NodePreviewRenderer::renderOpenGL(
     return true;
 }
 
+uint64_t NodePreviewRenderer::nodePresentationFingerprint(const String& nodeId) const {
+    return resources.nodePresentationFingerprint(nodeId);
+}
+
 bool NodePreviewRenderer::paintAuthoritativeModel(
         Graphics& graphics,
         const NodePreviewRenderRequest& request) {

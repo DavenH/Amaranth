@@ -4,6 +4,7 @@
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasNodeLayerCache.h"
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodePalette.h"
@@ -96,7 +97,12 @@ private:
     void paintEdges(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPendingConnection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintCachedNode(
+            Graphics& graphics,
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node,
+            float physicalScale);
     void paintNode(
             Graphics& graphics,
             const NodeCanvasPresentationFrame& frame,
@@ -120,6 +126,7 @@ private:
     GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
     NodeCanvasPresentationPerformanceObserver* performanceObserver;
+    NodeCanvasNodeLayerCache nodeLayerCache;
 };
 
 }

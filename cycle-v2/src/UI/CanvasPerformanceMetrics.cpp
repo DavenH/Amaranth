@@ -167,6 +167,20 @@ void CanvasPerformanceMetrics::presentationStageCompleted(
     record(presentationStageData[indexFor(stage)], elapsedMicroseconds);
 }
 
+void CanvasPerformanceMetrics::nodeLayerCacheCompleted(
+        uint64_t hits,
+        uint64_t misses,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    nodeLayerCacheHits += hits;
+    nodeLayerCacheMisses += misses;
+    if (misses == 0) {
+        record(nodeLayerCacheHitDuration, elapsedMicroseconds);
+    } else {
+        record(nodeLayerCacheMissDuration, elapsedMicroseconds);
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -176,6 +190,10 @@ void CanvasPerformanceMetrics::reset() {
     repaintScopeData = {};
     operationData = {};
     presentationStageData = {};
+    nodeLayerCacheHits = 0;
+    nodeLayerCacheMisses = 0;
+    nodeLayerCacheHitDuration = {};
+    nodeLayerCacheMissDuration = {};
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
@@ -199,6 +217,10 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
     result.repaintScopes = repaintScopeData;
     result.operations = operationData;
     result.presentationStages = presentationStageData;
+    result.nodeLayerCacheHits = nodeLayerCacheHits;
+    result.nodeLayerCacheMisses = nodeLayerCacheMisses;
+    result.nodeLayerCacheHitDuration = nodeLayerCacheHitDuration;
+    result.nodeLayerCacheMissDuration = nodeLayerCacheMissDuration;
     result.hoverStateChanges = hoverStateChanges;
     result.hoverStateUnchanged = hoverStateUnchanged;
     result.occludedHoverResolutions = occludedHoverResolutions;
@@ -279,6 +301,19 @@ var CanvasPerformanceMetrics::toVar(
                 distributionToVar(current.presentationStages[index]));
     }
     root->setProperty("presentationStages", var(presentationStages));
+
+    auto* nodeLayerCache = new DynamicObject();
+    nodeLayerCache->setProperty("hits", (int64) current.nodeLayerCacheHits);
+    nodeLayerCache->setProperty("misses", (int64) current.nodeLayerCacheMisses);
+    nodeLayerCache->setProperty(
+            "hitDuration",
+            distributionToVar(current.nodeLayerCacheHitDuration));
+    nodeLayerCache->setProperty(
+            "missDuration",
+            distributionToVar(current.nodeLayerCacheMissDuration));
+    auto* presentationCache = new DynamicObject();
+    presentationCache->setProperty("nodeLayer", var(nodeLayerCache));
+    root->setProperty("presentationCache", var(presentationCache));
 
     auto* hoverState = new DynamicObject();
     hoverState->setProperty("changed", (int64) current.hoverStateChanges);

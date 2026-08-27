@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+Implemented.
 
 ## Problem
 
@@ -88,6 +88,43 @@ The selected first cache boundary is therefore the node layer. Its key must
 cover image geometry and display scale, viewport transform, committed or
 transient graph content, preview presentation content, selection/hover state,
 and any global preview context consumed by node painters.
+
+## Implemented Cache
+
+`NodeCanvasNodeLayerCache` owns transparent HiDPI sprites for visible nodes;
+`NodeCanvasPresentation::paintNode` remains the sole producer of their pixels.
+The cache compares immutable node presentation state (bounds, parameters,
+ports, model identity, and editor state) and keys reuse on presentation and
+viewport revisions, per-node preview-resource state, selection, display scale,
+sprite bounds, and the global Unison/Voice context where applicable. Entries
+that leave the visible set are released at the end of the frame.
+
+The metrics export `presentationCache.nodeLayer` with per-node hit/miss counts.
+The hit-duration distribution contains all-hit node-layer frames; the
+miss-duration distribution contains mixed or all-miss frames.
+
+## Optimization Evidence
+
+The external-session Delay workload recorded 74 hits and 16 misses. Node-layer
+mean fell from 9.04 ms to 4.11 ms (55%); total JUCE-paint mean fell from
+19.82 ms to 18.11 ms despite an unrelated utilities outlier.
+
+The Trimesh/Spy workload recorded 83 hits and 15 misses. Node-layer mean fell
+from 24.25 ms to 16.10 ms (34%), and total JUCE-paint mean fell from 42.95 ms
+to 31.90 ms (26%). Five of seven measured node-layer frames were all-cache-hit
+frames averaging 0.025 ms. The remaining maximum is an authoritative preview
+publication miss and is visible in the miss distribution rather than hidden.
+
+Screenshots after parameter, popup-occlusion, and selection changes retained
+the expected node previews and composition at native display scale. Focused
+cache tests cover node-content, presentation, viewport, preview-resource,
+context, selection, scale, and eviction invalidation.
+
+The standalone Debug target builds successfully. The two focused cache and
+metrics tests pass (38 assertions total). The complete Cycle V2 executable ran
+512 test cases with 511 passing; its sole failure is the pre-existing canvas
+edge-hover help-text regression recorded in `docs/TDD/ui-bugs.md`, outside the
+paint/cache path.
 
 ## Completion Criteria
 

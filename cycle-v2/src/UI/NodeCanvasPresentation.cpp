@@ -1,5 +1,8 @@
-#include "UI/NodeCanvasPresentation.h"
+#include <cmath>
+#include <cstring>
 
+#include "UI/NodeCanvasPresentation.h"
+#include "Runtime/FingerprintBuilder.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
@@ -12,11 +15,25 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
-#include <cmath>
-
 namespace CycleV2 {
 
 namespace {
+
+uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
+    uint64_t durationBits {};
+    std::memcpy(&durationBits, &context.voiceDurationSeconds, sizeof(durationBits));
+    FingerprintBuilder fingerprint;
+    fingerprint
+            .add((uint64_t) context.midiNote)
+            .add(durationBits)
+            .add(context.pitchEnvelopeUnitValues.size());
+    for (const float value : context.pitchEnvelopeUnitValues) {
+        uint32_t valueBits {};
+        std::memcpy(&valueBits, &value, sizeof(valueBits));
+        fingerprint.add(valueBits);
+    }
+    return fingerprint.value();
+}
 
 const Colour kCanvasBackground { 0xff101318 };
 const Colour kCanvasGridMajor { 0x2f5b6370 };
@@ -566,7 +583,7 @@ void NodeCanvasPresentation::paintContent(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
-        paintNodes(graphics, frame);
+        paintCachedNodes(graphics, frame);
     }
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -747,15 +764,62 @@ void NodeCanvasPresentation::paintSnapGuides(
     }
 }
 
-void NodeCanvasPresentation::paintNodes(
+void NodeCanvasPresentation::paintCachedNodes(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    const uint64_t startedAt = performanceObserver != nullptr
+            ? performanceObserver->presentationTimestamp()
+            : 0;
+    nodeLayerCache.beginFrame();
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
-    for (const auto& node : frame.graph.getNodes()) {
-        if (frame.viewport.toScreen(node.bounds).intersects(visibleArea)) {
-            paintNode(graphics, frame, node);
+    for (const Node& node : frame.graph.getNodes()) {
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        if (!nodeBounds.intersects(visibleArea)) {
+            continue;
         }
+        paintCachedNode(graphics, frame, node, physicalScale);
     }
+    const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
+    if (performanceObserver != nullptr) {
+        performanceObserver->nodeLayerCacheCompleted(
+                stats.hits,
+                stats.misses,
+                performanceObserver->presentationTimestamp() - startedAt);
+    }
+}
+
+void NodeCanvasPresentation::paintCachedNode(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node,
+        float physicalScale) {
+    const Rectangle<int> logicalBounds = frame.viewport.toScreen(node.bounds)
+            .expanded(32.f * portScale(frame.viewport.getZoom()))
+            .getSmallestIntegerContainer();
+    const bool usesGlobalContext = node.kind == NodeKind::Unison
+            || node.kind == NodeKind::VoiceContext;
+    const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
+            node,
+            logicalBounds,
+            frame.presentationRevision,
+            frame.viewport.getRevision(),
+            previewRenderer.nodePresentationFingerprint(node.id),
+            usesGlobalContext ? unisonContextFingerprint(frame.unisonPreviewContext) : 0,
+            node.id == frame.selectedNodeId,
+            physicalScale);
+    if (!cache.hit) {
+        Graphics imageGraphics(*cache.image);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -logicalBounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -logicalBounds.getY() * physicalScale));
+        paintNode(imageGraphics, frame, node);
+    }
+    nodeLayerCache.draw(graphics, cache);
 }
 
 UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
