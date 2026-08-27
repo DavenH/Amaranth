@@ -364,8 +364,23 @@ public:
 
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
+    bool setAudioResource(NodeAudioResourceEdit edit) override {
+        appliedResource = std::move(edit);
+        return true;
+    }
+    bool removeAudioResource() override {
+        ++resourceRemovals;
+        resource.reset();
+        return true;
+    }
+    std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
+        return resource;
+    }
 
     StringArray events;
+    NodeAudioResourceEdit appliedResource;
+    std::optional<NodeAudioResourceSummary> resource;
+    int resourceRemovals {};
 };
 
 class LifecycleCurveEditor final : public CurveExpandedEditorComponent {
@@ -1192,14 +1207,26 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(landmarks->size() == 5);
     REQUIRE((int) landmarks->getFirst().getProperty("sample", {}) == 0);
     REQUIRE((int) landmarks->getLast().getProperty("sample", {}) == 1024);
-    REQUIRE_FALSE((bool) state.getProperty("resourceActionsAvailable", {}));
+    REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
+    REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
+    REQUIRE(state.getProperty("resourceStatus", {}).toString()
+            == "No embedded audio\nCurve is active");
 
     int textButtonCount = 0;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
         textButtonCount += dynamic_cast<TextButton*>(editor.getChildComponent(index)) != nullptr
                 ? 1 : 0;
     }
-    REQUIRE(textButtonCount == 0);
+    REQUIRE(textButtonCount == 3);
+    auto* loadAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.loadAudio"));
+    auto* modelAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.modelAudio"));
+    auto* unloadAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.unloadAudio"));
+    REQUIRE(loadAudio != nullptr);
+    REQUIRE(modelAudio != nullptr);
+    REQUIRE(unloadAudio != nullptr);
+    REQUIRE(loadAudio->getWantsKeyboardFocus());
+    REQUIRE(modelAudio->getWantsKeyboardFocus());
+    REQUIRE_FALSE(unloadAudio->isEnabled());
 
     auto* sizeValue = dynamic_cast<Label*>(editor.findChildWithID("irEditor.size.value"));
     REQUIRE(sizeValue != nullptr);
@@ -1234,6 +1261,18 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(CycleDsp::irPostGainDecibels(postGain->getValue())
             == Catch::Approx(1.f).margin(0.001f));
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.resource = NodeAudioResourceSummary { "room.wav", "direct", 101 };
+    editor.setNode(ir);
+    REQUIRE((bool) editor.automationState().getProperty("resourceBound", {}));
+    REQUIRE(editor.automationState().getProperty("resourceMode", {}).toString() == "direct");
+    REQUIRE(editor.automationState().getProperty("resourceStatus", {}).toString()
+            == "room.wav\nDirect Audio · curve inactive");
+    REQUIRE(unloadAudio->isEnabled());
+    REQUIRE(unloadAudio->getWantsKeyboardFocus());
+    unloadAudio->onClick();
+    REQUIRE(delegate.resourceRemovals == 1);
+    REQUIRE_FALSE((bool) editor.automationState().getProperty("resourceBound", {}));
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",
@@ -1520,6 +1559,38 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("shape"), "post") == "0.5");
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
+        "[cycle-v2][node-editor-host][audio-resource]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.setNodeAudioResource({
+            "ir",
+            { "audio-1", "room.wav", 48000.0, { 1.f, 0.f } },
+            "direct"
+    }));
+    REQUIRE(document.graph().findAudioResourceBinding("ir") != nullptr);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.rebinds == 1);
+
+    REQUIRE(commands.removeNodeAudioResource("ir"));
+    REQUIRE(document.graph().findAudioResourceBinding("ir") == nullptr);
+    REQUIRE(presentation.immediateRefreshes == 2);
+    REQUIRE(presentation.rebinds == 2);
 }
 
 TEST_CASE("Node editor command service publishes model edits as one transaction",

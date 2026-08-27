@@ -5,6 +5,7 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 
+#include <cmath>
 #include <unordered_map>
 
 namespace CycleV2 {
@@ -73,6 +74,65 @@ void reconcileTrimeshGuideAssignments(
 
     result.changes.guidesChanged = true;
     result.changes.guidePresentationChanged = true;
+}
+
+bool validAudioResource(const AudioSampleResource& resource) {
+    if (resource.id.isEmpty() || resource.name.isEmpty()
+            || !std::isfinite(resource.sampleRate) || resource.sampleRate <= 0.0
+            || resource.samples.empty() || resource.samples.size() > 16384) {
+        return false;
+    }
+    return std::all_of(resource.samples.begin(), resource.samples.end(), [](float sample) {
+        return std::isfinite(sample) && sample >= -1.f && sample <= 1.f;
+    });
+}
+
+GraphEditResult replaceOptionalAudioResourceModel(
+        const GraphEditor& editor,
+        NodeGraph& graph,
+        NodeAudioResourceEdit& edit) {
+    if (edit.model == nullptr) {
+        GraphEditResult unchanged;
+        unchanged.changed = false;
+        return unchanged;
+    }
+    return editor.replaceNodeModel(
+            graph,
+            edit.nodeId,
+            edit.expectedModelRevision,
+            std::move(edit.model));
+}
+
+bool bindReplacementAudioResource(
+        NodeGraph& graph,
+        NodeAudioResourceEdit& edit,
+        const String& previousResourceId) {
+    const String resourceId = edit.resource.id;
+    if (!graph.addAudioResource(std::move(edit.resource))
+            || !graph.bindAudioResource({ edit.nodeId, resourceId, std::move(edit.mode) })) {
+        return false;
+    }
+    if (previousResourceId.isNotEmpty()
+            && graph.audioResourceUsageCount(previousResourceId) == 0) {
+        graph.removeAudioResource(previousResourceId);
+    }
+    return true;
+}
+
+GraphEditResult audioResourceEditResult(
+        const String& nodeId,
+        ParameterImpact parameterImpacts,
+        bool modelChanged) {
+    GraphEditResult result;
+    result.nodeId = nodeId;
+    result.changes.nodeIds.push_back(nodeId);
+    result.changes.parameterImpacts = parameterImpacts
+            | ParameterImpact::Presentation
+            | ParameterImpact::Preview
+            | ParameterImpact::DspConfiguration;
+    result.changes.modelChanged = modelChanged;
+    result.changes.resourcesChanged = true;
+    return result;
 }
 
 }
@@ -455,7 +515,12 @@ GraphEditResult GraphEditor::removeNode(NodeGraph& graph, const String& nodeId) 
         return { GraphEditCode::MissingNode, {}, {} };
     }
 
+    const NodeAudioResourceBinding* binding = graph.findAudioResourceBinding(nodeId);
+    const String resourceId = binding != nullptr ? binding->resourceId : String();
     graph.removeNode(nodeId);
+    if (resourceId.isNotEmpty() && graph.audioResourceUsageCount(resourceId) == 0) {
+        graph.removeAudioResource(resourceId);
+    }
     return {};
 }
 
@@ -694,6 +759,68 @@ GraphEditResult GraphEditor::setNodeEditorState(
     result.changes.editorStateChanged = result.changed;
     result.changes.parameterImpacts = ParameterImpact::Presentation;
     return result;
+}
+
+GraphEditResult GraphEditor::setNodeAudioResource(
+        NodeGraph& graph,
+        NodeAudioResourceEdit edit) const {
+    if (findNode(graph, edit.nodeId) == nullptr) {
+        return { GraphEditCode::MissingNode, edit.nodeId, {} };
+    }
+    if (!validAudioResource(edit.resource) || edit.mode.isEmpty()
+            || graph.findAudioResource(edit.resource.id) != nullptr) {
+        return { GraphEditCode::InvalidControlValue, edit.nodeId, {} };
+    }
+
+    NodeGraph candidate = graph;
+    const NodeAudioResourceBinding* previousBinding = candidate.findAudioResourceBinding(edit.nodeId);
+    const String previousResourceId = previousBinding != nullptr
+            ? previousBinding->resourceId
+            : String();
+    const auto parameterResult = setNodeParametersAtomic(
+            candidate,
+            edit.nodeId,
+            edit.parameters);
+    if (!parameterResult.succeeded()) {
+        return parameterResult;
+    }
+    const GraphEditResult modelResult = replaceOptionalAudioResourceModel(*this, candidate, edit);
+    if (!modelResult.succeeded()) {
+        return modelResult;
+    }
+    if (!bindReplacementAudioResource(candidate, edit, previousResourceId)) {
+        return { GraphEditCode::InvalidControlValue, edit.nodeId, {} };
+    }
+
+    graph = std::move(candidate);
+    return audioResourceEditResult(
+            edit.nodeId,
+            parameterResult.changes.parameterImpacts,
+            modelResult.changed);
+}
+
+GraphEditResult GraphEditor::removeNodeAudioResource(
+        NodeGraph& graph,
+        const String& nodeId) const {
+    if (findNode(graph, nodeId) == nullptr) {
+        return { GraphEditCode::MissingNode, nodeId, {} };
+    }
+    const NodeAudioResourceBinding* binding = graph.findAudioResourceBinding(nodeId);
+    if (binding == nullptr) {
+        GraphEditResult unchanged { GraphEditCode::Connected, nodeId, {} };
+        unchanged.changed = false;
+        return unchanged;
+    }
+
+    NodeGraph candidate = graph;
+    const String resourceId = binding->resourceId;
+    candidate.unbindAudioResource(nodeId);
+    if (candidate.audioResourceUsageCount(resourceId) == 0) {
+        candidate.removeAudioResource(resourceId);
+    }
+    graph = std::move(candidate);
+
+    return audioResourceEditResult(nodeId, ParameterImpact::None, false);
 }
 
 const Node* GraphEditor::findNode(const NodeGraph& graph, const String& nodeId) const {

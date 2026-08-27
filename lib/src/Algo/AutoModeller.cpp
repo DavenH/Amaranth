@@ -86,7 +86,7 @@ void AutoModeller::preparePoints() {
         points = reducePath(points, reductionLevel);
     } else {
         vector<Intercept> spoints;
-        for(int i = 0; i < filtered.size(); ++i) {
+        for(int i = 0; i < srcSamples.size(); ++i) {
             spoints.emplace_back(ramp[i], srcSamples[i]);
         }
 
@@ -140,8 +140,39 @@ void AutoModeller::modelToInteractor(
         bool isCyclic,
         float leftOffset,
         float reduction) {
-    if(buffer.empty()) {
+    if (buffer.empty()) {
         return;
+    }
+    const vector<Intercept> modelledPoints = modelToIntercepts(
+            buffer,
+            isCyclic,
+            leftOffset,
+            reduction);
+    float startTime = interactor->getYellow();
+
+    if (interactor->getMesh()) {
+        interactor->setSuspendUndo(true);
+        interactor->removeLinesInRange(Range(0.f, 1.f), interactor->getOffsetPosition(true));
+
+        float y;
+        for (const auto& point : modelledPoints) {
+            y = point.y * 0.5f + 0.5f;
+            NumberUtils::constrain<float>(y, 0.f, 1.f);
+
+            interactor->addNewCube(startTime, point.x, y, point.shp);
+        }
+
+        interactor->setSuspendUndo(false);
+    }
+}
+
+vector<Intercept> AutoModeller::modelToIntercepts(
+        const Buffer<float>& buffer,
+        bool isCyclic,
+        float leftOffset,
+        float reduction) {
+    if(buffer.empty()) {
+        return {};
     }
 
     leftSamplingOffset  = leftOffset;
@@ -155,23 +186,7 @@ void AutoModeller::modelToInteractor(
     buffer.copyTo(srcSamples);
 
     preparePoints();
-
-    float startTime = interactor->getYellow();
-
-    if (interactor->getMesh()) {
-        interactor->setSuspendUndo(true);
-        interactor->removeLinesInRange(Range(0.f, 1.f), interactor->getOffsetPosition(true));
-
-        float y;
-        for (auto& point : points) {
-            y = point.y * 0.5f + 0.5f;
-            NumberUtils::constrain<float>(y, 0.f, 1.f);
-
-            interactor->addNewCube(startTime, point.x, y, point.shp);
-        }
-
-        interactor->setSuspendUndo(false);
-    }
+    return points;
 }
 
 void AutoModeller::removeUselessPoints() {

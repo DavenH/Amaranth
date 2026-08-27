@@ -24,21 +24,14 @@ constexpr float kIrPadding = 0.0625f;
 
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters,
-        const NodeModelStatePtr& model) {
+        const NodeModelStatePtr& model,
+        const AudioSampleResource* directResource) {
     auto result = std::make_shared<IrConfiguration>();
     const NodeParameterMap parameterMap(parameters);
     result->enabled = parameterMap.boolValue("enabled", true);
     const float highPass = parameterMap.floatValue("highPass", 0.5f);
     const size_t impulseLength = (size_t) CycleDsp::irImpulseLength(
             parameterMap.floatValue("size", 0.5f));
-    FlatCurvePreparation curve(
-            "CycleV2IrConfiguration",
-            model,
-            FXRasterizer::Bipolar);
-    if (!curve.prepare()) {
-        return {};
-    }
-
     result->impulse.resize(impulseLength);
     std::vector<float> rawImpulse(impulseLength);
     std::vector<float> oversampledImpulse(impulseLength * 2);
@@ -47,11 +40,25 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     preparedOversampler.setOversampleFactor(2);
     preparedOversampler.setMemoryBuffer({ oversampledImpulse.data(), (int) oversampledImpulse.size() });
     Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
-    CycleDsp::rasterizeIrImpulse(
-            curve.sampler(),
-            rawImpulseBuffer,
-            preparedOversampler,
-            kIrPadding);
+    if (directResource != nullptr) {
+        const int copyCount = jmin(
+                rawImpulseBuffer.size(),
+                (int) directResource->samples.size());
+        VecOps::copy(directResource->samples.data(), rawImpulseBuffer.get(), copyCount);
+    } else {
+        FlatCurvePreparation curve(
+                "CycleV2IrConfiguration",
+                model,
+                FXRasterizer::Bipolar);
+        if (!curve.prepare()) {
+            return {};
+        }
+        CycleDsp::rasterizeIrImpulse(
+                curve.sampler(),
+                rawImpulseBuffer,
+                preparedOversampler,
+                kIrPadding);
+    }
 
     Transform transform;
     transform.allocate((int) impulseLength, Transform::DivFwdByN, true);
@@ -64,6 +71,32 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
             transform);
     result->postGain = CycleDsp::irPostGain(parameterMap.floatValue("post", 0.5f));
     return result;
+}
+
+const AudioSampleResource* IrSignalProcessor::directResource(
+        const NodeGraph* graph,
+        const String& nodeId) {
+    if (graph == nullptr) {
+        return nullptr;
+    }
+    const NodeAudioResourceBinding* binding = graph->findAudioResourceBinding(nodeId);
+    if (binding == nullptr || binding->mode != "direct") {
+        return nullptr;
+    }
+    return graph->findAudioResource(binding->resourceId);
+}
+
+String IrSignalProcessor::resourceConfigurationKey(
+        const NodeGraph* graph,
+        const String& nodeId) {
+    if (graph == nullptr) {
+        return {};
+    }
+    const NodeAudioResourceBinding* binding = graph->findAudioResourceBinding(nodeId);
+    if (binding == nullptr) {
+        return ":irResource=none";
+    }
+    return ":irResource=" + binding->resourceId + ":" + binding->mode;
 }
 
 void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {

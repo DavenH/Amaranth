@@ -1,5 +1,7 @@
 #include "IrModel.h"
 
+#include <Array/ScopedAlloc.h>
+
 #include <algorithm>
 #include <cmath>
 
@@ -34,6 +36,36 @@ float irPrefilterAmount(double normalizedValue) {
 
 double irPrefilterValueForAmount(float amount) {
     return std::cbrt(std::clamp(amount, 0.f, 1.f));
+}
+
+int irTrimmedSampleCount(Buffer<float> samples, bool* silent) {
+    if (samples.size() < 64) {
+        if (silent != nullptr) {
+            *silent = false;
+        }
+        return samples.size();
+    }
+
+    ScopedAlloc<float> magnitudeMemory(samples.size());
+    Buffer<float> magnitudes = magnitudeMemory.place(samples.size());
+    samples.copyTo(magnitudes);
+    magnitudes.abs();
+
+    constexpr float trimThreshold = 0.001f;
+    float movingAverage {};
+    int thresholdIndex = samples.size() - 1;
+    for (int offset = 0; offset < samples.size(); ++offset) {
+        thresholdIndex = samples.size() - offset - 1;
+        movingAverage = 0.95f * movingAverage + 0.05f * magnitudes[thresholdIndex];
+        if (movingAverage > trimThreshold) {
+            break;
+        }
+    }
+
+    if (silent != nullptr) {
+        *silent = thresholdIndex == 0;
+    }
+    return std::clamp(thresholdIndex + 1, 64, 16384);
 }
 
 void buildIrPrefilterLevels(Buffer<float> levels, double normalizedValue) {

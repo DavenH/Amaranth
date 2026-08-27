@@ -24,6 +24,7 @@ public:
             const NodeEditorContext& context) :
             commands     (context.commands)
         ,   presentation (context.presentation)
+        ,   resources    (context.resources)
         ,   editor       (createCurveNodeEditor(node.kind, *context.resources.curveEditorWidget(node))) {
         editor->setDelegate(this);
     }
@@ -71,8 +72,21 @@ private:
         presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
     }
 
+    bool setAudioResource(NodeAudioResourceEdit edit) override {
+        return commands.setNodeAudioResource(std::move(edit));
+    }
+
+    bool removeAudioResource() override {
+        return commands.removeNodeAudioResource(nodeId);
+    }
+
+    std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
+        return resources.audioResourceSummary(nodeId);
+    }
+
     NodeEditorCommands& commands;
     NodeEditorPresentation& presentation;
+    NodeEditorResources& resources;
     std::unique_ptr<CurveExpandedEditorComponent> editor;
     String nodeId;
 };

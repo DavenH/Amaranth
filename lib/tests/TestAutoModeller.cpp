@@ -6,9 +6,21 @@ using namespace juce;
 #include <fstream>
 
 #include "../src/Algo/AutoModeller.h"
+#include "../src/Curve/Curve.h"
+
+#include <array>
 
 using std::fstream;
 using std::vector;
+
+namespace {
+
+struct CurveTableScope {
+    CurveTableScope() { Curve::calcTable(); }
+    ~CurveTableScope() { Curve::deleteTable(); }
+};
+
+}
 
 TEST_CASE("Auto Modeller basic functionality", "[pitch][dsp]") {
     fstream fin;
@@ -25,3 +37,18 @@ TEST_CASE("Auto Modeller basic functionality", "[pitch][dsp]") {
     vector<Intercept> reducedPath = modeller.modelToPath(path, 2.0, true);
 }
 
+TEST_CASE("Auto Modeller exposes the shared buffer-to-intercepts path", "[pitch][dsp]") {
+    CurveTableScope curveTable;
+    std::array<float, 128> samples {};
+    samples[32] = 0.8f;
+    samples[64] = -0.4f;
+
+    AutoModeller modeller;
+    const auto points = modeller.modelToIntercepts(
+            { samples.data(), (int) samples.size() },
+            false,
+            0.0625f,
+            0.1f);
+
+    REQUIRE(points.size() >= 2);
+}

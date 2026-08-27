@@ -1019,6 +1019,23 @@ UnisonPreviewContext NodeCanvas::unisonPreviewContext() const {
             globalUnisonPreviewContext);
 }
 
+std::optional<NodeAudioResourceSummary> NodeCanvas::audioResourceSummary(
+        const String& nodeId) const {
+    const NodeAudioResourceBinding* binding = graph.findAudioResourceBinding(nodeId);
+    if (binding == nullptr) {
+        return std::nullopt;
+    }
+    const AudioSampleResource* resource = graph.findAudioResource(binding->resourceId);
+    if (resource == nullptr) {
+        return std::nullopt;
+    }
+    return NodeAudioResourceSummary {
+            resource->name,
+            binding->mode,
+            (int) resource->samples.size()
+    };
+}
+
 bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (!result.handled) {
         return false;

@@ -70,6 +70,8 @@ public:
             uint64_t expectedRevision,
             NodeModelStatePtr model);
     GraphEditResult setNodeEditorState(const juce::String& nodeId, juce::var editorState);
+    GraphEditResult setNodeAudioResource(NodeAudioResourceEdit edit);
+    GraphEditResult removeNodeAudioResource(const juce::String& nodeId);
     GraphEditResult moveNode(const juce::String& nodeId, juce::Point<float> position);
     GraphEditResult resizeNode(const juce::String& nodeId, juce::Rectangle<float> bounds);
     GraphEditResult editNodePresentation(

@@ -10,6 +10,12 @@ class AutoModeller {
 public:
     AutoModeller();
 
+    vector<Intercept> modelToIntercepts(
+            const Buffer<float>& buffer,
+            bool cyclic,
+            float leftSamplingOffset,
+            float reduction);
+
     void modelToInteractor(
         const Buffer<float> &buffer,
         Interactor2D *interactor,

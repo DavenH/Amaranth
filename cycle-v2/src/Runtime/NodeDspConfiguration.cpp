@@ -78,6 +78,9 @@ String NodeDspConfigurationFactory::keyFor(
     if (graph != nullptr) {
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
     }
+    if (role == AudioModuleRole::ImpulseResponse) {
+        key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
+    }
 
     return key;
 }
@@ -92,6 +95,12 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
     if (role == AudioModuleRole::MeshSource) {
         return std::shared_ptr<const INodeDspConfiguration>(
                 buildTrimeshConfiguration(parameters, model, graph, nodeId));
+    }
+    if (role == AudioModuleRole::ImpulseResponse) {
+        return IrSignalProcessor::buildConfiguration(
+                parameters,
+                model,
+                IrSignalProcessor::directResource(graph, nodeId));
     }
 
     using Factory = std::shared_ptr<const INodeDspConfiguration> (*)(
@@ -149,10 +158,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     WaveshaperSignalProcessor::buildConfiguration(values, modelState));
-        } },
-        { AudioModuleRole::ImpulseResponse, [](AudioModuleRole, const auto& values, const auto& modelState) {
-            return std::shared_ptr<const INodeDspConfiguration>(
-                    IrSignalProcessor::buildConfiguration(values, modelState));
         } },
         { AudioModuleRole::Reverb, [](AudioModuleRole, const auto& values, const auto&) {
             return std::shared_ptr<const INodeDspConfiguration>(

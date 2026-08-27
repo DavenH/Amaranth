@@ -39,6 +39,16 @@ struct GraphChangeSet {
     ParameterImpact parameterImpacts { ParameterImpact::None };
     bool modelChanged {};
     bool editorStateChanged {};
+    bool resourcesChanged {};
+};
+
+struct NodeAudioResourceEdit {
+    String nodeId;
+    AudioSampleResource resource;
+    String mode;
+    std::vector<NodeParameter> parameters;
+    NodeModelStatePtr model;
+    uint64_t expectedModelRevision {};
 };
 
 struct GraphEditResult {
@@ -118,6 +128,12 @@ public:
             NodeGraph& graph,
             const String& nodeId,
             var editorState) const;
+    GraphEditResult setNodeAudioResource(
+            NodeGraph& graph,
+            NodeAudioResourceEdit edit) const;
+    GraphEditResult removeNodeAudioResource(
+            NodeGraph& graph,
+            const String& nodeId) const;
 
 private:
     const Node* findNode(const NodeGraph& graph, const String& nodeId) const;

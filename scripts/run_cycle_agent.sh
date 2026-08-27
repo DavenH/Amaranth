@@ -328,9 +328,14 @@ capture_os_screenshot() {
         '
             [
                 .results[]
-                | select(.type == "inspectTargets" and .ok == true)
-                | .data.targets[]
-                | select(.area == $area and .target == $target and .resolved == true)
+                | select(.ok == true)
+                | if .type == "inspectTargets" then
+                    .data.targets[]
+                    | select(.area == $area and .target == $target and .resolved == true)
+                  elif .type == "inspectPointerTargets" then
+                    .data.targets[]
+                    | select(.id == $target)
+                  else empty end
                 | .screenBounds
             ][0]
             | "\(.x),\(.y),\(.width),\(.height)"

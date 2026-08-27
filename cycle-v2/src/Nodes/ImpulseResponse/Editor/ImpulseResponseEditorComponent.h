@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseResourcePreparation.h"
 
 #include <memory>
 
@@ -13,6 +14,9 @@ public:
 
 private:
     struct Impl;
+    void chooseAudio(ImpulseResponseImportMode mode);
+    void prepareAudio(const File& file, ImpulseResponseImportMode mode);
+    void updateResourceState();
     Rectangle<float> editorPanelBounds() const override;
     Rectangle<float> editorControlBounds() const override;
     void paintEditor(Graphics&) override;

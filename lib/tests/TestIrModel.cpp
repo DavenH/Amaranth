@@ -24,6 +24,21 @@ TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp]
     }
 }
 
+TEST_CASE("IR tail trimming preserves Cycle 1 moving-average boundaries", "[cycle-dsp][ir]") {
+    std::array<float, 256> samples {};
+    samples[31] = 1.f;
+    bool silent {};
+
+    REQUIRE(CycleDsp::irTrimmedSampleCount({ samples.data(), (int) samples.size() }, &silent)
+            == 64);
+    REQUIRE_FALSE(silent);
+
+    samples.fill(0.f);
+    REQUIRE(CycleDsp::irTrimmedSampleCount({ samples.data(), (int) samples.size() }, &silent)
+            == 64);
+    REQUIRE(silent);
+}
+
 TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-dsp][ir]") {
     constexpr int length = 128;
     std::array<float, length> raw {};

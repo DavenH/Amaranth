@@ -168,6 +168,8 @@ private:
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
     void notifyOverlayOcclusionChanged();
+    std::optional<NodeAudioResourceSummary> audioResourceSummary(
+            const String& nodeId) const override;
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;
 

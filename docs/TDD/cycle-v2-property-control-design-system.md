@@ -2,9 +2,8 @@
 
 ## Status
 
-In Progress (all property-presentation and Voice Context hosted-interaction
-slices complete; IR resource actions remain blocked on the documented
-wave-resource command-service boundary, 2026-08-27).
+Implemented (property presentation, hosted Voice Context interaction, and the
+IR resource-command boundary are complete, 2026-08-27).
 
 ## Context
 
@@ -1155,3 +1154,14 @@ Review evidence:
   hit-router hover-help assertion recorded in `ui-bugs.md`. JUnit evidence:
   `/private/tmp/cycle-v2-ir-tests-junit.xml`. A compilation database remains
   unavailable for focused clang-tidy.
+
+Resource-boundary completion (2026-08-27):
+
+- `cycle-v2-ir-audio-resources.md` resolves the former Slice 3 blocker with
+  embedded portable audio, one undoable semantic command, shared Cycle 1 trim
+  and modelling behavior, direct IR preparation, and truthful Load, Model, and
+  Unload controls.
+- The focused fixture now asserts that resource actions are available and that
+  the empty-resource status is explicit; it also covers first-Escape close.
+- Production screenshot:
+  `/private/tmp/cycle-v2-ir-audio-resources.png`.

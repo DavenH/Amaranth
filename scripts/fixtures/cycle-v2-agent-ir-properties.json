@@ -47,6 +47,16 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.resourceActionsAvailable",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceStatus",
+      "equals": "No embedded audio\nCurve is active"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceBound",
       "equals": false
     },
     {
@@ -173,6 +183,16 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.sizeLayout.display",
       "equals": "1024 smp"
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "escape"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": ""
     }
   ],
   "quit": true

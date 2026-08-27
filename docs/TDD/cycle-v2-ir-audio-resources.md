@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (technical design approved for implementation, 2026-08-27).
+Implemented (2026-08-27).
 
 ## Objective
 
@@ -185,3 +185,38 @@ no clipped status or stranded rail space.
 - All deletion targets, focused tests, Standalone Debug build, style checks,
   automation fixture, filtered-log review, and production screenshot pass.
 
+## Implementation Evidence
+
+- The graph owns bounded normalized mono resources and opaque node bindings;
+  serializer tests cover portable round trips, malformed data, duplicate IDs,
+  and dangling bindings.
+- One dispatcher edit atomically replaces the resource, mode, Size, and
+  optional curve. Focused tests cover replacement, unload, undo, redo, and
+  downstream editor refresh.
+- `CycleDsp::irTrimmedSampleCount` and
+  `AutoModeller::modelToIntercepts` are the shared authoritative paths. Cycle 1
+  now calls the extracted trim operation, and its duplicated calculation is
+  gone.
+- Direct bindings reach `IrSignalProcessor` and participate in its
+  configuration key. Modelled bindings use the editable curve path; neither
+  path allocates or decodes in realtime processing methods.
+- The property rail exposes focusable Load Audio, Model Audio, and contextual
+  Unload actions with explicit empty, busy, error, Direct Audio, and Modelled
+  Curve status. Decode and modelling run on the existing worker boundary and
+  publish the completed immutable edit on the message thread.
+- Focused Cycle V2 tests pass with 86 audio-resource assertions and 42 IR
+  property assertions. The Standalone Debug target builds with `--parallel
+  10`; the 31-command focused automation includes first-Escape close, and the
+  screenshot fixture passes with no filtered-log warnings.
+- The complete Cycle V2 run passes 10,391 of 10,392 assertions; its sole
+  failure is the pre-existing hit-router hover-help assertion already recorded
+  in `ui-bugs.md`.
+- Final production volume is 949 added and 73 removed lines (876 net), within
+  the review threshold. The new domain preparation implementation is 124
+  lines; no generic adapter exceeds 150 lines, and generic graph, serializer,
+  dispatcher, and editor-command code contains no IR parameter or mode logic.
+- Production screenshot:
+  `/private/tmp/cycle-v2-ir-audio-resources.png`. Automation reports/logs:
+  `/private/tmp/cycle-v2-ir-audio-resources-report.json`,
+  `/private/tmp/cycle-v2-ir-audio-resources-logs.txt`, and
+  `/private/tmp/cycle-v2-ir-audio-resource-screenshot-report.json`.

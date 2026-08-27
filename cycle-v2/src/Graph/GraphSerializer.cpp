@@ -24,6 +24,11 @@ struct StringHash {
     }
 };
 
+bool readRequiredString(
+        const DynamicObject& object,
+        const Identifier& name,
+        String& result);
+
 var parameterToJSON(const NodeParameter& parameter, const ParameterDefinition& definition) {
     switch (definition.type) {
         case ParameterType::Boolean: return parameter.value.getIntValue() != 0;
@@ -118,6 +123,70 @@ bool rectangleFromJSON(const var& value, Rectangle<float>& bounds) {
             (float) height
     };
     return true;
+}
+
+var audioResourceToJSON(const AudioSampleResource& resource) {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("id", resource.id);
+    result->setProperty("name", resource.name);
+    result->setProperty("sampleRate", resource.sampleRate);
+    Array<var> samples;
+    samples.ensureStorageAllocated((int) resource.samples.size());
+    for (float sample : resource.samples) {
+        samples.add(sample);
+    }
+    result->setProperty("samples", std::move(samples));
+    return var(result.release());
+}
+
+bool audioResourceFromJSON(const var& value, AudioSampleResource& resource) {
+    const auto* object = value.getDynamicObject();
+    const auto* samples = object != nullptr
+            ? object->getProperty("samples").getArray()
+            : nullptr;
+    if (object == nullptr
+            || !readRequiredString(*object, "id", resource.id)
+            || !readRequiredString(*object, "name", resource.name)
+            || samples == nullptr
+            || samples->isEmpty()
+            || samples->size() > 16384) {
+        return false;
+    }
+
+    resource.sampleRate = object->getProperty("sampleRate");
+    if (!std::isfinite(resource.sampleRate) || resource.sampleRate <= 0.0) {
+        return false;
+    }
+    resource.samples.reserve((size_t) samples->size());
+    for (const var& encoded : *samples) {
+        if (!encoded.isDouble() && !encoded.isInt() && !encoded.isInt64()) {
+            return false;
+        }
+        const double sample = encoded;
+        if (!std::isfinite(sample) || sample < -1.0 || sample > 1.0) {
+            return false;
+        }
+        resource.samples.push_back((float) sample);
+    }
+    return true;
+}
+
+var audioResourceBindingToJSON(const NodeAudioResourceBinding& binding) {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("nodeId", binding.nodeId);
+    result->setProperty("resourceId", binding.resourceId);
+    result->setProperty("mode", binding.mode);
+    return var(result.release());
+}
+
+bool audioResourceBindingFromJSON(
+        const var& value,
+        NodeAudioResourceBinding& binding) {
+    const auto* object = value.getDynamicObject();
+    return object != nullptr
+            && readRequiredString(*object, "nodeId", binding.nodeId)
+            && readRequiredString(*object, "resourceId", binding.resourceId)
+            && readRequiredString(*object, "mode", binding.mode);
 }
 
 String portSideToString(PortSide side) {
@@ -457,6 +526,20 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
     }
     root->setProperty("nodes", var(std::move(nodes)));
 
+    if (!graph.getAudioResources().empty()) {
+        Array<var> audioResources;
+        for (const auto& resource : graph.getAudioResources()) {
+            audioResources.add(audioResourceToJSON(resource));
+        }
+        root->setProperty("audioResources", var(std::move(audioResources)));
+
+        Array<var> audioResourceBindings;
+        for (const auto& binding : graph.getAudioResourceBindings()) {
+            audioResourceBindings.add(audioResourceBindingToJSON(binding));
+        }
+        root->setProperty("audioResourceBindings", var(std::move(audioResourceBindings)));
+    }
+
     Array<var> guides;
     for (const auto& guide : graph.getGuideCurves()) {
         guides.add(guideToJSON(guide));
@@ -505,6 +588,17 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             || encodedGuides == nullptr || encodedGuideAssignments == nullptr) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema,
                 "Graph nodes, edges, probes, guides, and guide assignments must be arrays" });
+        return result;
+    }
+
+    const var encodedAudioResourcesValue = root->getProperty("audioResources");
+    const var encodedAudioBindingsValue = root->getProperty("audioResourceBindings");
+    const auto* encodedAudioResources = encodedAudioResourcesValue.getArray();
+    const auto* encodedAudioBindings = encodedAudioBindingsValue.getArray();
+    if ((!encodedAudioResourcesValue.isVoid() && encodedAudioResources == nullptr)
+            || (!encodedAudioBindingsValue.isVoid() && encodedAudioBindings == nullptr)) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                "Audio resources and bindings must be arrays" });
         return result;
     }
 
@@ -615,6 +709,44 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         node.editorState = editor;
         registry.normalize(node);
         result.graph.addNode(std::move(node));
+    }
+
+    std::unordered_set<String, StringHash> audioResourceIds;
+    if (encodedAudioResources != nullptr) {
+        for (const var& encoded : *encodedAudioResources) {
+            AudioSampleResource resource;
+            if (!audioResourceFromJSON(encoded, resource)) {
+                result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                        "Audio resource is malformed" });
+                continue;
+            }
+            if (!audioResourceIds.emplace(resource.id).second
+                    || !result.graph.addAudioResource(std::move(resource))) {
+                result.issues.push_back({ GraphLoadCode::DuplicateIdentity,
+                        "Audio resource identity must be unique" });
+            }
+        }
+    }
+
+    std::unordered_set<String, StringHash> audioBindingNodeIds;
+    if (encodedAudioBindings != nullptr) {
+        for (const var& encoded : *encodedAudioBindings) {
+            NodeAudioResourceBinding binding;
+            if (!audioResourceBindingFromJSON(encoded, binding)) {
+                result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                        "Audio resource binding is malformed" });
+                continue;
+            }
+            if (!audioBindingNodeIds.emplace(binding.nodeId).second) {
+                result.issues.push_back({ GraphLoadCode::DuplicateIdentity,
+                        "A node may have only one audio resource binding" });
+                continue;
+            }
+            if (!result.graph.bindAudioResource(std::move(binding))) {
+                result.issues.push_back({ GraphLoadCode::InvalidGraph,
+                        "Audio resource binding has a missing node or resource" });
+            }
+        }
     }
 
     std::unordered_set<String, StringHash> guideIds;

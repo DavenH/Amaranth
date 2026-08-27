@@ -215,6 +215,31 @@ bool NodeEditorCommandService::setNodeParameterText(
     return true;
 }
 
+bool NodeEditorCommandService::setNodeAudioResource(NodeAudioResourceEdit edit) {
+    const String nodeId = edit.nodeId;
+    const auto result = commands.setNodeAudioResource(std::move(edit));
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(true);
+    return true;
+}
+
+bool NodeEditorCommandService::removeNodeAudioResource(const String& nodeId) {
+    const auto result = commands.removeNodeAudioResource(nodeId);
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(true);
+    return true;
+}
+
 bool NodeEditorCommandService::publishCurveState(
         const String& nodeId,
         NodeModelStatePtr model,

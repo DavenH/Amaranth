@@ -49,7 +49,14 @@ class IrSignalProcessor :
 public:
     static std::shared_ptr<const IrConfiguration> buildConfiguration(
             const std::vector<NodeParameter>& parameters,
-            const NodeModelStatePtr& model = {});
+            const NodeModelStatePtr& model = {},
+            const AudioSampleResource* directResource = nullptr);
+    static const AudioSampleResource* directResource(
+            const NodeGraph* graph,
+            const String& nodeId);
+    static String resourceConfigurationKey(
+            const NodeGraph* graph,
+            const String& nodeId);
 
     void prepareExecution(const AudioExecutionSpec& spec);
     void adoptConfiguration(const PublishedNodeConfiguration& published);

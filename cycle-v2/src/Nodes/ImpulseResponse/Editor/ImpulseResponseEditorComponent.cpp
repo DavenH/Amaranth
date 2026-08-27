@@ -2,6 +2,8 @@
 
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Runtime/MessageThreadWorker.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 
@@ -166,12 +168,48 @@ struct ImpulseResponseEditorComponent::Impl {
             enabled     (owner, "Enabled")
         ,   size        (owner, "Size")
         ,   postGain    (owner, "Post Gain")
-        ,   highPass    (owner, "High Pass") {}
+        ,   highPass    (owner, "High Pass") {
+        resourceTitle.setText("RESOURCE", dontSendNotification);
+        resourceTitle.setFont(FontOptions(10.f).withStyle("Bold"));
+        resourceTitle.setColour(Label::textColourId, Colour(0xff8793a1));
+        resourceStatus.setFont(FontOptions(11.f));
+        resourceStatus.setColour(Label::textColourId, Colour(0xffc1cad5));
+        resourceStatus.setJustificationType(Justification::centredLeft);
+        resourceStatus.setMinimumHorizontalScale(0.8f);
+        owner.addAndMakeVisible(resourceTitle);
+        owner.addAndMakeVisible(resourceStatus);
+
+        configureButton(loadAudio, "Load Audio", "irEditor.loadAudio");
+        configureButton(modelAudio, "Model Audio", "irEditor.modelAudio");
+        configureButton(unload, "Unload", "irEditor.unloadAudio");
+        loadAudio.setColour(TextButton::buttonColourId, Colour(0xff175b88));
+        loadAudio.setColour(TextButton::buttonOnColourId, Colour(0xff216f9f));
+        unload.setColour(TextButton::textColourOffId, Colour(0xff9ca8b5));
+        owner.addAndMakeVisible(loadAudio);
+        owner.addAndMakeVisible(modelAudio);
+        owner.addAndMakeVisible(unload);
+    }
+
+    static void configureButton(TextButton& button, const String& text, const String& id) {
+        stylePropertyButton(button, text);
+        button.setComponentID(id);
+        button.setWantsKeyboardFocus(true);
+        button.setMouseCursor(MouseCursor::PointingHandCursor);
+    }
 
     ParameterToggle enabled;
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
+    Label resourceTitle;
+    Label resourceStatus;
+    TextButton loadAudio;
+    TextButton modelAudio;
+    TextButton unload;
+    std::unique_ptr<FileChooser> chooser;
+    MessageThreadWorker worker;
+    bool busy {};
+    String error;
 };
 
 ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget& target) :
@@ -182,6 +220,20 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
     configureHighPassControl(impl->highPass);
     bindDiscreteControl(impl->enabled);
     bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
+    impl->loadAudio.onClick = [this] {
+        chooseAudio(ImpulseResponseImportMode::Direct);
+    };
+    impl->modelAudio.onClick = [this] {
+        chooseAudio(ImpulseResponseImportMode::Modelled);
+    };
+    impl->unload.onClick = [this] {
+        if (!removeAudioResource()) {
+            impl->error = "The embedded audio could not be unloaded.";
+        } else {
+            impl->error = {};
+        }
+        updateResourceState();
+    };
 }
 
 ImpulseResponseEditorComponent::~ImpulseResponseEditorComponent() = default;
@@ -232,6 +284,18 @@ void ImpulseResponseEditorComponent::layoutEditor() {
                 kValueWidth);
         bounds.removeFromTop(PropertyControlMetrics::rowGap);
     }
+    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
+    impl->resourceTitle.setBounds(bounds.removeFromTop(16));
+    impl->resourceStatus.setBounds(bounds.removeFromTop(38));
+    bounds.removeFromTop(4);
+    auto actionRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
+    const int actionWidth = (actionRow.getWidth() - PropertyControlMetrics::inlineGap) / 2;
+    impl->loadAudio.setBounds(actionRow.removeFromLeft(actionWidth));
+    actionRow.removeFromLeft(PropertyControlMetrics::inlineGap);
+    impl->modelAudio.setBounds(actionRow);
+    bounds.removeFromTop(PropertyControlMetrics::rowGap);
+    auto unloadRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
+    impl->unload.setBounds(unloadRow.removeFromRight(actionWidth));
 }
 
 void ImpulseResponseEditorComponent::syncEditorFromNode() {
@@ -244,6 +308,90 @@ void ImpulseResponseEditorComponent::syncEditorFromNode() {
     impl->size.refreshValueText();
     impl->postGain.refreshValueText();
     impl->highPass.refreshValueText();
+    updateResourceState();
+}
+
+void ImpulseResponseEditorComponent::chooseAudio(ImpulseResponseImportMode mode) {
+    impl->busy = true;
+    impl->error = {};
+    updateResourceState();
+    impl->chooser = std::make_unique<FileChooser>(
+            mode == ImpulseResponseImportMode::Direct
+                    ? "Load impulse response audio"
+                    : "Model impulse response audio",
+            File(),
+            "*.wav;*.aif;*.aiff;*.mp3;*.ogg");
+    Component::SafePointer<ImpulseResponseEditorComponent> safeThis(this);
+    impl->chooser->launchAsync(
+            FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
+            [safeThis, mode](const FileChooser& chooser) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                const File selected = chooser.getResult();
+                if (selected == File()) {
+                    safeThis->impl->busy = false;
+                    safeThis->updateResourceState();
+                    return;
+                }
+                safeThis->prepareAudio(selected, mode);
+            });
+}
+
+void ImpulseResponseEditorComponent::prepareAudio(
+        const File& file,
+        ImpulseResponseImportMode mode) {
+    struct PendingPreparation {
+        PreparedImpulseResponseAudio prepared;
+        String error;
+    };
+    const Node nodeSnapshot = node;
+    auto pending = std::make_shared<PendingPreparation>();
+    Component::SafePointer<ImpulseResponseEditorComponent> safeThis(this);
+    impl->worker.post(
+            [pending, file, mode, nodeSnapshot] {
+                const Result result = ImpulseResponseResourcePreparation::prepare(
+                        file,
+                        mode,
+                        nodeSnapshot,
+                        pending->prepared);
+                pending->error = result.getErrorMessage();
+                return true;
+            },
+            [safeThis, pending] {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                safeThis->impl->busy = false;
+                if (pending->error.isNotEmpty()) {
+                    safeThis->impl->error = pending->error;
+                } else if (!safeThis->setAudioResource(std::move(pending->prepared.edit))) {
+                    safeThis->impl->error = "The prepared audio could not be applied.";
+                } else {
+                    safeThis->impl->error = {};
+                }
+                safeThis->updateResourceState();
+            });
+}
+
+void ImpulseResponseEditorComponent::updateResourceState() {
+    const auto summary = audioResourceSummary();
+    String status;
+    if (impl->busy) {
+        status = "Preparing embedded audio…";
+    } else if (impl->error.isNotEmpty()) {
+        status = impl->error;
+    } else if (!summary.has_value()) {
+        status = "No embedded audio\nCurve is active";
+    } else if (summary->mode == "direct") {
+        status = summary->name + "\nDirect Audio · curve inactive";
+    } else {
+        status = summary->name + "\nModelled Curve · editable";
+    }
+    impl->resourceStatus.setText(status, dontSendNotification);
+    impl->loadAudio.setEnabled(!impl->busy);
+    impl->modelAudio.setEnabled(!impl->busy);
+    impl->unload.setEnabled(!impl->busy && summary.has_value());
 }
 
 void ImpulseResponseEditorComponent::applyEditorStateToWidget() {
@@ -275,7 +423,12 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty(
             "landmarks",
             sampleLandmarks(CycleDsp::irImpulseLength(impl->size.slider.getValue())));
-    state.setProperty("resourceActionsAvailable", false);
+    const auto summary = audioResourceSummary();
+    state.setProperty("resourceActionsAvailable", true);
+    state.setProperty("resourceBusy", impl->busy);
+    state.setProperty("resourceStatus", impl->resourceStatus.getText());
+    state.setProperty("resourceBound", summary.has_value());
+    state.setProperty("resourceMode", summary.has_value() ? summary->mode : String());
 }
 
 }

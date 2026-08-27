@@ -67,6 +67,18 @@ void CurveExpandedEditorComponent::setDelegate(CurveExpandedEditorDelegate* next
     widget.setDelegate(this);
 }
 
+bool CurveExpandedEditorComponent::setAudioResource(NodeAudioResourceEdit edit) {
+    return delegate != nullptr && delegate->setAudioResource(std::move(edit));
+}
+
+bool CurveExpandedEditorComponent::removeAudioResource() {
+    return delegate != nullptr && delegate->removeAudioResource();
+}
+
+std::optional<NodeAudioResourceSummary> CurveExpandedEditorComponent::audioResourceSummary() const {
+    return delegate != nullptr ? delegate->audioResourceSummary() : std::nullopt;
+}
+
 void CurveExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     setEditorModelState(node.model);

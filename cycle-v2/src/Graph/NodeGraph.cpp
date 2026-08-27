@@ -211,6 +211,91 @@ bool NodeGraph::assignGuideCurve(GuideCurveAssignment assignment) {
     return true;
 }
 
+bool NodeGraph::addAudioResource(AudioSampleResource resource) {
+    if (resource.id.isEmpty() || findAudioResource(resource.id) != nullptr) {
+        return false;
+    }
+
+    audioResources.push_back(std::move(resource));
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::removeAudioResource(const String& resourceId) {
+    if (audioResourceUsageCount(resourceId) != 0) {
+        return false;
+    }
+
+    const size_t previousCount = audioResources.size();
+    eraseIf(audioResources, [&](const AudioSampleResource& resource) {
+        return resource.id == resourceId;
+    });
+    if (audioResources.size() == previousCount) {
+        return false;
+    }
+
+    ++revision;
+    return true;
+}
+
+const AudioSampleResource* NodeGraph::findAudioResource(const String& resourceId) const {
+    const auto found = std::find_if(audioResources.begin(), audioResources.end(), [&](const auto& resource) {
+        return resource.id == resourceId;
+    });
+    return found != audioResources.end() ? &*found : nullptr;
+}
+
+bool NodeGraph::bindAudioResource(NodeAudioResourceBinding binding) {
+    if (binding.nodeId.isEmpty() || binding.resourceId.isEmpty() || binding.mode.isEmpty()
+            || findNode(binding.nodeId) == nullptr
+            || findAudioResource(binding.resourceId) == nullptr) {
+        return false;
+    }
+
+    const auto found = std::find_if(
+            audioResourceBindings.begin(),
+            audioResourceBindings.end(),
+            [&](const auto& existing) { return existing.nodeId == binding.nodeId; });
+    if (found != audioResourceBindings.end()) {
+        if (found->resourceId == binding.resourceId && found->mode == binding.mode) {
+            return false;
+        }
+        *found = std::move(binding);
+    } else {
+        audioResourceBindings.push_back(std::move(binding));
+    }
+    ++revision;
+    return true;
+}
+
+bool NodeGraph::unbindAudioResource(const String& nodeId) {
+    const size_t previousCount = audioResourceBindings.size();
+    eraseIf(audioResourceBindings, [&](const auto& binding) {
+        return binding.nodeId == nodeId;
+    });
+    if (audioResourceBindings.size() == previousCount) {
+        return false;
+    }
+
+    ++revision;
+    return true;
+}
+
+const NodeAudioResourceBinding* NodeGraph::findAudioResourceBinding(const String& nodeId) const {
+    const auto found = std::find_if(
+            audioResourceBindings.begin(),
+            audioResourceBindings.end(),
+            [&](const auto& binding) { return binding.nodeId == nodeId; });
+    return found != audioResourceBindings.end() ? &*found : nullptr;
+}
+
+int NodeGraph::audioResourceUsageCount(const String& resourceId) const {
+    return (int) std::count_if(
+            audioResourceBindings.begin(),
+            audioResourceBindings.end(),
+            [&](const auto& binding) { return binding.resourceId == resourceId; });
+}
+
 bool NodeGraph::removeGuideAssignment(
         const String& nodeId,
         const TrimeshCubeComponentGuideTarget& target) {

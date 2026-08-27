@@ -15,6 +15,7 @@
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/VertCube.h>
@@ -651,6 +652,54 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
     const auto firstIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
     const auto secondIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
     REQUIRE(firstIr->impulse == secondIr->impulse);
+}
+
+TEST_CASE("Direct IR resources reach configuration preparation and its cache key",
+        "[cycle-v2][curve-model][dsp][audio-resource]") {
+    NodeGraph graph;
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    graph.addNode(ir);
+    const NodeDspConfigurationFactory factory;
+    const AudioExecutionSpec spec;
+    const String curveKey = factory.keyFor(
+            AudioModuleRole::ImpulseResponse,
+            ir.parameters,
+            ir.model,
+            spec,
+            &graph,
+            ir.id);
+    const auto curveConfiguration = std::dynamic_pointer_cast<const IrConfiguration>(
+            factory.create(
+                    AudioModuleRole::ImpulseResponse,
+                    ir.parameters,
+                    ir.model,
+                    spec,
+                    &graph,
+                    ir.id));
+
+    REQUIRE(graph.addAudioResource({ "audio-1", "Impulse.wav", 48000.0, { 1.f, -0.5f } }));
+    REQUIRE(graph.bindAudioResource({ ir.id, "audio-1", "direct" }));
+    const String directKey = factory.keyFor(
+            AudioModuleRole::ImpulseResponse,
+            ir.parameters,
+            ir.model,
+            spec,
+            &graph,
+            ir.id);
+    const auto directConfiguration = std::dynamic_pointer_cast<const IrConfiguration>(
+            factory.create(
+                    AudioModuleRole::ImpulseResponse,
+                    ir.parameters,
+                    ir.model,
+                    spec,
+                    &graph,
+                    ir.id));
+
+    REQUIRE(curveConfiguration != nullptr);
+    REQUIRE(directConfiguration != nullptr);
+    REQUIRE(directKey != curveKey);
+    REQUIRE(directKey.contains("audio-1:direct"));
+    REQUIRE(directConfiguration->impulse != curveConfiguration->impulse);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",

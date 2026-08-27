@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceActionsAvailable",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceStatus",
+      "equals": "No embedded audio\nCurve is active"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 800
+    },
+    {
+      "command": "inspectPointerTargets"
+    }
+  ],
+  "quit": false
+}
