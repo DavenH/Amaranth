@@ -7,6 +7,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Unison/UnisonNodeEditor.h"
+#include "Nodes/VoiceContext/Editor/VoiceContextNodeEditor.h"
 #include "Runtime/NodePreviewProcessor.h"
 #include "UI/ModulationNodeEditors.h"
 #include "UI/NodeEditorHost.h"
@@ -311,6 +312,9 @@ const NodeEditorFactoryRegistry& NodeEditorFactoryRegistry::instance() {
 }
 
 NodeEditorFactoryRegistry::NodeEditorFactoryRegistry() {
+    factories.emplace_back(
+            NodeKind::VoiceContext,
+            createVoiceContextNodeEditorFactory());
     factories.emplace_back(
             NodeKind::ModulationSource,
             createModulationNodeEditorFactory());

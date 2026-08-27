@@ -38,7 +38,6 @@
 
 namespace CycleV2 {
 
-struct VoiceContextEdit;
 enum class TransformMode;
 
 class NodeCanvas :
@@ -145,7 +144,6 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
-    std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
     String draggingSpectralPanNodeId;
     float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
@@ -176,7 +174,6 @@ private:
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync();
-    void setPreviewVoiceLength(double seconds);
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
@@ -233,6 +230,7 @@ private:
             const Node& node,
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
+    void setPreviewVoiceLengthSeconds(double seconds) override;
 
     void closeCurveEditor() override;
     void repaintCurveEditorOpenGL() override;

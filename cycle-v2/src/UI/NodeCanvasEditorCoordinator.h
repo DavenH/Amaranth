@@ -6,7 +6,6 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
 #include "UI/TransformCompactEditor.h"
-#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -21,13 +20,11 @@ enum class ExpandedEditorClickKind {
     Unclaimed,
     Captured,
     Close,
-    VoiceContextEdit,
     TransformMode
 };
 
 struct ExpandedEditorClick {
     ExpandedEditorClickKind kind { ExpandedEditorClickKind::Unclaimed };
-    std::optional<VoiceContextEdit> voiceContextEdit;
     std::optional<CycleV2::TransformMode> transformMode;
 };
 

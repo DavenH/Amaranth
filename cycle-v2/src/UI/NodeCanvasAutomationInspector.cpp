@@ -8,7 +8,6 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
-#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -413,27 +412,6 @@ public:
                 targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, targetBounds,
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
-        } else if (node.kind == NodeKind::VoiceContext) {
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".octave",
-                    "octave",
-                    VoiceContextCompactEditor::octaveControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".voiceLength",
-                    "voiceLength",
-                    VoiceContextCompactEditor::voiceLengthControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".pitch",
-                    "pitch",
-                    VoiceContextCompactEditor::pitchControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".oversampling",
-                    "oversampling",
-                    VoiceContextCompactEditor::oversamplingControlBounds(panel),
-                    node.id));
         } else {
             if (node.kind == NodeKind::Envelope) {
                 addEnvelopeTargets(targets, node, panel, editorHost);

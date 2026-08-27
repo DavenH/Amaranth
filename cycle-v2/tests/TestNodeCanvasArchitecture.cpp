@@ -1037,16 +1037,9 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
-TEST_CASE("Voice context editor resolves every authored control from its painted rows",
+TEST_CASE("Voice context compact presentation retains its selector and summary",
         "[cycle-v2][canvas][compact-editor]") {
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
-    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
-
-    auto editAt = [&](Point<float> point) {
-        const auto edit = VoiceContextCompactEditor::editAt(voice, panel, point);
-        REQUIRE(edit.has_value());
-        return *edit;
-    };
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
@@ -1070,67 +1063,6 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     };
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
             == "Octave 1  ·  2 seconds  ·  Glide");
-    voice.parameters.clear();
-
-    auto edit = editAt({ 252.f, 59.5f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
-    REQUIRE(edit.value == "spectral");
-
-    const Rectangle<float> octave = VoiceContextCompactEditor::octaveControlBounds(panel);
-    edit = editAt({ octave.getX(), octave.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
-    REQUIRE(edit.value == "-2");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Octave,
-            panel,
-            octave.getCentreX())->value == "0");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Octave,
-            panel,
-            octave.getRight())->value == "2");
-
-    const Rectangle<float> voiceLength = VoiceContextCompactEditor::voiceLengthControlBounds(panel);
-    edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::VoiceLength);
-    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getX())
-            == Catch::Approx(std::exp(-3.0)));
-    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
-            == Catch::Approx(std::exp(5.0)));
-
-    const Rectangle<float> pitch = VoiceContextCompactEditor::pitchControlBounds(panel);
-    edit = editAt({ pitch.getX(), pitch.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
-    REQUIRE(edit.value == "-12");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Pitch,
-            panel,
-            pitch.getCentreX())->value == "0");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Pitch,
-            panel,
-            pitch.getRight())->value == "12");
-
-    const Rectangle<float> oversampling =
-            VoiceContextCompactEditor::oversamplingControlBounds(panel);
-    edit = editAt({ oversampling.getX(), oversampling.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
-    REQUIRE(edit.value == "1x");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Oversampling,
-            panel,
-            oversampling.getCentreX())->value == "4x");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Oversampling,
-            panel,
-            oversampling.getRight())->value == "8x");
-
-    REQUIRE(octave.getWidth() == Catch::Approx(voiceLength.getWidth()));
-    REQUIRE(octave.getWidth() == Catch::Approx(pitch.getWidth()));
-    REQUIRE(octave.getWidth() == Catch::Approx(oversampling.getWidth()));
-
-    edit = editAt({ 112.f, 237.f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
-    REQUIRE(edit.value == "1");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

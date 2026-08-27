@@ -10,8 +10,8 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/NodeCanvas.h"
-
 #include "UI/CanvasUtilityDock.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "UI/NodeViewModule.h"
@@ -192,17 +192,9 @@ NodeCanvas::~NodeCanvas() {
 }
 
 void NodeCanvas::paint(Graphics& g) {
-    const Node* expandedNode = queries.findNode(expandedNodeId);
     canvasPresentation.paint(g, presentationFrame());
     if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
-    }
-    if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
-        VoiceContextCompactEditor::paintExpanded(
-                g,
-                editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
-                *expandedNode,
-                globalUnisonPreviewContext.voiceDurationSeconds);
     }
 }
 
@@ -297,7 +289,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
-    draggingVoiceContextSlider.reset();
     draggingSpectralPanNodeId = {};
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
@@ -329,24 +320,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
             notifyOverlayOcclusionChanged();
-        } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
-            const auto control = click.voiceContextEdit->control;
-            if (control == VoiceContextEdit::Control::VoiceLength) {
-                draggingVoiceContextSlider = control;
-                setPreviewVoiceLength(click.voiceContextEdit->value.getDoubleValue());
-            } else if (control == VoiceContextEdit::Control::Octave
-                    || control == VoiceContextEdit::Control::Pitch
-                    || control == VoiceContextEdit::Control::Oversampling) {
-                if (authoring.beginVoiceContextSliderGesture(
-                            expandedNode->id,
-                            *click.voiceContextEdit)) {
-                    draggingVoiceContextSlider = control;
-                }
-            } else {
-                applyAuthoringResult(authoring.applyVoiceContextEdit(
-                        expandedNode->id,
-                        *click.voiceContextEdit));
-            }
         } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
             applyAuthoringResult(authoring.setTransformMode(
                     expandedNode->id,
@@ -521,25 +494,6 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
 
-    if (draggingVoiceContextSlider.has_value()) {
-        const Node* expandedNode = queries.findNode(expandedNodeId);
-        if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
-            const auto edit = VoiceContextCompactEditor::sliderEditAt(
-                    *draggingVoiceContextSlider,
-                    editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
-                    event.position.x);
-            if (edit.has_value()) {
-                if (edit->control == VoiceContextEdit::Control::VoiceLength) {
-                    setPreviewVoiceLength(edit->value.getDoubleValue());
-                } else {
-                    authoring.updateVoiceContextSliderGesture(*edit);
-                    requestCanvasRepaint();
-                }
-            }
-        }
-        return;
-    }
-
     if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
@@ -581,14 +535,6 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     if (draggingSpectralPanNodeId.isNotEmpty()) {
         draggingSpectralPanNodeId = {};
         applyAuthoringResult(authoring.endSpectralPanGesture());
-        requestCanvasRepaint();
-        return;
-    }
-    if (draggingVoiceContextSlider.has_value()) {
-        if (*draggingVoiceContextSlider != VoiceContextEdit::Control::VoiceLength) {
-            applyAuthoringResult(authoring.endVoiceContextSliderGesture());
-        }
-        draggingVoiceContextSlider.reset();
         requestCanvasRepaint();
         return;
     }
@@ -1014,7 +960,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
             });
 }
 
-void NodeCanvas::setPreviewVoiceLength(double seconds) {
+void NodeCanvas::setPreviewVoiceLengthSeconds(double seconds) {
     const double duration = jlimit(
             CycleDsp::voiceLengthSeconds(0.f),
             CycleDsp::voiceLengthSeconds(1.f),
@@ -1025,7 +971,7 @@ void NodeCanvas::setPreviewVoiceLength(double seconds) {
     globalUnisonPreviewContext.voiceDurationSeconds = duration;
     settings.getGlobalSetting(AppSettings::PreviewVoiceLengthMilliseconds) =
             roundToInt(duration * 1000.0);
-    editStatusMessage = "Voice length: " + String(duration, 2) + " seconds";
+    editStatusMessage = "Voice length: " + formatPropertyReal(duration) + " seconds";
     requestCanvasRepaint();
 }
 

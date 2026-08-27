@@ -1,0 +1,10 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "openNodeEditor", "nodeId": "voice", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "voice" },
+    { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "" }
+  ],
+  "quit": true
+}

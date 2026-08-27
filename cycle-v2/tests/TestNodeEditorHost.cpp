@@ -197,7 +197,7 @@ public:
     int recordedMovements {};
 };
 
-class NullResources final : public NodeEditorResources {
+class NullResources : public NodeEditorResources {
 public:
     CurveEditorWidget* curveEditorWidget(const Node&) override { return nullptr; }
     TrimeshWidget* trimeshWidget(const Node& node) override {
@@ -213,9 +213,75 @@ public:
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
+    UnisonPreviewContext unisonPreviewContext() const override {
+        UnisonPreviewContext result;
+        result.voiceDurationSeconds = previewVoiceLengthSeconds;
+        return result;
+    }
+    void setPreviewVoiceLengthSeconds(double seconds) override {
+        previewVoiceLengthSeconds = seconds;
+        ++previewVoiceLengthChanges;
+    }
 
     TrimeshWidget* activeTrimesh {};
     int synchronizingTrimeshLookups {};
+    double previewVoiceLengthSeconds { 1.0 };
+    int previewVoiceLengthChanges {};
+};
+
+class RecordingVoiceCommands final : public NullCommands {
+public:
+    bool beginNodeParameterEdit(
+            const String&,
+            const String& parameterId,
+            const String&,
+            float value) override {
+        activeParameterId = parameterId;
+        numericValues.push_back(value);
+        ++begins;
+        return true;
+    }
+
+    bool updateNodeParameterEditValue(float value) override {
+        numericValues.push_back(value);
+        ++updates;
+        return true;
+    }
+
+    void endNodeParameterEdit() override {
+        ++ends;
+        activeParameterId = {};
+    }
+
+    bool setNodeParameterValue(
+            const String&,
+            const String& parameterId,
+            const String&,
+            float value) override {
+        immediateParameterId = parameterId;
+        immediateValue = value;
+        return true;
+    }
+
+    bool setNodeParameterText(
+            const String&,
+            const String& parameterId,
+            const String&,
+            const String& value) override {
+        textParameterId = parameterId;
+        textValue = value;
+        return true;
+    }
+
+    String activeParameterId;
+    String immediateParameterId;
+    String textParameterId;
+    String textValue;
+    float immediateValue {};
+    int begins {};
+    int updates {};
+    int ends {};
+    std::vector<float> numericValues;
 };
 
 TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
@@ -515,6 +581,81 @@ TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
     REQUIRE(jitter != nullptr);
     REQUIRE(jitter->isVisible());
     REQUIRE(jitter->getBottom() <= host.component()->getHeight() - 18);
+}
+
+TEST_CASE("Voice Context hosts semantic controls for every visible property",
+        "[cycle-v2][editor][voice-context][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    RecordingVoiceCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+
+    REQUIRE(host.bind(&voice, { 0, 0, 440, 276 }));
+    DynamicObject automation;
+    host.appendAutomationState(automation);
+    const var state = automation.getProperty("voiceContext");
+    REQUIRE(state.getProperty("kind", {}).toString() == "VOICE_CONTEXT");
+    REQUIRE(state.getProperty("domain", {}).toString() == "waveform");
+    REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
+    REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
+    REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
+    REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
+    REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
+    REQUIRE((int) state.getProperty("pitch", {}).getProperty("usableTrackWidth", {}) >= 140);
+
+    auto* pitchValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.pitch.value"));
+    REQUIRE(pitchValue != nullptr);
+    pitchValue->setText("7 semitones", sendNotificationSync);
+    REQUIRE(commands.begins == 1);
+    REQUIRE(commands.updates == 1);
+    REQUIRE(commands.ends == 1);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(7.f));
+    pitchValue->setText("7.5 semitones", sendNotificationSync);
+    REQUIRE(commands.updates == 1);
+
+    for (const String& domain : { String("spectral"), String("waveform") }) {
+        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+                "voiceContextEditor.domain." + domain));
+        REQUIRE(option != nullptr);
+        option->onClick();
+        REQUIRE(commands.textParameterId == "domain");
+        REQUIRE(commands.textValue == domain);
+    }
+    for (const String& factor : { String("1x"), String("2x"), String("4x"), String("8x") }) {
+        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+                "voiceContextEditor.oversampling." + factor));
+        REQUIRE(option != nullptr);
+        option->onClick();
+        REQUIRE(commands.textParameterId == "oversampling");
+        REQUIRE(commands.textValue == factor);
+    }
+    auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamento"));
+    REQUIRE(portamento != nullptr);
+    portamento->setToggleState(true, dontSendNotification);
+    portamento->onClick();
+    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.immediateValue == Catch::Approx(1.f));
+
+    auto* voiceLengthValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.voiceLength.value"));
+    REQUIRE(voiceLengthValue != nullptr);
+    voiceLengthValue->setText("2 s", sendNotificationSync);
+    REQUIRE(resources.previewVoiceLengthChanges == 1);
+    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.0).margin(0.0001));
+    auto* voiceLength = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.voiceLength"));
+    REQUIRE(voiceLength != nullptr);
+    REQUIRE(voiceLength->keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(resources.previewVoiceLengthChanges == 2);
+    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.01).margin(0.001));
 }
 
 TEST_CASE("Delay and Reverb own shared semantic property rows",
@@ -1508,6 +1649,44 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.rebinds == 0);
     REQUIRE(presentation.transientRebinds == 0);
+}
+
+TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
+        "[cycle-v2][editor][voice-context][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    auto* pitch = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.pitch"));
+    REQUIRE(pitch != nullptr);
+    pitch->onDragStart();
+    pitch->setValue(3.0, sendNotificationSync);
+    pitch->setValue(9.0, sendNotificationSync);
+    REQUIRE(parameterValueForNode(*dispatcher.editingGraph().findNode("voice"), "pitch") == "9.000000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
+    REQUIRE_FALSE(document.canUndo());
+
+    pitch->onDragEnd();
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "9.000000");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.immediateRefreshes == 1);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",

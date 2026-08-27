@@ -8,6 +8,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeViewModule.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -496,103 +497,6 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleVoiceDomain(const String& no
             "Start Domain",
             domain,
             "Voice start domain: " + domain);
-}
-
-NodeCanvasAuthoringResult NodeCanvasAuthoring::applyVoiceContextEdit(
-        const String& nodeId,
-        const VoiceContextEdit& edit) {
-    switch (edit.control) {
-        case VoiceContextEdit::Control::Domain:
-            return setVoiceContextParameter(nodeId, "domain", "Start Domain", edit.value,
-                    "Voice start domain: " + edit.value);
-        case VoiceContextEdit::Control::Octave:
-            return setVoiceContextParameter(nodeId, "octave", "Octave", edit.value,
-                    "Octave: " + edit.value);
-        case VoiceContextEdit::Control::Pitch:
-            return setVoiceContextParameter(nodeId, "pitch", "Pitch", edit.value,
-                    "Pitch: " + edit.value);
-        case VoiceContextEdit::Control::VoiceLength:
-            return {};
-        case VoiceContextEdit::Control::Portamento:
-            return setVoiceContextParameter(nodeId, "portamento", "Portamento", edit.value,
-                    edit.value == "1" ? "Portamento on" : "Portamento off");
-        case VoiceContextEdit::Control::Oversampling:
-            return setVoiceContextParameter(nodeId, "oversampling", "Oversampling", edit.value,
-                    "Oversampling: " + edit.value);
-    }
-
-    return {};
-}
-
-bool NodeCanvasAuthoring::beginVoiceContextSliderGesture(
-        const String& nodeId,
-        const VoiceContextEdit& edit) {
-    const Node* node = findNode(nodeId);
-    if (node == nullptr || node->kind != NodeKind::VoiceContext
-            || (edit.control != VoiceContextEdit::Control::Octave
-                    && edit.control != VoiceContextEdit::Control::Pitch
-                    && edit.control != VoiceContextEdit::Control::Oversampling)) {
-        return false;
-    }
-
-    commands.beginCompoundEdit();
-    voiceContextGestureNodeId = nodeId;
-    voiceContextGestureControl = edit.control;
-    voiceContextGestureChanged = false;
-    if (updateVoiceContextSliderGesture(edit)) {
-        return true;
-    }
-
-    commands.cancelCompoundEdit();
-    voiceContextGestureNodeId = {};
-    return false;
-}
-
-bool NodeCanvasAuthoring::updateVoiceContextSliderGesture(const VoiceContextEdit& edit) {
-    if (voiceContextGestureNodeId.isEmpty() || edit.control != voiceContextGestureControl) {
-        return false;
-    }
-
-    String parameterId;
-    String label;
-    if (edit.control == VoiceContextEdit::Control::Octave) {
-        parameterId = "octave";
-        label = "Octave";
-    } else if (edit.control == VoiceContextEdit::Control::Pitch) {
-        parameterId = "pitch";
-        label = "Pitch";
-    } else {
-        parameterId = "oversampling";
-        label = "Oversampling";
-    }
-    const auto result = commands.setNodeParameter(
-            voiceContextGestureNodeId,
-            parameterId,
-            label,
-            edit.value);
-    voiceContextGestureChanged = voiceContextGestureChanged || result.changed;
-    authoringSession.statusMessage = label + ": " + edit.value;
-    return result.succeeded();
-}
-
-NodeCanvasAuthoringResult NodeCanvasAuthoring::endVoiceContextSliderGesture() {
-    if (voiceContextGestureNodeId.isEmpty()) {
-        return {};
-    }
-
-    const String nodeId = std::move(voiceContextGestureNodeId);
-    const bool changed = voiceContextGestureChanged;
-    voiceContextGestureChanged = false;
-    commands.commitCompoundEdit();
-    refreshPresentation();
-    return {
-            true,
-            true,
-            changed,
-            GraphEditCode::Connected,
-            nodeId,
-            { true, false, true }
-    };
 }
 
 bool NodeCanvasAuthoring::beginSpectralPanGesture(const String& nodeId) {

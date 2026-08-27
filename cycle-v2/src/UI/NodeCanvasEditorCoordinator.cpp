@@ -95,16 +95,10 @@ ExpandedEditorClick NodeCanvasEditorCoordinator::routeClick(
         return { ExpandedEditorClickKind::Captured };
     }
 
-    if (node->kind == NodeKind::VoiceContext) {
-        auto edit = VoiceContextCompactEditor::editAt(*node, panel, position);
-        return edit.has_value()
-                ? ExpandedEditorClick { ExpandedEditorClickKind::VoiceContextEdit, std::move(edit), {} }
-                : ExpandedEditorClick { ExpandedEditorClickKind::Captured };
-    }
     if (node->kind == NodeKind::Fft || node->kind == NodeKind::Ifft) {
         auto mode = TransformCompactEditor::modeAt(*node, panel, position);
         return mode.has_value()
-                ? ExpandedEditorClick { ExpandedEditorClickKind::TransformMode, {}, mode }
+                ? ExpandedEditorClick { ExpandedEditorClickKind::TransformMode, mode }
                 : ExpandedEditorClick { ExpandedEditorClickKind::Captured };
     }
 

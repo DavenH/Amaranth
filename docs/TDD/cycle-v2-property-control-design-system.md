@@ -2,9 +2,9 @@
 
 ## Status
 
-In Progress (Slices 1-4 property presentation complete; IR resource actions
-are blocked on a command-service boundary, and Voice Context interaction
-remains partial pending a hosted-control extraction, 2026-08-26).
+In Progress (all property-presentation and Voice Context hosted-interaction
+slices complete; IR resource actions remain blocked on the documented
+wave-resource command-service boundary, 2026-08-27).
 
 ## Context
 
@@ -593,6 +593,41 @@ Implementation design for Voice Context presentation:
   requires a separate host extraction that preserves its current canvas edit
   service and complete gesture semantics.
 
+Implementation design for the hosted Voice Context extraction:
+
+- The authoritative domain behavior is the current
+  `VoiceContextCompactEditor`, the Voice parameter definitions,
+  `EffectParameterMapping::voiceLengthSeconds`/`voiceLengthUnitValue`, and the
+  transient parameter gesture owned by `NodeEditorCommandService`. The
+  extraction moves the expanded presentation and its ranges, stops, labels,
+  and defaults; compact-node selector and summary behavior remain in
+  `VoiceContextCompactEditor`.
+- Add a domain-owned hosted editor under `Nodes/VoiceContext/Editor`. It
+  composes shared property rows for Octave, Voice Length, and Pitch; visible
+  option groups for the two start domains and four oversampling factors; and a
+  semantic Portamento toggle. It contains no graph, dispatcher, document, or
+  undo ownership.
+- Octave and Pitch publish through the existing numeric transient parameter
+  service, preserving two-update gesture, commit, downstream refresh, and one
+  undo. Domain and Oversampling use the existing semantic text command; each
+  selection is one complete discrete edit. Voice Length remains an application
+  preview setting and crosses a narrow `NodeEditorResources` setter beside the
+  existing Unison preview context rather than becoming a fake graph parameter.
+- Make Voice Context a normal hosted-editor capability and register its
+  domain factory. Delete the expanded paint/hit methods, `VoiceContextEdit`,
+  canvas drag state, authoring gesture bridge, coordinator route branch, and
+  Voice-specific automation hit geometry. Hosted child components become the
+  real event and automation targets.
+- The stable end state leaves `VoiceContextCompactEditor` responsible only for
+  the compact node selector and summary. `NodeCanvas` coordinates preview
+  duration storage through `NodeEditorResources` and no longer interprets
+  Voice pointer gestures or paints the expanded panel.
+- Focused tests must cover every visible option, semantic text entry, invalid
+  correction, ordinary and fine keyboard operation, two drag updates followed
+  by commit and undo, preview-length persistence, hosted target discovery, and
+  first-Escape close. The existing real attachment fixture is migrated from
+  painted bounds to component IDs and remains the production event-path proof.
+
 Implemented:
 
 - Continuous Octave, Voice Length, and Pitch rails now use the same exact
@@ -624,16 +659,73 @@ Review evidence:
   Oversampling, and Voice Length drag gestures and downstream preview updates.
   Production screenshot:
   `/private/tmp/cycle-v2-voice-context-properties-after.png`.
-- This is a presentation-complete but interaction-partial migration: exact
-  indicators and shared rhythm are complete; hosted focus, fine adjustment,
-  direct entry, reset, and gesture-level undo remain the explicit extraction
-  boundary described above.
+- At this interim point the migration was presentation-complete but
+  interaction-partial; the hosted extraction below closes that boundary.
 - Standalone Debug builds successfully with `--parallel 10`; `git diff
   --check` passes. The complete Cycle V2 run passes 10,251 of 10,252
   assertions; its sole failure remains the pre-existing hit-router hover-help
   assertion recorded in `ui-bugs.md`. JUnit evidence:
   `/private/tmp/cycle-v2-voice-context-property-tests-junit.xml`. Existing
   scalar `std::abs` calls only format two message-thread summary strings.
+
+Hosted extraction completion (2026-08-27):
+
+- Added a domain-owned Voice Context editor under `Nodes/VoiceContext/Editor`
+  and made Voice Context a normal hosted-editor capability. Octave, Voice
+  Length, and Pitch now compose shared semantic property rows; Domain and
+  Oversampling are visible exclusive option groups; Portamento is a real
+  focusable toggle.
+- Octave and Pitch use the existing transient `NodeEditorCommandService`
+  gesture path. Domain and Oversampling use semantic text commands. Voice
+  Length uses the authoritative nonlinear seconds mapping and crosses only a
+  narrow preview-duration setter beside the existing Unison preview context.
+- Direct entry accepts integral Octave/Pitch values and semantic seconds,
+  rejects invalid fractional pitch, and displays concise real values. Ordinary
+  and Shift keyboard adjustment use domain increments, and all hosted controls
+  expose stable automation IDs.
+- Deleted the expanded Voice paint and hit-test implementation,
+  `VoiceContextEdit`, canvas Voice drag state, the authoring gesture bridge,
+  coordinator routing, and Voice-specific automation hit geometry. The compact
+  editor now owns only its source-domain selector and summary.
+- Expanded endpoint landmark labels are clamped within the slider width, so
+  `0.05` and `148` remain readable at production size. Preview status and the
+  field now use the same shared concise-real policy.
+
+Hosted adjustment budgets:
+
+| Control | Domain | Ordinary / fine increment | `D` | Alternate precision path |
+| --- | --- | --- | ---: | --- |
+| Octave | -2 to +2 octaves | one octave | >= 140 px | exact integer entry and five landmarks |
+| Voice Length | 0.05 to 148 seconds, nonlinear | 0.1 / 0.01 seconds by keyboard | >= 140 px | semantic seconds entry and four reference landmarks |
+| Pitch | -12 to +12 semitones | one semitone | >= 140 px | exact integer entry and three landmarks |
+
+Hosted extraction evidence:
+
+- Production change: 442 lines added and 680 removed, for 238 net lines
+  deleted. The largest new production file is the 408-line domain editor;
+  `VoiceContextCompactEditor.cpp` loses 442 lines. Generic shared code gains no
+  node-kind, parameter-ID, mapping, resource, or gesture branch.
+- Focused hosted tests pass 54 assertions, including every visible option,
+  semantic and invalid entry, keyboard adjustment, preview duration, and a
+  real two-update pitch gesture followed by commit, downstream refresh, and
+  undo. Compact-editor tests pass 18 assertions and the remaining Voice
+  authoring test passes seven.
+- The migrated attachment fixture has zero failed commands and exercises real
+  Octave, Pitch, Oversampling, and Voice Length controls. Report:
+  `/private/tmp/cycle-v2-voice-context-hosted-final-report.json`; filtered log:
+  `/private/tmp/cycle-v2-voice-context-hosted-final-logs.txt`. A separate
+  first-Escape fixture also has zero failures:
+  `/private/tmp/cycle-v2-voice-context-escape-report.json`.
+- Production screenshot:
+  `/private/tmp/cycle-v2-voice-context-hosted-final.png`. It verifies readable
+  endpoint ticks, aligned labels and values, visible selected options, concise
+  readouts, and the shared exact slider indicator.
+- Standalone Debug builds successfully with `--parallel 10`; `git diff
+  --check` passes. The complete Cycle V2 run passes 10,290 of 10,291
+  assertions; its sole failure remains the pre-existing hit-router hover-help
+  assertion recorded in `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-voice-context-tests-junit.xml`. No DSP or
+  visualization hot-loop behavior changed.
 
 ### Shared Indicator And Display Precision Refinement (2026-08-27)
 

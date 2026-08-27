@@ -138,6 +138,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/NodePropertyControlBinding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/VoiceContext/Editor/VoiceContextNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeSelector.cpp"

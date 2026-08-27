@@ -129,6 +129,7 @@ public:
             const Node& node,
             Rectangle<float> bounds) = 0;
     virtual UnisonPreviewContext unisonPreviewContext() const { return {}; }
+    virtual void setPreviewVoiceLengthSeconds(double) {}
 };
 
 struct NodeEditorContext {

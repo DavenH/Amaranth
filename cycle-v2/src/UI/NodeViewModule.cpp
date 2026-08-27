@@ -83,7 +83,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::ModulationTriple, modulation);
 
     NodeViewCapabilities voice = preview;
-    voice.expandedEditor = true;
+    voice.hostedEditor = true;
     voice.expandedEditorBlocksCanvas = false;
     voice.expandedEditorSize = Point<float>(440.f, 276.f);
     add(NodeKind::VoiceContext, voice);

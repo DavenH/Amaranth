@@ -245,9 +245,18 @@ void PrecisionSlider::paint(Graphics& graphics) {
                 track.getX(),
                 track.getRight());
         graphics.drawVerticalLine(roundToInt(x), track.getY() - 3.f, track.getY());
+        const float labelWidth = 36.f;
+        const float labelX = jlimit(
+                0.f,
+                jmax(0.f, (float) getWidth() - labelWidth),
+                x - labelWidth * 0.5f);
         graphics.drawText(
                 landmark.label,
-                Rectangle<float>(x - 14.f, 0.f, 28.f, jmax(0.f, track.getY() - 4.f)),
+                Rectangle<float>(
+                        labelX,
+                        0.f,
+                        labelWidth,
+                        jmax(0.f, track.getY() - 4.f)),
                 Justification::centred);
     }
 }
