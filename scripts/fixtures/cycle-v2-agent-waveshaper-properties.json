@@ -15,7 +15,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.preGainLayout.display",
-      "equals": "0.0 dB"
+      "equals": "0 dB"
     },
     {
       "command": "assertState",
@@ -67,7 +67,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.preGainLayout.display",
-      "equals": "+24.4 dB"
+      "equals": "+24 dB"
     },
     {
       "command": "undo",

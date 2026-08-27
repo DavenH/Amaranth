@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: Intermittent CoreMIDI endpoint assertion during Cycle V2 automation
+
+Context:
+
+- A sequential property-control fixture run on 2026-08-27 completed every
+  Reverb command successfully but logged CoreMIDI error `580` and three JUCE
+  assertions at `juce_CoreMidi_mac.mm:595` during application startup.
+- The five adjacent Cycle V2 fixture launches did not report the assertion,
+  and the issue is independent of property value formatting or slider paint.
+- Repro artifacts: `/private/tmp/cycle-v2-reverb-property-controls-precision-logs.txt`
+  and its `.raw` companion.
+
+Current status: open; inspect MIDI endpoint initialization and teardown across
+rapid sequential standalone launches.
+
 ## Open: Node canvas hit-router test misses edge hover help
 
 Context:

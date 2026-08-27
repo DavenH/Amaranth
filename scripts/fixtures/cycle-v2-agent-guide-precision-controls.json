@@ -24,7 +24,7 @@
     {
       "command": "assertState",
       "path": "guideDock.editor.noiseLayout.display",
-      "equals": "76.6%"
+      "equals": "77%"
     },
     {
       "command": "inspectPointerTargets"

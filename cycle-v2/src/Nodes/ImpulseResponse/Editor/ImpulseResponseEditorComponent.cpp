@@ -56,7 +56,7 @@ std::optional<double> parseSize(String text) {
 
 String formatPostGain(double value) {
     const float decibels = CycleDsp::irPostGainDecibels(value);
-    return (decibels > 0.f ? "+" : "") + String(decibels, 1) + " dB";
+    return (decibels > 0.f ? "+" : "") + formatPropertyReal(decibels) + " dB";
 }
 
 std::optional<double> parsePostGain(String text) {
@@ -77,7 +77,7 @@ std::optional<double> parsePostGain(String text) {
 }
 
 String formatHighPass(double value) {
-    return String(CycleDsp::irPrefilterAmount(value) * 100.f, 1) + "% Nyq";
+    return formatPropertyReal(CycleDsp::irPrefilterAmount(value) * 100.f) + "% Nyq";
 }
 
 std::optional<double> parseHighPass(String text) {

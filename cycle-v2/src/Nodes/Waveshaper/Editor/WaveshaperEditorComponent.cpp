@@ -16,7 +16,7 @@ constexpr float kControlRailWidth = 336.f;
 
 String formatGain(double unitValue) {
     const float decibels = CycleDsp::waveshaperGainDecibels((float) unitValue);
-    return (decibels > 0.f ? "+" : "") + String(decibels, 1) + " dB";
+    return (decibels > 0.f ? "+" : "") + formatPropertyReal(decibels) + " dB";
 }
 
 std::optional<double> parseGain(const String& text) {

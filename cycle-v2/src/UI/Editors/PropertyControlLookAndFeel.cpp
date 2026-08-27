@@ -65,10 +65,7 @@ void paintSliderThumb(
     graphics.setColour(kFill.withMultipliedAlpha(enabled ? 1.f : 0.5f));
     graphics.drawRoundedRectangle(geometry.thumb, PropertyControlMetrics::thumbWidth * 0.5f, 1.25f);
     graphics.setColour((focused ? kFocus : kFill).withMultipliedAlpha(enabled ? 1.f : 0.55f));
-    graphics.drawVerticalLine(
-            roundToInt(geometry.indicatorX),
-            geometry.thumb.getY() + 2.f,
-            geometry.thumb.getBottom() - 2.f);
+    graphics.fillRect(propertySliderIndicatorBounds(geometry.thumb));
 }
 
 class PropertyControlLookAndFeel final : public LookAndFeel_V4 {
@@ -107,6 +104,13 @@ Rectangle<float> propertySliderTrackBounds(Rectangle<float> bounds) {
             .withSizeKeepingCentre(
                     bounds.getWidth() - PropertyControlMetrics::thumbWidth,
                     PropertyControlMetrics::visibleTrackHeight);
+}
+
+Rectangle<float> propertySliderIndicatorBounds(Rectangle<float> thumbBounds) {
+    return Rectangle<float>(
+            1.f,
+            thumbBounds.getHeight() - 4.f)
+            .withCentre(thumbBounds.getCentre());
 }
 
 void paintPropertySlider(

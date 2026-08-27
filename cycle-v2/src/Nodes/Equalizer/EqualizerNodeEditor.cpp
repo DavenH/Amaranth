@@ -19,7 +19,7 @@ constexpr int kColumnGap = 46;
 
 String formatGain(double value) {
     const float decibels = CycleDsp::equalizerGainDecibels((float) value);
-    return (decibels > 0.f ? "+" : "") + String(decibels, 1) + " dB";
+    return (decibels > 0.f ? "+" : "") + formatPropertyReal(decibels) + " dB";
 }
 
 std::optional<double> parseGain(const String& text) {
@@ -33,7 +33,7 @@ std::optional<double> parseGain(const String& text) {
 String formatFrequency(double value) {
     const float frequency = CycleDsp::equalizerFrequency((float) value);
     return frequency >= 1000.f
-            ? String(frequency / 1000.f, 2) + " kHz"
+            ? formatPropertyReal(frequency / 1000.f) + " kHz"
             : String(roundToInt(frequency)) + " Hz";
 }
 

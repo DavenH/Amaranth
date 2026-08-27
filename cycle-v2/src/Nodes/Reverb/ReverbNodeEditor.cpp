@@ -17,7 +17,8 @@ constexpr int kPropertyStart = 210;
 constexpr double kReferenceSampleRate = 44100.0;
 
 String formatSize(double value) {
-    return String(CycleDsp::reverbKernelSeconds((float) value, kReferenceSampleRate), 2) + " s";
+    return formatPropertyReal(
+            CycleDsp::reverbKernelSeconds((float) value, kReferenceSampleRate)) + " s";
 }
 
 std::optional<double> parseSize(const String& text) {
@@ -193,7 +194,7 @@ private:
         for (int step = 0; step < CycleDsp::reverbSizeStepCount; ++step) {
             const float value = CycleDsp::reverbSizeUnitValueForStep(step);
             const double seconds = CycleDsp::reverbKernelSeconds(value, kReferenceSampleRate);
-            sizeLandmarks.push_back({ value, String(seconds, seconds < 1.0 ? 2 : 1) });
+            sizeLandmarks.push_back({ value, formatPropertyReal(seconds) });
         }
         size.slider.setLandmarks(std::move(sizeLandmarks));
     }

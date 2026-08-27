@@ -32,12 +32,12 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.postGainLayout.display",
-      "equals": "0.0 dB"
+      "equals": "0 dB"
     },
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.highPassLayout.display",
-      "equals": "12.5% Nyq"
+      "equals": "13% Nyq"
     },
     {
       "command": "assertState",

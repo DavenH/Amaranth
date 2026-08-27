@@ -46,6 +46,7 @@ PropertySliderLayout propertySliderLayout(
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);
+juce::String formatPropertyReal(double value);
 std::optional<double> parsePropertyNumber(
         juce::String text,
         const juce::String& suffix = {});

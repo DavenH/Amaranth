@@ -546,7 +546,7 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     REQUIRE(delayAutomation.getProperty("effectParameters")
             .getProperty("kind", {}).toString() == "DELAY");
     const var time = controlWithId(delayAutomation, "time");
-    REQUIRE(time.getProperty("readout", {}).toString() == "1.00 beats");
+    REQUIRE(time.getProperty("readout", {}).toString() == "1 beat");
     REQUIRE((bool) time.getProperty("compact", {}));
     REQUIRE((int) time.getProperty("usableTrackWidth", {}) >= 140);
     const var panCycle = controlWithId(delayAutomation, "spinIters");
@@ -571,7 +571,7 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     REQUIRE((bool) size.getProperty("compact", {}));
     REQUIRE((int) size.getProperty("usableTrackWidth", {}) >= 140);
     const var wet = controlWithId(reverbAutomation, "wet");
-    REQUIRE(wet.getProperty("readout", {}).toString() == "40.0%");
+    REQUIRE(wet.getProperty("readout", {}).toString() == "40%");
     auto* sizeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "reverbEditor.size.value"));
     REQUIRE(sizeValue != nullptr);
@@ -579,7 +579,7 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     DynamicObject editedReverb;
     host.appendAutomationState(editedReverb);
     REQUIRE(controlWithId(editedReverb, "size").getProperty("readout", {}).toString()
-            == "1.49 s");
+            == "1.5 s");
 }
 
 TEST_CASE("Property rows collapse nested slider notifications into one gesture",
@@ -620,7 +620,7 @@ TEST_CASE("Equalizer retains paired columns with semantic shared rows",
             .getArray();
     REQUIRE(controls != nullptr);
     REQUIRE(controls->size() == 10);
-    REQUIRE(controls->getReference(0).getProperty("readout", {}).toString() == "0.0 dB");
+    REQUIRE(controls->getReference(0).getProperty("readout", {}).toString() == "0 dB");
     REQUIRE(controls->getReference(1).getProperty("readout", {}).toString() == "60 Hz");
     REQUIRE((bool) controls->getReference(0).getProperty("compact", {}));
     REQUIRE((int) controls->getReference(0).getProperty("usableTrackWidth", {}) >= 140);
@@ -911,7 +911,7 @@ TEST_CASE("Guide editor uses compact host and control layout",
 
     const var state = editor.automationState();
     const var noiseLayout = state.getProperty("noiseLayout", {});
-    REQUIRE(noiseLayout.getProperty("display", {}).toString() == "76.6%");
+    REQUIRE(noiseLayout.getProperty("display", {}).toString() == "77%");
     REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE_FALSE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
@@ -983,8 +983,8 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
             == Catch::Approx(static_cast<double>(panelBounds.getProperty("height", {}))));
     const var preLayout = state.getProperty("preGainLayout", {});
     const var postLayout = state.getProperty("postGainLayout", {});
-    REQUIRE(preLayout.getProperty("display", {}).toString() == "+22.5 dB");
-    REQUIRE(postLayout.getProperty("display", {}).toString() == "-22.5 dB");
+    REQUIRE(preLayout.getProperty("display", {}).toString() == "+23 dB");
+    REQUIRE(postLayout.getProperty("display", {}).toString() == "-23 dB");
     REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
@@ -1035,9 +1035,9 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(state.getProperty("sizeLayout", {}).getProperty("display", {}).toString()
             == "1024 smp");
     REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
-            == "0.0 dB");
+            == "0 dB");
     REQUIRE(state.getProperty("highPassLayout", {}).getProperty("display", {}).toString()
-            == "12.5% Nyq");
+            == "13% Nyq");
     for (const Identifier property : {
             Identifier("sizeLayout"),
             Identifier("postGainLayout"),

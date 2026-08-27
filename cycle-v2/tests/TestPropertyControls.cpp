@@ -1,35 +1,11 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
-
-#include <cmath>
-#include <cstdlib>
 
 using namespace CycleV2;
 using namespace juce;
-
-namespace {
-
-String formatPercentage(double value) {
-    return String(value * 100.0, 1) + "%";
-}
-
-std::optional<double> parsePercentage(const String& text) {
-    String number = text.trim();
-    if (number.endsWithChar('%')) {
-        number = number.dropLastCharacters(1).trimEnd();
-    }
-    const char* start = number.toRawUTF8();
-    char* end {};
-    const double parsed = std::strtod(start, &end);
-    if (number.isEmpty() || end == start || *end != '\0' || !std::isfinite(parsed)) {
-        return std::nullopt;
-    }
-    return parsed / 100.0;
-}
-
-}
 
 TEST_CASE("Property slider layout preserves useful travel or switches compact form",
         "[cycle-v2][ui][property-controls][geometry]") {
@@ -52,6 +28,34 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
     REQUIRE_FALSE(compact.slider.intersects(compact.value));
 }
 
+TEST_CASE("Property values use two significant figures without redundant decimals",
+        "[cycle-v2][ui][property-controls][formatting]") {
+    REQUIRE(formatPropertyReal(0.0) == "0");
+    REQUIRE(formatPropertyReal(4.0) == "4");
+    REQUIRE(formatPropertyReal(1.49) == "1.5");
+    REQUIRE(formatPropertyReal(0.76562) == "0.77");
+    REQUIRE(formatPropertyReal(0.05) == "0.05");
+    REQUIRE(formatPropertyReal(-24.4) == "-24");
+    REQUIRE(formatPropertyPercentage(0.5) == "50%");
+    REQUIRE(formatPropertyPercentage(0.76562) == "77%");
+}
+
+TEST_CASE("Property slider indicator remains centred at fractional positions",
+        "[cycle-v2][ui][property-controls][geometry]") {
+    for (float centreX : { 40.f, 40.25f, 40.5f, 40.75f, 41.f }) {
+        const Rectangle<float> thumb(
+                centreX - PropertyControlMetrics::thumbWidth * 0.5f,
+                8.f,
+                PropertyControlMetrics::thumbWidth,
+                PropertyControlMetrics::thumbHeight);
+        const Rectangle<float> indicator = propertySliderIndicatorBounds(thumb);
+
+        REQUIRE(indicator.getCentreX() == Catch::Approx(thumb.getCentreX()));
+        REQUIRE(indicator.getCentreY() == Catch::Approx(thumb.getCentreY()));
+        REQUIRE(indicator.getWidth() == Catch::Approx(1.f));
+    }
+}
+
 TEST_CASE("Property slider supports semantic entry, invalid correction, and keyboard precision",
         "[cycle-v2][ui][property-controls][interaction]") {
     ScopedJuceInitialiser_GUI juce;
@@ -59,8 +63,8 @@ TEST_CASE("Property slider supports semantic entry, invalid correction, and keyb
     PropertySliderRow row(owner, "Amount");
     row.slider.setRange(0.0, 1.0, 0.00001);
     row.configureValuePresentation(
-            formatPercentage,
-            parsePercentage,
+            formatPropertyPercentage,
+            parsePropertyPercentage,
             0.0,
             0.01,
             0.001,
@@ -73,13 +77,13 @@ TEST_CASE("Property slider supports semantic entry, invalid correction, and keyb
     row.slider.onDragEnd = [&dragEnds] { ++dragEnds; };
 
     row.slider.setValue(0.76562, sendNotificationSync);
-    REQUIRE(row.valueText() == "76.6%");
+    REQUIRE(row.valueText() == "77%");
     REQUIRE(row.valueTextIsValid());
     REQUIRE(row.slider.getDoubleClickReturnValue() == 0.0);
 
     row.value.setText("37.5%", sendNotificationSync);
     REQUIRE(row.slider.getValue() == Catch::Approx(0.375));
-    REQUIRE(row.valueText() == "37.5%");
+    REQUIRE(row.valueText() == "38%");
     REQUIRE(row.valueTextIsValid());
     REQUIRE(dragStarts == 1);
     REQUIRE(dragEnds == 1);
@@ -93,7 +97,7 @@ TEST_CASE("Property slider supports semantic entry, invalid correction, and keyb
 
     row.value.setText("50", sendNotificationSync);
     REQUIRE(row.slider.getValue() == Catch::Approx(0.5));
-    REQUIRE(row.valueText() == "50.0%");
+    REQUIRE(row.valueText() == "50%");
     REQUIRE(row.valueTextIsValid());
     REQUIRE(dragStarts == 2);
     REQUIRE(dragEnds == 2);
@@ -116,8 +120,8 @@ TEST_CASE("Property slider supports semantic keyboard steps and wider values",
     PropertySliderRow row(owner, "Amount");
     row.slider.setRange(0.0, 1.0, 0.00001);
     row.configureValuePresentation(
-            formatPercentage,
-            parsePercentage,
+            formatPropertyPercentage,
+            parsePropertyPercentage,
             0.0,
             0.01,
             0.001,

@@ -4,7 +4,7 @@
     { "command": "openNodeEditor", "nodeId": "eq", "waitForIdle": true, "idleDelayMs": 300 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.compact", "equals": true },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.usableTrackWidth", "op": "greaterThanOrEqual", "value": 140 },
-    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "0.0 dB" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "0 dB" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.1.readout", "equals": "60 Hz" },
     { "command": "inspectPointerTargets" },
     { "command": "pointer", "event": "down", "targetId": "equalizerEditor.band2Gain", "targetX": 0.5 },

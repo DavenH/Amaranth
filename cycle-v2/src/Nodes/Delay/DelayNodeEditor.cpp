@@ -14,7 +14,8 @@ constexpr int kPreviewHeight = 150;
 constexpr int kPropertyStart = 210;
 
 String formatBeats(double value) {
-    return String(CycleDsp::delayBeats((float) value, 4), 2) + " beats";
+    const String beats = formatPropertyReal(CycleDsp::delayBeats((float) value, 4));
+    return beats + (beats == "1" ? " beat" : " beats");
 }
 
 std::optional<double> parseBeats(const String& text) {

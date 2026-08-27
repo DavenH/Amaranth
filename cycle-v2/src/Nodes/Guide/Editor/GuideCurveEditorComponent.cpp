@@ -5,9 +5,6 @@
 
 #include "Graph/NodeParameterMap.h"
 
-#include <cmath>
-#include <cstdlib>
-
 namespace CycleV2 {
 
 namespace {
@@ -15,28 +12,6 @@ namespace {
 constexpr float kControlRailWidth = 336.f;
 constexpr float kMaximumHostWidth = 1100.f;
 constexpr float kMaximumHostHeight = 560.f;
-
-String formatPercentage(double value) {
-    return String(value * 100.0, 1) + "%";
-}
-
-std::optional<double> parsePercentage(const String& text) {
-    String number = text.trim();
-    if (number.endsWithChar('%')) {
-        number = number.dropLastCharacters(1).trimEnd();
-    }
-    if (number.isEmpty()) {
-        return std::nullopt;
-    }
-
-    const char* start = number.toRawUTF8();
-    char* end {};
-    const double parsed = std::strtod(start, &end);
-    if (end == start || *end != '\0' || !std::isfinite(parsed)) {
-        return std::nullopt;
-    }
-    return parsed / 100.0;
-}
 
 }
 
@@ -81,8 +56,8 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) 
         setup.control->slider.setComponentID("guideEditor." + String(setup.id));
         setup.control->value.setComponentID("guideEditor." + String(setup.id) + ".value");
         setup.control->configureValuePresentation(
-                formatPercentage,
-                parsePercentage,
+                formatPropertyPercentage,
+                parsePropertyPercentage,
                 0.0,
                 0.01,
                 0.001,

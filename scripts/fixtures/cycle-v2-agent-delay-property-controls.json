@@ -4,7 +4,7 @@
     { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 300 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.compact", "equals": true },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.usableTrackWidth", "op": "greaterThanOrEqual", "value": 140 },
-    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1.00 beats" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1 beat" },
     { "command": "inspectPointerTargets" },
     { "command": "pointer", "event": "down", "targetId": "delayEditor.feedback", "targetX": 0.5 },
     { "command": "pointer", "event": "drag", "targetId": "delayEditor.feedback", "downTargetId": "delayEditor.feedback", "targetX": 0.65, "downTargetX": 0.5 },

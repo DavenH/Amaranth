@@ -14,6 +14,7 @@ namespace {
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 const Colour kInvalid { 0xffdf7272 };
+constexpr double kFloatMappingRoundingTolerance = 0.000001;
 
 var boundsToVar(Rectangle<float> bounds) {
     auto* result = new DynamicObject();
@@ -97,8 +98,29 @@ void stylePropertyButton(TextButton& button, const String& text) {
     button.setColour(TextButton::textColourOnId, kText);
 }
 
+String formatPropertyReal(double value) {
+    if (!std::isfinite(value)) {
+        return {};
+    }
+    if (value == std::round(value)) {
+        return String(roundToInt(value));
+    }
+
+    const double magnitude = std::floor(std::log10(std::abs(value)));
+    const int decimalPlaces = jlimit(0, 8, 1 - static_cast<int>(magnitude));
+    const double roundingValue = value + std::copysign(
+            jmax(1.0, std::abs(value)) * kFloatMappingRoundingTolerance,
+            value);
+    if (decimalPlaces == 0) {
+        return String(roundToInt(roundingValue));
+    }
+    return String(roundingValue, decimalPlaces)
+            .trimCharactersAtEnd("0")
+            .trimCharactersAtEnd(".");
+}
+
 String formatPropertyPercentage(double value) {
-    return String(value * 100.0, 1) + "%";
+    return formatPropertyReal(value * 100.0) + "%";
 }
 
 std::optional<double> parsePropertyNumber(String text, const String& suffix) {

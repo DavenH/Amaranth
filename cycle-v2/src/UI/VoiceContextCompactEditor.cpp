@@ -1,5 +1,3 @@
-#include <cmath>
-
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/Editors/PropertyControlLookAndFeel.h"
@@ -50,12 +48,8 @@ bool isSpectral(const Node& node) {
 
 String durationText(double voiceDurationSeconds) {
     const double duration = jmax(0.0, voiceDurationSeconds);
-    const int wholeSeconds = roundToInt(duration);
-    const bool isWholeSecond = std::abs(duration - (double) wholeSeconds) < 0.0005;
-    const String value = isWholeSecond
-            ? String(wholeSeconds)
-            : String(duration, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
-    return value + (std::abs(duration - 1.0) < 0.0005 ? " second" : " seconds");
+    const String value = formatPropertyReal(duration);
+    return value + (approximatelyEqual(duration, 1.0) ? " second" : " seconds");
 }
 
 String durationReadout(double voiceDurationSeconds) {

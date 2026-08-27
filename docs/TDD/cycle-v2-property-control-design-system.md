@@ -635,6 +635,47 @@ Review evidence:
   `/private/tmp/cycle-v2-voice-context-property-tests-junit.xml`. Existing
   scalar `std::abs` calls only format two message-thread summary strings.
 
+### Shared Indicator And Display Precision Refinement (2026-08-27)
+
+Implemented:
+
+- The exact thumb hairline now derives its one-pixel rectangle from the
+  floating-point centre of the thumb. It no longer rounds the centre to an
+  integer X coordinate, which had made the line move optically left or right
+  as a static slider entered a drag.
+- Added one shared real-value formatter for property readouts. Non-integral
+  values retain at most the precision needed for two significant figures;
+  values displayed at whole-number resolution omit the decimal point and
+  trailing zeroes.
+- Applied the policy to Guide percentages, Waveshaper and IR gain, IR high
+  pass, Delay beats and percentages, Reverb seconds and percentages, Equalizer
+  gain and kHz readouts, and the Voice Context duration summary. Parsing,
+  stored parameter precision, automation serialization, drag sensitivity, and
+  domain mappings remain unchanged.
+
+Review evidence:
+
+- Geometry tests cover integer, quarter-pixel, half-pixel, and three-quarter-
+  pixel thumb positions and require the indicator and thumb centres to remain
+  identical. Formatter tests cover whole, signed, percentage, sub-unit, and
+  rounding cases.
+- Shared property-control tests pass 68 assertions; focused node-editor host
+  tests pass 160 assertions.
+- Guide, Waveshaper, IR, Delay, Reverb, and Equalizer fixtures exercise the
+  real editors with zero failed commands. Reports are under
+  `/private/tmp/cycle-v2-*-precision-report.json`.
+- Production screenshot:
+  `/private/tmp/cycle-v2-property-precision-after.png`. The indicator remains
+  visually centred and representative values read as `2 beats`, `80%`, `50%`,
+  and `10` plus the multiplication sign without redundant decimals.
+- The Reverb launch logged an unrelated intermittent CoreMIDI assertion, now
+  recorded in `ui-bugs.md`; all fixture commands still passed.
+- The complete Cycle V2 run passes 10,274 of 10,275 assertions; its sole
+  failure remains the pre-existing hit-router hover-help assertion recorded in
+  `ui-bugs.md`. JUnit evidence:
+  `/private/tmp/cycle-v2-property-precision-tests-junit.xml`. A compilation
+  database remains unavailable for focused clang-tidy.
+
 ### Deferred App-Wide Work
 
 The performance keyboard, output meters, palettes, dock sizing, and complete
