@@ -16,6 +16,9 @@ namespace {
 
 constexpr float kControlRailWidth = 348.f;
 constexpr int kValueWidth = 72;
+constexpr int kActionButtonHeight = 24;
+constexpr int kActionButtonWidth = 72;
+constexpr int kToggleControlInset = 12;
 
 std::optional<double> parseNumber(String text) {
     text = text.trim();
@@ -169,21 +172,16 @@ struct ImpulseResponseEditorComponent::Impl {
         ,   size        (owner, "Size")
         ,   postGain    (owner, "Post Gain")
         ,   highPass    (owner, "High Pass") {
-        resourceTitle.setText("RESOURCE", dontSendNotification);
-        resourceTitle.setFont(FontOptions(10.f).withStyle("Bold"));
+        enabled.button.setComponentID("irEditor.enabled");
+        resourceTitle.setText("IR sample", dontSendNotification);
+        resourceTitle.setFont(FontOptions(12.f).withStyle("Bold"));
         resourceTitle.setColour(Label::textColourId, Colour(0xff8793a1));
-        resourceStatus.setFont(FontOptions(11.f));
-        resourceStatus.setColour(Label::textColourId, Colour(0xffc1cad5));
-        resourceStatus.setJustificationType(Justification::centredLeft);
-        resourceStatus.setMinimumHorizontalScale(0.8f);
+        resourceTitle.setJustificationType(Justification::centredLeft);
         owner.addAndMakeVisible(resourceTitle);
-        owner.addAndMakeVisible(resourceStatus);
 
-        configureButton(loadAudio, "Load Audio", "irEditor.loadAudio");
-        configureButton(modelAudio, "Model Audio", "irEditor.modelAudio");
+        configureButton(loadAudio, "Load", "irEditor.loadAudio");
+        configureButton(modelAudio, "Model", "irEditor.modelAudio");
         configureButton(unload, "Unload", "irEditor.unloadAudio");
-        loadAudio.setColour(TextButton::buttonColourId, Colour(0xff175b88));
-        loadAudio.setColour(TextButton::buttonOnColourId, Colour(0xff216f9f));
         unload.setColour(TextButton::textColourOffId, Colour(0xff9ca8b5));
         owner.addAndMakeVisible(loadAudio);
         owner.addAndMakeVisible(modelAudio);
@@ -202,13 +200,13 @@ struct ImpulseResponseEditorComponent::Impl {
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
     Label resourceTitle;
-    Label resourceStatus;
     TextButton loadAudio;
     TextButton modelAudio;
     TextButton unload;
     std::unique_ptr<FileChooser> chooser;
     MessageThreadWorker worker;
     bool busy {};
+    std::optional<ImpulseResponseImportMode> busyMode;
     String error;
 };
 
@@ -232,6 +230,7 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
         } else {
             impl->error = {};
         }
+        setStatusMessage(impl->error);
         updateResourceState();
     };
 }
@@ -274,8 +273,8 @@ void ImpulseResponseEditorComponent::layoutEditor() {
     impl->enabled.setBounds(
             bounds.removeFromTop(PropertyControlMetrics::rowHeight),
             PropertyControlMetrics::labelWidth,
-            PropertyControlMetrics::inlineGap);
-    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
+            PropertyControlMetrics::inlineGap + kToggleControlInset);
+    bounds.removeFromTop(PropertyControlMetrics::rowGap);
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::rowHeight),
@@ -285,17 +284,19 @@ void ImpulseResponseEditorComponent::layoutEditor() {
         bounds.removeFromTop(PropertyControlMetrics::rowGap);
     }
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);
-    impl->resourceTitle.setBounds(bounds.removeFromTop(16));
-    impl->resourceStatus.setBounds(bounds.removeFromTop(38));
-    bounds.removeFromTop(4);
-    auto actionRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
-    const int actionWidth = (actionRow.getWidth() - PropertyControlMetrics::inlineGap) / 2;
-    impl->loadAudio.setBounds(actionRow.removeFromLeft(actionWidth));
-    actionRow.removeFromLeft(PropertyControlMetrics::inlineGap);
-    impl->modelAudio.setBounds(actionRow);
+    impl->resourceTitle.setBounds(bounds.removeFromTop(18));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
-    auto unloadRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
-    impl->unload.setBounds(unloadRow.removeFromRight(actionWidth));
+    auto actionRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
+    actionRow = actionRow.withTrimmedTop(
+            (PropertyControlMetrics::rowHeight - kActionButtonHeight) / 2);
+    impl->loadAudio.setBounds(
+            actionRow.removeFromLeft(kActionButtonWidth).withHeight(kActionButtonHeight));
+    actionRow.removeFromLeft(PropertyControlMetrics::inlineGap);
+    impl->modelAudio.setBounds(
+            actionRow.removeFromLeft(kActionButtonWidth).withHeight(kActionButtonHeight));
+    actionRow.removeFromLeft(PropertyControlMetrics::inlineGap);
+    impl->unload.setBounds(
+            actionRow.removeFromLeft(kActionButtonWidth).withHeight(kActionButtonHeight));
 }
 
 void ImpulseResponseEditorComponent::syncEditorFromNode() {
@@ -313,7 +314,9 @@ void ImpulseResponseEditorComponent::syncEditorFromNode() {
 
 void ImpulseResponseEditorComponent::chooseAudio(ImpulseResponseImportMode mode) {
     impl->busy = true;
+    impl->busyMode = mode;
     impl->error = {};
+    setStatusMessage({});
     updateResourceState();
     impl->chooser = std::make_unique<FileChooser>(
             mode == ImpulseResponseImportMode::Direct
@@ -331,6 +334,8 @@ void ImpulseResponseEditorComponent::chooseAudio(ImpulseResponseImportMode mode)
                 const File selected = chooser.getResult();
                 if (selected == File()) {
                     safeThis->impl->busy = false;
+                    safeThis->impl->busyMode.reset();
+                    safeThis->setStatusMessage({});
                     safeThis->updateResourceState();
                     return;
                 }
@@ -363,6 +368,7 @@ void ImpulseResponseEditorComponent::prepareAudio(
                     return;
                 }
                 safeThis->impl->busy = false;
+                safeThis->impl->busyMode.reset();
                 if (pending->error.isNotEmpty()) {
                     safeThis->impl->error = pending->error;
                 } else if (!safeThis->setAudioResource(std::move(pending->prepared.edit))) {
@@ -370,25 +376,17 @@ void ImpulseResponseEditorComponent::prepareAudio(
                 } else {
                     safeThis->impl->error = {};
                 }
+                safeThis->setStatusMessage(safeThis->impl->error);
                 safeThis->updateResourceState();
             });
 }
 
 void ImpulseResponseEditorComponent::updateResourceState() {
     const auto summary = audioResourceSummary();
-    String status;
-    if (impl->busy) {
-        status = "Preparing embedded audio…";
-    } else if (impl->error.isNotEmpty()) {
-        status = impl->error;
-    } else if (!summary.has_value()) {
-        status = "No embedded audio\nCurve is active";
-    } else if (summary->mode == "direct") {
-        status = summary->name + "\nDirect Audio · curve inactive";
-    } else {
-        status = summary->name + "\nModelled Curve · editable";
-    }
-    impl->resourceStatus.setText(status, dontSendNotification);
+    impl->loadAudio.setButtonText(
+            impl->busyMode == ImpulseResponseImportMode::Direct ? "Loading…" : "Load");
+    impl->modelAudio.setButtonText(
+            impl->busyMode == ImpulseResponseImportMode::Modelled ? "Modelling…" : "Model");
     impl->loadAudio.setEnabled(!impl->busy);
     impl->modelAudio.setEnabled(!impl->busy);
     impl->unload.setEnabled(!impl->busy && summary.has_value());
@@ -426,7 +424,9 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     const auto summary = audioResourceSummary();
     state.setProperty("resourceActionsAvailable", true);
     state.setProperty("resourceBusy", impl->busy);
-    state.setProperty("resourceStatus", impl->resourceStatus.getText());
+    state.setProperty("resourceSectionLabel", impl->resourceTitle.getText());
+    state.setProperty("resourceSublabelVisible", false);
+    state.setProperty("resourceError", impl->error);
     state.setProperty("resourceBound", summary.has_value());
     state.setProperty("resourceMode", summary.has_value() ? summary->mode : String());
 }

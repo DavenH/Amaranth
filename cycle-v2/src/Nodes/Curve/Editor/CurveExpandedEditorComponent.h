@@ -25,6 +25,7 @@ public:
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
     virtual void curveTransientStateChanged(uint64_t) {}
+    virtual void setCurveEditorStatus(const String&) {}
     virtual bool setAudioResource(NodeAudioResourceEdit) { return false; }
     virtual bool removeAudioResource() { return false; }
     virtual std::optional<NodeAudioResourceSummary> audioResourceSummary() const {
@@ -71,6 +72,7 @@ protected:
     void publishCurrentState();
     void beginTransaction();
     void commitTransaction();
+    void setStatusMessage(const String& message);
     void requestRepaint();
     void refreshEditorSubject();
     void bindContinuousControl(LabeledParameterSlider& control);

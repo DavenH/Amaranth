@@ -95,22 +95,22 @@ occurs on the audio thread.
 
 ## UI Contract
 
-The property rail adds a separate Resource section below processing controls:
+The property rail adds a separate IR sample section below processing controls:
 
-- **Load Audio** is the primary import action;
-- **Model Audio** is a secondary conversion action;
+- **Load** imports direct audio;
+- **Model** converts imported audio to the editable curve;
 - **Unload** is a lower-emphasis contextual action, enabled only while a
   resource is bound;
-- one concise status line names the embedded resource and says whether Direct
-  Audio or Modelled Curve is active; and
-- while preparation is running, import actions are disabled and the status is
-  explicit. Failures keep the prior document state and produce a readable
-  status.
+- all three actions use compact content-sized buttons on one row; and
+- while preparation is running, import actions are disabled and the initiating
+  action names the operation. Failures keep the prior document state and use
+  the existing editor status surface.
 
-The graph view remains the largest region. In direct mode the status explicitly
-says that the retained curve is inactive until Unload or Model; Modelled mode
-shows the active editable curve. Actions use real focusable buttons, preserve
-host Escape behavior, and expose stable automation IDs.
+The graph view remains the largest region. The panel does not narrate ordinary
+empty, active, or inactive state in a persistent sublabel: binding and mode are
+already expressed by the available actions and the rendered editor state.
+Actions use real focusable buttons, preserve host Escape behavior, and expose
+stable automation IDs.
 
 File selection is presentation-only. Decoding and modelling run outside the
 audio thread; only the completed immutable result is applied on the message
@@ -200,17 +200,23 @@ no clipped status or stranded rail space.
 - Direct bindings reach `IrSignalProcessor` and participate in its
   configuration key. Modelled bindings use the editable curve path; neither
   path allocates or decodes in realtime processing methods.
-- The property rail exposes focusable Load Audio, Model Audio, and contextual
-  Unload actions with explicit empty, busy, error, Direct Audio, and Modelled
-  Curve status. Decode and modelling run on the existing worker boundary and
-  publish the completed immutable edit on the message thread.
-- Focused Cycle V2 tests pass with 86 audio-resource assertions and 42 IR
+- The property rail exposes compact focusable Load, Model, and contextual
+  Unload actions under IR sample, without a persistent explanatory sublabel.
+  Busy state stays on the initiating action and errors use the editor status
+  surface. Decode and modelling run on the existing worker boundary and publish
+  the completed immutable edit on the message thread.
+- Focused Cycle V2 tests pass with 86 audio-resource assertions and 59 IR
   property assertions. The Standalone Debug target builds with `--parallel
   10`; the 31-command focused automation includes first-Escape close, and the
   screenshot fixture passes with no filtered-log warnings.
-- The complete Cycle V2 run passes 10,391 of 10,392 assertions; its sole
+- The complete Cycle V2 run passes 10,408 of 10,409 assertions; its sole
   failure is the pre-existing hit-router hover-help assertion already recorded
   in `ui-bugs.md`.
+- The IR sample refinement removes persistent state narration, aligns Enabled
+  to the slider control column, and keeps Load, Model, and Unload in one compact
+  action row. Focused property tests cover its geometry and error-status route;
+  the production screenshot is
+  `/private/tmp/cycle-v2-ir-compact-actions.png`.
 - Final production volume is 949 added and 73 removed lines (876 net), within
   the review threshold. The new domain preparation implementation is 124
   lines; no generic adapter exceeds 150 lines, and generic graph, serializer,

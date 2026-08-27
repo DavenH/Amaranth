@@ -364,11 +364,15 @@ public:
 
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
+    void setCurveEditorStatus(const String& message) override { status = message; }
     bool setAudioResource(NodeAudioResourceEdit edit) override {
         appliedResource = std::move(edit);
         return true;
     }
     bool removeAudioResource() override {
+        if (!resourceRemovalSucceeds) {
+            return false;
+        }
         ++resourceRemovals;
         resource.reset();
         return true;
@@ -378,8 +382,10 @@ public:
     }
 
     StringArray events;
+    String status;
     NodeAudioResourceEdit appliedResource;
     std::optional<NodeAudioResourceSummary> resource;
+    bool resourceRemovalSucceeds { true };
     int resourceRemovals {};
 };
 
@@ -1209,8 +1215,8 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE((int) landmarks->getLast().getProperty("sample", {}) == 1024);
     REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
     REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
-    REQUIRE(state.getProperty("resourceStatus", {}).toString()
-            == "No embedded audio\nCurve is active");
+    REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");
+    REQUIRE_FALSE((bool) state.getProperty("resourceSublabelVisible", {}));
 
     int textButtonCount = 0;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
@@ -1224,9 +1230,27 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(loadAudio != nullptr);
     REQUIRE(modelAudio != nullptr);
     REQUIRE(unloadAudio != nullptr);
+    REQUIRE(loadAudio->getButtonText() == "Load");
+    REQUIRE(modelAudio->getButtonText() == "Model");
+    REQUIRE(unloadAudio->getButtonText() == "Unload");
     REQUIRE(loadAudio->getWantsKeyboardFocus());
     REQUIRE(modelAudio->getWantsKeyboardFocus());
     REQUIRE_FALSE(unloadAudio->isEnabled());
+    REQUIRE(loadAudio->getHeight() == 24);
+    REQUIRE(modelAudio->getHeight() == loadAudio->getHeight());
+    REQUIRE(unloadAudio->getHeight() == loadAudio->getHeight());
+    REQUIRE(loadAudio->getY() == modelAudio->getY());
+    REQUIRE(modelAudio->getY() == unloadAudio->getY());
+    REQUIRE(loadAudio->getWidth() < 100);
+
+    auto* enabled = dynamic_cast<ToggleButton*>(editor.findChildWithID("irEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->isVisible());
+    REQUIRE(enabled->getLocalBounds().contains(15, 15));
+
+    auto* sizeSlider = dynamic_cast<PrecisionSlider*>(editor.findChildWithID("irEditor.size"));
+    REQUIRE(sizeSlider != nullptr);
+    REQUIRE(enabled->getX() == sizeSlider->getX() + 12);
 
     auto* sizeValue = dynamic_cast<Label*>(editor.findChildWithID("irEditor.size.value"));
     REQUIRE(sizeValue != nullptr);
@@ -1266,12 +1290,18 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     editor.setNode(ir);
     REQUIRE((bool) editor.automationState().getProperty("resourceBound", {}));
     REQUIRE(editor.automationState().getProperty("resourceMode", {}).toString() == "direct");
-    REQUIRE(editor.automationState().getProperty("resourceStatus", {}).toString()
-            == "room.wav\nDirect Audio · curve inactive");
     REQUIRE(unloadAudio->isEnabled());
     REQUIRE(unloadAudio->getWantsKeyboardFocus());
+
+    delegate.resourceRemovalSucceeds = false;
+    unloadAudio->onClick();
+    REQUIRE(delegate.status == "The embedded audio could not be unloaded.");
+    REQUIRE(delegate.resourceRemovals == 0);
+
+    delegate.resourceRemovalSucceeds = true;
     unloadAudio->onClick();
     REQUIRE(delegate.resourceRemovals == 1);
+    REQUIRE(delegate.status.isEmpty());
     REQUIRE_FALSE((bool) editor.automationState().getProperty("resourceBound", {}));
 }
 

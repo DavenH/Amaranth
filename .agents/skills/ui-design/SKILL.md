@@ -118,6 +118,16 @@ scales and their readable separation, not to an unassigned central gulf.
   operational guidance in the product's established console or help surface
   when one exists; retain local text when it is required to understand a risky
   or unfamiliar choice.
+- Do not add persistent sublabels that narrate an obvious state already shown
+  by the control, such as saying that an unchecked resource is absent or that
+  an enabled curve is active. Express ordinary state through the control,
+  selection, value, or availability itself. Reserve local secondary text for
+  information the user cannot otherwise infer; route transient progress,
+  errors, and guidance through the established status or help surface.
+- Size action buttons from their label and control-size family, not from the
+  width of the container. Full-width or oversized buttons imply dialog-level
+  importance; compact inspector actions should share a row when their labels
+  remain clear and their hit targets do not overlap.
 - Use color semantically and consistently. Never rely on color alone for state.
 - Make enabled, disabled, hover, pressed, selected, focused, warning, and error
   states related but unmistakable.

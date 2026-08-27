@@ -72,6 +72,10 @@ private:
         presentation.recordNodeEditorMovement(nodeId, "curve", fingerprint);
     }
 
+    void setCurveEditorStatus(const String& message) override {
+        presentation.setNodeEditorStatus(message);
+    }
+
     bool setAudioResource(NodeAudioResourceEdit edit) override {
         return commands.setNodeAudioResource(std::move(edit));
     }

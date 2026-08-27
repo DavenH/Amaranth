@@ -67,6 +67,12 @@ void CurveExpandedEditorComponent::setDelegate(CurveExpandedEditorDelegate* next
     widget.setDelegate(this);
 }
 
+void CurveExpandedEditorComponent::setStatusMessage(const String& message) {
+    if (delegate != nullptr) {
+        delegate->setCurveEditorStatus(message);
+    }
+}
+
 bool CurveExpandedEditorComponent::setAudioResource(NodeAudioResourceEdit edit) {
     return delegate != nullptr && delegate->setAudioResource(std::move(edit));
 }

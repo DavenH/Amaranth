@@ -13,8 +13,8 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.resourceStatus",
-      "equals": "No embedded audio\nCurve is active"
+      "path": "expandedNodeControls.effect2D.resourceSectionLabel",
+      "equals": "IR sample"
     },
     {
       "command": "waitForIdle",
