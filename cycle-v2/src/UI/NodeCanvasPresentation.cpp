@@ -440,18 +440,25 @@ void paintOutputAction(
 
 NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasScene& sceneToUse,
-        NodePreviewRenderer& previewRendererToUse) :
+        NodePreviewRenderer& previewRendererToUse,
+        NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
     ,   signalProbeRail(previewRendererToUse)
-    ,   signalProbeDetailView(previewRendererToUse) {
+    ,   signalProbeDetailView(previewRendererToUse)
+    ,   performanceObserver(performanceObserverToUse) {
 }
 
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    paintGrid(graphics, frame);
-    GuideRelationshipPresentation::paintTether(graphics, frame);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Backdrop);
+        paintGrid(graphics, frame);
+        GuideRelationshipPresentation::paintTether(graphics, frame);
+    }
 
     {
         Graphics::ScopedSaveState contentClip(graphics);
@@ -472,65 +479,110 @@ void NodeCanvasPresentation::paint(
                     frame.probeRailState.expandedHeight,
                     frame.dockSplitRatio
             });
-    if (frame.probeRailState.expanded) {
-        guideCurveShelf.paint(
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::GuideShelf);
+        if (frame.probeRailState.expanded) {
+            guideCurveShelf.paint(
+                    graphics,
+                    frame.graph,
+                    frame.workspaceBounds,
+                    frame.probeRailState,
+                    frame.dockSplitRatio,
+                    frame.guideShelfState,
+                    frame.dockFocus);
+        }
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SpyRail);
+        signalProbeRail.paintRail(
                 graphics,
                 frame.graph,
-                frame.workspaceBounds,
+                frame.previewResult,
+                frame.probeRailState.expanded
+                        ? GuideCurveShelf::spyWorkspace(
+                                frame.workspaceBounds,
+                                frame.dockSplitRatio,
+                                frame.guideShelfState.minimized,
+                                frame.probeRailState.minimized)
+                        : frame.workspaceBounds,
                 frame.probeRailState,
-                frame.dockSplitRatio,
-                frame.guideShelfState,
                 frame.dockFocus);
     }
-    signalProbeRail.paintRail(
-            graphics,
-            frame.graph,
-            frame.previewResult,
-            frame.probeRailState.expanded
-                    ? GuideCurveShelf::spyWorkspace(
-                            frame.workspaceBounds,
-                            frame.dockSplitRatio,
-                            frame.guideShelfState.minimized,
-                            frame.probeRailState.minimized)
-                    : frame.workspaceBounds,
-            frame.probeRailState,
-            frame.dockFocus);
-    WorkspaceDock::paintChrome(
-            graphics,
-            dock,
-            "Curve Guides",
-            "Spies",
-            frame.probeRailState.expanded,
-            frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
-    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
-    signalProbeDetailView.paint(
-            graphics,
-            frame.canvasBounds,
-            frame.probeDetailState);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::DockAndDetail);
+        WorkspaceDock::paintChrome(
+                graphics,
+                dock,
+                "Curve Guides",
+                "Spies",
+                frame.probeRailState.expanded,
+                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
+        signalProbeDetailView.paint(
+                graphics,
+                frame.canvasBounds,
+                frame.probeDetailState);
+    }
 }
 
 void NodeCanvasPresentation::paintContent(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    paintSnapGuides(graphics, frame);
-    paintEdges(graphics, frame);
-    signalProbeRail.paintCableAnnotations(
-            graphics,
-            frame.graph,
-            scene.snapshot(),
-            GuideCurveShelf::spyWorkspace(
-                    frame.workspaceBounds,
-                    frame.dockSplitRatio,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized),
-            frame.probeRailState);
-    paintPendingConnection(graphics, frame);
-    paintNodes(graphics, frame);
-    GuideRelationshipPresentation::paintHighlights(graphics, frame);
-    paintMiniMap(graphics, frame);
-    paintLegend(graphics, frame);
-    paintPalette(graphics, frame);
-    paintStatus(graphics, frame);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SnapGuides);
+        paintSnapGuides(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Cables);
+        paintEdges(graphics, frame);
+        signalProbeRail.paintCableAnnotations(
+                graphics,
+                frame.graph,
+                scene.snapshot(),
+                GuideCurveShelf::spyWorkspace(
+                        frame.workspaceBounds,
+                        frame.dockSplitRatio,
+                        frame.guideShelfState.minimized,
+                        frame.probeRailState.minimized),
+                frame.probeRailState);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::PendingConnection);
+        paintPendingConnection(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Nodes);
+        paintNodes(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::RelationshipHighlights);
+        GuideRelationshipPresentation::paintHighlights(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Utilities);
+        paintMiniMap(graphics, frame);
+        paintLegend(graphics, frame);
+        paintPalette(graphics, frame);
+        paintStatus(graphics, frame);
+    }
 }
 
 bool NodeCanvasPresentation::renderOpenGL(

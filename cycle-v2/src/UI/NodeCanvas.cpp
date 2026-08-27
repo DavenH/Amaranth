@@ -125,7 +125,7 @@ NodeCanvas::NodeCanvas() :
             *this,
             *this,
             { expandedNodeId })
-    ,   canvasPresentation(sceneBuilder, editorCoordinator.previewRenderer())
+    ,   canvasPresentation(sceneBuilder, editorCoordinator.previewRenderer(), &performanceMetrics)
     ,   automation({
             *this,
             document,
@@ -199,12 +199,17 @@ NodeCanvas::~NodeCanvas() {
 void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const Node* expandedNode = queries.findNode(expandedNodeId);
+    const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(frame.canvasBounds);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
     }
+
+    performanceMetrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::FramePreparation,
+            performanceMetrics.timestamp() - framePreparationStartedAt);
 
     canvasPresentation.paint(g, frame);
     if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {

@@ -148,6 +148,43 @@ TEST_CASE("Canvas metrics distinguish full and status-region repaint requests",
     REQUIRE((int64) property(repaintScopes, "status") == 1);
 }
 
+TEST_CASE("Canvas metrics aggregate presentation layer durations",
+        "[cycle-v2][canvas][performance]") {
+    fakeNow = 100;
+    CanvasPerformanceMetrics metrics(fakeClock);
+
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                &metrics,
+                NodeCanvasPresentationStage::Nodes);
+        fakeNow = 4300;
+    }
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::Nodes,
+            1800);
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::SpyRail,
+            900);
+
+    const auto snapshot = metrics.snapshot();
+    const auto& nodes = snapshot.presentationStages[static_cast<size_t>(
+            NodeCanvasPresentationStage::Nodes)];
+    REQUIRE(nodes.count == 2);
+    REQUIRE(nodes.totalMicroseconds == 6000);
+
+    const var exported = metrics.toVar({});
+    const var& stages = property(exported, "presentationStages");
+    REQUIRE((double) property(property(stages, "nodes"), "meanMs")
+            == Catch::Approx(3.0));
+    REQUIRE((double) property(property(stages, "spyRail"), "maxMs")
+            == Catch::Approx(0.9));
+
+    metrics.reset();
+    for (const auto& stage : metrics.snapshot().presentationStages) {
+        REQUIRE(stage.count == 0);
+    }
+}
+
 TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",
         "[cycle-v2][canvas][performance]") {
     fakeNow = 100;

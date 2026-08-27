@@ -6,12 +6,15 @@
 #include <cstdint>
 
 #include "Runtime/PerformanceDistribution.h"
+#include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/NodeEditorPerformanceObserver.h"
 #include "UI/RenderInvalidationAccumulator.h"
 
 namespace CycleV2 {
 
-class CanvasPerformanceMetrics final : public NodeEditorPerformanceObserver {
+class CanvasPerformanceMetrics final :
+        public NodeEditorPerformanceObserver
+    ,   public NodeCanvasPresentationPerformanceObserver {
 public:
     enum class Trigger : uint8_t {
         Hover,
@@ -54,6 +57,8 @@ public:
     static constexpr size_t frameCount = static_cast<size_t>(Frame::Count);
     static constexpr size_t repaintScopeCount = static_cast<size_t>(RepaintScope::Count);
     static constexpr size_t operationCount = static_cast<size_t>(Operation::Count);
+    static constexpr size_t presentationStageCount = static_cast<size_t>(
+            NodeCanvasPresentationStage::Count);
     using Distribution = PerformanceDistribution;
 
     struct TriggerSnapshot {
@@ -70,6 +75,7 @@ public:
         std::array<Distribution, frameCount> frames;
         std::array<uint64_t, repaintScopeCount> repaintScopes {};
         std::array<Distribution, operationCount> operations;
+        std::array<Distribution, presentationStageCount> presentationStages;
         uint64_t hoverStateChanges {};
         uint64_t hoverStateUnchanged {};
         uint64_t occludedHoverResolutions {};
@@ -123,6 +129,10 @@ public:
     void nodeEditorOperationCompleted(
             NodeEditorPerformanceOperation operation,
             uint64_t elapsedMicroseconds) override;
+    uint64_t presentationTimestamp() const override { return timestamp(); }
+    void presentationStageCompleted(
+            NodeCanvasPresentationStage stage,
+            uint64_t elapsedMicroseconds) override;
     void reset();
 
     Snapshot snapshot() const;
@@ -132,6 +142,7 @@ public:
     static const char* label(Frame frame);
     static const char* label(RepaintScope scope);
     static const char* label(Operation operation);
+    static const char* label(NodeCanvasPresentationStage stage);
     static double percentileMilliseconds(const Distribution& distribution, double percentile);
 
 private:
@@ -159,6 +170,7 @@ private:
     std::array<Distribution, frameCount> frameData;
     std::array<uint64_t, repaintScopeCount> repaintScopeData {};
     std::array<Distribution, operationCount> operationData;
+    std::array<Distribution, presentationStageCount> presentationStageData;
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};
     uint64_t occludedHoverResolutions {};

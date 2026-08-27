@@ -4,6 +4,7 @@
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePreviewRenderer.h"
@@ -65,7 +66,8 @@ class NodeCanvasPresentation {
 public:
     NodeCanvasPresentation(
             NodeCanvasScene& sceneToUse,
-            NodePreviewRenderer& previewRendererToUse);
+            NodePreviewRenderer& previewRendererToUse,
+            NodeCanvasPresentationPerformanceObserver* performanceObserver = nullptr);
 
     void paint(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool renderOpenGL(
@@ -117,6 +119,7 @@ private:
     SignalProbeRail signalProbeRail;
     GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
+    NodeCanvasPresentationPerformanceObserver* performanceObserver;
 };
 
 }

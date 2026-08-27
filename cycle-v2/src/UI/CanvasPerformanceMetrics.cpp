@@ -22,6 +22,10 @@ size_t indexFor(CanvasPerformanceMetrics::Operation operation) {
     return static_cast<size_t>(operation);
 }
 
+size_t indexFor(NodeCanvasPresentationStage stage) {
+    return static_cast<size_t>(stage);
+}
+
 }
 
 thread_local CanvasPerformanceMetrics* CanvasPerformanceMetrics::activeMetrics = nullptr;
@@ -156,6 +160,13 @@ void CanvasPerformanceMetrics::nodeEditorOperationCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::presentationStageCompleted(
+        NodeCanvasPresentationStage stage,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    record(presentationStageData[indexFor(stage)], elapsedMicroseconds);
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -164,6 +175,7 @@ void CanvasPerformanceMetrics::reset() {
     frameData = {};
     repaintScopeData = {};
     operationData = {};
+    presentationStageData = {};
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
@@ -186,6 +198,7 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
     result.frames = frameData;
     result.repaintScopes = repaintScopeData;
     result.operations = operationData;
+    result.presentationStages = presentationStageData;
     result.hoverStateChanges = hoverStateChanges;
     result.hoverStateUnchanged = hoverStateUnchanged;
     result.occludedHoverResolutions = occludedHoverResolutions;
@@ -258,6 +271,15 @@ var CanvasPerformanceMetrics::toVar(
     }
     root->setProperty("operations", var(operations));
 
+    auto* presentationStages = new DynamicObject();
+    for (size_t index = 0; index < presentationStageCount; ++index) {
+        const auto stage = static_cast<NodeCanvasPresentationStage>(index);
+        presentationStages->setProperty(
+                label(stage),
+                distributionToVar(current.presentationStages[index]));
+    }
+    root->setProperty("presentationStages", var(presentationStages));
+
     auto* hoverState = new DynamicObject();
     hoverState->setProperty("changed", (int64) current.hoverStateChanges);
     hoverState->setProperty("unchanged", (int64) current.hoverStateUnchanged);
@@ -318,6 +340,24 @@ const char* CanvasPerformanceMetrics::label(Operation operation) {
         case Operation::TrimeshVertexCommit:     return "trimeshVertexCommit";
         case Operation::TrimeshVertexSelection:  return "trimeshVertexSelection";
         case Operation::Count:                   break;
+    }
+    return "unknown";
+}
+
+const char* CanvasPerformanceMetrics::label(NodeCanvasPresentationStage stage) {
+    switch (stage) {
+        case NodeCanvasPresentationStage::FramePreparation:        return "framePreparation";
+        case NodeCanvasPresentationStage::Backdrop:                return "backdrop";
+        case NodeCanvasPresentationStage::SnapGuides:              return "snapGuides";
+        case NodeCanvasPresentationStage::Cables:                  return "cables";
+        case NodeCanvasPresentationStage::PendingConnection:       return "pendingConnection";
+        case NodeCanvasPresentationStage::Nodes:                   return "nodes";
+        case NodeCanvasPresentationStage::RelationshipHighlights:  return "relationshipHighlights";
+        case NodeCanvasPresentationStage::Utilities:               return "utilities";
+        case NodeCanvasPresentationStage::GuideShelf:              return "guideShelf";
+        case NodeCanvasPresentationStage::SpyRail:                 return "spyRail";
+        case NodeCanvasPresentationStage::DockAndDetail:           return "dockAndDetail";
+        case NodeCanvasPresentationStage::Count:                   break;
     }
     return "unknown";
 }
