@@ -45,6 +45,25 @@ Recording must not allocate, log, repaint, or change application behavior.
 Metrics are descriptive rather than pass/fail timing assertions because host,
 debug/release mode, window size, graph content, and GPU materially affect them.
 
+The Trimesh/Spy extension additionally reports:
+
+- native generic parameter (including Delay beats) and Trimesh vertex update
+  and gesture-commit duration distributions at the
+  command-service boundary (automation wrappers are not an adequate proxy for
+  child-component pointer events);
+- hover resolution duration plus changed/unchanged presentation-state and
+  expanded-editor-occlusion counts;
+- asynchronous preview queue delay, worker duration, audio/grid traversal,
+  preview extraction, publication delay, and request-to-publication latency;
+- published, superseded-before-start, stale/cancelled, and no-work request
+  counts so “fast” timings cannot hide discarded work.
+
+`GraphPresentationModel` is the authoritative async lifecycle owner and owns
+its collector. `GraphAudioExecutor` and `GraphPreviewExecutor` remain the
+authoritative algorithms; timers surround their existing calls without
+reimplementing either path. `NodeEditorCommandService` reports completed
+Trimesh operations through a narrow observer and retains all edit behavior.
+
 ## Automation
 
 Add commands to reset and inspect the canvas performance window. Inspection
@@ -122,3 +141,33 @@ Source inspection supports the measured ordering:
   curve preview snapshot rendering and introduce narrower dirty-region or
   layer caching below `NodeCanvasPresentation`, with this fixture guarding the
   end-to-end effect.
+
+## Trimesh, Spy, and Delay Baseline
+
+Captured on 2026-08-27 with the same Debug build through the session transport,
+using a 120 ms inter-command settling interval. These figures are distributions
+over small focused gestures, not release-mode benchmarks.
+
+- Three Trimesh point updates averaged 1.62 ms; gesture commit took 15.81 ms.
+  The causal preview worker took 17.84 ms: 4.96 ms in incremental graph/audio
+  traversal and 7.97 ms in preview/Spy extraction. The completed worker then
+  waited 162.32 ms for message-thread publication, making request-to-publication
+  latency 182.55 ms. The low Spy resolution is therefore not the dominant
+  computation in this sample.
+- The Trimesh gesture requested nine editor-attributed canvas repaints plus one
+  publication repaint. JUCE canvas paints averaged 71.35 ms and reached
+  150.96 ms; edit/publication repaint latency reached roughly 1.08 seconds.
+  Apparent Spy delay is primarily message-thread and presentation pressure.
+- Five Delay beats updates averaged 0.034 ms; no preview audio or extraction
+  ran. Commit took 14.85 ms, the worker took 0.041 ms, and message-thread
+  publication still waited 108.51 ms. JUCE canvas paints averaged 48.76 ms and
+  reached 95.11 ms. Delay DSP is not the source of slider lag.
+
+The first guarded optimization keeps hosted-editor invalidation local and
+suppresses canvas hover work/repaint when the expanded editor occludes the
+pointer or hover presentation state is unchanged. Delay now repaints its local
+preview explicitly. Under the same fixtures, edit-driven canvas repaint
+requests fell from 10 to 1 for Trimesh and from 5 to 1 for Delay. The remaining
+publication delay and expensive JUCE parent paints justify a subsequent
+message-thread scheduling and clipped/layer-caching optimization slice; they
+are now directly measurable in schema v2.

@@ -1,18 +1,10 @@
 #include "UI/CanvasPerformanceMetrics.h"
 
-#include <algorithm>
-#include <cmath>
-
 namespace CycleV2 {
 
 using namespace juce;
 
 namespace {
-
-constexpr std::array<uint64_t, CanvasPerformanceMetrics::histogramBucketCount - 1>
-        bucketUpperMicroseconds {
-            50, 100, 250, 500, 1000, 2000, 4000, 8000, 16000, 33000, 66000, 100000
-        };
 
 size_t indexFor(CanvasPerformanceMetrics::Trigger trigger) {
     return static_cast<size_t>(trigger);
@@ -20,6 +12,10 @@ size_t indexFor(CanvasPerformanceMetrics::Trigger trigger) {
 
 size_t indexFor(CanvasPerformanceMetrics::Frame frame) {
     return static_cast<size_t>(frame);
+}
+
+size_t indexFor(CanvasPerformanceMetrics::Operation operation) {
+    return static_cast<size_t>(operation);
 }
 
 }
@@ -108,12 +104,63 @@ void CanvasPerformanceMetrics::requestRepaint(Trigger trigger) {
     }
 }
 
+void CanvasPerformanceMetrics::recordOperation(
+        Operation operation,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    record(operationData[indexFor(operation)], elapsedMicroseconds);
+}
+
+void CanvasPerformanceMetrics::recordHoverState(bool changed, bool occluded) {
+    const juce::ScopedLock scopedLock(lock);
+    if (occluded) {
+        ++occludedHoverResolutions;
+    }
+    if (changed) {
+        ++hoverStateChanges;
+    } else {
+        ++hoverStateUnchanged;
+    }
+}
+
+void CanvasPerformanceMetrics::nodeEditorOperationCompleted(
+        NodeEditorPerformanceOperation operation,
+        uint64_t elapsedMicroseconds) {
+    switch (operation) {
+        case NodeEditorPerformanceOperation::NodeParameterUpdate:
+            recordOperation(Operation::NodeParameterUpdate, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::NodeParameterCommit:
+            recordOperation(Operation::NodeParameterCommit, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::TrimeshPointUpdate:
+            recordOperation(Operation::TrimeshPointUpdate, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::TrimeshPointCommit:
+            recordOperation(Operation::TrimeshPointCommit, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::TrimeshVertexUpdate:
+            recordOperation(Operation::TrimeshVertexUpdate, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::TrimeshVertexCommit:
+            recordOperation(Operation::TrimeshVertexCommit, elapsedMicroseconds);
+            break;
+        case NodeEditorPerformanceOperation::TrimeshVertexSelection:
+            recordOperation(Operation::TrimeshVertexSelection, elapsedMicroseconds);
+            break;
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
     windowStartMicroseconds = timestamp;
     triggerData = {};
     frameData = {};
+    operationData = {};
+    hoverStateChanges = 0;
+    hoverStateUnchanged = 0;
+    occludedHoverResolutions = 0;
 }
 
 CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
@@ -131,6 +178,10 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
         };
     }
     result.frames = frameData;
+    result.operations = operationData;
+    result.hoverStateChanges = hoverStateChanges;
+    result.hoverStateUnchanged = hoverStateUnchanged;
+    result.occludedHoverResolutions = occludedHoverResolutions;
     return result;
 }
 
@@ -138,7 +189,7 @@ var CanvasPerformanceMetrics::toVar(
         const RenderInvalidationAccumulator::Diagnostics& invalidation) const {
     const Snapshot current = snapshot();
     auto* root = new DynamicObject();
-    root->setProperty("schema", "cycle-v2-canvas-performance.v1");
+    root->setProperty("schema", "cycle-v2-canvas-performance.v2");
     root->setProperty("elapsedMs", (double) current.elapsedMicroseconds / 1000.0);
 
     uint64_t totalInvocations {};
@@ -184,6 +235,21 @@ var CanvasPerformanceMetrics::toVar(
     }
     root->setProperty("frames", var(frames));
 
+    auto* operations = new DynamicObject();
+    for (size_t index = 0; index < operationCount; ++index) {
+        const auto operation = static_cast<Operation>(index);
+        operations->setProperty(
+                label(operation),
+                distributionToVar(current.operations[index]));
+    }
+    root->setProperty("operations", var(operations));
+
+    auto* hoverState = new DynamicObject();
+    hoverState->setProperty("changed", (int64) current.hoverStateChanges);
+    hoverState->setProperty("unchanged", (int64) current.hoverStateUnchanged);
+    hoverState->setProperty("occluded", (int64) current.occludedHoverResolutions);
+    root->setProperty("hoverState", var(hoverState));
+
     auto* invalidationObject = new DynamicObject();
     invalidationObject->setProperty("requests", (int64) invalidation.requests);
     invalidationObject->setProperty("scheduledFlushes", (int64) invalidation.scheduledFlushes);
@@ -218,65 +284,39 @@ const char* CanvasPerformanceMetrics::label(Frame frame) {
     return "unknown";
 }
 
+const char* CanvasPerformanceMetrics::label(Operation operation) {
+    switch (operation) {
+        case Operation::HoverResolution:         return "hoverResolution";
+        case Operation::NodeParameterUpdate:     return "nodeParameterUpdate";
+        case Operation::NodeParameterCommit:     return "nodeParameterCommit";
+        case Operation::TrimeshPointUpdate:      return "trimeshPointUpdate";
+        case Operation::TrimeshPointCommit:      return "trimeshPointCommit";
+        case Operation::TrimeshVertexUpdate:     return "trimeshVertexUpdate";
+        case Operation::TrimeshVertexCommit:     return "trimeshVertexCommit";
+        case Operation::TrimeshVertexSelection:  return "trimeshVertexSelection";
+        case Operation::Count:                   break;
+    }
+    return "unknown";
+}
+
 double CanvasPerformanceMetrics::percentileMilliseconds(
         const Distribution& distribution,
         double percentile) {
-    if (distribution.count == 0) {
-        return 0.0;
-    }
-
-    const uint64_t target = std::max<uint64_t>(
-            1,
-            (uint64_t) std::ceil((double) distribution.count * percentile));
-    uint64_t cumulative {};
-    for (size_t index = 0; index < distribution.buckets.size(); ++index) {
-        cumulative += distribution.buckets[index];
-        if (cumulative >= target) {
-            const uint64_t upper = index < bucketUpperMicroseconds.size()
-                    ? bucketUpperMicroseconds[index]
-                    : distribution.maximumMicroseconds;
-            return (double) upper / 1000.0;
-        }
-    }
-    return (double) distribution.maximumMicroseconds / 1000.0;
+    return performancePercentileMilliseconds(distribution, percentile);
 }
 
 uint64_t CanvasPerformanceMetrics::defaultClock() {
     return (uint64_t) (Time::getMillisecondCounterHiRes() * 1000.0);
 }
 
-size_t CanvasPerformanceMetrics::bucketFor(uint64_t microseconds) {
-    const auto found = std::lower_bound(
-            bucketUpperMicroseconds.begin(),
-            bucketUpperMicroseconds.end(),
-            microseconds);
-    return (size_t) std::distance(bucketUpperMicroseconds.begin(), found);
-}
-
 void CanvasPerformanceMetrics::record(
         Distribution& distribution,
         uint64_t microseconds) {
-    ++distribution.count;
-    distribution.totalMicroseconds += microseconds;
-    distribution.maximumMicroseconds = std::max(
-            distribution.maximumMicroseconds,
-            microseconds);
-    ++distribution.buckets[bucketFor(microseconds)];
+    recordPerformanceSample(distribution, microseconds);
 }
 
 var CanvasPerformanceMetrics::distributionToVar(const Distribution& distribution) {
-    auto* object = new DynamicObject();
-    object->setProperty("count", (int64) distribution.count);
-    object->setProperty(
-            "meanMs",
-            distribution.count == 0
-                    ? 0.0
-                    : (double) distribution.totalMicroseconds / (double) distribution.count / 1000.0);
-    object->setProperty("p50Ms", percentileMilliseconds(distribution, 0.50));
-    object->setProperty("p95Ms", percentileMilliseconds(distribution, 0.95));
-    object->setProperty("p99Ms", percentileMilliseconds(distribution, 0.99));
-    object->setProperty("maxMs", (double) distribution.maximumMicroseconds / 1000.0);
-    return var(object);
+    return performanceDistributionToVar(distribution);
 }
 
 void CanvasPerformanceMetrics::finishTrigger(

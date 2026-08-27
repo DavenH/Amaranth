@@ -11,6 +11,30 @@ namespace CycleV2 {
 
 namespace {
 
+class ScopedNodeEditorOperation final {
+public:
+    ScopedNodeEditorOperation(
+            NodeEditorPerformanceObserver* observerToUse,
+            NodeEditorPerformanceOperation operationToUse) :
+            observer(observerToUse)
+        ,   operation(operationToUse)
+        ,   startedAt(Time::getMillisecondCounterHiRes()) {
+    }
+
+    ~ScopedNodeEditorOperation() {
+        if (observer != nullptr) {
+            observer->nodeEditorOperationCompleted(
+                    operation,
+                    (uint64_t) ((Time::getMillisecondCounterHiRes() - startedAt) * 1000.0));
+        }
+    }
+
+private:
+    NodeEditorPerformanceObserver* observer;
+    NodeEditorPerformanceOperation operation;
+    double startedAt;
+};
+
 var editorStateWithSelectedVertex(const Node& node, int vertexId) {
     auto result = std::make_unique<DynamicObject>();
     if (const auto* current = node.editorState.getDynamicObject()) {
@@ -29,12 +53,14 @@ NodeEditorCommandService::NodeEditorCommandService(
         GraphDocument& documentToUse,
         GraphCommandDispatcher& commandsToUse,
         NodeEditorPresentation& presentationToUse,
-        NodeEditorResources& resourcesToUse) :
-        owner        (&ownerToUse)
-    ,   document     (documentToUse)
-    ,   commands     (commandsToUse)
-    ,   presentation (presentationToUse)
-    ,   resources    (resourcesToUse) {
+        NodeEditorResources& resourcesToUse,
+        NodeEditorPerformanceObserver* performanceObserverToUse) :
+        owner               (&ownerToUse)
+    ,   document            (documentToUse)
+    ,   commands            (commandsToUse)
+    ,   presentation        (presentationToUse)
+    ,   resources           (resourcesToUse)
+    ,   performanceObserver (performanceObserverToUse) {
 }
 
 const Node* NodeEditorCommandService::findNode(const String& nodeId) const {
@@ -61,6 +87,9 @@ bool NodeEditorCommandService::beginNodeParameterEdit(
 }
 
 bool NodeEditorCommandService::updateNodeParameterEditValue(float value) {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::NodeParameterUpdate);
     if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()) {
         return false;
     }
@@ -112,6 +141,9 @@ bool NodeEditorCommandService::beginNodeParameterPairEdit(
 bool NodeEditorCommandService::updateNodeParameterPairEditValues(
         float firstValue,
         float secondValue) {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::NodeParameterUpdate);
     if (activeParameterNodeId.isEmpty() || activeParameterId.isEmpty()
             || secondaryParameterId.isEmpty()) {
         return false;
@@ -147,6 +179,9 @@ bool NodeEditorCommandService::updateNodeParameterPairEditValues(
 }
 
 void NodeEditorCommandService::endNodeParameterEdit() {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::NodeParameterCommit);
     if (activeParameterNodeId.isEmpty()) {
         return;
     }
@@ -473,6 +508,9 @@ bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(
 }
 
 bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value) {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::TrimeshVertexUpdate);
     const Node* node = findNode(activeVertexNodeId);
     if (node == nullptr || activeVertexWidget == nullptr
             || activeVertexParameterId.isEmpty() || activeVertexIndex < 0) {
@@ -516,6 +554,9 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
 }
 
 void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::TrimeshVertexCommit);
     if (activeVertexNodeId.isEmpty()) {
         return;
     }
@@ -540,6 +581,11 @@ void NodeEditorCommandService::endTrimeshVertexParameterEdit() {
 void NodeEditorCommandService::persistTrimeshMeshEdits(
         const String& nodeId,
         bool gestureComplete) {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            gestureComplete
+                    ? NodeEditorPerformanceOperation::TrimeshPointCommit
+                    : NodeEditorPerformanceOperation::TrimeshPointUpdate);
     const Node* node = findNode(nodeId);
     TrimeshWidget* widget = node != nullptr ? resources.findTrimeshWidget(nodeId) : nullptr;
     if (node == nullptr || widget == nullptr || node->kind != NodeKind::TrilinearMesh) {
@@ -655,6 +701,9 @@ bool NodeEditorCommandService::showTrimeshGuideAttachmentMenu(
 bool NodeEditorCommandService::selectTrimeshVertexIndex(
         const String& nodeId,
         int vertexIndex) {
+    ScopedNodeEditorOperation measurement(
+            performanceObserver,
+            NodeEditorPerformanceOperation::TrimeshVertexSelection);
     const Node* node = findNode(nodeId);
     if (node == nullptr) {
         return false;

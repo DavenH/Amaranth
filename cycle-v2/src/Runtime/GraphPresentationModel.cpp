@@ -60,6 +60,9 @@ bool GraphPresentationModel::refresh(
         const NodeGraph& graph,
         uint64_t documentRevision,
         const GraphChangeSet& change) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t startedAt = performance.timestamp();
+    performance.record(Performance::Outcome::Requested);
     requestedGraphRevision = documentRevision;
     const bool compile = current.graphRevision == 0 || requiresCompilation(change);
     const bool preview = compile || requiresPreview(change);
@@ -95,6 +98,10 @@ bool GraphPresentationModel::refresh(
             compile,
             preview);
     if (!compile && !request.edit.isValid()) {
+        performance.record(
+                Performance::Stage::SynchronousRefresh,
+                performance.timestamp() - startedAt);
+        performance.record(Performance::Outcome::NoWork);
         return true;
     }
     const auto updateResult = updateGraph.executeDeferredPublication(
@@ -113,7 +120,14 @@ bool GraphPresentationModel::refresh(
         ++previewRenders;
     }
 
-    return acceptSnapshot(std::move(next));
+    const bool accepted = acceptSnapshot(std::move(next));
+    performance.record(
+            Performance::Stage::SynchronousRefresh,
+            performance.timestamp() - startedAt);
+    performance.record(accepted
+            ? Performance::Outcome::Published
+            : Performance::Outcome::StaleOrCancelled);
+    return accepted;
 }
 
 bool GraphPresentationModel::acceptSnapshot(GraphPresentationSnapshot snapshotToAccept) {
@@ -132,13 +146,19 @@ void GraphPresentationModel::refreshAsync(
         uint64_t documentRevision,
         GraphChangeSet change,
         std::function<void()> completion) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t requestedAt = performance.timestamp();
     if (current.graphRevision == 0 || requiresCompilation(change)) {
         refresh(graph, documentRevision, change);
+        performance.record(
+                Performance::Stage::EndToEnd,
+                performance.timestamp() - requestedAt);
         if (completion) {
             completion();
         }
         return;
     }
+    performance.record(Performance::Outcome::Requested);
 
     requestedGraphRevision = documentRevision;
     const uint64_t generation = asyncState->generation.fetch_add(1) + 1;
@@ -154,6 +174,10 @@ void GraphPresentationModel::refreshAsync(
             preview);
     if (!request.edit.isValid() || request.invalidations.empty()) {
         acceptSnapshot(std::move(next));
+        performance.record(
+                Performance::Stage::EndToEnd,
+                performance.timestamp() - requestedAt);
+        performance.record(Performance::Outcome::NoWork);
         if (completion) {
             completion();
         }
@@ -175,6 +199,10 @@ void GraphPresentationModel::refreshAsync(
             return true;
         });
         acceptSnapshot(std::move(next));
+        performance.record(
+                Performance::Stage::EndToEnd,
+                performance.timestamp() - requestedAt);
+        performance.record(Performance::Outcome::NoWork);
         if (completion) {
             completion();
         }
@@ -189,13 +217,28 @@ void GraphPresentationModel::refreshAsync(
     refresh->requestFingerprint = requestFingerprint;
     refresh->snapshot = std::move(next);
     refresh->completion = std::move(completion);
+    refresh->requestedAtMicroseconds = requestedAt;
     asyncWorker.post([this, refresh] {
+        using Performance = GraphPresentationPerformanceMetrics;
+        const uint64_t workerStartedAt = performance.timestamp();
+        performance.record(
+                Performance::Stage::QueueDelay,
+                workerStartedAt - refresh->requestedAtMicroseconds);
         if (!isCurrent(*refresh)) {
             updateGraph.recordDecision(
                     refresh->request, UpdateTracePhase::SupersededBeforeStart);
+            performance.record(Performance::Outcome::SupersededBeforeStart);
             return false;
         }
-        return prepareAsyncRefresh(*refresh);
+        const bool prepared = prepareAsyncRefresh(*refresh);
+        refresh->workerFinishedAtMicroseconds = performance.timestamp();
+        performance.record(
+                Performance::Stage::Worker,
+                refresh->workerFinishedAtMicroseconds - workerStartedAt);
+        if (!prepared) {
+            performance.record(Performance::Outcome::StaleOrCancelled);
+        }
+        return prepared;
     }, [this, refresh] {
         auto completion = publishAsyncRefresh(refresh);
         if (completion) {
@@ -223,7 +266,11 @@ bool GraphPresentationModel::executeAsyncProducts(
                 return product.product == UpdateProduct::AudioConfiguration;
             });
     if (preparesConfiguration) {
+        const uint64_t startedAt = performance.timestamp();
         refreshConfigurations(refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
+        performance.record(
+                GraphPresentationPerformanceMetrics::Stage::Configuration,
+                performance.timestamp() - startedAt);
     }
     if (!isCurrent(refresh) || !requiresPreview(refresh.change)
             || !next.compileResult.succeeded()) {
@@ -266,17 +313,25 @@ bool GraphPresentationModel::renderPreviewProducts(
     previewVoice.controls.noteNumber = PreviewPitchResolver::forGraph(graph);
     previewVoice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     if (renderFullGraph) {
+        const uint64_t audioStartedAt = performance.timestamp();
         const GraphAudioResult audio = previewAudioExecutor.process(
                 graph,
                 snapshot.compileResult.plan,
                 previewFrameCount,
                 {},
                 previewVoice);
+        performance.record(
+                GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
+                performance.timestamp() - audioStartedAt);
+        const uint64_t extractionStartedAt = performance.timestamp();
         snapshot.previewResult = GraphPreviewExecutor().render(
                 snapshot.compileResult.plan,
                 audio,
                 graph.getSignalProbes(),
                 40);
+        performance.record(
+                GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
+                performance.timestamp() - extractionStartedAt);
         previewRendered = true;
         return true;
     }
@@ -292,6 +347,7 @@ bool GraphPresentationModel::renderPreviewProducts(
             dirtyNodes[static_cast<size_t>(step->second)] = 1;
         }
     }
+    const uint64_t audioStartedAt = performance.timestamp();
     const GraphAudioResultView audio = previewAudioExecutor.processIncrementalIndexed(
             graph,
             snapshot.compileResult.plan,
@@ -299,9 +355,13 @@ bool GraphPresentationModel::renderPreviewProducts(
             dirtyNodes,
             previewVoice,
             cancellationCheck);
+    performance.record(
+            GraphPresentationPerformanceMetrics::Stage::PreviewAudio,
+            performance.timestamp() - audioStartedAt);
     if (audio.cancelled || (cancellationCheck && !cancellationCheck())) {
         return false;
     }
+    const uint64_t extractionStartedAt = performance.timestamp();
     GraphPreviewExecutor().renderIncremental(
             snapshot.compileResult.plan,
             audio,
@@ -309,22 +369,35 @@ bool GraphPresentationModel::renderPreviewProducts(
             dirtyNodes,
             40,
             snapshot.previewResult);
+    performance.record(
+            GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
+            performance.timestamp() - extractionStartedAt);
     previewRendered = true;
     return true;
 }
 
 std::function<void()> GraphPresentationModel::publishAsyncRefresh(
         std::shared_ptr<AsyncRefresh> refresh) {
+    using Performance = GraphPresentationPerformanceMetrics;
+    const uint64_t publicationStartedAt = performance.timestamp();
+    if (refresh->workerFinishedAtMicroseconds != 0) {
+        performance.record(
+                Performance::Stage::PublicationDelay,
+                publicationStartedAt - refresh->workerFinishedAtMicroseconds);
+    }
     if (!refresh->state->alive.load()) {
+        performance.record(Performance::Outcome::StaleOrCancelled);
         return {};
     }
     if (!isCurrent(*refresh)) {
         updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
+        performance.record(Performance::Outcome::StaleOrCancelled);
         return {};
     }
     if (refresh->generation < publishedGeneration
             || !acceptSnapshot(std::move(refresh->snapshot))) {
         updateGraph.recordDecision(refresh->request, UpdateTracePhase::StaleResultDiscarded);
+        performance.record(Performance::Outcome::StaleOrCancelled);
         return {};
     }
     publishedGeneration = refresh->generation;
@@ -333,6 +406,10 @@ std::function<void()> GraphPresentationModel::publishAsyncRefresh(
         ++previewRenders;
     }
     publishedEditFingerprint = refresh->requestFingerprint;
+    performance.record(
+            Performance::Stage::EndToEnd,
+            performance.timestamp() - refresh->requestedAtMicroseconds);
+    performance.record(Performance::Outcome::Published);
     return std::move(refresh->completion);
 }
 

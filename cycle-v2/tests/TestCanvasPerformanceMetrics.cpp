@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "UI/CanvasPerformanceMetrics.h"
+#include "Runtime/GraphPresentationPerformanceMetrics.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -122,4 +123,64 @@ TEST_CASE("Canvas metrics reset starts an empty independent observation window",
         REQUIRE(trigger.handlerDuration.count == 0);
         REQUIRE(trigger.repaintLatency.count == 0);
     }
+}
+
+TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",
+        "[cycle-v2][canvas][performance]") {
+    fakeNow = 100;
+    CanvasPerformanceMetrics metrics(fakeClock);
+
+    metrics.recordOperation(CanvasPerformanceMetrics::Operation::HoverResolution, 240);
+    metrics.recordHoverState(false, true);
+    metrics.recordHoverState(false);
+    metrics.recordHoverState(true);
+    metrics.nodeEditorOperationCompleted(
+            NodeEditorPerformanceOperation::TrimeshVertexUpdate,
+            4200);
+
+    const var exported = metrics.toVar({});
+    const var& operations = property(exported, "operations");
+    const var& hover = property(operations, "hoverResolution");
+    const var& update = property(operations, "trimeshVertexUpdate");
+    const var& hoverState = property(exported, "hoverState");
+
+    REQUIRE((int64) property(hover, "count") == 1);
+    REQUIRE((double) property(hover, "meanMs") == Catch::Approx(0.24));
+    REQUIRE((int64) property(update, "count") == 1);
+    REQUIRE((double) property(update, "meanMs") == Catch::Approx(4.2));
+    REQUIRE((int64) property(hoverState, "changed") == 1);
+    REQUIRE((int64) property(hoverState, "unchanged") == 2);
+    REQUIRE((int64) property(hoverState, "occluded") == 1);
+}
+
+TEST_CASE("Presentation metrics distinguish causal preview stages and outcomes",
+        "[cycle-v2][canvas][performance]") {
+    fakeNow = 100;
+    GraphPresentationPerformanceMetrics metrics(fakeClock);
+    metrics.record(GraphPresentationPerformanceMetrics::Outcome::Requested);
+    metrics.record(GraphPresentationPerformanceMetrics::Stage::QueueDelay, 5000);
+    metrics.record(GraphPresentationPerformanceMetrics::Stage::PreviewAudio, 120000);
+    metrics.record(GraphPresentationPerformanceMetrics::Stage::PreviewExtraction, 7000);
+    metrics.record(GraphPresentationPerformanceMetrics::Stage::EndToEnd, 150000);
+    metrics.record(GraphPresentationPerformanceMetrics::Outcome::Published);
+
+    const var exported = metrics.toVar();
+    const var& stages = property(exported, "stages");
+    const var& outcomes = property(exported, "outcomes");
+    const var& audio = property(stages, "previewAudio");
+    const var& endToEnd = property(stages, "endToEnd");
+
+    REQUIRE((int64) property(audio, "count") == 1);
+    REQUIRE((double) property(audio, "maxMs") == Catch::Approx(120.0));
+    REQUIRE((double) property(endToEnd, "meanMs") == Catch::Approx(150.0));
+    REQUIRE((int64) property(outcomes, "requested") == 1);
+    REQUIRE((int64) property(outcomes, "published") == 1);
+
+    metrics.reset();
+    const auto resetStages = metrics.stageSnapshot();
+    const auto resetOutcomes = metrics.outcomeSnapshot();
+    REQUIRE(resetStages[static_cast<size_t>(
+            GraphPresentationPerformanceMetrics::Stage::PreviewAudio)].count == 0);
+    REQUIRE(resetOutcomes[static_cast<size_t>(
+            GraphPresentationPerformanceMetrics::Outcome::Requested)] == 0);
 }

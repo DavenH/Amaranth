@@ -123,6 +123,7 @@ private:
     const RuntimeProcessTrace& runtimeTrace;
     const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
+    CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;
     NodeCanvasAuthoring authoring;
     NodeCanvasInteraction interaction;
@@ -134,7 +135,6 @@ private:
     NodeCanvasEditorCoordinator editorCoordinator;
     NodeCanvasPresentation canvasPresentation;
     NodeCanvasAutomationController automation;
-    CanvasPerformanceMetrics performanceMetrics;
     RenderInvalidationAccumulator renderInvalidation;
     NodePalette palette;
     NodeCanvasHitRouter hitRouter;
@@ -168,7 +168,7 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    void updateHoverAt(juce::Point<float> position);
+    bool updateHoverAt(juce::Point<float> position);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     NodeCanvasPresentationFrame presentationFrame() const;

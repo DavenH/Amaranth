@@ -5,11 +5,13 @@
 #include <array>
 #include <cstdint>
 
+#include "Runtime/PerformanceDistribution.h"
+#include "UI/NodeEditorPerformanceObserver.h"
 #include "UI/RenderInvalidationAccumulator.h"
 
 namespace CycleV2 {
 
-class CanvasPerformanceMetrics final {
+class CanvasPerformanceMetrics final : public NodeEditorPerformanceObserver {
 public:
     enum class Trigger : uint8_t {
         Hover,
@@ -30,16 +32,22 @@ public:
         Count
     };
 
+    enum class Operation : uint8_t {
+        HoverResolution,
+        NodeParameterUpdate,
+        NodeParameterCommit,
+        TrimeshPointUpdate,
+        TrimeshPointCommit,
+        TrimeshVertexUpdate,
+        TrimeshVertexCommit,
+        TrimeshVertexSelection,
+        Count
+    };
+
     static constexpr size_t triggerCount = static_cast<size_t>(Trigger::Count);
     static constexpr size_t frameCount = static_cast<size_t>(Frame::Count);
-    static constexpr size_t histogramBucketCount = 13;
-
-    struct Distribution {
-        uint64_t count {};
-        uint64_t totalMicroseconds {};
-        uint64_t maximumMicroseconds {};
-        std::array<uint64_t, histogramBucketCount> buckets {};
-    };
+    static constexpr size_t operationCount = static_cast<size_t>(Operation::Count);
+    using Distribution = PerformanceDistribution;
 
     struct TriggerSnapshot {
         uint64_t invocations {};
@@ -53,6 +61,10 @@ public:
         uint64_t elapsedMicroseconds {};
         std::array<TriggerSnapshot, triggerCount> triggers;
         std::array<Distribution, frameCount> frames;
+        std::array<Distribution, operationCount> operations;
+        uint64_t hoverStateChanges {};
+        uint64_t hoverStateUnchanged {};
+        uint64_t occludedHoverResolutions {};
     };
 
     using Clock = uint64_t (*)();
@@ -95,8 +107,14 @@ public:
 
     ScopedTrigger measure(Trigger trigger);
     ScopedFrame measure(Frame frame);
+    uint64_t timestamp() const { return now(); }
     void requestRepaint();
     void requestRepaint(Trigger trigger);
+    void recordOperation(Operation operation, uint64_t elapsedMicroseconds);
+    void recordHoverState(bool changed, bool occluded = false);
+    void nodeEditorOperationCompleted(
+            NodeEditorPerformanceOperation operation,
+            uint64_t elapsedMicroseconds) override;
     void reset();
 
     Snapshot snapshot() const;
@@ -104,6 +122,7 @@ public:
 
     static const char* label(Trigger trigger);
     static const char* label(Frame frame);
+    static const char* label(Operation operation);
     static double percentileMilliseconds(const Distribution& distribution, double percentile);
 
 private:
@@ -117,7 +136,6 @@ private:
     };
 
     static uint64_t defaultClock();
-    static size_t bucketFor(uint64_t microseconds);
     static void record(Distribution& distribution, uint64_t microseconds);
     static juce::var distributionToVar(const Distribution& distribution);
 
@@ -130,6 +148,10 @@ private:
     uint64_t windowStartMicroseconds {};
     std::array<TriggerData, triggerCount> triggerData;
     std::array<Distribution, frameCount> frameData;
+    std::array<Distribution, operationCount> operationData;
+    uint64_t hoverStateChanges {};
+    uint64_t hoverStateUnchanged {};
+    uint64_t occludedHoverResolutions {};
 
     static thread_local CanvasPerformanceMetrics* activeMetrics;
     static thread_local Trigger activeTrigger;

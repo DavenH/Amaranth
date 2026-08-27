@@ -1592,7 +1592,7 @@ var CycleV2Automation::pointer(const var& commandValue) {
     }
 
     Component* eventComponent = component;
-    if (targetId.isNotEmpty()) {
+    if (targetId.isNotEmpty() && !boolProperty(commandValue, "dispatchToArea")) {
         if (Component* hitComponent = component->getComponentAt(position.roundToInt())) {
             eventComponent = hitComponent;
             position = eventComponent->getLocalPoint(component, position);
