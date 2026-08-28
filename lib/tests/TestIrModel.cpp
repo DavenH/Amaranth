@@ -18,6 +18,14 @@ TEST_CASE("IR model mappings preserve Cycle 1 parameter behavior", "[cycle-dsp][
             == Catch::Approx(0.5));
 }
 
+TEST_CASE("IR sample fractions begin after the pre-impulse domain", "[cycle-dsp][ir]") {
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.f) == Catch::Approx(0.0625f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.25f) == Catch::Approx(0.296875f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.5f) == Catch::Approx(0.53125f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.75f) == Catch::Approx(0.765625f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(1.f) == Catch::Approx(1.f));
+}
+
 TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp][ir]") {
     for (int exponent = 7; exponent <= 14; ++exponent) {
         const int length = 1 << exponent;
@@ -109,7 +117,7 @@ TEST_CASE("IR curve-to-kernel path preserves Cycle 1 golden samples", "[cycle-ds
             Rasterization::SamplerView(waveform, true),
             { raw.data(), length },
             oversampler,
-            0.0625);
+            CycleDsp::irDomainPadding);
 
     Transform transform;
     transform.allocate(length, Transform::DivFwdByN, true);

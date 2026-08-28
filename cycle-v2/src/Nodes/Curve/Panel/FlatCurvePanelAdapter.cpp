@@ -2,6 +2,7 @@
 
 #include "Nodes/Curve/Model/FlatCurveMeshState.h"
 
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
@@ -11,7 +12,6 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kGuidePadding = 0.05f;
-constexpr float kIrPadding = 0.0625f;
 constexpr float kWaveshaperPadding = 0.125f;
 
 }
@@ -81,15 +81,16 @@ void FlatCurvePanelAdapter::initialiseDefaultMesh() {
         addVertex(0.62f, 0.36f, 0.4f);
         addVertex(1.f - kGuidePadding, 0.5f, 1.f);
     } else if (nodeKind == NodeKind::ImpulseResponse) {
-        addVertex(kIrPadding * 0.5f, 0.5f);
-        addVertex(kIrPadding - 0.001f, 0.5f);
-        addVertex(kIrPadding + 0.001f, 0.5f);
-        addVertex(kIrPadding + 0.003f, 0.5f);
-        addVertex(kIrPadding + 0.005f, 1.0f);
-        addVertex(kIrPadding + 0.010f, 0.1313f);
-        addVertex(kIrPadding + 0.1f, 0.6f);
-        addVertex(kIrPadding + 0.15f, 0.5f);
-        addVertex(kIrPadding + 0.2f, 0.5f);
+        const float padding = CycleDsp::irDomainPadding;
+        addVertex(padding * 0.5f, 0.5f);
+        addVertex(padding - 0.001f, 0.5f);
+        addVertex(padding + 0.001f, 0.5f);
+        addVertex(padding + 0.003f, 0.5f);
+        addVertex(padding + 0.005f, 1.0f);
+        addVertex(padding + 0.010f, 0.1313f);
+        addVertex(padding + 0.1f, 0.6f);
+        addVertex(padding + 0.15f, 0.5f);
+        addVertex(padding + 0.2f, 0.5f);
         addVertex(1.f, 0.5f);
     } else {
         addVertex(kWaveshaperPadding * 0.5f, kWaveshaperPadding * 0.5f, 1.f);

@@ -7,6 +7,12 @@
 
 namespace CycleDsp {
 
+inline constexpr float irDomainPadding = 0.0625f;
+
+inline constexpr float irSampleDomainPosition(float sampleFraction) {
+    return irDomainPadding + sampleFraction * (1.f - irDomainPadding);
+}
+
 int irImpulseLength(double normalizedValue);
 double irImpulseLengthValue(int length);
 float irPostGain(double normalizedValue);

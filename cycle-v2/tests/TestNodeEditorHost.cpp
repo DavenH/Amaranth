@@ -1213,6 +1213,20 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(landmarks->size() == 5);
     REQUIRE((int) landmarks->getFirst().getProperty("sample", {}) == 0);
     REQUIRE((int) landmarks->getLast().getProperty("sample", {}) == 1024);
+    const double panelX = panel.getProperty("x", {});
+    const double panelWidth = panel.getProperty("width", {});
+    REQUIRE(static_cast<double>(landmarks->getFirst().getProperty("x", {}))
+            == Catch::Approx(panelX + panelWidth * CycleDsp::irDomainPadding));
+    REQUIRE(static_cast<double>(landmarks->getLast().getProperty("x", {}))
+            == Catch::Approx(panelX + panelWidth));
+    const var firstLandmark = landmarks->getFirst();
+    const var lastLandmark = landmarks->getLast();
+    REQUIRE(static_cast<double>(firstLandmark.getProperty("labelX", {}))
+                    + static_cast<double>(firstLandmark.getProperty("labelWidth", {})) * 0.5
+            == Catch::Approx(static_cast<double>(firstLandmark.getProperty("x", {}))));
+    REQUIRE(static_cast<double>(lastLandmark.getProperty("labelX", {}))
+                    + static_cast<double>(lastLandmark.getProperty("labelWidth", {}))
+            == Catch::Approx(panelX + panelWidth));
     REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
     REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
     REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");

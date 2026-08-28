@@ -11,7 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kIrPadding = 0.0625f;
 constexpr int kMinimumIrSampleCount = 64;
 constexpr int kMinimumIrImpulseLength = 128;
 constexpr int kMaximumIrImpulseLength = 16384;
@@ -23,12 +22,13 @@ NodeModelStatePtr buildModelledCurve(
     std::vector<float> modellingSamples(samples);
     Buffer<float> buffer(modellingSamples.data(), (int) modellingSamples.size());
     buffer.mul(0.7f);
+    const float padding = CycleDsp::irDomainPadding;
 
     AutoModeller modeller;
     const auto intercepts = modeller.modelToIntercepts(
             buffer,
             false,
-            kIrPadding,
+            padding,
             0.1f);
     if (intercepts.size() < 2) {
         return {};
@@ -41,20 +41,20 @@ NodeModelStatePtr buildModelledCurve(
     for (const auto& intercept : intercepts) {
         vertices.push_back({
                 identity++,
-                jlimit(0.f, 1.f, (intercept.x - kIrPadding) * scaleRatio + kIrPadding),
+                jlimit(0.f, 1.f, (intercept.x - padding) * scaleRatio + padding),
                 jlimit(0.f, 1.f, intercept.y * 0.5f + 0.5f),
                 jlimit(0.f, 1.f, intercept.shp)
         });
     }
     vertices.push_back({
             identity++,
-            (kIrPadding - 0.0001f - kIrPadding) * scaleRatio + kIrPadding,
+            (padding - 0.0001f - padding) * scaleRatio + padding,
             0.5f,
             0.f
     });
     vertices.push_back({
             identity,
-            (kIrPadding - 0.01f - kIrPadding) * scaleRatio + kIrPadding,
+            (padding - 0.01f - padding) * scaleRatio + padding,
             0.5f,
             0.f
     });

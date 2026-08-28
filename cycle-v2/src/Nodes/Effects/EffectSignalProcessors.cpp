@@ -7,20 +7,15 @@
 #include <Algo/ConvReverb.h>
 #include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
-#include <Audio/CycleDsp/ReverbKernel.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/IrModel.h>
+#include <Audio/CycleDsp/ReverbKernel.h>
 #include <Util/NumberUtils.h>
 
 #include <algorithm>
 #include <cmath>
 
 namespace CycleV2 {
-
-namespace {
-
-constexpr float kIrPadding = 0.0625f;
-
-}
 
 std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
         const std::vector<NodeParameter>& parameters,
@@ -57,7 +52,7 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
                 curve.sampler(),
                 rawImpulseBuffer,
                 preparedOversampler,
-                kIrPadding);
+                CycleDsp::irDomainPadding);
     }
 
     Transform transform;

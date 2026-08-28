@@ -1,5 +1,6 @@
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
@@ -24,7 +25,6 @@ namespace {
 
 constexpr float kGuidePadding = 0.05f;
 constexpr float kWaveshaperPadding = 0.125f;
-constexpr float kIrPadding = 0.0625f;
 
 }
 
@@ -406,16 +406,19 @@ class ImpulseResponseCurvePanel final : public FlatCurvePanelBase {
 public:
     ImpulseResponseCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
-                    repo, "CycleV2ImpulseResponsePanel", mesh, kIrPadding, true, false)
+                    repo, "CycleV2ImpulseResponsePanel", mesh,
+                    CycleDsp::irDomainPadding, true, false)
         ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {}
 
     void preDraw() override {
         auto canvas = drawingCanvas();
-        CurvePanelDrawing::drawImpulseResponseBackground(canvas, kIrPadding);
+        CurvePanelDrawing::drawImpulseResponseBackground(
+                canvas, CycleDsp::irDomainPadding);
     }
     void postCurveDraw() override {
         auto canvas = drawingCanvas();
-        CurvePanelDrawing::drawImpulseResponseBounds(canvas, kIrPadding);
+        CurvePanelDrawing::drawImpulseResponseBounds(
+                canvas, CycleDsp::irDomainPadding);
     }
 };
 

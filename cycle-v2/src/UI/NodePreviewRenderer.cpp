@@ -2,6 +2,8 @@
 #include <cstring>
 #include <limits>
 
+#include <Audio/CycleDsp/IrModel.h>
+
 #include "UI/NodePreviewRenderer.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
@@ -307,7 +309,8 @@ void drawCurveFallback(
     if (kind == NodeKind::Waveshaper) {
         frame = graph.reduced(graph.getWidth() * 0.125f, graph.getHeight() * 0.125f);
     } else if (kind == NodeKind::ImpulseResponse) {
-        frame = graph.withTrimmedLeft(graph.getWidth() * 0.0625f);
+        frame = graph.withTrimmedLeft(
+                graph.getWidth() * CycleDsp::irDomainPadding);
     }
 
     graphics.setColour(dim.withAlpha(0.44f));

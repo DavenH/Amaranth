@@ -20,6 +20,8 @@ constexpr int kValueWidth = 72;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
 constexpr int kToggleControlInset = 12;
+constexpr float kSampleLabelWidth = 56.f;
+constexpr float kSampleLabelHeight = 14.f;
 constexpr double kReferenceSampleRate = 44100.0;
 
 std::optional<double> parseNumber(String text) {
@@ -158,12 +160,45 @@ void configureHighPassControl(LabeledParameterSlider& control) {
     });
 }
 
-Array<var> sampleLandmarks(int sampleCount) {
+float sampleTickX(Rectangle<float> panel, float sampleFraction) {
+    return panel.getX()
+            + panel.getWidth() * CycleDsp::irSampleDomainPosition(sampleFraction);
+}
+
+Rectangle<float> sampleTickLabelBounds(Rectangle<float> panel, float tickX) {
+    const float width = jmin(kSampleLabelWidth, panel.getWidth());
+    const float x = jlimit(
+            panel.getX(),
+            panel.getRight() - width,
+            tickX - width * 0.5f);
+    return { x, panel.getBottom() + 5.f, width, kSampleLabelHeight };
+}
+
+Justification sampleTickLabelJustification(
+        Rectangle<float> panel,
+        float tickX,
+        float labelWidth) {
+    if (tickX - labelWidth * 0.5f < panel.getX()) {
+        return Justification::centredLeft;
+    }
+    if (tickX + labelWidth * 0.5f > panel.getRight()) {
+        return Justification::centredRight;
+    }
+    return Justification::centred;
+}
+
+Array<var> sampleLandmarks(int sampleCount, Rectangle<float> panel) {
     Array<var> result;
     for (int numerator : { 0, 1, 2, 3, 4 }) {
+        const float fraction = numerator / 4.f;
+        const float tickX = sampleTickX(panel, fraction);
+        const Rectangle<float> label = sampleTickLabelBounds(panel, tickX);
         auto* landmark = new DynamicObject();
-        landmark->setProperty("fraction", numerator / 4.0);
+        landmark->setProperty("fraction", fraction);
         landmark->setProperty("sample", roundToInt(sampleCount * numerator / 4.0));
+        landmark->setProperty("x", tickX);
+        landmark->setProperty("labelX", label.getX());
+        landmark->setProperty("labelWidth", label.getWidth());
         result.add(var(landmark));
     }
     return result;
@@ -261,16 +296,14 @@ void ImpulseResponseEditorComponent::paintEditor(Graphics& graphics) {
     graphics.setFont(FontOptions(10.f));
     for (int numerator : { 0, 1, 2, 3, 4 }) {
         const float fraction = numerator / 4.f;
-        const float x = panel.getX() + panel.getWidth() * fraction;
+        const float x = sampleTickX(panel, fraction);
         graphics.drawVerticalLine(roundToInt(x), panel.getBottom(), panel.getBottom() + 4.f);
         const String label(sampleCount * numerator / 4);
-        const Rectangle<float> labelBounds(x - 28.f, panel.getBottom() + 5.f, 56.f, 14.f);
+        const Rectangle<float> labelBounds = sampleTickLabelBounds(panel, x);
         graphics.drawText(
                 label,
                 labelBounds,
-                numerator == 0 ? Justification::centredLeft
-                        : numerator == 4 ? Justification::centredRight
-                                         : Justification::centred);
+                sampleTickLabelJustification(panel, x, labelBounds.getWidth()));
     }
 }
 
@@ -426,7 +459,9 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));
     state.setProperty(
             "landmarks",
-            sampleLandmarks(CycleDsp::irImpulseLength(impl->size.slider.getValue())));
+            sampleLandmarks(
+                    CycleDsp::irImpulseLength(impl->size.slider.getValue()),
+                    editorPanelBounds()));
     const auto summary = audioResourceSummary();
     state.setProperty("resourceActionsAvailable", true);
     state.setProperty("resourceBusy", impl->busy);
