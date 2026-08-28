@@ -176,7 +176,9 @@ The next clipped-presentation slice separates ordinary console hover from
 relationship hover. Node, port, edge, and action hover now request only the
 console rectangle and enter the existing status renderer directly, skipping
 node, cable, preview, Guide/Spy, utility, and OpenGL-preview presentation.
-Guide, Spy, and palette hover continue to request the full canvas. Repaint-scope
-metrics report two status requests and zero full-canvas requests for two
-ordinary semantic target transitions, while same-target movement remains at
-zero and the focused Guide hover reports one full-canvas request.
+Guide tile, Spy, and palette hover continue to request the full canvas. Target
+node hover does not infer a Guide relationship; it remains an ordinary console
+hover. Repaint-scope metrics report two status requests and zero full-canvas
+requests for two ordinary semantic target transitions, while same-target
+movement remains at zero and the focused Guide hover reports one full-canvas
+request.

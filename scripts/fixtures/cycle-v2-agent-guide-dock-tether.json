@@ -32,6 +32,18 @@
       "equals": 0
     },
     {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.hoveredGuideId",
+      "equals": ""
+    },
+    {
       "command": "inspectTargets",
       "area": "canvas"
     }

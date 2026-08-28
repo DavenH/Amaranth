@@ -312,15 +312,6 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
             probeRailState,
             dockSplitRatio,
             guideShelfState);
-    if (guideShelfState.hoveredGuideId.isEmpty()) {
-        const auto hit = NodeCanvasHitTester().hitTest(scene, position);
-        if (hit.has_value() && hit->nodeId.isNotEmpty()) {
-            const auto& guides = graph.guideIdsForTargetNode(hit->nodeId);
-            if (!guides.empty()) {
-                guideShelfState.hoveredGuideId = guides.front();
-            }
-        }
-    }
     String hovered = canvasPresentation.probeRail().probeAt(
             position,
             GuideCurveShelf::spyWorkspace(
