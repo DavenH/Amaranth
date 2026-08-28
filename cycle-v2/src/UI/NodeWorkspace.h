@@ -64,6 +64,8 @@ public:
 private:
     void timerCallback() override;
     void layoutPerformanceKeyboard();
+    void updateOutputMeter(const StandaloneAudioEngine::Status& status);
+    var outputMeterStateForAutomation() const;
 
     StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;

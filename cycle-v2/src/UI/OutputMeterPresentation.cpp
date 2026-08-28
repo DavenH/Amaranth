@@ -57,6 +57,32 @@ void paintChannel(
 
 }
 
+bool OutputMeterBallistics::update(OutputMeterLevels measured) {
+    const OutputMeterLevels next {
+            nextLevel(currentLevels.left, measured.left),
+            nextLevel(currentLevels.right, measured.right)
+    };
+    const bool changed = next != currentLevels;
+    currentLevels = next;
+    return changed;
+}
+
+void OutputMeterBallistics::reset() {
+    currentLevels = {};
+}
+
+float OutputMeterBallistics::nextLevel(float current, float measured) {
+    constexpr float releaseMultiplier = 0.8f;
+    constexpr float silenceFloor = 0.001f;
+    const float target = juce::jlimit(0.f, 1.f, measured);
+    if (target >= current) {
+        return target;
+    }
+
+    const float released = current * releaseMultiplier;
+    return released > silenceFloor ? juce::jmax(target, released) : target;
+}
+
 OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
     constexpr float horizontalInsetFraction = 0.14f;
     constexpr float verticalInsetFraction = 0.08f;
@@ -78,6 +104,17 @@ OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
     };
 }
 
+float OutputMeterPresentation::displayLevelForAmplitude(float amplitude) {
+    constexpr float floorDecibels = -60.f;
+    const float clamped = juce::jlimit(0.f, 1.f, amplitude);
+    if (clamped <= 0.f) {
+        return 0.f;
+    }
+
+    const float decibels = juce::Decibels::gainToDecibels(clamped, floorDecibels);
+    return juce::jlimit(0.f, 1.f, (decibels - floorDecibels) / -floorDecibels);
+}
+
 juce::Rectangle<float> OutputMeterPresentation::fillBounds(
         juce::Rectangle<float> channelBounds,
         float level) {
@@ -92,8 +129,16 @@ void OutputMeterPresentation::paint(
         float rightLevel,
         juce::Colour colour) {
     const auto channels = layout(area);
-    paintChannel(graphics, channels.left, leftLevel, colour);
-    paintChannel(graphics, channels.right, rightLevel, colour);
+    paintChannel(
+            graphics,
+            channels.left,
+            displayLevelForAmplitude(leftLevel),
+            colour);
+    paintChannel(
+            graphics,
+            channels.right,
+            displayLevelForAmplitude(rightLevel),
+            colour);
 }
 
 }

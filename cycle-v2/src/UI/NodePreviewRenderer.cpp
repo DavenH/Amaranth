@@ -146,13 +146,16 @@ void drawMeters(
         Graphics& graphics,
         Rectangle<float> area,
         const NodePreviewResult& preview,
-        Colour colour) {
-    const float left = preview.primary.empty()
+        Colour colour,
+        std::optional<OutputMeterLevels> liveLevels) {
+    const float previewLeft = preview.primary.empty()
             ? 0.f
             : jlimit(0.f, 1.f, preview.primary.front());
-    const float right = preview.secondary.empty()
-            ? left
+    const float previewRight = preview.secondary.empty()
+            ? previewLeft
             : jlimit(0.f, 1.f, preview.secondary.front());
+    const float left = liveLevels.has_value() ? liveLevels->left : previewLeft;
+    const float right = liveLevels.has_value() ? liveLevels->right : previewRight;
     OutputMeterPresentation::paint(graphics, area, left, right, colour);
 }
 
@@ -623,6 +626,11 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.liveOutputLevels.has_value()) {
+        paintUncached(graphics, request);
+        return;
+    }
+
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
@@ -713,7 +721,12 @@ bool NodePreviewRenderer::paintRuntimeResult(
     const NodePreviewResult& result = *request.runtimeResult;
     const Colour colour = previewColourForRole(result.role, request.node);
     if (result.role == PreviewModuleRole::OutputMeters) {
-        drawMeters(graphics, request.area, result, colour);
+        drawMeters(
+                graphics,
+                request.area,
+                result,
+                colour,
+                request.liveOutputLevels);
         return true;
     }
 
@@ -918,7 +931,8 @@ void NodePreviewRenderer::paintQualitative(
                 graphics,
                 request.area,
                 meters,
-                colourForDomain(PortDomain::TimeSignal));
+                colourForDomain(PortDomain::TimeSignal),
+                request.liveOutputLevels);
         return;
     }
 

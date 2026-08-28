@@ -962,6 +962,40 @@ TEST_CASE("Output meter painting reveals a low nonzero level", "[cycle-v2][ui]")
     REQUIRE_FALSE(imagesMatch(render(0.f), render(0.01f)));
 }
 
+TEST_CASE("Output meter maps audio amplitudes onto a decibel scale", "[cycle-v2][ui]") {
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(0.f) == 0.f);
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(0.001f)
+            == Catch::Approx(0.f).margin(0.001f));
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(0.01f)
+            == Catch::Approx(1.f / 3.f).margin(0.001f));
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(0.1f)
+            == Catch::Approx(2.f / 3.f).margin(0.001f));
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(1.f)
+            == Catch::Approx(1.f));
+    REQUIRE(OutputMeterPresentation::displayLevelForAmplitude(2.f)
+            == Catch::Approx(1.f));
+}
+
+TEST_CASE("Output meter ballistics attack immediately and release to silence",
+        "[cycle-v2][ui]") {
+    OutputMeterBallistics ballistics;
+
+    REQUIRE(ballistics.update({ 0.1f, 0.2f }));
+    REQUIRE(ballistics.levels().left == 0.1f);
+    REQUIRE(ballistics.levels().right == 0.2f);
+
+    REQUIRE(ballistics.update({ 0.f, 0.f }));
+    REQUIRE(ballistics.levels().left > 0.f);
+    REQUIRE(ballistics.levels().left < 0.1f);
+    REQUIRE(ballistics.levels().right > ballistics.levels().left);
+
+    for (int frame = 0; frame < 60; ++frame) {
+        ballistics.update({ 0.f, 0.f });
+    }
+    REQUIRE(ballistics.levels().left == 0.f);
+    REQUIRE(ballistics.levels().right == 0.f);
+}
+
 TEST_CASE("Preview processors can reflect upstream summaries", "[cycle-v2][runtime]") {
     NodePreviewProcessorFactory factory;
 

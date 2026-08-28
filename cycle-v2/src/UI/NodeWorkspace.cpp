@@ -59,6 +59,7 @@ var NodeWorkspace::exportAutomationState() const {
     var state = canvas.exportAutomationState();
     if (auto* object = state.getDynamicObject()) {
         object->setProperty("performance", performanceStateForAutomation());
+        object->setProperty("liveOutputMeter", outputMeterStateForAutomation());
     }
     return state;
 }
@@ -223,6 +224,8 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("droppedMidiEvents", (int) status.renderer.droppedMidiEvents);
     object->setProperty("peak", status.renderer.peak);
     object->setProperty("rms", status.renderer.rms);
+    object->setProperty("leftPeak", status.renderer.leftPeak);
+    object->setProperty("rightPeak", status.renderer.rightPeak);
     object->setProperty(
             "hostedByCanvas",
             keyboard.getParentComponent() == &canvas);
@@ -237,6 +240,25 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);
+    return var(object);
+}
+
+var NodeWorkspace::outputMeterStateForAutomation() const {
+    const auto levels = canvas.realtimeOutputMeterLevels();
+    auto* object = new DynamicObject();
+    object->setProperty("live", levels.has_value());
+    object->setProperty("leftAmplitude", levels.has_value() ? levels->left : 0.f);
+    object->setProperty("rightAmplitude", levels.has_value() ? levels->right : 0.f);
+    object->setProperty(
+            "leftDisplay",
+            levels.has_value()
+                    ? OutputMeterPresentation::displayLevelForAmplitude(levels->left)
+                    : 0.f);
+    object->setProperty(
+            "rightDisplay",
+            levels.has_value()
+                    ? OutputMeterPresentation::displayLevelForAmplitude(levels->right)
+                    : 0.f);
     return var(object);
 }
 
@@ -272,7 +294,9 @@ bool NodeWorkspace::performancePointerUpForAutomation() {
 
 StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(
         int durationMs) {
-    return audioEngine.captureLiveAudio(durationMs);
+    StandaloneAudioEngine::LiveCapture capture = audioEngine.captureLiveAudio(durationMs);
+    updateOutputMeter(audioEngine.status());
+    return capture;
 }
 
 void NodeWorkspace::resized() {
@@ -282,6 +306,7 @@ void NodeWorkspace::resized() {
 
 void NodeWorkspace::timerCallback() {
     const auto status = audioEngine.status();
+    updateOutputMeter(status);
     if (previousDeviceReady && !status.deviceReady) {
         keyboard.releaseAllNotes();
     }
@@ -304,6 +329,17 @@ void NodeWorkspace::timerCallback() {
         publishedPlanRevision = revision;
         publishedDevicePreparationRevision = status.preparationRevision;
     }
+}
+
+void NodeWorkspace::updateOutputMeter(const StandaloneAudioEngine::Status& status) {
+    std::optional<OutputMeterLevels> meterLevels;
+    if (status.deviceReady) {
+        meterLevels = OutputMeterLevels {
+                status.renderer.leftPeak,
+                status.renderer.rightPeak
+        };
+    }
+    canvas.setRealtimeOutputMeterLevels(meterLevels);
 }
 
 void NodeWorkspace::layoutPerformanceKeyboard() {

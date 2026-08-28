@@ -99,6 +99,24 @@
       "value": 0.000001
     },
     {
+      "command": "assertState",
+      "path": "liveOutputMeter.leftAmplitude",
+      "op": "greaterThan",
+      "value": 0.00001
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.rightAmplitude",
+      "op": "greaterThan",
+      "value": 0.00001
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.leftDisplay",
+      "op": "greaterThan",
+      "value": 0.2
+    },
+    {
       "command": "screenshot",
       "area": "workspace",
       "path": "/private/tmp/cycle-v2-performance-keyboard.png"

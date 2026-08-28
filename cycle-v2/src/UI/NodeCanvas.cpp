@@ -841,8 +841,29 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             probeRailState,
             dockInteraction->focus(),
             probeDetailState,
-            globalUnisonPreviewContext
+            globalUnisonPreviewContext,
+            liveOutputMeterLevels
     };
+}
+
+void NodeCanvas::setRealtimeOutputMeterLevels(
+        std::optional<OutputMeterLevels> measured) {
+    if (!measured.has_value()) {
+        const bool changed = liveOutputMeterLevels.has_value();
+        outputMeterBallistics.reset();
+        liveOutputMeterLevels.reset();
+        if (changed) {
+            requestCanvasRepaint();
+        }
+        return;
+    }
+
+    const bool becameLive = !liveOutputMeterLevels.has_value();
+    const bool changed = outputMeterBallistics.update(*measured);
+    liveOutputMeterLevels = outputMeterBallistics.levels();
+    if (becameLive || changed) {
+        requestCanvasRepaint();
+    }
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {

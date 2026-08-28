@@ -827,7 +827,11 @@ void NodeCanvasPresentation::paintNode(
                                     frame.compileResult.plan,
                                     node.id,
                                     frame.unisonPreviewContext)
-                            : frame.unisonPreviewContext
+                            : frame.unisonPreviewContext,
+                    false,
+                    node.kind == NodeKind::Output
+                            ? frame.liveOutputMeterLevels
+                            : std::optional<OutputMeterLevels> {}
             });
         }
     }

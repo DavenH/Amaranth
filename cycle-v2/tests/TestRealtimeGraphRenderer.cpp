@@ -32,6 +32,9 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
     REQUIRE(started.activeVoiceCount == 1);
     REQUIRE(started.peak > 0.f);
     REQUIRE(started.rms > 0.f);
+    REQUIRE(started.leftPeak > 0.f);
+    REQUIRE(started.rightPeak > 0.f);
+    REQUIRE(started.peak == juce::jmax(started.leftPeak, started.rightPeak));
 
     REQUIRE(queue.enqueue(
             MidiMessage::noteOff(1, 60),

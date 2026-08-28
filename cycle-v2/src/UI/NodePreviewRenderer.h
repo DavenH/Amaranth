@@ -1,6 +1,9 @@
 #pragma once
 
+#include <optional>
+
 #include "UI/NodePreviewResources.h"
+#include "UI/OutputMeterPresentation.h"
 
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
@@ -17,6 +20,7 @@ struct NodePreviewRenderRequest {
     bool cache { true };
     UnisonPreviewContext unisonContext;
     bool highQuality {};
+    std::optional<OutputMeterLevels> liveOutputLevels;
 };
 
 class NodePreviewRenderer {

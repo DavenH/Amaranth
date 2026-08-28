@@ -91,6 +91,10 @@ public:
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
+    void setRealtimeOutputMeterLevels(std::optional<OutputMeterLevels> measured);
+    std::optional<OutputMeterLevels> realtimeOutputMeterLevels() const {
+        return liveOutputMeterLevels;
+    }
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -150,6 +154,8 @@ private:
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
+    OutputMeterBallistics outputMeterBallistics;
+    std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
