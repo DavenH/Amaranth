@@ -24,13 +24,17 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             98.f
     };
 
-    const float keyboardWidth = juce::jmin(420.f, availableWidth);
-    const float keyboardHeight = juce::jmin(
-            126.f,
-            juce::jmax(0.f, contentBounds.getHeight() - margin * 2.f));
+    const float keyboardWidth = juce::jmin(preferredKeyboardWidth, availableWidth);
+    const float keyboardBottom = contentBounds.getBottom() - margin;
+    const float compactKeyboardTop =
+            result.legend.getY() + minimumCompactLegendHeight + gap;
+    const float availableKeyboardHeight =
+            juce::jmax(0.f, keyboardBottom - compactKeyboardTop);
+    const float keyboardHeight =
+            juce::jmin(preferredKeyboardHeight, availableKeyboardHeight);
     result.keyboard = {
             right - keyboardWidth,
-            contentBounds.getBottom() - margin - keyboardHeight,
+            keyboardBottom - keyboardHeight,
             keyboardWidth,
             keyboardHeight
     };

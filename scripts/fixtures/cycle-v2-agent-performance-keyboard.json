@@ -18,12 +18,23 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 420
+      "equals": 212
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 126
+      "equals": 150
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyWidth",
+      "equals": 25
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyAspect",
+      "op": "greaterThan",
+      "value": 4.25
     },
     {
       "command": "assertState",

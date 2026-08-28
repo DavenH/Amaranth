@@ -200,6 +200,10 @@ var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
 
 var NodeWorkspace::performanceStateForAutomation() const {
     const auto status = audioEngine.status();
+    const Rectangle<float> whiteKey = keyboard.noteBounds(keyboard.baseNote());
+    const float whiteKeyAspect = whiteKey.getWidth() > 0.f
+            ? whiteKey.getHeight() / whiteKey.getWidth()
+            : 0.f;
     auto* object = new DynamicObject();
     object->setProperty("visible", keyboard.isVisible());
     object->setProperty("baseNote", keyboard.baseNote());
@@ -227,6 +231,9 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("screenY", keyboard.getY());
     object->setProperty("screenWidth", keyboard.getWidth());
     object->setProperty("screenHeight", keyboard.getHeight());
+    object->setProperty("whiteKeyWidth", whiteKey.getWidth());
+    object->setProperty("whiteKeyHeight", whiteKey.getHeight());
+    object->setProperty("whiteKeyAspect", whiteKeyAspect);
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);
