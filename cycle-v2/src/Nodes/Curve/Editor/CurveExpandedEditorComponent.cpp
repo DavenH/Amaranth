@@ -4,13 +4,13 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 
 namespace CycleV2 {
 
 namespace {
 
 const Colour kText { 0xffe2e8ef };
-constexpr float kHeaderHeight = 34.f;
 
 class EditorCloseButton final : public Button {
 public:
@@ -126,7 +126,8 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.fillRoundedRectangle(outer, CanvasChromeMetrics::panelCornerRadius);
     graphics.restoreState();
 
-    auto header = outer.removeFromTop(kHeaderHeight);
+    const auto headerLayout = embeddedEditorHeaderLayout(outer);
+    const Rectangle<float> header = headerLayout.header;
     graphics.setColour(Colour(0xff202833));
     graphics.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
     graphics.fillRect(header.withTrimmedTop(
@@ -135,7 +136,7 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.drawText(
             title.isEmpty() ? labelForNodeKind(node.kind) : title,
-            header.reduced(13.f, 4.f),
+            headerLayout.title,
             Justification::centredLeft);
 
     paintEditor(graphics);
@@ -205,7 +206,7 @@ void CurveExpandedEditorComponent::editorMouseUp() {
 
 Rectangle<float> CurveExpandedEditorComponent::contentBounds() const {
     Rectangle<float> bounds = getLocalBounds().toFloat();
-    bounds.removeFromTop(kHeaderHeight);
+    bounds.removeFromTop(CanvasChromeMetrics::embeddedEditorHeaderHeight);
     return bounds.reduced(12.f, 10.f);
 }
 
@@ -308,8 +309,7 @@ void CurveExpandedEditorComponent::publishDiscreteControlChange() {
 }
 
 Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {
-    const auto bounds = getLocalBounds().toFloat();
-    return Rectangle<float>(22.f, 22.f).withCentre({ bounds.getRight() - 22.f, kHeaderHeight * 0.5f });
+    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
 }
 
 void CurveExpandedEditorComponent::updatePanelHost() {

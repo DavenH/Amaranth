@@ -8,13 +8,13 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/VoiceContext/Editor/VoiceContextNodeEditor.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 
 namespace CycleV2 {
 
 namespace {
 
-constexpr int kHeaderHeight = 44;
 constexpr int kContentInset = 24;
 constexpr int kVoiceLengthValueWidth = 72;
 
@@ -107,16 +107,15 @@ public:
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffe2e8ef));
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        graphics.drawText(
-                "VOICE CONTEXT",
-                getLocalBounds().reduced(18, 0).removeFromTop(42),
-                Justification::centredLeft);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
+        graphics.drawText("VOICE CONTEXT", header.title, Justification::centredLeft);
     }
 
     void resized() override {
-        close.setBounds(getWidth() - 42, 6, 28, 28);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
+        close.setBounds(header.close);
         Rectangle<int> rows = getLocalBounds();
-        rows.removeFromTop(kHeaderHeight);
+        rows.removeFromTop(header.header.getHeight());
         rows.reduce(kContentInset, 4);
         layoutDomainRow(nextRow(rows));
         octave.setBounds(nextRow(rows));

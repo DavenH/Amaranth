@@ -4,6 +4,7 @@
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
@@ -96,7 +97,8 @@ public:
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        graphics.drawText("UNISON", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        graphics.drawText("UNISON", header.title, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
             UnisonPreviewPainter().paint(
                     graphics,
@@ -108,8 +110,9 @@ public:
     }
 
     void resized() override {
-        closeButton.setBounds(getWidth() - 42, 9, 28, 28);
-        enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        closeButton.setBounds(header.close);
+        enabledButton.setBounds(header.enabled);
         modeSelector.setBounds(18, 216, 118, 26);
         voiceSelector.setBounds(146, 216, 126, 26);
         addVoiceButton.setBounds(282, 216, 30, 26);

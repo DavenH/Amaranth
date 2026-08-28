@@ -5,6 +5,7 @@
 #include "Nodes/Delay/DelayNodeEditor.h"
 #include "Nodes/Delay/DelayPreviewPainter.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 
 namespace CycleV2 {
@@ -89,15 +90,17 @@ public:
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        graphics.drawText("DELAY", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        graphics.drawText("DELAY", header.title, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
             DelayPreviewPainter().paint(graphics, previewBounds(), node, 1.f);
         }
     }
 
     void resized() override {
-        close.setBounds(getWidth() - 42, 9, 28, 28);
-        enabled.setBounds(getWidth() - 142, 12, 88, 24);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        close.setBounds(header.close);
+        enabled.setBounds(header.enabled);
         Rectangle<int> rows(18, kPropertyStart, getWidth() - 36, getHeight() - kPropertyStart);
         for (auto* row : propertyRows()) {
             row->setBounds(rows.removeFromTop(PropertyControlMetrics::compactRowHeight));

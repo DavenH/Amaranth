@@ -18,4 +18,20 @@ inline constexpr float labelFontSize = 12.f;
 inline constexpr float sectionTitleFontSize = 14.f;
 inline constexpr float editorTitleFontSize = 18.f;
 
+inline constexpr int fullEditorHeaderHeight = 44;
+inline constexpr int fullEditorHorizontalInset = 18;
+inline constexpr int fullEditorTitleVerticalInset = 8;
+inline constexpr int fullEditorActionGap = 12;
+inline constexpr int fullEditorCloseButtonSize = 28;
+inline constexpr int fullEditorCloseButtonRightInset = 14;
+inline constexpr int fullEditorEnabledWidth = 88;
+inline constexpr int fullEditorEnabledHeight = 24;
+
+inline constexpr float embeddedEditorHeaderHeight = 34.f;
+inline constexpr float embeddedEditorHorizontalInset = 13.f;
+inline constexpr float embeddedEditorTitleVerticalInset = 4.f;
+inline constexpr float embeddedEditorActionGap = 8.f;
+inline constexpr float embeddedEditorCloseButtonSize = 22.f;
+inline constexpr float embeddedEditorCloseButtonRightInset = 11.f;
+
 }

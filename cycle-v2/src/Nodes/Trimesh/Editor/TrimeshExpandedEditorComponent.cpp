@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 
 namespace CycleV2 {
 
@@ -10,7 +11,6 @@ namespace {
 
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kHeaderHeight = 34.f;
 
 }
 
@@ -84,7 +84,8 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(panel, CanvasChromeMetrics::panelCornerRadius);
     g.restoreState();
 
-    auto header = panel.removeFromTop(kHeaderHeight);
+    const auto headerLayout = embeddedEditorHeaderLayout(panel);
+    const Rectangle<float> header = headerLayout.header;
     g.setColour(Colour(0xff202833));
     g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
     g.fillRect(header.withTrimmedTop(
@@ -92,10 +93,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     g.setColour(kText);
     g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
-    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
+    g.drawText(labelForNodeKind(node.kind), headerLayout.title, Justification::centredLeft);
     g.setColour(kMutedText);
     g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
-    g.drawText("Trilinear Mesh", header.reduced(13.f, 4.f), Justification::centredRight);
+    g.drawText("Trilinear Mesh", headerLayout.title, Justification::centredRight);
 
     Rectangle<float> closeButton = closeButtonBounds();
     g.setColour(Colour(0xff0e1318));
@@ -229,13 +230,12 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
-    const Rectangle<float> panel = getLocalBounds().toFloat();
-    return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, kHeaderHeight * 0.5f });
+    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::contentBounds() const {
     Rectangle<float> panel = getLocalBounds().toFloat();
-    panel.removeFromTop(kHeaderHeight);
+    panel.removeFromTop(CanvasChromeMetrics::embeddedEditorHeaderHeight);
     return panel.reduced(10.f, 8.f);
 }
 

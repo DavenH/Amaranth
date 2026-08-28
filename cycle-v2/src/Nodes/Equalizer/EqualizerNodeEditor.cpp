@@ -7,6 +7,7 @@
 #include "Nodes/Equalizer/EqualizerNodeEditor.h"
 #include "Nodes/Equalizer/EqualizerPreviewPainter.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
@@ -120,13 +121,15 @@ public:
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
-        graphics.drawText("EQUALIZER", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        graphics.drawText("EQUALIZER", header.title, Justification::centredLeft);
         paintResponse(graphics);
     }
 
     void resized() override {
-        close.setBounds(getWidth() - 42, 9, 28, 28);
-        enabled.setBounds(getWidth() - 142, 12, 88, 24);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        close.setBounds(header.close);
+        enabled.setBounds(header.enabled);
         const int columnWidth = (getWidth() - 76 - kColumnGap) / 2;
         const int frequencyX = 38 + columnWidth + kColumnGap;
         gainHeader.setBounds(38, kPropertyStart - 22, columnWidth, 18);
