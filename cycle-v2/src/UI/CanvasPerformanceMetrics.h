@@ -80,6 +80,10 @@ public:
         uint64_t nodeLayerCacheMisses {};
         Distribution nodeLayerCacheHitDuration;
         Distribution nodeLayerCacheMissDuration;
+        uint64_t cableLayerCacheHits {};
+        uint64_t cableLayerCacheMisses {};
+        Distribution cableLayerCacheHitDuration;
+        Distribution cableLayerCacheMissDuration;
         uint64_t hoverStateChanges {};
         uint64_t hoverStateUnchanged {};
         uint64_t occludedHoverResolutions {};
@@ -141,6 +145,10 @@ public:
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) override;
+    void cableLayerCacheCompleted(
+            uint64_t hits,
+            uint64_t misses,
+            uint64_t elapsedMicroseconds) override;
     void reset();
 
     Snapshot snapshot() const;
@@ -183,6 +191,10 @@ private:
     uint64_t nodeLayerCacheMisses {};
     Distribution nodeLayerCacheHitDuration;
     Distribution nodeLayerCacheMissDuration;
+    uint64_t cableLayerCacheHits {};
+    uint64_t cableLayerCacheMisses {};
+    Distribution cableLayerCacheHitDuration;
+    Distribution cableLayerCacheMissDuration;
     uint64_t hoverStateChanges {};
     uint64_t hoverStateUnchanged {};
     uint64_t occludedHoverResolutions {};

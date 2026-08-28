@@ -165,8 +165,22 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     metrics.presentationStageCompleted(
             NodeCanvasPresentationStage::SpyRail,
             900);
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::CableBodies,
+            2400);
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::CableAnnotations,
+            350);
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::MiniMap,
+            700);
+    metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::Palette,
+            1250);
     metrics.nodeLayerCacheCompleted(12, 2, 5800);
     metrics.nodeLayerCacheCompleted(14, 0, 220);
+    metrics.cableLayerCacheCompleted(8, 3, 4200);
+    metrics.cableLayerCacheCompleted(11, 0, 140);
 
     const auto snapshot = metrics.snapshot();
     const auto& nodes = snapshot.presentationStages[static_cast<size_t>(
@@ -180,6 +194,14 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(3.0));
     REQUIRE((double) property(property(stages, "spyRail"), "maxMs")
             == Catch::Approx(0.9));
+    REQUIRE((double) property(property(stages, "cableBodies"), "meanMs")
+            == Catch::Approx(2.4));
+    REQUIRE((double) property(property(stages, "cableAnnotations"), "meanMs")
+            == Catch::Approx(0.35));
+    REQUIRE((double) property(property(stages, "miniMap"), "meanMs")
+            == Catch::Approx(0.7));
+    REQUIRE((double) property(property(stages, "palette"), "meanMs")
+            == Catch::Approx(1.25));
     const var& nodeLayerCache = property(property(exported, "presentationCache"), "nodeLayer");
     REQUIRE((int64) property(nodeLayerCache, "hits") == 26);
     REQUIRE((int64) property(nodeLayerCache, "misses") == 2);
@@ -187,6 +209,13 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(0.22));
     REQUIRE((double) property(property(nodeLayerCache, "missDuration"), "meanMs")
             == Catch::Approx(5.8));
+    const var& cableLayerCache = property(property(exported, "presentationCache"), "cableLayer");
+    REQUIRE((int64) property(cableLayerCache, "hits") == 19);
+    REQUIRE((int64) property(cableLayerCache, "misses") == 3);
+    REQUIRE((double) property(property(cableLayerCache, "hitDuration"), "meanMs")
+            == Catch::Approx(0.14));
+    REQUIRE((double) property(property(cableLayerCache, "missDuration"), "meanMs")
+            == Catch::Approx(4.2));
 
     metrics.reset();
     for (const auto& stage : metrics.snapshot().presentationStages) {
@@ -194,6 +223,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     }
     REQUIRE(metrics.snapshot().nodeLayerCacheHits == 0);
     REQUIRE(metrics.snapshot().nodeLayerCacheMisses == 0);
+    REQUIRE(metrics.snapshot().cableLayerCacheHits == 0);
+    REQUIRE(metrics.snapshot().cableLayerCacheMisses == 0);
 }
 
 TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",

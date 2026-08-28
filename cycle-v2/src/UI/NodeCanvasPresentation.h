@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasCableLayerCache.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/NodeCanvasNodeLayerCache.h"
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
@@ -95,6 +96,12 @@ private:
     void paintGrid(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintEdges(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintCachedEdge(
+            Graphics& graphics,
+            const NodeSceneEdge& sceneEdge,
+            const NodeCableStyle& style,
+            float zoom,
+            float physicalScale);
     void paintPendingConnection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
@@ -126,6 +133,7 @@ private:
     GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
     NodeCanvasPresentationPerformanceObserver* performanceObserver;
+    NodeCanvasCableLayerCache cableLayerCache;
     NodeCanvasNodeLayerCache nodeLayerCache;
 };
 

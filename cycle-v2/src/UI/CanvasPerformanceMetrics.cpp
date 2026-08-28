@@ -181,6 +181,20 @@ void CanvasPerformanceMetrics::nodeLayerCacheCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::cableLayerCacheCompleted(
+        uint64_t hits,
+        uint64_t misses,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    cableLayerCacheHits += hits;
+    cableLayerCacheMisses += misses;
+    if (misses == 0) {
+        record(cableLayerCacheHitDuration, elapsedMicroseconds);
+    } else {
+        record(cableLayerCacheMissDuration, elapsedMicroseconds);
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -194,6 +208,10 @@ void CanvasPerformanceMetrics::reset() {
     nodeLayerCacheMisses = 0;
     nodeLayerCacheHitDuration = {};
     nodeLayerCacheMissDuration = {};
+    cableLayerCacheHits = 0;
+    cableLayerCacheMisses = 0;
+    cableLayerCacheHitDuration = {};
+    cableLayerCacheMissDuration = {};
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
@@ -221,6 +239,10 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
     result.nodeLayerCacheMisses = nodeLayerCacheMisses;
     result.nodeLayerCacheHitDuration = nodeLayerCacheHitDuration;
     result.nodeLayerCacheMissDuration = nodeLayerCacheMissDuration;
+    result.cableLayerCacheHits = cableLayerCacheHits;
+    result.cableLayerCacheMisses = cableLayerCacheMisses;
+    result.cableLayerCacheHitDuration = cableLayerCacheHitDuration;
+    result.cableLayerCacheMissDuration = cableLayerCacheMissDuration;
     result.hoverStateChanges = hoverStateChanges;
     result.hoverStateUnchanged = hoverStateUnchanged;
     result.occludedHoverResolutions = occludedHoverResolutions;
@@ -313,6 +335,16 @@ var CanvasPerformanceMetrics::toVar(
             distributionToVar(current.nodeLayerCacheMissDuration));
     auto* presentationCache = new DynamicObject();
     presentationCache->setProperty("nodeLayer", var(nodeLayerCache));
+    auto* cableLayerCache = new DynamicObject();
+    cableLayerCache->setProperty("hits", (int64) current.cableLayerCacheHits);
+    cableLayerCache->setProperty("misses", (int64) current.cableLayerCacheMisses);
+    cableLayerCache->setProperty(
+            "hitDuration",
+            distributionToVar(current.cableLayerCacheHitDuration));
+    cableLayerCache->setProperty(
+            "missDuration",
+            distributionToVar(current.cableLayerCacheMissDuration));
+    presentationCache->setProperty("cableLayer", var(cableLayerCache));
     root->setProperty("presentationCache", var(presentationCache));
 
     auto* hoverState = new DynamicObject();
@@ -385,10 +417,16 @@ const char* CanvasPerformanceMetrics::label(NodeCanvasPresentationStage stage) {
         case NodeCanvasPresentationStage::Backdrop:                return "backdrop";
         case NodeCanvasPresentationStage::SnapGuides:              return "snapGuides";
         case NodeCanvasPresentationStage::Cables:                  return "cables";
+        case NodeCanvasPresentationStage::CableBodies:             return "cableBodies";
+        case NodeCanvasPresentationStage::CableAnnotations:        return "cableAnnotations";
         case NodeCanvasPresentationStage::PendingConnection:       return "pendingConnection";
         case NodeCanvasPresentationStage::Nodes:                   return "nodes";
         case NodeCanvasPresentationStage::RelationshipHighlights:  return "relationshipHighlights";
         case NodeCanvasPresentationStage::Utilities:               return "utilities";
+        case NodeCanvasPresentationStage::MiniMap:                 return "miniMap";
+        case NodeCanvasPresentationStage::Legend:                  return "legend";
+        case NodeCanvasPresentationStage::Palette:                 return "palette";
+        case NodeCanvasPresentationStage::Status:                  return "status";
         case NodeCanvasPresentationStage::GuideShelf:              return "guideShelf";
         case NodeCanvasPresentationStage::SpyRail:                 return "spyRail";
         case NodeCanvasPresentationStage::DockAndDetail:           return "dockAndDetail";

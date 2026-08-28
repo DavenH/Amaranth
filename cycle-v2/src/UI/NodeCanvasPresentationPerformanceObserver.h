@@ -9,10 +9,16 @@ enum class NodeCanvasPresentationStage : uint8_t {
     Backdrop,
     SnapGuides,
     Cables,
+    CableBodies,
+    CableAnnotations,
     PendingConnection,
     Nodes,
     RelationshipHighlights,
     Utilities,
+    MiniMap,
+    Legend,
+    Palette,
+    Status,
     GuideShelf,
     SpyRail,
     DockAndDetail,
@@ -28,6 +34,10 @@ public:
             NodeCanvasPresentationStage stage,
             uint64_t elapsedMicroseconds) = 0;
     virtual void nodeLayerCacheCompleted(
+            uint64_t hits,
+            uint64_t misses,
+            uint64_t elapsedMicroseconds) = 0;
+    virtual void cableLayerCacheCompleted(
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) = 0;

@@ -561,17 +561,27 @@ void NodeCanvasPresentation::paintContent(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Cables);
-        paintEdges(graphics, frame);
-        signalProbeRail.paintCableAnnotations(
-                graphics,
-                frame.graph,
-                scene.snapshot(),
-                GuideCurveShelf::spyWorkspace(
-                        frame.workspaceBounds,
-                        frame.dockSplitRatio,
-                        frame.guideShelfState.minimized,
-                        frame.probeRailState.minimized),
-                frame.probeRailState);
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::CableBodies);
+            paintEdges(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::CableAnnotations);
+            signalProbeRail.paintCableAnnotations(
+                    graphics,
+                    frame.graph,
+                    scene.snapshot(),
+                    GuideCurveShelf::spyWorkspace(
+                            frame.workspaceBounds,
+                            frame.dockSplitRatio,
+                            frame.guideShelfState.minimized,
+                            frame.probeRailState.minimized),
+                    frame.probeRailState);
+        }
     }
     {
         ScopedNodeCanvasPresentationStage measurement(
@@ -595,10 +605,30 @@ void NodeCanvasPresentation::paintContent(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Utilities);
-        paintMiniMap(graphics, frame);
-        paintLegend(graphics, frame);
-        paintPalette(graphics, frame);
-        paintStatus(graphics, frame);
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::MiniMap);
+            paintMiniMap(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Legend);
+            paintLegend(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Palette);
+            paintPalette(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Status);
+            paintStatus(graphics, frame);
+        }
     }
 }
 
@@ -662,7 +692,11 @@ void NodeCanvasPresentation::paintGrid(
 void NodeCanvasPresentation::paintEdges(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    const uint64_t startedAt = performanceObserver != nullptr
+            ? performanceObserver->presentationTimestamp()
+            : 0;
     const float zoom = frame.viewport.getZoom();
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const auto& edges = frame.graph.getEdges();
     const auto& snapshot = scene.build(
             frame.graph,
@@ -670,6 +704,7 @@ void NodeCanvasPresentation::paintEdges(
             frame.presentationRevision,
             frame.documentRevision);
 
+    cableLayerCache.beginFrame();
     for (const auto& sceneEdge : snapshot.edges) {
         if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
@@ -685,14 +720,50 @@ void NodeCanvasPresentation::paintEdges(
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
                 : colourForDomain(edgeDomain(frame.graph, edge));
-        NodeCableRenderer::paint(graphics, sceneEdge, {
+        const NodeCableStyle style {
                 colour,
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
                 sceneEdge.modulationBundle
-        }, zoom);
+        };
+        paintCachedEdge(graphics, sceneEdge, style, zoom, physicalScale);
     }
+    const NodeCanvasCableLayerCacheStats stats = cableLayerCache.endFrame();
+    if (performanceObserver != nullptr) {
+        performanceObserver->cableLayerCacheCompleted(
+                stats.hits,
+                stats.misses,
+                performanceObserver->presentationTimestamp() - startedAt);
+    }
+}
+
+void NodeCanvasPresentation::paintCachedEdge(
+        Graphics& graphics,
+        const NodeSceneEdge& sceneEdge,
+        const NodeCableStyle& style,
+        float zoom,
+        float physicalScale) {
+    const Rectangle<int> logicalBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom)
+            .getSmallestIntegerContainer();
+    const NodeCanvasCableLayerCacheAccess cache = cableLayerCache.access(
+            sceneEdge,
+            style,
+            logicalBounds,
+            zoom,
+            physicalScale);
+    if (!cache.hit) {
+        Graphics imageGraphics(*cache.image);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -logicalBounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -logicalBounds.getY() * physicalScale));
+        NodeCableRenderer::paint(imageGraphics, sceneEdge, style, zoom);
+    }
+    cableLayerCache.draw(graphics, cache);
 }
 
 void NodeCanvasPresentation::paintPendingConnection(
