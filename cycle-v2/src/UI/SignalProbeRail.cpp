@@ -409,7 +409,9 @@ void SignalProbeRail::paintRail(
     graphics.drawRoundedRectangle(
             refreshMode,
             CanvasChromeMetrics::controlCornerRadius,
-            refreshFocused ? 2.f : 1.f);
+            refreshFocused
+                    ? CanvasChromeMetrics::focusRingWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(refreshColours.text);
     graphics.setFont(FontOptions(12.f));
     graphics.drawText(
@@ -425,7 +427,7 @@ void SignalProbeRail::paintRail(
         graphics.drawRoundedRectangle(
                 vacancy,
                 CanvasChromeMetrics::tileCornerRadius,
-                1.f);
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);

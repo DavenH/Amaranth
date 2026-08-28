@@ -34,12 +34,21 @@ void drawModeChoice(
     graphics.fillRoundedRectangle(left, corner);
     graphics.fillRoundedRectangle(right, corner);
     graphics.setColour(kMutedText.withAlpha(0.32f));
-    graphics.drawRoundedRectangle(left, corner, 1.f);
-    graphics.drawRoundedRectangle(right, corner, 1.f);
+    graphics.drawRoundedRectangle(
+            left,
+            corner,
+            CanvasChromeMetrics::restingBorderWidth);
+    graphics.drawRoundedRectangle(
+            right,
+            corner,
+            CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(colour.withAlpha(0.18f));
     graphics.fillRoundedRectangle(active, corner);
     graphics.setColour(colour.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(active, corner, 1.2f);
+    graphics.drawRoundedRectangle(
+            active,
+            corner,
+            CanvasChromeMetrics::activeBorderWidth);
 
     graphics.setFont(FontOptions(10.6f));
     graphics.setColour(rightActive

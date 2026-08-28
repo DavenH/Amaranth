@@ -69,7 +69,7 @@ void NodeCanvasPresentation::paintMiniMap(
     graphics.drawRoundedRectangle(
             viewportInMap,
             CanvasChromeMetrics::insetCornerRadius,
-            1.f);
+            CanvasChromeMetrics::restingBorderWidth);
 
 }
 
@@ -151,7 +151,9 @@ void NodeCanvasPresentation::paintPalette(
         graphics.drawRoundedRectangle(
                 button,
                 CanvasChromeMetrics::tileCornerRadius,
-                active ? 1.6f : 1.f);
+                active
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
 
         Rectangle<float> content = button;
         const Rectangle<float> label = content.removeFromBottom(18.f);
@@ -183,7 +185,9 @@ void NodeCanvasPresentation::paintPalette(
         graphics.drawRoundedRectangle(
                 row,
                 CanvasChromeMetrics::controlCornerRadius,
-                hover ? 1.4f : 1.f);
+                hover
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
 
         NodePaletteEntryIconRenderer::paint(
                 graphics,

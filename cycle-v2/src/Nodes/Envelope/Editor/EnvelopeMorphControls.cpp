@@ -45,7 +45,10 @@ void drawSegmentedGroup(
     graphics.drawVerticalLine(
             roundToInt(bounds.getCentreX()), bounds.getY() + 3.f, bounds.getBottom() - 3.f);
     graphics.setColour(kGroupBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius, 1.f);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 }
@@ -201,12 +204,16 @@ void EnvelopeMorphControls::draw(
         graphics.drawRoundedRectangle(
                 axisArea,
                 CanvasChromeMetrics::controlCornerRadius,
-                1.4f);
+                axis == viewAxis
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(colour.withAlpha(linked[axis] ? 0.9f : 0.25f));
         graphics.drawRoundedRectangle(
                 linkArea,
                 CanvasChromeMetrics::controlCornerRadius,
-                1.4f);
+                linked[axis]
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
     }
 }
 

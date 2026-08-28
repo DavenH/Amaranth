@@ -104,7 +104,7 @@ public:
         graphics.drawRoundedRectangle(
                 getLocalBounds().toFloat().reduced(0.5f),
                 CanvasChromeMetrics::panelCornerRadius,
-                1.f);
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffe2e8ef));
         graphics.setFont(FontOptions(17.f));
         graphics.drawText(

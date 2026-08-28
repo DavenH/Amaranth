@@ -67,7 +67,10 @@ void CanvasUtilityDock::paintSurface(
     graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.87f));
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius, 1.f);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::panelCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 }

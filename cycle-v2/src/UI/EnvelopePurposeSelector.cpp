@@ -130,7 +130,10 @@ void EnvelopePurposeSelector::paint(Graphics& graphics) {
         graphics.drawVerticalLine(roundToInt(x), outer.getY() + 3.f, outer.getBottom() - 3.f);
     }
     graphics.setColour(kControlBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(outer, CanvasChromeMetrics::controlCornerRadius, 1.1f);
+    graphics.drawRoundedRectangle(
+            outer,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 void EnvelopePurposeSelector::resized() {

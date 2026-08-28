@@ -27,7 +27,11 @@ public:
         graphics.setColour(Colour(0xff0e1318).brighter(down ? 0.12f : highlighted ? 0.06f : 0.f));
         graphics.fillEllipse(bounds);
         graphics.setColour(hasKeyboardFocus(false) ? Colour(0xff65b8ff) : Colour(0xff354050));
-        graphics.drawEllipse(bounds, hasKeyboardFocus(false) ? 1.5f : 1.f);
+        graphics.drawEllipse(
+                bounds,
+                hasKeyboardFocus(false)
+                        ? CanvasChromeMetrics::focusRingWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(kText);
         graphics.drawLine(7.f, 7.f, bounds.getRight() - 7.f, bounds.getBottom() - 7.f, 1.4f);
         graphics.drawLine(bounds.getRight() - 7.f, 7.f, 7.f, bounds.getBottom() - 7.f, 1.4f);
@@ -140,7 +144,7 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.drawRoundedRectangle(
             getLocalBounds().toFloat().reduced(0.75f),
             CanvasChromeMetrics::panelCornerRadius,
-            1.3f);
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 void CurveExpandedEditorComponent::resized() {

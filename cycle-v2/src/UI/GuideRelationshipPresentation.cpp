@@ -20,7 +20,7 @@ void paintHighlight(
             bounds.expanded(4.f),
             CanvasChromeMetrics::panelCornerRadius
                     + CanvasChromeMetrics::microCornerRadius,
-            2.f);
+            CanvasChromeMetrics::activeBorderWidth);
 
     const Rectangle<float> badge(
             bounds.getRight() - 37.f,
@@ -30,7 +30,10 @@ void paintHighlight(
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
     graphics.fillRoundedRectangle(badge, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(colour);
-    graphics.drawRoundedRectangle(badge, CanvasChromeMetrics::controlCornerRadius, 1.f);
+    graphics.drawRoundedRectangle(
+            badge,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
     graphics.setFont(FontOptions(10.f));
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }

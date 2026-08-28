@@ -8,4 +8,8 @@ inline constexpr float controlCornerRadius = 4.f;
 inline constexpr float tileCornerRadius = 5.f;
 inline constexpr float panelCornerRadius = 6.f;
 
+inline constexpr float restingBorderWidth = 1.f;
+inline constexpr float activeBorderWidth = 1.5f;
+inline constexpr float focusRingWidth = 2.f;
+
 }

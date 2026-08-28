@@ -145,13 +145,16 @@ void paintModulationShell(
     graphics.setColour(CanvasChromePalette::surface);
     graphics.fillRoundedRectangle(bounds, corner);
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(bounds, corner, 1.2f);
+    graphics.drawRoundedRectangle(
+            bounds,
+            corner,
+            CanvasChromeMetrics::restingBorderWidth);
     if (selected) {
         graphics.setColour(Colours::white.withAlpha(0.86f));
         graphics.drawRoundedRectangle(
                 bounds.expanded(2.f),
                 corner + CanvasChromeMetrics::microCornerRadius,
-                2.f);
+                CanvasChromeMetrics::focusRingWidth);
     }
 }
 
@@ -771,10 +774,14 @@ void NodeCanvasPresentation::paintNode(
                 frame.unisonPreviewContext
         });
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.7f));
-        graphics.drawEllipse(nodeBounds.reduced(2.f * zoom), 1.2f * scale);
+        graphics.drawEllipse(
+                nodeBounds.reduced(2.f * zoom),
+                CanvasChromeMetrics::restingBorderWidth * scale);
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
-            graphics.drawEllipse(nodeBounds.expanded(2.f * zoom), 2.f * scale);
+            graphics.drawEllipse(
+                    nodeBounds.expanded(2.f * zoom),
+                    CanvasChromeMetrics::focusRingWidth * scale);
         }
     } else {
         Rectangle<float> body = nodeBounds;
@@ -786,14 +793,17 @@ void NodeCanvasPresentation::paintNode(
         graphics.fillRoundedRectangle(header, corner);
         graphics.fillRect(header.withTrimmedTop(header.getHeight() - corner));
         graphics.setColour(CanvasChromePalette::border);
-        graphics.drawRoundedRectangle(nodeBounds, corner, 1.2f);
+        graphics.drawRoundedRectangle(
+                nodeBounds,
+                corner,
+                CanvasChromeMetrics::restingBorderWidth);
 
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
             graphics.drawRoundedRectangle(
                     nodeBounds.expanded(2.f),
                     corner + CanvasChromeMetrics::microCornerRadius,
-                    2.f);
+                    CanvasChromeMetrics::focusRingWidth);
         }
 
         graphics.setFont(FontOptions(18.f * zoom));

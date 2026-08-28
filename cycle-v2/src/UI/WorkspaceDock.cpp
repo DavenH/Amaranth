@@ -183,7 +183,9 @@ void WorkspaceDock::paintIconButton(
     graphics.drawRoundedRectangle(
             bounds,
             CanvasChromeMetrics::controlCornerRadius,
-            focused ? 2.f : 1.f);
+            focused
+                    ? CanvasChromeMetrics::focusRingWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(colours.text);
     paintIconGlyph(graphics, bounds, icon);
 }
@@ -204,13 +206,15 @@ void WorkspaceDock::paintTileChrome(
     graphics.drawRoundedRectangle(
             tile,
             CanvasChromeMetrics::tileCornerRadius,
-            active ? 2.f : 1.f);
+            active
+                    ? CanvasChromeMetrics::activeBorderWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
     if (focused) {
         graphics.setColour(CanvasChromePalette::focus.withAlpha(0.9f));
         graphics.drawRoundedRectangle(
                 tile.reduced(3.f),
                 CanvasChromeMetrics::controlCornerRadius,
-                1.f);
+                CanvasChromeMetrics::focusRingWidth);
     }
 }
 
@@ -273,7 +277,9 @@ void WorkspaceDock::paintChrome(
     graphics.drawRoundedRectangle(
             layout.collapseHandle,
             handleCornerRadius,
-            focused ? 2.f : 1.f);
+            focused
+                    ? CanvasChromeMetrics::focusRingWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(CanvasChromePalette::text);
 
     if (!expanded) {

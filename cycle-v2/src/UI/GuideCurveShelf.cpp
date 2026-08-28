@@ -192,7 +192,7 @@ void GuideCurveShelf::paint(
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRect(shelf);
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRect(shelf, 1.f);
+    graphics.drawRect(shelf, CanvasChromeMetrics::restingBorderWidth);
 
     if (!dockState.expanded) {
         return;
@@ -247,7 +247,7 @@ void GuideCurveShelf::paint(
         graphics.drawRoundedRectangle(
                 vacancy,
                 CanvasChromeMetrics::tileCornerRadius,
-                1.f);
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No guides", vacancy.reduced(14.f), Justification::centredLeft);

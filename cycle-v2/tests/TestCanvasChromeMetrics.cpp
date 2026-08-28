@@ -21,3 +21,15 @@ TEST_CASE("Canvas chrome uses one restrained semantic corner scale",
     REQUIRE(CanvasChromeMetrics::tileCornerRadius
             < CanvasChromeMetrics::panelCornerRadius);
 }
+
+TEST_CASE("Canvas chrome reserves its strongest generic stroke for focus",
+        "[cycle-v2][canvas][chrome][metrics]") {
+    REQUIRE(CanvasChromeMetrics::restingBorderWidth == 1.f);
+    REQUIRE(CanvasChromeMetrics::activeBorderWidth == 1.5f);
+    REQUIRE(CanvasChromeMetrics::focusRingWidth == 2.f);
+
+    REQUIRE(CanvasChromeMetrics::restingBorderWidth
+            < CanvasChromeMetrics::activeBorderWidth);
+    REQUIRE(CanvasChromeMetrics::activeBorderWidth
+            < CanvasChromeMetrics::focusRingWidth);
+}

@@ -291,7 +291,9 @@ void drawPrimaryAxisButtons(
         g.drawRoundedRectangle(
                 button,
                 CanvasChromeMetrics::controlCornerRadius,
-                axis.primary ? 1.8f : 1.f);
+                axis.primary
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
 
         if (axis.primary) {
             g.setColour(axis.colour.withAlpha(0.95f));
@@ -316,7 +318,9 @@ void drawLinkRow(
         g.drawRoundedRectangle(
                 toggle,
                 CanvasChromeMetrics::controlCornerRadius,
-                axis.linked ? 1.8f : 1.f);
+                axis.linked
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
 
         if (axis.linked) {
             g.setColour(axis.colour.withAlpha(0.88f));

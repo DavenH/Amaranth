@@ -86,7 +86,7 @@ public:
         graphics.drawRoundedRectangle(
                 getLocalBounds().toFloat().reduced(0.5f),
                 CanvasChromeMetrics::panelCornerRadius,
-                1.f);
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f));
         graphics.drawText("DELAY", 18, 10, getWidth() - 80, 28, Justification::centredLeft);

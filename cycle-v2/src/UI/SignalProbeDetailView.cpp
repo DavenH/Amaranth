@@ -116,7 +116,7 @@ void SignalProbeDetailView::paint(
     graphics.drawRoundedRectangle(
             detail,
             CanvasChromeMetrics::panelCornerRadius,
-            1.5f);
+            CanvasChromeMetrics::restingBorderWidth);
 
     Rectangle<float> content = detail.reduced(14.f);
     Rectangle<float> header = content.removeFromTop(34.f);

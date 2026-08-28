@@ -96,7 +96,7 @@ public:
             graphics.drawRoundedRectangle(
                     geometry.bounds.reduced(0.75f),
                     CanvasChromeMetrics::controlCornerRadius,
-                    1.25f);
+                    CanvasChromeMetrics::focusRingWidth);
         }
     }
 };

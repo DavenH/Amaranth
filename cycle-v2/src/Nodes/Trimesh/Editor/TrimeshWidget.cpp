@@ -646,7 +646,10 @@ void TrimeshWidget::drawPanelFrame(
     }
 
     g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(fullArea, CanvasChromeMetrics::panelCornerRadius, 1.f);
+    g.drawRoundedRectangle(
+            fullArea,
+            CanvasChromeMetrics::panelCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
     g.setColour(kMutedText);
     g.setFont(FontOptions(9.8f));
     g.drawText(title, fullArea.reduced(9.f, 4.f).removeFromTop(14.f), Justification::centredLeft);

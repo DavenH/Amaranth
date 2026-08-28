@@ -101,7 +101,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.setColour(Colour(0xff0e1318));
     g.fillEllipse(closeButton);
     g.setColour(Colour(0xff354050));
-    g.drawEllipse(closeButton, 1.f);
+    g.drawEllipse(closeButton, CanvasChromeMetrics::restingBorderWidth);
     g.setColour(kText);
     g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
                closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
@@ -116,7 +116,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.drawRoundedRectangle(
             panel.reduced(0.75f),
             CanvasChromeMetrics::panelCornerRadius,
-            1.3f);
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 void TrimeshExpandedEditorComponent::resized() {
