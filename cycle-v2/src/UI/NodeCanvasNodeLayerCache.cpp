@@ -57,23 +57,32 @@ bool nodesEqualForPresentation(const Node& first, const Node& second) {
             && first.editorState.equals(second.editorState);
 }
 
+bool runtimePreviewsEqual(const NodePreviewResult& first, const NodePreviewResult& second) {
+    if (first.contentRevision != 0 && second.contentRevision != 0) {
+        return first.contentRevision == second.contentRevision;
+    }
+    return nodePreviewResultsHaveEqualContent(first, second);
+}
+
 }
 
 bool NodeCanvasNodeLayerCache::Entry::matches(
         const Node& node,
         Rectangle<int> bounds,
-        uint64_t currentPresentationRevision,
         uint64_t currentViewportRevision,
         uint64_t resourceFingerprint,
         uint64_t contextFingerprint,
+        const NodePreviewResult* runtimePreview,
         bool currentlySelected,
         float scale) const {
     return nodesEqualForPresentation(nodeSnapshot, node)
             && logicalBounds == bounds
-            && presentationRevision == currentPresentationRevision
             && viewportRevision == currentViewportRevision
             && previewResourceFingerprint == resourceFingerprint
-            && unisonContextFingerprint == contextFingerprint
+            && renderContextFingerprint == contextFingerprint
+            && hasRuntimePreview == (runtimePreview != nullptr)
+            && (runtimePreview == nullptr
+                    || runtimePreviewsEqual(runtimePreviewSnapshot, *runtimePreview))
             && physicalScale == scale
             && selected == currentlySelected
             && image.isValid();
@@ -87,10 +96,10 @@ void NodeCanvasNodeLayerCache::beginFrame() {
 NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
         const Node& node,
         Rectangle<int> logicalBounds,
-        uint64_t presentationRevision,
         uint64_t viewportRevision,
         uint64_t previewResourceFingerprint,
-        uint64_t unisonContextFingerprint,
+        uint64_t renderContextFingerprint,
+        const NodePreviewResult* runtimePreview,
         bool selected,
         float physicalScale) {
     auto match = std::find_if(
@@ -102,10 +111,10 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
             && entry->matches(
                     node,
                     logicalBounds,
-                    presentationRevision,
                     viewportRevision,
                     previewResourceFingerprint,
-                    unisonContextFingerprint,
+                    renderContextFingerprint,
+                    runtimePreview,
                     selected,
                     physicalScale);
     if (!hit) {
@@ -117,10 +126,10 @@ NodeCanvasNodeLayerCacheAccess NodeCanvasNodeLayerCache::access(
                 *entry,
                 node,
                 logicalBounds,
-                presentationRevision,
                 viewportRevision,
                 previewResourceFingerprint,
-                unisonContextFingerprint,
+                renderContextFingerprint,
+                runtimePreview,
                 selected,
                 physicalScale);
         ++frameStats.misses;
@@ -135,21 +144,24 @@ void NodeCanvasNodeLayerCache::replaceEntry(
         Entry& entry,
         const Node& node,
         Rectangle<int> logicalBounds,
-        uint64_t presentationRevision,
         uint64_t viewportRevision,
         uint64_t previewResourceFingerprint,
-        uint64_t unisonContextFingerprint,
+        uint64_t renderContextFingerprint,
+        const NodePreviewResult* runtimePreview,
         bool selected,
         float physicalScale) {
     const int imageWidth = jmax(1, roundToInt(logicalBounds.getWidth() * physicalScale));
     const int imageHeight = jmax(1, roundToInt(logicalBounds.getHeight() * physicalScale));
     entry.nodeId = node.id;
     entry.nodeSnapshot = node;
+    entry.hasRuntimePreview = runtimePreview != nullptr;
+    entry.runtimePreviewSnapshot = runtimePreview != nullptr
+            ? *runtimePreview
+            : NodePreviewResult {};
     entry.logicalBounds = logicalBounds;
-    entry.presentationRevision = presentationRevision;
     entry.viewportRevision = viewportRevision;
     entry.previewResourceFingerprint = previewResourceFingerprint;
-    entry.unisonContextFingerprint = unisonContextFingerprint;
+    entry.renderContextFingerprint = renderContextFingerprint;
     entry.physicalScale = physicalScale;
     entry.selected = selected;
     entry.image = Image(Image::ARGB, imageWidth, imageHeight, true);

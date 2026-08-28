@@ -1,4 +1,6 @@
-#include "UI/NodePreviewRenderer.h"
+#include <array>
+#include <cmath>
+#include <limits>
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -7,12 +9,8 @@
 #include "Nodes/Reverb/ReverbPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "UI/NodePreviewRenderer.h"
 #include "UI/Preview/EffectPlotPalette.h"
-
-#include <array>
-#include <cmath>
-#include <cstring>
-#include <limits>
 
 namespace CycleV2 {
 
@@ -74,32 +72,11 @@ String nodeSignature(const Node& node, PortDomain domain) {
     return signature;
 }
 
-uint64_t previewContentHash(const NodePreviewResult& preview) {
-    uint64_t hash = 1469598103934665603ull;
-    const auto mix = [&hash](uint64_t value) {
-        hash ^= value;
-        hash *= 1099511628211ull;
-    };
-
-    mix((uint64_t) preview.primary.size());
-    for (const float value : preview.primary) {
-        uint32_t bits {};
-        std::memcpy(&bits, &value, sizeof(bits));
-        mix(bits);
-    }
-
-    return hash;
-}
-
 String runtimeSignature(const NodePreviewResult& preview) {
-    return String((int) preview.role)
-            + ":" + String((int) preview.domain)
-            + ":" + String((int) preview.frequencySampling)
-            + ":" + String(preview.frequencyMidiNote)
-            + ":" + String((int) preview.gridColumns)
-            + "x" + String((int) preview.gridRows)
-            + ":" + String((int) preview.primary.size())
-            + ":" + String::toHexString((int64) previewContentHash(preview));
+    if (preview.contentRevision != 0) {
+        return "revision:" + String((int64) preview.contentRevision);
+    }
+    return String::toHexString((int64) nodePreviewResultFingerprint(preview));
 }
 
 void drawTrace(

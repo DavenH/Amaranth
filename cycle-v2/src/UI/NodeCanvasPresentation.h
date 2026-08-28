@@ -125,6 +125,12 @@ private:
     const NodePreviewResult* previewFor(
             const GraphPreviewResult& previews,
             const String& nodeId) const;
+    uint64_t renderContextFingerprintFor(
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node) const;
+    NodeRenderSemantic renderSemanticFor(
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node) const;
     TrimeshRenderProfile profileFor(const NodeCanvasPresentationFrame& frame, const Node& node) const;
 
     NodeCanvasScene& scene;

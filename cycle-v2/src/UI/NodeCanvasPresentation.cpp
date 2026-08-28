@@ -13,6 +13,7 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -868,15 +869,14 @@ void NodeCanvasPresentation::paintCachedNode(
     const Rectangle<int> logicalBounds = frame.viewport.toScreen(node.bounds)
             .expanded(32.f * portScale(frame.viewport.getZoom()))
             .getSmallestIntegerContainer();
-    const bool usesGlobalContext = node.kind == NodeKind::Unison
-            || node.kind == NodeKind::VoiceContext;
+    const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
     const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
             node,
             logicalBounds,
-            frame.presentationRevision,
             frame.viewport.getRevision(),
             previewRenderer.nodePresentationFingerprint(node.id),
-            usesGlobalContext ? unisonContextFingerprint(frame.unisonPreviewContext) : 0,
+            renderContextFingerprintFor(frame, node),
+            runtimePreview,
             node.id == frame.selectedNodeId,
             physicalScale);
     if (!cache.hit) {
@@ -1084,6 +1084,12 @@ const NodePreviewResult* NodeCanvasPresentation::previewFor(
 TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
+    return TrimeshRenderProfile::fromSemantic(renderSemanticFor(frame, node));
+}
+
+NodeRenderSemantic NodeCanvasPresentation::renderSemanticFor(
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node) const {
     NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
             frame.graph,
             node.id,
@@ -1092,7 +1098,31 @@ TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         semantic.domain = node.outputs.front().domain;
     }
 
-    return TrimeshRenderProfile::fromSemantic(semantic);
+    return semantic;
+}
+
+uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node) const {
+    const NodeRenderSemantic semantic = renderSemanticFor(frame, node);
+
+    FingerprintBuilder fingerprint;
+    fingerprint
+            .add((uint64_t) semantic.domain)
+            .add((uint64_t) semantic.scalePolicy)
+            .add((uint64_t) semantic.role);
+    if (node.kind == NodeKind::TrilinearMesh) {
+        fingerprint.add(TrimeshGuidePreparation::configurationKey(frame.graph, node.id));
+    }
+    if (node.kind == NodeKind::Unison) {
+        fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
+                frame.compileResult.plan,
+                node.id,
+                frame.unisonPreviewContext)));
+    } else if (node.kind == NodeKind::VoiceContext) {
+        fingerprint.add(unisonContextFingerprint(frame.unisonPreviewContext));
+    }
+    return fingerprint.value();
 }
 
 void NodeCanvasPresentation::renderOpenGLEffectPreviews(
