@@ -166,6 +166,9 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             NodeCanvasPresentationStage::SpyRail,
             900);
     metrics.presentationStageCompleted(
+            NodeCanvasPresentationStage::SpyRailPreviews,
+            720);
+    metrics.presentationStageCompleted(
             NodeCanvasPresentationStage::CableBodies,
             2400);
     metrics.presentationStageCompleted(
@@ -181,6 +184,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     metrics.nodeLayerCacheCompleted(14, 0, 220);
     metrics.cableLayerCacheCompleted(8, 3, 4200);
     metrics.cableLayerCacheCompleted(11, 0, 140);
+    metrics.spyPreviewTileCacheCompleted(7, 2, 3100);
+    metrics.spyPreviewTileCacheCompleted(9, 0, 90);
 
     const auto snapshot = metrics.snapshot();
     const auto& nodes = snapshot.presentationStages[static_cast<size_t>(
@@ -194,6 +199,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(3.0));
     REQUIRE((double) property(property(stages, "spyRail"), "maxMs")
             == Catch::Approx(0.9));
+    REQUIRE((double) property(property(stages, "spyRailPreviews"), "maxMs")
+            == Catch::Approx(0.72));
     REQUIRE((double) property(property(stages, "cableBodies"), "meanMs")
             == Catch::Approx(2.4));
     REQUIRE((double) property(property(stages, "cableAnnotations"), "meanMs")
@@ -216,6 +223,15 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(0.14));
     REQUIRE((double) property(property(cableLayerCache, "missDuration"), "meanMs")
             == Catch::Approx(4.2));
+    const var& spyPreviewTileCache = property(
+            property(exported, "presentationCache"),
+            "spyPreviewTiles");
+    REQUIRE((int64) property(spyPreviewTileCache, "hits") == 16);
+    REQUIRE((int64) property(spyPreviewTileCache, "misses") == 2);
+    REQUIRE((double) property(property(spyPreviewTileCache, "hitDuration"), "meanMs")
+            == Catch::Approx(0.09));
+    REQUIRE((double) property(property(spyPreviewTileCache, "missDuration"), "meanMs")
+            == Catch::Approx(3.1));
 
     metrics.reset();
     for (const auto& stage : metrics.snapshot().presentationStages) {
@@ -225,6 +241,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     REQUIRE(metrics.snapshot().nodeLayerCacheMisses == 0);
     REQUIRE(metrics.snapshot().cableLayerCacheHits == 0);
     REQUIRE(metrics.snapshot().cableLayerCacheMisses == 0);
+    REQUIRE(metrics.snapshot().spyPreviewTileCacheHits == 0);
+    REQUIRE(metrics.snapshot().spyPreviewTileCacheMisses == 0);
 }
 
 TEST_CASE("Canvas metrics expose hover churn and native Trimesh edit operations",

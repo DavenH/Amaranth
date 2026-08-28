@@ -195,6 +195,20 @@ void CanvasPerformanceMetrics::cableLayerCacheCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::spyPreviewTileCacheCompleted(
+        uint64_t hits,
+        uint64_t misses,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    spyPreviewTileCacheHits += hits;
+    spyPreviewTileCacheMisses += misses;
+    if (misses == 0) {
+        record(spyPreviewTileCacheHitDuration, elapsedMicroseconds);
+    } else {
+        record(spyPreviewTileCacheMissDuration, elapsedMicroseconds);
+    }
+}
+
 void CanvasPerformanceMetrics::reset() {
     const uint64_t timestamp = now();
     const juce::ScopedLock scopedLock(lock);
@@ -212,6 +226,10 @@ void CanvasPerformanceMetrics::reset() {
     cableLayerCacheMisses = 0;
     cableLayerCacheHitDuration = {};
     cableLayerCacheMissDuration = {};
+    spyPreviewTileCacheHits = 0;
+    spyPreviewTileCacheMisses = 0;
+    spyPreviewTileCacheHitDuration = {};
+    spyPreviewTileCacheMissDuration = {};
     hoverStateChanges = 0;
     hoverStateUnchanged = 0;
     occludedHoverResolutions = 0;
@@ -243,6 +261,10 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
     result.cableLayerCacheMisses = cableLayerCacheMisses;
     result.cableLayerCacheHitDuration = cableLayerCacheHitDuration;
     result.cableLayerCacheMissDuration = cableLayerCacheMissDuration;
+    result.spyPreviewTileCacheHits = spyPreviewTileCacheHits;
+    result.spyPreviewTileCacheMisses = spyPreviewTileCacheMisses;
+    result.spyPreviewTileCacheHitDuration = spyPreviewTileCacheHitDuration;
+    result.spyPreviewTileCacheMissDuration = spyPreviewTileCacheMissDuration;
     result.hoverStateChanges = hoverStateChanges;
     result.hoverStateUnchanged = hoverStateUnchanged;
     result.occludedHoverResolutions = occludedHoverResolutions;
@@ -345,6 +367,16 @@ var CanvasPerformanceMetrics::toVar(
             "missDuration",
             distributionToVar(current.cableLayerCacheMissDuration));
     presentationCache->setProperty("cableLayer", var(cableLayerCache));
+    auto* spyPreviewTileCache = new DynamicObject();
+    spyPreviewTileCache->setProperty("hits", (int64) current.spyPreviewTileCacheHits);
+    spyPreviewTileCache->setProperty("misses", (int64) current.spyPreviewTileCacheMisses);
+    spyPreviewTileCache->setProperty(
+            "hitDuration",
+            distributionToVar(current.spyPreviewTileCacheHitDuration));
+    spyPreviewTileCache->setProperty(
+            "missDuration",
+            distributionToVar(current.spyPreviewTileCacheMissDuration));
+    presentationCache->setProperty("spyPreviewTiles", var(spyPreviewTileCache));
     root->setProperty("presentationCache", var(presentationCache));
 
     auto* hoverState = new DynamicObject();
@@ -429,6 +461,7 @@ const char* CanvasPerformanceMetrics::label(NodeCanvasPresentationStage stage) {
         case NodeCanvasPresentationStage::Status:                  return "status";
         case NodeCanvasPresentationStage::GuideShelf:              return "guideShelf";
         case NodeCanvasPresentationStage::SpyRail:                 return "spyRail";
+        case NodeCanvasPresentationStage::SpyRailPreviews:         return "spyRailPreviews";
         case NodeCanvasPresentationStage::DockAndDetail:           return "dockAndDetail";
         case NodeCanvasPresentationStage::Count:                   break;
     }

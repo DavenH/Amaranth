@@ -461,7 +461,7 @@ NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse)
+    ,   signalProbeRail(previewRendererToUse, performanceObserverToUse)
     ,   signalProbeDetailView(previewRendererToUse)
     ,   performanceObserver(performanceObserverToUse) {
 }

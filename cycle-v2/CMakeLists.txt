@@ -174,6 +174,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockInteractionController.cpp"
@@ -293,7 +294,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
 
     if(BUILD_TESTING)
-        file(GLOB_RECURSE TEST_SOURCES
+        file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )

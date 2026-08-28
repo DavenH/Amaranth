@@ -349,6 +349,63 @@ const GraphPreviewResult::SignalProbePreview* SignalProbeRail::previewFor(
     return nullptr;
 }
 
+void SignalProbeRail::paintCachedPreview(
+        Graphics& graphics,
+        const NodeGraph& graph,
+        const SignalProbe& probe,
+        const GraphPreviewResult::SignalProbePreview& preview,
+        Rectangle<float> previewBounds,
+        float physicalScale) {
+    NodeRenderSemantic semantic = renderSemanticForProbe(graph, probe.id);
+    if (semantic.domain == PortDomain::ControlSignal) {
+        semantic.domain = preview.domain;
+    }
+
+    const Rectangle<int> logicalBounds = previewBounds.getSmallestIntegerContainer();
+    const SignalProbePreviewTileCacheAccess cache = previewTileCache.access(
+            preview,
+            semantic,
+            logicalBounds,
+            physicalScale);
+    if (!cache.hit) {
+        const PreviewModuleRole displayRole = preview.sourceRole
+                == PreviewModuleRole::MeshSurface
+                ? PreviewModuleRole::MeshSurface
+                : PreviewModuleRole::SignalSpy;
+        NodePreviewResult compactResult {
+                "probe-preview-" + probe.id,
+                displayRole,
+                preview.values,
+                {},
+                preview.gridColumns,
+                preview.gridRows,
+                preview.domain,
+                preview.frequencySampling,
+                preview.frequencyMidiNote
+        };
+        Node displayNode;
+        displayNode.id = "probe-preview-" + probe.id;
+        displayNode.kind = NodeKind::GenericProcessor;
+        Graphics imageGraphics(*cache.image);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -logicalBounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -logicalBounds.getY() * physicalScale));
+        renderer.paint(imageGraphics, {
+                displayNode,
+                &compactResult,
+                previewBounds,
+                TrimeshRenderProfile::fromSemantic(semantic),
+                1.f,
+                true
+        });
+    }
+    previewTileCache.draw(graphics, cache);
+}
+
 void SignalProbeRail::paintRail(
         Graphics& graphics,
         const NodeGraph& graph,
@@ -433,6 +490,9 @@ void SignalProbeRail::paintRail(
 
     Graphics::ScopedSaveState tileClip(graphics);
     graphics.reduceClipRegion(rail.toNearestInt());
+    uint64_t previewElapsed {};
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
+    previewTileCache.beginFrame();
     for (int index = 0; index < (int) probes.size(); ++index) {
         const SignalProbe& probe = *probes[(size_t) index];
         const Rectangle<float> tile = tileBoundsFor(workspace, state, index);
@@ -460,37 +520,30 @@ void SignalProbeRail::paintRail(
             continue;
         }
 
-        const PreviewModuleRole displayRole = preview->sourceRole
-                == PreviewModuleRole::MeshSurface
-                ? PreviewModuleRole::MeshSurface
-                : PreviewModuleRole::SignalSpy;
-        NodePreviewResult compactResult {
-                "probe-preview-" + probe.id,
-                displayRole,
-                preview->values,
-                {},
-                preview->gridColumns,
-                preview->gridRows,
-                preview->domain,
-                preview->frequencySampling,
-                preview->frequencyMidiNote
-        };
-        Node displayNode;
-        displayNode.id = "probe-preview-" + probe.id;
-        displayNode.kind = NodeKind::GenericProcessor;
-        NodeRenderSemantic semantic = renderSemanticForProbe(graph, probe.id);
-        if (semantic.domain == PortDomain::ControlSignal) {
-            semantic.domain = preview->domain;
-        }
-        renderer.paint(graphics, {
-                displayNode,
-                &compactResult,
+        const uint64_t previewStartedAt = performanceObserver != nullptr
+                ? performanceObserver->presentationTimestamp()
+                : 0;
+        paintCachedPreview(
+                graphics,
+                graph,
+                probe,
+                *preview,
                 previewBounds,
-                TrimeshRenderProfile::fromSemantic(semantic),
-                1.f,
-                true
-        });
+                physicalScale);
+        if (performanceObserver != nullptr) {
+            previewElapsed += performanceObserver->presentationTimestamp() - previewStartedAt;
+        }
         paintProbeOrdinal(graphics, previewBounds, index + 1);
+    }
+    const SignalProbePreviewTileCacheStats stats = previewTileCache.endFrame();
+    if (performanceObserver != nullptr) {
+        performanceObserver->presentationStageCompleted(
+                NodeCanvasPresentationStage::SpyRailPreviews,
+                previewElapsed);
+        performanceObserver->spyPreviewTileCacheCompleted(
+                stats.hits,
+                stats.misses,
+                previewElapsed);
     }
     WorkspaceDock::paintOverflowFeedback(
             graphics,
