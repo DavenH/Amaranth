@@ -34,7 +34,7 @@ void paintHighlight(
             badge,
             CanvasChromeMetrics::controlCornerRadius,
             CanvasChromeMetrics::restingBorderWidth);
-    graphics.setFont(FontOptions(10.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }
 

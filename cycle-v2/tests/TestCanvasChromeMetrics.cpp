@@ -33,3 +33,21 @@ TEST_CASE("Canvas chrome reserves its strongest generic stroke for focus",
     REQUIRE(CanvasChromeMetrics::activeBorderWidth
             < CanvasChromeMetrics::focusRingWidth);
 }
+
+TEST_CASE("Canvas chrome uses one ordered semantic type scale",
+        "[cycle-v2][canvas][chrome][metrics]") {
+    REQUIRE(CanvasChromeMetrics::microFontSize == 9.f);
+    REQUIRE(CanvasChromeMetrics::captionFontSize == 10.5f);
+    REQUIRE(CanvasChromeMetrics::labelFontSize == 12.f);
+    REQUIRE(CanvasChromeMetrics::sectionTitleFontSize == 14.f);
+    REQUIRE(CanvasChromeMetrics::editorTitleFontSize == 18.f);
+
+    REQUIRE(CanvasChromeMetrics::microFontSize
+            < CanvasChromeMetrics::captionFontSize);
+    REQUIRE(CanvasChromeMetrics::captionFontSize
+            < CanvasChromeMetrics::labelFontSize);
+    REQUIRE(CanvasChromeMetrics::labelFontSize
+            < CanvasChromeMetrics::sectionTitleFontSize);
+    REQUIRE(CanvasChromeMetrics::sectionTitleFontSize
+            < CanvasChromeMetrics::editorTitleFontSize);
+}

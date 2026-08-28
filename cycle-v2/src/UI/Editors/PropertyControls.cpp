@@ -1,5 +1,6 @@
 #include "UI/Editors/PropertyControls.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 
 #include <cmath>
@@ -86,7 +87,7 @@ PropertySliderLayout propertySliderLayout(
 void stylePropertyLabel(Label& label, const String& text) {
     label.setText(text, dontSendNotification);
     label.setColour(Label::textColourId, kMutedText);
-    label.setFont(FontOptions(12.f));
+    label.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     label.setJustificationType(Justification::centredRight);
 }
 
@@ -309,7 +310,7 @@ PropertySliderRow::PropertySliderRow(Component& owner, const String& labelText) 
     value.setVisible(false);
     value.setEditable(true, true, false);
     value.setJustificationType(Justification::centredRight);
-    value.setFont(FontOptions(12.f));
+    value.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     value.setColour(Label::textColourId, kText);
     value.setColour(Label::backgroundColourId, Colour(0xff11171e));
     value.setColour(Label::outlineColourId, Colour(0xff303b48));

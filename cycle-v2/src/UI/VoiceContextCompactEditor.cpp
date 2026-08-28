@@ -1,6 +1,8 @@
 #include "UI/Editors/PropertyControls.h"
 #include "UI/VoiceContextCompactEditor.h"
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -86,7 +88,7 @@ void VoiceContextCompactEditor::paintNodeSelector(
                     : pill.getX() + pill.getHeight() * 0.5f,
             pill.getCentreY());
 
-    graphics.setFont(FontOptions(18.f * zoom));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
     graphics.setColour(spectral ? kMutedText.withAlpha(0.70f) : kText);
     graphics.drawText("Waveform", waveformLabel, Justification::centredRight);
     graphics.setColour(spectral ? kText : kMutedText.withAlpha(0.70f));
@@ -114,7 +116,7 @@ void VoiceContextCompactEditor::paintNodeSummary(
             .withTrimmedBottom(10.f * zoom)
             .reduced(16.f * zoom, 0.f);
     graphics.setColour(kText.withAlpha(0.88f));
-    graphics.setFont(FontOptions(18.f * zoom));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
     graphics.drawText(
             summaryLabel(node, voiceDurationSeconds),
             summary,

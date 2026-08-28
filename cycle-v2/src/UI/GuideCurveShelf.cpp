@@ -227,7 +227,7 @@ void GuideCurveShelf::paint(
             WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(12.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
             "Curve Guides",
             header.withTrimmedLeft(34.f).withWidth(96.f),
@@ -249,7 +249,7 @@ void GuideCurveShelf::paint(
                 CanvasChromeMetrics::tileCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.setFont(FontOptions(12.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.drawText("No guides", vacancy.reduced(14.f), Justification::centredLeft);
         return;
     }
@@ -282,7 +282,7 @@ void GuideCurveShelf::paint(
         preview.widget->paintPreviewSnapshot(graphics, thumbnail);
         if (hasDisplayName(guide)) {
             graphics.setColour(CanvasChromePalette::text);
-            graphics.setFont(FontOptions(12.f));
+            graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
             graphics.drawText(
                     guide.name,
                     thumbnail.reduced(8.f).removeFromTop(22.f),

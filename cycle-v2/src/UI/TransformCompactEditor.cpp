@@ -27,7 +27,7 @@ void drawModeChoice(
     const Rectangle<float> right = control;
     const Rectangle<float> active = rightActive ? right : left;
 
-    graphics.setFont(FontOptions(11.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea, Justification::centredLeft);
     graphics.setColour(Colour(0xff0e1318));
@@ -50,7 +50,7 @@ void drawModeChoice(
             corner,
             CanvasChromeMetrics::activeBorderWidth);
 
-    graphics.setFont(FontOptions(10.6f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     graphics.setColour(rightActive
             ? kMutedText.withAlpha(0.62f)
             : kText.withAlpha(0.92f));

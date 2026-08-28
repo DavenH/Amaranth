@@ -176,11 +176,11 @@ void paintSingleModulationNode(
     graphics.fillRoundedRectangle(badge, corner);
     graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - corner));
     graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(FontOptions(12.f * zoom));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize * zoom));
     graphics.drawText("MOD", badge, Justification::centred);
 
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(20.f * zoom));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
     graphics.drawText(
             modulationSourceLabel(node),
             bounds.reduced(14.f * zoom, 2.f * zoom),
@@ -226,11 +226,11 @@ void paintTripleModulationNode(
         graphics.fillRoundedRectangle(
                 rowBounds.removeFromLeft(6.f * zoom),
                 CanvasChromeMetrics::insetCornerRadius * scale);
-        graphics.setFont(FontOptions(14.f * zoom));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize * zoom));
         graphics.drawText(prefixes[row].substring(0, 1).toUpperCase(),
                 rowBounds.removeFromLeft(30.f * zoom), Justification::centred);
         graphics.setColour(CanvasChromePalette::text);
-        graphics.setFont(FontOptions(19.f * zoom));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
         graphics.drawText(
                 modulationSourceLabel(node, prefixes[row]),
                 rowBounds.reduced(6.f * zoom, 2.f * zoom),
@@ -806,7 +806,7 @@ void NodeCanvasPresentation::paintNode(
                     CanvasChromeMetrics::focusRingWidth);
         }
 
-        graphics.setFont(FontOptions(18.f * zoom));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
         graphics.setColour(CanvasChromePalette::text);
         graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
                           Justification::centredLeft);

@@ -132,7 +132,7 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.fillRect(header.withTrimmedTop(
             header.getHeight() - CanvasChromeMetrics::panelCornerRadius));
     graphics.setColour(kText);
-    graphics.setFont(FontOptions(14.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.drawText(
             title.isEmpty() ? labelForNodeKind(node.kind) : title,
             header.reduced(13.f, 4.f),

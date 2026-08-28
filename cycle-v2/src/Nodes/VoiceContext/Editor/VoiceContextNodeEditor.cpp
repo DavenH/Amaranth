@@ -106,7 +106,7 @@ public:
                 CanvasChromeMetrics::panelCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffe2e8ef));
-        graphics.setFont(FontOptions(17.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
         graphics.drawText(
                 "VOICE CONTEXT",
                 getLocalBounds().reduced(18, 0).removeFromTop(42),

@@ -88,7 +88,7 @@ void NodeCanvasPresentation::paintLegend(
     };
     const Rectangle<float> legend = CanvasUtilityDock::layout(frame.canvasBounds).legend;
     CanvasUtilityDock::paintSurface(graphics, legend);
-    graphics.setFont(FontOptions(9.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
 
     float y = legend.getY() + 17.f;
     for (const auto& entry : entries) {
@@ -129,7 +129,7 @@ void NodeCanvasPresentation::paintStatus(
     }
 
     const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
-    graphics.setFont(FontOptions(14.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));
     graphics.drawText(text, textBounds, Justification::centredLeft);
 }
@@ -162,7 +162,7 @@ void NodeCanvasPresentation::paintPalette(
                 section.icon,
                 content.reduced(8.f, 4.f),
                 active);
-        graphics.setFont(FontOptions(9.4f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
         graphics.setColour(colours.text);
         graphics.drawText(section.shortLabel, label.reduced(3.f, 0.f), Justification::centred);
     }
@@ -196,7 +196,7 @@ void NodeCanvasPresentation::paintPalette(
                 hover);
 
         graphics.setColour(colours.text);
-        graphics.setFont(FontOptions(11.2f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.drawText(
                 String::fromUTF8(entry.label),
                 row.withTrimmedLeft(48.f).reduced(0.f, 2.f),

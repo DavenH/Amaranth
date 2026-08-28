@@ -3,6 +3,7 @@
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Runtime/MessageThreadWorker.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControls.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -178,7 +179,8 @@ struct ImpulseResponseEditorComponent::Impl {
         ,   highPass    (owner, "High Pass") {
         enabled.button.setComponentID("irEditor.enabled");
         resourceTitle.setText("IR sample", dontSendNotification);
-        resourceTitle.setFont(FontOptions(12.f).withStyle("Bold"));
+        resourceTitle.setFont(FontOptions(
+                CanvasChromeMetrics::labelFontSize).withStyle("Bold"));
         resourceTitle.setColour(Label::textColourId, Colour(0xff8793a1));
         resourceTitle.setJustificationType(Justification::centredLeft);
         owner.addAndMakeVisible(resourceTitle);

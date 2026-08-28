@@ -91,10 +91,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
             header.getHeight() - CanvasChromeMetrics::panelCornerRadius));
 
     g.setColour(kText);
-    g.setFont(FontOptions(14.f));
+    g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
+    g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     g.drawText("Trilinear Mesh", header.reduced(13.f, 4.f), Justification::centredRight);
 
     Rectangle<float> closeButton = closeButtonBounds();

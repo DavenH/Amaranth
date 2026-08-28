@@ -25,14 +25,14 @@ void paintHeader(
             header.getCentreY()
     }));
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(16.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.drawText(
             String(state.ordinal),
             header.withTrimmedLeft(20.f),
             Justification::centredLeft);
 
     graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(FontOptions(11.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     graphics.drawText(
             String((int) state.resolution) + " samples",
             header.withTrimmedRight(38.f),

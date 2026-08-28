@@ -283,7 +283,7 @@ void WorkspaceDock::paintChrome(
     graphics.setColour(CanvasChromePalette::text);
 
     if (!expanded) {
-        graphics.setFont(juce::FontOptions(11.f));
+        graphics.setFont(juce::FontOptions(CanvasChromeMetrics::captionFontSize));
         graphics.drawText(
                 leftSummary + "  ·  " + rightSummary,
                 layout.collapseHandle.withTrimmedLeft(28.f).withTrimmedRight(8.f),

@@ -96,7 +96,7 @@ public:
                 CanvasChromeMetrics::panelCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
         graphics.drawText("REVERB", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
             const Rectangle<float> response = previewBounds();

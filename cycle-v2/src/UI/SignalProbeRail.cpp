@@ -15,7 +15,7 @@ namespace {
 
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.86f));
-    graphics.setFont(FontOptions(12.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
             String(ordinal),
             previewBounds.reduced(7.f).removeFromTop(20.f),
@@ -392,7 +392,7 @@ void SignalProbeRail::paintRail(
 
     const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
     graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(FontOptions(12.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
             "Spies",
             header.withTrimmedLeft(22.f).withWidth(110.f),
@@ -413,7 +413,7 @@ void SignalProbeRail::paintRail(
                     ? CanvasChromeMetrics::focusRingWidth
                     : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(refreshColours.text);
-    graphics.setFont(FontOptions(12.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText(
             state.refreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release",
             refreshMode,
@@ -429,7 +429,7 @@ void SignalProbeRail::paintRail(
                 CanvasChromeMetrics::tileCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.setFont(FontOptions(12.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
         graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);
         return;
     }

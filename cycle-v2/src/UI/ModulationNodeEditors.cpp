@@ -201,7 +201,7 @@ public:
                 CanvasChromeMetrics::panelCornerRadius,
                 CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
         graphics.drawText(
                 kind == NodeKind::ModulationTriple ? "MODULATION TRIPLE" : "MODULATION",
                 18,
