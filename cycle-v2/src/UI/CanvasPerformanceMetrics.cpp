@@ -195,6 +195,19 @@ void CanvasPerformanceMetrics::cableLayerCacheCompleted(
     }
 }
 
+void CanvasPerformanceMetrics::cableCompositeCacheCompleted(
+        bool hit,
+        uint64_t elapsedMicroseconds) {
+    const juce::ScopedLock scopedLock(lock);
+    if (hit) {
+        ++cableCompositeCacheHits;
+        record(cableCompositeCacheHitDuration, elapsedMicroseconds);
+    } else {
+        ++cableCompositeCacheMisses;
+        record(cableCompositeCacheMissDuration, elapsedMicroseconds);
+    }
+}
+
 void CanvasPerformanceMetrics::spyPreviewTileCacheCompleted(
         uint64_t hits,
         uint64_t misses,
@@ -226,6 +239,10 @@ void CanvasPerformanceMetrics::reset() {
     cableLayerCacheMisses = 0;
     cableLayerCacheHitDuration = {};
     cableLayerCacheMissDuration = {};
+    cableCompositeCacheHits = 0;
+    cableCompositeCacheMisses = 0;
+    cableCompositeCacheHitDuration = {};
+    cableCompositeCacheMissDuration = {};
     spyPreviewTileCacheHits = 0;
     spyPreviewTileCacheMisses = 0;
     spyPreviewTileCacheHitDuration = {};
@@ -261,6 +278,10 @@ CanvasPerformanceMetrics::Snapshot CanvasPerformanceMetrics::snapshot() const {
     result.cableLayerCacheMisses = cableLayerCacheMisses;
     result.cableLayerCacheHitDuration = cableLayerCacheHitDuration;
     result.cableLayerCacheMissDuration = cableLayerCacheMissDuration;
+    result.cableCompositeCacheHits = cableCompositeCacheHits;
+    result.cableCompositeCacheMisses = cableCompositeCacheMisses;
+    result.cableCompositeCacheHitDuration = cableCompositeCacheHitDuration;
+    result.cableCompositeCacheMissDuration = cableCompositeCacheMissDuration;
     result.spyPreviewTileCacheHits = spyPreviewTileCacheHits;
     result.spyPreviewTileCacheMisses = spyPreviewTileCacheMisses;
     result.spyPreviewTileCacheHitDuration = spyPreviewTileCacheHitDuration;
@@ -367,6 +388,16 @@ var CanvasPerformanceMetrics::toVar(
             "missDuration",
             distributionToVar(current.cableLayerCacheMissDuration));
     presentationCache->setProperty("cableLayer", var(cableLayerCache));
+    auto* cableCompositeCache = new DynamicObject();
+    cableCompositeCache->setProperty("hits", (int64) current.cableCompositeCacheHits);
+    cableCompositeCache->setProperty("misses", (int64) current.cableCompositeCacheMisses);
+    cableCompositeCache->setProperty(
+            "hitDuration",
+            distributionToVar(current.cableCompositeCacheHitDuration));
+    cableCompositeCache->setProperty(
+            "missDuration",
+            distributionToVar(current.cableCompositeCacheMissDuration));
+    presentationCache->setProperty("cableComposite", var(cableCompositeCache));
     auto* spyPreviewTileCache = new DynamicObject();
     spyPreviewTileCache->setProperty("hits", (int64) current.spyPreviewTileCacheHits);
     spyPreviewTileCache->setProperty("misses", (int64) current.spyPreviewTileCacheMisses);

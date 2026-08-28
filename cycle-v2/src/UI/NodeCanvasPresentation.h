@@ -96,8 +96,7 @@ private:
     void paintGrid(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintEdges(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintCachedEdge(
-            Graphics& graphics,
+    void prepareCachedEdge(
             const NodeSceneEdge& sceneEdge,
             const NodeCableStyle& style,
             float zoom,

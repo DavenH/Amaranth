@@ -20,17 +20,26 @@ struct NodeCanvasCableLayerCacheStats {
     uint64_t misses {};
 };
 
+struct NodeCanvasCableLayerCacheFrame {
+    NodeCanvasCableLayerCacheStats spriteStats;
+    Image* compositeImage {};
+    Rectangle<int> compositeBounds;
+    bool compositeHit {};
+};
+
 class NodeCanvasCableLayerCache {
 public:
-    void beginFrame();
+    void beginFrame(Rectangle<int> visibleBounds, float physicalScale);
     NodeCanvasCableLayerCacheAccess access(
             const NodeSceneEdge& edge,
             const NodeCableStyle& style,
             Rectangle<int> logicalBounds,
             float zoom,
             float physicalScale);
-    void draw(Graphics& graphics, const NodeCanvasCableLayerCacheAccess& access) const;
-    NodeCanvasCableLayerCacheStats endFrame();
+    NodeCanvasCableLayerCacheFrame endFrame();
+    void drawComposite(
+            Graphics& graphics,
+            const NodeCanvasCableLayerCacheFrame& frame) const;
 
 private:
     struct Entry {
@@ -63,9 +72,21 @@ private:
             Rectangle<int> logicalBounds,
             float zoom,
             float physicalScale);
+    void rebuildComposite(Rectangle<int> bounds);
+    void drawEntry(Graphics& graphics, const Entry& entry) const;
+    Rectangle<int> frameCompositeBounds() const;
+    bool compositeMatches(Rectangle<int> bounds) const;
 
     std::vector<Entry> entries;
+    std::vector<size_t> frameEntryIndices;
+    std::vector<int> compositeEdgeIndices;
+    Rectangle<int> frameVisibleBounds;
+    Rectangle<int> compositeBounds;
+    Image compositeImage;
     uint64_t paintGeneration {};
+    float framePhysicalScale {};
+    float compositePhysicalScale {};
+    bool compositeInitialized {};
     NodeCanvasCableLayerCacheStats frameStats;
 };
 

@@ -1,0 +1,89 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-with-spies.cyclegraph" },
+    { "command": "resetCanvasPerformance" },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.310"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.320"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.330"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.340"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.350"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.360"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.350"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.340"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.330"
+    },
+    { "command": "waitForIdle", "delayMs": 150 },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0.317"
+    },
+    { "command": "waitForIdle", "delayMs": 500 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

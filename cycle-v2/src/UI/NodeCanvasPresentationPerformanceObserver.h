@@ -42,6 +42,9 @@ public:
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) = 0;
+    virtual void cableCompositeCacheCompleted(
+            bool hit,
+            uint64_t elapsedMicroseconds) = 0;
     virtual void spyPreviewTileCacheCompleted(
             uint64_t hits,
             uint64_t misses,

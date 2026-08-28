@@ -184,6 +184,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     metrics.nodeLayerCacheCompleted(14, 0, 220);
     metrics.cableLayerCacheCompleted(8, 3, 4200);
     metrics.cableLayerCacheCompleted(11, 0, 140);
+    metrics.cableCompositeCacheCompleted(false, 4300);
+    metrics.cableCompositeCacheCompleted(true, 110);
     metrics.spyPreviewTileCacheCompleted(7, 2, 3100);
     metrics.spyPreviewTileCacheCompleted(9, 0, 90);
 
@@ -223,6 +225,15 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(0.14));
     REQUIRE((double) property(property(cableLayerCache, "missDuration"), "meanMs")
             == Catch::Approx(4.2));
+    const var& cableCompositeCache = property(
+            property(exported, "presentationCache"),
+            "cableComposite");
+    REQUIRE((int64) property(cableCompositeCache, "hits") == 1);
+    REQUIRE((int64) property(cableCompositeCache, "misses") == 1);
+    REQUIRE((double) property(property(cableCompositeCache, "hitDuration"), "meanMs")
+            == Catch::Approx(0.11));
+    REQUIRE((double) property(property(cableCompositeCache, "missDuration"), "meanMs")
+            == Catch::Approx(4.3));
     const var& spyPreviewTileCache = property(
             property(exported, "presentationCache"),
             "spyPreviewTiles");
@@ -241,6 +252,8 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
     REQUIRE(metrics.snapshot().nodeLayerCacheMisses == 0);
     REQUIRE(metrics.snapshot().cableLayerCacheHits == 0);
     REQUIRE(metrics.snapshot().cableLayerCacheMisses == 0);
+    REQUIRE(metrics.snapshot().cableCompositeCacheHits == 0);
+    REQUIRE(metrics.snapshot().cableCompositeCacheMisses == 0);
     REQUIRE(metrics.snapshot().spyPreviewTileCacheHits == 0);
     REQUIRE(metrics.snapshot().spyPreviewTileCacheMisses == 0);
 }

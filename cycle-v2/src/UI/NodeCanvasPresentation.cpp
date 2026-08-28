@@ -705,7 +705,7 @@ void NodeCanvasPresentation::paintEdges(
             frame.presentationRevision,
             frame.documentRevision);
 
-    cableLayerCache.beginFrame();
+    cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
     for (const auto& sceneEdge : snapshot.edges) {
         if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
@@ -728,19 +728,23 @@ void NodeCanvasPresentation::paintEdges(
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
                 sceneEdge.modulationBundle
         };
-        paintCachedEdge(graphics, sceneEdge, style, zoom, physicalScale);
+        prepareCachedEdge(sceneEdge, style, zoom, physicalScale);
     }
-    const NodeCanvasCableLayerCacheStats stats = cableLayerCache.endFrame();
+    const NodeCanvasCableLayerCacheFrame cacheFrame = cableLayerCache.endFrame();
+    cableLayerCache.drawComposite(graphics, cacheFrame);
     if (performanceObserver != nullptr) {
+        const uint64_t elapsed = performanceObserver->presentationTimestamp() - startedAt;
         performanceObserver->cableLayerCacheCompleted(
-                stats.hits,
-                stats.misses,
-                performanceObserver->presentationTimestamp() - startedAt);
+                cacheFrame.spriteStats.hits,
+                cacheFrame.spriteStats.misses,
+                elapsed);
+        performanceObserver->cableCompositeCacheCompleted(
+                cacheFrame.compositeHit,
+                elapsed);
     }
 }
 
-void NodeCanvasPresentation::paintCachedEdge(
-        Graphics& graphics,
+void NodeCanvasPresentation::prepareCachedEdge(
         const NodeSceneEdge& sceneEdge,
         const NodeCableStyle& style,
         float zoom,
@@ -764,7 +768,6 @@ void NodeCanvasPresentation::paintCachedEdge(
                 -logicalBounds.getY() * physicalScale));
         NodeCableRenderer::paint(imageGraphics, sceneEdge, style, zoom);
     }
-    cableLayerCache.draw(graphics, cache);
 }
 
 void NodeCanvasPresentation::paintPendingConnection(

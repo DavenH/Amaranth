@@ -84,6 +84,10 @@ public:
         uint64_t cableLayerCacheMisses {};
         Distribution cableLayerCacheHitDuration;
         Distribution cableLayerCacheMissDuration;
+        uint64_t cableCompositeCacheHits {};
+        uint64_t cableCompositeCacheMisses {};
+        Distribution cableCompositeCacheHitDuration;
+        Distribution cableCompositeCacheMissDuration;
         uint64_t spyPreviewTileCacheHits {};
         uint64_t spyPreviewTileCacheMisses {};
         Distribution spyPreviewTileCacheHitDuration;
@@ -153,6 +157,9 @@ public:
             uint64_t hits,
             uint64_t misses,
             uint64_t elapsedMicroseconds) override;
+    void cableCompositeCacheCompleted(
+            bool hit,
+            uint64_t elapsedMicroseconds) override;
     void spyPreviewTileCacheCompleted(
             uint64_t hits,
             uint64_t misses,
@@ -203,6 +210,10 @@ private:
     uint64_t cableLayerCacheMisses {};
     Distribution cableLayerCacheHitDuration;
     Distribution cableLayerCacheMissDuration;
+    uint64_t cableCompositeCacheHits {};
+    uint64_t cableCompositeCacheMisses {};
+    Distribution cableCompositeCacheHitDuration;
+    Distribution cableCompositeCacheMissDuration;
     uint64_t spyPreviewTileCacheHits {};
     uint64_t spyPreviewTileCacheMisses {};
     Distribution spyPreviewTileCacheHitDuration;
