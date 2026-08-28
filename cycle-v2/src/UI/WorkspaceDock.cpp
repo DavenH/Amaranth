@@ -2,6 +2,7 @@
 
 #include "UI/WorkspaceDock.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -177,9 +178,12 @@ void WorkspaceDock::paintIconButton(
             ? CanvasChromeControlState::Focused
             : CanvasChromeControlState::Resting);
     graphics.setColour(colours.surface);
-    graphics.fillRoundedRectangle(bounds, 5.f);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(colours.border);
-    graphics.drawRoundedRectangle(bounds, 5.f, focused ? 2.f : 1.f);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            focused ? 2.f : 1.f);
     graphics.setColour(colours.text);
     paintIconGlyph(graphics, bounds, icon);
 }
@@ -192,15 +196,21 @@ void WorkspaceDock::paintTileChrome(
         bool hovered,
         bool focused) {
     graphics.setColour(CanvasChromePalette::insetBackground);
-    graphics.fillRoundedRectangle(tile, 7.f);
+    graphics.fillRoundedRectangle(tile, CanvasChromeMetrics::tileCornerRadius);
 
     const bool active = selected || hovered || focused;
     const juce::Colour border = active ? token.brighter(0.15f) : token;
     graphics.setColour(border);
-    graphics.drawRoundedRectangle(tile, 7.f, active ? 2.f : 1.f);
+    graphics.drawRoundedRectangle(
+            tile,
+            CanvasChromeMetrics::tileCornerRadius,
+            active ? 2.f : 1.f);
     if (focused) {
         graphics.setColour(CanvasChromePalette::focus.withAlpha(0.9f));
-        graphics.drawRoundedRectangle(tile.reduced(3.f), 5.f, 1.f);
+        graphics.drawRoundedRectangle(
+                tile.reduced(3.f),
+                CanvasChromeMetrics::controlCornerRadius,
+                1.f);
     }
 }
 
@@ -220,13 +230,14 @@ void WorkspaceDock::paintOverflowFeedback(
     const float thumbWidth = juce::jmax(28.f, track.getWidth() * visibleWidth / contentWidth);
     const float travel = juce::jmax(0.f, track.getWidth() - thumbWidth);
     const float progress = horizontalOffset / maximumHorizontalOffset;
+    const float trackCornerRadius = track.getHeight() * 0.5f;
 
     graphics.setColour(CanvasChromePalette::border.withAlpha(0.35f));
-    graphics.fillRoundedRectangle(track, 1.5f);
+    graphics.fillRoundedRectangle(track, trackCornerRadius);
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.62f));
     graphics.fillRoundedRectangle(
             { track.getX() + progress * travel, track.getY(), thumbWidth, track.getHeight() },
-            1.5f);
+            trackCornerRadius);
 
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.8f));
     if (horizontalOffset > 0.f) {
@@ -252,13 +263,16 @@ void WorkspaceDock::paintChrome(
             layout.dock.getX(),
             layout.dock.getRight());
     graphics.setColour(CanvasChromePalette::dockSurface);
-    graphics.fillRoundedRectangle(layout.collapseHandle, expanded ? 5.f : 7.f);
+    const float handleCornerRadius = expanded
+            ? CanvasChromeMetrics::controlCornerRadius
+            : CanvasChromeMetrics::tileCornerRadius;
+    graphics.fillRoundedRectangle(layout.collapseHandle, handleCornerRadius);
     graphics.setColour(focused
             ? CanvasChromePalette::focus
             : CanvasChromePalette::border);
     graphics.drawRoundedRectangle(
             layout.collapseHandle,
-            expanded ? 5.f : 7.f,
+            handleCornerRadius,
             focused ? 2.f : 1.f);
     graphics.setColour(CanvasChromePalette::text);
 

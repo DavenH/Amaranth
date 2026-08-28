@@ -5,6 +5,7 @@
 #include "UI/SignalProbeRail.h"
 
 #include "Graph/GraphValidator.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/WorkspaceDock.h"
 
@@ -403,11 +404,11 @@ void SignalProbeRail::paintRail(
             ? CanvasChromeControlState::Focused
             : CanvasChromeControlState::Resting);
     graphics.setColour(refreshColours.surface);
-    graphics.fillRoundedRectangle(refreshMode, 5.f);
+    graphics.fillRoundedRectangle(refreshMode, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(refreshColours.border);
     graphics.drawRoundedRectangle(
             refreshMode,
-            5.f,
+            CanvasChromeMetrics::controlCornerRadius,
             refreshFocused ? 2.f : 1.f);
     graphics.setColour(refreshColours.text);
     graphics.setFont(FontOptions(12.f));
@@ -419,9 +420,12 @@ void SignalProbeRail::paintRail(
     if (probes.empty()) {
         const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(rail);
         graphics.setColour(CanvasChromePalette::insetBackground);
-        graphics.fillRoundedRectangle(vacancy, 7.f);
+        graphics.fillRoundedRectangle(vacancy, CanvasChromeMetrics::tileCornerRadius);
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
-        graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
+        graphics.drawRoundedRectangle(
+                vacancy,
+                CanvasChromeMetrics::tileCornerRadius,
+                1.f);
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);

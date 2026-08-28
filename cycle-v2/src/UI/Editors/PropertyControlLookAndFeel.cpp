@@ -1,5 +1,6 @@
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControls.h"
 
 namespace CycleV2 {
@@ -92,7 +93,10 @@ public:
 
         if (focused) {
             graphics.setColour(kFocus.withAlpha(0.72f));
-            graphics.drawRoundedRectangle(geometry.bounds.reduced(0.75f), 4.f, 1.25f);
+            graphics.drawRoundedRectangle(
+                    geometry.bounds.reduced(0.75f),
+                    CanvasChromeMetrics::controlCornerRadius,
+                    1.25f);
         }
     }
 };

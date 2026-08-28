@@ -3,6 +3,7 @@
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "UI/CanvasChromeMetrics.h"
 
 namespace CycleV2 {
 
@@ -114,15 +115,18 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.saveState();
     graphics.excludeClipRegion(editorPanelBounds().toNearestInt());
     graphics.setColour(Colours::black.withAlpha(0.38f));
-    graphics.fillRoundedRectangle(outer.translated(0.f, 10.f), 8.f);
+    graphics.fillRoundedRectangle(
+            outer.translated(0.f, 10.f),
+            CanvasChromeMetrics::panelCornerRadius);
     graphics.setColour(Colour(0xff141a21));
-    graphics.fillRoundedRectangle(outer, 8.f);
+    graphics.fillRoundedRectangle(outer, CanvasChromeMetrics::panelCornerRadius);
     graphics.restoreState();
 
     auto header = outer.removeFromTop(kHeaderHeight);
     graphics.setColour(Colour(0xff202833));
-    graphics.fillRoundedRectangle(header, 8.f);
-    graphics.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    graphics.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
+    graphics.fillRect(header.withTrimmedTop(
+            header.getHeight() - CanvasChromeMetrics::panelCornerRadius));
     graphics.setColour(kText);
     graphics.setFont(FontOptions(14.f));
     graphics.drawText(
@@ -133,7 +137,10 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     paintEditor(graphics);
 
     graphics.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
-    graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.75f), 8.f, 1.3f);
+    graphics.drawRoundedRectangle(
+            getLocalBounds().toFloat().reduced(0.75f),
+            CanvasChromeMetrics::panelCornerRadius,
+            1.3f);
 }
 
 void CurveExpandedEditorComponent::resized() {

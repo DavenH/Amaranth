@@ -2,6 +2,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Unison/UnisonNode.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -61,7 +62,7 @@ void UnisonPreviewPainter::paint(
     };
 
     graphics.setColour(colour(EffectPlotPalette::background));
-    graphics.fillRoundedRectangle(background, 4.f);
+    graphics.fillRoundedRectangle(background, CanvasChromeMetrics::insetCornerRadius);
     graphics.setColour(colour(EffectPlotPalette::grid.withAlpha(0.22f)));
     graphics.fillRect(plot.getX(), plot.getY(), plot.getWidth(), 1.f);
     graphics.fillRect(plot.getX(), plot.getBottom() - 1.f, plot.getWidth(), 1.f);

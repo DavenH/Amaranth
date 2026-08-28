@@ -1,5 +1,6 @@
 #include "UI/CanvasUtilityDock.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -64,9 +65,9 @@ void CanvasUtilityDock::paintSurface(
         return;
     }
     graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.87f));
-    graphics.fillRoundedRectangle(bounds, cornerRadius);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(bounds, cornerRadius, 1.f);
+    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius, 1.f);
 }
 
 }

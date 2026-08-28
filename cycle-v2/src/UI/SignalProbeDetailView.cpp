@@ -5,6 +5,7 @@
 
 #include "UI/SignalProbeDetailView.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -110,9 +111,12 @@ void SignalProbeDetailView::paint(
 
     const Rectangle<float> detail = boundsFor(availableContent);
     graphics.setColour(CanvasChromePalette::insetBackground);
-    graphics.fillRoundedRectangle(detail, 10.f);
+    graphics.fillRoundedRectangle(detail, CanvasChromeMetrics::panelCornerRadius);
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRoundedRectangle(detail, 10.f, 1.5f);
+    graphics.drawRoundedRectangle(
+            detail,
+            CanvasChromeMetrics::panelCornerRadius,
+            1.5f);
 
     Rectangle<float> content = detail.reduced(14.f);
     Rectangle<float> header = content.removeFromTop(34.f);

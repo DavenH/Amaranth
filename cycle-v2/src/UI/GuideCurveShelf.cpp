@@ -4,6 +4,7 @@
 
 #include "UI/GuideCurveShelf.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/SignalProbeRail.h"
 
@@ -241,9 +242,12 @@ void GuideCurveShelf::paint(
     if (graph.getGuideCurves().empty()) {
         const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(shelf);
         graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.68f));
-        graphics.fillRoundedRectangle(vacancy, 7.f);
+        graphics.fillRoundedRectangle(vacancy, CanvasChromeMetrics::tileCornerRadius);
         graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
-        graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
+        graphics.drawRoundedRectangle(
+                vacancy,
+                CanvasChromeMetrics::tileCornerRadius,
+                1.f);
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No guides", vacancy.reduced(14.f), Justification::centredLeft);
@@ -273,7 +277,7 @@ void GuideCurveShelf::paint(
                 focused);
         const Rectangle<float> thumbnail = previewBoundsFor(tile);
         graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.72f));
-        graphics.fillRoundedRectangle(thumbnail, 4.f);
+        graphics.fillRoundedRectangle(thumbnail, CanvasChromeMetrics::insetCornerRadius);
         Preview& preview = previewFor(guide);
         preview.widget->paintPreviewSnapshot(graphics, thumbnail);
         if (hasDisplayName(guide)) {

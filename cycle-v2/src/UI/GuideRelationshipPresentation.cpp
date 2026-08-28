@@ -1,5 +1,6 @@
 #include "UI/GuideRelationshipPresentation.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasPresentation.h"
@@ -15,7 +16,11 @@ void paintHighlight(
         const GuideCurveResource& guide) {
     const Colour colour = GuideCurveShelf::colourForGuide(guide);
     graphics.setColour(colour.withAlpha(0.9f));
-    graphics.drawRoundedRectangle(bounds.expanded(4.f), 10.f, 2.f);
+    graphics.drawRoundedRectangle(
+            bounds.expanded(4.f),
+            CanvasChromeMetrics::panelCornerRadius
+                    + CanvasChromeMetrics::microCornerRadius,
+            2.f);
 
     const Rectangle<float> badge(
             bounds.getRight() - 37.f,
@@ -23,9 +28,9 @@ void paintHighlight(
             32.f,
             17.f);
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
-    graphics.fillRoundedRectangle(badge, 5.f);
+    graphics.fillRoundedRectangle(badge, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(colour);
-    graphics.drawRoundedRectangle(badge, 5.f, 1.f);
+    graphics.drawRoundedRectangle(badge, CanvasChromeMetrics::controlCornerRadius, 1.f);
     graphics.setFont(FontOptions(10.f));
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }

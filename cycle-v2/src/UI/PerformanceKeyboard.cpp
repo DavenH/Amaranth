@@ -1,5 +1,6 @@
 #include "UI/PerformanceKeyboard.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/WorkspaceDock.h"
 
@@ -179,7 +180,7 @@ void PerformanceKeyboardPanel::OctaveButton::paintButton(
             highlighted || hasKeyboardFocus(true));
     if (down) {
         graphics.setColour(Colours::white.withAlpha(0.08f));
-        graphics.fillRoundedRectangle(bounds, 5.f);
+        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     }
 }
 

@@ -7,6 +7,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/VoiceContext/Editor/VoiceContextNodeEditor.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 
 namespace CycleV2 {
@@ -100,7 +101,10 @@ public:
     void paint(Graphics& graphics) override {
         graphics.fillAll(Colour(0xff11161c));
         graphics.setColour(Colour(0xff34404d));
-        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
+        graphics.drawRoundedRectangle(
+                getLocalBounds().toFloat().reduced(0.5f),
+                CanvasChromeMetrics::panelCornerRadius,
+                1.f);
         graphics.setColour(Colour(0xffe2e8ef));
         graphics.setFont(FontOptions(17.f));
         graphics.drawText(

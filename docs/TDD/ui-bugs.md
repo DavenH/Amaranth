@@ -1,5 +1,20 @@
 # UI Bug Notes
 
+## Open: Node-palette fallback icon asserts during the complete Cycle V2 suite
+
+Context:
+
+- The complete Cycle V2 suite on 2026-08-28 logged a JUCE assertion at
+  `NodePaletteEntryIconRenderer.cpp:27` while continuing to completion.
+- The corner-metrics change only alters radius arguments and does not change
+  palette entry kinds, icon dispatch, or fixture state.
+- The assertion is separate from the suite's one failing hover-help test; 533
+  of 534 cases otherwise pass.
+
+Current status: open; identify which test supplies an unsupported palette entry
+kind and decide whether the fallback should be a supported icon or a non-
+asserting generic symbol.
+
 ## Open: Intermittent CoreMIDI endpoint assertion during Cycle V2 automation
 
 Context:

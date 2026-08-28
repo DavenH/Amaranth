@@ -1,5 +1,6 @@
 #include "UI/NodeCanvasPresentation.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
@@ -49,7 +50,9 @@ void NodeCanvasPresentation::paintMiniMap(
 
     for (const auto& node : frame.graph.getNodes()) {
         graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.62f));
-        graphics.fillRoundedRectangle(project(node.bounds), 2.f);
+        graphics.fillRoundedRectangle(
+                project(node.bounds),
+                CanvasChromeMetrics::microCornerRadius);
     }
 
     const Point<float> pan = frame.viewport.getPan();
@@ -61,9 +64,12 @@ void NodeCanvasPresentation::paintMiniMap(
             frame.canvasBounds.getHeight() / zoom);
     const Rectangle<float> viewportInMap = project(viewportWorld).getIntersection(projectedBounds);
     graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.24f));
-    graphics.fillRoundedRectangle(viewportInMap, 3.f);
+    graphics.fillRoundedRectangle(viewportInMap, CanvasChromeMetrics::insetCornerRadius);
     graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.85f));
-    graphics.drawRoundedRectangle(viewportInMap, 3.f, 1.f);
+    graphics.drawRoundedRectangle(
+            viewportInMap,
+            CanvasChromeMetrics::insetCornerRadius,
+            1.f);
 
 }
 
@@ -140,9 +146,12 @@ void NodeCanvasPresentation::paintPalette(
                 ? CanvasChromeControlState::Selected
                 : CanvasChromeControlState::Resting);
         graphics.setColour(colours.surface);
-        graphics.fillRoundedRectangle(button, 7.f);
+        graphics.fillRoundedRectangle(button, CanvasChromeMetrics::tileCornerRadius);
         graphics.setColour(colours.border);
-        graphics.drawRoundedRectangle(button, 7.f, active ? 1.6f : 1.f);
+        graphics.drawRoundedRectangle(
+                button,
+                CanvasChromeMetrics::tileCornerRadius,
+                active ? 1.6f : 1.f);
 
         Rectangle<float> content = button;
         const Rectangle<float> label = content.removeFromBottom(18.f);
@@ -169,9 +178,12 @@ void NodeCanvasPresentation::paintPalette(
                 ? CanvasChromeControlState::Hovered
                 : CanvasChromeControlState::Resting);
         graphics.setColour(colours.surface);
-        graphics.fillRoundedRectangle(row, 6.f);
+        graphics.fillRoundedRectangle(row, CanvasChromeMetrics::controlCornerRadius);
         graphics.setColour(colours.border);
-        graphics.drawRoundedRectangle(row, 6.f, hover ? 1.4f : 1.f);
+        graphics.drawRoundedRectangle(
+                row,
+                CanvasChromeMetrics::controlCornerRadius,
+                hover ? 1.4f : 1.f);
 
         NodePaletteEntryIconRenderer::paint(
                 graphics,

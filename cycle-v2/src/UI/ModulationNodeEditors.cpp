@@ -1,6 +1,7 @@
 #include "UI/ModulationNodeEditors.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
 
 namespace CycleV2 {
 
@@ -197,7 +198,7 @@ public:
         graphics.setColour(Colour(0xff2b3340));
         graphics.drawRoundedRectangle(
                 getLocalBounds().toFloat().reduced(0.5f),
-                10.f,
+                CanvasChromeMetrics::panelCornerRadius,
                 1.f);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f));

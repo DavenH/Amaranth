@@ -1,6 +1,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>
@@ -632,18 +633,20 @@ void TrimeshWidget::drawPanelFrame(
 
     if (fillBody) {
         g.setColour(Colour(0xff0e1318));
-        g.fillRoundedRectangle(area, 6.f);
+        g.fillRoundedRectangle(area, CanvasChromeMetrics::panelCornerRadius);
         g.setColour(Colour(0xff151a20).withAlpha(0.78f));
         g.fillRect(area.withTrimmedTop(kPanelHeaderHeight));
     } else {
         Rectangle<float> header = area.removeFromTop(kPanelHeaderHeight);
         g.setColour(Colour(0xff0e1318));
-        g.fillRoundedRectangle(header, 6.f);
-        g.fillRect(header.withTrimmedTop(jmax(0.f, header.getHeight() - 6.f)));
+        g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
+        g.fillRect(header.withTrimmedTop(jmax(
+                0.f,
+                header.getHeight() - CanvasChromeMetrics::panelCornerRadius)));
     }
 
     g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(fullArea, 6.f, 1.f);
+    g.drawRoundedRectangle(fullArea, CanvasChromeMetrics::panelCornerRadius, 1.f);
     g.setColour(kMutedText);
     g.setFont(FontOptions(9.8f));
     g.drawText(title, fullArea.reduced(9.f, 4.f).removeFromTop(14.f), Justification::centredLeft);

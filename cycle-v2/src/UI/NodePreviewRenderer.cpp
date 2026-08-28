@@ -11,6 +11,7 @@
 #include "Nodes/Reverb/ReverbPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/OutputMeterPresentation.h"
 #include "UI/Preview/EffectPlotPalette.h"
@@ -750,7 +751,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
         graphics.setColour(EffectPlotPalette::forEnabledState(
                 EffectPlotPalette::insetBackground,
                 NodeParameterMap(request.node).boolValue("enabled", true)));
-        graphics.fillRoundedRectangle(background, 4.f);
+        graphics.fillRoundedRectangle(background, CanvasChromeMetrics::insetCornerRadius);
         EqualizerPreviewPainter().paintResponse(
                 graphics,
                 background.reduced(8.f, 6.f),

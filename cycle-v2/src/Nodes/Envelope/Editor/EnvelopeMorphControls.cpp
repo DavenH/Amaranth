@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
+#include "UI/CanvasChromeMetrics.h"
 
 using namespace juce;
 
@@ -35,7 +36,7 @@ void drawSegmentedGroup(
         Rectangle<float> bounds,
         int selectedSegment) {
     graphics.setColour(kGroupFill);
-    graphics.fillRoundedRectangle(bounds, 5.f);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     if (selectedSegment >= 0) {
         graphics.setColour(kSelectedFill);
         graphics.fillPath(segmentedHighlight(bounds, selectedSegment));
@@ -44,7 +45,7 @@ void drawSegmentedGroup(
     graphics.drawVerticalLine(
             roundToInt(bounds.getCentreX()), bounds.getY() + 3.f, bounds.getBottom() - 3.f);
     graphics.setColour(kGroupBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(bounds, 5.f, 1.f);
+    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius, 1.f);
 }
 
 }
@@ -195,11 +196,17 @@ void EnvelopeMorphControls::draw(
         const auto linkArea = linkBounds(controls, axis);
         const auto colour = axisColour(axis);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 0.45f : 0.06f));
-        graphics.fillRoundedRectangle(axisArea, 4.f);
+        graphics.fillRoundedRectangle(axisArea, CanvasChromeMetrics::controlCornerRadius);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 1.f : 0.32f));
-        graphics.drawRoundedRectangle(axisArea, 4.f, 1.4f);
+        graphics.drawRoundedRectangle(
+                axisArea,
+                CanvasChromeMetrics::controlCornerRadius,
+                1.4f);
         graphics.setColour(colour.withAlpha(linked[axis] ? 0.9f : 0.25f));
-        graphics.drawRoundedRectangle(linkArea, 4.f, 1.4f);
+        graphics.drawRoundedRectangle(
+                linkArea,
+                CanvasChromeMetrics::controlCornerRadius,
+                1.4f);
     }
 }
 

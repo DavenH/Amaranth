@@ -2,6 +2,8 @@
 
 #include <utility>
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -75,15 +77,18 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.excludeClipRegion(gridHole);
     g.excludeClipRegion(waveHole);
     g.setColour(Colours::black.withAlpha(0.38f));
-    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+    g.fillRoundedRectangle(
+            panel.translated(0.f, 10.f),
+            CanvasChromeMetrics::panelCornerRadius);
     g.setColour(Colour(0xff141a21));
-    g.fillRoundedRectangle(panel, 8.f);
+    g.fillRoundedRectangle(panel, CanvasChromeMetrics::panelCornerRadius);
     g.restoreState();
 
     auto header = panel.removeFromTop(kHeaderHeight);
     g.setColour(Colour(0xff202833));
-    g.fillRoundedRectangle(header, 8.f);
-    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
+    g.fillRect(header.withTrimmedTop(
+            header.getHeight() - CanvasChromeMetrics::panelCornerRadius));
 
     g.setColour(kText);
     g.setFont(FontOptions(14.f));
@@ -108,7 +113,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     panel = getLocalBounds().toFloat();
     g.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
-    g.drawRoundedRectangle(panel.reduced(0.75f), 8.f, 1.3f);
+    g.drawRoundedRectangle(
+            panel.reduced(0.75f),
+            CanvasChromeMetrics::panelCornerRadius,
+            1.3f);
 }
 
 void TrimeshExpandedEditorComponent::resized() {

@@ -1,5 +1,6 @@
 #include "UI/EnvelopePurposeSelector.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 
 namespace CycleV2 {
@@ -21,8 +22,8 @@ Path selectedCellPath(
                 bounds.getY(),
                 bounds.getWidth(),
                 bounds.getHeight(),
-                6.f,
-                6.f,
+                CanvasChromeMetrics::controlCornerRadius,
+                CanvasChromeMetrics::controlCornerRadius,
                 isFirst,
                 isLast,
                 isFirst,
@@ -108,7 +109,7 @@ bool EnvelopePurposeSelector::isOptionHovered(EnvelopePurpose purposeValue) cons
 void EnvelopePurposeSelector::paint(Graphics& graphics) {
     const auto outer = getLocalBounds().toFloat().reduced(0.75f);
     Path clip;
-    clip.addRoundedRectangle(outer, 6.f);
+    clip.addRoundedRectangle(outer, CanvasChromeMetrics::controlCornerRadius);
 
     graphics.setColour(kControlFill);
     graphics.fillPath(clip);
@@ -129,7 +130,7 @@ void EnvelopePurposeSelector::paint(Graphics& graphics) {
         graphics.drawVerticalLine(roundToInt(x), outer.getY() + 3.f, outer.getBottom() - 3.f);
     }
     graphics.setColour(kControlBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(outer, 6.f, 1.1f);
+    graphics.drawRoundedRectangle(outer, CanvasChromeMetrics::controlCornerRadius, 1.1f);
 }
 
 void EnvelopePurposeSelector::resized() {

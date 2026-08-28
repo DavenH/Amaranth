@@ -5,6 +5,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Reverb/ReverbNodeEditor.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
@@ -90,14 +91,17 @@ public:
     void paint(Graphics& graphics) override {
         graphics.fillAll(Colour(0xff11151b));
         graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
+        graphics.drawRoundedRectangle(
+                getLocalBounds().toFloat().reduced(0.5f),
+                CanvasChromeMetrics::panelCornerRadius,
+                1.f);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f));
         graphics.drawText("REVERB", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
             const Rectangle<float> response = previewBounds();
             graphics.setColour(EffectPlotPalette::insetBackground);
-            graphics.fillRoundedRectangle(response, 6.f);
+            graphics.fillRoundedRectangle(response, CanvasChromeMetrics::insetCornerRadius);
             resources.paintNodePreview(graphics, node, response.reduced(5.f));
         }
     }

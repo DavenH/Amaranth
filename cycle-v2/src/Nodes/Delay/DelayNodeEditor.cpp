@@ -4,6 +4,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Delay/DelayNodeEditor.h"
 #include "Nodes/Delay/DelayPreviewPainter.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 
 namespace CycleV2 {
@@ -82,7 +83,10 @@ public:
     void paint(Graphics& graphics) override {
         graphics.fillAll(Colour(0xff11151b));
         graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
+        graphics.drawRoundedRectangle(
+                getLocalBounds().toFloat().reduced(0.5f),
+                CanvasChromeMetrics::panelCornerRadius,
+                1.f);
         graphics.setColour(Colour(0xffeef2f6));
         graphics.setFont(FontOptions(18.f));
         graphics.drawText("DELAY", 18, 10, getWidth() - 80, 28, Justification::centredLeft);

@@ -2,6 +2,8 @@
 
 #include <limits>
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -284,13 +286,18 @@ void drawPrimaryAxisButtons(
         const Rectangle<float> button = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
 
         g.setColour(axis.colour.withAlpha(axis.primary ? 0.42f : 0.055f));
-        g.fillRoundedRectangle(button, 4.f);
+        g.fillRoundedRectangle(button, CanvasChromeMetrics::controlCornerRadius);
         g.setColour(axis.colour.withAlpha(axis.primary ? 1.f : 0.32f));
-        g.drawRoundedRectangle(button, 4.f, axis.primary ? 1.8f : 1.f);
+        g.drawRoundedRectangle(
+                button,
+                CanvasChromeMetrics::controlCornerRadius,
+                axis.primary ? 1.8f : 1.f);
 
         if (axis.primary) {
             g.setColour(axis.colour.withAlpha(0.95f));
-            g.fillRoundedRectangle(button.reduced(6.f, 6.f), 2.f);
+            g.fillRoundedRectangle(
+                    button.reduced(6.f, 6.f),
+                    CanvasChromeMetrics::microCornerRadius);
         }
     }
 }
@@ -304,9 +311,12 @@ void drawLinkRow(
         const Rectangle<float> toggle = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
 
         g.setColour(axis.colour.withAlpha(axis.linked ? 0.38f : 0.055f));
-        g.fillRoundedRectangle(toggle, 4.f);
+        g.fillRoundedRectangle(toggle, CanvasChromeMetrics::controlCornerRadius);
         g.setColour(axis.colour.withAlpha(axis.linked ? 0.96f : 0.32f));
-        g.drawRoundedRectangle(toggle, 4.f, axis.linked ? 1.8f : 1.f);
+        g.drawRoundedRectangle(
+                toggle,
+                CanvasChromeMetrics::controlCornerRadius,
+                axis.linked ? 1.8f : 1.f);
 
         if (axis.linked) {
             g.setColour(axis.colour.withAlpha(0.88f));

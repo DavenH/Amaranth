@@ -1,5 +1,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshSliceRenderer2D.h"
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 void TrimeshSliceRenderer2D::drawTrace(
@@ -36,7 +38,7 @@ void TrimeshSliceRenderer2D::drawGrid(
     const auto& sliceStyle = profile.getSliceStyle();
 
     g.setColour(sliceStyle.fillColour);
-    g.fillRoundedRectangle(area, 4.f);
+    g.fillRoundedRectangle(area, CanvasChromeMetrics::insetCornerRadius);
 
     g.setColour(sliceStyle.minorGridColour);
     for (int i = 1; i < 32; ++i) {

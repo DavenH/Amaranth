@@ -1,5 +1,7 @@
 #include "UI/TransformCompactEditor.h"
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -18,7 +20,7 @@ void drawModeChoice(
         Colour colour) {
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     Rectangle<float> control = area.reduced(2.f, 0.f);
-    const float corner = 6.f;
+    const float corner = CanvasChromeMetrics::controlCornerRadius;
     const Rectangle<float> left = control.removeFromLeft(
             (control.getWidth() - 5.f) * 0.5f);
     control.removeFromLeft(5.f);

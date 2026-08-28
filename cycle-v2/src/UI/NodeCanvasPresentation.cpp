@@ -2,6 +2,7 @@
 
 #include "UI/NodeCanvasPresentation.h"
 
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
@@ -147,7 +148,10 @@ void paintModulationShell(
     graphics.drawRoundedRectangle(bounds, corner, 1.2f);
     if (selected) {
         graphics.setColour(Colours::white.withAlpha(0.86f));
-        graphics.drawRoundedRectangle(bounds.expanded(2.f), corner + 2.f, 2.f);
+        graphics.drawRoundedRectangle(
+                bounds.expanded(2.f),
+                corner + CanvasChromeMetrics::microCornerRadius,
+                2.f);
     }
 }
 
@@ -158,11 +162,16 @@ void paintSingleModulationNode(
         Rectangle<float> bounds,
         float zoom,
         float scale) {
-    paintModulationShell(graphics, bounds, 8.f * scale, node.id == frame.selectedNodeId);
+    paintModulationShell(
+            graphics,
+            bounds,
+            CanvasChromeMetrics::panelCornerRadius * scale,
+            node.id == frame.selectedNodeId);
     const Rectangle<float> badge = bounds.removeFromLeft(52.f * zoom);
     graphics.setColour(CanvasChromePalette::raisedSurface);
-    graphics.fillRoundedRectangle(badge, 8.f * scale);
-    graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - 8.f * scale));
+    const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
+    graphics.fillRoundedRectangle(badge, corner);
+    graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - corner));
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(12.f * zoom));
     graphics.drawText("MOD", badge, Justification::centred);
@@ -192,7 +201,11 @@ void paintTripleModulationNode(
         Rectangle<float> bounds,
         float zoom,
         float scale) {
-    paintModulationShell(graphics, bounds, 8.f * scale, node.id == frame.selectedNodeId);
+    paintModulationShell(
+            graphics,
+            bounds,
+            CanvasChromeMetrics::panelCornerRadius * scale,
+            node.id == frame.selectedNodeId);
     const String prefixes[] { "yellow", "red", "blue" };
     const MorphDimension dimensions[] {
             MorphDimension::Yellow,
@@ -207,7 +220,9 @@ void paintTripleModulationNode(
                 bounds.getWidth(),
                 rowHeight);
         graphics.setColour(colourForMorphDimension(dimensions[row]).withAlpha(0.88f));
-        graphics.fillRoundedRectangle(rowBounds.removeFromLeft(6.f * zoom), 3.f * scale);
+        graphics.fillRoundedRectangle(
+                rowBounds.removeFromLeft(6.f * zoom),
+                CanvasChromeMetrics::insetCornerRadius * scale);
         graphics.setFont(FontOptions(14.f * zoom));
         graphics.drawText(prefixes[row].substring(0, 1).toUpperCase(),
                 rowBounds.removeFromLeft(30.f * zoom), Justification::centred);
@@ -734,7 +749,7 @@ void NodeCanvasPresentation::paintNode(
         const Node& node) {
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
-    const float corner = 8.f * scale;
+    const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
     const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
@@ -775,7 +790,10 @@ void NodeCanvasPresentation::paintNode(
 
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
-            graphics.drawRoundedRectangle(nodeBounds.expanded(2.f), corner + 2.f, 2.f);
+            graphics.drawRoundedRectangle(
+                    nodeBounds.expanded(2.f),
+                    corner + CanvasChromeMetrics::microCornerRadius,
+                    2.f);
         }
 
         graphics.setFont(FontOptions(18.f * zoom));
