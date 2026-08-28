@@ -202,6 +202,7 @@ var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
 var NodeWorkspace::performanceStateForAutomation() const {
     const auto status = audioEngine.status();
     const Rectangle<float> whiteKey = keyboard.noteBounds(keyboard.baseNote());
+    const Rectangle<float> octaveButton = keyboard.octaveDownBounds();
     const float whiteKeyAspect = whiteKey.getWidth() > 0.f
             ? whiteKey.getHeight() / whiteKey.getWidth()
             : 0.f;
@@ -237,6 +238,8 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("whiteKeyWidth", whiteKey.getWidth());
     object->setProperty("whiteKeyHeight", whiteKey.getHeight());
     object->setProperty("whiteKeyAspect", whiteKeyAspect);
+    object->setProperty("octaveButtonWidth", octaveButton.getWidth());
+    object->setProperty("octaveButtonHeight", octaveButton.getHeight());
     object->setProperty(
             "occludedByExpandedEditor",
             performanceOccludedByExpandedEditor);

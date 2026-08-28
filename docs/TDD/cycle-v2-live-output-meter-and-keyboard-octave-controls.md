@@ -1,6 +1,6 @@
 # Cycle V2 Live Output Meter And Keyboard Octave Controls
 
-Status: In progress
+Status: Implemented
 
 ## Objective
 
@@ -110,7 +110,7 @@ buttons always equal the keybed height.
 - No graph, serialization, undo, MIDI-routing, or audio-rendering semantics are
   changed.
 
-## Implementation Progress
+## Implementation Evidence
 
 ### Live output meter
 
@@ -132,3 +132,34 @@ buttons always equal the keybed height.
   `/private/tmp/cycle-v2-live-meter-before-keyboard.png`; both Output channels
   visibly rise to the middle of the scale instead of remaining on the lowest
   bar.
+
+### Keyboard octave controls
+
+- The keyboard panel is 276 by 150 pixels. Its shared layout resolves to
+  28-by-138 previous/next octave controls, two four-pixel gaps, and the existing
+  200-by-138 keybed. White keys remain 25 pixels wide with a 5.52 ratio.
+- The old `TextButton` minus/plus glyphs, header layout, divider, and redundant
+  `Keyboard` title were deleted. The replacement JUCE buttons reuse the
+  `WorkspaceDock` chevron language and expose matching hover, focus, pressed,
+  tooltip, and pointing-cursor affordances.
+- The focused keyboard suite passes 60 assertions in six test cases, including
+  preferred and compact utility layouts, button/key containment, proportional
+  black keys, MIDI note state, and octave release behavior.
+- The production fixture clicks the actual right button and observes C4-C5,
+  then clicks the actual left button and observes C3-C4 before completing the
+  note-down, live-audio, drag, release, and voice-tail sequence. All commands
+  pass in `/private/tmp/cycle-v2-live-meter-keyboard-final-report.json`.
+- Final native evidence is
+  `/private/tmp/cycle-v2-live-meter-keyboard-final.png`; it shows the held C3,
+  both live Output channels around mid-scale, and the full-height side
+  chevrons without the former header.
+
+### Final verification
+
+- The standalone Cycle V2 target builds successfully with `--parallel 10`.
+- `CycleV2_tests` runs 529 test cases: 528 pass and the sole failure remains the
+  pre-existing `TestNodeCanvasHitRouter.cpp:66` help-text assertion recorded in
+  `docs/TDD/ui-bugs.md`.
+- `git diff --check`, fixture JSON validation, hot-loop review, and production
+  diff review pass. The keyboard slice adds no graph mutation, node-kind
+  switch, serialization field, adapter, DSP algorithm, or copied key behavior.

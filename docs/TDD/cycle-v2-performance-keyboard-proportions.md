@@ -2,6 +2,11 @@
 
 Status: Implemented
 
+The follow-up side-chevron geometry in
+`cycle-v2-live-output-meter-and-keyboard-octave-controls.md` supersedes this
+slice's panel geometry while retaining its 25-pixel white-key minimum and
+recognizable-proportion intent.
+
 ## Objective
 
 Make the fixed performance keyboard read immediately as a piano keyboard while

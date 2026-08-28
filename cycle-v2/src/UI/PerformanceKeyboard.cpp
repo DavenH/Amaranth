@@ -1,6 +1,7 @@
 #include "UI/PerformanceKeyboard.h"
 
 #include "UI/CanvasUtilityDock.h"
+#include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
 
@@ -158,6 +159,30 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     octaveUp.onClick = [this] { keyboard.shiftOctave(1); };
 }
 
+PerformanceKeyboardPanel::OctaveButton::OctaveButton(bool advancesOctave) :
+        Button      (advancesOctave ? "Next keyboard octave" : "Previous keyboard octave")
+    ,   advances    (advancesOctave) {
+    setName(advances ? "PerformanceKeyboard.OctaveUp" : "PerformanceKeyboard.OctaveDown");
+    setMouseCursor(MouseCursor::PointingHandCursor);
+    setWantsKeyboardFocus(true);
+}
+
+void PerformanceKeyboardPanel::OctaveButton::paintButton(
+        Graphics& graphics,
+        bool highlighted,
+        bool down) {
+    const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.5f);
+    WorkspaceDock::paintIconButton(
+            graphics,
+            bounds,
+            advances ? WorkspaceDockIcon::ChevronRight : WorkspaceDockIcon::ChevronLeft,
+            highlighted || hasKeyboardFocus(true));
+    if (down) {
+        graphics.setColour(Colours::white.withAlpha(0.08f));
+        graphics.fillRoundedRectangle(bounds, 5.f);
+    }
+}
+
 Rectangle<float> PerformanceKeyboardPanel::noteBounds(int noteNumber) const {
     return keyboard.noteBounds(noteNumber).translated(
             (float) keyboard.getX(),
@@ -175,34 +200,17 @@ Rectangle<float> PerformanceKeyboardPanel::octaveUpBounds() const {
 void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
     CanvasUtilityDock::paintSurface(graphics, bounds);
-    graphics.drawHorizontalLine(headerHeight(), 6.f, (float) getWidth() - 6.f);
-    graphics.setColour(Colour(0xff8793a1));
-    graphics.setFont(FontOptions(10.f));
-    Rectangle<int> title = headerBounds();
-    const int buttonWidth = jmin(28, title.getHeight() + 4);
-    title.removeFromLeft(buttonWidth);
-    title.removeFromRight(buttonWidth);
-    graphics.drawText("Keyboard", title, Justification::centred);
 }
 
 void PerformanceKeyboardPanel::resized() {
+    constexpr int buttonWidth = 28;
+    constexpr int controlGap = 4;
     Rectangle<int> content = getLocalBounds().reduced(6);
-    Rectangle<int> header = headerBounds();
-    content.removeFromTop(headerHeight() - 6);
-    const int buttonWidth = jmin(28, header.getHeight() + 4);
-    octaveDown.setBounds(header.removeFromLeft(buttonWidth).reduced(1));
-    octaveUp.setBounds(header.removeFromRight(buttonWidth).reduced(1));
-    content.removeFromTop(4);
+    octaveDown.setBounds(content.removeFromLeft(buttonWidth));
+    content.removeFromLeft(controlGap);
+    octaveUp.setBounds(content.removeFromRight(buttonWidth));
+    content.removeFromRight(controlGap);
     keyboard.setBounds(content);
-}
-
-Rectangle<int> PerformanceKeyboardPanel::headerBounds() const {
-    Rectangle<int> content = getLocalBounds().reduced(6);
-    return content.removeFromTop(headerHeight() - 6);
-}
-
-int PerformanceKeyboardPanel::headerHeight() const {
-    return jlimit(20, 30, getHeight() / 4);
 }
 
 }

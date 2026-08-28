@@ -90,12 +90,19 @@ public:
     void resized() override;
 
 private:
-    int headerHeight() const;
-    Rectangle<int> headerBounds() const;
+    class OctaveButton final : public Button {
+    public:
+        explicit OctaveButton(bool advancesOctave);
+
+        void paintButton(Graphics& graphics, bool highlighted, bool down) override;
+
+    private:
+        bool advances;
+    };
 
     PerformanceKeyboard keyboard;
-    TextButton octaveDown { "-" };
-    TextButton octaveUp { "+" };
+    OctaveButton octaveDown { false };
+    OctaveButton octaveUp { true };
 };
 
 }

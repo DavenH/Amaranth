@@ -81,25 +81,38 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 212, 150);
+    panel.setBounds(0, 0, 276, 150);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
     const float whiteAspect = whiteKey.getHeight() / whiteKey.getWidth();
     const float blackAspect = blackKey.getHeight() / blackKey.getWidth();
+    const Rectangle<float> octaveDown = panel.octaveDownBounds();
+    const Rectangle<float> octaveUp = panel.octaveUpBounds();
 
-    REQUIRE_FALSE(panel.octaveDownBounds().isEmpty());
-    REQUIRE_FALSE(panel.octaveUpBounds().isEmpty());
+    REQUIRE(octaveDown.getWidth() == 28.f);
+    REQUIRE(octaveUp.getWidth() == 28.f);
+    REQUIRE(octaveDown.getHeight() == whiteKey.getHeight());
+    REQUIRE(octaveUp.getHeight() == whiteKey.getHeight());
+    REQUIRE(octaveDown.getRight() < whiteKey.getX());
+    REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
     REQUIRE(whiteKey.getWidth() >= 25.f);
-    REQUIRE(whiteAspect >= 4.25f);
-    REQUIRE(whiteAspect <= 4.6f);
-    REQUIRE(blackAspect >= 4.25f);
-    REQUIRE(blackAspect <= 4.6f);
+    REQUIRE(whiteAspect >= 5.4f);
+    REQUIRE(whiteAspect <= 5.7f);
+    REQUIRE(blackAspect >= 5.4f);
+    REQUIRE(blackAspect <= 5.7f);
     REQUIRE(blackKey.getWidth() < whiteKey.getWidth());
     REQUIRE(blackKey.getHeight() < whiteKey.getHeight());
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
+
+    panel.setBounds(0, 0, 276, 126);
+    const Rectangle<float> compactWhiteKey = panel.noteBounds(60);
+    REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
+    REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
+    REQUIRE(compactWhiteKey.getWidth() == 25.f);
+    REQUIRE(compactWhiteKey.getHeight() == 114.f);
 }
 
 TEST_CASE("Canvas utilities keep the console clear at the top left",
@@ -110,7 +123,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
-    REQUIRE(layout.keyboard.getWidth() == 212.f);
+    REQUIRE(layout.keyboard.getWidth() == 276.f);
     REQUIRE(layout.keyboard.getHeight() == 150.f);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
@@ -124,7 +137,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
 
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
-    REQUIRE(compact.keyboard.getWidth() == 212.f);
+    REQUIRE(compact.keyboard.getWidth() == 276.f);
     REQUIRE(compact.keyboard.getHeight() == 126.f);
     REQUIRE(compact.legend.getHeight() >= 30.f);
     REQUIRE_FALSE(compact.status.intersects(compact.minimap));

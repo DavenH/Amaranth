@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 212
+      "equals": 276
     },
     {
       "command": "assertState",
@@ -34,7 +34,17 @@
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
       "op": "greaterThan",
-      "value": 4.25
+      "value": 5.4
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonWidth",
+      "equals": 28
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonHeight",
+      "equals": 138
     },
     {
       "command": "assertState",
@@ -60,6 +70,31 @@
       "command": "assertState",
       "path": "performance.audioDeviceReady",
       "equals": true
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.OctaveUp",
+      "event": "click"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 72
+    },
+    {
+      "command": "assertState",
+      "path": "performance.highestNote",
+      "equals": 84
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.OctaveDown",
+      "event": "click"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 60
     },
     {
       "command": "pointer",
