@@ -17,7 +17,7 @@ public:
     static constexpr float gap = 8.f;
     static constexpr float cornerRadius = 7.f;
     static constexpr float preferredKeyboardWidth = 276.f;
-    static constexpr float preferredKeyboardHeight = 150.f;
+    static constexpr float preferredKeyboardHeight = 112.5f;
     static constexpr float minimumCompactLegendHeight = 30.f;
 
     static CanvasUtilityDockLayout layout(juce::Rectangle<float> contentBounds);

@@ -61,20 +61,24 @@ The `Keyboard` title repeats what the familiar object already communicates.
 
 ## Keyboard Geometry Contract
 
-The normal panel becomes 276 by 150 pixels. Six-pixel outer insets leave a
-264-by-138 row containing:
+After production review, the keyboard panel's preferred height is reduced to
+75 percent of its initial 150-pixel height: 112.5 logical pixels, resolved to
+112 pixels by the production integer-bounds conversion. Six-pixel outer insets
+leave a 264-by-100 row containing:
 
-- a 28-by-138 previous-octave button;
+- a 28-by-100 previous-octave button;
 - a four-pixel gap;
-- the existing 200-by-138 one-octave keybed;
+- the existing 200-by-100 one-octave keybed;
 - a four-pixel gap;
-- a 28-by-138 next-octave button.
+- a 28-by-100 next-octave button.
 
-Eight white keys remain exactly 25 pixels wide and become 138 pixels high, a
-5.52 height-to-width ratio. The side controls therefore improve integration
-without sacrificing the key acquisition budget. Their visible footprint and
-actual hit target are the same tall rectangle. The redundant title, header
-divider, minus glyph, and plus glyph are deleted.
+Eight white keys remain exactly 25 pixels wide and become 100 pixels high, a
+4.0 height-to-width ratio. This deliberate compact-workspace adaptation keeps
+the keyboard recognizable while reducing its vertical claim; the width and
+horizontal acquisition budget do not change. The side controls remain the same
+height as the keybed, and their visible footprint and actual hit target are the
+same tall rectangle. The redundant title, header divider, minus glyph, and plus
+glyph are deleted.
 
 At a 500-by-300 compact canvas the panel remains 276 pixels wide and yields
 height before reducing the cable legend below its 30-pixel floor. Both octave
@@ -135,14 +139,16 @@ buttons always equal the keybed height.
 
 ### Keyboard octave controls
 
-- The keyboard panel is 276 by 150 pixels. Its shared layout resolves to
-  28-by-138 previous/next octave controls, two four-pixel gaps, and the existing
-  200-by-138 keybed. White keys remain 25 pixels wide with a 5.52 ratio.
+- The keyboard panel has a 112.5-pixel preferred height and resolves to 276 by
+  112 pixels in the production component. Its shared layout resolves to
+  28-by-100 previous/next octave controls, two four-pixel gaps, and the existing
+  200-by-100 keybed. White keys remain 25 pixels wide with a 4.0 ratio.
 - The old `TextButton` minus/plus glyphs, header layout, divider, and redundant
   `Keyboard` title were deleted. The replacement JUCE buttons reuse the
   `WorkspaceDock` chevron language and expose matching hover, focus, pressed,
   tooltip, and pointing-cursor affordances.
-- The focused keyboard suite passes 60 assertions in six test cases, including
+- The focused keyboard suite passes 58 assertions in six test cases, and the
+  utility-dock layout case passes another 20 assertions. Together they cover
   preferred and compact utility layouts, button/key containment, proportional
   black keys, MIDI note state, and octave release behavior.
 - The production fixture clicks the actual right button and observes C4-C5,
@@ -153,6 +159,14 @@ buttons always equal the keybed height.
   `/private/tmp/cycle-v2-live-meter-keyboard-final.png`; it shows the held C3,
   both live Output channels around mid-scale, and the full-height side
   chevrons without the former header.
+- The 75-percent-height follow-up passes all six production-state assertions in
+  `/private/tmp/cycle-v2-keyboard-75-percent-report.json`. Full native evidence
+  is `/private/tmp/cycle-v2-keyboard-75-percent-full.png`; it confirms the
+  shorter keybed and chevrons remain aligned, legible, and clear of the guide
+  dock.
+- The complete 35-command interaction sequence also passes in
+  `/private/tmp/cycle-v2-keyboard-75-percent-interaction-report.json`, including
+  both octave controls, note down, drag, live audio, release, and voice decay.
 
 ### Final verification
 

@@ -81,7 +81,7 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
-    panel.setBounds(0, 0, 276, 150);
+    panel.setBounds(0, 0, 276, 112);
 
     const Rectangle<float> whiteKey = panel.noteBounds(60);
     const Rectangle<float> blackKey = panel.noteBounds(61);
@@ -97,22 +97,20 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     REQUIRE(octaveDown.getRight() < whiteKey.getX());
     REQUIRE(octaveUp.getX() > panel.noteBounds(72).getRight());
     REQUIRE(whiteKey.getWidth() >= 25.f);
-    REQUIRE(whiteAspect >= 5.4f);
-    REQUIRE(whiteAspect <= 5.7f);
-    REQUIRE(blackAspect >= 5.4f);
-    REQUIRE(blackAspect <= 5.7f);
+    REQUIRE(whiteAspect == 4.f);
+    REQUIRE(blackAspect == 4.f);
     REQUIRE(blackKey.getWidth() < whiteKey.getWidth());
     REQUIRE(blackKey.getHeight() < whiteKey.getHeight());
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     REQUIRE(panel.getLocalBounds().toFloat().contains(whiteKey));
     REQUIRE(panel.getLocalBounds().toFloat().contains(panel.noteBounds(72)));
 
-    panel.setBounds(0, 0, 276, 126);
+    panel.setBounds(0, 0, 276, 112);
     const Rectangle<float> compactWhiteKey = panel.noteBounds(60);
     REQUIRE(panel.octaveDownBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(panel.octaveUpBounds().getHeight() == compactWhiteKey.getHeight());
     REQUIRE(compactWhiteKey.getWidth() == 25.f);
-    REQUIRE(compactWhiteKey.getHeight() == 114.f);
+    REQUIRE(compactWhiteKey.getHeight() == 100.f);
 }
 
 TEST_CASE("Canvas utilities keep the console clear at the top left",
@@ -124,7 +122,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.legend.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getRight() == layout.minimap.getRight());
     REQUIRE(layout.keyboard.getWidth() == 276.f);
-    REQUIRE(layout.keyboard.getHeight() == 150.f);
+    REQUIRE(layout.keyboard.getHeight() == 112.5f);
     REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getY()
@@ -138,7 +136,7 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
     REQUIRE(compact.keyboard.getWidth() == 276.f);
-    REQUIRE(compact.keyboard.getHeight() == 126.f);
+    REQUIRE(compact.keyboard.getHeight() == 112.5f);
     REQUIRE(compact.legend.getHeight() >= 30.f);
     REQUIRE_FALSE(compact.status.intersects(compact.minimap));
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
