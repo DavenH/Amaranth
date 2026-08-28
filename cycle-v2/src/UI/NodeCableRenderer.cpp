@@ -1,12 +1,12 @@
 #include "UI/NodeCableRenderer.h"
 
+#include "UI/CanvasChromePalette.h"
 #include "UI/NodePortGeometry.h"
 
 namespace CycleV2 {
 
 namespace {
 
-const Colour kCanvasBackground { 0xff101318 };
 constexpr float kCableReferenceZoom = 0.58f;
 constexpr float kCableStrokeScale = 0.70f;
 
@@ -18,7 +18,7 @@ void paintModulationPie(
         bool yellowEnabled) {
     const Rectangle<float> bounds(diameter, diameter);
     const auto placed = bounds.withCentre(centre);
-    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
     graphics.fillEllipse(placed);
 
     const MorphDimension dimensions[] {
@@ -54,7 +54,7 @@ void paintSpliceMarker(
     const Rectangle<float> marker(markerSize, markerSize);
     const Rectangle<float> placed = marker.withCentre(midpoint);
 
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillEllipse(placed);
     graphics.setColour(colour.withAlpha(0.98f));
     graphics.drawEllipse(placed, 2.2f * scale);
@@ -139,7 +139,7 @@ void paintEndpoints(
     const Rectangle<float> sourceMarker = endpoint.withCentre(edge.source);
     const Rectangle<float> destinationMarker = endpoint.withCentre(edge.destination);
 
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillEllipse(sourceMarker);
     graphics.setColour(style.colour.withAlpha(0.96f));
     graphics.drawEllipse(
@@ -160,7 +160,7 @@ void paintEndpoints(
     badge.lineTo(edge.destination.x - radius, edge.destination.y);
     badge.closeSubPath();
 
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillPath(badge);
     graphics.setColour(style.colour.withAlpha(style.selected ? 0.98f : 0.78f));
     graphics.strokePath(
@@ -214,7 +214,7 @@ void NodeCableRenderer::paintPending(
     const Rectangle<float> sourceMarker = marker.withCentre(connection.source);
     const Rectangle<float> destinationMarker = marker.withCentre(connection.destination);
 
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillEllipse(sourceMarker);
     graphics.setColour(connection.colour.withAlpha(0.96f));
     graphics.drawEllipse(sourceMarker, 1.8f * scale);

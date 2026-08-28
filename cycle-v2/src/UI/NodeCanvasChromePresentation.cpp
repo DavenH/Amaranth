@@ -1,5 +1,6 @@
 #include "UI/NodeCanvasPresentation.h"
 
+#include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
 #include "UI/NodePaletteIconRenderer.h"
@@ -7,9 +8,6 @@
 namespace CycleV2 {
 
 namespace {
-
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
 
 Rectangle<float> graphBounds(const NodeGraph& graph) {
     Rectangle<float> bounds;
@@ -50,7 +48,7 @@ void NodeCanvasPresentation::paintMiniMap(
     };
 
     for (const auto& node : frame.graph.getNodes()) {
-        graphics.setColour(Colour(0xff778596).withAlpha(0.62f));
+        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.62f));
         graphics.fillRoundedRectangle(project(node.bounds), 2.f);
     }
 
@@ -62,9 +60,9 @@ void NodeCanvasPresentation::paintMiniMap(
             frame.canvasBounds.getWidth() / zoom,
             frame.canvasBounds.getHeight() / zoom);
     const Rectangle<float> viewportInMap = project(viewportWorld).getIntersection(projectedBounds);
-    graphics.setColour(Colour(0xff35d6d2).withAlpha(0.24f));
+    graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.24f));
     graphics.fillRoundedRectangle(viewportInMap, 3.f);
-    graphics.setColour(Colour(0xff35d6d2).withAlpha(0.85f));
+    graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.85f));
     graphics.drawRoundedRectangle(viewportInMap, 3.f, 1.f);
 
 }
@@ -96,7 +94,7 @@ void NodeCanvasPresentation::paintLegend(
 
         graphics.strokePath(line, PathStrokeType(2.f));
 
-        graphics.setColour(kMutedText);
+        graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText(
                 entry.label,
                 Rectangle<float>(x + 24.f, y - 10.f, 76.f, 20.f),
@@ -126,7 +124,7 @@ void NodeCanvasPresentation::paintStatus(
 
     const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
     graphics.setFont(FontOptions(14.f));
-    graphics.setColour(kText.withAlpha(0.8f));
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));
     graphics.drawText(text, textBounds, Justification::centredLeft);
 }
 
@@ -138,9 +136,12 @@ void NodeCanvasPresentation::paintPalette(
         const auto& section = frame.palette.section(sectionIndex);
         const bool active = sectionIndex == activeSectionIndex;
         const Rectangle<float> button = frame.palette.groupBounds(sectionIndex);
-        graphics.setColour(Colour(active ? 0xff1d2631 : 0xff151b24).withAlpha(active ? 0.94f : 0.82f));
+        const auto colours = CanvasChromePalette::control(active
+                ? CanvasChromeControlState::Selected
+                : CanvasChromeControlState::Resting);
+        graphics.setColour(colours.surface);
         graphics.fillRoundedRectangle(button, 7.f);
-        graphics.setColour(Colour(active ? 0xff8290a2 : 0xff435061).withAlpha(active ? 0.86f : 0.72f));
+        graphics.setColour(colours.border);
         graphics.drawRoundedRectangle(button, 7.f, active ? 1.6f : 1.f);
 
         Rectangle<float> content = button;
@@ -151,7 +152,7 @@ void NodeCanvasPresentation::paintPalette(
                 content.reduced(8.f, 4.f),
                 active);
         graphics.setFont(FontOptions(9.4f));
-        graphics.setColour(kText.withAlpha(active ? 0.92f : 0.70f));
+        graphics.setColour(colours.text);
         graphics.drawText(section.shortLabel, label.reduced(3.f, 0.f), Justification::centred);
     }
 
@@ -164,9 +165,12 @@ void NodeCanvasPresentation::paintPalette(
         const auto& entry = section.entries[entryIndex];
         const Rectangle<float> row = frame.palette.entryBounds(activeSectionIndex, entryIndex);
         const bool hover = row.contains(frame.pointer);
-        graphics.setColour(Colour(hover ? 0xff202935 : 0xff161d26).withAlpha(hover ? 0.94f : 0.82f));
+        const auto colours = CanvasChromePalette::control(hover
+                ? CanvasChromeControlState::Hovered
+                : CanvasChromeControlState::Resting);
+        graphics.setColour(colours.surface);
         graphics.fillRoundedRectangle(row, 6.f);
-        graphics.setColour(Colour(0xff8290a2).withAlpha(hover ? 0.76f : 0.42f));
+        graphics.setColour(colours.border);
         graphics.drawRoundedRectangle(row, 6.f, hover ? 1.4f : 1.f);
 
         NodePaletteEntryIconRenderer::paint(
@@ -175,7 +179,7 @@ void NodeCanvasPresentation::paintPalette(
                 Rectangle<float>(row.getX() + 7.f, row.getY() + 6.f, 34.f, row.getHeight() - 12.f),
                 hover);
 
-        graphics.setColour(kText.withAlpha(hover ? 0.96f : 0.82f));
+        graphics.setColour(colours.text);
         graphics.setFont(FontOptions(11.2f));
         graphics.drawText(
                 String::fromUTF8(entry.label),

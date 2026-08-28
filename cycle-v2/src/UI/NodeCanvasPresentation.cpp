@@ -1,5 +1,8 @@
+#include <cmath>
+
 #include "UI/NodeCanvasPresentation.h"
 
+#include "UI/CanvasChromePalette.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
@@ -12,20 +15,10 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
-#include <cmath>
-
 namespace CycleV2 {
 
 namespace {
 
-const Colour kCanvasBackground { 0xff101318 };
-const Colour kCanvasGridMajor { 0x2f5b6370 };
-const Colour kCanvasGridMinor { 0x182f363f };
-const Colour kNodeBackground { 0xff171d24 };
-const Colour kNodeHeader { 0xff202833 };
-const Colour kNodeBorder { 0xff3d4a58 };
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
 float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
 }
@@ -40,11 +33,13 @@ void paintConfigurationSocket(
             NodePortGeometry::socketDiameter * scale,
             NodePortGeometry::socketDiameter * scale)
             .withCentre(centre);
-    graphics.setColour(kCanvasBackground.withAlpha(0.96f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
     graphics.fillRoundedRectangle(socket.expanded(2.f * scale), 2.5f * scale);
     graphics.setColour(colour.withAlpha(0.26f));
     graphics.fillRoundedRectangle(socket.expanded(1.f * scale), 2.f * scale);
-    graphics.setColour(input ? colour : kCanvasBackground.withAlpha(0.96f));
+    graphics.setColour(input
+            ? colour
+            : CanvasChromePalette::canvasBackground.withAlpha(0.96f));
     graphics.fillRoundedRectangle(socket, 1.8f * scale);
     graphics.setColour(colour);
     graphics.drawRoundedRectangle(socket, 1.8f * scale, 1.4f * scale);
@@ -64,7 +59,7 @@ void paintRoundSocket(
         return;
     }
 
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillEllipse(bounds);
     graphics.setColour(colour);
     graphics.drawEllipse(bounds, 1.2f * scale);
@@ -146,9 +141,9 @@ void paintModulationShell(
         Rectangle<float> bounds,
         float corner,
         bool selected) {
-    graphics.setColour(kNodeBackground);
+    graphics.setColour(CanvasChromePalette::surface);
     graphics.fillRoundedRectangle(bounds, corner);
-    graphics.setColour(kNodeBorder);
+    graphics.setColour(CanvasChromePalette::border);
     graphics.drawRoundedRectangle(bounds, corner, 1.2f);
     if (selected) {
         graphics.setColour(Colours::white.withAlpha(0.86f));
@@ -165,14 +160,14 @@ void paintSingleModulationNode(
         float scale) {
     paintModulationShell(graphics, bounds, 8.f * scale, node.id == frame.selectedNodeId);
     const Rectangle<float> badge = bounds.removeFromLeft(52.f * zoom);
-    graphics.setColour(kNodeHeader);
+    graphics.setColour(CanvasChromePalette::raisedSurface);
     graphics.fillRoundedRectangle(badge, 8.f * scale);
     graphics.fillRect(badge.withTrimmedLeft(badge.getWidth() - 8.f * scale));
-    graphics.setColour(kMutedText);
+    graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(12.f * zoom));
     graphics.drawText("MOD", badge, Justification::centred);
 
-    graphics.setColour(kText);
+    graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(20.f * zoom));
     graphics.drawText(
             modulationSourceLabel(node),
@@ -184,7 +179,7 @@ void paintSingleModulationNode(
             frame.viewport.toScreen(node.bounds).getCentreY()
     };
     const float diameter = 8.4f * scale;
-    graphics.setColour(kCanvasBackground.withAlpha(0.92f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
     graphics.fillEllipse(Rectangle<float>(diameter, diameter).withCentre(centre));
     graphics.setColour(colourForDomain(PortDomain::ControlSignal));
     graphics.drawEllipse(Rectangle<float>(diameter, diameter).withCentre(centre), 1.2f * scale);
@@ -216,14 +211,14 @@ void paintTripleModulationNode(
         graphics.setFont(FontOptions(14.f * zoom));
         graphics.drawText(prefixes[row].substring(0, 1).toUpperCase(),
                 rowBounds.removeFromLeft(30.f * zoom), Justification::centred);
-        graphics.setColour(kText);
+        graphics.setColour(CanvasChromePalette::text);
         graphics.setFont(FontOptions(19.f * zoom));
         graphics.drawText(
                 modulationSourceLabel(node, prefixes[row]),
                 rowBounds.reduced(6.f * zoom, 2.f * zoom),
                 Justification::centredLeft);
         if (row < 2) {
-            graphics.setColour(kNodeBorder.withAlpha(0.72f));
+            graphics.setColour(CanvasChromePalette::border.withAlpha(0.72f));
             graphics.drawHorizontalLine(
                     roundToInt(rowBounds.getBottom()),
                     bounds.getX() + 10.f * zoom,
@@ -355,9 +350,9 @@ PortSide nextOutputSide(const Node& node) {
 }
 
 void paintActionButton(Graphics& graphics, Rectangle<float> button, float scale) {
-    graphics.setColour(Colour(0xff0f141a).withAlpha(0.78f));
+    graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.78f));
     graphics.fillEllipse(button);
-    graphics.setColour(kMutedText.withAlpha(0.82f));
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.82f));
     graphics.drawEllipse(button, scale);
 }
 
@@ -400,9 +395,9 @@ void paintOperationAction(
     path.lineTo(second);
     path.startNewSubPath(icon.getCentre());
     path.lineTo(output);
-    graphics.setColour(kMutedText.withAlpha(0.78f));
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
     graphics.strokePath(path, PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
-    graphics.setColour(kMutedText);
+    graphics.setColour(CanvasChromePalette::mutedText);
     graphics.drawEllipse(Rectangle<float>(dot, dot).withCentre(first), stroke);
     graphics.drawEllipse(Rectangle<float>(dot, dot).withCentre(second), stroke);
     graphics.fillEllipse(Rectangle<float>(dot, dot).withCentre(output));
@@ -429,10 +424,10 @@ void paintOutputAction(
         output = { icon.getRight(), centre.y };
     }
 
-    graphics.setColour(kMutedText.withAlpha(0.78f));
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
     graphics.drawEllipse(Rectangle<float>(dot, dot).withCentre(centre), stroke);
     graphics.drawLine(Line<float>(centre, output), stroke);
-    graphics.setColour(kMutedText);
+    graphics.setColour(CanvasChromePalette::mutedText);
     graphics.fillEllipse(Rectangle<float>(dot, dot).withCentre(output));
 }
 
@@ -565,7 +560,7 @@ void NodeCanvasPresentation::paintGrid(
         return;
     }
 
-    graphics.fillAll(kCanvasBackground);
+    graphics.fillAll(CanvasChromePalette::canvasBackground);
 
     const float minorStep = 32.f * frame.viewport.getZoom();
     const float majorStep = minorStep * 4.f;
@@ -586,8 +581,8 @@ void NodeCanvasPresentation::paintGrid(
         }
     };
 
-    paintLines(minorStep, kCanvasGridMinor);
-    paintLines(majorStep, kCanvasGridMajor);
+    paintLines(minorStep, CanvasChromePalette::gridMinor);
+    paintLines(majorStep, CanvasChromePalette::gridMajor);
 }
 
 void NodeCanvasPresentation::paintEdges(
@@ -760,7 +755,7 @@ void NodeCanvasPresentation::paintNode(
                 true,
                 frame.unisonPreviewContext
         });
-        graphics.setColour(kNodeBorder.withAlpha(0.7f));
+        graphics.setColour(CanvasChromePalette::border.withAlpha(0.7f));
         graphics.drawEllipse(nodeBounds.reduced(2.f * zoom), 1.2f * scale);
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
@@ -770,12 +765,12 @@ void NodeCanvasPresentation::paintNode(
         Rectangle<float> body = nodeBounds;
         const Rectangle<float> header = body.removeFromTop(42.f * zoom);
 
-        graphics.setColour(kNodeBackground);
+        graphics.setColour(CanvasChromePalette::surface);
         graphics.fillRoundedRectangle(nodeBounds, corner);
-        graphics.setColour(kNodeHeader);
+        graphics.setColour(CanvasChromePalette::raisedSurface);
         graphics.fillRoundedRectangle(header, corner);
         graphics.fillRect(header.withTrimmedTop(header.getHeight() - corner));
-        graphics.setColour(kNodeBorder);
+        graphics.setColour(CanvasChromePalette::border);
         graphics.drawRoundedRectangle(nodeBounds, corner, 1.2f);
 
         if (node.id == frame.selectedNodeId) {
@@ -784,7 +779,7 @@ void NodeCanvasPresentation::paintNode(
         }
 
         graphics.setFont(FontOptions(18.f * zoom));
-        graphics.setColour(kText);
+        graphics.setColour(CanvasChromePalette::text);
         graphics.drawText(labelForNodeKind(node.kind), header.reduced(13.f * zoom, 4.f * zoom),
                           Justification::centredLeft);
         if (node.kind == NodeKind::Envelope) {

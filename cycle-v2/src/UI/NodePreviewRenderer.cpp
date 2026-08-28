@@ -1,5 +1,8 @@
+#include <cmath>
+#include <cstring>
+#include <limits>
+
 #include "UI/NodePreviewRenderer.h"
-#include "UI/OutputMeterPresentation.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -8,17 +11,14 @@
 #include "Nodes/Reverb/ReverbPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "UI/CanvasChromePalette.h"
+#include "UI/OutputMeterPresentation.h"
 #include "UI/Preview/EffectPlotPalette.h"
-
-#include <cmath>
-#include <cstring>
-#include <limits>
 
 namespace CycleV2 {
 
 namespace {
 
-const Colour kMutedText { 0xff8793a1 };
 constexpr float kSignedLogDisplayScale = 0.1442695f;
 
 float fastSin(float value) {
@@ -270,8 +270,8 @@ void drawCurveFallback(
         NodeKind kind,
         const std::vector<CurvePreviewVertex>& vertices,
         float zoom) {
-    const Colour line { 0xffe2e8ef };
-    const Colour dim { 0xff8b95a3 };
+    const Colour line = CanvasChromePalette::text;
+    const Colour dim = CanvasChromePalette::mutedText;
     Rectangle<float> graph = area.reduced(8.f, 7.f);
 
     if (kind == NodeKind::Waveshaper) {
@@ -279,7 +279,7 @@ void drawCurveFallback(
         graph = Rectangle<float>(size, size).withCentre(graph.getCentre());
     }
 
-    graphics.setColour(Colour(0xff0d1117).withAlpha(0.34f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.34f));
     graphics.fillRect(graph);
 
     float maximumX = 1.f;
@@ -518,7 +518,7 @@ void drawSpectralLayerPreview(
     };
     const Colour colour = colourForDomain(domain);
 
-    graphics.setColour(Colour(0xff11171d));
+    graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillEllipse(bounds);
     graphics.setColour(colour.withAlpha(0.88f));
     graphics.drawEllipse(bounds.reduced(stroke * 0.5f), stroke);
@@ -944,7 +944,7 @@ void NodePreviewRenderer::paintQualitative(
         graphics.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.85f));
         graphics.drawLine(Line<float>({ left, y }, { right, y - request.area.getHeight() * 0.18f }), 2.f);
         graphics.drawLine(Line<float>({ left, y }, { right, y + request.area.getHeight() * 0.18f }), 2.f);
-        graphics.setColour(kMutedText.withAlpha(0.72f));
+        graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.72f));
         graphics.drawText(split ? "SPLIT" : "JOIN", request.area, Justification::centredBottom);
         return;
     }

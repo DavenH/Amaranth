@@ -1,19 +1,15 @@
-#include "UI/GuideCurveShelf.h"
-
-#include "UI/SignalProbeRail.h"
-
 #include <algorithm>
 #include <array>
 #include <cstdlib>
 
+#include "UI/GuideCurveShelf.h"
+
+#include "UI/CanvasChromePalette.h"
+#include "UI/SignalProbeRail.h"
+
 namespace CycleV2 {
 
 namespace {
-
-const Colour kShelfBackground { 0xf51a212a };
-const Colour kShelfBorder { 0xff445261 };
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
 
 bool hasDisplayName(const GuideCurveResource& guide) {
     return !guide.name.isEmpty() && guide.name != "Guide Curve";
@@ -192,9 +188,9 @@ void GuideCurveShelf::paint(
         const GuideCurveShelfState& state,
         const WorkspaceDockFocus& focus) const {
     Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
-    graphics.setColour(kShelfBackground);
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRect(shelf);
-    graphics.setColour(kShelfBorder);
+    graphics.setColour(CanvasChromePalette::border);
     graphics.drawRect(shelf, 1.f);
 
     if (!dockState.expanded) {
@@ -229,7 +225,7 @@ void GuideCurveShelf::paint(
             minimize,
             WorkspaceDockIcon::ChevronLeft,
             focus.target == WorkspaceDockFocusTarget::GuideMinimize);
-    graphics.setColour(kText);
+    graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             "Curve Guides",
@@ -244,11 +240,11 @@ void GuideCurveShelf::paint(
 
     if (graph.getGuideCurves().empty()) {
         const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(shelf);
-        graphics.setColour(Colour(0xff11171d).withAlpha(0.68f));
+        graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.68f));
         graphics.fillRoundedRectangle(vacancy, 7.f);
-        graphics.setColour(kShelfBorder.withAlpha(0.75f));
+        graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
         graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
-        graphics.setColour(kMutedText);
+        graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No guides", vacancy.reduced(14.f), Justification::centredLeft);
         return;
@@ -271,17 +267,17 @@ void GuideCurveShelf::paint(
         WorkspaceDock::paintTileChrome(
                 graphics,
                 tile,
-                kShelfBorder,
+                CanvasChromePalette::border,
                 selected,
                 hovered,
                 focused);
         const Rectangle<float> thumbnail = previewBoundsFor(tile);
-        graphics.setColour(Colour(0xff0d1117).withAlpha(0.72f));
+        graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, 4.f);
         Preview& preview = previewFor(guide);
         preview.widget->paintPreviewSnapshot(graphics, thumbnail);
         if (hasDisplayName(guide)) {
-            graphics.setColour(kText);
+            graphics.setColour(CanvasChromePalette::text);
             graphics.setFont(FontOptions(12.f));
             graphics.drawText(
                     guide.name,

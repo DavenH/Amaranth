@@ -10,6 +10,7 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/NodeCanvas.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
 
@@ -30,9 +31,6 @@ constexpr uint32_t CanvasRepaint = 1u << 0;
 
 namespace {
 
-const Colour kCanvasBackground { 0xff101318 };
-const Colour kCanvasGridMajor  { 0x2f5b6370 };
-const Colour kCanvasGridMinor  { 0x182f363f };
 constexpr bool kUseGlCanvasUnderlay = true;
 
 bool hasExpandedEditor(NodeKind kind) {
@@ -721,7 +719,7 @@ void NodeCanvas::newOpenGLContextCreated() {
 void NodeCanvas::renderOpenGL() {
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
-        OpenGLHelpers::clear(kCanvasBackground);
+        OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
         const bool guideSnapshotUpdated = canvasPresentation.renderOpenGL(
                 renderer,
                 presentationFrame(),
@@ -739,7 +737,7 @@ void NodeCanvas::renderOpenGL() {
             guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
         }
     } else {
-        OpenGLHelpers::clear(kCanvasBackground);
+        OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
     }
 }
 

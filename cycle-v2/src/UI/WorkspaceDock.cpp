@@ -1,16 +1,12 @@
+#include <algorithm>
+
 #include "UI/WorkspaceDock.h"
 
-#include <algorithm>
+#include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
 
 namespace {
-
-const juce::Colour kChromeBackground { 0xff26313d };
-const juce::Colour kChromeBorder { 0xff445261 };
-const juce::Colour kChromeText { 0xffe2e8ef };
-const juce::Colour kFocus { 0xff79b8ff };
-const juce::Colour kTileBackground { 0xff11171d };
 
 void paintIconGlyph(
         juce::Graphics& graphics,
@@ -177,11 +173,14 @@ void WorkspaceDock::paintIconButton(
         juce::Rectangle<float> bounds,
         WorkspaceDockIcon icon,
         bool focused) {
-    graphics.setColour(kChromeBackground);
+    const auto colours = CanvasChromePalette::control(focused
+            ? CanvasChromeControlState::Focused
+            : CanvasChromeControlState::Resting);
+    graphics.setColour(colours.surface);
     graphics.fillRoundedRectangle(bounds, 5.f);
-    graphics.setColour(focused ? kFocus : kChromeBorder);
+    graphics.setColour(colours.border);
     graphics.drawRoundedRectangle(bounds, 5.f, focused ? 2.f : 1.f);
-    graphics.setColour(kChromeText);
+    graphics.setColour(colours.text);
     paintIconGlyph(graphics, bounds, icon);
 }
 
@@ -192,7 +191,7 @@ void WorkspaceDock::paintTileChrome(
         bool selected,
         bool hovered,
         bool focused) {
-    graphics.setColour(kTileBackground);
+    graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRoundedRectangle(tile, 7.f);
 
     const bool active = selected || hovered || focused;
@@ -200,7 +199,7 @@ void WorkspaceDock::paintTileChrome(
     graphics.setColour(border);
     graphics.drawRoundedRectangle(tile, 7.f, active ? 2.f : 1.f);
     if (focused) {
-        graphics.setColour(kFocus.withAlpha(0.9f));
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.9f));
         graphics.drawRoundedRectangle(tile.reduced(3.f), 5.f, 1.f);
     }
 }
@@ -222,14 +221,14 @@ void WorkspaceDock::paintOverflowFeedback(
     const float travel = juce::jmax(0.f, track.getWidth() - thumbWidth);
     const float progress = horizontalOffset / maximumHorizontalOffset;
 
-    graphics.setColour(kChromeBorder.withAlpha(0.35f));
+    graphics.setColour(CanvasChromePalette::border.withAlpha(0.35f));
     graphics.fillRoundedRectangle(track, 1.5f);
-    graphics.setColour(kChromeText.withAlpha(0.62f));
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.62f));
     graphics.fillRoundedRectangle(
             { track.getX() + progress * travel, track.getY(), thumbWidth, track.getHeight() },
             1.5f);
 
-    graphics.setColour(kChromeBackground.withAlpha(0.8f));
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.8f));
     if (horizontalOffset > 0.f) {
         graphics.fillRect(shelf.getX(), shelf.getY() + headerHeight, 6.f,
                 shelf.getHeight() - headerHeight);
@@ -247,19 +246,21 @@ void WorkspaceDock::paintChrome(
         const juce::String& rightSummary,
         bool expanded,
         bool focused) {
-    graphics.setColour(kChromeBorder);
+    graphics.setColour(CanvasChromePalette::border);
     graphics.drawHorizontalLine(
             juce::roundToInt(layout.dock.getY()),
             layout.dock.getX(),
             layout.dock.getRight());
-    graphics.setColour(kChromeBackground);
+    graphics.setColour(CanvasChromePalette::dockSurface);
     graphics.fillRoundedRectangle(layout.collapseHandle, expanded ? 5.f : 7.f);
-    graphics.setColour(focused ? kFocus : kChromeBorder);
+    graphics.setColour(focused
+            ? CanvasChromePalette::focus
+            : CanvasChromePalette::border);
     graphics.drawRoundedRectangle(
             layout.collapseHandle,
             expanded ? 5.f : 7.f,
             focused ? 2.f : 1.f);
-    graphics.setColour(kChromeText);
+    graphics.setColour(CanvasChromePalette::text);
 
     if (!expanded) {
         graphics.setFont(juce::FontOptions(11.f));

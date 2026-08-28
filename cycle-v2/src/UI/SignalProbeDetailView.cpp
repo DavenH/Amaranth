@@ -1,19 +1,17 @@
-#include "UI/SignalProbeDetailView.h"
-
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Util/Arithmetic.h>
 
 #include <utility>
+
+#include "UI/SignalProbeDetailView.h"
+
+#include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
 
 namespace {
 
 const Colour kBackdrop { 0xb0000000 };
-const Colour kPanelBackground { 0xff11171d };
-const Colour kPanelBorder { 0xff526273 };
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
 
 void paintHeader(
         Graphics& graphics,
@@ -25,14 +23,14 @@ void paintHeader(
             header.getX() + 7.f,
             header.getCentreY()
     }));
-    graphics.setColour(kText);
+    graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(16.f));
     graphics.drawText(
             String(state.ordinal),
             header.withTrimmedLeft(20.f),
             Justification::centredLeft);
 
-    graphics.setColour(kMutedText);
+    graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(11.f));
     graphics.drawText(
             String((int) state.resolution) + " samples",
@@ -111,9 +109,9 @@ void SignalProbeDetailView::paint(
     graphics.fillRect(availableContent);
 
     const Rectangle<float> detail = boundsFor(availableContent);
-    graphics.setColour(kPanelBackground);
+    graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRoundedRectangle(detail, 10.f);
-    graphics.setColour(kPanelBorder);
+    graphics.setColour(CanvasChromePalette::border);
     graphics.drawRoundedRectangle(detail, 10.f, 1.5f);
 
     Rectangle<float> content = detail.reduced(14.f);

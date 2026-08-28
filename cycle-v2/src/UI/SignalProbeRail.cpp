@@ -1,24 +1,19 @@
-#include "UI/SignalProbeRail.h"
-
-#include "UI/WorkspaceDock.h"
-#include "Graph/GraphValidator.h"
-
 #include <algorithm>
 #include <limits>
 #include <unordered_map>
+
+#include "UI/SignalProbeRail.h"
+
+#include "Graph/GraphValidator.h"
+#include "UI/CanvasChromePalette.h"
+#include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
 
 namespace {
 
-const Colour kRailBackground { 0xf51a212a };
-const Colour kRailBorder { 0xff445261 };
-const Colour kTileBackground { 0xff11171d };
-const Colour kText { 0xffe2e8ef };
-const Colour kMutedText { 0xff8793a1 };
-
 void paintProbeOrdinal(Graphics& graphics, Rectangle<float> previewBounds, int ordinal) {
-    graphics.setColour(kText.withAlpha(0.86f));
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.86f));
     graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             String(ordinal),
@@ -240,7 +235,7 @@ Colour SignalProbeRail::colourForProbe(
     const NodeSceneEdge* anchor = SignalProbeRail::anchorFor(probe, graph, scene);
     const Edge* edge = anchor == nullptr ? nullptr : graphEdgeFor(graph, anchor->edgeIndex);
     if (edge == nullptr) {
-        return kMutedText;
+        return CanvasChromePalette::mutedText;
     }
 
     const PortDomain domain = edge->isAttachment()
@@ -329,7 +324,7 @@ void SignalProbeRail::paintCableAnnotations(
         }
 
         const Rectangle<float> badge(16.f, 16.f);
-        graphics.setColour(Colour(0xff101318));
+        graphics.setColour(CanvasChromePalette::canvasBackground);
         graphics.fillEllipse(badge.withCentre(marker));
         graphics.setColour(colour);
         graphics.drawEllipse(badge.withCentre(marker), active ? 2.5f : 1.8f);
@@ -357,9 +352,9 @@ void SignalProbeRail::paintRail(
         const SignalProbeRailState& state,
         const WorkspaceDockFocus& focus) {
     const Rectangle<float> rail = boundsFor(workspace, state);
-    graphics.setColour(kRailBackground);
+    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRect(rail);
-    graphics.setColour(kRailBorder);
+    graphics.setColour(CanvasChromePalette::border);
     graphics.drawHorizontalLine(roundToInt(rail.getY()), rail.getX(), rail.getRight());
 
     const auto probes = orderedProbes(graph);
@@ -395,7 +390,7 @@ void SignalProbeRail::paintRail(
             focus.target == WorkspaceDockFocusTarget::SpyMinimize);
 
     const Rectangle<float> header = WorkspaceDock::headerBounds(rail);
-    graphics.setColour(kText);
+    graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             "Spies",
@@ -403,16 +398,18 @@ void SignalProbeRail::paintRail(
             Justification::centredLeft);
 
     const Rectangle<float> refreshMode = refreshModeBoundsFor(workspace, state);
-    graphics.setColour(Colour(0xff26313d));
+    const bool refreshFocused = focus.target == WorkspaceDockFocusTarget::SpyRefresh;
+    const auto refreshColours = CanvasChromePalette::control(refreshFocused
+            ? CanvasChromeControlState::Focused
+            : CanvasChromeControlState::Resting);
+    graphics.setColour(refreshColours.surface);
     graphics.fillRoundedRectangle(refreshMode, 5.f);
-    graphics.setColour(focus.target == WorkspaceDockFocusTarget::SpyRefresh
-            ? Colour(0xff79b8ff)
-            : kRailBorder);
+    graphics.setColour(refreshColours.border);
     graphics.drawRoundedRectangle(
             refreshMode,
             5.f,
-            focus.target == WorkspaceDockFocusTarget::SpyRefresh ? 2.f : 1.f);
-    graphics.setColour(kText);
+            refreshFocused ? 2.f : 1.f);
+    graphics.setColour(refreshColours.text);
     graphics.setFont(FontOptions(12.f));
     graphics.drawText(
             state.refreshMode == ProbeRefreshMode::LiveLatest ? "Live" : "On Release",
@@ -421,11 +418,11 @@ void SignalProbeRail::paintRail(
 
     if (probes.empty()) {
         const Rectangle<float> vacancy = WorkspaceDock::vacancyBounds(rail);
-        graphics.setColour(kTileBackground);
+        graphics.setColour(CanvasChromePalette::insetBackground);
         graphics.fillRoundedRectangle(vacancy, 7.f);
-        graphics.setColour(kRailBorder.withAlpha(0.75f));
+        graphics.setColour(CanvasChromePalette::border.withAlpha(0.75f));
         graphics.drawRoundedRectangle(vacancy, 7.f, 1.f);
-        graphics.setColour(kMutedText);
+        graphics.setColour(CanvasChromePalette::mutedText);
         graphics.setFont(FontOptions(12.f));
         graphics.drawText("No spies", vacancy.reduced(14.f), Justification::centredLeft);
         return;
@@ -439,7 +436,7 @@ void SignalProbeRail::paintRail(
         const auto* preview = previewFor(previews, probe.id);
         const Colour colour = preview != nullptr && preview->connected
                 ? colourForDomain(preview->domain)
-                : kMutedText;
+                : CanvasChromePalette::mutedText;
         const bool selected = probe.id == state.selectedProbeId;
         const bool hovered = probe.id == state.hoveredProbeId;
         const bool focused = focus.target == WorkspaceDockFocusTarget::SpyTile
@@ -454,7 +451,7 @@ void SignalProbeRail::paintRail(
 
         const Rectangle<float> previewBounds = tile.reduced(7.f);
         if (preview == nullptr || !preview->connected) {
-            graphics.setColour(kMutedText);
+            graphics.setColour(CanvasChromePalette::mutedText);
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
             paintProbeOrdinal(graphics, previewBounds, index + 1);
             continue;

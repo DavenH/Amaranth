@@ -1,6 +1,8 @@
+#include <cmath>
+
 #include "UI/NodeCanvasGlRenderer.h"
 
-#include <cmath>
+#include "UI/CanvasChromePalette.h"
 
 using namespace juce;
 namespace gl = juce::gl;
@@ -9,9 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-const Colour kBackground  { 0xff101318 };
-const Colour kGridMajor   { 0x365b6370 };
-const Colour kGridMinor   { 0x1b2f36ff };
 const Colour kTopGlow     { 0x18162531 };
 const Colour kBottomGlow  { 0x00162531 };
 
@@ -74,10 +73,10 @@ void NodeCanvasGlRenderer::renderBackground(
     const float minorStep = 32.f * zoom;
     const float majorStep = minorStep * 4.f;
 
-    setColour(kBackground);
+    setColour(CanvasChromePalette::canvasBackground);
     fillRect(bounds);
-    drawGridLines(bounds, pan, minorStep, kGridMinor);
-    drawGridLines(bounds, pan, majorStep, kGridMajor);
+    drawGridLines(bounds, pan, minorStep, CanvasChromePalette::gridMinor);
+    drawGridLines(bounds, pan, majorStep, CanvasChromePalette::gridMajor);
 
     gl::glBegin(gl::GL_QUADS);
     setColour(kTopGlow);
@@ -153,7 +152,11 @@ void NodeCanvasGlRenderer::renderCable(
     }
 
     const float endpointRadius = (selected ? 7.f : 5.5f) * cableScale;
-    drawCircle(source, endpointRadius, kBackground.withAlpha(0.92f), true);
+    drawCircle(
+            source,
+            endpointRadius,
+            CanvasChromePalette::canvasBackground.withAlpha(0.92f),
+            true);
     drawCircle(source, endpointRadius, colour.withAlpha(0.96f), false);
 
     if (drawDestEndpoint) {
