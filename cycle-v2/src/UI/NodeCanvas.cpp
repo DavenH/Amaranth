@@ -647,6 +647,9 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         spliceTargetEdgeIndex = nodeDrag->moved
                 ? hitRouter.spliceTargetEdgeAt(scene, event.position, nodeDrag->nodeId)
                 : -1;
+        if (nodeDrag->moved && kUseGlCanvasUnderlay) {
+            openGLContext.triggerRepaint();
+        }
     }
 
     requestCanvasRepaint();

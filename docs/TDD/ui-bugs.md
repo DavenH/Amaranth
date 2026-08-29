@@ -1,5 +1,22 @@
 # UI Bug Notes
 
+## Fixed: Canvas overlay faded while dragging nodes
+
+Context:
+
+- Node drags repainted the JUCE node/cable overlay without explicitly updating
+  the OpenGL canvas underlay. Live composition could therefore present the
+  whole overlay at greatly reduced opacity until mouse-up caused another GL
+  frame.
+- Node movement now requests the GL underlay frame alongside its JUCE repaint.
+  A native held-drag capture preserved fully opaque node shells and cable cores;
+  the measured gesture delivered 14 GL renders for 8 JUCE paints, with GL
+  renders averaging 0.59 ms.
+- The native authoring sequence now asserts this synchronization contract while
+  the drag is still held.
+
+Current status: fixed on 2026-08-29.
+
 ## Open: Palette icon registry asserts during Trimesh performance session
 
 Context:
