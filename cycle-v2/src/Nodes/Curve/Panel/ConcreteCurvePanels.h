@@ -32,6 +32,7 @@ public:
     virtual void refreshRasterizer() = 0;
     virtual void updateZoomBounds(bool resetView) = 0;
     virtual var automationState() const = 0;
+    virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const { return {}; }
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
     virtual bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) = 0;
 };

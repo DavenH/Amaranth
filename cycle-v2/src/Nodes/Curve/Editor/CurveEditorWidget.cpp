@@ -164,6 +164,10 @@ var CurveEditorWidget::automationState() const {
     return controller->automationState();
 }
 
+std::vector<CurvePanelGridLine> CurveEditorWidget::verticalMajorGridLines() const {
+    return controller->verticalMajorGridLines();
+}
+
 std::vector<CurvePreviewVertex> CurveEditorWidget::previewVertices() {
     return controller->previewVertices();
 }

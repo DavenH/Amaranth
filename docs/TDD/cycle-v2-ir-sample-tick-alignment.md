@@ -1,6 +1,6 @@
 # Cycle V2 IR Sample Tick Alignment
 
-Status: Implemented (2026-08-28)
+Status: Implemented (zoom-aware correction, 2026-08-29)
 
 ## Objective
 
@@ -22,6 +22,20 @@ tick, and the final label can extend beyond the panel.
 The padding literal is independently repeated by panel rendering, default-model
 construction, panel adaptation, imported-audio modelling, DSP configuration,
 and compact preview framing. That duplication is the source of truth failure.
+
+The first implementation corrected the domain origin but still positioned five
+fixed quarter-sample ticks directly in editor pixel space. The mature panel
+does not display the complete normalized domain one-to-one: its `ZoomRect`
+transforms domain coordinates before drawing both the curve and grid. At the
+default IR view, domain x `0.0625` is therefore about 3.33 percent across the
+panel, not 6.25 percent. Applying the domain padding as a pixel fraction made
+the visible zero offset approximately twice as large as the rendered grid
+offset. Fixed quarter positions also cannot remain aligned after zoom.
+
+Cycle 1's authoritative `IrModellerUI::createScales` and `drawScales` derive
+labels from `vertMajorLines`, convert each grid-domain coordinate to a sample
+value, and position it with the panel's `sx()` transform. Cycle V2 must preserve
+that behavior through the existing panel/controller boundary.
 
 The current visual reference is `/private/tmp/cycle-v2-ir-hertz-readout.png`.
 
@@ -46,12 +60,21 @@ The current visual reference is `/private/tmp/cycle-v2-ir-hertz-readout.png`.
    preparation, DSP configuration, compact preview framing, and panel adapter.
 5. Centre labels on interior ticks and clamp edge labels inside the panel, then
    compare a native IR editor capture before and after.
+6. Expose the panel's rendered vertical major-grid landmarks through the narrow
+   curve-panel/controller boundary.
+7. Replace the fixed five-tick ruler with labels derived from those landmarks,
+   using their zoom-transformed panel positions and the shared IR domain/sample
+   mapping.
+8. Add regression assertions for the default transformed zero position and for
+   exact equality between every ruler tick and rendered major-grid line.
 
 ## Negative Boundaries
 
 - Do not change the curve, impulse samples, interpolation, rasterizer,
   oversampling, convolution, model topology, or audio-resource workflow.
 - Do not compensate with a pixel offset or infer padding from current bounds.
+- Do not duplicate the panel's zoom transform or independently reconstruct its
+  major-grid spacing in the editor.
 - Do not change vertical geometry, tick count, labels, sample values, control
   layout, plot size, or interaction hit bounds.
 - Do not introduce a UI-owned copy of DSP domain geometry.
@@ -75,6 +98,8 @@ The current visual reference is `/private/tmp/cycle-v2-ir-hertz-readout.png`.
 ## Completion Criteria
 
 - Sample ticks and plot boundaries consume one shared mapping.
+- Ruler ticks consume the exact major-grid positions produced by the panel and
+  remain aligned when its zoom rectangle changes.
 - All production IR domain-padding copies are removed.
 - Audio and curve behavior remain unchanged.
 - Focused tests, automation, screenshot review, standalone build, full suite,
@@ -109,3 +134,37 @@ The current visual reference is `/private/tmp/cycle-v2-ir-hertz-readout.png`.
 - `git diff --check`, line-length review, include review, hot-loop review, and
   production-diff review pass. `clang-tidy` is unavailable. Existing scalar
   finiteness checks in touched files remain outside per-sample hot loops.
+
+### Zoom-aware correction (2026-08-29)
+
+- The fixed five-tick editor ruler was removed. The curve panel now exposes its
+  actual vertical major-grid landmarks as domain coordinates and
+  zoom-transformed panel-local x positions through the existing read-only
+  panel/controller/widget boundary.
+- The IR editor derives sample values from those grid-domain coordinates using
+  the shared inverse IR mapping and uses the exact transformed x positions for
+  paint and automation. One shared landmark builder owns both paths.
+- At the default 504-pixel panel width, sample zero now resolves to local x
+  `16.8`, or 3.33 percent of the visible panel, matching `Panel::sx(0.0625)`.
+  The former editor-space calculation placed it at 31.5 pixels, exactly the
+  doubled offset reported in production review.
+- The focused editor test compares every ruler x coordinate with the panel's
+  rendered major-grid x coordinate and passes 74 assertions. IR domain tests
+  pass 359 assertions, including the forward and inverse sample mapping. The
+  wider node-editor-host contract passes 215 assertions across nine cases.
+- The default-view fixture passes six commands and is reviewed at
+  `/private/tmp/cycle-v2-ir-ticks-zoom-aware.png`. The focused wheel-zoom
+  fixture passes all six commands, proves the real panel zoom changes from
+  width `0.9375` to less than that value, and is reviewed at
+  `/private/tmp/cycle-v2-ir-ticks-zoomed.png`; its visible `29, 58, 86…` labels
+  remain directly beneath the transformed major grid.
+- Production changes add 108 and remove 37 lines. The largest changed
+  production file is the domain-owned IR editor at 66 additions and 36
+  removals; the shared panel path adds only a two-float grid-landmark value and
+  read-only forwarding. It adds no node-kind branch, graph mutation, renderer,
+  DSP algorithm, or compatibility adapter.
+- The standalone Cycle V2 target builds successfully with `--parallel 10`.
+  The complete Cycle V2 suite runs 538 cases: 537 pass, and the sole failure is
+  the pre-existing `TestNodeCanvasHitRouter.cpp:66` edge-help assertion. `git
+  diff --check`, line-length review, hot-loop review, style review, and
+  production-diff review pass; `clang-tidy` remains unavailable.

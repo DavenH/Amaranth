@@ -41,6 +41,7 @@ public:
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
     virtual var automationState() const = 0;
+    virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const = 0;
     virtual std::vector<CurvePreviewVertex> previewVertices() = 0;
     virtual String serializedMeshState() = 0;
     virtual NodeModelStatePtr modelPublication() = 0;

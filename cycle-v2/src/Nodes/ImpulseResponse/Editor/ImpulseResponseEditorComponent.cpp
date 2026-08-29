@@ -24,6 +24,13 @@ constexpr float kSampleLabelWidth = 56.f;
 constexpr float kSampleLabelHeight = 14.f;
 constexpr double kReferenceSampleRate = 44100.0;
 
+struct SampleLandmark {
+    float fraction {};
+    int sample {};
+    float x {};
+    Rectangle<float> labelBounds;
+};
+
 std::optional<double> parseNumber(String text) {
     text = text.trim();
     if (text.isEmpty()) {
@@ -160,46 +167,60 @@ void configureHighPassControl(LabeledParameterSlider& control) {
     });
 }
 
-float sampleTickX(Rectangle<float> panel, float sampleFraction) {
-    return panel.getX()
-            + panel.getWidth() * CycleDsp::irSampleDomainPosition(sampleFraction);
-}
-
-Rectangle<float> sampleTickLabelBounds(Rectangle<float> panel, float tickX) {
-    const float width = jmin(kSampleLabelWidth, panel.getWidth());
+Rectangle<float> sampleTickLabelBounds(
+        Rectangle<float> panel,
+        Rectangle<float> labelLimits,
+        float tickX) {
+    const float width = jmin(kSampleLabelWidth, labelLimits.getWidth());
     const float x = jlimit(
-            panel.getX(),
-            panel.getRight() - width,
+            labelLimits.getX(),
+            labelLimits.getRight() - width,
             tickX - width * 0.5f);
     return { x, panel.getBottom() + 5.f, width, kSampleLabelHeight };
 }
 
 Justification sampleTickLabelJustification(
-        Rectangle<float> panel,
+        Rectangle<float> labelBounds,
         float tickX,
         float labelWidth) {
-    if (tickX - labelWidth * 0.5f < panel.getX()) {
+    if (labelBounds.getX() > tickX - labelWidth * 0.5f) {
         return Justification::centredLeft;
     }
-    if (tickX + labelWidth * 0.5f > panel.getRight()) {
+    if (labelBounds.getRight() < tickX + labelWidth * 0.5f) {
         return Justification::centredRight;
     }
     return Justification::centred;
 }
 
-Array<var> sampleLandmarks(int sampleCount, Rectangle<float> panel) {
+std::vector<SampleLandmark> buildSampleLandmarks(
+        int sampleCount,
+        Rectangle<float> panel,
+        Rectangle<float> labelLimits,
+        const std::vector<CurvePanelGridLine>& gridLines) {
+    std::vector<SampleLandmark> result;
+    result.reserve(gridLines.size());
+    for (const auto& gridLine : gridLines) {
+        const float fraction = jlimit(
+                0.f,
+                1.f,
+                CycleDsp::irSampleFractionAtDomainPosition(gridLine.domainX));
+        const float tickX = panel.getX() + gridLine.panelX;
+        const Rectangle<float> label = sampleTickLabelBounds(panel, labelLimits, tickX);
+        result.push_back({ fraction, roundToInt(sampleCount * fraction), tickX, label });
+    }
+    return result;
+}
+
+Array<var> sampleLandmarkAutomation(const std::vector<SampleLandmark>& landmarks) {
     Array<var> result;
-    for (int numerator : { 0, 1, 2, 3, 4 }) {
-        const float fraction = numerator / 4.f;
-        const float tickX = sampleTickX(panel, fraction);
-        const Rectangle<float> label = sampleTickLabelBounds(panel, tickX);
-        auto* landmark = new DynamicObject();
-        landmark->setProperty("fraction", fraction);
-        landmark->setProperty("sample", roundToInt(sampleCount * numerator / 4.0));
-        landmark->setProperty("x", tickX);
-        landmark->setProperty("labelX", label.getX());
-        landmark->setProperty("labelWidth", label.getWidth());
-        result.add(var(landmark));
+    for (const auto& landmark : landmarks) {
+        auto* encoded = new DynamicObject();
+        encoded->setProperty("fraction", landmark.fraction);
+        encoded->setProperty("sample", landmark.sample);
+        encoded->setProperty("x", landmark.x);
+        encoded->setProperty("labelX", landmark.labelBounds.getX());
+        encoded->setProperty("labelWidth", landmark.labelBounds.getWidth());
+        result.add(var(encoded));
     }
     return result;
 }
@@ -294,16 +315,23 @@ void ImpulseResponseEditorComponent::paintEditor(Graphics& graphics) {
     const int sampleCount = CycleDsp::irImpulseLength(impl->size.slider.getValue());
     graphics.setColour(Colour(0xff8793a1));
     graphics.setFont(FontOptions(10.f));
-    for (int numerator : { 0, 1, 2, 3, 4 }) {
-        const float fraction = numerator / 4.f;
-        const float x = sampleTickX(panel, fraction);
-        graphics.drawVerticalLine(roundToInt(x), panel.getBottom(), panel.getBottom() + 4.f);
-        const String label(sampleCount * numerator / 4);
-        const Rectangle<float> labelBounds = sampleTickLabelBounds(panel, x);
+    const auto landmarks = buildSampleLandmarks(
+            sampleCount,
+            panel,
+            getLocalBounds().toFloat(),
+            widget.verticalMajorGridLines());
+    for (const auto& landmark : landmarks) {
+        graphics.drawVerticalLine(
+                roundToInt(landmark.x),
+                panel.getBottom(),
+                panel.getBottom() + 4.f);
         graphics.drawText(
-                label,
-                labelBounds,
-                sampleTickLabelJustification(panel, x, labelBounds.getWidth()));
+                String(landmark.sample),
+                landmark.labelBounds,
+                sampleTickLabelJustification(
+                        landmark.labelBounds,
+                        landmark.x,
+                        landmark.labelBounds.getWidth()));
     }
 }
 
@@ -459,9 +487,11 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));
     state.setProperty(
             "landmarks",
-            sampleLandmarks(
-                    CycleDsp::irImpulseLength(impl->size.slider.getValue()),
-                    editorPanelBounds()));
+            sampleLandmarkAutomation(buildSampleLandmarks(
+                CycleDsp::irImpulseLength(impl->size.slider.getValue()),
+                editorPanelBounds(),
+                getLocalBounds().toFloat(),
+                widget.verticalMajorGridLines())));
     const auto summary = audioResourceSummary();
     state.setProperty("resourceActionsAvailable", true);
     state.setProperty("resourceBusy", impl->busy);

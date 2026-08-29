@@ -24,6 +24,11 @@ TEST_CASE("IR sample fractions begin after the pre-impulse domain", "[cycle-dsp]
     REQUIRE(CycleDsp::irSampleDomainPosition(0.5f) == Catch::Approx(0.53125f));
     REQUIRE(CycleDsp::irSampleDomainPosition(0.75f) == Catch::Approx(0.765625f));
     REQUIRE(CycleDsp::irSampleDomainPosition(1.f) == Catch::Approx(1.f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.0625f) == Catch::Approx(0.f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.296875f) == Catch::Approx(0.25f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.53125f) == Catch::Approx(0.5f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.765625f) == Catch::Approx(0.75f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(1.f) == Catch::Approx(1.f));
 }
 
 TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp][ir]") {

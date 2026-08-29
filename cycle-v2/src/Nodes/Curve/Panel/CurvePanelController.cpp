@@ -89,6 +89,12 @@ public:
         return state;
     }
 
+    std::vector<CurvePanelGridLine> verticalMajorGridLines() const override {
+        return panel != nullptr
+                ? panel->verticalMajorGridLines()
+                : std::vector<CurvePanelGridLine>();
+    }
+
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision) override {
         publicationRevision = jmax(publicationRevision, currentRevision + 1);
         return modelPublication();

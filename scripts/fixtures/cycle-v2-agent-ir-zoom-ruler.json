@@ -1,0 +1,40 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "targetId": "expanded:ir.panel2D",
+      "targetX": 0.5,
+      "targetY": 0.5,
+      "deltaX": 0.0,
+      "deltaY": 0.2
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.zoom.w",
+      "op": "lessThan",
+      "value": 0.9375
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.0.sample",
+      "equals": 0
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

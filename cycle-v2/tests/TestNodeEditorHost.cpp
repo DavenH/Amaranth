@@ -1210,15 +1210,30 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     }
     const Array<var>* landmarks = state.getProperty("landmarks", {}).getArray();
     REQUIRE(landmarks != nullptr);
-    REQUIRE(landmarks->size() == 5);
+    const var panelState = state.getProperty("panelState", {});
+    const Array<var>* majorGridLines = panelState
+            .getProperty("verticalMajorGridLines", {})
+            .getArray();
+    REQUIRE(majorGridLines != nullptr);
+    REQUIRE(landmarks->size() == majorGridLines->size());
+    REQUIRE(landmarks->size() > 5);
     REQUIRE((int) landmarks->getFirst().getProperty("sample", {}) == 0);
-    REQUIRE((int) landmarks->getLast().getProperty("sample", {}) == 1024);
     const double panelX = panel.getProperty("x", {});
     const double panelWidth = panel.getProperty("width", {});
+    const var zoom = panelState.getProperty("zoom", {});
+    const double expectedZeroX = panelX + panelWidth
+            * (CycleDsp::irDomainPadding
+                    - static_cast<double>(zoom.getProperty("x", {})))
+            / static_cast<double>(zoom.getProperty("w", {}));
     REQUIRE(static_cast<double>(landmarks->getFirst().getProperty("x", {}))
-            == Catch::Approx(panelX + panelWidth * CycleDsp::irDomainPadding));
-    REQUIRE(static_cast<double>(landmarks->getLast().getProperty("x", {}))
-            == Catch::Approx(panelX + panelWidth));
+            == Catch::Approx(expectedZeroX));
+    for (int index = 0; index < landmarks->size(); ++index) {
+        REQUIRE(static_cast<double>((*landmarks)[index].getProperty("x", {}))
+                == Catch::Approx(
+                        panelX
+                        + static_cast<double>((*majorGridLines)[index]
+                                .getProperty("panelX", {}))));
+    }
     const var firstLandmark = landmarks->getFirst();
     const var lastLandmark = landmarks->getLast();
     REQUIRE(static_cast<double>(firstLandmark.getProperty("labelX", {}))
@@ -1226,7 +1241,7 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
             == Catch::Approx(static_cast<double>(firstLandmark.getProperty("x", {}))));
     REQUIRE(static_cast<double>(lastLandmark.getProperty("labelX", {}))
                     + static_cast<double>(lastLandmark.getProperty("labelWidth", {}))
-            == Catch::Approx(panelX + panelWidth));
+            <= panelX + panelWidth + 0.001);
     REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
     REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
     REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");

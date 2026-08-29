@@ -219,6 +219,18 @@ public:
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         return var(root);
     }
+    std::vector<CurvePanelGridLine> verticalMajorGridLines() const override {
+        std::vector<CurvePanelGridLine> result;
+        if (zoomPanel == nullptr || zoomPanel->rect.w <= 0.f) {
+            return result;
+        }
+        result.reserve((size_t) vertMajorLines.size());
+        for (int index = 0; index < vertMajorLines.size(); ++index) {
+            const float domainX = vertMajorLines[index];
+            result.push_back({ domainX, sx(domainX) });
+        }
+        return result;
+    }
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const override {
         const auto& selected = const_cast<FlatCurvePanelBase*>(this)->getSelected();
         const Vertex* vertex = !selected.empty() ? selected.front() : firstEditableVertex();
@@ -320,6 +332,14 @@ private:
             zoom->setProperty("yMaximum", zoomPanel->rect.yMaximum);
             root.setProperty("zoom", var(zoom));
         }
+        Array<var> majorGridLines;
+        for (const auto& line : verticalMajorGridLines()) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("domainX", line.domainX);
+            encoded->setProperty("panelX", line.panelX);
+            majorGridLines.add(var(encoded));
+        }
+        root.setProperty("verticalMajorGridLines", majorGridLines);
         if (state.currentVertex != nullptr) {
             auto* vertex = new DynamicObject();
             vertex->setProperty("x", state.currentVertex->values[Vertex::Phase]);
