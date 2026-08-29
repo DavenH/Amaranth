@@ -1,5 +1,6 @@
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 
+#include <Binary/Gradients.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -11,8 +12,10 @@
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/CurvePanelDrawing.h>
 #include <UI/Panels/Panel2D.h>
+#include <UI/ColorGradient.h>
 #include <Util/Arithmetic.h>
 
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 
 #include <algorithm>
@@ -428,18 +431,101 @@ public:
             FlatCurvePanelBase(
                     repo, "CycleV2ImpulseResponsePanel", mesh,
                     CycleDsp::irDomainPadding, true, false)
-        ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {}
+        ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {
+        Image image = PNGImageFormat::loadFrom(
+                Gradients::burntalum_png, Gradients::burntalum_pngSize);
+        gradient.read(image, false, true);
+        gradient.multiplyAlpha(0.4f);
+    }
+
+    void setImpulseResponseAnalysis(
+            std::shared_ptr<const ImpulseResponseAnalysis> nextAnalysis) override {
+        analysis = std::move(nextAnalysis);
+        spectrumColours.clear();
+        if (analysis == nullptr) {
+            return;
+        }
+
+        const auto& gradientColours = gradient.getColours();
+        spectrumColours.reserve(analysis->normalizedMagnitudes.size());
+        for (float magnitude : analysis->normalizedMagnitudes) {
+            const int index = jlimit(
+                    0,
+                    (int) gradientColours.size() - 1,
+                    (int) (magnitude * (float) (gradientColours.size() - 1)));
+            spectrumColours.push_back(gradientColours[(size_t) index]);
+        }
+        xBuffer.ensureSize((int) analysis->filteredImpulse.size());
+        yBuffer.ensureSize(jmax(
+                (int) analysis->filteredImpulse.size(),
+                (int) analysis->frequencyRows.size()));
+        spliceBuffer.ensureSize((int) analysis->filteredImpulse.size() * 2);
+    }
 
     void preDraw() override {
         auto canvas = drawingCanvas();
         CurvePanelDrawing::drawImpulseResponseBackground(
                 canvas, CycleDsp::irDomainPadding);
+        if (analysis == nullptr) {
+            return;
+        }
+
+        const int spectrumSize = (int) analysis->frequencyRows.size();
+        if (spectrumSize > 0 && spectrumColours.size() == (size_t) spectrumSize) {
+            Buffer<float> yScale = yBuffer.withSize(spectrumSize);
+            VecOps::copy(analysis->frequencyRows.data(), yScale.get(), spectrumSize);
+            applyNoZoomScaleY(yScale);
+            gfx->drawVerticalGradient(
+                    sx(CycleDsp::irDomainPadding),
+                    sx(1.f),
+                    yScale,
+                    spectrumColours);
+        }
+
+        const int impulseSize = (int) analysis->filteredImpulse.size();
+        if (impulseSize > 0) {
+            prepareBuffers(impulseSize);
+            VecOps::copy(analysis->filteredImpulse.data(), xy.y.get(), impulseSize);
+            Arithmetic::unpolarize(xy.y);
+            xy.x.ramp(
+                    CycleDsp::irDomainPadding,
+                    (1.f - CycleDsp::irDomainPadding) / (float) impulseSize);
+            gfx->enableSmoothing();
+            gfx->setCurrentLineWidth(1.5f);
+            gfx->setCurrentColour(1.f, 0.62f, 0.7f, 0.75f);
+            gfx->drawLineStrip(xy, true, true);
+            gfx->setCurrentLineWidth(1.f);
+        }
     }
     void postCurveDraw() override {
         auto canvas = drawingCanvas();
         CurvePanelDrawing::drawImpulseResponseBounds(
                 canvas, CycleDsp::irDomainPadding);
     }
+
+    var automationState() const override {
+        var state = FlatCurvePanelBase::automationState();
+        if (auto* object = state.getDynamicObject()) {
+            object->setProperty(
+                    "irSpectrumPointCount",
+                    analysis != nullptr ? (int) analysis->normalizedMagnitudes.size() : 0);
+            object->setProperty(
+                    "irFilteredImpulsePointCount",
+                    analysis != nullptr ? (int) analysis->filteredImpulse.size() : 0);
+            object->setProperty(
+                    "irFilteredImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredImpulse.empty()
+                            ? analysis->filteredImpulse.front()
+                            : 0.f);
+            object->setProperty("irBackdropRenderer", "OpenGL");
+        }
+        return state;
+    }
+
+private:
+    ColorGradient gradient;
+    std::shared_ptr<const ImpulseResponseAnalysis> analysis;
+    std::vector<Color> spectrumColours;
 };
 
 std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(

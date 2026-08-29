@@ -79,6 +79,14 @@ void CurveEditorWidget::resetEnvelopeVerticalRange() {
     }
 }
 
+void CurveEditorWidget::setImpulseResponseAudioResource(
+        const AudioSampleResource* resource) {
+    if (auto* impulseResponse =
+            dynamic_cast<ImpulseResponseCurvePanelController*>(controller.get())) {
+        impulseResponse->setAudioResource(resource);
+    }
+}
+
 void CurveEditorWidget::syncFromNode(const Node& node) {
     if (guideResource || node.kind != kind) {
         return;

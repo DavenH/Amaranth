@@ -19,6 +19,7 @@ class Vertex;
 namespace CycleV2 {
 
 class TrimeshPanelEnvironment;
+struct ImpulseResponseAnalysis;
 
 class CurvePanel {
 public:
@@ -41,6 +42,8 @@ class FlatCurvePanelContract : public CurvePanel {
 public:
     virtual Vertex* selectedFlatVertexForModel() = 0;
     virtual void restoreFlatSelection(Vertex* vertex) = 0;
+    virtual void setImpulseResponseAnalysis(
+            std::shared_ptr<const ImpulseResponseAnalysis>) {}
 };
 
 class EnvelopeCurvePanelContract : public CurvePanel {

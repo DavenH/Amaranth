@@ -1,11 +1,15 @@
 #include "Nodes/Curve/Panel/CurvePanelController.h"
 
+#include <optional>
+
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 
 namespace CycleV2 {
 
@@ -231,7 +235,7 @@ private:
     bool editChanged {};
 };
 
-class FlatPanelController final : public CurvePanelControllerBase {
+class FlatPanelController : public CurvePanelControllerBase {
 public:
     explicit FlatPanelController(NodeKind kindToUse) :
             adapter(kindToUse) {
@@ -250,6 +254,7 @@ public:
     }
 
     void syncFromNode(const Node& node) override {
+        beforeNodeSync(node);
         if (!adapter.needsNodeSync(node)) {
             return;
         }
@@ -293,6 +298,9 @@ public:
         return publication;
     }
 
+protected:
+    virtual void beforeNodeSync(const Node&) {}
+
 private:
     void finishGuideSync(const GuideCurveResource& guide) {
         publicationRevision = guide.model != nullptr ? guide.model->revision() : 1;
@@ -324,6 +332,79 @@ private:
     }
 
     FlatCurvePanelAdapter adapter;
+};
+
+class ImpulseResponsePanelController final :
+        public FlatPanelController,
+        public ImpulseResponseCurvePanelController {
+public:
+    ImpulseResponsePanelController() :
+            FlatPanelController(NodeKind::ImpulseResponse) {}
+
+    void setAudioResource(const AudioSampleResource* resource) override {
+        if (audioResourcesEqual(audioResource, resource)) {
+            return;
+        }
+        audioResource = resource != nullptr
+                ? std::optional<AudioSampleResource>(*resource)
+                : std::nullopt;
+        ++audioResourceRevision;
+        updateAnalysis();
+    }
+
+protected:
+    void beforeNodeSync(const Node& node) override {
+        currentNode = node;
+        updateAnalysis();
+    }
+
+private:
+    void updateAnalysis() {
+        if (!currentNode.has_value()) {
+            return;
+        }
+        const String signature = analysisSignature();
+        if (signature == preparedAnalysisSignature) {
+            return;
+        }
+        auto analysis = prepareImpulseResponseAnalysis(
+                currentNode->parameters,
+                currentNode->model,
+                audioResource.has_value() ? &*audioResource : nullptr);
+        static_cast<FlatCurvePanelContract&>(*panel).setImpulseResponseAnalysis(
+                analysis.has_value()
+                        ? std::make_shared<const ImpulseResponseAnalysis>(std::move(*analysis))
+                        : nullptr);
+        preparedAnalysisSignature = signature;
+    }
+
+    String analysisSignature() const {
+        const NodeParameterMap parameterMap(currentNode->parameters);
+        const uint64_t modelRevision = currentNode->model != nullptr
+                ? currentNode->model->revision()
+                : 0;
+        return String(parameterMap.floatValue("size", 0.5f), 9)
+                + ":" + String(parameterMap.floatValue("highPass", 0.5f), 9)
+                + ":" + String((int64) modelRevision)
+                + ":" + String((int64) audioResourceRevision);
+    }
+
+    static bool audioResourcesEqual(
+            const std::optional<AudioSampleResource>& current,
+            const AudioSampleResource* next) {
+        if (!current.has_value() || next == nullptr) {
+            return !current.has_value() && next == nullptr;
+        }
+        return current->id == next->id
+                && current->name == next->name
+                && current->sampleRate == next->sampleRate
+                && current->samples == next->samples;
+    }
+
+    std::optional<Node> currentNode;
+    std::optional<AudioSampleResource> audioResource;
+    String preparedAnalysisSignature;
+    uint64_t audioResourceRevision {};
 };
 
 class EnvelopePanelController final : public CurvePanelControllerBase,
@@ -468,8 +549,10 @@ std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind) 
     if (kind == NodeKind::Envelope) {
         return std::make_unique<EnvelopePanelController>();
     }
-    if (kind == NodeKind::ImpulseResponse
-            || kind == NodeKind::Waveshaper) {
+    if (kind == NodeKind::ImpulseResponse) {
+        return std::make_unique<ImpulseResponsePanelController>();
+    }
+    if (kind == NodeKind::Waveshaper) {
         return std::make_unique<FlatPanelController>(kind);
     }
     return nullptr;

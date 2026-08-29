@@ -122,7 +122,7 @@ void NodeCanvasEditorCoordinator::renderOpenGL(float scaleFactor) {
 void NodeCanvasEditorCoordinator::syncEffectNodes(const NodeGraph& graph) {
     for (const auto& node : graph.getNodes()) {
         if (hasCurveModel(node)) {
-            resources.curveEditorWidget(node).syncFromNode(node);
+            resources.syncCurveEditorWidget(node);
         }
     }
 }

@@ -24,6 +24,7 @@ public:
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
+    void setImpulseResponseAudioResource(const AudioSampleResource* resource);
     void syncFromNode(const Node& node);
     void syncFromGuideResource(const GuideCurveResource& guide);
     void renderExpandedPanelOpenGL(

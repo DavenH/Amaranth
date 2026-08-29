@@ -33,6 +33,7 @@ public:
     TrimeshWidget* findTrimeshWidget(const String& nodeId);
     void setGraph(const NodeGraph* graphToUse) { graph = graphToUse; }
     CurveEditorWidget& curveEditorWidget(const Node& node);
+    void syncCurveEditorWidget(const Node& node);
     CachedNodePreviewSprite& cachedSprite(const String& nodeId);
 
     const TrimeshWidget* findTrimeshWidget(const String& nodeId) const;

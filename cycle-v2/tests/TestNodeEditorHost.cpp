@@ -11,6 +11,7 @@
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -1211,6 +1212,12 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     const Array<var>* landmarks = state.getProperty("landmarks", {}).getArray();
     REQUIRE(landmarks != nullptr);
     const var panelState = state.getProperty("panelState", {});
+    REQUIRE(static_cast<int>(panelState.getProperty("irSpectrumPointCount", {})) > 0);
+    REQUIRE(static_cast<int>(panelState.getProperty("irFilteredImpulsePointCount", {}))
+            == 1024);
+    REQUIRE(panelState.getProperty("irBackdropRenderer", {}).toString() == "OpenGL");
+    const float modelledFirstSample = panelState.getProperty(
+            "irFilteredImpulseFirstSample", {});
     const Array<var>* majorGridLines = panelState
             .getProperty("verticalMajorGridLines", {})
             .getArray();
@@ -1263,6 +1270,22 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(modelAudio->getButtonText() == "Model");
     REQUIRE(unloadAudio->getButtonText() == "Unload");
     REQUIRE(loadAudio->getWantsKeyboardFocus());
+
+    AudioSampleResource resource { "direct", "Direct.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+    widget.setImpulseResponseAudioResource(&resource);
+    const var directPanelState = editor.automationState()
+            .getProperty("panelState", {});
+    const auto directAnalysis = prepareImpulseResponseAnalysis(
+            ir.parameters, ir.model, &resource);
+    REQUIRE(directAnalysis.has_value());
+    REQUIRE(static_cast<float>(directPanelState.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            == Catch::Approx(directAnalysis->filteredImpulse.front()));
+    REQUIRE(static_cast<float>(directPanelState.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            != Catch::Approx(modelledFirstSample));
     REQUIRE(modelAudio->getWantsKeyboardFocus());
     REQUIRE_FALSE(unloadAudio->isEnabled());
     REQUIRE(loadAudio->getHeight() == 24);

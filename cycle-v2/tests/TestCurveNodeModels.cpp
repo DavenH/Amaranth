@@ -11,6 +11,7 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
@@ -700,6 +701,45 @@ TEST_CASE("Direct IR resources reach configuration preparation and its cache key
     REQUIRE(directKey != curveKey);
     REQUIRE(directKey.contains("audio-1:direct"));
     REQUIRE(directConfiguration->impulse != curveConfiguration->impulse);
+}
+
+TEST_CASE("IR visual analysis reuses the filtered audio impulse",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    AudioSampleResource resource { "impulse", "Impulse.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+
+    auto lowPassThroughParameters = ir.parameters;
+    auto highPassParameters = ir.parameters;
+    for (auto& parameter : lowPassThroughParameters) {
+        if (parameter.id == "highPass") {
+            parameter.value = "0";
+        }
+    }
+    for (auto& parameter : highPassParameters) {
+        if (parameter.id == "highPass") {
+            parameter.value = "0.8";
+        }
+    }
+
+    const auto unfiltered = prepareImpulseResponseAnalysis(
+            lowPassThroughParameters, ir.model, &resource);
+    const auto filtered = prepareImpulseResponseAnalysis(
+            highPassParameters, ir.model, &resource);
+    const auto audioConfiguration = IrSignalProcessor::buildConfiguration(
+            highPassParameters, ir.model, &resource);
+
+    REQUIRE(unfiltered.has_value());
+    REQUIRE(filtered.has_value());
+    REQUIRE(audioConfiguration != nullptr);
+    REQUIRE(filtered->filteredImpulse == audioConfiguration->impulse);
+    REQUIRE(filtered->filteredImpulse != unfiltered->filteredImpulse);
+    REQUIRE(filtered->normalizedMagnitudes.size() <= 512);
+    REQUIRE(filtered->frequencyRows.size() == filtered->normalizedMagnitudes.size());
+    REQUIRE(filtered->normalizedMagnitudes.front() < 1.0e-5f);
+    REQUIRE(unfiltered->normalizedMagnitudes.front() > 0.9f);
+    REQUIRE(resource.samples.front() == 1.f);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",

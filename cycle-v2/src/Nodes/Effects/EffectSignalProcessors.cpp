@@ -2,13 +2,10 @@
 
 #include "Graph/NodeDefinition.h"
 #include "Graph/NodeParameterMap.h"
-#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 
 #include <Algo/ConvReverb.h>
-#include <Algo/FFT.h>
-#include <Array/ScopedAlloc.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
-#include <Audio/CycleDsp/IrModel.h>
 #include <Audio/CycleDsp/ReverbKernel.h>
 #include <Util/NumberUtils.h>
 
@@ -24,46 +21,11 @@ std::shared_ptr<const IrConfiguration> IrSignalProcessor::buildConfiguration(
     auto result = std::make_shared<IrConfiguration>();
     const NodeParameterMap parameterMap(parameters);
     result->enabled = parameterMap.boolValue("enabled", true);
-    const float highPass = parameterMap.floatValue("highPass", 0.5f);
-    const size_t impulseLength = (size_t) CycleDsp::irImpulseLength(
-            parameterMap.floatValue("size", 0.5f));
-    result->impulse.resize(impulseLength);
-    std::vector<float> rawImpulse(impulseLength);
-    std::vector<float> oversampledImpulse(impulseLength * 2);
-    std::vector<float> prefilterLevels(impulseLength / 2);
-    Oversampler preparedOversampler(8);
-    preparedOversampler.setOversampleFactor(2);
-    preparedOversampler.setMemoryBuffer({ oversampledImpulse.data(), (int) oversampledImpulse.size() });
-    Buffer<float> rawImpulseBuffer(rawImpulse.data(), (int) rawImpulse.size());
-    if (directResource != nullptr) {
-        const int copyCount = jmin(
-                rawImpulseBuffer.size(),
-                (int) directResource->samples.size());
-        VecOps::copy(directResource->samples.data(), rawImpulseBuffer.get(), copyCount);
-    } else {
-        FlatCurvePreparation curve(
-                "CycleV2IrConfiguration",
-                model,
-                FXRasterizer::Bipolar);
-        if (!curve.prepare()) {
-            return {};
-        }
-        CycleDsp::rasterizeIrImpulse(
-                curve.sampler(),
-                rawImpulseBuffer,
-                preparedOversampler,
-                CycleDsp::irDomainPadding);
+    auto analysis = prepareImpulseResponseAnalysis(parameters, model, directResource);
+    if (!analysis.has_value()) {
+        return {};
     }
-
-    Transform transform;
-    transform.allocate((int) impulseLength, Transform::DivFwdByN, true);
-    Buffer<float> levels(prefilterLevels.data(), (int) prefilterLevels.size());
-    CycleDsp::buildIrPrefilterLevels(levels, highPass);
-    CycleDsp::applyIrFrequencyPrefilter(
-            rawImpulseBuffer,
-            { result->impulse.data(), (int) result->impulse.size() },
-            levels,
-            transform);
+    result->impulse = std::move(analysis->filteredImpulse);
     result->postGain = CycleDsp::irPostGain(parameterMap.floatValue("post", 0.5f));
     return result;
 }

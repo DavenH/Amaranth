@@ -2,6 +2,7 @@
 
 #include "UI/NodeEditorHost.h"
 
+#include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 namespace CycleV2 {
@@ -38,14 +39,34 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
 }
 
 CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
+    CurveEditorWidget* widget {};
+    bool created {};
     for (auto& entry : curveEditorWidgets) {
         if (entry.first == node.id) {
-            return *entry.second;
+            widget = entry.second.get();
+            break;
         }
     }
 
-    curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
-    return *curveEditorWidgets.back().second;
+    if (widget == nullptr) {
+        curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
+        widget = curveEditorWidgets.back().second.get();
+        created = true;
+    }
+    if (created && node.kind == NodeKind::ImpulseResponse) {
+        widget->setImpulseResponseAudioResource(
+                IrSignalProcessor::directResource(graph, node.id));
+    }
+    return *widget;
+}
+
+void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
+    CurveEditorWidget& widget = curveEditorWidget(node);
+    if (node.kind == NodeKind::ImpulseResponse) {
+        widget.setImpulseResponseAudioResource(
+                IrSignalProcessor::directResource(graph, node.id));
+    }
+    widget.syncFromNode(node);
 }
 
 CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId) {

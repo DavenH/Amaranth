@@ -65,6 +65,12 @@ public:
     virtual void toggleSelectedMarker(bool loopMarker) = 0;
 };
 
+class ImpulseResponseCurvePanelController {
+public:
+    virtual ~ImpulseResponseCurvePanelController() = default;
+    virtual void setAudioResource(const AudioSampleResource* resource) = 0;
+};
+
 std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind);
 std::unique_ptr<CurvePanelController> createGuideCurvePanelController();
 

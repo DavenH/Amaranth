@@ -189,6 +189,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/FlatCurvePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/Editor/GuideCurveEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/ImpulseResponseAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/ImpulseResponseResourcePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/Editor/WaveshaperEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Editor/EnvelopeCurvePanel.cpp"
