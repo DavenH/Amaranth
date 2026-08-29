@@ -263,6 +263,7 @@ TEST_CASE("Guide relationship tethers reach every visible unique target behind e
             -1,
             -1,
             true,
+            false,
             { 0.f, 0.f, 400.f, 300.f },
             guideState,
             0.5f,

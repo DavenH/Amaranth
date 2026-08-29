@@ -484,16 +484,9 @@ class NativeEditSmoke:
         fft_node = self.target("node:fft")
         fft_source = self.point(fft_node, 0.5, 0.5)
         fft_destination = (fft_source[0] + 120, fft_source[1] + 80)
-        self.command({"command": "resetCanvasPerformance"})
         self.drag_and_hold(fft_source, fft_destination)
         cable_during_drag = self.target(f"edge:{fft_edge_index}")
         assert cable_during_drag != cable_before, (cable_before, cable_during_drag)
-        drag_performance = self.command({"command": "inspectCanvasPerformance"})
-        drag_frames = drag_performance["frames"]
-        assert drag_frames["openGlRender"]["count"] > drag_frames["jucePaint"]["count"], (
-            "node drag must explicitly synchronize the OpenGL underlay",
-            drag_frames,
-        )
         self.capture("authoring-cable-drag", self.target("canvas"))
         self.release_drag(fft_destination)
         self.key_chord("z")

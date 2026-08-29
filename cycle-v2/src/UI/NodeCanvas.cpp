@@ -647,9 +647,6 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         spliceTargetEdgeIndex = nodeDrag->moved
                 ? hitRouter.spliceTargetEdgeAt(scene, event.position, nodeDrag->nodeId)
                 : -1;
-        if (nodeDrag->moved && kUseGlCanvasUnderlay) {
-            openGLContext.triggerRepaint();
-        }
     }
 
     requestCanvasRepaint();
@@ -949,12 +946,13 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     }
 
     SnapGuidePresentation snapGuides;
-    if (const auto* drag = std::get_if<NodeDragGesture>(&interaction.gesture())) {
+    const auto* nodeDrag = std::get_if<NodeDragGesture>(&interaction.gesture());
+    if (nodeDrag != nullptr) {
         snapGuides = {
-                drag->guides.x.has_value(),
-                drag->guides.y.has_value(),
-                drag->guides.x.value_or(0.f),
-                drag->guides.y.value_or(0.f)
+                nodeDrag->guides.x.has_value(),
+                nodeDrag->guides.y.has_value(),
+                nodeDrag->guides.x.value_or(0.f),
+                nodeDrag->guides.y.value_or(0.f)
         };
     }
     const auto& scene = sceneBuilder.build(
@@ -984,6 +982,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             selectedEdgeIndex,
             spliceTargetEdgeIndex,
             kUseGlCanvasUnderlay,
+            nodeDrag != nullptr,
             workspace,
             guideShelfState,
             dockSplitRatio,

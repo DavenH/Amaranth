@@ -705,7 +705,9 @@ void NodeCanvasPresentation::paintEdges(
             frame.presentationRevision,
             frame.documentRevision);
 
-    cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
+    if (!frame.nodeDragActive) {
+        cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
+    }
     for (const auto& sceneEdge : snapshot.edges) {
         if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
@@ -728,7 +730,14 @@ void NodeCanvasPresentation::paintEdges(
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
                 sceneEdge.modulationBundle
         };
-        prepareCachedEdge(sceneEdge, style, zoom, physicalScale);
+        if (frame.nodeDragActive) {
+            NodeCableRenderer::paint(graphics, sceneEdge, style, zoom);
+        } else {
+            prepareCachedEdge(sceneEdge, style, zoom, physicalScale);
+        }
+    }
+    if (frame.nodeDragActive) {
+        return;
     }
     const NodeCanvasCableLayerCacheFrame cacheFrame = cableLayerCache.endFrame();
     cableLayerCache.drawComposite(graphics, cacheFrame);
@@ -845,7 +854,9 @@ void NodeCanvasPresentation::paintCachedNodes(
     const uint64_t startedAt = performanceObserver != nullptr
             ? performanceObserver->presentationTimestamp()
             : 0;
-    nodeLayerCache.beginFrame();
+    if (!frame.nodeDragActive) {
+        nodeLayerCache.beginFrame();
+    }
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
@@ -853,7 +864,14 @@ void NodeCanvasPresentation::paintCachedNodes(
         if (!nodeBounds.intersects(visibleArea)) {
             continue;
         }
-        paintCachedNode(graphics, frame, node, physicalScale);
+        if (frame.nodeDragActive) {
+            paintNode(graphics, frame, node);
+        } else {
+            paintCachedNode(graphics, frame, node, physicalScale);
+        }
+    }
+    if (frame.nodeDragActive) {
+        return;
     }
     const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
     if (performanceObserver != nullptr) {

@@ -50,6 +50,7 @@ struct NodeCanvasPresentationFrame {
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
     bool openGLUnderlay { true };
+    bool nodeDragActive {};
     Rectangle<float> workspaceBounds;
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };

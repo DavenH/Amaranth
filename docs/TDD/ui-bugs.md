@@ -4,15 +4,16 @@
 
 Context:
 
-- Node drags repainted the JUCE node/cable overlay without explicitly updating
-  the OpenGL canvas underlay. Live composition could therefore present the
-  whole overlay at greatly reduced opacity until mouse-up caused another GL
-  frame.
-- Node movement now requests the GL underlay frame alongside its JUCE repaint.
-  A native held-drag capture preserved fully opaque node shells and cable cores;
-  the measured gesture delivered 14 GL renders for 8 JUCE paints, with GL
-  renders averaging 0.59 ms.
-- The native authoring sequence now asserts this synchronization contract while
+- Cache-hit node sprites and the cached cable layer could be presented at
+  greatly reduced opacity during a node drag, while the moving cache-miss node
+  and canvas grid remained bright.
+- Node-drag frames now use the authoritative node and cable renderers directly.
+  Mouse-up restores the optimized sprite and composite caches for stable
+  frames.
+- In the focused native drag, direct cable rendering took 1.63 ms and direct
+  node rendering took 3.68 ms; JUCE paints averaged 14.63 ms and peaked at
+  24.74 ms.
+- The native authoring sequence captures the cable and node presentation while
   the drag is still held.
 
 Current status: fixed on 2026-08-29.
