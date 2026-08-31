@@ -128,6 +128,12 @@ scales and their readable separation, not to an unassigned central gulf.
   width of the container. Full-width or oversized buttons imply dialog-level
   importance; compact inspector actions should share a row when their labels
   remain clear and their hit targets do not overlap.
+- When a compact region contains a named control group, reserve a heading row
+  at the top of the full group bounds. Center the label over the group and flank
+  it with low-contrast rules extending toward both group edges, for example
+  `--- IR sample ---`. Keep the rules behind the label with deliberate gaps;
+  do not align the heading only to the first control or add another enclosing
+  box. Use the same treatment for peer groups such as Axis and Link.
 - Use color semantically and consistently. Never rely on color alone for state.
 - Make enabled, disabled, hover, pressed, selected, focused, warning, and error
   states related but unmistakable.

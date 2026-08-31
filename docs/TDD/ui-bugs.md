@@ -1,5 +1,293 @@
 # UI Bug Notes
 
+## 2026-08-31 UI intake: recommended order
+
+Address correctness and containment before the broader editor rearrangement.
+The first implementation train should be:
+
+1. **P0 — IR visual/audio identity and live high-pass response.** This combines
+   the incorrect cutoff range/mapping, asynchronous visual response, missing
+   post gain, and failure of the zero-cutoff sampled trace to overlay the
+   editable curve. These symptoms share one preparation and invalidation
+   boundary and should receive one focused TDD.
+2. **P0 — Trimesh link buttons do not toggle.** This is a broken primary
+   interaction. Diagnose the routed gesture and command/model publication
+   sequence before changing presentation.
+3. **P0 — Phase-spectrum 2D background escapes its viewport.** Restore clip
+   ownership before other Trimesh layout changes so screenshots are trustworthy.
+4. **P1 quick correctness slice — IR ruler powers-of-two ticks and Guide phase
+   band centering.** Both are bounded geometry defects with clear screenshot and
+   automation assertions.
+
+After those, implement the magnitude key-scale grid response and numeric-entry
+behavior. Treat the Trimesh/Envelope control-region rearrangement, shared
+enablement icon, and cross-editor control unification as one measured layout
+TDD rather than independent local tweaks.
+
+## P0: IR visualization does not match its audio or Cycle 1 behavior
+
+Context:
+
+- The useful High Pass range is compressed into too little of the current
+  slider travel, suggesting either an over-broad control range or a mismatch
+  with Cycle 1's spectral/log mapping.
+- Spectrum and filtered-impulse visuals must update synchronously during a High
+  Pass gesture. Other costly IR preparation should remain coalesced or deferred
+  unless its associated control requires live visual feedback.
+- The filtered visual trace omits Post gain.
+- At 0 Hz, the sampled trace does not nearly overlay the authored IR curve, so
+  the visual pipeline is not demonstrating the expected identity relationship.
+
+Acceptance:
+
+- Characterize Cycle 1's normalized High Pass mapping and spectral log mapping
+  with shared numerical tests before altering the range.
+- A multi-update High Pass drag changes spectrum and impulse visuals on every
+  update without synchronously rebuilding unrelated state.
+- The visual trace includes Post gain and uses the same prepared samples and
+  domain mapping as convolution.
+- With High Pass at 0 Hz and unity Post gain, the sampled trace nearly overlays
+  the editable curve within a documented rasterization tolerance.
+
+Current status: open; highest-priority TDD.
+
+## P0: Trimesh editor link buttons do not toggle
+
+Context:
+
+- Axis link buttons in the expanded Trimesh editor cannot be toggled on.
+- This may be event routing, stale presentation state, or missing semantic
+  command publication; appearance alone is not sufficient evidence.
+
+Acceptance:
+
+- Pointer and keyboard activation visibly toggle each supported link.
+- The complete gesture publishes through the domain command boundary, survives
+  rebind, and supports undo.
+- Focused automation covers off-to-on and on-to-off sequences.
+
+Current status: open.
+
+## P0: Phase-spectrum 2D background is not clipped to its editor
+
+Context:
+
+- The phase-spectrum background from the 2D editor spills into the adjacent 3D
+  editor content.
+- The fix belongs at the authoritative OpenGL viewport/scissor or panel-host
+  clip boundary, not in an overpaint.
+
+Acceptance:
+
+- The background, grid, and overlays remain inside the 2D panel at production
+  size, Retina scale, and after resize.
+- 3D content remains unchanged and no JUCE paint mask is introduced.
+
+Current status: open.
+
+## P1: Magnitude-spectrum log grid ignores the key-scale morph axis
+
+Context:
+
+- In the magnitude-spectrum Trimesh 2D editor, the log-spaced grid does not
+  follow the modulation input axis assigned to `key scale`.
+- The relevant axis position should come from the current preview MIDI note and
+  the same normalized morph-position mapping used by the key-scale dimension.
+- The exact keyboard range and endpoint convention need to be recovered from
+  the authoritative preview-pitch implementation rather than assumed to be
+  `[0, 88]`.
+
+Acceptance:
+
+- Changing preview MIDI note moves the log grid along whichever morph axis is
+  assigned to key scale.
+- Reassigning key scale changes the affected axis without duplicating pitch
+  mapping logic.
+- Tests cover at least two notes, two axis assignments, and an endpoint.
+
+Current status: open; requires a focused TDD after the P0 containment work.
+
+## P1: IR sample ruler chooses irregular intervals and omits its endpoint
+
+Context:
+
+- A 256-sample window currently labels `0, 29, 58, 86, ...` instead of the
+  expected power-of-two rhythm `0, 32, 64, ...`.
+- The final tick is absent. The ruler is distributing a fixed number of labels
+  rather than selecting a musically and numerically meaningful interval.
+
+Acceptance:
+
+- Choose a power-of-two sample interval appropriate to the visible range and
+  label density.
+- A 256-sample unzoomed view shows `0, 32, 64, ... 256`, including both
+  endpoints, without label clipping.
+- Zoomed ticks remain aligned with the OpenGL grid and padded impulse origin.
+
+Current status: open; recommended quick correctness slice.
+
+## P1: Guide phase-offset band is not centered
+
+Context:
+
+- The phase-offset band is visibly displaced from the center of the Guide curve
+  panel.
+
+Acceptance:
+
+- Its zero/neutral center aligns with the panel's transformed 0.5 amplitude
+  line at default and zoomed views.
+- The band remains centered after resize and does not change the phase-offset
+  value mapping.
+
+Current status: open; recommended quick correctness slice.
+
+## P1: Numeric property entry changes geometry and includes units
+
+Context:
+
+- Unfocused value-entry fields show an unnecessary bounding rectangle.
+- Entering edit mode changes justification from centered/right-aligned display
+  text to top-left text, causing a visible jump.
+- Units are included in editable content instead of remaining stable,
+  non-editable context.
+
+Acceptance:
+
+- Unfocused fields have no visible input rectangle; focus has a restrained,
+  consistent focus treatment.
+- Display and edit text retain the same baseline and horizontal justification.
+- Editing selects only the numeric value. Units remain outside the editor and
+  parsing/formatting round-trips without precision loss.
+
+Current status: open.
+
+## P1: Envelope vertex Guide selector has misleading help text
+
+Context:
+
+- The Envelope vertex-properties Guide dropdown says, `guide attachments are
+  available on mesh nodes`.
+- This describes an internal graph category rather than the action available in
+  the current Envelope editor and reads as though the control is unavailable.
+
+Acceptance:
+
+- Replace the copy with concise, action-oriented guidance for assigning a Guide
+  curve to the selected Envelope property, or hide/disable the control with a
+  truthful reason if Envelope assignment is unsupported.
+- Do not expose implementation terms such as `mesh nodes` in local help.
+
+Current status: open; confirm the intended Envelope attachment capability.
+
+## P1: Trimesh and Envelope property controls need a shared layout correction
+
+Context:
+
+- Guide-curve assignment uses an unclear icon and sliders with inadequate
+  vertical acquisition/travel.
+- Morph sliders consume excessive horizontal space.
+- A likely hierarchy is vertex properties on the right of the control region,
+  with cube display stacked above morph sliders and their buttons, but this must
+  be validated as a complete space budget at production size.
+- Envelope Axis and Link button groups are missing their labels.
+
+Acceptance:
+
+- Write one layout TDD covering both expanded editors, with measured section
+  bounds, minimum slider hit/drag geometry, and resize behavior.
+- Give Axis and Link groups top-centered spanning labels.
+- Replace the Guide icon only through the shared semantic SVG icon system.
+- Preserve vertex selection and all complete edit gestures through rearrangement.
+
+Current status: open; do after functional link-button repair.
+
+## P1: Morph slider handle has contradictory geometry
+
+Context:
+
+- The current hollow circular handle with a dark line conflicts with the linear
+  slider language and obscures the exact value.
+
+Acceptance:
+
+- Remove the circle and use a thin vertical indicator in the slider's semantic
+  colour.
+- Keep a larger invisible hit target, an unambiguous exact reference point, and
+  existing fine-adjust/keyboard behavior.
+
+Current status: open; include in the shared Trimesh/Envelope layout TDD.
+
+## P1: Expanded effect enablement lacks a shared placement and symbol
+
+Context:
+
+- Textual Enabled controls appear in inconsistent locations and look detached
+  from editor chrome.
+- The preferred direction is a semantic SVG power/electricity toggle in the
+  upper-right editor chrome beside Close, with background highlight indicating
+  enabled state, based on Cycle 1's interaction language.
+
+Acceptance:
+
+- Use one shared placement, size, SVG, hit target, tooltip, and state treatment
+  across expanded effect editors.
+- Enabled state is not communicated by colour alone, and keyboard/focus states
+  remain visible.
+- Removing the local Enabled row returns its space to content or controls.
+
+Current status: open; coordinate with the SVG icon-system skill.
+
+## P2: Canvas legend is undersized
+
+Context:
+
+- The canvas utility legend's content and text should be approximately 30
+  percent larger. Confirm this is the intended legend before implementation.
+
+Acceptance:
+
+- Increase symbol and text scale together by 30 percent from the current
+  production geometry while preserving baseline alignment and utility-dock
+  containment at the compact window size.
+- Do not reduce performance-keyboard or minimap minimums to make room.
+
+Current status: open.
+
+## P2: IR editor needs an attack-zoom action
+
+Context:
+
+- The expanded IR editor has no one-step action to frame the attack/edit region.
+- Cycle 1 has an existing visual reference; Cycle V2 should use a semantic SVG
+  rather than copying a raster or using text.
+
+Acceptance:
+
+- The action frames the padded onset and useful early response, is reversible
+  through the existing zoom reset, and has a clear tooltip and keyboard focus.
+- The SVG belongs to the shared icon system and remains legible at production
+  size.
+
+Current status: open.
+
+## P2: Effect property controls are not unified
+
+Context:
+
+- IR slider/control geometry is inconsistent with Delay and Waveshaper.
+- Waveshaper controls are poorly distributed, and the Antialiasing dropdown is
+  much wider than its content requires.
+
+Acceptance:
+
+- Establish one expanded-effect property grid and control-size family, allowing
+  domain-specific width only when value precision or content requires it.
+- Size Antialiasing from its longest real option plus standard insets.
+- Compare IR, Delay, Waveshaper, and Reverb together at the same production size.
+
+Current status: open; combine with the shared enablement/layout TDD.
+
 ## Open: Node-palette fallback icon asserts during the complete Cycle V2 suite
 
 Context:
