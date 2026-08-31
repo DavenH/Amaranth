@@ -1,0 +1,44 @@
+{
+  "commands": [
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "highPass",
+      "label": "High Pass",
+      "value": "0"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "label": "Post Gain",
+      "value": "0.5"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.highPassLayout.display",
+      "equals": "0 Hz"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.postGainLayout.display",
+      "equals": "0 dB"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irDisplayGain",
+      "equals": 1
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

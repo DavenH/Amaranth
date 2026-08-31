@@ -44,7 +44,7 @@ public:
         const ControlState next { enabled, first, second, third, menuId };
         const bool changed = controls != next;
         controls = next;
-        applyDomainControlValues(first, second);
+        applyDomainControlValues(first, second, third);
         if (changed) {
             ++publicationRevision;
         }
@@ -156,7 +156,7 @@ protected:
     virtual bool registerMeshEdit() = 0;
     virtual void synchronizeSelection() = 0;
     virtual void applyDomainPanelSettings() {}
-    virtual void applyDomainControlValues(float, float) {}
+    virtual void applyDomainControlValues(float, float, float) {}
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
     virtual bool preservesInteractivePreviewZoom() const { return false; }
@@ -349,42 +349,79 @@ public:
                 ? std::optional<AudioSampleResource>(*resource)
                 : std::nullopt;
         ++audioResourceRevision;
-        updateAnalysis();
+        updateSource();
+        updateAnalysis(controls.third);
+    }
+
+    var automationState() const override {
+        var state = FlatPanelController::automationState();
+        if (auto* object = state.getDynamicObject()) {
+            object->setProperty("irSourceRevision", (int64) sourceRevision);
+            object->setProperty("irAnalysisRevision", (int64) analysisRevision);
+        }
+        return state;
     }
 
 protected:
     void beforeNodeSync(const Node& node) override {
         currentNode = node;
-        updateAnalysis();
+        updateSource();
+        const NodeParameterMap parameterMap(node.parameters);
+        updateAnalysis(parameterMap.floatValue("highPass", 0.5f));
+    }
+
+    void applyDomainControlValues(float, float, float highPass) override {
+        updateAnalysis(highPass);
     }
 
 private:
-    void updateAnalysis() {
+    void updateSource() {
         if (!currentNode.has_value()) {
             return;
         }
-        const String signature = analysisSignature();
-        if (signature == preparedAnalysisSignature) {
+        const String signature = sourceSignature();
+        if (signature == preparedSourceSignature) {
             return;
         }
-        auto analysis = prepareImpulseResponseAnalysis(
+        auto prepared = prepareImpulseResponseSource(
                 currentNode->parameters,
                 currentNode->model,
                 audioResource.has_value() ? &*audioResource : nullptr);
-        static_cast<FlatCurvePanelContract&>(*panel).setImpulseResponseAnalysis(
-                analysis.has_value()
-                        ? std::make_shared<const ImpulseResponseAnalysis>(std::move(*analysis))
-                        : nullptr);
-        preparedAnalysisSignature = signature;
+        preparedSourceSignature = signature;
+        ++sourceRevision;
+        preparedAnalysisSignature = {};
+        if (!prepared.has_value()) {
+            source = nullptr;
+            static_cast<FlatCurvePanelContract&>(*panel)
+                    .setImpulseResponseAnalysis(nullptr);
+            ++analysisRevision;
+            return;
+        }
+        source = std::make_shared<const ImpulseResponseSource>(std::move(*prepared));
     }
 
-    String analysisSignature() const {
+    void updateAnalysis(float highPass) {
+        if (source == nullptr) {
+            return;
+        }
+        const String signature = String((int64) sourceRevision)
+                + ":" + String(highPass, 9);
+        if (signature == preparedAnalysisSignature) {
+            return;
+        }
+        auto analysis = prepareImpulseResponseAnalysis(*source, highPass);
+        static_cast<FlatCurvePanelContract&>(*panel).setImpulseResponseAnalysis(
+                std::make_shared<const ImpulseResponseAnalysis>(std::move(analysis)));
+        preparedAnalysisSignature = signature;
+        ++analysisRevision;
+    }
+
+    String sourceSignature() const {
         const NodeParameterMap parameterMap(currentNode->parameters);
         const uint64_t modelRevision = currentNode->model != nullptr
                 ? currentNode->model->revision()
                 : 0;
         return String(parameterMap.floatValue("size", 0.5f), 9)
-                + ":" + String(parameterMap.floatValue("highPass", 0.5f), 9)
                 + ":" + String((int64) modelRevision)
                 + ":" + String((int64) audioResourceRevision);
     }
@@ -403,8 +440,12 @@ private:
 
     std::optional<Node> currentNode;
     std::optional<AudioSampleResource> audioResource;
+    std::shared_ptr<const ImpulseResponseSource> source;
+    String preparedSourceSignature;
     String preparedAnalysisSignature;
     uint64_t audioResourceRevision {};
+    uint64_t sourceRevision {};
+    uint64_t analysisRevision {};
 };
 
 class EnvelopePanelController final : public CurvePanelControllerBase,
@@ -516,7 +557,7 @@ private:
         envelopePanel().setEnvelopeAxisLinks(adapter.redLinked(), adapter.blueLinked());
     }
 
-    void applyDomainControlValues(float red, float blue) override {
+    void applyDomainControlValues(float red, float blue, float) override {
         adapter.setMorph(red, blue);
     }
 

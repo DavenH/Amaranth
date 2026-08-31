@@ -5,7 +5,7 @@
 Address correctness and containment before the broader editor rearrangement.
 The first implementation train should be:
 
-1. **P0 — IR visual/audio identity and live high-pass response.** This combines
+1. **Done — IR visual/audio identity and live high-pass response.** This combines
    the incorrect cutoff range/mapping, asynchronous visual response, missing
    post gain, and failure of the zero-cutoff sampled trace to overlay the
    editable curve. These symptoms share one preparation and invalidation
@@ -49,7 +49,12 @@ Acceptance:
 - With High Pass at 0 Hz and unity Post gain, the sampled trace nearly overlays
   the editable curve within a documented rasterization tolerance.
 
-Current status: open; highest-priority TDD.
+Current status: implemented 2026-08-31 in
+`cycle-v2-ir-live-visual-contract.md`. The stored/audio High Pass mapping was
+already identical to Cycle 1; the slider now devotes half its physical travel
+to 0–1 kHz without breaking that contract. Live High Pass reuses a cached raw
+source, Post Gain scales only the OpenGL trace, and zero-cutoff identity is
+guarded numerically and by a production fixture.
 
 ## P0: Trimesh editor link buttons do not toggle
 

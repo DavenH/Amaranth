@@ -351,6 +351,36 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+double irSampledCurveIdentityRootMeanSquare(
+        const ImpulseResponseSource& source,
+        const Array<var>& waveformPoints) {
+    double squaredError = 0.0;
+    int waveformIndex = 0;
+    for (size_t index = 0; index < source.rawImpulse.size(); ++index) {
+        const double proportion = static_cast<double>(index)
+                / static_cast<double>(source.rawImpulse.size() - 1);
+        const double targetX = CycleDsp::irDomainPadding
+                + (1.0 - CycleDsp::irDomainPadding) * proportion;
+        while (waveformIndex + 1 < waveformPoints.size()) {
+            const double currentDistance = std::abs(
+                    static_cast<double>(waveformPoints[waveformIndex]
+                            .getProperty("x", {})) - targetX);
+            const double nextDistance = std::abs(
+                    static_cast<double>(waveformPoints[waveformIndex + 1]
+                            .getProperty("x", {})) - targetX);
+            if (nextDistance >= currentDistance) {
+                break;
+            }
+            ++waveformIndex;
+        }
+        const double editableValue = waveformPoints[waveformIndex].getProperty("y", {});
+        const double sampledValue = source.rawImpulse[index] * 0.5 + 0.5;
+        const double error = editableValue - sampledValue;
+        squaredError += error * error;
+    }
+    return std::sqrt(squaredError / static_cast<double>(source.rawImpulse.size()));
+}
+
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
 public:
     void closeCurveEditor() override {}
@@ -1216,6 +1246,12 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(static_cast<int>(panelState.getProperty("irFilteredImpulsePointCount", {}))
             == 1024);
     REQUIRE(panelState.getProperty("irBackdropRenderer", {}).toString() == "OpenGL");
+    const auto modelledSource = prepareImpulseResponseSource(ir.parameters, ir.model);
+    const Array<var>* waveformPoints = panelState.getProperty("waveformPoints", {}).getArray();
+    REQUIRE(modelledSource.has_value());
+    REQUIRE(waveformPoints != nullptr);
+    REQUIRE_FALSE(waveformPoints->isEmpty());
+    REQUIRE(irSampledCurveIdentityRootMeanSquare(*modelledSource, *waveformPoints) < 0.03);
     const float modelledFirstSample = panelState.getProperty(
             "irFilteredImpulseFirstSample", {});
     const Array<var>* majorGridLines = panelState
@@ -1323,6 +1359,18 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     auto* highPass = dynamic_cast<PrecisionSlider*>(
             editor.findChildWithID("irEditor.highPass"));
     REQUIRE(highPass != nullptr);
+    const double oneKilohertzValue = CycleDsp::irPrefilterValueForFrequency(
+            1000.f, 44100.0);
+    const double minimumPosition = highPass->getPositionOfValue(highPass->getMinimum());
+    const double maximumPosition = highPass->getPositionOfValue(highPass->getMaximum());
+    REQUIRE(highPass->getPositionOfValue(oneKilohertzValue)
+            == Catch::Approx((minimumPosition + maximumPosition) * 0.5).margin(1.0));
+
+    const var beforeHighPassPanel = editor.automationState().getProperty("panelState", {});
+    const int64 sourceRevision = beforeHighPassPanel.getProperty("irSourceRevision", {});
+    const int64 analysisRevision = beforeHighPassPanel.getProperty("irAnalysisRevision", {});
+    const float filteredSample = beforeHighPassPanel.getProperty(
+            "irFilteredImpulseFirstSample", {});
     const float cutoffBefore = CycleDsp::irPrefilterFrequency(
             highPass->getValue(),
             44100.0);
@@ -1330,6 +1378,14 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(CycleDsp::irPrefilterFrequency(highPass->getValue(), 44100.0)
             == Catch::Approx(cutoffBefore + 100.f).margin(0.1f));
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+    const var afterHighPassPanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterHighPassPanel.getProperty("irSourceRevision", {}))
+            == sourceRevision);
+    REQUIRE(static_cast<int64>(afterHighPassPanel.getProperty("irAnalysisRevision", {}))
+            > analysisRevision);
+    REQUIRE(static_cast<float>(afterHighPassPanel.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            != Catch::Approx(filteredSample));
 
     delegate.events.clear();
     auto* highPassValue = dynamic_cast<Label*>(
@@ -1344,9 +1400,37 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     auto* postGain = dynamic_cast<PrecisionSlider*>(
             editor.findChildWithID("irEditor.postGain"));
     REQUIRE(postGain != nullptr);
+    const var beforePostPanel = editor.automationState().getProperty("panelState", {});
+    const int64 sourceRevisionBeforePost = beforePostPanel.getProperty(
+            "irSourceRevision", {});
+    const int64 analysisRevisionBeforePost = beforePostPanel.getProperty(
+            "irAnalysisRevision", {});
+    const float displayedSampleBeforePost = beforePostPanel.getProperty(
+            "irDisplayedImpulseFirstSample", {});
     REQUIRE(postGain->keyPressed(KeyPress(KeyPress::rightKey)));
     REQUIRE(CycleDsp::irPostGainDecibels(postGain->getValue())
             == Catch::Approx(1.f).margin(0.001f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+    const var afterPostPanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterPostPanel.getProperty("irSourceRevision", {}))
+            == sourceRevisionBeforePost);
+    REQUIRE(static_cast<int64>(afterPostPanel.getProperty("irAnalysisRevision", {}))
+            == analysisRevisionBeforePost);
+    REQUIRE(static_cast<float>(afterPostPanel.getProperty(
+                    "irDisplayedImpulseFirstSample", {}))
+            != Catch::Approx(displayedSampleBeforePost));
+
+    delegate.events.clear();
+    const int64 sourceRevisionBeforeSize = afterPostPanel.getProperty(
+            "irSourceRevision", {});
+    const int64 analysisRevisionBeforeSize = afterPostPanel.getProperty(
+            "irAnalysisRevision", {});
+    REQUIRE(sizeSlider->keyPressed(KeyPress(KeyPress::leftKey)));
+    const var afterSizePanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterSizePanel.getProperty("irSourceRevision", {}))
+            == sourceRevisionBeforeSize);
+    REQUIRE(static_cast<int64>(afterSizePanel.getProperty("irAnalysisRevision", {}))
+            == analysisRevisionBeforeSize);
     REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 
     delegate.resource = NodeAudioResourceSummary { "room.wav", "direct", 101 };

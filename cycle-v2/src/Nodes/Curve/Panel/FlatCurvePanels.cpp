@@ -486,6 +486,7 @@ public:
         if (impulseSize > 0) {
             prepareBuffers(impulseSize);
             VecOps::copy(analysis->filteredImpulse.data(), xy.y.get(), impulseSize);
+            xy.y.mul(CycleDsp::irPostGain(secondControl()));
             Arithmetic::unpolarize(xy.y);
             xy.x.ramp(
                     CycleDsp::irDomainPadding,
@@ -517,6 +518,15 @@ public:
                     analysis != nullptr && !analysis->filteredImpulse.empty()
                             ? analysis->filteredImpulse.front()
                             : 0.f);
+            object->setProperty(
+                    "irDisplayedImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredImpulse.empty()
+                            ? analysis->filteredImpulse.front()
+                                    * CycleDsp::irPostGain(secondControl())
+                            : 0.f);
+            object->setProperty(
+                    "irDisplayGain",
+                    CycleDsp::irPostGain(secondControl()));
             object->setProperty("irBackdropRenderer", "OpenGL");
         }
         return state;

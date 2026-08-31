@@ -144,6 +144,8 @@ void configurePostGainControl(LabeledParameterSlider& control) {
 
 void configureHighPassControl(LabeledParameterSlider& control) {
     control.slider.setRange(0.0, 1.0, 0.00001);
+    control.slider.setSkewFactorFromMidPoint(
+            CycleDsp::irPrefilterValueForFrequency(1000.f, kReferenceSampleRate));
     control.slider.setComponentID("irEditor.highPass");
     control.value.setComponentID("irEditor.highPass.value");
     control.configureValuePresentation(

@@ -1,0 +1,76 @@
+{
+  "commands": [
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "highPass",
+      "label": "High Pass",
+      "value": "0"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irSourceRevision",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
+      "equals": 2
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "highPass",
+      "label": "High Pass",
+      "value": "0.8",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irSourceRevision",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
+      "equals": 3
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "label": "Post Gain",
+      "value": "0.75",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irSourceRevision",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
+      "equals": 3
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irDisplayGain",
+      "op": "greaterThan",
+      "value": 1
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

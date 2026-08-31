@@ -39,23 +39,22 @@ void reduceMagnitudes(Buffer<float> source, std::vector<float>& destination) {
 
 }
 
-std::optional<ImpulseResponseAnalysis> prepareImpulseResponseAnalysis(
+std::optional<ImpulseResponseSource> prepareImpulseResponseSource(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
         const AudioSampleResource* directResource) {
     const NodeParameterMap parameterMap(parameters);
-    const float highPass = parameterMap.floatValue("highPass", 0.5f);
     const int impulseLength = CycleDsp::irImpulseLength(
             parameterMap.floatValue("size", 0.5f));
 
-    std::vector<float> rawImpulse((size_t) impulseLength);
-    std::vector<float> oversampledImpulse((size_t) impulseLength * 2);
-    std::vector<float> prefilterLevels((size_t) impulseLength / 2);
-    Buffer<float> rawImpulseBuffer(rawImpulse.data(), impulseLength);
+    ImpulseResponseSource result;
+    result.rawImpulse.resize((size_t) impulseLength);
+    Buffer<float> rawImpulseBuffer(result.rawImpulse.data(), impulseLength);
     if (directResource != nullptr) {
         const int copyCount = jmin(impulseLength, (int) directResource->samples.size());
         VecOps::copy(directResource->samples.data(), rawImpulseBuffer.get(), copyCount);
     } else {
+        std::vector<float> oversampledImpulse((size_t) impulseLength * 2);
         Oversampler oversampler(8);
         oversampler.setOversampleFactor(2);
         oversampler.setMemoryBuffer({
@@ -74,6 +73,16 @@ std::optional<ImpulseResponseAnalysis> prepareImpulseResponseAnalysis(
                 oversampler,
                 CycleDsp::irDomainPadding);
     }
+    return result;
+}
+
+ImpulseResponseAnalysis prepareImpulseResponseAnalysis(
+        const ImpulseResponseSource& source,
+        float highPass) {
+    const int impulseLength = (int) source.rawImpulse.size();
+    std::vector<float> prefilterLevels((size_t) impulseLength / 2);
+    Buffer<float> rawImpulseBuffer(
+            const_cast<float*>(source.rawImpulse.data()), impulseLength);
 
     ImpulseResponseAnalysis result;
     result.filteredImpulse.resize((size_t) impulseLength);
@@ -104,6 +113,20 @@ std::optional<ImpulseResponseAnalysis> prepareImpulseResponseAnalysis(
         Arithmetic::applyLogMapping(frequencyRows, frequencyTensionScale);
     }
     return result;
+}
+
+std::optional<ImpulseResponseAnalysis> prepareImpulseResponseAnalysis(
+        const std::vector<NodeParameter>& parameters,
+        const NodeModelStatePtr& model,
+        const AudioSampleResource* directResource) {
+    const auto source = prepareImpulseResponseSource(parameters, model, directResource);
+    if (!source.has_value()) {
+        return {};
+    }
+    const NodeParameterMap parameterMap(parameters);
+    return prepareImpulseResponseAnalysis(
+            *source,
+            parameterMap.floatValue("highPass", 0.5f));
 }
 
 }

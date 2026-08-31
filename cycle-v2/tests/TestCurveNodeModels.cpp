@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCommandDispatcher.h"
@@ -740,6 +741,34 @@ TEST_CASE("IR visual analysis reuses the filtered audio impulse",
     REQUIRE(filtered->normalizedMagnitudes.front() < 1.0e-5f);
     REQUIRE(unfiltered->normalizedMagnitudes.front() > 0.9f);
     REQUIRE(resource.samples.front() == 1.f);
+}
+
+TEST_CASE("IR analysis reuses one sampled source across live high-pass changes",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    AudioSampleResource resource { "impulse", "Impulse.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+
+    const auto source = prepareImpulseResponseSource(
+            ir.parameters, ir.model, &resource);
+    REQUIRE(source.has_value());
+
+    const ImpulseResponseAnalysis zeroCutoff = prepareImpulseResponseAnalysis(
+            *source, 0.f);
+    const ImpulseResponseAnalysis raisedCutoff = prepareImpulseResponseAnalysis(
+            *source, 0.8f);
+
+    REQUIRE(zeroCutoff.filteredImpulse.size() == source->rawImpulse.size());
+    float maximumIdentityError = 0.f;
+    for (size_t index = 0; index < source->rawImpulse.size(); ++index) {
+        maximumIdentityError = jmax(
+                maximumIdentityError,
+                std::abs(zeroCutoff.filteredImpulse[index] - source->rawImpulse[index]));
+    }
+    REQUIRE(maximumIdentityError < 1.0e-5f);
+    REQUIRE(raisedCutoff.filteredImpulse != zeroCutoff.filteredImpulse);
+    REQUIRE(source->rawImpulse.front() == 1.f);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",
