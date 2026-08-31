@@ -86,6 +86,7 @@ public:
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             const WorkspaceDockFocus& focus);
+    void clearPreviewCache() { previewTileCache.clear(); }
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);

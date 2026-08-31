@@ -53,6 +53,11 @@ TEST_CASE("Node layer cache reuses only complete presentation keys",
     REQUIRE(access(2, 3, 4, false).hit);
     REQUIRE(cache.endFrame().hits == 1);
 
+    cache.clear();
+    cache.beginFrame();
+    REQUIRE_FALSE(access(2, 3, 4, false).hit);
+    REQUIRE(cache.endFrame().misses == 1);
+
     node.parameters.front().value = "0.75";
     cache.beginFrame();
     REQUIRE_FALSE(access(2, 3, 4, false).hit);

@@ -1,0 +1,22 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/african-horn.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "assertState", "path": "probeCount", "equals": 1 },
+    { "command": "assertState", "path": "probePreviewStats.0.probeId", "equals": "probe2" },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    { "command": "waitForIdle", "idleDelayMs": 800 },
+    { "command": "assertState", "path": "probeCount", "equals": 5 },
+    { "command": "assertState", "path": "probePreviewStats.0.probeId", "equals": "probe" },
+    { "command": "assertState", "path": "probePreviewStats.1.probeId", "equals": "probe2" },
+    { "command": "assertState", "path": "probePreviewStats.1.domain", "equals": "Mag" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

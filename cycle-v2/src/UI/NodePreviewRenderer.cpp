@@ -682,7 +682,9 @@ bool NodePreviewRenderer::renderOpenGL(
         return false;
     }
 
-    resources.curveEditorWidget(node).renderPreviewSnapshotOpenGL(node, area, scaleFactor);
+    CurveEditorWidget& widget = resources.curveEditorWidget(node);
+    widget.syncFromNode(node);
+    widget.renderPreviewSnapshotOpenGL(node, area, scaleFactor);
     return true;
 }
 

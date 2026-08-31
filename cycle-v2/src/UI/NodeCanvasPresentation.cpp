@@ -644,7 +644,7 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
-    return guideCurveShelf.renderOpenGL(
+    const bool guideSnapshotUpdated = guideCurveShelf.renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
             frame.canvasBounds,
@@ -652,10 +652,24 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.dockSplitRatio,
             frame.guideShelfState,
             scaleFactor);
+    if (guideSnapshotUpdated) {
+        renderer.renderBackground(
+                frame.canvasBounds,
+                frame.workspaceBounds.getHeight(),
+                scaleFactor,
+                frame.viewport.getZoom(),
+                frame.viewport.getPan());
+    }
+    return guideSnapshotUpdated;
 }
 
 bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
     return guideCurveShelf.needsOpenGLPreviewRender();
+}
+
+void NodeCanvasPresentation::clearDocumentCaches() {
+    nodeLayerCache.clear();
+    signalProbeRail.clearPreviewCache();
 }
 
 void NodeCanvasPresentation::paintGrid(

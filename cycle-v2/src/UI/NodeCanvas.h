@@ -199,6 +199,7 @@ private:
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
     void flushScheduledCompiledStateRefresh();
+    void resetDocumentPresentation();
     File snapshotFile() const;
     bool saveSnapshot();
     bool loadSnapshot();

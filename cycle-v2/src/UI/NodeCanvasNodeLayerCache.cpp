@@ -66,6 +66,11 @@ bool runtimePreviewsEqual(const NodePreviewResult& first, const NodePreviewResul
 
 }
 
+void NodeCanvasNodeLayerCache::clear() {
+    entries.clear();
+    frameStats = {};
+}
+
 bool NodeCanvasNodeLayerCache::Entry::matches(
         const Node& node,
         Rectangle<int> bounds,

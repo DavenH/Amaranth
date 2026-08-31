@@ -95,3 +95,16 @@ Context:
 
 Current status: open; inspect settings-map initialization separately from the
 Guide resource UI work.
+
+## Addressed: Curve preview resources created before OpenGL context
+
+Context:
+
+- During the presentation-cache lifecycle fix on 2026-08-31, synchronizing all
+  curve widgets in `NodeCanvas` construction caused `EXC_BAD_ACCESS` in
+  `Curve::recalculateCurve()` while the default Waveshaper rasterizer was being
+  prepared without the established OpenGL render lifecycle.
+- Repro crash: `~/Library/Logs/DiagnosticReports/CycleV2-2026-08-31-104535.ips`.
+
+Current status: addressed in the same work by creating and synchronizing curve
+preview resources at the existing OpenGL preview-render boundary.

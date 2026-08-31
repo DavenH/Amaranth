@@ -52,6 +52,11 @@ TEST_CASE("Spy preview tile cache reuses only complete presentation keys",
     REQUIRE(access().hit);
     REQUIRE(cache.endFrame().hits == 1);
 
+    cache.clear();
+    cache.beginFrame();
+    REQUIRE_FALSE(access().hit);
+    REQUIRE(cache.endFrame().misses == 1);
+
     cache.beginFrame();
     preview.values[1] = 0.5f;
     REQUIRE_FALSE(access().hit);

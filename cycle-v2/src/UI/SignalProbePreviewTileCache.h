@@ -23,6 +23,7 @@ struct SignalProbePreviewTileCacheStats {
 
 class SignalProbePreviewTileCache {
 public:
+    void clear();
     void beginFrame();
     SignalProbePreviewTileCacheAccess access(
             const GraphPreviewResult::SignalProbePreview& preview,

@@ -1315,6 +1315,13 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
     refreshCompiledStateAsync();
 }
 
+void NodeCanvas::resetDocumentPresentation() {
+    editorCoordinator.clearPreviewCache();
+    canvasPresentation.clearDocumentCaches();
+    openGLContext.triggerRepaint();
+    requestCanvasRepaint();
+}
+
 var NodeCanvas::exportAutomationState() const {
     return automation.exportState(automationPresentationState());
 }
@@ -1427,6 +1434,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
         return false;
     }
     commands.commitTransientEdit();
+    refreshCompiledStateAsync();
     requestCanvasRepaint();
     return true;
 }
@@ -1567,6 +1575,7 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
         resized();
@@ -1584,6 +1593,7 @@ bool NodeCanvas::loadSnapshot() {
     const auto result = authoring.loadSnapshot(snapshotFile());
     applyAuthoringResult(result);
     if (result.succeeded) {
+        resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
         resized();
@@ -1721,10 +1731,7 @@ bool NodeCanvas::publishCurveState(
         return false;
     }
     if (probeRailState.refreshMode == ProbeRefreshMode::LiveLatest) {
-        presentation.refresh(
-                commands.editingGraph(),
-                document.revision(),
-                commands.transientChanges());
+        scheduleCompiledStateRefresh();
     }
     requestCanvasRepaint();
     return true;

@@ -23,6 +23,7 @@ struct NodeCanvasNodeLayerCacheStats {
 
 class NodeCanvasNodeLayerCache {
 public:
+    void clear();
     void beginFrame();
     NodeCanvasNodeLayerCacheAccess access(
             const Node& node,

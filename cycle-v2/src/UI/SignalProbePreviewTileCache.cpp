@@ -29,6 +29,11 @@ bool semanticsEqual(NodeRenderSemantic first, NodeRenderSemantic second) {
 
 }
 
+void SignalProbePreviewTileCache::clear() {
+    entries.clear();
+    frameStats = {};
+}
+
 bool SignalProbePreviewTileCache::Entry::matches(
         const GraphPreviewResult::SignalProbePreview& preview,
         NodeRenderSemantic semantic,

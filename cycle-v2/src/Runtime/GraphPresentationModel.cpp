@@ -82,7 +82,8 @@ bool GraphPresentationModel::refresh(
         }
         updateGraph.clearProductCache();
         previewAudioExecutor.clearIncrementalCache();
-    } else if (hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
+    } else if (change.guidesChanged
+            || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
     }
     if (!compile && change.probesChanged) {
@@ -568,7 +569,6 @@ GraphPresentationModel::captureProbePreview(
 
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {
     return change.topologyChanged
-            || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::GraphSemantics);
 }
 
@@ -685,7 +685,8 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
     std::vector<ProductInvalidation> invalidations;
     for (const auto& root : roots) {
         const std::vector<UpdateCause> causes { { root, compile ? "topology" : "state" } };
-        if (hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
+        if (change.guidesChanged
+                || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
             invalidations.push_back({
                     root, stream, UpdateProduct::AudioConfiguration,
                     effectiveFingerprint, causes, true });

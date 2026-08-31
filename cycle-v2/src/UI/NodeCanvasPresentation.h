@@ -91,6 +91,7 @@ public:
             const String& hoverText);
     void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
+    void clearDocumentCaches();
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:
