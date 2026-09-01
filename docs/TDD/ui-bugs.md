@@ -13,8 +13,10 @@ The first implementation train should be:
 2. **Done — Trimesh link buttons toggle durably.** The missing canonical
    parameters and mature-panel settings bridge are restored, with pointer,
    keyboard, rebind, linked-vertex, and undo coverage.
-3. **P0 — Phase-spectrum 2D background escapes its viewport.** Restore clip
-   ownership before other Trimesh layout changes so screenshots are trustworthy.
+3. **Implementation complete; OS proof pending — Phase-spectrum 2D background
+   escapes its viewport.** Shared OpenGL scissoring now enforces both Trimesh
+   host rectangles; macOS Screen Recording permission is required for the
+   final production-pixel check.
 4. **P1 quick correctness slice — IR ruler powers-of-two ticks and Guide phase
    band centering.** Both are bounded geometry defects with clear screenshot and
    automation assertions.
@@ -91,7 +93,11 @@ Acceptance:
   size, Retina scale, and after resize.
 - 3D content remains unchanged and no JUCE paint mask is introduced.
 
-Current status: open.
+Current status: implementation complete 2026-09-01 in
+`cycle-v2-trimesh-panel-clipping.md`; final OS screenshot validation is blocked
+by missing Screen Recording permission. Curve and Trimesh now share the mature
+scissor conversion and GL-state restoration, with 1x/2x numerical coverage and
+no JUCE paint mask.
 
 ## P1: Magnitude-spectrum log grid ignores the key-scale morph axis
 

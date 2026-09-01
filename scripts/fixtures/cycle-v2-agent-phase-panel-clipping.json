@@ -1,0 +1,26 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "phaseLayer1"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": "phaseLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

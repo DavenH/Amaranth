@@ -5,6 +5,7 @@
 #include <UI/Panels/PanelDirtyState.h>
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/RenderResourceCache.h>
+#include <UI/Panels/ScopedGLScissor.h>
 #include <UI/Panels/Texture.h>
 
 namespace {
@@ -20,6 +21,17 @@ public:
     void drawDepthLinesAndVerts() override {}
 };
 
+}
+
+TEST_CASE("OpenGL panel clips convert top-left bounds to framebuffer scissors", "[panel][host][opengl]") {
+    const juce::Rectangle<float> bounds(25.f, 30.f, 80.f, 40.f);
+
+    REQUIRE(ScopedGLScissor::boxFor(bounds, 1.f, { 0, 0, 400, 300 })
+            == juce::Rectangle<int>(25, 230, 80, 40));
+    REQUIRE(ScopedGLScissor::boxFor(bounds, 2.f, { 0, 0, 800, 600 })
+            == juce::Rectangle<int>(50, 460, 160, 80));
+    REQUIRE(ScopedGLScissor::boxFor(bounds, 2.f, { 0, 17, 800, 600 })
+            == juce::Rectangle<int>(50, 477, 160, 80));
 }
 
 TEST_CASE("Panel host context converts host positions into panel-local coordinates", "[panel][host]") {

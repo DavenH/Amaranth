@@ -6,6 +6,7 @@
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/PanelInputHostComponent.h>
+#include <UI/Panels/ScopedGLScissor.h>
 
 using namespace gl;
 
@@ -41,43 +42,6 @@ bool CurvePanelSnapshotCache::paint(
     }
     graphics.drawImage(image, bounds);
     return true;
-}
-
-namespace {
-
-class ScopedCurvePanelScissor {
-public:
-    ScopedCurvePanelScissor(Rectangle<float> bounds, float scaleFactor) {
-        glGetBooleanv(GL_SCISSOR_TEST, &wasEnabled);
-        glGetIntegerv(GL_SCISSOR_BOX, previousBox);
-
-        GLint viewport[4] {};
-        glGetIntegerv(GL_VIEWPORT, viewport);
-        const int x = jmax(0, roundToInt(bounds.getX() * scaleFactor));
-        const int y = jmax(
-                0,
-                viewport[1] + viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
-        const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
-        const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(x, y, width, height);
-    }
-
-    ~ScopedCurvePanelScissor() {
-        if (wasEnabled != 0) {
-            glEnable(GL_SCISSOR_TEST);
-        } else {
-            glDisable(GL_SCISSOR_TEST);
-        }
-
-        glScissor(previousBox[0], previousBox[1], previousBox[2], previousBox[3]);
-    }
-
-private:
-    GLboolean wasEnabled {};
-    GLint previousBox[4] {};
-};
-
 }
 
 class CurvePanelHost::HostComponent final : public PanelInputHostComponent {
@@ -168,7 +132,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    ScopedCurvePanelScissor scissor(bounds, scaleFactor);
+    ScopedGLScissor scissor(bounds, scaleFactor);
     panel.render();
 
     Image nextImage;
@@ -209,7 +173,7 @@ void CurvePanelHost::renderPreview(
     delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    ScopedCurvePanelScissor scissor(bounds, scaleFactor);
+    ScopedGLScissor scissor(bounds, scaleFactor);
     panel.render();
     panel.getZoomPanel()->rect = interactiveZoom;
 
