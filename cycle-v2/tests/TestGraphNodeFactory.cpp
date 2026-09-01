@@ -106,6 +106,9 @@ TEST_CASE("Canonical normalization adds node-based morph inputs to saved nodes",
     REQUIRE(mesh.inputs[2].id == "yellow");
     REQUIRE(mesh.inputs[3].id == "red");
     REQUIRE(mesh.inputs[4].id == "blue");
+    REQUIRE(parameterValueForNode(mesh, "link.yellow") == "1");
+    REQUIRE(parameterValueForNode(mesh, "link.red") == "0");
+    REQUIRE(parameterValueForNode(mesh, "link.blue") == "0");
 }
 
 TEST_CASE("Graph node factory creates canonical FFT nodes", "[cycle-v2][graph]") {
@@ -145,6 +148,9 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(mesh.inputs[3].side == PortSide::Left);
     REQUIRE(mesh.inputs[4].side == PortSide::Left);
     REQUIRE(mesh.bounds.getHeight() == 269.f);
+    REQUIRE(parameterValueForNode(mesh, "link.yellow") == "1");
+    REQUIRE(parameterValueForNode(mesh, "link.red") == "0");
+    REQUIRE(parameterValueForNode(mesh, "link.blue") == "0");
 
     REQUIRE(mesh.outputs.front().domain == PortDomain::ControlSignal);
 

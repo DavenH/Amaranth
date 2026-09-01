@@ -1133,6 +1133,33 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
 }
 
+TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
+        "[cycle-v2][nodes][trimesh][links]") {
+    ScopedJuceInitialiser_GUI juce;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    TrimeshPanelBridge bridge;
+    GraphEditor editor;
+
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
+    Vertex* vertex = cube->getVertex(0);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 2);
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.red", "Link Red", "1").succeeded());
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);
+}
+
 TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
         "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1217,6 +1244,17 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     controls.beginPointerInteraction(primaryAxis.bounds.getCentre(), {});
     REQUIRE(delegate.primaryAxis == primaryAxis.axisValue);
     REQUIRE(controls.cursorFor(primaryAxis.bounds.getCentre()) == MouseCursor::PointingHandCursor);
+
+    const auto& linkToggle = findRegion(TrimeshExpandedHitRegionKind::LinkToggle);
+    controls.beginPointerInteraction(linkToggle.bounds.getCentre(), {});
+    REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
+    REQUIRE(controls.cursorFor(linkToggle.bounds.getCentre()) == MouseCursor::PointingHandCursor);
+    auto* keyboardLink = controls.findChildWithID(
+            "trimesh.link." + linkToggle.axisValue);
+    REQUIRE(keyboardLink != nullptr);
+    delegate.linkedAxis = {};
+    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
 
     const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);
     controls.beginPointerInteraction(morph.bounds.getCentre(), {});

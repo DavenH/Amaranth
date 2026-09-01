@@ -18,6 +18,11 @@ public:
                         || region.kind == TrimeshExpandedHitRegionKind::VertexParameter
                 ? MouseCursor::LeftRightResizeCursor
                 : MouseCursor::PointingHandCursor);
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+            setComponentID("trimesh.link." + region.axisValue);
+            setTitle("Link " + region.axisValue);
+            setWantsKeyboardFocus(true);
+        }
         setName("TrimeshControlTarget");
     }
 
@@ -34,6 +39,16 @@ public:
 
     void mouseUp(const MouseEvent&) override {
         owner.endControlDrag();
+    }
+
+    bool keyPressed(const KeyPress& key) override {
+        if (region.kind != TrimeshExpandedHitRegionKind::LinkToggle
+                || (key.getKeyCode() != KeyPress::returnKey
+                        && key.getKeyCode() != KeyPress::spaceKey)) {
+            return Component::keyPressed(key);
+        }
+        owner.beginControlDrag(region, region.bounds.getCentre(), getScreenBounds());
+        return true;
     }
 
 private:

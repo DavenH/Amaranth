@@ -10,9 +10,9 @@ The first implementation train should be:
    post gain, and failure of the zero-cutoff sampled trace to overlay the
    editable curve. These symptoms share one preparation and invalidation
    boundary and should receive one focused TDD.
-2. **P0 — Trimesh link buttons do not toggle.** This is a broken primary
-   interaction. Diagnose the routed gesture and command/model publication
-   sequence before changing presentation.
+2. **Done — Trimesh link buttons toggle durably.** The missing canonical
+   parameters and mature-panel settings bridge are restored, with pointer,
+   keyboard, rebind, linked-vertex, and undo coverage.
 3. **P0 — Phase-spectrum 2D background escapes its viewport.** Restore clip
    ownership before other Trimesh layout changes so screenshots are trustworthy.
 4. **P1 quick correctness slice — IR ruler powers-of-two ticks and Guide phase
@@ -71,7 +71,10 @@ Acceptance:
   rebind, and supports undo.
 - Focused automation covers off-to-on and on-to-off sequences.
 
-Current status: open.
+Current status: implemented 2026-09-01 in
+`cycle-v2-trimesh-link-buttons.md`. The controls now publish canonical per-node
+parameters through the command service, survive editor rebind, support undo,
+and drive the mature `Interactor` link behavior without copying it.
 
 ## P0: Phase-spectrum 2D background is not clipped to its editor
 

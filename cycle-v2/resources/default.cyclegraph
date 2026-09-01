@@ -14,7 +14,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 650.0, "y": 420.0 },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -148,7 +148,7 @@
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -285,7 +285,7 @@
             "portSides": {
                 "outputs": { "out": "top" }
             },
-            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 0.5, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
             "model": {
                 "schema": "trimesh",
                 "version": 2,

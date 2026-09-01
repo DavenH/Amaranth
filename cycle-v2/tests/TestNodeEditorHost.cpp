@@ -1838,6 +1838,65 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(presentation.localCommits == 1);
 }
 
+TEST_CASE("Trimesh link toggles survive rebind and undo",
+        "[cycle-v2][editor][trimesh][links]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    const Rectangle<int> bounds { 0, 0, 900, 620 };
+    const auto redLinkSelected = [&host] {
+        DynamicObject state;
+        host.appendAutomationState(state);
+        const Array<var>* links = state.getProperty("linkToggles").getArray();
+        REQUIRE(links != nullptr);
+        REQUIRE(links->size() == 3);
+        REQUIRE((*links)[1].getProperty("id", {}).toString() == "red");
+        return static_cast<bool>((*links)[1].getProperty("selected", {}));
+    };
+    const auto rebind = [&] {
+        REQUIRE(host.bind(
+                document.graph().findNode("mesh"),
+                bounds,
+                document.revision()));
+    };
+
+    rebind();
+    REQUIRE_FALSE(redLinkSelected());
+
+    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
+    rebind();
+    REQUIRE(redLinkSelected());
+
+    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "0");
+    rebind();
+    REQUIRE_FALSE(redLinkSelected());
+
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
+    rebind();
+    REQUIRE(redLinkSelected());
+}
+
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;

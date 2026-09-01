@@ -31,7 +31,15 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 575.17242, "y": 343.10345 },
-            "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
+            "parameters": {
+                "yellow": 0.0,
+                "red": 0.37383,
+                "blue": 0.0,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,
@@ -168,7 +176,15 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 575.17242, "y": 674.48279 },
-            "parameters": { "yellow": 0.0, "red": 0.37383, "blue": 0.0, "primaryAxis": "yellow" },
+            "parameters": {
+                "yellow": 0.0,
+                "red": 0.37383,
+                "blue": 0.0,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
             "model": {
                 "schema": "trimesh",
                 "version": 2,

@@ -1,5 +1,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
 
+#include "Graph/NodeParameterMap.h"
+
 #include <Curve/Mesh/Vertex.h>
 #include <Util/LogRegionMapping.h>
 
@@ -80,6 +82,11 @@ void TrimeshPanelBridge::syncFromNode(
         const Node& node,
         int rows,
         int columns) {
+    const NodeParameterMap parameters(node);
+    environment.setAxisLinks(
+            parameters.boolValue("link.yellow", true),
+            parameters.boolValue("link.red", false),
+            parameters.boolValue("link.blue", false));
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
     if (spectral) {
