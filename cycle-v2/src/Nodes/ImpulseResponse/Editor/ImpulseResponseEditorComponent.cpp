@@ -194,6 +194,15 @@ Justification sampleTickLabelJustification(
     return Justification::centred;
 }
 
+Rectangle<float> sampleTickLabelLimits(Rectangle<float> panel, float editorLeft) {
+    return {
+        editorLeft,
+        panel.getY(),
+        panel.getRight() - editorLeft,
+        panel.getHeight()
+    };
+}
+
 std::vector<SampleLandmark> buildSampleLandmarks(
         int sampleCount,
         Rectangle<float> panel,
@@ -320,7 +329,7 @@ void ImpulseResponseEditorComponent::paintEditor(Graphics& graphics) {
     const auto landmarks = buildSampleLandmarks(
             sampleCount,
             panel,
-            getLocalBounds().toFloat(),
+            sampleTickLabelLimits(panel, (float) getLocalBounds().getX()),
             widget.verticalMajorGridLines());
     for (const auto& landmark : landmarks) {
         graphics.drawVerticalLine(
@@ -492,7 +501,9 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
             sampleLandmarkAutomation(buildSampleLandmarks(
                 CycleDsp::irImpulseLength(impl->size.slider.getValue()),
                 editorPanelBounds(),
-                getLocalBounds().toFloat(),
+                sampleTickLabelLimits(
+                        editorPanelBounds(),
+                        (float) getLocalBounds().getX()),
                 widget.verticalMajorGridLines())));
     const auto summary = audioResourceSummary();
     state.setProperty("resourceActionsAvailable", true);

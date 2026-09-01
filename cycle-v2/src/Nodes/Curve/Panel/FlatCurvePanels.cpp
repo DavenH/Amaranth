@@ -40,16 +40,18 @@ public:
             SingletonRepo* repo,
             const String& name,
             Mesh& meshToEdit,
-            float padding,
-            bool bipolar,
-            bool verticalPadding) :
+            float leftPadding,
+            float rightPadding,
+            float verticalPadding,
+            bool bipolar) :
             Panel2D         (repo, name, true, true)
         ,   Interactor2D    (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
         ,   SingletonAccessor(repo, name)
         ,   rasterizer      (repo, name + "Rasterizer")
         ,   mesh            (meshToEdit)
-        ,   domainPadding   (padding)
-        ,   padVertically   (verticalPadding) {
+        ,   domainPaddingLeft    (leftPadding)
+        ,   domainPaddingRight   (rightPadding)
+        ,   domainPaddingVertical(verticalPadding) {
         vertPadding = 0;
         paddingLeft = 0;
         paddingRight = 0;
@@ -59,10 +61,10 @@ public:
         alwaysDrawDepthLines = true;
         drawLinesAfterFill = false;
         curveIsBipolar = bipolar;
-        bgPaddingLeft = padding;
-        bgPaddingRight = padding;
-        bgPaddingTop = verticalPadding ? padding : 0.f;
-        bgPaddingBttm = verticalPadding ? padding : 0.f;
+        bgPaddingLeft = leftPadding;
+        bgPaddingRight = rightPadding;
+        bgPaddingTop = verticalPadding;
+        bgPaddingBttm = verticalPadding;
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = colorA;
 
@@ -270,10 +272,10 @@ public:
         if (zoomPanel == nullptr) {
             return;
         }
-        const float xMinimum = 0.5f * domainPadding;
-        const float xMaximum = 1.f - 0.5f * domainPadding;
-        const float yMinimum = padVertically ? 0.5f * domainPadding : 0.f;
-        const float yMaximum = padVertically ? 1.f - 0.5f * domainPadding : 1.f;
+        const float xMinimum = 0.5f * domainPaddingLeft;
+        const float xMaximum = 1.f - 0.5f * domainPaddingRight;
+        const float yMinimum = 0.5f * domainPaddingVertical;
+        const float yMaximum = 1.f - 0.5f * domainPaddingVertical;
         zoomPanel->rect.xMinimum = xMinimum;
         zoomPanel->rect.xMaximum = xMaximum;
         zoomPanel->rect.yMinimum = yMinimum;
@@ -387,8 +389,9 @@ private:
 
     FXRasterizer rasterizer;
     Mesh& mesh;
-    float domainPadding {};
-    bool padVertically {};
+    float domainPaddingLeft {};
+    float domainPaddingRight {};
+    float domainPaddingVertical {};
     bool interactionInitialised {};
     bool enabled { true };
     float controlA { 0.5f };
@@ -402,7 +405,8 @@ class WaveshaperCurvePanel final : public FlatCurvePanelBase {
 public:
     WaveshaperCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
-                    repo, "CycleV2WaveshaperPanel", mesh, kWaveshaperPadding, false, true)
+                    repo, "CycleV2WaveshaperPanel", mesh,
+                    kWaveshaperPadding, kWaveshaperPadding, kWaveshaperPadding, false)
         ,   SingletonAccessor(repo, "CycleV2WaveshaperPanel") {}
 
     void postCurveDraw() override {
@@ -414,7 +418,9 @@ public:
 class GuideCurvePanel final : public FlatCurvePanelBase {
 public:
     GuideCurvePanel(SingletonRepo* repo, Mesh& mesh) :
-            FlatCurvePanelBase(repo, "CycleV2GuideCurvePanel", mesh, kGuidePadding, true, false)
+            FlatCurvePanelBase(
+                    repo, "CycleV2GuideCurvePanel", mesh,
+                    kGuidePadding, kGuidePadding, 0.f, true)
         ,   SingletonAccessor(repo, "CycleV2GuideCurvePanel") {}
 
     void preDraw() override {
@@ -430,7 +436,7 @@ public:
     ImpulseResponseCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
                     repo, "CycleV2ImpulseResponsePanel", mesh,
-                    CycleDsp::irDomainPadding, true, false)
+                    CycleDsp::irDomainPadding, 0.f, 0.f, true)
         ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {
         Image image = PNGImageFormat::loadFrom(
                 Gradients::burntalum_png, Gradients::burntalum_pngSize);
@@ -502,6 +508,20 @@ public:
         auto canvas = drawingCanvas();
         CurvePanelDrawing::drawImpulseResponseBounds(
                 canvas, CycleDsp::irDomainPadding);
+    }
+
+    void updateBackground(bool onlyVerticalBackground = false) override {
+        FlatCurvePanelBase::updateBackground(onlyVerticalBackground);
+        const ScopedLock scopedLock(renderLock);
+        if (zoomPanel != nullptr
+                && 1.f >= zoomPanel->rect.x
+                && 1.f <= zoomPanel->rect.x + zoomPanel->rect.w + 0.00001f
+                && (vertMajorLines.empty()
+                        || !approximatelyEqual(vertMajorLines.back(), 1.f))) {
+            const int previousSize = vertMajorLines.size();
+            vertMajorLines.resize(previousSize + 1);
+            vertMajorLines[previousSize] = 1.f;
+        }
     }
 
     var automationState() const override {

@@ -2,6 +2,11 @@
 
 Status: Implemented (zoom-aware correction, 2026-08-29)
 
+The later power-of-two ruler correction in
+`cycle-v2-ir-power-of-two-ruler.md` supersedes the acceptance of rounded
+`29, 58, 86...` sample labels documented below. Zoom-transform ownership and
+the shared padded-domain mapping remain authoritative.
+
 ## Objective
 
 Align the IR modeller's sample ticks with the plotted impulse domain. Establish

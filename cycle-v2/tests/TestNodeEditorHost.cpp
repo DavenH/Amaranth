@@ -1259,8 +1259,11 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
             .getArray();
     REQUIRE(majorGridLines != nullptr);
     REQUIRE(landmarks->size() == majorGridLines->size());
-    REQUIRE(landmarks->size() > 5);
-    REQUIRE((int) landmarks->getFirst().getProperty("sample", {}) == 0);
+    REQUIRE(landmarks->size() == 9);
+    for (int index = 0; index < landmarks->size(); ++index) {
+        REQUIRE((int) (*landmarks)[index].getProperty("sample", {})
+                == index * 128);
+    }
     const double panelX = panel.getProperty("x", {});
     const double panelWidth = panel.getProperty("width", {});
     const var zoom = panelState.getProperty("zoom", {});
@@ -1279,6 +1282,8 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     }
     const var firstLandmark = landmarks->getFirst();
     const var lastLandmark = landmarks->getLast();
+    REQUIRE(static_cast<double>(lastLandmark.getProperty("x", {}))
+            == Catch::Approx(panelX + panelWidth));
     REQUIRE(static_cast<double>(firstLandmark.getProperty("labelX", {}))
                     + static_cast<double>(firstLandmark.getProperty("labelWidth", {})) * 0.5
             == Catch::Approx(static_cast<double>(firstLandmark.getProperty("x", {}))));

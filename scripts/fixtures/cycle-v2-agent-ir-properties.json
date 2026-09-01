@@ -41,7 +41,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.landmarks.4.sample",
+      "path": "expandedNodeControls.effect2D.landmarks.8.sample",
       "equals": 256
     },
     {

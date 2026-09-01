@@ -138,7 +138,10 @@ Acceptance:
   endpoints, without label clipping.
 - Zoomed ticks remain aligned with the OpenGL grid and padded impulse origin.
 
-Current status: open; recommended quick correctness slice.
+Current status: implemented 2026-09-01 in
+`cycle-v2-ir-power-of-two-ruler.md`. IR now declares one-sided domain padding,
+so its OpenGL major grid divides the sample region into eight exact intervals;
+the ruler includes domain `1` and displays `0, 32, ... 256` without clipping.
 
 ## P1: Guide phase-offset band is not centered
 
