@@ -157,7 +157,12 @@ Acceptance:
 - The band remains centered after resize and does not change the phase-offset
   value mapping.
 
-Current status: open; recommended quick correctness slice.
+Current status: not reproduced in the 2026-09-01 coordinate audit. At phase
+`0.5`, the production panel reports width `740`, zoom x `0.025` with width
+`0.95`, and symmetric phase-band domain endpoints `0.275` and `0.725`; both
+transform around panel x `370`. Do not add an offset without contradictory
+OpenGL pixel evidence. Final visual confirmation is blocked by the same missing
+macOS Screen Recording permission noted above.
 
 ## P1: Numeric property entry changes geometry and includes units
 
