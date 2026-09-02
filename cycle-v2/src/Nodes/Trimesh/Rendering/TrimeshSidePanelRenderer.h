@@ -11,6 +11,11 @@ namespace CycleV2 {
 
 class TrimeshSidePanelRenderer {
 public:
+    enum class GuideControls {
+        Visible,
+        Hidden
+    };
+
     struct AxisState {
         juce::String label;
         juce::String shortLabel;
@@ -37,7 +42,8 @@ public:
             juce::Rectangle<float> area,
             const std::vector<TrimeshVertexParameter>& parameters,
             const std::array<juce::String, 6>& guideAttachmentLabels,
-            float heightScale = 1.f);
+            float heightScale = 1.f,
+            GuideControls guideControls = GuideControls::Visible);
 
     static juce::Rectangle<float> morphCubeBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> sideArea, int axisIndex);
@@ -48,7 +54,9 @@ public:
             juce::Rectangle<float> parameterArea,
             int parameterIndex,
             float heightScale = 1.f);
-    static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
+    static juce::Rectangle<float> vertexParameterRailBounds(
+            juce::Rectangle<float> parameterRow,
+            GuideControls guideControls = GuideControls::Visible);
     static juce::Rectangle<float> vertexParameterGuideBounds(juce::Rectangle<float> parameterRow);
 };
 

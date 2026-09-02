@@ -1608,6 +1608,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
+    REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
     REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");

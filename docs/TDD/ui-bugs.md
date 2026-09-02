@@ -200,7 +200,11 @@ Acceptance:
   truthful reason if Envelope assignment is unsupported.
 - Do not expose implementation terms such as `mesh nodes` in local help.
 
-Current status: open; confirm the intended Envelope attachment capability.
+Current status: implemented 2026-09-02. Envelope vertex Guide assignment is
+not supported by the graph command boundary (only Trimesh cube fields are valid
+targets), so the dead Guide affordances and internal-language popup were
+removed. The vertex rails reclaim that width; Trimesh Guide controls are
+unchanged.
 
 ## P1: Trimesh and Envelope property controls need a shared layout correction
 

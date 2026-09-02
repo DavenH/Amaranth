@@ -442,6 +442,25 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
     }
 }
 
+TEST_CASE("Envelope vertex rails reclaim unsupported Guide control space",
+        "[cycle-v2][nodes][envelope][geometry][guide]") {
+    const Rectangle<float> row { 0.f, 0.f, 260.f, 30.f };
+    const Rectangle<float> trimeshRail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                    row,
+                    TrimeshSidePanelRenderer::GuideControls::Visible);
+    const Rectangle<float> envelopeRail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                    row,
+                    TrimeshSidePanelRenderer::GuideControls::Hidden);
+    const Rectangle<float> guide =
+            TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+    REQUIRE(envelopeRail.getWidth() > trimeshRail.getWidth() + 40.f);
+    REQUIRE(envelopeRail.getRight() > guide.getX());
+    REQUIRE(trimeshRail.getRight() < guide.getX());
+}
+
 TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
     const Rectangle<float> sideArea { 100.f, 50.f, 240.f, 420.f };
 

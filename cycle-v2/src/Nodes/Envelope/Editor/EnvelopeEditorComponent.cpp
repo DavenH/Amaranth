@@ -175,7 +175,8 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->presentation.vertexBounds(controls),
             widget.selectedVertexParameters(),
             guides,
-            EnvelopeMorphControls::vertexParameterHeightScale);
+            EnvelopeMorphControls::vertexParameterHeightScale,
+            TrimeshSidePanelRenderer::GuideControls::Hidden);
 
     if (impl->mode.purpose() == EnvelopePurpose::Pitch) {
         auto pitchLabels = editorPanelBounds().removeFromRight(48.f);
@@ -351,6 +352,7 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "vertexParameterBounds",
             editorBoundsToVar(impl->presentation.vertexBounds(controls)));
+    state.setProperty("guideControlsVisible", false);
     Array<var> parameterRails;
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
@@ -360,7 +362,9 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
         rail->setProperty("id", parameters[static_cast<size_t>(index)].id);
         rail->setProperty(
                 "bounds",
-                editorBoundsToVar(TrimeshSidePanelRenderer::vertexParameterRailBounds(row)));
+                editorBoundsToVar(TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                        row,
+                        TrimeshSidePanelRenderer::GuideControls::Hidden)));
         parameterRails.add(rail);
     }
     state.setProperty("vertexParameterRails", parameterRails);
@@ -378,10 +382,10 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
-        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
-        const auto guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                row,
+                TrimeshSidePanelRenderer::GuideControls::Hidden);
         interactive = interactive || rail.expanded(5.f, 8.f).contains(position);
-        interactive = interactive || guide.expanded(4.f).contains(position);
     }
     setMouseCursor(interactive ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
     return interactive;
@@ -432,16 +436,9 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, index);
-        const auto guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
-        if (guide.expanded(4.f).contains(position)) {
-            PopupMenu menu;
-            menu.addItem(1, "Guide attachments are available on mesh nodes", false, false);
-            const auto target = localAreaToGlobal(guide.toNearestInt());
-            menu.showMenuAsync(PopupMenu::Options().withTargetScreenArea(target));
-            return true;
-        }
-
-        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                row,
+                TrimeshSidePanelRenderer::GuideControls::Hidden);
         if (rail.expanded(5.f, 8.f).contains(position)) {
             const auto& parameter = parameters[static_cast<size_t>(index)];
             impl->parameterId = parameter.id;
@@ -492,7 +489,9 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
         }
         const auto row = impl->presentation.vertexParameterRowBounds(
                 controls, index);
-        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+        const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                row,
+                TrimeshSidePanelRenderer::GuideControls::Hidden);
         const float value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         if (parameters[static_cast<size_t>(index)].value != value
                 && widget.setSelectedVertexParameter(impl->parameterId, value)) {

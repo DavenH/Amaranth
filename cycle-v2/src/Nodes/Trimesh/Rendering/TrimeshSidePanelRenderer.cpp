@@ -527,7 +527,8 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         Rectangle<float> area,
         const std::vector<TrimeshVertexParameter>& parameters,
         const std::array<String, 6>& guideAttachmentLabels,
-        float heightScale) {
+        float heightScale,
+        GuideControls guideControls) {
     if (area.getHeight() < 28.f) {
         return;
     }
@@ -545,11 +546,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const auto& parameter = parameters[(size_t) i];
         const auto row = vertexParameterRowBounds(area, i, heightScale);
         const auto labelBox = vertexLabelBounds(row);
-        const auto guideBox = vertexGuideBounds(row);
-        const auto rail = vertexParameterRailBounds(row);
-        const String guideLabel = i < (int) guideAttachmentLabels.size()
-                ? guideAttachmentLabels[(size_t) i]
-                : String();
+        const auto rail = vertexParameterRailBounds(row, guideControls);
 
         drawSliderRowBody(g, row);
 
@@ -567,9 +564,15 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
         g.fillRect(rail.withWidth(rail.getWidth() * normalized));
 
-        g.setColour(guideLabel.isEmpty()
-                ? Colour(0xff15191e)
-                : Colour(0xff202833));
+        if (guideControls == GuideControls::Hidden) {
+            continue;
+        }
+
+        const String guideLabel = i < (int) guideAttachmentLabels.size()
+                ? guideAttachmentLabels[(size_t) i]
+                : String();
+        const auto guideBox = vertexGuideBounds(row);
+        g.setColour(guideLabel.isEmpty() ? Colour(0xff15191e) : Colour(0xff202833));
         g.fillRect(guideBox);
         g.setColour(guideLabel.isEmpty()
                 ? Colour(0xff59606a).withAlpha(0.45f)
@@ -657,9 +660,13 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
     return rows.removeFromTop(rowHeight);
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(Rectangle<float> parameterRow) {
+Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
+        Rectangle<float> parameterRow,
+        GuideControls guideControls) {
     parameterRow.removeFromLeft(kVertexLabelW + kVertexCellGap);
-    parameterRow.removeFromRight(kVertexGuideW + kVertexCellGap * 2.f);
+    if (guideControls == GuideControls::Visible) {
+        parameterRow.removeFromRight(kVertexGuideW + kVertexCellGap * 2.f);
+    }
     return parameterRow.withTrimmedRight(8.f)
             .withSizeKeepingCentre(jmax(4.f, parameterRow.getWidth() - 8.f), 8.f);
 }

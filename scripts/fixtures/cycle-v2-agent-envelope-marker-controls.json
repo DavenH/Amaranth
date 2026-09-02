@@ -59,6 +59,11 @@
     },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effect2D.guideControlsVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
       "path": "expandedNodeControls.effect2D.loopTooltip",
       "equals": "Toggle selected vertex as loop start"
     },
