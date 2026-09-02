@@ -74,7 +74,7 @@ readout treatment; preview/panel allocations remain domain-specific.
    raster and layout tests.
 2. Migrate Delay, Reverb, Equalizer, and Unison without changing callbacks.
 3. Add the curve-editor header action boundary and migrate IR and Waveshaper,
-   reclaiming their local row space.
+   reclaiming their local row space. Completed.
 4. Normalize the property grids and content-size Waveshaper Antialiasing; add
    cross-editor automation and screenshot evidence.
 
@@ -95,6 +95,11 @@ readout treatment; preview/panel allocations remain domain-specific.
 - Delay, Reverb, Equalizer, and Unison retain their existing parameter callbacks
   and IDs while replacing the textual toggle with the shared header action.
   Their four production editor fixtures pass, including save/reopen behavior.
+- The curve-editor base now accepts one presentation-only header action. IR and
+  Waveshaper register the shared toggle there, retain their existing discrete
+  publication path, and begin their real property rows at the standard rail
+  inset. Focused tests cover the geometry and complete transaction sequence;
+  both production property fixtures cover pointer activation and undo.
 - Focused header/raster tests pass 14 assertions and the broader effect suite
   passes 128 assertions. Standalone Debug builds and packages the SVG.
 - App-side window snapshots for these OpenGL-composited editors are currently

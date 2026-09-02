@@ -26,6 +26,41 @@
       "command": "inspectPointerTargets"
     },
     {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.enabled",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "waveshaperEditor.enabled",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "enabled",
+      "equals": "0"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "enabled",
+      "equals": "1"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
       "command": "pointer",
       "event": "down",
       "targetId": "waveshaperEditor.preGain",

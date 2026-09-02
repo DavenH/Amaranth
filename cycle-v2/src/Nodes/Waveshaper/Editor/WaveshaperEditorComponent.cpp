@@ -2,6 +2,7 @@
 
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "UI/EffectEnableButton.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
@@ -55,15 +56,14 @@ void configureGainControl(LabeledParameterSlider& control, const String& id) {
 
 struct WaveshaperEditorComponent::Impl {
     explicit Impl(Component& owner) :
-            enabled     (owner, "Enabled")
-        ,   preGain     (owner, "Pre Gain")
+            preGain     (owner, "Pre Gain")
         ,   postGain    (owner, "Post Gain") {
         stylePropertyLabel(oversamplingLabel, "Antialiasing");
         owner.addAndMakeVisible(oversamplingLabel);
         owner.addAndMakeVisible(oversampling);
     }
 
-    ParameterToggle enabled;
+    EffectEnableButton enabled;
     LabeledParameterSlider preGain;
     LabeledParameterSlider postGain;
     ComboBox oversampling;
@@ -80,11 +80,13 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(CurveEditorWidget& target) 
     impl->oversampling.setTitle("Antialiasing");
     impl->oversampling.setDescription("Oversampling factor: 1x, 2x, 4x, or 8x");
     impl->oversampling.setTooltip("Oversampling factor: 1x, 2x, 4x, or 8x");
+    impl->enabled.setComponentID("waveshaperEditor.enabled");
+    setHeaderAction(impl->enabled);
 
     configureGainControl(impl->preGain, "preGain");
     configureGainControl(impl->postGain, "postGain");
 
-    bindDiscreteControl(impl->enabled);
+    bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->preGain, &impl->postGain });
     bindDiscreteControl(impl->oversampling);
 }
@@ -109,11 +111,6 @@ void WaveshaperEditorComponent::paintEditor(Graphics&) {
 
 void WaveshaperEditorComponent::layoutEditor() {
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
-    impl->enabled.setBounds(
-            bounds.removeFromTop(PropertyControlMetrics::rowHeight),
-            PropertyControlMetrics::labelWidth,
-            PropertyControlMetrics::inlineGap);
-    bounds.removeFromTop(PropertyControlMetrics::sectionGap);
     impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::rowHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
     impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::rowHeight));
@@ -128,7 +125,7 @@ void WaveshaperEditorComponent::layoutEditor() {
 void WaveshaperEditorComponent::syncEditorFromNode() {
     WaveshaperNodeModel model;
     model.syncFromNode(node);
-    impl->enabled.button.setToggleState(model.enabled, dontSendNotification);
+    impl->enabled.setToggleState(model.enabled, dontSendNotification);
     impl->preGain.slider.setValue(model.preGain, dontSendNotification);
     impl->postGain.slider.setValue(model.postGain, dontSendNotification);
     impl->oversampling.setSelectedId(model.oversampling, dontSendNotification);
@@ -138,7 +135,7 @@ void WaveshaperEditorComponent::syncEditorFromNode() {
 
 void WaveshaperEditorComponent::applyEditorStateToWidget() {
     widget.setControlValues(
-            impl->enabled.button.getToggleState(),
+            impl->enabled.getToggleState(),
             static_cast<float>(impl->preGain.slider.getValue()),
             static_cast<float>(impl->postGain.slider.getValue()),
             0.5f,
@@ -147,7 +144,7 @@ void WaveshaperEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> WaveshaperEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
-    addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.button.getToggleState() ? "1" : "0");
+    addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "pre", "Pre Gain", String(impl->preGain.slider.getValue(), 8));
     addEditorParameter(result, node, "post", "Post Gain", String(impl->postGain.slider.getValue(), 8));
     addEditorParameter(result, node, "aaFactor", "AA Factor", String(impl->oversampling.getSelectedId()));
@@ -155,7 +152,7 @@ std::vector<NodeParameter> WaveshaperEditorComponent::editorControls() const {
 }
 
 void WaveshaperEditorComponent::appendEditorAutomation(DynamicObject& state) const {
-    state.setProperty("enabled", impl->enabled.button.getToggleState());
+    state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("preGain", impl->preGain.slider.getValue());
     state.setProperty("postGain", impl->postGain.slider.getValue());
     state.setProperty("oversampling", impl->oversampling.getSelectedId());

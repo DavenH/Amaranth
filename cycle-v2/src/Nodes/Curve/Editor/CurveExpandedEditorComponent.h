@@ -80,6 +80,7 @@ protected:
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
     void publishDiscreteControlChange();
+    void setHeaderAction(Component& action);
     void setEditorModelState(NodeModelStatePtr model);
     bool setAudioResource(NodeAudioResourceEdit edit);
     bool removeAudioResource();
@@ -119,6 +120,7 @@ private:
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
+    Component* headerAction {};
     std::unique_ptr<Button> closeButton;
     NodeModelStatePtr editorModel;
 

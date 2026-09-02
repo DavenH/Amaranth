@@ -21,6 +21,7 @@
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAutomationInspector.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
@@ -1172,8 +1173,13 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
 
     const var state = editor.automationState();
     const var panelBounds = state.getProperty("panelBounds", {});
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
     REQUIRE(static_cast<double>(panelBounds.getProperty("width", {}))
             == Catch::Approx(static_cast<double>(panelBounds.getProperty("height", {}))));
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
     const var preLayout = state.getProperty("preGainLayout", {});
     const var postLayout = state.getProperty("postGainLayout", {});
     REQUIRE(preLayout.getProperty("display", {}).toString() == "+23 dB");
@@ -1183,6 +1189,15 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
     auto* oversampling = dynamic_cast<ComboBox*>(
             editor.findChildWithID("waveshaperEditor.oversampling"));
+    auto* enabled = dynamic_cast<ToggleButton*>(
+            editor.findChildWithID("waveshaperEditor.enabled"));
+    auto* preGain = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("waveshaperEditor.preGain"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(preGain != nullptr);
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
+    REQUIRE(rectangleProperty(preLayout, "label").getY()
+            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getNumItems() == 4);
     REQUIRE(oversampling->getItemText(0) == "1x");
@@ -1206,6 +1221,14 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE_FALSE(static_cast<bool>(editor.automationState()
             .getProperty("preGainLayout", {})
             .getProperty("valid", {})));
+
+    delegate.events.clear();
+    const bool wasEnabled = enabled->getToggleState();
+    enabled->setToggleState(!wasEnabled, sendNotificationSync);
+    REQUIRE(enabled->getToggleState() != wasEnabled);
+    REQUIRE(static_cast<bool>(editor.automationState().getProperty("enabled", {}))
+            != wasEnabled);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
 }
 
 TEST_CASE("Impulse response editor exposes truthful precision properties",
@@ -1223,8 +1246,13 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
 
     const var state = editor.automationState();
     const var panel = state.getProperty("panelBounds", {});
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
     REQUIRE(static_cast<double>(panel.getProperty("width", {}))
             > static_cast<double>(panel.getProperty("height", {})));
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
     REQUIRE(state.getProperty("sizeLayout", {}).getProperty("display", {}).toString()
             == "1024 smp");
     REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
@@ -1340,11 +1368,22 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE(enabled != nullptr);
     REQUIRE(enabled->isVisible());
     REQUIRE(enabled->getLocalBounds().contains(15, 15));
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
 
     auto* sizeSlider = dynamic_cast<PrecisionSlider*>(editor.findChildWithID("irEditor.size"));
     REQUIRE(sizeSlider != nullptr);
-    REQUIRE(enabled->getX() == sizeSlider->getX() + 12);
+    REQUIRE(rectangleProperty(state.getProperty("sizeLayout", {}), "label").getY()
+            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
 
+    delegate.events.clear();
+    const bool wasEnabled = enabled->getToggleState();
+    enabled->setToggleState(!wasEnabled, sendNotificationSync);
+    REQUIRE(enabled->getToggleState() != wasEnabled);
+    REQUIRE(static_cast<bool>(editor.automationState().getProperty("enabled", {}))
+            != wasEnabled);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
     auto* sizeValue = dynamic_cast<Label*>(editor.findChildWithID("irEditor.size.value"));
     REQUIRE(sizeValue != nullptr);
     sizeValue->setText("4096 samples", sendNotificationSync);

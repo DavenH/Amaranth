@@ -4,6 +4,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/Editors/PropertyControls.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -19,7 +20,6 @@ constexpr float kControlRailWidth = 348.f;
 constexpr int kValueWidth = 72;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
-constexpr int kToggleControlInset = 12;
 constexpr float kSampleLabelWidth = 56.f;
 constexpr float kSampleLabelHeight = 14.f;
 constexpr double kReferenceSampleRate = 44100.0;
@@ -240,11 +240,9 @@ Array<var> sampleLandmarkAutomation(const std::vector<SampleLandmark>& landmarks
 
 struct ImpulseResponseEditorComponent::Impl {
     explicit Impl(Component& owner) :
-            enabled     (owner, "Enabled")
-        ,   size        (owner, "Size")
+            size        (owner, "Size")
         ,   postGain    (owner, "Post Gain")
         ,   highPass    (owner, "High Pass") {
-        enabled.button.setComponentID("irEditor.enabled");
         resourceTitle.setText("IR sample", dontSendNotification);
         resourceTitle.setFont(FontOptions(
                 CanvasChromeMetrics::labelFontSize).withStyle("Bold"));
@@ -268,7 +266,7 @@ struct ImpulseResponseEditorComponent::Impl {
         button.setMouseCursor(MouseCursor::PointingHandCursor);
     }
 
-    ParameterToggle enabled;
+    EffectEnableButton enabled;
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
@@ -289,7 +287,9 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
     configureSizeControl(impl->size);
     configurePostGainControl(impl->postGain);
     configureHighPassControl(impl->highPass);
-    bindDiscreteControl(impl->enabled);
+    impl->enabled.setComponentID("irEditor.enabled");
+    setHeaderAction(impl->enabled);
+    bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
     impl->loadAudio.onClick = [this] {
         chooseAudio(ImpulseResponseImportMode::Direct);
@@ -348,11 +348,6 @@ void ImpulseResponseEditorComponent::paintEditor(Graphics& graphics) {
 
 void ImpulseResponseEditorComponent::layoutEditor() {
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
-    impl->enabled.setBounds(
-            bounds.removeFromTop(PropertyControlMetrics::rowHeight),
-            PropertyControlMetrics::labelWidth,
-            PropertyControlMetrics::inlineGap + kToggleControlInset);
-    bounds.removeFromTop(PropertyControlMetrics::rowGap);
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::rowHeight),
@@ -380,7 +375,7 @@ void ImpulseResponseEditorComponent::layoutEditor() {
 void ImpulseResponseEditorComponent::syncEditorFromNode() {
     ImpulseResponseNodeModel model;
     model.syncFromNode(node);
-    impl->enabled.button.setToggleState(model.enabled, dontSendNotification);
+    impl->enabled.setToggleState(model.enabled, dontSendNotification);
     impl->size.slider.setValue(model.size, dontSendNotification);
     impl->postGain.slider.setValue(model.postGain, dontSendNotification);
     impl->highPass.slider.setValue(model.highPass, dontSendNotification);
@@ -472,7 +467,7 @@ void ImpulseResponseEditorComponent::updateResourceState() {
 
 void ImpulseResponseEditorComponent::applyEditorStateToWidget() {
     widget.setControlValues(
-            impl->enabled.button.getToggleState(),
+            impl->enabled.getToggleState(),
             static_cast<float>(impl->size.slider.getValue()),
             static_cast<float>(impl->postGain.slider.getValue()),
             static_cast<float>(impl->highPass.slider.getValue()),
@@ -481,7 +476,7 @@ void ImpulseResponseEditorComponent::applyEditorStateToWidget() {
 
 std::vector<NodeParameter> ImpulseResponseEditorComponent::editorControls() const {
     std::vector<NodeParameter> result;
-    addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.button.getToggleState() ? "1" : "0");
+    addEditorParameter(result, node, "enabled", "Enabled", impl->enabled.getToggleState() ? "1" : "0");
     addEditorParameter(result, node, "size", "Size", String(impl->size.slider.getValue(), 8));
     addEditorParameter(result, node, "post", "Post Gain", String(impl->postGain.slider.getValue(), 8));
     addEditorParameter(result, node, "highPass", "High Pass", String(impl->highPass.slider.getValue(), 8));
@@ -489,7 +484,7 @@ std::vector<NodeParameter> ImpulseResponseEditorComponent::editorControls() cons
 }
 
 void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state) const {
-    state.setProperty("enabled", impl->enabled.button.getToggleState());
+    state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("size", impl->size.slider.getValue());
     state.setProperty("postGain", impl->postGain.slider.getValue());
     state.setProperty("highPass", impl->highPass.slider.getValue());

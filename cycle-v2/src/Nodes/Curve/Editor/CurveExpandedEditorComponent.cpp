@@ -126,7 +126,7 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     graphics.fillRoundedRectangle(outer, CanvasChromeMetrics::panelCornerRadius);
     graphics.restoreState();
 
-    const auto headerLayout = embeddedEditorHeaderLayout(outer);
+    const auto headerLayout = embeddedEditorHeaderLayout(outer, headerAction != nullptr);
     const Rectangle<float> header = headerLayout.header;
     graphics.setColour(Colour(0xff202833));
     graphics.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
@@ -150,6 +150,10 @@ void CurveExpandedEditorComponent::paint(Graphics& graphics) {
 
 void CurveExpandedEditorComponent::resized() {
     closeButton->setBounds(closeButtonBounds().toNearestInt());
+    if (headerAction != nullptr) {
+        headerAction->setBounds(embeddedEditorHeaderLayout(
+                getLocalBounds().toFloat(), true).enabled.toNearestInt());
+    }
     updatePanelHost();
     layoutEditor();
 }
@@ -183,6 +187,11 @@ var CurveExpandedEditorComponent::automationState() const {
     auto* root = new DynamicObject();
     root->setProperty("panelBounds", rectangleToVar(editorPanelBounds()));
     root->setProperty("controlBounds", rectangleToVar(editorControlBounds()));
+    root->setProperty(
+            "headerActionBounds",
+            rectangleToVar(headerAction != nullptr
+                    ? headerAction->getBounds().toFloat()
+                    : Rectangle<float>()));
     root->setProperty("vertexCount", widget.vertexCountForAutomation());
     root->setProperty("panelState", widget.automationState());
     appendEditorAutomation(*root);
@@ -308,8 +317,17 @@ void CurveExpandedEditorComponent::publishDiscreteControlChange() {
     performDiscreteEdit(noOperation);
 }
 
+void CurveExpandedEditorComponent::setHeaderAction(Component& action) {
+    headerAction = &action;
+    addAndMakeVisible(action);
+    action.setBounds(embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), true).enabled.toNearestInt());
+    repaint();
+}
+
 Rectangle<float> CurveExpandedEditorComponent::closeButtonBounds() const {
-    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
+    return embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), headerAction != nullptr).close;
 }
 
 void CurveExpandedEditorComponent::updatePanelHost() {
