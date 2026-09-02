@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/NodeIconRenderer.h"
 
 namespace CycleV2 {
 
@@ -600,21 +601,11 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
             g.setFont(FontOptions(10.5f));
             g.drawText(guideLabel, guideBox.reduced(3.f, 0.f), Justification::centred);
         } else {
-            g.setColour(kMutedText.withAlpha(0.82f));
-            Path guideCurve;
-            guideCurve.startNewSubPath(guideBox.getX() + 6.f, guideBox.getCentreY() + 4.f);
-            guideCurve.cubicTo(
-                    guideBox.getX() + 13.f,
-                    guideBox.getY() + 3.f,
-                    guideBox.getRight() - 17.f,
-                    guideBox.getBottom() - 3.f,
-                    guideBox.getRight() - 10.f,
-                    guideBox.getCentreY() - 3.f);
-            g.strokePath(guideCurve, PathStrokeType(1.2f));
-            g.fillEllipse(Rectangle<float>(3.f, 3.f)
-                    .withCentre({ guideBox.getX() + 7.f, guideBox.getCentreY() + 4.f }));
-            g.fillEllipse(Rectangle<float>(3.f, 3.f)
-                    .withCentre({ guideBox.getRight() - 11.f, guideBox.getCentreY() - 3.f }));
+            NodeIconRenderer::paint(
+                    g,
+                    "guideCurve",
+                    guideBox.reduced(8.f, 1.f).withTrimmedRight(3.f),
+                    0.82f);
         }
 
         Path chevron;

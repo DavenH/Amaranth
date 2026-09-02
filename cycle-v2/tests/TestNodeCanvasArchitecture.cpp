@@ -22,6 +22,7 @@
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
+#include "UI/NodeIconRenderer.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
 #include "UI/NodePreviewRenderer.h"
@@ -621,6 +622,23 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
         INFO("Missing or invalid icon for node type " << definition.typeId);
         REQUIRE(NodePaletteEntryIconRenderer::hasIcon(definition.kind));
     }
+}
+
+TEST_CASE("Guide controls render the shared semantic icon at production size",
+        "[cycle-v2][canvas][icons][guide]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    Image rendered(Image::ARGB, 30, 17, true);
+    const uint64_t blankChecksum = imageChecksum(rendered);
+    Graphics graphics(rendered);
+
+    REQUIRE(NodeIconRenderer::hasIcon("guideCurve"));
+    NodeIconRenderer::paint(
+            graphics,
+            "guideCurve",
+            rendered.getBounds().toFloat(),
+            0.82f);
+    REQUIRE(imageChecksum(rendered) != blankChecksum);
 }
 
 TEST_CASE("Every Envelope purpose has a parseable compact icon",

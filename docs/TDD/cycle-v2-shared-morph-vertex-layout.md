@@ -1,6 +1,6 @@
 # Cycle V2 Shared Morph and Vertex Controls Layout
 
-Status: In progress
+Status: Implemented 2026-09-02
 
 ## Objective
 
@@ -106,3 +106,20 @@ At the current expanded-editor reference widths:
   Guide-bearing vertex rails retain at least 72 px, morph rails retain at least
   96 px, the cube retains at least 80 px, and the upper columns do not overlap.
   The unchanged production pointer replay passes after the geometry change.
+- Slice 3 extracts the SVG parse/cache path into `NodeIconRenderer`, keyed by
+  semantic resource ID. `NodePaletteEntryIconRenderer` remains a narrow
+  `NodeKind` facade and no longer owns a second cache. The Trimesh Guide target
+  now paints the existing `guideCurve.svg`; its former local curve/dot drawing
+  is deleted. A 30 x 17 px raster test proves the SVG remains non-blank at the
+  actual control size, while the existing registry-wide icon test still covers
+  every graph node.
+- Existing hosted interaction tests retain complete Trimesh morph and selected-
+  vertex gestures and Envelope morph/selected-vertex gestures through commit.
+  The production fixtures retain Axis/Link actions and selected-vertex states.
+  Reference and compact geometry share the same public bounds used by painting,
+  hit testing, and automation.
+- Pixel review used the production fixtures. Full editor chrome and controls are
+  visible in the pre-icon Trimesh and Envelope captures; after SVG integration,
+  macOS denied process activation and the component capture omitted the OpenGL
+  surface, but retained all six native-size Guide boxes and their legible shared
+  curve symbols for the icon-specific review.

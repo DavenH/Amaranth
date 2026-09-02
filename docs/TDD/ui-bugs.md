@@ -226,9 +226,11 @@ Acceptance:
 - Replace the Guide icon only through the shared semantic SVG icon system.
 - Preserve vertex selection and all complete edit gestures through rearrangement.
 
-Current status: in progress under
-`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`; functional Link-button repair
-is complete.
+Current status: implemented 2026-09-02 under
+`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`. Shared Axis/Link group labels,
+precise morph markers, bounded morph travel, 72 px minimum Guide-bearing vertex
+travel at the compact fixture, and the semantic Guide Curve SVG are in place;
+functional Link-button repair remains covered by its command-sequence tests.
 
 ## P1: Morph slider handle has contradictory geometry
 
