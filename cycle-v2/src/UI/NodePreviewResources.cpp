@@ -28,9 +28,11 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     TrimeshWidget& widget = trimeshWidget(node.id);
-    widget.setPreviewMidiNote(graph != nullptr
-            ? PreviewPitchResolver::forNode(*graph, node.id)
-            : PreviewPitchResolver::defaultMidiNote);
+    const PreviewPitchContext preview = graph != nullptr
+            ? PreviewPitchResolver::contextForNode(*graph, node.id)
+            : PreviewPitchContext {};
+    widget.setPreviewMidiNote(preview.midiNote);
+    widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);
     if (graph != nullptr) {
         widget.syncGuideContext(*graph, node);

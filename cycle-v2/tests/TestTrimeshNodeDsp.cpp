@@ -6,6 +6,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
+#include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
@@ -1116,6 +1117,83 @@ TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates"
         REQUIRE(columns.front().size() == expectedRows);
         REQUIRE(columns.front().midiKey == midiNote);
     }
+}
+
+TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Time);
+    bridge.setPreviewMidiNote(48);
+    bridge.syncFromNode(node, 10, 3);
+    const float c3Position = ModulationSource::normalizeKey(
+            48,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
+            == Catch::Approx(c3Position));
+    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+            == Catch::Approx(0.5f));
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Blue);
+    bridge.setPreviewMidiNote(72);
+    bridge.syncFromNode(node, 10, 3);
+    const float c5Position = ModulationSource::normalizeKey(
+            72,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
+            == Catch::Approx(0.5f));
+    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
+            == Catch::Approx(c5Position));
+
+    bridge.setPreviewMidiNote(Constants::HighestMidiNote);
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
+            == Catch::Approx(1.f));
+}
+
+TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axis",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale][grid]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    bridge.setPreviewMidiNote(72);
+    bridge.setPreviewKeyScaleAxis(Vertex::Time);
+    bridge.syncFromNode(node, 10, 5);
+
+    const auto& yellowColumns = bridge.getDataSource().getColumns();
+    REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE((int) yellowColumns.front().midiKey == Constants::LowestMidiNote);
+    REQUIRE((int) yellowColumns.back().midiKey == Constants::HighestMidiNote);
+    REQUIRE(yellowColumns.front().size()
+            == LogRegionMapping(Constants::LowestMidiNote).regionSize());
+    REQUIRE(yellowColumns.back().size()
+            == LogRegionMapping(Constants::HighestMidiNote).regionSize());
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Red);
+    bridge.syncFromNode(node, 10, 5);
+    const auto& nonKeyColumns = bridge.getDataSource().getColumns();
+    REQUIRE_FALSE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE(std::all_of(
+            nonKeyColumns.begin(),
+            nonKeyColumns.end(),
+            [](const Column& column) { return (int) column.midiKey == 72; }));
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "primaryAxis") {
+            parameter.value = "red";
+        }
+    }
+    bridge.syncFromNode(node, 10, 5);
+    const auto& redColumns = bridge.getDataSource().getColumns();
+    REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE((int) redColumns.front().midiKey == Constants::LowestMidiNote);
+    REQUIRE((int) redColumns.back().midiKey == Constants::HighestMidiNote);
 }
 
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {

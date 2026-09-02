@@ -33,6 +33,7 @@
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
 
@@ -430,6 +431,52 @@ TEST_CASE("Signal probe preview pitch defaults to C3 without a Modulation Triple
     REQUIRE(GraphPresentationModel::auditionMidiNoteForProbe(
             graph,
             graph.getSignalProbes().front().id) == 48);
+}
+
+TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
+        "[cycle-v2][canvas][preview][key-scale]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    graph.addNode(std::move(triple));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+
+    const int existingPreviewNote = Arithmetic::getGraphicNoteForValue(
+            0.5f,
+            {
+                    Constants::LowestMidiNote,
+                    Constants::HighestMidiNote
+            });
+    PreviewPitchContext context = PreviewPitchResolver::contextForNode(graph, "mesh");
+    REQUIRE(context.midiNote == existingPreviewNote);
+    REQUIRE(context.keyScaleAxis == "red");
+
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redSource",
+            "Red Source",
+            "modWheel").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "triple",
+            "yellowSource",
+            "Yellow Source",
+            "keyScale").succeeded());
+
+    context = PreviewPitchResolver::contextForNode(graph, "mesh");
+    REQUIRE(context.midiNote == existingPreviewNote);
+    REQUIRE(context.keyScaleAxis == "yellow");
 }
 
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",

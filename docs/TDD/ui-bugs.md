@@ -119,7 +119,7 @@ Acceptance:
   mapping logic.
 - Tests cover at least two notes, two axis assignments, and an endpoint.
 
-Current status: open; requires a focused TDD after the P0 containment work.
+Current status: in progress in `cycle-v2-spectral-key-scale-grid.md`.
 
 ## P1: IR sample ruler chooses irregular intervals and omits its endpoint
 

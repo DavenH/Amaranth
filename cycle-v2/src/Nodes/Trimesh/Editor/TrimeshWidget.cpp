@@ -75,6 +75,18 @@ void TrimeshWidget::setPreviewMidiNote(int midiNote) {
     bridge.setPreviewMidiNote(midiNote);
 }
 
+void TrimeshWidget::setPreviewKeyScaleAxis(const String& axis) {
+    int dimension = -1;
+    if (axis == "yellow") {
+        dimension = Vertex::Time;
+    } else if (axis == "red") {
+        dimension = Vertex::Red;
+    } else if (axis == "blue") {
+        dimension = Vertex::Blue;
+    }
+    bridge.setPreviewKeyScaleAxis(dimension);
+}
+
 void TrimeshWidget::setGuideAttachmentLabels(std::array<String, 6> labels) {
     guideAttachmentLabels = std::move(labels);
 }
@@ -302,6 +314,13 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto samples = snapshot.waveY();
     const TrimeshPanel2D& panel = bridge.getPanel2D();
     TrimeshPanelRenderStats stats;
+    const auto& panelColumns = bridge.getDataSource().getPanelColumns();
+    if (!panelColumns.empty()) {
+        stats.firstPanelMidiNote = panelColumns.front().midiKey;
+        stats.lastPanelMidiNote = panelColumns.back().midiKey;
+        stats.pitchSpansColumns = stats.firstPanelMidiNote
+                != stats.lastPanelMidiNote;
+    }
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
     const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;

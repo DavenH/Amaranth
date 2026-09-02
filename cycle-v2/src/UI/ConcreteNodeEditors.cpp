@@ -217,6 +217,9 @@ public:
                 "panelComponentGuideSegmentCount",
                 panelStats.componentGuideSegmentCount);
         meshState->setProperty("panelCurveGuideSegmentCount", panelStats.curveGuideSegmentCount);
+        meshState->setProperty("firstPanelMidiNote", panelStats.firstPanelMidiNote);
+        meshState->setProperty("lastPanelMidiNote", panelStats.lastPanelMidiNote);
+        meshState->setProperty("pitchSpansColumns", panelStats.pitchSpansColumns);
         meshState->setProperty("panelMinimum", panelStats.minimum);
         meshState->setProperty("panelMaximum", panelStats.maximum);
         meshState->setProperty("panelCentreSample", panelStats.centreSample);

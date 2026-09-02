@@ -14,6 +14,7 @@ public:
 
     void drawViewableVerts() override {}
     bool shouldDrawGrid() override { return true; }
+    bool willAdjustSurfaceColumns() override { return pitchSpansColumns; }
     int interceptLinePrimaryDimension() override { return primaryViewAxis; }
     void panelResized() override;
     void postVertsDraw() override {}
@@ -22,6 +23,7 @@ public:
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
+    void setPitchSpansColumns(bool shouldSpan) { pitchSpansColumns = shouldSpan; }
 
 private:
     void applyGradientForProfile();
@@ -29,6 +31,7 @@ private:
     TrimeshPanelDataSource& dataSource;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int primaryViewAxis { Vertex::Time };
+    bool pitchSpansColumns {};
     bool sharedCanvasMode {};
 };
 

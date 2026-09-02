@@ -1,0 +1,50 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "setPrimaryAxis",
+      "nodeId": "magnitudeLayer1",
+      "axis": "red"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "primaryAxis",
+      "equals": "red"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 700
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.pitchSpansColumns",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.firstPanelMidiNote",
+      "equals": 20
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.lastPanelMidiNote",
+      "equals": 127
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": true
+}
