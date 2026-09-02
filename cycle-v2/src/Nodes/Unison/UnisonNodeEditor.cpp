@@ -5,6 +5,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
@@ -24,7 +25,6 @@ public:
         closeButton.onClick = [this] { presentation.closeNodeEditor(); };
         addAndMakeVisible(closeButton);
 
-        enabledButton.setButtonText("Enabled");
         enabledButton.onClick = [this] {
             commands.setNodeParameterValue(
                     node.id,
@@ -414,7 +414,7 @@ private:
     NodeEditorResources& resources;
     Node node;
     TextButton closeButton;
-    ToggleButton enabledButton;
+    EffectEnableButton enabledButton;
     ComboBox modeSelector;
     ComboBox voiceSelector;
     TextButton addVoiceButton;

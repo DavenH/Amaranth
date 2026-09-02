@@ -79,22 +79,34 @@ inline FullEditorHeaderLayout fullEditorHeaderLayout(
 struct EmbeddedEditorHeaderLayout {
     juce::Rectangle<float> header;
     juce::Rectangle<float> title;
+    juce::Rectangle<float> enabled;
     juce::Rectangle<float> close;
 };
 
 inline EmbeddedEditorHeaderLayout embeddedEditorHeaderLayout(
-        juce::Rectangle<float> editor) {
+        juce::Rectangle<float> editor,
+        bool showsEnabled = false) {
     EmbeddedEditorHeaderLayout layout;
     layout.header = editor.removeFromTop(CanvasChromeMetrics::embeddedEditorHeaderHeight);
     layout.close = EditorChromeLayoutDetail::trailingSquare(
             layout.header,
             CanvasChromeMetrics::embeddedEditorCloseButtonSize,
             CanvasChromeMetrics::embeddedEditorCloseButtonRightInset);
+    if (showsEnabled) {
+        layout.enabled = EditorChromeLayoutDetail::trailingSquare(
+                layout.header,
+                static_cast<float>(CanvasChromeMetrics::fullEditorEnabledWidth),
+                layout.header.getRight() - layout.close.getX()
+                        + static_cast<float>(CanvasChromeMetrics::embeddedEditorActionGap));
+    }
+    const float firstActionX = showsEnabled
+            ? layout.enabled.getX()
+            : layout.close.getX();
     layout.title = EditorChromeLayoutDetail::titleBounds(
             layout.header,
             CanvasChromeMetrics::embeddedEditorHorizontalInset,
             CanvasChromeMetrics::embeddedEditorTitleVerticalInset,
-            layout.close.getX() - CanvasChromeMetrics::embeddedEditorActionGap);
+            firstActionX - CanvasChromeMetrics::embeddedEditorActionGap);
     return layout;
 }
 

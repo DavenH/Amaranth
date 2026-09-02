@@ -7,6 +7,7 @@
 #include "Nodes/Reverb/ReverbNodeEditor.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
@@ -144,7 +145,6 @@ private:
         close.onClick = [this] {
             presentation.closeNodeEditor();
         };
-        enabled.setButtonText("Enabled");
         enabled.setComponentID("reverbEditor.enabled");
         enabled.onClick = [this] {
             commands.setNodeParameterValue(
@@ -239,7 +239,7 @@ private:
     NodeEditorResources& resources;
     Node node;
     TextButton close;
-    ToggleButton enabled;
+    EffectEnableButton enabled;
     NodePropertySliderRow size;
     NodePropertySliderRow damping;
     NodePropertySliderRow width;

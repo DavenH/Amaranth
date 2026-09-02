@@ -16,6 +16,8 @@
 #include "Graph/NodeDefinition.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UI/EffectEnableButton.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
@@ -639,6 +641,48 @@ TEST_CASE("Guide controls render the shared semantic icon at production size",
             rendered.getBounds().toFloat(),
             0.82f);
     REQUIRE(imageChecksum(rendered) != blankChecksum);
+}
+
+TEST_CASE("Effect enable actions share full and embedded header geometry",
+        "[cycle-v2][canvas][effects][chrome]") {
+    const Rectangle<int> fullEditor { 0, 0, 520, 520 };
+    const auto full = fullEditorHeaderLayout(fullEditor, true);
+    REQUIRE(full.enabled.getWidth() == 28);
+    REQUIRE(full.enabled.getHeight() == 28);
+    REQUIRE(full.enabled.getRight() + 8 == full.close.getX());
+    REQUIRE(full.enabled.getCentreY() == full.close.getCentreY());
+    REQUIRE(full.header.contains(full.enabled));
+
+    const Rectangle<float> embeddedEditor { 0.f, 0.f, 900.f, 430.f };
+    const auto embedded = embeddedEditorHeaderLayout(embeddedEditor, true);
+    REQUIRE(embedded.enabled.getWidth() == Catch::Approx(28.f));
+    REQUIRE(embedded.enabled.getHeight() == Catch::Approx(28.f));
+    REQUIRE(embedded.enabled.getRight() + 8.f == Catch::Approx(embedded.close.getX()));
+    REQUIRE(embedded.enabled.getCentreY() == Catch::Approx(embedded.close.getCentreY()));
+    REQUIRE(embedded.header.contains(embedded.enabled));
+}
+
+TEST_CASE("Effect enable button has distinct native-size on and bypass states",
+        "[cycle-v2][canvas][effects][chrome][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    EffectEnableButton button;
+    button.setBounds(0, 0, 28, 28);
+
+    const auto render = [&button](bool enabled) {
+        button.setToggleState(enabled, dontSendNotification);
+        Image image(Image::ARGB, 28, 28, true);
+        Graphics graphics(image);
+        button.paintButton(graphics, false, false);
+        return imageChecksum(image);
+    };
+
+    const uint64_t bypassed = render(false);
+    const uint64_t enabled = render(true);
+    REQUIRE(bypassed != imageChecksum(Image(Image::ARGB, 28, 28, true)));
+    REQUIRE(enabled != bypassed);
+    REQUIRE(button.getTooltip() == "Enable or bypass effect");
+    REQUIRE(button.getWantsKeyboardFocus());
 }
 
 TEST_CASE("Every Envelope purpose has a parseable compact icon",

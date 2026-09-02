@@ -21,11 +21,11 @@ inline constexpr float editorTitleFontSize = 18.f;
 inline constexpr int fullEditorHeaderHeight = 44;
 inline constexpr int fullEditorHorizontalInset = 18;
 inline constexpr int fullEditorTitleVerticalInset = 8;
-inline constexpr int fullEditorActionGap = 12;
+inline constexpr int fullEditorActionGap = 8;
 inline constexpr int fullEditorCloseButtonSize = 28;
 inline constexpr int fullEditorCloseButtonRightInset = 14;
-inline constexpr int fullEditorEnabledWidth = 88;
-inline constexpr int fullEditorEnabledHeight = 24;
+inline constexpr int fullEditorEnabledWidth = 28;
+inline constexpr int fullEditorEnabledHeight = 28;
 
 inline constexpr float embeddedEditorHeaderHeight = 34.f;
 inline constexpr float embeddedEditorHorizontalInset = 13.f;

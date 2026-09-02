@@ -269,7 +269,9 @@ Acceptance:
   remain visible.
 - Removing the local Enabled row returns its space to content or controls.
 
-Current status: open; coordinate with the SVG icon-system skill.
+Current status: in progress under
+`docs/TDD/cycle-v2-expanded-effect-controls.md`, using the SVG icon-system
+workflow.
 
 ## P2: Canvas legend is undersized
 
@@ -319,7 +321,8 @@ Acceptance:
 - Size Antialiasing from its longest real option plus standard insets.
 - Compare IR, Delay, Waveshaper, and Reverb together at the same production size.
 
-Current status: open; combine with the shared enablement/layout TDD.
+Current status: in progress under
+`docs/TDD/cycle-v2-expanded-effect-controls.md`.
 
 ## Open: Node-palette fallback icon asserts during the complete Cycle V2 suite
 

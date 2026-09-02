@@ -6,6 +6,7 @@
 #include "Nodes/Delay/DelayPreviewPainter.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 
 namespace CycleV2 {
@@ -133,7 +134,6 @@ private:
         close.onClick = [this] {
             presentation.closeNodeEditor();
         };
-        enabled.setButtonText("Enabled");
         enabled.setComponentID("delayEditor.enabled");
         enabled.onClick = [this] {
             commands.setNodeParameterValue(
@@ -258,7 +258,7 @@ private:
     NodeEditorPresentation& presentation;
     Node node;
     TextButton close;
-    ToggleButton enabled;
+    EffectEnableButton enabled;
     NodePropertySliderRow time;
     NodePropertySliderRow feedback;
     NodePropertySliderRow panAmount;

@@ -8,6 +8,7 @@
 #include "Nodes/Equalizer/EqualizerPreviewPainter.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
@@ -184,7 +185,6 @@ private:
         close.onClick = [this] {
             presentation.closeNodeEditor();
         };
-        enabled.setButtonText("Enabled");
         enabled.setComponentID("equalizerEditor.enabled");
         enabled.onClick = [this] {
             commands.setNodeParameterValue(
@@ -389,7 +389,7 @@ private:
     NodeEditorPresentation& presentation;
     Node node;
     TextButton close;
-    ToggleButton enabled;
+    EffectEnableButton enabled;
     Label gainHeader;
     Label frequencyHeader;
     int draggedBand { -1 };

@@ -60,22 +60,22 @@ TEST_CASE("Full editor headers align titles and actions without overlap",
 
     const auto withEnabled = fullEditorHeaderLayout(editor, true);
     REQUIRE(withEnabled.header == Rectangle<int>(0, 0, 400, 44));
-    REQUIRE(withEnabled.title == Rectangle<int>(18, 8, 228, 28));
-    REQUIRE(withEnabled.enabled == Rectangle<int>(258, 10, 88, 24));
+    REQUIRE(withEnabled.title == Rectangle<int>(18, 8, 296, 28));
+    REQUIRE(withEnabled.enabled == Rectangle<int>(322, 8, 28, 28));
     REQUIRE(withEnabled.close == Rectangle<int>(358, 8, 28, 28));
     REQUIRE(withEnabled.title.getRight() < withEnabled.enabled.getX());
     REQUIRE(withEnabled.enabled.getRight() < withEnabled.close.getX());
 
     const auto withoutEnabled = fullEditorHeaderLayout(editor, false);
     REQUIRE(withoutEnabled.header == Rectangle<int>(0, 0, 400, 44));
-    REQUIRE(withoutEnabled.title == Rectangle<int>(18, 8, 328, 28));
+    REQUIRE(withoutEnabled.title == Rectangle<int>(18, 8, 332, 28));
     REQUIRE(withoutEnabled.enabled.isEmpty());
     REQUIRE(withoutEnabled.close == Rectangle<int>(358, 8, 28, 28));
     REQUIRE(withoutEnabled.title.getRight() < withoutEnabled.close.getX());
 
     const auto constrained = fullEditorHeaderLayout(
             Rectangle<int>(0, 0, 180, 120), true);
-    REQUIRE(constrained.title == Rectangle<int>(18, 8, 8, 28));
+    REQUIRE(constrained.title == Rectangle<int>(18, 8, 76, 28));
     REQUIRE(constrained.title.getRight() < constrained.enabled.getX());
 }
 
