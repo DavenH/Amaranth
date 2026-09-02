@@ -18,6 +18,9 @@ constexpr float kRowButtonGap    = 6.f;
 constexpr float kVertexGap       = 10.f;
 constexpr float kColumnGap       = 12.f;
 constexpr float kMorphTopGap     = 10.f;
+constexpr float kMorphMarkerWidth = 1.5f;
+constexpr float kMorphMarkerHeight = 17.f;
+constexpr float kMorphColumnHeaderWidth = 24.f;
 constexpr float kAxisLabelW      = 62.f;
 constexpr float kVertexLabelW    = 58.f;
 constexpr float kVertexGuideW    = 46.f;
@@ -236,15 +239,18 @@ std::array<bool, 8> linkedCubeHighlights(
     return selected;
 }
 
-void drawMorphColumnHeaders(Graphics& g, Rectangle<float> sideArea) {
-    const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, 0);
-    const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, 0);
-    const float y = axisRowBounds(sideArea, 0).getY() - 13.f;
+void drawSpanningGroupLabel(Graphics& g, Rectangle<float> bounds, const String& label) {
+    const Font font { FontOptions(8.5f) };
+    const float textWidth = jmin(bounds.getWidth(), font.getStringWidthFloat(label) + 4.f);
+    const Rectangle<float> text = bounds.withSizeKeepingCentre(textWidth, bounds.getHeight());
 
-    g.setColour(kMutedText.withAlpha(0.78f));
-    g.setFont(FontOptions(8.5f));
-    g.drawText("axis", primary.withY(y).withHeight(10.f), Justification::centred);
-    g.drawText("link", link.withY(y).withHeight(10.f), Justification::centred);
+    g.setColour(kMutedText.withAlpha(0.32f));
+    g.drawHorizontalLine(roundToInt(bounds.getCentreY()), bounds.getX(), bounds.getRight());
+    g.setColour(Colour(0xff151a20));
+    g.fillRect(text);
+    g.setColour(kMutedText.withAlpha(0.82f));
+    g.setFont(font);
+    g.drawText(label, text, Justification::centred);
 }
 
 void drawAxisSlider(
@@ -258,7 +264,8 @@ void drawAxisSlider(
 
     const float value = jlimit(0.f, 1.f, axis.value);
     const Rectangle<float> filled = rail.withWidth(rail.getWidth() * value);
-    const float knobX = rail.getX() + rail.getWidth() * value;
+    const Rectangle<float> marker =
+            TrimeshSidePanelRenderer::morphMarkerBounds(rail, value);
 
     g.setColour(axis.colour.withAlpha(0.18f));
     g.fillRect(rail.withWidth(rail.getWidth() * value).expanded(0.f, 8.f));
@@ -269,12 +276,8 @@ void drawAxisSlider(
     g.setFont(FontOptions(12.f));
     g.drawText(axis.label, axisLabelBounds(row), Justification::centredLeft);
 
-    g.setColour(Colour(0xff202328).withAlpha(0.88f));
-    g.fillEllipse(Rectangle<float>(8.f, 8.f).withCentre({ knobX, rail.getCentreY() }));
-    g.setColour(axis.colour.withAlpha(0.88f));
-    g.drawEllipse(Rectangle<float>(8.f, 8.f).withCentre({ knobX, rail.getCentreY() }), 1.4f);
-    g.setColour(Colour(0xff05070a).withAlpha(0.72f));
-    g.drawVerticalLine(roundToInt(knobX), rail.getY() - 5.f, rail.getBottom() + 5.f);
+    g.setColour(axis.colour.withAlpha(0.96f));
+    g.fillRect(marker);
 }
 
 void drawPrimaryAxisButtons(
@@ -351,7 +354,11 @@ void TrimeshSidePanelRenderer::drawSidePanel(
     g.setFont(FontOptions(10.5f));
     g.drawText("morph Position", morphControls.removeFromTop(kMorphHeaderH), Justification::centred);
 
-    drawMorphColumnHeaders(g, area);
+    drawMorphColumnHeaders(
+            g,
+            axisRowBounds(area, 0),
+            primaryAxisBounds(area, 0),
+            linkToggleBounds(area, 0));
 
     for (int i = 0; i < (int) axes.size(); ++i) {
         drawAxisSlider(g, axisRowBounds(area, i), morphRailBounds(area, i), axes[(size_t) i]);
@@ -609,6 +616,15 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
     }
 }
 
+void TrimeshSidePanelRenderer::drawMorphColumnHeaders(
+        Graphics& g,
+        Rectangle<float> firstRow,
+        Rectangle<float> axisButton,
+        Rectangle<float> linkButton) {
+    drawSpanningGroupLabel(g, morphColumnHeaderBounds(axisButton, firstRow), "Axis");
+    drawSpanningGroupLabel(g, morphColumnHeaderBounds(linkButton, firstRow), "Link");
+}
+
 Rectangle<float> TrimeshSidePanelRenderer::morphCubeBounds(Rectangle<float> sideArea) {
     return cubeStackBounds(sideArea).reduced(0.f, 0.f);
 }
@@ -618,6 +634,21 @@ Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(Rectangle<float> side
     row.removeFromLeft(kAxisLabelW + 10.f);
     row.removeFromRight(kAxisButtonSize * 2.f + kRowButtonGap * 3.f + 6.f);
     return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
+}
+
+Rectangle<float> TrimeshSidePanelRenderer::morphMarkerBounds(
+        Rectangle<float> rail,
+        float value) {
+    const float markerX = rail.getX() + rail.getWidth() * jlimit(0.f, 1.f, value);
+    return Rectangle<float>(kMorphMarkerWidth, kMorphMarkerHeight)
+            .withCentre({ markerX, rail.getCentreY() });
+}
+
+Rectangle<float> TrimeshSidePanelRenderer::morphColumnHeaderBounds(
+        Rectangle<float> button,
+        Rectangle<float> firstRow) {
+    return Rectangle<float>(kMorphColumnHeaderWidth, 10.f)
+            .withCentre({ button.getCentreX(), firstRow.getY() - 7.f });
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(Rectangle<float> sideArea, int axisIndex) {

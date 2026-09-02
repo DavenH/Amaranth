@@ -44,9 +44,20 @@ public:
             const std::array<juce::String, 6>& guideAttachmentLabels,
             float heightScale = 1.f,
             GuideControls guideControls = GuideControls::Visible);
+    static void drawMorphColumnHeaders(
+            juce::Graphics& g,
+            juce::Rectangle<float> firstRow,
+            juce::Rectangle<float> axisButton,
+            juce::Rectangle<float> linkButton);
 
     static juce::Rectangle<float> morphCubeBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> sideArea, int axisIndex);
+    static juce::Rectangle<float> morphMarkerBounds(
+            juce::Rectangle<float> rail,
+            float value);
+    static juce::Rectangle<float> morphColumnHeaderBounds(
+            juce::Rectangle<float> button,
+            juce::Rectangle<float> firstRow);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> sideArea, int axisIndex);
     static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> sideArea, int axisIndex);
     static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> sideArea);

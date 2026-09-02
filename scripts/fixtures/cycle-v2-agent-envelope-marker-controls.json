@@ -64,6 +64,16 @@
     },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effect2D.axisGroupLabelBounds.width",
+      "equals": 24
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.linkGroupLabelBounds.width",
+      "equals": 24
+    },
+    {
+      "command": "assertState",
       "path": "expandedNodeControls.effect2D.loopTooltip",
       "equals": "Toggle selected vertex as loop start"
     },

@@ -226,7 +226,9 @@ Acceptance:
 - Replace the Guide icon only through the shared semantic SVG icon system.
 - Preserve vertex selection and all complete edit gestures through rearrangement.
 
-Current status: open; do after functional link-button repair.
+Current status: in progress under
+`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`; functional Link-button repair
+is complete.
 
 ## P1: Morph slider handle has contradictory geometry
 
@@ -242,7 +244,10 @@ Acceptance:
 - Keep a larger invisible hit target, an unambiguous exact reference point, and
   existing fine-adjust/keyboard behavior.
 
-Current status: open; include in the shared Trimesh/Envelope layout TDD.
+Current status: implemented 2026-09-02 under
+`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`. The hollow circle and dark
+overdraw are replaced by a 1.5 x 17 px semantic-colour value line while the
+31 px-tall interaction target remains unchanged.
 
 ## P1: Expanded effect enablement lacks a shared placement and symbol
 

@@ -299,6 +299,17 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(controls)));
+    const auto firstMorphRow = impl->presentation.morphRow(controls, 0);
+    state.setProperty(
+            "axisGroupLabelBounds",
+            editorBoundsToVar(TrimeshSidePanelRenderer::morphColumnHeaderBounds(
+                    impl->presentation.axisBounds(controls, 0),
+                    firstMorphRow)));
+    state.setProperty(
+            "linkGroupLabelBounds",
+            editorBoundsToVar(TrimeshSidePanelRenderer::morphColumnHeaderBounds(
+                    impl->presentation.linkBounds(controls, 0),
+                    firstMorphRow)));
     state.setProperty(
             "modeBounds",
             editorBoundsToVar(impl->mode.getBounds().toFloat()));

@@ -488,6 +488,32 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
     }
 }
 
+TEST_CASE("Shared morph controls expose precise markers and aligned group headers",
+        "[cycle-v2][nodes][trimesh][envelope][geometry]") {
+    const Rectangle<float> rail { 20.f, 40.f, 120.f, 7.f };
+    const Rectangle<float> marker =
+            TrimeshSidePanelRenderer::morphMarkerBounds(rail, 0.25f);
+
+    REQUIRE(marker.getCentreX() == Catch::Approx(50.f));
+    REQUIRE(marker.getWidth() <= 2.f);
+    REQUIRE(marker.getHeight() >= 14.f);
+    REQUIRE(marker.getHeight() > marker.getWidth() * 7.f);
+
+    const Rectangle<float> firstRow { 100.f, 80.f, 180.f, 31.f };
+    const Rectangle<float> axisButton { 218.f, 85.5f, 20.f, 20.f };
+    const Rectangle<float> linkButton { 244.f, 85.5f, 20.f, 20.f };
+    const Rectangle<float> axisHeader =
+            TrimeshSidePanelRenderer::morphColumnHeaderBounds(axisButton, firstRow);
+    const Rectangle<float> linkHeader =
+            TrimeshSidePanelRenderer::morphColumnHeaderBounds(linkButton, firstRow);
+
+    REQUIRE(axisHeader.getCentreX() == Catch::Approx(axisButton.getCentreX()));
+    REQUIRE(linkHeader.getCentreX() == Catch::Approx(linkButton.getCentreX()));
+    REQUIRE(axisHeader.getBottom() <= firstRow.getY());
+    REQUIRE(linkHeader.getBottom() <= firstRow.getY());
+    REQUIRE_FALSE(axisHeader.intersects(linkHeader));
+}
+
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh();
     TrimeshBlockwiseDsp dsp;

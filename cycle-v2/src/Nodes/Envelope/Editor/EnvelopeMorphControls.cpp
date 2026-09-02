@@ -193,6 +193,11 @@ void EnvelopeMorphControls::draw(
     const bool linked[] { true, redLinked, blueLinked };
     drawPlane(graphics, controls, red, blue);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
+    TrimeshSidePanelRenderer::drawMorphColumnHeaders(
+            graphics,
+            morphRow(controls, 0),
+            axisBounds(controls, 0),
+            linkBounds(controls, 0));
 
     for (int axis = 0; axis < 3; ++axis) {
         const auto axisArea = axisBounds(controls, axis);

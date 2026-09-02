@@ -1609,6 +1609,11 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
     REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
+    const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
+    REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
     REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
