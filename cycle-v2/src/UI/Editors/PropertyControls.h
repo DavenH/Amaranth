@@ -36,6 +36,14 @@ struct PropertySliderLayout {
 
 class PropertySliderRow;
 
+struct PropertyValueText {
+    juce::String number;
+    juce::String unit;
+};
+
+bool operator==(const PropertyValueText& lhs, const PropertyValueText& rhs);
+PropertyValueText splitPropertyValueText(const juce::String& text);
+
 PropertySliderLayout propertySliderLayout(
         juce::Rectangle<int> bounds,
         bool showsValue,
@@ -115,17 +123,21 @@ public:
 
     const PropertySliderLayout& currentLayout() const { return layout; }
     bool valueTextIsValid() const { return !invalidValueText; }
-    juce::String valueText() const { return value.getText(); }
+    juce::String valueText() const;
+    juce::String numericValueText() const { return value.getText(); }
+    juce::String unitText() const { return unit.getText(); }
 
     juce::Label label;
     PrecisionSlider slider;
     juce::Label value;
+    juce::Label unit;
 
 private:
     void sliderValueChanged(juce::Slider* changedSlider) override;
     void commitValueText();
     void syncValueText();
     void updateValueState();
+    void layoutValueComponents();
 
     bool invalidValueText {};
     bool syncingValueText {};

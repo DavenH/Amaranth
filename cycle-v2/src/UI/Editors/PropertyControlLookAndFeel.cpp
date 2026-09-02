@@ -12,7 +12,6 @@ namespace {
 const Colour kTrack { 0xff384351 };
 const Colour kTrackHover { 0xff465363 };
 const Colour kFill { 0xffdce3ec };
-const Colour kFocus { 0xff65b8ff };
 
 struct SliderPaintGeometry {
     Rectangle<float> bounds;
@@ -65,7 +64,8 @@ void paintSliderThumb(
     graphics.fillRoundedRectangle(geometry.thumb, PropertyControlMetrics::thumbWidth * 0.5f);
     graphics.setColour(kFill.withMultipliedAlpha(enabled ? 1.f : 0.5f));
     graphics.drawRoundedRectangle(geometry.thumb, PropertyControlMetrics::thumbWidth * 0.5f, 1.25f);
-    graphics.setColour((focused ? kFocus : kFill).withMultipliedAlpha(enabled ? 1.f : 0.55f));
+    graphics.setColour((focused ? propertyControlFocusColour() : kFill)
+            .withMultipliedAlpha(enabled ? 1.f : 0.55f));
     graphics.fillRect(propertySliderIndicatorBounds(geometry.thumb));
 }
 
@@ -92,7 +92,7 @@ public:
         paintSliderThumb(graphics, geometry, focused, enabled);
 
         if (focused) {
-            graphics.setColour(kFocus.withAlpha(0.72f));
+            graphics.setColour(propertyControlFocusColour().withAlpha(0.72f));
             graphics.drawRoundedRectangle(
                     geometry.bounds.reduced(0.75f),
                     CanvasChromeMetrics::controlCornerRadius,
@@ -108,6 +108,10 @@ Rectangle<float> propertySliderTrackBounds(Rectangle<float> bounds) {
             .withSizeKeepingCentre(
                     bounds.getWidth() - PropertyControlMetrics::thumbWidth,
                     PropertyControlMetrics::visibleTrackHeight);
+}
+
+Colour propertyControlFocusColour() {
+    return Colour(0xff65b8ff);
 }
 
 Rectangle<float> propertySliderIndicatorBounds(Rectangle<float> thumbBounds) {

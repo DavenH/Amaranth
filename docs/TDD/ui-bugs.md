@@ -182,7 +182,7 @@ Acceptance:
 - Editing selects only the numeric value. Units remain outside the editor and
   parsing/formatting round-trips without precision loss.
 
-Current status: open.
+Current status: in progress in `cycle-v2-property-value-editing.md`.
 
 ## P1: Envelope vertex Guide selector has misleading help text
 

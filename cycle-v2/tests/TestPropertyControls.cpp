@@ -47,6 +47,69 @@ TEST_CASE("Property values use two significant figures without redundant decimal
     REQUIRE_FALSE(parsePropertyFrequency("23 kHz", 0.0, 22050.0).has_value());
 }
 
+TEST_CASE("Property readouts separate numeric text from stable units",
+        "[cycle-v2][ui][property-controls][readout]") {
+    REQUIRE(splitPropertyValueText("0.77")
+            == PropertyValueText { "0.77", {} });
+    REQUIRE(splitPropertyValueText("50%")
+            == PropertyValueText { "50", "%" });
+    REQUIRE(splitPropertyValueText("880 Hz")
+            == PropertyValueText { "880", "Hz" });
+    REQUIRE(splitPropertyValueText("2.8 kHz")
+            == PropertyValueText { "2.8", "kHz" });
+    REQUIRE(splitPropertyValueText("-6 dB")
+            == PropertyValueText { "-6", "dB" });
+    REQUIRE(splitPropertyValueText(String::fromUTF8("1\xc3\x97"))
+            == PropertyValueText { "1", String::fromUTF8("\xc3\x97") });
+}
+
+TEST_CASE("Property value editing preserves geometry and keeps units external",
+        "[cycle-v2][ui][property-controls][readout][focus]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    owner.setBounds(0, 0, 360, 60);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+    PropertySliderRow row(owner, "Frequency");
+    row.slider.setRange(20.0, 20000.0, 0.01);
+    row.configureValuePresentation(
+            formatPropertyFrequency,
+            [](const String& text) {
+                return parsePropertyFrequency(text, 20.0, 20000.0);
+            },
+            1000.0,
+            10.0,
+            1.0,
+            "Frequency help");
+    row.setBounds({ 0, 0, 340, 30 }, 88, 8, 72);
+    row.slider.setValue(2756.25, sendNotificationSync);
+
+    REQUIRE(row.numericValueText() == "2.8");
+    REQUIRE(row.unitText() == "kHz");
+    REQUIRE(row.valueText() == "2.8 kHz");
+    REQUIRE(row.value.findColour(Label::backgroundColourId).isTransparent());
+    REQUIRE(row.value.findColour(Label::outlineColourId).isTransparent());
+    REQUIRE_FALSE(row.value.getBounds().intersects(row.unit.getBounds()));
+
+    row.value.showEditor();
+    TextEditor* editor = row.value.getCurrentTextEditor();
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->getJustificationType() == Justification::centredRight);
+    REQUIRE(editor->getText() == "2.8");
+    REQUIRE(editor->getHighlightedRegion() == Range<int>(0, 3));
+    REQUIRE(editor->getFont().getHeight()
+            == Catch::Approx(row.value.getFont().getHeight()));
+    REQUIRE(row.unit.isVisible());
+    REQUIRE(row.unit.getText() == "kHz");
+
+    editor->setText("3.1", true);
+    row.value.hideEditor(false);
+    REQUIRE(row.slider.getValue() == Catch::Approx(3100.0));
+    REQUIRE(row.numericValueText() == "3.1");
+    REQUIRE(row.unitText() == "kHz");
+    REQUIRE(row.valueText() == "3.1 kHz");
+}
+
 TEST_CASE("Property slider indicator remains centred at fractional positions",
         "[cycle-v2][ui][property-controls][geometry]") {
     for (float centreX : { 40.f, 40.25f, 40.5f, 40.75f, 41.f }) {
@@ -98,6 +161,8 @@ TEST_CASE("Property slider supports semantic entry, invalid correction, and keyb
     row.value.setText("not a value", sendNotificationSync);
     REQUIRE(row.slider.getValue() == Catch::Approx(0.375));
     REQUIRE(row.valueText() == "not a value");
+    REQUIRE(row.numericValueText() == "not a value");
+    REQUIRE(row.unitText() == "%");
     REQUIRE_FALSE(row.valueTextIsValid());
     REQUIRE(dragStarts == 1);
     REQUIRE(dragEnds == 1);

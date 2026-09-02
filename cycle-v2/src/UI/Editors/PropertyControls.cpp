@@ -16,6 +16,10 @@ const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 const Colour kInvalid { 0xffdf7272 };
 constexpr double kFloatMappingRoundingTolerance = 0.000001;
+constexpr int kMinimumUnitWidth = 14;
+constexpr int kMaximumUnitWidth = 34;
+constexpr int kUnitCharacterWidth = 7;
+constexpr int kUnitGap = 3;
 
 var boundsToVar(Rectangle<float> bounds) {
     auto* result = new DynamicObject();
@@ -38,6 +42,47 @@ bool increasesValue(const KeyPress& key) {
             || key.getKeyCode() == KeyPress::upKey;
 }
 
+String combinedPropertyValueText(const PropertyValueText& text) {
+    if (text.unit.isEmpty()) {
+        return text.number;
+    }
+    const bool attachedUnit = text.unit == "%"
+            || text.unit == String::fromUTF8("\xc3\x97")
+            || text.unit == String::fromUTF8("\xc2\xb0");
+    return text.number + (attachedUnit ? "" : " ") + text.unit;
+}
+
+int propertyUnitWidth(const String& unit, int availableWidth) {
+    if (unit.isEmpty()) {
+        return 0;
+    }
+    return jmin(
+            availableWidth / 2,
+            jlimit(
+                    kMinimumUnitWidth,
+                    kMaximumUnitWidth,
+                    unit.length() * kUnitCharacterWidth + kUnitGap));
+}
+
+}
+
+bool operator==(const PropertyValueText& lhs, const PropertyValueText& rhs) {
+    return lhs.number == rhs.number && lhs.unit == rhs.unit;
+}
+
+PropertyValueText splitPropertyValueText(const String& text) {
+    const String trimmed = text.trim();
+    const char* start = trimmed.toRawUTF8();
+    char* end {};
+    std::strtod(start, &end);
+    if (end == start) {
+        return { trimmed, {} };
+    }
+
+    return {
+            String::fromUTF8(start, (int) (end - start)),
+            String::fromUTF8(end).trim()
+    };
 }
 
 int PropertySliderLayout::usableTrackWidth() const {
@@ -186,6 +231,16 @@ var propertySliderRowAutomationState(const PropertySliderRow& row) {
     result->setProperty("track", boundsToVar(layout.track));
     result->setProperty("usableTrackWidth", layout.usableTrackWidth());
     result->setProperty("display", row.valueText());
+    result->setProperty("numericDisplay", row.numericValueText());
+    result->setProperty("unit", row.unitText());
+    result->setProperty("numericValue", boundsToVar(row.value.getBounds().toFloat()));
+    result->setProperty("unitBounds", boundsToVar(row.unit.getBounds().toFloat()));
+    result->setProperty(
+            "restingBackgroundTransparent",
+            row.value.findColour(Label::backgroundColourId).isTransparent());
+    result->setProperty(
+            "restingOutlineTransparent",
+            row.value.findColour(Label::outlineColourId).isTransparent());
     result->setProperty("valid", row.valueTextIsValid());
     return result;
 }
@@ -311,13 +366,31 @@ PropertySliderRow::PropertySliderRow(Component& owner, const String& labelText) 
     value.setEditable(true, true, false);
     value.setJustificationType(Justification::centredRight);
     value.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
+    value.setBorderSize({});
     value.setColour(Label::textColourId, kText);
-    value.setColour(Label::backgroundColourId, Colour(0xff11171e));
-    value.setColour(Label::outlineColourId, Colour(0xff303b48));
+    value.setColour(Label::backgroundColourId, Colours::transparentBlack);
+    value.setColour(Label::outlineColourId, Colours::transparentBlack);
     value.setColour(TextEditor::textColourId, kText);
     value.setColour(TextEditor::backgroundColourId, Colour(0xff11171e));
+    value.setColour(TextEditor::outlineColourId, Colours::transparentBlack);
+    value.setColour(
+            TextEditor::focusedOutlineColourId,
+            propertyControlFocusColour().withAlpha(0.72f));
     value.setColour(TextEditor::highlightColourId, Colour(0xff354659));
     value.setWantsKeyboardFocus(true);
+    value.onEditorShow = [this] {
+        if (TextEditor* editor = value.getCurrentTextEditor()) {
+            editor->setJustification(Justification::centredRight);
+            editor->applyFontToAllText(value.getFont());
+            editor->setIndents(0, 0);
+        }
+    };
+
+    stylePropertyLabel(unit, {});
+    unit.setJustificationType(Justification::centredLeft);
+    unit.setBorderSize({});
+    unit.setInterceptsMouseClicks(false, false);
+    unit.setVisible(false);
 
     slider.addListener(this);
     value.onTextChange = [this] {
@@ -327,6 +400,7 @@ PropertySliderRow::PropertySliderRow(Component& owner, const String& labelText) 
     owner.addAndMakeVisible(label);
     owner.addAndMakeVisible(slider);
     owner.addChildComponent(value);
+    owner.addChildComponent(unit);
 }
 
 PropertySliderRow::~PropertySliderRow() {
@@ -347,10 +421,22 @@ void PropertySliderRow::setBounds(
             forceCompactLayout);
     label.setBounds(layout.label);
     slider.setBounds(layout.slider);
-    value.setBounds(layout.value);
+    layoutValueComponents();
     label.setJustificationType(layout.compact
             ? Justification::centredLeft
             : Justification::centredRight);
+}
+
+void PropertySliderRow::layoutValueComponents() {
+    Rectangle<int> valueBounds = layout.value;
+    const int unitWidth = propertyUnitWidth(unit.getText(), valueBounds.getWidth());
+    if (unitWidth > 0) {
+        unit.setBounds(valueBounds.removeFromRight(unitWidth));
+        valueBounds.removeFromRight(kUnitGap);
+    } else {
+        unit.setBounds({});
+    }
+    value.setBounds(valueBounds);
 }
 
 void PropertySliderRow::setCompactLayout(bool shouldUseCompactLayout) {
@@ -389,11 +475,22 @@ void PropertySliderRow::sliderValueChanged(Slider* changedSlider) {
     }
 }
 
+String PropertySliderRow::valueText() const {
+    if (invalidValueText) {
+        return value.getText();
+    }
+    return combinedPropertyValueText({ value.getText(), unit.getText() });
+}
+
 void PropertySliderRow::commitValueText() {
     if (syncingValueText || parser == nullptr) {
         return;
     }
-    const std::optional<double> parsed = parser(value.getText());
+    const PropertyValueText entered = splitPropertyValueText(value.getText());
+    const String textForParsing = entered.unit.isEmpty() && unit.getText().isNotEmpty()
+            ? combinedPropertyValueText({ entered.number, unit.getText() })
+            : value.getText();
+    const std::optional<double> parsed = parser(textForParsing);
     if (!parsed.has_value() || !std::isfinite(*parsed)
             || *parsed < slider.getMinimum() || *parsed > slider.getMaximum()) {
         invalidValueText = true;
@@ -421,13 +518,18 @@ void PropertySliderRow::syncValueText() {
         return;
     }
     const ScopedValueSetter<bool> guard(syncingValueText, true);
-    value.setText(formatter(slider.getValue()), dontSendNotification);
+    const PropertyValueText formatted = splitPropertyValueText(
+            formatter(slider.getValue()));
+    value.setText(formatted.number, dontSendNotification);
+    unit.setText(formatted.unit, dontSendNotification);
+    unit.setVisible(formatted.unit.isNotEmpty());
+    layoutValueComponents();
 }
 
 void PropertySliderRow::updateValueState() {
     value.setColour(
             Label::outlineColourId,
-            invalidValueText ? kInvalid : Colour(0xff303b48));
+            invalidValueText ? kInvalid : Colours::transparentBlack);
     value.setColour(
             Label::textColourId,
             invalidValueText ? kInvalid : kText);
