@@ -269,7 +269,7 @@ Acceptance:
   remain visible.
 - Removing the local Enabled row returns its space to content or controls.
 
-Current status: in progress under
+Current status: implemented 2026-09-02 under
 `docs/TDD/cycle-v2-expanded-effect-controls.md`, using the SVG icon-system
 workflow.
 
@@ -321,7 +321,7 @@ Acceptance:
 - Size Antialiasing from its longest real option plus standard insets.
 - Compare IR, Delay, Waveshaper, and Reverb together at the same production size.
 
-Current status: in progress under
+Current status: implemented 2026-09-02 under
 `docs/TDD/cycle-v2-expanded-effect-controls.md`.
 
 ## Open: Node-palette fallback icon asserts during the complete Cycle V2 suite

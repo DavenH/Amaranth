@@ -287,6 +287,9 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
     configureSizeControl(impl->size);
     configurePostGainControl(impl->postGain);
     configureHighPassControl(impl->highPass);
+    for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
+        control->setCompactLayout(true);
+    }
     impl->enabled.setComponentID("irEditor.enabled");
     setHeaderAction(impl->enabled);
     bindDiscreteAction(impl->enabled, [] {});
@@ -350,7 +353,7 @@ void ImpulseResponseEditorComponent::layoutEditor() {
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
-                bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+                bounds.removeFromTop(PropertyControlMetrics::compactRowHeight),
                 PropertyControlMetrics::labelWidth,
                 PropertyControlMetrics::inlineGap,
                 kValueWidth);

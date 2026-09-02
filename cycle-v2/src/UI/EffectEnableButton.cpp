@@ -52,7 +52,7 @@ void EffectEnableButton::paintButton(Graphics& graphics, bool highlighted, bool 
     if (const Drawable* icon = enableIcon()) {
         icon->drawWithin(
                 graphics,
-                bounds.reduced(7.f),
+                bounds.reduced(6.f),
                 RectanglePlacement::centred,
                 active ? 1.f : 0.48f);
     }

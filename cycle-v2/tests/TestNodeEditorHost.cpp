@@ -22,6 +22,7 @@
 #include "UI/NodeCanvasAutomationInspector.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
@@ -776,6 +777,39 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
             == "1.5 s");
 }
 
+TEST_CASE("Expanded effects share one enable action placement",
+        "[cycle-v2][editor][effects][chrome]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+
+    struct EffectEditorCase {
+        NodeKind kind;
+        String nodeId;
+        String controlId;
+        Rectangle<int> bounds;
+    };
+    const std::array<EffectEditorCase, 4> cases {{
+            { NodeKind::Delay, "delay", "delayEditor.enabled", { 0, 0, 520, 520 } },
+            { NodeKind::Reverb, "reverb", "reverbEditor.enabled", { 0, 0, 520, 520 } },
+            { NodeKind::Equalizer, "eq", "equalizerEditor.enabled", { 0, 0, 760, 650 } },
+            { NodeKind::Unison, "unison", "unisonEditor.enabled", { 0, 0, 520, 520 } }
+    }};
+
+    for (const auto& effect : cases) {
+        Node node = GraphNodeFactory().createNode(effect.kind, effect.nodeId, {});
+        REQUIRE(host.bind(&node, effect.bounds));
+        const auto* enabled = dynamic_cast<EffectEnableButton*>(
+                host.component()->findChildWithID(effect.controlId));
+        REQUIRE(enabled != nullptr);
+        REQUIRE(enabled->getBounds()
+                == fullEditorHeaderLayout(host.component()->getLocalBounds(), true).enabled);
+    }
+}
+
 TEST_CASE("Property rows collapse nested slider notifications into one gesture",
         "[cycle-v2][editor][properties][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1182,6 +1216,8 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
             editor.getLocalBounds().toFloat(), true).enabled);
     const var preLayout = state.getProperty("preGainLayout", {});
     const var postLayout = state.getProperty("postGainLayout", {});
+    REQUIRE(static_cast<bool>(preLayout.getProperty("compact", {})));
+    REQUIRE(static_cast<bool>(postLayout.getProperty("compact", {})));
     REQUIRE(preLayout.getProperty("display", {}).toString() == "+23 dB");
     REQUIRE(postLayout.getProperty("display", {}).toString() == "-23 dB");
     REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
@@ -1199,6 +1235,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(rectangleProperty(preLayout, "label").getY()
             == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
     REQUIRE(oversampling != nullptr);
+    REQUIRE(oversampling->getWidth() <= 72);
     REQUIRE(oversampling->getNumItems() == 4);
     REQUIRE(oversampling->getItemText(0) == "1x");
     REQUIRE(oversampling->getItemText(1) == "2x");
@@ -1263,6 +1300,8 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
             Identifier("sizeLayout"),
             Identifier("postGainLayout"),
             Identifier("highPassLayout") }) {
+        REQUIRE(static_cast<bool>(state.getProperty(property, {})
+                .getProperty("compact", {})));
         REQUIRE(static_cast<int>(state.getProperty(property, {})
                 .getProperty("usableTrackWidth", {}))
                 >= PropertyControlMetrics::minimumUsableTrackWidth);

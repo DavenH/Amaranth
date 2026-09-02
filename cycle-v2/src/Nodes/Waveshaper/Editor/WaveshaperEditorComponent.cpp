@@ -14,6 +14,7 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kControlRailWidth = 336.f;
+constexpr int kOversamplingWidth = 72;
 
 String formatGain(double unitValue) {
     const float decibels = CycleDsp::waveshaperGainDecibels((float) unitValue);
@@ -85,6 +86,8 @@ WaveshaperEditorComponent::WaveshaperEditorComponent(CurveEditorWidget& target) 
 
     configureGainControl(impl->preGain, "preGain");
     configureGainControl(impl->postGain, "postGain");
+    impl->preGain.setCompactLayout(true);
+    impl->postGain.setCompactLayout(true);
 
     bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->preGain, &impl->postGain });
@@ -111,15 +114,15 @@ void WaveshaperEditorComponent::paintEditor(Graphics&) {
 
 void WaveshaperEditorComponent::layoutEditor() {
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
-    impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::rowHeight));
+    impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
-    impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::rowHeight));
+    impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);
 
     Rectangle<int> row = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
     impl->oversamplingLabel.setBounds(row.removeFromLeft(PropertyControlMetrics::labelWidth));
     row.removeFromLeft(PropertyControlMetrics::inlineGap);
-    impl->oversampling.setBounds(row);
+    impl->oversampling.setBounds(row.removeFromLeft(kOversamplingWidth));
 }
 
 void WaveshaperEditorComponent::syncEditorFromNode() {

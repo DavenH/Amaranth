@@ -683,6 +683,12 @@ TEST_CASE("Effect enable button has distinct native-size on and bypass states",
     REQUIRE(enabled != bypassed);
     REQUIRE(button.getTooltip() == "Enable or bypass effect");
     REQUIRE(button.getWantsKeyboardFocus());
+
+    button.setToggleState(false, dontSendNotification);
+    REQUIRE(static_cast<Component&>(button).keyPressed(
+            KeyPress(KeyPress::returnKey)));
+    MessageManager::getInstance()->runDispatchLoopUntil(50);
+    REQUIRE(button.getToggleState());
 }
 
 TEST_CASE("Every Envelope purpose has a parseable compact icon",

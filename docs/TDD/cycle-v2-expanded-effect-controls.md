@@ -1,6 +1,6 @@
 # Cycle V2 Expanded Effect Controls
 
-Status: In progress
+Status: Implemented
 
 ## Objective
 
@@ -76,7 +76,7 @@ readout treatment; preview/panel allocations remain domain-specific.
 3. Add the curve-editor header action boundary and migrate IR and Waveshaper,
    reclaiming their local row space. Completed.
 4. Normalize the property grids and content-size Waveshaper Antialiasing; add
-   cross-editor automation and screenshot evidence.
+   cross-editor automation and screenshot evidence. Completed.
 
 ## Completion Criteria
 
@@ -100,8 +100,18 @@ readout treatment; preview/panel allocations remain domain-specific.
   publication path, and begin their real property rows at the standard rail
   inset. Focused tests cover the geometry and complete transaction sequence;
   both production property fixtures cover pointer activation and undo.
-- Focused header/raster tests pass 14 assertions and the broader effect suite
-  passes 128 assertions. Standalone Debug builds and packages the SVG.
-- App-side window snapshots for these OpenGL-composited editors are currently
-  black; native-size raster tests provide the visual-state evidence until an OS
-  capture is available with Screen Recording permission.
+- IR and Waveshaper now use the same 56 px compact property-row rhythm as Delay
+  and Reverb. Waveshaper's Antialiasing choice is 72 px wide, while the reclaimed
+  Enabled-row space returns to the real properties.
+- A focused cross-editor test verifies standardized enable-button geometry for
+  Delay, Reverb, Equalizer, and Unison; the curve-editor tests verify the same
+  embedded-header contract for IR and Waveshaper. The shared button also passes
+  enabled/bypassed raster, tooltip, keyboard-focus, and Return-key activation
+  checks.
+- The six-effect production fixture resolves each semantic button target,
+  toggles the durable parameter, and verifies undo. OS-level production-size
+  captures for all six editors confirm the same bolt placement and property-row
+  rhythm, including the OpenGL-composited IR and Waveshaper editors.
+- Standalone Debug builds and packages the SVG. The Cycle V2 suite passes 10,797
+  of 10,798 assertions; the sole failure is the pre-existing edge-hover help
+  assertion in `TestNodeCanvasHitRouter.cpp:66`.

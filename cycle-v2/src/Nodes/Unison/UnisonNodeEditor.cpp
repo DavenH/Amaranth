@@ -32,6 +32,7 @@ public:
                     "Enabled",
                     enabledButton.getToggleState() ? 1.f : 0.f);
         };
+        enabledButton.setComponentID("unisonEditor.enabled");
         addAndMakeVisible(enabledButton);
 
         modeSelector.addItem("Group", 1);
