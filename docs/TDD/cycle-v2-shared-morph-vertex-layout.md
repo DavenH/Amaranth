@@ -101,3 +101,8 @@ At the current expanded-editor reference widths:
   and captures `/private/tmp/cycle-v2-trimesh-morph-controls.png`. The Envelope
   marker fixture asserts both label bounds and captures
   `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`.
+- Slice 2 gives the right-hand Trimesh vertex column a 224--300 px budget and
+  caps painted morph travel at 160 px. At the 360 px compact side-panel fixture,
+  Guide-bearing vertex rails retain at least 72 px, morph rails retain at least
+  96 px, the cube retains at least 80 px, and the upper columns do not overlap.
+  The unchanged production pointer replay passes after the geometry change.

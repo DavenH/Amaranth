@@ -462,29 +462,35 @@ TEST_CASE("Envelope vertex rails reclaim unsupported Guide control space",
 }
 
 TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
-    const Rectangle<float> sideArea { 100.f, 50.f, 240.f, 420.f };
+    const Rectangle<float> sideArea { 100.f, 50.f, 360.f, 420.f };
 
-    REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphCubeBounds(sideArea)));
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> parameterArea =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+    REQUIRE(sideArea.contains(cube));
+    REQUIRE(sideArea.contains(parameterArea));
+    REQUIRE_FALSE(cube.intersects(parameterArea));
+    REQUIRE(cube.getWidth() >= 80.f);
 
     for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> morphRail =
+                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i);
         const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
         const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
 
-        REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphRailBounds(sideArea, i)));
+        REQUIRE(sideArea.contains(morphRail));
+        REQUIRE(morphRail.getWidth() >= 96.f);
+        REQUIRE(morphRail.getWidth() <= 160.f);
         REQUIRE(sideArea.contains(primary));
         REQUIRE(sideArea.contains(link));
         REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
         REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
     }
 
-    const Rectangle<float> parameterArea =
-            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
-
-    REQUIRE(sideArea.contains(parameterArea));
-
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         REQUIRE(parameterArea.contains(row));
+        REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
     }
 }
 

@@ -25,6 +25,10 @@ constexpr float kAxisLabelW      = 62.f;
 constexpr float kVertexLabelW    = 58.f;
 constexpr float kVertexGuideW    = 46.f;
 constexpr float kVertexCellGap   = 8.f;
+constexpr float kVertexPanelMinWidth = 224.f;
+constexpr float kVertexPanelMaxWidth = 300.f;
+constexpr float kVertexPanelWidthRatio = 0.55f;
+constexpr float kMorphRailMaxWidth = 160.f;
 constexpr float kCubeAxisExpansion = 0.09f;
 constexpr int kVertexParamCount  = 6;
 
@@ -75,15 +79,20 @@ Rectangle<float> upperPanelBounds(Rectangle<float> sideArea) {
     return inner.removeFromTop(upperPanelHeight(sideArea));
 }
 
-Rectangle<float> cubeStackBounds(Rectangle<float> sideArea) {
-    auto upper = upperPanelBounds(sideArea);
-    const float width = jmax(80.f, (upper.getWidth() - kColumnGap) * 0.5f);
-    return upper.removeFromLeft(width);
-}
-
 Rectangle<float> vertexPanelColumnBounds(Rectangle<float> sideArea) {
     auto upper = upperPanelBounds(sideArea);
-    upper.removeFromLeft(cubeStackBounds(sideArea).getWidth() + kColumnGap);
+    const float availableWidth = jmax(0.f, upper.getWidth() - kColumnGap);
+    const float desiredWidth = jlimit(
+            kVertexPanelMinWidth,
+            kVertexPanelMaxWidth,
+            availableWidth * kVertexPanelWidthRatio);
+    return upper.removeFromRight(jmin(availableWidth, desiredWidth));
+}
+
+Rectangle<float> cubeStackBounds(Rectangle<float> sideArea) {
+    auto upper = upperPanelBounds(sideArea);
+    const Rectangle<float> vertex = vertexPanelColumnBounds(sideArea);
+    upper.removeFromRight(vertex.getWidth() + kColumnGap);
     return upper;
 }
 
@@ -633,7 +642,9 @@ Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(Rectangle<float> side
     auto row = axisRowBounds(sideArea, axisIndex);
     row.removeFromLeft(kAxisLabelW + 10.f);
     row.removeFromRight(kAxisButtonSize * 2.f + kRowButtonGap * 3.f + 6.f);
-    return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
+    return row.withSizeKeepingCentre(
+            jmin(kMorphRailMaxWidth, jmax(36.f, row.getWidth())),
+            7.f);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphMarkerBounds(
