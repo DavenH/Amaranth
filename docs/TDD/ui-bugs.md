@@ -5,7 +5,7 @@
 Address correctness and containment before the broader editor rearrangement.
 The first implementation train should be:
 
-1. **Done — IR visual/audio identity and live high-pass response.** This combines
+1. **Reopened — IR visual/audio identity and live high-pass response.** This combines
    the incorrect cutoff range/mapping, asynchronous visual response, missing
    post gain, and failure of the zero-cutoff sampled trace to overlay the
    editable curve. These symptoms share one preparation and invalidation
@@ -39,6 +39,10 @@ Context:
 - The filtered visual trace omits Post gain.
 - At 0 Hz, the sampled trace does not nearly overlay the authored IR curve, so
   the visual pipeline is not demonstrating the expected identity relationship.
+- A production screenshot captured on 2026-09-04 shows an obvious additional
+  inflection in the sampled/high-pass trace near the attack even though High
+  Pass is 0 Hz. This is a shape/topology mismatch, not merely a small amplitude
+  or antialiasing deviation.
 
 Acceptance:
 
@@ -49,14 +53,15 @@ Acceptance:
 - The visual trace includes Post gain and uses the same prepared samples and
   domain mapping as convolution.
 - With High Pass at 0 Hz and unity Post gain, the sampled trace nearly overlays
-  the editable curve within a documented rasterization tolerance.
+  the editable curve within a documented rasterization tolerance, without
+  introducing extrema or inflection points absent from the editable curve.
 
-Current status: implemented 2026-08-31 in
-`cycle-v2-ir-live-visual-contract.md`. The stored/audio High Pass mapping was
-already identical to Cycle 1; the slider now devotes half its physical travel
-to 0–1 kHz without breaking that contract. Live High Pass reuses a cached raw
-source, Post Gain scales only the OpenGL trace, and zero-cutoff identity is
-guarded numerically and by a production fixture.
+Current status: reopened 2026-09-04 from production screenshot evidence. The
+2026-08-31 implementation in `cycle-v2-ir-live-visual-contract.md` aligned the
+stored/audio mapping, live invalidation, and Post Gain presentation, but its
+numerical identity fixture does not catch the visible second inflection at a
+0 Hz cutoff. The next slice must characterize the displayed editable curve and
+sampled trace from the same production state before changing either pipeline.
 
 ## P0: Trimesh editor link buttons do not toggle
 
