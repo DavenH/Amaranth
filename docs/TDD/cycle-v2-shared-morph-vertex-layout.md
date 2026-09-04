@@ -1,6 +1,6 @@
 # Cycle V2 Shared Morph and Vertex Controls Layout
 
-Status: Implemented 2026-09-02
+Status: Implemented 2026-09-04 after production-size review
 
 ## Objective
 
@@ -33,18 +33,24 @@ At the current expanded-editor reference widths:
   value marker is a 1.5--2 px vertical line in the axis colour, at least 14 px
   tall, with no circular body. The existing hit region remains at least 23 px
   high and extends beyond the visible rail.
+- A morph row never paints a larger false slider surface around a shorter,
+  centered rail. The visible rail consumes all horizontal space between its
+  label and adjacent Axis/Link controls. Envelope Red and Blue morph sliders
+  use this same rail-and-marker presentation rather than a separate generic
+  property-slider appearance.
 - Every selected-vertex rail provides at least 72 px of value travel. Guide
   controls may not consume the rail down to a token sliver.
-- Vertex properties remain a right-hand column; the cube/plane preview occupies
-  the left column and morph rows stack below or beside it according to the
-  editor's available width. Sections never overlap at the compact supported
-  expanded-editor size.
+- At production widths, vertex properties occupy the full-height right-hand
+  column. The cube/plane preview occupies the upper left and morph rows stack
+  below it. Compact widths may stack the morph rows below the upper cube/vertex
+  split, but sections never overlap.
 - Axis and Link labels are centered over their complete button columns in both
   editors. Group labels use the shared spanning-line treatment from the UI
   guidelines rather than floating unanchored text.
 - Guide assignment has a labelled, minimum 24 px target and uses the semantic
-  Guide Curve SVG. Envelope does not regain a Guide target while that command is
-  unsupported.
+  Guide Curve SVG. It is a separate full-row-height trailing control, outside
+  the slider surface, with a visible gap between the rail and dropdown.
+  Envelope does not regain a Guide target while that command is unsupported.
 
 ## Test-First Contract
 
@@ -59,6 +65,10 @@ At the current expanded-editor reference widths:
 4. Automation exposes section and group-label bounds for both editors so the
    production fixtures can assert containment and alignment after resizing.
 5. Production-size screenshots cover selected-vertex states in both editors.
+6. Geometry tests prove that a wide Trimesh panel gives the vertex section the
+   right edge and full available height, the morph rail fills its allocated
+   span, and Guide targets are full row height and do not intersect slider
+   bodies.
 
 ## Negative Boundaries
 
@@ -79,6 +89,10 @@ At the current expanded-editor reference widths:
    meet the production travel budget at reference and compact sizes.
 3. Expose shared bounds to automation, preserve complete edit gestures, capture
    both production fixtures, and finish resize/pixel review.
+4. Correct the production-size failure discovered on 2026-09-04: remove the
+   capped/centered Trimesh rail, make the vertex column full-height at wide
+   layouts, separate full-height Guide dropdowns from slider bodies, and reuse
+   the precise morph presentation for Envelope Red and Blue sliders.
 
 ## Completion Criteria
 
@@ -123,3 +137,25 @@ At the current expanded-editor reference widths:
   macOS denied process activation and the component capture omitted the OpenGL
   surface, but retained all six native-size Guide boxes and their legible shared
   curve symbols for the icon-specific review.
+- Production-size review on 2026-09-04 invalidated the earlier completion
+  claim: the 160 px rail cap made only the latter portion of a much wider painted
+  row interactive-looking, the vertex section did not own the full right-hand
+  column, and Guide dropdowns were inset inside the row surface. The TDD was
+  reopened pending corrected geometry, shared Envelope presentation,
+  interaction fixtures, and screenshots.
+- Slice 4 removes the 160 px cap and the surrounding false slider bodies. Wide
+  Trimesh controls now reserve a full-height right column for vertex properties
+  and stack the cube over full-span morph rails on the left; compact geometry
+  retains the non-overlapping fallback. Guide targets are full row height and
+  sit beyond an 8 px gap from their rails.
+- `paintMorphSlider` and `morphSliderIndicatorBounds` are the shared production
+  presentation. Trimesh calls the painter directly and Envelope's interactive
+  Red/Blue `PrecisionSlider`s opt into the same accent rail and 1.5 x 17 px
+  marker without changing gesture ownership.
+- Focused geometry, property-control, hosted Envelope, Trimesh pointer, and Link
+  undo tests pass. The repaired `cycle-v2-agent-trimesh-controls.json` fixture
+  passes every command; the Envelope marker fixture passes its state assertions.
+  Pixel review used `/private/tmp/cycle-v2-trimesh-layout-os.png` and
+  `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png` at production
+  size. The full Cycle V2 suite remains 555/556 because of the pre-existing
+  `TestNodeCanvasHitRouter.cpp:66` edge-help assertion tracked in `ui-bugs.md`.

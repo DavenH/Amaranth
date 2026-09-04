@@ -55,6 +55,8 @@ struct EnvelopeEditorComponent::Impl {
         stylePropertyLabel(timeLabel, "Time");
         stylePropertyLabel(modeLabel, "Mode");
         stylePropertyLabel(vertexModeLabel, "Vertex");
+        redMorph.slider.setMorphPresentation(Colour(0xffd65a5a));
+        blueMorph.slider.setMorphPresentation(Colour(0xff5f91e8));
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(modeLabel);
         owner.addAndMakeVisible(mode);

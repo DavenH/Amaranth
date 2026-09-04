@@ -21,6 +21,7 @@ constexpr int minimumUsableTrackWidth = 140;
 constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
 constexpr float thumbHeight = 14.f;
+constexpr float morphIndicatorHeight = 17.f;
 
 }
 
@@ -84,6 +85,7 @@ public:
     void setKeyboardStepper(KeyboardStepper stepper);
     void setValueSnapper(ValueSnapper snapper);
     void setLandmarks(std::vector<Landmark> landmarks);
+    void setMorphPresentation(juce::Colour accent);
     bool keyPressed(const juce::KeyPress& key) override;
     double snapValue(double attemptedValue, DragMode dragMode) override;
     void paint(juce::Graphics& graphics) override;
@@ -96,6 +98,7 @@ private:
     KeyboardStepper keyboardStepper;
     ValueSnapper valueSnapper;
     std::vector<Landmark> landmarks;
+    std::optional<juce::Colour> morphAccent;
 };
 
 class PropertySliderRow : private juce::Slider::Listener {

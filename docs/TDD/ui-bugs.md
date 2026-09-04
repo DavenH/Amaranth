@@ -231,11 +231,13 @@ Acceptance:
 - Replace the Guide icon only through the shared semantic SVG icon system.
 - Preserve vertex selection and all complete edit gestures through rearrangement.
 
-Current status: implemented 2026-09-02 under
-`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`. Shared Axis/Link group labels,
-precise morph markers, bounded morph travel, 72 px minimum Guide-bearing vertex
-travel at the compact fixture, and the semantic Guide Curve SVG are in place;
-functional Link-button repair remains covered by its command-sequence tests.
+Current status: implemented 2026-09-04 under
+`docs/TDD/cycle-v2-shared-morph-vertex-layout.md`. Trimesh now stacks its cube
+over full-span morph rails beside a full-height right vertex column. Guide
+dropdowns are separate full-row-height controls, and Envelope's two morph
+sliders reuse the same precise rail and line-marker painter. Geometry, hosted
+interaction, Link undo, focused automation, and production screenshot review
+pass.
 
 ## P1: Morph slider handle has contradictory geometry
 

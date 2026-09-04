@@ -121,6 +121,17 @@ Rectangle<float> propertySliderIndicatorBounds(Rectangle<float> thumbBounds) {
             .withCentre(thumbBounds.getCentre());
 }
 
+Rectangle<float> morphSliderIndicatorBounds(
+        Rectangle<float> bounds,
+        double normalizedValue) {
+    const float position = jmap(
+            (float) jlimit(0.0, 1.0, normalizedValue),
+            bounds.getX(),
+            bounds.getRight());
+    return Rectangle<float>(1.5f, PropertyControlMetrics::morphIndicatorHeight)
+            .withCentre({ position, bounds.getCentreY() });
+}
+
 void paintPropertySlider(
         Graphics& graphics,
         Rectangle<float> bounds,
@@ -146,6 +157,36 @@ void paintPropertySlider(
         graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
     }
     paintSliderThumb(graphics, geometry, focused, enabled);
+}
+
+void paintMorphSlider(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        double normalizedValue,
+        Colour accent,
+        bool hovered,
+        bool focused,
+        bool enabled) {
+    const Rectangle<float> track = bounds.withSizeKeepingCentre(
+            bounds.getWidth(),
+            PropertyControlMetrics::visibleTrackHeight);
+    const Rectangle<float> marker = morphSliderIndicatorBounds(bounds, normalizedValue);
+    const float alpha = enabled ? 1.f : 0.5f;
+
+    graphics.setColour((hovered ? kTrackHover : kTrack).withMultipliedAlpha(alpha));
+    graphics.fillRoundedRectangle(track, 2.f);
+    graphics.setColour(accent.withAlpha(0.76f * alpha));
+    graphics.fillRoundedRectangle(track.withRight(marker.getCentreX()), 2.f);
+    graphics.setColour(accent.withAlpha(0.98f * alpha));
+    graphics.fillRect(marker);
+
+    if (focused) {
+        graphics.setColour(propertyControlFocusColour().withAlpha(0.72f * alpha));
+        graphics.drawRoundedRectangle(
+                bounds.reduced(0.75f),
+                CanvasChromeMetrics::controlCornerRadius,
+                CanvasChromeMetrics::focusRingWidth);
+    }
 }
 
 LookAndFeel& propertyControlLookAndFeel() {

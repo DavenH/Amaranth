@@ -126,6 +126,18 @@ TEST_CASE("Property slider indicator remains centred at fractional positions",
     }
 }
 
+TEST_CASE("Morph slider presentation uses a precise line marker",
+        "[cycle-v2][ui][property-controls][morph][geometry]") {
+    const Rectangle<float> bounds { 10.f, 20.f, 180.f, 30.f };
+    const Rectangle<float> marker = morphSliderIndicatorBounds(bounds, 0.25);
+
+    REQUIRE(marker.getCentreX()
+            == Catch::Approx(bounds.getX() + bounds.getWidth() * 0.25f));
+    REQUIRE(marker.getCentreY() == Catch::Approx(bounds.getCentreY()));
+    REQUIRE(marker.getWidth() <= 2.f);
+    REQUIRE(marker.getHeight() >= 14.f);
+}
+
 TEST_CASE("Property slider supports semantic entry, invalid correction, and keyboard precision",
         "[cycle-v2][ui][property-controls][interaction]") {
     ScopedJuceInitialiser_GUI juce;

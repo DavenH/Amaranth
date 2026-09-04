@@ -480,7 +480,6 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
 
         REQUIRE(sideArea.contains(morphRail));
         REQUIRE(morphRail.getWidth() >= 96.f);
-        REQUIRE(morphRail.getWidth() <= 160.f);
         REQUIRE(sideArea.contains(primary));
         REQUIRE(sideArea.contains(link));
         REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
@@ -492,6 +491,37 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(parameterArea.contains(row));
         REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
     }
+}
+
+TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph travel",
+        "[cycle-v2][nodes][trimesh][geometry]") {
+    const Rectangle<float> sideArea { 0.f, 0.f, 1080.f, 260.f };
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> vertex =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+    const Rectangle<float> rail = TrimeshSidePanelRenderer::morphRailBounds(sideArea, 0);
+    const Rectangle<float> axis = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, 0);
+
+    REQUIRE(vertex.getRight() == Catch::Approx(sideArea.getRight() - 9.f));
+    REQUIRE(vertex.getHeight() == Catch::Approx(sideArea.getHeight()));
+    REQUIRE(cube.getRight() < vertex.getX());
+    REQUIRE(rail.getWidth() > 400.f);
+    REQUIRE(rail.getRight() < axis.getX());
+    REQUIRE(axis.getX() - rail.getRight() <= 12.f);
+}
+
+TEST_CASE("Trimesh Guide dropdowns are full-height trailing controls outside slider bodies",
+        "[cycle-v2][nodes][trimesh][geometry][guide]") {
+    const Rectangle<float> row { 20.f, 40.f, 280.f, 29.f };
+    const Rectangle<float> rail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+    const Rectangle<float> guide =
+            TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+    REQUIRE(guide.getHeight() == Catch::Approx(row.getHeight()));
+    REQUIRE(guide.getRight() == Catch::Approx(row.getRight()));
+    REQUIRE(rail.getRight() < guide.getX());
+    REQUIRE(guide.getX() - rail.getRight() >= 8.f);
 }
 
 TEST_CASE("Shared morph controls expose precise markers and aligned group headers",

@@ -285,6 +285,11 @@ void PrecisionSlider::setLandmarks(std::vector<Landmark> nextLandmarks) {
     repaint();
 }
 
+void PrecisionSlider::setMorphPresentation(Colour accent) {
+    morphAccent = accent;
+    repaint();
+}
+
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
     if (!isArrowKey(key)) {
         return Slider::keyPressed(key);
@@ -313,7 +318,22 @@ double PrecisionSlider::snapValue(double attemptedValue, DragMode dragMode) {
 }
 
 void PrecisionSlider::paint(Graphics& graphics) {
-    Slider::paint(graphics);
+    if (morphAccent.has_value()) {
+        const double range = getMaximum() - getMinimum();
+        const double normalized = range > 0.0
+                ? (getValue() - getMinimum()) / range
+                : 0.0;
+        paintMorphSlider(
+                graphics,
+                getLocalBounds().toFloat(),
+                normalized,
+                *morphAccent,
+                isMouseOverOrDragging(),
+                hasKeyboardFocus(false),
+                isEnabled());
+    } else {
+        Slider::paint(graphics);
+    }
     if (landmarks.empty()) {
         return;
     }
