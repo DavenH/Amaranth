@@ -5,6 +5,7 @@
 namespace CycleV2 {
 
 juce::Rectangle<float> propertySliderTrackBounds(juce::Rectangle<float> bounds);
+float propertySliderValuePosition(juce::Slider& slider, double value);
 juce::Rectangle<float> propertySliderIndicatorBounds(juce::Rectangle<float> thumbBounds);
 juce::Rectangle<float> morphSliderIndicatorBounds(
         juce::Rectangle<float> bounds,

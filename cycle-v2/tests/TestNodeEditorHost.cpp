@@ -25,6 +25,7 @@
 #include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
@@ -826,6 +827,36 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     host.appendAutomationState(editedDelay);
     REQUIRE(controlWithId(editedDelay, "time").getProperty("value", {})
             == Catch::Approx(CycleDsp::delayUnitValueForBeats(2.0, 4)));
+    auto* timeSlider = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "delayEditor.time"));
+    auto* panCycleSlider = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "delayEditor.spinIters"));
+    REQUIRE(timeSlider != nullptr);
+    REQUIRE(panCycleSlider != nullptr);
+    const Rectangle<float> timeTrack = propertySliderTrackBounds(
+            timeSlider->getLocalBounds().toFloat());
+    REQUIRE(propertySliderValuePosition(
+                    *timeSlider,
+                    CycleDsp::delayUnitValueForBeats(2.0, 4))
+            == Catch::Approx(timeTrack.getX()
+                    + timeTrack.getWidth()
+                            * CycleDsp::delayUnitValueForBeats(2.0, 4)));
+
+    const Rectangle<float> panCycleTrack = propertySliderTrackBounds(
+            panCycleSlider->getLocalBounds().toFloat());
+    float previousPosition = propertySliderValuePosition(
+            *panCycleSlider,
+            CycleDsp::delaySpinUnitValueForIterations(1));
+    REQUIRE(previousPosition == Catch::Approx(panCycleTrack.getX()));
+    for (int iterations = 2; iterations <= 12; ++iterations) {
+        const float position = propertySliderValuePosition(
+                *panCycleSlider,
+                CycleDsp::delaySpinUnitValueForIterations(iterations));
+        REQUIRE(position - previousPosition
+                == Catch::Approx(panCycleTrack.getWidth() / 11.f));
+        previousPosition = position;
+    }
+    REQUIRE(previousPosition == Catch::Approx(panCycleTrack.getRight()));
 
     Node reverb = GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {});
     REQUIRE(host.bind(&reverb, { 0, 0, 520, 520 }));

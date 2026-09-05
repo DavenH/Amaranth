@@ -128,6 +128,35 @@ TEST_CASE("Property slider indicator remains centred at fractional positions",
     }
 }
 
+TEST_CASE("Property slider landmarks share the interactive value track",
+        "[cycle-v2][ui][property-controls][geometry][landmarks]") {
+    ScopedJuceInitialiser_GUI juce;
+    PrecisionSlider slider;
+    slider.setBounds(0, 0, 920, 30);
+    slider.setRange(0.0, 1.0, 0.00001);
+
+    const Rectangle<float> visibleTrack = propertySliderTrackBounds(
+            slider.getLocalBounds().toFloat());
+    const Rectangle<float> interactiveTrack = slider.getLookAndFeel()
+            .getSliderLayout(slider)
+            .sliderBounds
+            .toFloat();
+    REQUIRE(interactiveTrack.getX() == Catch::Approx(visibleTrack.getX()));
+    REQUIRE(interactiveTrack.getRight() == Catch::Approx(visibleTrack.getRight()));
+
+    for (double value : { 0.0, 0.25, 0.5, 0.75, 1.0 }) {
+        REQUIRE(propertySliderValuePosition(slider, value)
+                == Catch::Approx(visibleTrack.getX()
+                        + visibleTrack.getWidth() * (float) value));
+    }
+
+    slider.setSkewFactor(2.0);
+    REQUIRE(propertySliderValuePosition(slider, 0.25)
+            == Catch::Approx(visibleTrack.getX()
+                    + visibleTrack.getWidth()
+                            * (float) slider.valueToProportionOfLength(0.25)));
+}
+
 TEST_CASE("Morph slider presentation uses a precise line marker",
         "[cycle-v2][ui][property-controls][morph][geometry]") {
     const Rectangle<float> bounds { 10.f, 20.f, 180.f, 30.f };

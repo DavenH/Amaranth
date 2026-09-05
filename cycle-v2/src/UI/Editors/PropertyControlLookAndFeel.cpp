@@ -21,19 +21,12 @@ struct SliderPaintGeometry {
 };
 
 SliderPaintGeometry sliderPaintGeometry(
-        int x,
-        int y,
-        int width,
-        int height,
+        Rectangle<float> bounds,
+        Rectangle<float> track,
         float sliderPosition) {
     SliderPaintGeometry result;
-    result.bounds = {
-            static_cast<float>(x),
-            static_cast<float>(y),
-            static_cast<float>(width),
-            static_cast<float>(height)
-    };
-    result.track = propertySliderTrackBounds(result.bounds);
+    result.bounds = bounds;
+    result.track = track;
     result.indicatorX = jlimit(result.track.getX(), result.track.getRight(), sliderPosition);
     const Rectangle<float> indicatorAnchor {
             result.indicatorX - PropertyControlMetrics::thumbWidth * 0.5f,
@@ -68,6 +61,16 @@ void paintSliderIndicator(
 
 class PropertyControlLookAndFeel final : public LookAndFeel_V4 {
 public:
+    Slider::SliderLayout getSliderLayout(Slider& slider) override {
+        Slider::SliderLayout layout = LookAndFeel_V4::getSliderLayout(slider);
+        if (slider.isHorizontal()) {
+            layout.sliderBounds = slider.getLocalBounds().reduced(
+                    roundToInt(PropertyControlMetrics::thumbWidth * 0.5f),
+                    0);
+        }
+        return layout;
+    }
+
     void drawLinearSlider(
             Graphics& graphics,
             int x,
@@ -79,8 +82,18 @@ public:
             float,
             Slider::SliderStyle,
             Slider& slider) override {
+        const Rectangle<float> bounds {
+                (float) x,
+                (float) y,
+                (float) width,
+                (float) height
+        };
         const SliderPaintGeometry geometry = sliderPaintGeometry(
-                x, y, width, height, sliderPosition);
+                bounds,
+                bounds.withSizeKeepingCentre(
+                        bounds.getWidth(),
+                        PropertyControlMetrics::visibleTrackHeight),
+                sliderPosition);
         const bool enabled = slider.isEnabled();
         const bool hovered = slider.isMouseOverOrDragging();
         const bool focused = slider.hasKeyboardFocus(false);
@@ -105,6 +118,21 @@ Rectangle<float> propertySliderTrackBounds(Rectangle<float> bounds) {
             .withSizeKeepingCentre(
                     bounds.getWidth() - PropertyControlMetrics::thumbWidth,
                     PropertyControlMetrics::visibleTrackHeight);
+}
+
+float propertySliderValuePosition(Slider& slider, double value) {
+    const Rectangle<float> sliderBounds = slider.getLookAndFeel()
+            .getSliderLayout(slider)
+            .sliderBounds
+            .toFloat();
+    const double clampedValue = jlimit(
+            slider.getMinimum(),
+            slider.getMaximum(),
+            value);
+    return jmap(
+            (float) slider.valueToProportionOfLength(clampedValue),
+            sliderBounds.getX(),
+            sliderBounds.getRight());
 }
 
 Colour propertyControlFocusColour() {
@@ -145,10 +173,8 @@ void paintPropertySlider(
             track.getX(),
             track.getRight());
     const SliderPaintGeometry geometry = sliderPaintGeometry(
-            roundToInt(bounds.getX()),
-            roundToInt(bounds.getY()),
-            roundToInt(bounds.getWidth()),
-            roundToInt(bounds.getHeight()),
+            bounds,
+            track,
             position);
     paintSliderTrack(graphics, geometry, hovered, enabled);
     if (fill != kFill) {

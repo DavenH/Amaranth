@@ -1,5 +1,24 @@
 # UI Bug Notes
 
+## P1: Delay slider landmarks do not align with stops
+
+Context:
+
+- Delay Time's beat ticks and Pan Cycle's integer ticks are painted from the
+  component bounds while JUCE maps values through a separately inset slider
+  region.
+- Endpoint ticks consequently appear detached beyond the visible track, and
+  interior ticks miss the corresponding indicator positions by several pixels.
+
+Acceptance:
+
+- Ticks, snapped stops, fill boundaries, and indicators share one authoritative
+  value-to-pixel mapping.
+- Time's 2-beat tick and all twelve Pan Cycle ticks align at production size.
+- No landmark is painted outside the visible track.
+
+Current status: fixed in `property-slider-landmark-alignment.md` (2026-09-05).
+
 ## P0: IR High Pass leaves a DC component
 
 Context:

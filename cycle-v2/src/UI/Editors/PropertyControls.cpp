@@ -342,13 +342,12 @@ void PrecisionSlider::paint(Graphics& graphics) {
     graphics.setColour(Colour(0xff8793a1).withAlpha(0.72f));
     graphics.setFont(FontOptions(8.f));
     for (const auto& landmark : landmarks) {
-        const float x = jmap(
-                (float) jlimit(getMinimum(), getMaximum(), landmark.value),
-                (float) getMinimum(),
-                (float) getMaximum(),
-                track.getX(),
-                track.getRight());
-        graphics.drawVerticalLine(roundToInt(x), track.getY() - 3.f, track.getY());
+        const float x = propertySliderValuePosition(
+                *this,
+                jlimit(getMinimum(), getMaximum(), landmark.value));
+        graphics.fillRect(Rectangle<float>(
+                PropertyControlMetrics::indicatorWidth,
+                3.f).withCentre({ x, track.getY() - 1.5f }));
         const float labelWidth = 36.f;
         const float labelX = jlimit(
                 0.f,
