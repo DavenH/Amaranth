@@ -85,9 +85,10 @@ bounds balanced without this residual-space check.
 - Compact property rows are 50 px high, with an 18 px heading and a visible
   label-to-track gap no greater than 10 px. The IR production capture confirms
   the tighter label/rail relationship without crowding the readout.
-- The preferred Waveshaper editor is 824 x 464 px. Its square transfer view is
+- The preferred Waveshaper editor is 766 x 464 px. Its square transfer view is
   approximately 382 px, up from approximately 318 px, and its complete 152 px
-  property group is centred in the control rail.
+  property group is centred in the control rail. The later centre-gutter pass
+  removed stranded width without changing those content dimensions.
 - Focused property-control, hosted-editor, and view-module tests pass. The
   Waveshaper and IR automation fixtures pass with no failed commands:
   `/private/tmp/cycle-v2-waveshaper-layout-os-report.json` and

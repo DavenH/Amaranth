@@ -1305,23 +1305,25 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     }
 
     editor.setDelegate(&delegate);
-    editor.setBounds(0, 0, 824, 464);
+    editor.setBounds(0, 0, 766, 464);
     editor.setNode(node);
 
     const var state = editor.automationState();
-    const var panelBounds = state.getProperty("panelBounds", {});
+    const Rectangle<float> panel = rectangleProperty(state, "panelBounds");
     const Rectangle<float> headerActionBounds = rectangleProperty(
             state,
             "headerActionBounds");
-    REQUIRE(static_cast<double>(panelBounds.getProperty("width", {}))
-            == Catch::Approx(static_cast<double>(panelBounds.getProperty("height", {}))));
-    REQUIRE(static_cast<double>(panelBounds.getProperty("width", {})) >= 380.0);
+    REQUIRE(panel.getWidth() == Catch::Approx(panel.getHeight()));
+    REQUIRE(panel.getWidth() >= 380.f);
     REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
             editor.getLocalBounds().toFloat(), true).enabled);
     const var preLayout = state.getProperty("preGainLayout", {});
     const var postLayout = state.getProperty("postGainLayout", {});
     const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
     const Rectangle<float> controlGroupBounds = rectangleProperty(state, "controlGroupBounds");
+    REQUIRE(controlBounds.getWidth() == Catch::Approx(336.f));
+    REQUIRE(controlGroupBounds.getX() - panel.getRight()
+            == Catch::Approx(24.f));
     REQUIRE(controlGroupBounds.getCentreY()
             == Catch::Approx(controlBounds.reduced(12.f).getCentreY()).margin(1.f));
     REQUIRE(static_cast<bool>(preLayout.getProperty("compact", {})));

@@ -114,7 +114,7 @@ Rectangle<float> WaveshaperEditorComponent::editorControlBounds() const {
 Rectangle<float> WaveshaperEditorComponent::editorPanelBounds() const {
     auto bounds = contentBounds();
     bounds.removeFromRight(kControlRailWidth);
-    bounds.reduce(18.f, 14.f);
+    bounds.reduce(12.f, 14.f);
     const float size = jmin(
             kPanelPreferredSize,
             jmin(bounds.getWidth(), bounds.getHeight()));

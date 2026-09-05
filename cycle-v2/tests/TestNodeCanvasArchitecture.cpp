@@ -1037,7 +1037,7 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto waveshaperBounds = registry.moduleFor(NodeKind::Waveshaper)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
-    REQUIRE(waveshaperBounds.getWidth() == Catch::Approx(824.f));
+    REQUIRE(waveshaperBounds.getWidth() == Catch::Approx(766.f));
     REQUIRE(waveshaperBounds.getHeight() == Catch::Approx(464.f));
 
     const auto meshBounds = registry.moduleFor(NodeKind::TrilinearMesh)

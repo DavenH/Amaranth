@@ -1,5 +1,23 @@
 # UI Bug Notes
 
+## P1: Waveshaper has a doubled centre gutter
+
+Context:
+
+- The square plot and fixed control rail leave 52 pixels of unassigned width
+  inside the expanded editor.
+- This makes the visible plot-to-controls gap 76 pixels, compared with the IR
+  modeller's correct 24-pixel spacing unit.
+
+Acceptance:
+
+- The plot remains square and at least 380 pixels wide.
+- The control rail remains 336 pixels wide.
+- The visible centre gap is 24 pixels, using the IR panel's 12-pixel inset and
+  a container width that does not redistribute the unused space elsewhere.
+
+Current status: fixed in `cycle-v2-waveshaper-centre-gutter.md` (2026-09-05).
+
 ## P1: Delay slider landmarks do not align with stops
 
 Context:

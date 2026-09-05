@@ -116,7 +116,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     };
     addCurve(NodeKind::Envelope, { 840.f, 620.f });
     addCurve(NodeKind::ImpulseResponse, { 1080.f, 430.f });
-    addCurve(NodeKind::Waveshaper, { 824.f, 464.f });
+    addCurve(NodeKind::Waveshaper, { 766.f, 464.f });
 
     NodeViewCapabilities effect;
     effect.previewable = true;
