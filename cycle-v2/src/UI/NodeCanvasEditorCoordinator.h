@@ -52,7 +52,6 @@ public:
 
     void updateHost(const Node* node, Rectangle<float> availableBounds);
     void renderOpenGL(float scaleFactor);
-    void syncEffectNodes(const NodeGraph& graph);
     void releaseOpenGLResources();
     void clearPreviewCache();
     void close();

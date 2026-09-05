@@ -16,12 +16,6 @@ bool hasHostedEditor(const Node& node) {
     return NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities().hostedEditor;
 }
 
-bool hasCurveModel(const Node& node) {
-    return node.kind == NodeKind::Envelope
-            || node.kind == NodeKind::ImpulseResponse
-            || node.kind == NodeKind::Waveshaper;
-}
-
 Rectangle<float> closeButton(const Node& node, Rectangle<float> panel) {
     const bool compact = node.kind == NodeKind::VoiceContext
             || node.kind == NodeKind::Fft
@@ -117,14 +111,6 @@ void NodeCanvasEditorCoordinator::updateHost(
 
 void NodeCanvasEditorCoordinator::renderOpenGL(float scaleFactor) {
     editorHost.renderOpenGL(scaleFactor);
-}
-
-void NodeCanvasEditorCoordinator::syncEffectNodes(const NodeGraph& graph) {
-    for (const auto& node : graph.getNodes()) {
-        if (hasCurveModel(node)) {
-            resources.syncCurveEditorWidget(node);
-        }
-    }
 }
 
 void NodeCanvasEditorCoordinator::releaseOpenGLResources() {

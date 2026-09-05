@@ -52,6 +52,7 @@ void CurveEditorWidget::setControlValues(
 void CurveEditorWidget::setEnvelopeBipolar(bool bipolar) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setBipolar(bipolar);
+        ++previewPresentationRevision;
     }
 }
 
@@ -70,12 +71,14 @@ void CurveEditorWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
 void CurveEditorWidget::fitEnvelopeVerticalRange() {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->fitVerticalRange();
+        ++previewPresentationRevision;
     }
 }
 
 void CurveEditorWidget::resetEnvelopeVerticalRange() {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->resetVerticalRange();
+        ++previewPresentationRevision;
     }
 }
 
@@ -138,7 +141,7 @@ void CurveEditorWidget::renderGuidePreviewSnapshotOpenGL(
         return;
     }
 
-    controller->renderPreview(bounds, scaleFactor);
+    controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
 }
 
 void CurveEditorWidget::renderPreviewSnapshotOpenGL(
@@ -149,7 +152,7 @@ void CurveEditorWidget::renderPreviewSnapshotOpenGL(
         return;
     }
 
-    controller->renderPreview(bounds, scaleFactor);
+    controller->renderPreview(bounds, scaleFactor, previewPresentationRevision);
 }
 
 bool CurveEditorWidget::paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const {

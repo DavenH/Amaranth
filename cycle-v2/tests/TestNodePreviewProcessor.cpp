@@ -129,6 +129,23 @@ TEST_CASE("Node preview processor factory creates preview modules", "[cycle-v2][
     REQUIRE(factory.create(PreviewModuleRole::None) == nullptr);
 }
 
+TEST_CASE("Runtime preview fingerprints include both visible channels",
+        "[cycle-v2][runtime][ui][cache]") {
+    NodePreviewResult preview {
+            "output",
+            PreviewModuleRole::OutputMeters,
+            { 0.4f },
+            { 0.6f }
+    };
+    const uint64_t original = nodePreviewResultFingerprint(preview);
+
+    preview.secondary.front() = 0.8f;
+    REQUIRE(nodePreviewResultFingerprint(preview) != original);
+    preview.secondary.front() = 0.6f;
+    preview.primary.front() = 0.2f;
+    REQUIRE(nodePreviewResultFingerprint(preview) != original);
+}
+
 TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
         "[cycle-v2][runtime][probe][ui]") {
     NodePreviewResult result;

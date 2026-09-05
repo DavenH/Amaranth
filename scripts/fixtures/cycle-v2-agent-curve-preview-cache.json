@@ -1,0 +1,87 @@
+{
+  "commands": [
+    {
+      "command": "resetCanvasPerformance"
+    },
+    {
+      "command": "addNode",
+      "kind": "envelope",
+      "x": 420,
+      "y": 220,
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "requestCanvasOpenGLFrame"
+    },
+    {
+      "command": "requestCanvasOpenGLFrame"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env2"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewRenderCacheMisses",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewRenderCacheHits",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env2",
+      "parameterId": "red",
+      "label": "Red",
+      "value": "0.650",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env2.close",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "requestCanvasOpenGLFrame"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env2"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.previewRenderCacheMisses",
+      "op": "greaterThan",
+      "value": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.redMorph",
+      "equals": 0.649999976158142
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env2.close",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-curve-preview-cache.png"
+    },
+    {
+      "command": "inspectCanvasPerformance"
+    }
+  ],
+  "quit": true
+}

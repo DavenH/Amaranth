@@ -135,6 +135,11 @@ Common command families:
   context attachment, render counts, context create/close counts, and the last
   recorded GL error. Use this before/after suspect session gestures when panels
   go black without an obvious automation failure.
+- `resetCanvasPerformance`, `inspectCanvasPerformance`: delimit and capture a
+  canvas measurement window containing trigger frequency/cost, repaint latency
+  and coalescing, and JUCE/OpenGL frame-duration distributions. Use
+  `cycle-v2-agent-canvas-performance.json` as the stable before/after baseline
+  for canvas optimization work.
 - `captureAudio`: render scheduled MIDI events offline, optionally write a WAV,
   and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing
@@ -306,6 +311,12 @@ scripts/cycle_agent_session.py \
 
 The app still launches as a GUI bundle first. The socket is only the command
 transport after normal startup and initial preset loading.
+
+For Cycle V2 fixtures that need real repaint/frame timing between commands,
+run `cycle_agent_smoke_session.py` with `--skip-ui-reset`, an empty
+`--reset-preset`, and a small `--per-command-delay`. This avoids the legacy
+Cycle panel-reset commands and gives JUCE's message loop time to dispatch each
+coalesced repaint before the next request.
 
 ## Smoke Suite
 

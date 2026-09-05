@@ -1,0 +1,57 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "delay", "x": 540, "y": 280 },
+    { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 400 },
+    { "command": "resetCanvasPerformance" },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:delay.parameter.time",
+      "targetX": 0.3,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:delay.parameter.time",
+      "downTargetId": "expanded:delay.parameter.time",
+      "targetX": 0.45,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:delay.parameter.time",
+      "downTargetId": "expanded:delay.parameter.time",
+      "targetX": 0.6,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:delay.parameter.time",
+      "downTargetId": "expanded:delay.parameter.time",
+      "targetX": 0.75,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:delay.parameter.time",
+      "downTargetId": "expanded:delay.parameter.time",
+      "targetX": 0.75,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    { "command": "waitForIdle", "delayMs": 800 },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": false
+}

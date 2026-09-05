@@ -444,3 +444,36 @@ Context:
 
 Current status: open; inspect settings-map initialization separately from the
 Guide resource UI work.
+
+## Fixed: Canvas overlay faded while dragging nodes
+
+Context:
+
+- Cache-hit node sprites and the cached cable layer could be presented at
+  greatly reduced opacity during a node drag, while the moving cache-miss node
+  and canvas grid remained bright.
+- Node-drag frames now use the authoritative node and cable renderers directly.
+  Mouse-up restores the optimized sprite and composite caches for stable
+  frames.
+- In the focused native drag, direct cable rendering took 1.63 ms and direct
+  node rendering took 3.68 ms; JUCE paints averaged 14.63 ms and peaked at
+  24.74 ms.
+- The native authoring sequence captures the cable and node presentation while
+  the drag is still held.
+
+Current status: fixed on 2026-08-29.
+
+## Addressed: Curve preview resources created before OpenGL context
+
+Context:
+
+- During the presentation-cache lifecycle fix on 2026-08-31, synchronizing all
+  curve widgets in `NodeCanvas` construction caused `EXC_BAD_ACCESS` in
+  `Curve::recalculateCurve()` while the default Waveshaper rasterizer was being
+  prepared without the established OpenGL render lifecycle.
+- Repro crash: `~/Library/Logs/DiagnosticReports/CycleV2-2026-08-31-104535.ips`.
+
+Current status: addressed in the same work by creating and synchronizing curve
+preview resources at the existing OpenGL preview-render boundary. The
+2026-09-05 merge retained that boundary and removed the older 30 Hz timer
+synchronization, which otherwise invalidated every cached preview frame.

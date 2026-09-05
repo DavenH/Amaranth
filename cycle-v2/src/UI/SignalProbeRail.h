@@ -4,6 +4,8 @@
 
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodePreviewRenderer.h"
+#include "UI/NodeCanvasPresentationPerformanceObserver.h"
+#include "UI/SignalProbePreviewTileCache.h"
 #include "UI/WorkspaceDock.h"
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Runtime/NodeUpdateGraph.h"
@@ -22,7 +24,12 @@ struct SignalProbeRailState {
 
 class SignalProbeRail {
 public:
-    explicit SignalProbeRail(NodePreviewRenderer& rendererToUse) : renderer(rendererToUse) {}
+    explicit SignalProbeRail(
+            NodePreviewRenderer& rendererToUse,
+            NodeCanvasPresentationPerformanceObserver* performanceObserverToUse = nullptr) :
+            renderer(rendererToUse)
+        ,   performanceObserver(performanceObserverToUse) {
+    }
 
     static constexpr float collapsedHeight = WorkspaceDock::collapsedHeight;
     static constexpr float minimumExpandedHeight = WorkspaceDock::minimumExpandedHeight;
@@ -79,6 +86,7 @@ public:
             Rectangle<float> workspace,
             const SignalProbeRailState& state,
             const WorkspaceDockFocus& focus);
+    void clearPreviewCache() { previewTileCache.clear(); }
 
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);
@@ -97,8 +105,17 @@ private:
     const GraphPreviewResult::SignalProbePreview* previewFor(
             const GraphPreviewResult& previews,
             const String& probeId) const;
+    void paintCachedPreview(
+            Graphics& graphics,
+            const NodeGraph& graph,
+            const SignalProbe& probe,
+            const GraphPreviewResult::SignalProbePreview& preview,
+            Rectangle<float> previewBounds,
+            float physicalScale);
 
     NodePreviewRenderer& renderer;
+    NodeCanvasPresentationPerformanceObserver* performanceObserver;
+    SignalProbePreviewTileCache previewTileCache;
 };
 
 }

@@ -1,0 +1,57 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "/private/tmp/cycle-v2-with-spies.cyclegraph" },
+    { "command": "openMeshPopup", "nodeId": "waveMesh", "waitForIdle": true, "idleDelayMs": 400 },
+    { "command": "resetCanvasPerformance" },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.5,
+      "targetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.51,
+      "targetY": 0.55,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.53,
+      "targetY": 0.52,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.54,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveMesh.panel2D",
+      "downTargetId": "expanded:waveMesh.panel2D",
+      "targetX": 0.54,
+      "targetY": 0.5,
+      "downTargetX": 0.5,
+      "downTargetY": 0.57
+    },
+    { "command": "waitForIdle", "delayMs": 800 },
+    { "command": "inspectCanvasPerformance" }
+  ],
+  "quit": false
+}

@@ -372,6 +372,43 @@ public:
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
     }
 
+    static void addEffectParameterTargets(
+            Array<var>& targets,
+            const Node& node,
+            Rectangle<float> panel,
+            const NodeEditorHost& editorHost) {
+        DynamicObject editorState;
+        editorHost.appendAutomationState(editorState);
+        const var effectStateValue = editorState.getProperty("effectParameters");
+        const auto* effectState = effectStateValue.getDynamicObject();
+        if (effectState == nullptr) {
+            return;
+        }
+        const var controlsValue = effectState->getProperty("controls");
+        const auto* controls = controlsValue.getArray();
+        if (controls == nullptr) {
+            return;
+        }
+        for (const auto& control : *controls) {
+            const auto* object = control.getDynamicObject();
+            if (object == nullptr) {
+                continue;
+            }
+            const String id = object->getProperty("id").toString();
+            const auto bounds = AutomationValueEncoder::rectangleFromVar(
+                    object->getProperty("sliderBounds")).translated(
+                            panel.getX(), panel.getY());
+            targets.add(pointerTargetToVar(
+                    "expanded:" + node.id + ".parameter." + id,
+                    "effectParameter",
+                    bounds,
+                    node.id,
+                    {},
+                    false,
+                    id));
+        }
+    }
+
     static void addExpandedEditorTargets(
             Array<var>& targets,
             const Node& node,
@@ -413,6 +450,7 @@ public:
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
         } else {
+            addEffectParameterTargets(targets, node, panel, editorHost);
             if (node.kind == NodeKind::Envelope) {
                 addEnvelopeTargets(targets, node, panel, editorHost);
             }
@@ -476,6 +514,9 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
+    root->setProperty("hoverRepaintRequestCount", (int64) state.hoverRepaintRequestCount);
+    root->setProperty("canvasRepaintRequestCount", (int64) state.canvasRepaintRequestCount);
+    root->setProperty("statusRepaintRequestCount", (int64) state.statusRepaintRequestCount);
     root->setProperty("nodeCount", (int) graph.getNodes().size());
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());

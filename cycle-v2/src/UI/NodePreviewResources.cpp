@@ -3,6 +3,7 @@
 #include "UI/NodeEditorHost.h"
 
 #include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
 
 namespace CycleV2 {
@@ -80,6 +81,24 @@ CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId
 
     cachedSprites.emplace_back(nodeId, CachedNodePreviewSprite {});
     return cachedSprites.back().second;
+}
+
+uint64_t NodePreviewResources::nodePresentationFingerprint(const String& nodeId) const {
+    FingerprintBuilder fingerprint;
+    for (const auto& entry : curveEditorWidgets) {
+        if (entry.first == nodeId) {
+            return fingerprint
+                    .add(entry.second->contentRevision())
+                    .add(entry.second->previewRevision())
+                    .value();
+        }
+    }
+    for (const auto& entry : trimeshWidgets) {
+        if (entry.first == nodeId) {
+            return fingerprint.add(entry.second->guideContextKey()).value();
+        }
+    }
+    return fingerprint.value();
 }
 
 const TrimeshWidget* NodePreviewResources::findTrimeshWidget(const String& nodeId) const {

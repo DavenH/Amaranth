@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <cstdint>
+
 #include "Graph/GraphDocument.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "UI/NodeCanvasScene.h"
@@ -63,6 +65,9 @@ struct NodeCanvasAutomationPresentation {
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
     GuideDockAutomationPresentation guideDock;
+    uint64_t hoverRepaintRequestCount {};
+    uint64_t canvasRepaintRequestCount {};
+    uint64_t statusRepaintRequestCount {};
 };
 
 struct NodeCanvasAutomationContext {

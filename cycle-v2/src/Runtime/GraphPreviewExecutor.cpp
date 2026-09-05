@@ -1,8 +1,60 @@
-#include "Runtime/GraphPreviewExecutor.h"
-
+#include <atomic>
+#include <cstring>
 #include <functional>
 
+#include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/FingerprintBuilder.h"
+
 namespace CycleV2 {
+
+namespace {
+
+uint64_t nextPreviewContentRevision() {
+    static std::atomic<uint64_t> nextRevision { 1 };
+    return nextRevision.fetch_add(1, std::memory_order_relaxed);
+}
+
+}
+
+uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview) {
+    FingerprintBuilder fingerprint;
+    fingerprint
+            .add(preview.nodeId)
+            .add((uint64_t) preview.role)
+            .add((uint64_t) preview.primary.size());
+    for (const float value : preview.primary) {
+        uint32_t bits {};
+        std::memcpy(&bits, &value, sizeof(bits));
+        fingerprint.add(bits);
+    }
+    fingerprint.add((uint64_t) preview.secondary.size());
+    for (const float value : preview.secondary) {
+        uint32_t bits {};
+        std::memcpy(&bits, &value, sizeof(bits));
+        fingerprint.add(bits);
+    }
+    return fingerprint
+            .add((uint64_t) preview.gridColumns)
+            .add((uint64_t) preview.gridRows)
+            .add((uint64_t) preview.domain)
+            .add((uint64_t) preview.frequencySampling)
+            .add((uint64_t) preview.frequencyMidiNote)
+            .value();
+}
+
+bool nodePreviewResultsHaveEqualContent(
+        const NodePreviewResult& first,
+        const NodePreviewResult& second) {
+    return first.nodeId == second.nodeId
+            && first.role == second.role
+            && first.primary == second.primary
+            && first.secondary == second.secondary
+            && first.gridColumns == second.gridColumns
+            && first.gridRows == second.gridRows
+            && first.domain == second.domain
+            && first.frequencySampling == second.frequencySampling
+            && first.frequencyMidiNote == second.frequencyMidiNote;
+}
 
 namespace {
 
@@ -263,9 +315,14 @@ GraphPreviewResult renderPreview(
                 context.frequencyMidiNote
         };
         if (cachedIndex >= 0 && static_cast<size_t>(cachedIndex) < result.nodes.size()) {
+            const NodePreviewResult& cached = result.nodes[static_cast<size_t>(cachedIndex)];
+            preview.contentRevision = nodePreviewResultsHaveEqualContent(preview, cached)
+                    ? cached.contentRevision
+                    : nextPreviewContentRevision();
             result.nodes[static_cast<size_t>(cachedIndex)] = std::move(preview);
             workspace[stepIndex] = viewOf(result.nodes[static_cast<size_t>(cachedIndex)]);
         } else {
+            preview.contentRevision = nextPreviewContentRevision();
             result.nodes.push_back(std::move(preview));
             result.previewResultIndexByStep[stepIndex] = static_cast<int>(result.nodes.size() - 1);
             workspace[stepIndex] = viewOf(result.nodes.back());

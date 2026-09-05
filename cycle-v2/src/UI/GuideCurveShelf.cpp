@@ -338,7 +338,7 @@ bool GuideCurveShelf::renderOpenGL(
                 state,
                 index);
         const Rectangle<float> thumbnail = previewBoundsFor(tile);
-        Rectangle<float> captureBounds(
+        const Rectangle<float> captureBounds(
                 captureWorkspace.getX() + 4.f,
                 captureWorkspace.getY() + 4.f,
                 thumbnail.getWidth(),

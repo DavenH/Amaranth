@@ -9,6 +9,13 @@
     { "command": "assertState", "path": "expandedNodeId", "equals": "magnitudeLayer1" },
     { "command": "pointer", "event": "move", "targetId": "guide:guide2" },
     { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "guide2" },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "expanded:magnitudeLayer1.panel2D",
+      "dispatchToArea": true
+    },
+    { "command": "assertState", "path": "guideDock.hoveredGuideId", "equals": "" },
     { "command": "waitForIdle", "idleDelayMs": 300 },
     {
       "command": "screenshot",

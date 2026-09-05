@@ -12,6 +12,7 @@
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
+#include "UI/NodeEditorPerformanceObserver.h"
 
 namespace CycleV2 {
 
@@ -187,7 +188,8 @@ public:
             GraphDocument& document,
             GraphCommandDispatcher& commands,
             NodeEditorPresentation& presentation,
-            NodeEditorResources& resources);
+            NodeEditorResources& resources,
+            NodeEditorPerformanceObserver* performanceObserver = nullptr);
 
     bool publishCurveState(
             const String& nodeId,
@@ -255,6 +257,7 @@ private:
     GraphCommandDispatcher& commands;
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
+    NodeEditorPerformanceObserver* performanceObserver {};
     String activeMorphNodeId;
     String activeMorphParameterId;
     uint64_t activeMorphFingerprint {};

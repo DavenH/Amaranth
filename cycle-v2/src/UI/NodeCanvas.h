@@ -18,6 +18,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "UI/CanvasPerformanceMetrics.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
@@ -86,6 +87,9 @@ public:
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
+    var inspectPerformanceMetricsForAutomation() const;
+    void resetPerformanceMetricsForAutomation();
+    void requestOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     Rectangle<int> performanceKeyboardDockBounds() const;
@@ -110,6 +114,12 @@ public:
     bool keyPressed(const KeyPress& key) override;
 
 private:
+    enum class HoverRepaint {
+        None,
+        Status,
+        Canvas
+    };
+
     OpenGLContext openGLContext;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
@@ -123,6 +133,7 @@ private:
     const RuntimeProcessTrace& runtimeTrace;
     const GraphPreviewResult& previewResult;
     NodeCanvasQueryModel queries;
+    CanvasPerformanceMetrics performanceMetrics;
     NodeEditorCommandService editorCommands;
     NodeCanvasAuthoring authoring;
     NodeCanvasInteraction interaction;
@@ -142,6 +153,8 @@ private:
 
     int activeTrimeshVertexIndex { -1 };
     Point<float> lastMousePosition;
+    String resolvedHoverText;
+    bool pointerInsideCanvas {};
     bool draggingTrimeshMorph {};
     bool trimeshMorphUndoPushed {};
     bool draggingTrimeshVertexParameter {};
@@ -168,11 +181,14 @@ private:
     void renderOpenGL() override;
     void openGLContextClosing() override;
     void timerCallback() override;
-    void updateHoverAt(juce::Point<float> position);
+    HoverRepaint updateHoverAt(juce::Point<float> position);
+    static HoverRepaint hoverRepaintFor(bool canvasChanged, bool statusChanged);
 
     void setCanvasOpenGlAttached(bool shouldAttach);
     NodeCanvasPresentationFrame presentationFrame() const;
     void requestCanvasRepaint();
+    void requestCanvasStatusRepaint();
+    void requestHoverRepaint(HoverRepaint repaint);
     void notifyOverlayOcclusionChanged();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
@@ -188,6 +204,7 @@ private:
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh();
     void flushScheduledCompiledStateRefresh();
+    void resetDocumentPresentation();
     File snapshotFile() const;
     bool saveSnapshot();
     bool loadSnapshot();
