@@ -1281,6 +1281,29 @@ TEST_CASE("Guide editor uses compact host and control layout",
     REQUIRE(dcOffsetTrack.getRight() == noiseTrack.getRight());
     REQUIRE(phaseTrack.getX() == noiseTrack.getX());
     REQUIRE(phaseTrack.getRight() == noiseTrack.getRight());
+    const var panelState = state.getProperty("panelState", {});
+    const var zoom = panelState.getProperty("zoom", {});
+    REQUIRE(static_cast<double>(zoom.getProperty("x", {}))
+            == Catch::Approx(0.0));
+    REQUIRE(static_cast<double>(zoom.getProperty("w", {}))
+            == Catch::Approx(1.0));
+    const Array<var>* majorGridLines = panelState
+            .getProperty("verticalMajorGridLines", {})
+            .getArray();
+    REQUIRE(majorGridLines != nullptr);
+    REQUIRE(majorGridLines->size() == 8);
+    const double expectedGridSpacing = 0.9 / 8.0;
+    for (int index = 0; index < majorGridLines->size(); ++index) {
+        REQUIRE(static_cast<double>((*majorGridLines)[index]
+                .getProperty("domainX", {}))
+                == Catch::Approx(0.05 + expectedGridSpacing * index));
+    }
+    REQUIRE(static_cast<double>((*majorGridLines)[4].getProperty("panelX", {}))
+            == Catch::Approx(panelBounds.getWidth() * 0.5));
+    REQUIRE(panelBounds.getWidth() * 0.95
+                    - static_cast<double>(majorGridLines->getLast()
+                            .getProperty("panelX", {}))
+            == Catch::Approx(panelBounds.getWidth() * expectedGridSpacing));
     REQUIRE(state.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
     REQUIRE_FALSE(static_cast<bool>(state.getProperty("heatmapSublabelVisible", {})));
     auto* loadImage = dynamic_cast<TextButton*>(
@@ -1865,11 +1888,16 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
     const var panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("heatmapActive", {}));
     REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 512);
+    const int initialTextureRevision = panelState.getProperty(
+            "heatmapTextureRevision", {});
     const double initialOutput = panelState.getProperty("heatmapOutputStart", {});
     REQUIRE(widget.setSelectedVertexParameter("vertex.amp", 0.1f));
     REQUIRE(widget.modelPublication() != nullptr);
-    REQUIRE((double) widget.automationState().getProperty("heatmapOutputStart", {})
+    const var updatedPanelState = widget.automationState();
+    REQUIRE((double) updatedPanelState.getProperty("heatmapOutputStart", {})
             != Catch::Approx(initialOutput).margin(0.001));
+    REQUIRE((int) updatedPanelState.getProperty("heatmapTextureRevision", {})
+            == initialTextureRevision);
 
     auto* loadButton = dynamic_cast<TextButton*>(
             editor.findChildWithID("guideEditor.loadImage"));

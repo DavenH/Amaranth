@@ -1,5 +1,26 @@
 # UI Bug Notes
 
+## Resolved: Guide grid spacing and image-backed margin flicker
+
+Context:
+
+- The Guide panel generated its background grid from zoom limits that were
+  already inset, then subtracted its drawable padding again. Its centre line
+  was therefore right-biased and its last column was oversized.
+- Parameter-only Guide publications also scheduled redundant uploads of the
+  unchanged heatmap texture. During a Y Randomness drag, that resource churn
+  exposed translucent side margins against alternating framebuffer state.
+
+Acceptance:
+
+- The Guide image, curve, overlays, and eight-column grid share the normalized
+  drawable domain `[0.05, 0.95]`, with a centred line and equal columns.
+- Identical image presentations reuse their existing texture.
+- Both outside margins receive a deterministic opaque OpenGL fill throughout
+  a live X or Y Randomness gesture.
+
+Current status: fixed in `cycle-v2-guide-heatmap-input.md` (2026-09-05).
+
 ## P1: Waveshaper has a doubled centre gutter
 
 Context:

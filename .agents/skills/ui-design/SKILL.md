@@ -89,6 +89,19 @@ Run a space audit: annotate the bounds of the panel, each section, its content,
 and each gap. Any large region must have a stated job. If removing a gap does
 not harm grouping, scanning, pointer safety, or calm, remove or reduce it.
 
+For layered editor canvases, define one authoritative drawable rectangle and
+derive the background grid, image or texture, editable content, overlays, and
+interaction mapping from it. Do not subtract padding independently in each
+layer. For a uniform grid, assert the first and last intervals, every repeated
+interval, and the centre line in production pixels; checking only line count
+does not reveal a shifted domain or oversized terminal cell.
+
+Keep animated state separate from static resources. Parameter-only gestures
+may redraw dynamic overlays, but must not recreate or re-upload an unchanged
+background image or texture. Paint exposed margins and base regions
+deterministically on every render—use an opaque fill when their appearance must
+not depend on framebuffer history or the number of passes.
+
 Also compare the occupied content bounds with their available region on both
 axes. Flag a repeated group that is pinned to one edge while leaving a large,
 unexplained residual area on the opposite edge. Propose a concrete correction:

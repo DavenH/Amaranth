@@ -132,6 +132,15 @@ one consolidated semantic edit.
   editor's existing transient status surface.
 - Shelf previews retain the shared canvas colour and corner-radius tokens while
   resolving the image asset through the graph.
+- The Guide image, authored curve, overlays, and background grid share the
+  exact normalized drawable domain `[0.05, 0.95]`. Eight major grid columns
+  divide that domain uniformly, placing the centre line at the panel centre
+  and leaving no oversized terminal column.
+- The two outside margins receive an opaque, deterministic OpenGL fill on
+  every panel render. Parameter-only Guide gestures must reuse an unchanged
+  image texture instead of scheduling a redundant upload, so dragging X or Y
+  Randomness cannot alternate the margin fill between the panel colour and the
+  cleared framebuffer.
 
 ## Implementation Evidence
 
@@ -160,14 +169,19 @@ one consolidated semantic edit.
   cases, 66 heatmap assertions in 5 cases, 8 serialization assertions in 2
   cases, 41 audio-resource assertions in 3 cases, 48 property-control geometry
   assertions in 5 cases, and 152 IR editor assertions in 2 cases.
-- `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
-  run completed with 11,292 of 11,293 assertions passing; its sole failure is
+- The Guide viewport now maps normalized `[0,1]` directly to the panel. Its
+  padded image and curve domain therefore produce eight equal major-grid
+  columns, including a centre line at exactly half the panel width. The two
+  focused editor cases pass 82 assertions covering the geometry and reuse of
+  an unchanged heatmap texture during a dynamic path update.
+- The expanded heatmap fixture now passes all 31 commands, including a live
+  Y Randomness gesture and stable texture-revision assertions. The final native
+  OpenGL render was inspected at
+  `/private/tmp/cycle-v2-guide-grid-native.png`; its report and filtered log are
+  `/private/tmp/cycle-v2-guide-grid-native-report.json` and
+  `/private/tmp/cycle-v2-guide-grid-native-logs.txt`.
+- The full 824-test repository run passed 823 tests. Its sole failure remains
   the pre-existing hit-router copy mismatch recorded in `ui-bugs.md`.
-- The post-merge automation fixture passed all 21 commands, including
-  clear/undo and embedded save/reload. Native rendering was inspected in
-  `/private/tmp/cycle-v2-guide-heatmap.png` at the final `1265 x 476` host
-  geometry; the filtered launch log is
-  `/private/tmp/cycle-v2-guide-balanced-layout-logs.txt`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
 

@@ -427,15 +427,36 @@ public:
         ,   SingletonAccessor(repo, "CycleV2GuideCurvePanel") {}
 
     void setHeatmapPresentation(Image image, std::vector<float> nextOutput) override {
-        setContentImage(std::move(image));
+        if (image != contentImage) {
+            setContentImage(std::move(image));
+            ++heatmapTextureRevision;
+        }
         output = std::move(nextOutput);
         repaint();
+    }
+
+    void updateZoomBounds(bool resetView) override {
+        if (zoomPanel == nullptr) {
+            return;
+        }
+        zoomPanel->rect.xMinimum = 0.f;
+        zoomPanel->rect.xMaximum = 1.f;
+        zoomPanel->rect.yMinimum = 0.f;
+        zoomPanel->rect.yMaximum = 1.f;
+        if (resetView) {
+            zoomPanel->rect.x = 0.f;
+            zoomPanel->rect.w = 1.f;
+            zoomPanel->rect.y = 0.f;
+            zoomPanel->rect.h = 1.f;
+        }
+        constrainZoom();
     }
 
     var automationState() const override {
         var state = FlatCurvePanelBase::automationState();
         if (auto* object = state.getDynamicObject()) {
             object->setProperty("heatmapActive", !contentImage.isNull());
+            object->setProperty("heatmapTextureRevision", heatmapTextureRevision);
             object->setProperty("heatmapOutputPointCount", (int) output.size());
             if (!output.empty()) {
                 object->setProperty("heatmapOutputStart", output.front());
@@ -483,6 +504,7 @@ public:
 
 private:
     std::vector<float> output;
+    int heatmapTextureRevision {};
 };
 
 class ImpulseResponseCurvePanel final : public ImpulseResponseCurvePanelContract,

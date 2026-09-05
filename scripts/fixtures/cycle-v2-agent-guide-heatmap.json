@@ -20,6 +20,35 @@
       "area": "canvas",
       "path": "/private/tmp/cycle-v2-guide-heatmap.png"
     },
+    { "command": "assertState", "path": "guideDock.editor.panelState.zoom.x", "equals": 0 },
+    { "command": "assertState", "path": "guideDock.editor.panelState.zoom.w", "equals": 1 },
+    { "command": "assertState", "path": "guideDock.editor.panelState.heatmapTextureRevision", "equals": 1 },
+    { "command": "pointer", "event": "down", "targetId": "guideEditor.dcOffset", "targetX": 0.5 },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "guideEditor.dcOffset",
+      "downTargetId": "guideEditor.dcOffset",
+      "targetX": 0.8,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-guide-y-randomness-drag.png"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "guideEditor.dcOffset",
+      "downTargetId": "guideEditor.dcOffset",
+      "targetX": 0.8,
+      "downTargetX": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    { "command": "assertState", "path": "guideDock.editor.panelState.heatmapActive", "equals": true },
+    { "command": "assertState", "path": "guideDock.editor.panelState.heatmapTextureRevision", "equals": 1 },
     { "command": "clearGuideHeatmap", "guideId": "guide1" },
     { "command": "assertState", "path": "guides.0.heatmapActive", "equals": false },
     { "command": "undo" },
@@ -37,7 +66,8 @@
     { "command": "assertState", "path": "guides.0.heatmapHeight", "equals": 365 },
     { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1" },
     { "command": "assertState", "path": "guideDock.expandedGuideHeatmapActive", "equals": true },
-    { "command": "waitForIdle", "idleDelayMs": 500 }
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    { "command": "inspectTargets", "area": "canvas" }
   ],
   "quit": false
 }
