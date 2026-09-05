@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Graph/NodeGraph.h"
-#include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
-#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
-
 #include <JuceHeader.h>
 
 #include <memory>
 #include <vector>
+
+#include "Graph/NodeGraph.h"
+#include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 class EnvelopeMesh;
 class Mesh;
@@ -40,6 +40,12 @@ class FlatCurvePanelContract : public CurvePanel {
 public:
     virtual Vertex* selectedFlatVertexForModel() = 0;
     virtual void restoreFlatSelection(Vertex* vertex) = 0;
+};
+
+class GuideCurvePanelPresentation {
+public:
+    virtual ~GuideCurvePanelPresentation() = default;
+    virtual void setHeatmapPresentation(Image image, std::vector<float> output) = 0;
 };
 
 class EnvelopeCurvePanelContract : public CurvePanel {

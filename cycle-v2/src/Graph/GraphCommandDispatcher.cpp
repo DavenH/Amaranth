@@ -314,16 +314,11 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
             };
         }
 
-        const uint64_t currentRevision = guide->model != nullptr ? guide->model->revision() : 0;
-        const uint64_t durableRevision = durableGuide->model != nullptr
-                ? durableGuide->model->revision()
+        const uint64_t currentRevision = guide->revision;
+        const uint64_t durableRevision = durableGuide->revision;
+        const uint64_t currentModelRevision = guide->model != nullptr
+                ? guide->model->revision()
                 : 0;
-        const bool hasValidTransientBase = transientEdit.has_value()
-                && publication.durableBaseRevision == durableRevision;
-        if ((!hasValidTransientBase && publication.durableBaseRevision != currentRevision)
-                || publication.model->revision() < currentRevision) {
-            return GraphEditResult { GraphEditCode::StaleRevision, publication.guideId, {} };
-        }
         const auto typedModel = std::dynamic_pointer_cast<const CurveNodeModelState>(
                 publication.model);
         if (typedModel == nullptr || typedModel->flatCurve() == nullptr) {
@@ -334,7 +329,7 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
             };
         }
         const bool exactRetry = guide->model != nullptr
-                && publication.model->revision() == currentRevision
+                && publication.model->revision() == currentModelRevision
                 && guide->model->equals(*publication.model)
                 && guideControlsMatch(*guide, publication.controls);
         if (exactRetry) {
@@ -347,12 +342,18 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
             };
         }
         if (!transientEdit.has_value()
-                && publication.model->revision() == currentRevision) {
+                && publication.model->revision() == currentModelRevision) {
             return GraphEditResult {
                     GraphEditCode::ConflictingRevision,
                     publication.guideId,
                     {}
             };
+        }
+        const bool hasValidTransientBase = transientEdit.has_value()
+                && publication.durableBaseRevision == durableRevision;
+        if ((!hasValidTransientBase && publication.durableBaseRevision != currentRevision)
+                || publication.model->revision() < currentModelRevision) {
+            return GraphEditResult { GraphEditCode::StaleRevision, publication.guideId, {} };
         }
 
         const bool modelChanged = guide->model == nullptr
@@ -368,6 +369,51 @@ GraphEditResult GraphCommandDispatcher::publishGuideCurveState(
         result.changes.guidesChanged = result.succeeded() && !consumers.empty();
         result.changes.guidePresentationChanged = result.succeeded();
         result.changes.modelChanged = result.succeeded() && modelChanged;
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::setGuideHeatmap(
+        const juce::String& guideId,
+        uint64_t expectedRevision,
+        GuideHeatmapAssetPtr asset) {
+    return apply([&](auto& graph) {
+        const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+        if (guide == nullptr) {
+            return GraphEditResult { GraphEditCode::MissingNode, guideId, {} };
+        }
+        if (guide->revision != expectedRevision) {
+            return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
+        }
+        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
+        auto result = annotateSuccessful(
+                GraphEditor().setGuideHeatmap(graph, guideId, std::move(asset)),
+                { consumers, false, false });
+        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
+        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
+        result.changes.modelChanged = result.succeeded() && result.changed;
+        return result;
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::clearGuideHeatmap(
+        const juce::String& guideId,
+        uint64_t expectedRevision) {
+    return apply([&](auto& graph) {
+        const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+        if (guide == nullptr) {
+            return GraphEditResult { GraphEditCode::MissingNode, guideId, {} };
+        }
+        if (guide->revision != expectedRevision) {
+            return GraphEditResult { GraphEditCode::StaleRevision, guideId, {} };
+        }
+        const std::vector<String> consumers = guideConsumerNodeIds(graph, guideId);
+        auto result = annotateSuccessful(
+                GraphEditor().clearGuideHeatmap(graph, guideId),
+                { consumers, false, false });
+        result.changes.guidesChanged = result.succeeded() && result.changed && !consumers.empty();
+        result.changes.guidePresentationChanged = result.succeeded() && result.changed;
+        result.changes.modelChanged = result.succeeded() && result.changed;
         return result;
     });
 }
@@ -575,7 +621,7 @@ void GraphCommandDispatcher::beginCompoundEdit() {
         ++compoundDepth;
         return;
     }
-    compoundBefore = document.toJson();
+    compoundBefore = document.graph();
     compoundChanges = {};
     compoundActive = true;
     compoundChanged = false;
@@ -602,7 +648,7 @@ void GraphCommandDispatcher::commitCompoundEdit() {
 
 void GraphCommandDispatcher::cancelCompoundEdit() {
     if (compoundActive && compoundChanged) {
-        document.restoreJson(compoundBefore);
+        document.restoreGraph(compoundBefore);
     }
     compoundBefore = {};
     compoundActive = false;
@@ -624,7 +670,7 @@ void GraphCommandDispatcher::commitTransientEdit() {
         return;
     }
     if (transientEdit->changed) {
-        document.recordBeforeChange(document.toJson());
+        document.recordBeforeChange(document.graph());
         document.currentGraph = std::move(transientEdit->graph);
         document.publishChange(std::move(transientEdit->changes));
     }
@@ -654,7 +700,7 @@ GraphEditResult GraphCommandDispatcher::apply(
         }
         return result;
     }
-    const juce::String before = compoundActive ? juce::String() : document.toJson();
+    const NodeGraph before = compoundActive ? NodeGraph() : document.graph();
     GraphEditResult result = command(document.graphForCommand());
     if (!result.succeeded()) {
         return result;

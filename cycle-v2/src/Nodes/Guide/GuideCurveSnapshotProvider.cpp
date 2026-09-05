@@ -4,15 +4,9 @@
 #include <cstdint>
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
-#include "Nodes/Curve/Panel/FlatCurvePreparation.h"
+#include "Nodes/Guide/GuideCurvePreparation.h"
 
 namespace CycleV2 {
-
-namespace {
-
-constexpr float kGuidePadding = 0.05f;
-
-}
 
 GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
         noise        (tableSize)
@@ -21,7 +15,9 @@ GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
             Buffer<float>(noise.data(), (int) noise.size()));
 }
 
-bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
+bool GuideCurveSnapshotProvider::addGuide(
+        const GuideCurveResource& resource,
+        const GuideHeatmapAsset* heatmap) {
     GuideSnapshot snapshot;
     snapshot.table.resize(tableSize);
     snapshot.parameters.noiseLevel = resource.noise;
@@ -39,20 +35,15 @@ bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
         return true;
     }
 
-    FlatCurvePreparation preparation(
-            "CycleV2GuideSnapshot",
-            resource.model,
-            FXRasterizer::Unipolar);
-    if (!preparation.prepare()) {
+    std::vector<float> path(snapshot.table.size());
+    Buffer<float> table(snapshot.table.data(), (int) snapshot.table.size());
+    if (!GuideCurvePreparation::prepare(
+            resource,
+            heatmap,
+            Buffer<float>(path.data(), (int) path.size()),
+            table)) {
         return false;
     }
-
-    const float interval = (1.f - 2.f * kGuidePadding) / (float) (tableSize - 1);
-    preparation.sampler().sampleWithInterval(
-            Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()),
-            interval,
-            kGuidePadding);
-    Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).add(-0.5f);
     guides.push_back(std::move(snapshot));
     return true;
 }

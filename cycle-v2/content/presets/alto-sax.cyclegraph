@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 3,
+    "formatVersion": 4,
     "nodes": [
         {
             "id": "voice",
@@ -690,6 +690,7 @@
             "noise": 0.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "revision": 1,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -730,6 +731,7 @@
             "noise": 0.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "revision": 1,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -770,6 +772,7 @@
             "noise": 0.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "revision": 1,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -823,6 +826,7 @@
             "noise": 0.0,
             "dcOffset": 0.0,
             "phase": 0.0,
+            "revision": 1,
             "model": {
                 "schema": "flatCurve",
                 "version": 1,
@@ -843,6 +847,7 @@
             }
         }
     ],
+    "guideHeatmaps": [],
     "guideAssignments": [
         {
             "guideId": "guide3",

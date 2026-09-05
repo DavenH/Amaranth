@@ -59,6 +59,13 @@ public:
             const juce::String& guideId,
             const juce::String& name);
     GraphEditResult publishGuideCurveState(const GuideCurveStatePublication& publication);
+    GraphEditResult setGuideHeatmap(
+            const juce::String& guideId,
+            uint64_t expectedRevision,
+            GuideHeatmapAssetPtr asset);
+    GraphEditResult clearGuideHeatmap(
+            const juce::String& guideId,
+            uint64_t expectedRevision);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,
@@ -103,7 +110,7 @@ private:
     static void accumulateChange(GraphChangeSet& destination, const GraphChangeSet& change);
 
     GraphDocument& document;
-    juce::String compoundBefore;
+    NodeGraph compoundBefore;
     GraphChangeSet compoundChanges;
     bool compoundActive {};
     bool compoundChanged {};

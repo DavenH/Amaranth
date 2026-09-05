@@ -50,7 +50,7 @@ bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
     }
 
     if (recordUndo) {
-        recordBeforeChange(toJson());
+        recordBeforeChange(currentGraph);
     }
     currentGraph = std::move(candidate);
     GraphChangeSet change;
@@ -69,10 +69,10 @@ bool GraphDocument::undo() {
         return false;
     }
 
-    redoHistory.push_back(toJson());
-    const juce::String json = std::move(undoHistory.back());
+    redoHistory.push_back(currentGraph);
+    NodeGraph graph = std::move(undoHistory.back());
     undoHistory.pop_back();
-    return restoreJson(json);
+    return restoreGraph(std::move(graph));
 }
 
 bool GraphDocument::redo() {
@@ -80,23 +80,19 @@ bool GraphDocument::redo() {
         return false;
     }
 
-    undoHistory.push_back(toJson());
-    const juce::String json = std::move(redoHistory.back());
+    undoHistory.push_back(currentGraph);
+    NodeGraph graph = std::move(redoHistory.back());
     redoHistory.pop_back();
-    return restoreJson(json);
+    return restoreGraph(std::move(graph));
 }
 
-void GraphDocument::recordExternalChange(juce::String beforeJson, GraphChangeSet change) {
-    recordBeforeChange(std::move(beforeJson));
+void GraphDocument::recordExternalChange(NodeGraph beforeGraph, GraphChangeSet change) {
+    recordBeforeChange(std::move(beforeGraph));
     publishChange(std::move(change));
 }
 
-void GraphDocument::recordBeforeChange(juce::String json) {
-    if (json.isEmpty()) {
-        return;
-    }
-
-    undoHistory.push_back(std::move(json));
+void GraphDocument::recordBeforeChange(NodeGraph graph) {
+    undoHistory.push_back(std::move(graph));
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {
         undoHistory.erase(undoHistory.begin());
@@ -112,13 +108,8 @@ void GraphDocument::publishChange(GraphChangeSet change) {
     }
 }
 
-bool GraphDocument::restoreJson(const juce::String& json) {
-    NodeGraph restored = GraphSerializer().fromJsonString(json);
-    if (restored.getNodes().empty()) {
-        return false;
-    }
-
-    currentGraph = std::move(restored);
+bool GraphDocument::restoreGraph(NodeGraph graph) {
+    currentGraph = std::move(graph);
     GraphChangeSet change;
     change.topologyChanged = true;
     change.layoutChanged = true;

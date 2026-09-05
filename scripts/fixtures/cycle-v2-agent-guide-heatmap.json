@@ -1,0 +1,43 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"
+    },
+    {
+      "command": "loadGuideHeatmap",
+      "guideId": "guide1",
+      "path": "../../docs/media/images/spectrogram.png"
+    },
+    { "command": "assertState", "path": "guideDock.heatmapGuideCount", "equals": 1 },
+    { "command": "assertState", "path": "guides.0.heatmapActive", "equals": true },
+    { "command": "assertState", "path": "guides.0.heatmapFilename", "equals": "spectrogram.png" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1" },
+    { "command": "assertState", "path": "guideDock.expandedGuideHeatmapActive", "equals": true },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-guide-heatmap.png"
+    },
+    { "command": "clearGuideHeatmap", "guideId": "guide1" },
+    { "command": "assertState", "path": "guides.0.heatmapActive", "equals": false },
+    { "command": "undo" },
+    { "command": "assertState", "path": "guides.0.heatmapActive", "equals": true },
+    {
+      "command": "saveGraph",
+      "path": "/private/tmp/cycle-v2-guide-heatmap-roundtrip.cyclegraph"
+    },
+    {
+      "command": "openGraph",
+      "path": "/private/tmp/cycle-v2-guide-heatmap-roundtrip.cyclegraph"
+    },
+    { "command": "assertState", "path": "guides.0.heatmapActive", "equals": true },
+    { "command": "assertState", "path": "guides.0.heatmapWidth", "equals": 726 },
+    { "command": "assertState", "path": "guides.0.heatmapHeight", "equals": 365 },
+    { "command": "pointer", "event": "doubleClick", "targetId": "guide:guide1" },
+    { "command": "assertState", "path": "guideDock.expandedGuideHeatmapActive", "equals": true },
+    { "command": "waitForIdle", "idleDelayMs": 500 }
+  ],
+  "quit": false
+}

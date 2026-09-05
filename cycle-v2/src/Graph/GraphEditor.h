@@ -68,6 +68,11 @@ public:
             const String& guideId,
             NodeModelStatePtr model,
             const std::vector<NodeParameter>& controls) const;
+    GraphEditResult setGuideHeatmap(
+            NodeGraph& graph,
+            const String& guideId,
+            GuideHeatmapAssetPtr asset) const;
+    GraphEditResult clearGuideHeatmap(NodeGraph& graph, const String& guideId) const;
     GraphEditResult assignGuideCurveToTrimeshVertexParameter(
             NodeGraph& graph,
             const String& guideId,

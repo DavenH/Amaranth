@@ -798,6 +798,12 @@ var CycleV2Automation::runCommand(const var& commandValue) {
     if (command == "deleteGuideCurve" || command == "removeGuideCurve") {
         return deleteGuideCurve(commandValue);
     }
+    if (command == "loadGuideHeatmap") {
+        return loadGuideHeatmap(commandValue);
+    }
+    if (command == "clearGuideHeatmap") {
+        return clearGuideHeatmap(commandValue);
+    }
     if (command == "undo") {
         return undo();
     }
@@ -1319,6 +1325,26 @@ var CycleV2Automation::deleteGuideCurve(const var& commandValue) {
         return failedResult("deleteGuideCurve", "Could not delete Guide: " + guideId);
     }
     return okResult("deleteGuideCurve", snapshotState());
+}
+
+var CycleV2Automation::loadGuideHeatmap(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    const File file = resolveCommandPath(stringProperty(commandValue, "path"));
+    if (guideId.isEmpty() || !file.existsAsFile()) {
+        return failedResult("loadGuideHeatmap", "Missing Guide or image path");
+    }
+    if (!workspace.loadGuideHeatmapForAutomation(guideId, file)) {
+        return failedResult("loadGuideHeatmap", "Could not load Guide heatmap");
+    }
+    return okResult("loadGuideHeatmap", snapshotState());
+}
+
+var CycleV2Automation::clearGuideHeatmap(const var& commandValue) {
+    const String guideId = stringProperty(commandValue, "guideId");
+    if (guideId.isEmpty() || !workspace.clearGuideHeatmapForAutomation(guideId)) {
+        return failedResult("clearGuideHeatmap", "Could not clear Guide heatmap");
+    }
+    return okResult("clearGuideHeatmap", snapshotState());
 }
 
 var CycleV2Automation::undo() {

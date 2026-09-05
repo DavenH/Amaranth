@@ -1,5 +1,14 @@
 # Refactor Notes
 
+## Panel line-strip coordinate ownership
+
+`CommonGL::drawLineStrip` scales its caller-owned `BufferXY` in place when its
+`scale` argument is true. Reusing that buffer for a second pass can therefore
+scale coordinates twice and move an outline or foreground stroke off-panel.
+Replace the mutating contract with either renderer-owned transformed scratch or
+an explicit preparation step returning panel coordinates, then make repeated
+stroke draws non-mutating by default.
+
 ## Cycle V2 Trimesh model presentation extraction
 
 `cycle-v2/src/Nodes/Trimesh/Model/TrimeshNodeModel.cpp` owns durable/live mesh
