@@ -1202,11 +1202,11 @@ TEST_CASE("Guide editor uses compact host and control layout",
     guide.model = createDefaultGuideCurveModel();
 
     const Rectangle<float> host = GuideCurveEditorComponent::preferredHostBounds(
-            { 0.f, 0.f, 1200.f, 800.f });
-    REQUIRE(host.getHeight() == 560.f);
-    REQUIRE(host.getWidth() == 1100.f);
-    REQUIRE(host.getCentreX() == 600.f);
-    REQUIRE(host.getCentreY() == 400.f);
+            { 0.f, 0.f, 1600.f, 900.f });
+    REQUIRE(host.getHeight() == 476.f);
+    REQUIRE(host.getWidth() == 1265.f);
+    REQUIRE(host.getCentreX() == 800.f);
+    REQUIRE(host.getCentreY() == 450.f);
 
     editor.setBounds(host.toNearestInt());
     editor.setGuideResource(guide);
@@ -1251,6 +1251,14 @@ TEST_CASE("Guide editor uses compact host and control layout",
     REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE_FALSE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+    const Rectangle<float> noiseSlider = rectangleProperty(noiseLayout, "slider");
+    const Rectangle<float> noiseValue = rectangleProperty(noiseLayout, "value");
+    REQUIRE(noiseValue.getWidth() == 48.f);
+    REQUIRE(noiseValue.getX() - noiseSlider.getRight() == 4.f);
+    const Rectangle<float> panelBounds = rectangleProperty(state, "panelBounds");
+    const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
+    REQUIRE(controlBounds.getWidth() == 336.f);
+    REQUIRE(panelBounds.getWidth() == 905.f);
     REQUIRE(state.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
     REQUIRE_FALSE(static_cast<bool>(state.getProperty("heatmapSublabelVisible", {})));
     auto* loadImage = dynamic_cast<TextButton*>(

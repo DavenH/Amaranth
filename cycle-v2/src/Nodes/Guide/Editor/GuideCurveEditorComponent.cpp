@@ -13,10 +13,12 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kControlRailWidth = 336.f;
-constexpr float kMaximumHostWidth = 1100.f;
-constexpr float kMaximumHostHeight = 560.f;
+constexpr float kMaximumHostWidth = 1265.f;
+constexpr float kMaximumHostHeight = 476.f;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
+constexpr int kSliderValueGap = 4;
+constexpr int kSliderValueWidth = 48;
 
 }
 
@@ -250,7 +252,8 @@ void GuideCurveEditorComponent::layoutEditor() {
         slider->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::rowHeight),
                 PropertyControlMetrics::labelWidth,
-                PropertyControlMetrics::inlineGap);
+                kSliderValueGap,
+                kSliderValueWidth);
         bounds.removeFromTop(PropertyControlMetrics::rowGap);
     }
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);

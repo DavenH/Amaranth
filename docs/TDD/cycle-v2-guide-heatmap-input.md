@@ -106,9 +106,16 @@ one consolidated semantic edit.
 
 ## UI Integration Contract
 
+- At ample canvas size, use a `1265 x 476` expanded host: 15 percent wider
+  and 15 percent shorter than the former `1100 x 560` host. Keep the property
+  rail at 336 px so the added horizontal space belongs to the editable Guide
+  canvas.
 - Preserve the expanded editor's established 336 px property rail and shared
   precision-slider rows; image support must not restore narrow tracks or
   slider-owned value boxes.
+- In the Guide rail, reserve 48 px for each value readout and 4 px between the
+  slider and readout. The compact readout must remain editable with its unit
+  outside the numeric field.
 - Place the Guide enablement power toggle in the shared top-right header action
   position. Do not retain a labeled checkbox row in the property rail.
 - Present image resource actions as a named `Guide image` group with one compact
@@ -140,17 +147,17 @@ one consolidated semantic edit.
 - The merge retains the branch's IR/audio-resource behavior alongside the
   image-backed Guide behavior. Content identity delegates SHA-256 calculation
   to JUCE's cryptography module rather than maintaining a local implementation.
-- Focused post-merge verification passed: 65 Guide editor assertions in 3
+- Focused post-layout verification passed: 69 Guide editor assertions in 3
   cases, 66 heatmap assertions in 5 cases, 8 serialization assertions in 2
   cases, and 41 audio-resource assertions in 3 cases.
 - `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
-  run completed with 11,277 of 11,278 assertions passing; its sole failure is
+  run completed with 11,281 of 11,282 assertions passing; its sole failure is
   the pre-existing hit-router copy mismatch recorded in `ui-bugs.md`.
 - The post-merge automation fixture passed all 21 commands, including
   clear/undo and embedded save/reload. Native rendering was inspected in
-  `/private/tmp/cycle-v2-guide-dock-native-final.png`; the filtered launch log
-  for the post-merge fixture is
-  `/private/tmp/cycle-v2-guide-heatmap-header-logs.txt`.
+  `/private/tmp/cycle-v2-guide-heatmap.png` at the final `1265 x 476` host
+  geometry; the filtered launch log is
+  `/private/tmp/cycle-v2-guide-layout-logs.txt`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
 
