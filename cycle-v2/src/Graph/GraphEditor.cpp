@@ -4,6 +4,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <unordered_map>
 
@@ -175,6 +176,8 @@ GraphEditResult GraphEditor::duplicateGuideCurve(NodeGraph& graph, const String&
     duplicate->dcOffset = sourceCopy.dcOffset;
     duplicate->phase = sourceCopy.phase;
     duplicate->model = sourceCopy.model;
+    duplicate->heatmapAssetId = sourceCopy.heatmapAssetId;
+    duplicate->revision = 1;
     graph.markChanged();
     return created;
 }
@@ -212,6 +215,7 @@ GraphEditResult GraphEditor::renameGuideCurve(
         return { GraphEditCode::Connected, guideId, {}, {}, false };
     }
     guide->name = trimmedName;
+    ++guide->revision;
     graph.markChanged();
     return { GraphEditCode::Connected, guideId, {} };
 }
@@ -238,6 +242,43 @@ GraphEditResult GraphEditor::replaceGuideCurve(
         }
     }
     guide->model = std::move(model);
+    ++guide->revision;
+    graph.markChanged();
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
+GraphEditResult GraphEditor::setGuideHeatmap(
+        NodeGraph& graph,
+        const String& guideId,
+        GuideHeatmapAssetPtr asset) const {
+    GuideCurveResource* guide = graph.findGuideCurveForEditing(guideId);
+    if (guide == nullptr) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+    if (asset == nullptr || !graph.addGuideHeatmap(asset)) {
+        return { GraphEditCode::InvalidTypedSnapshot, guideId, {} };
+    }
+    if (guide->heatmapAssetId == asset->id()) {
+        return { GraphEditCode::Connected, guideId, {}, {}, false };
+    }
+    guide->heatmapAssetId = asset->id();
+    ++guide->revision;
+    graph.removeUnreferencedGuideHeatmaps();
+    graph.markChanged();
+    return { GraphEditCode::Connected, guideId, {} };
+}
+
+GraphEditResult GraphEditor::clearGuideHeatmap(NodeGraph& graph, const String& guideId) const {
+    GuideCurveResource* guide = graph.findGuideCurveForEditing(guideId);
+    if (guide == nullptr) {
+        return { GraphEditCode::MissingNode, guideId, {} };
+    }
+    if (guide->heatmapAssetId.isEmpty()) {
+        return { GraphEditCode::Connected, guideId, {}, {}, false };
+    }
+    guide->heatmapAssetId.clear();
+    ++guide->revision;
+    graph.removeUnreferencedGuideHeatmaps();
     graph.markChanged();
     return { GraphEditCode::Connected, guideId, {} };
 }

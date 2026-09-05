@@ -6,6 +6,7 @@
 #include "Graph/NodeDefinition.h"
 
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <algorithm>
 #include <unordered_set>
@@ -127,6 +128,7 @@ bool NodeGraph::removeGuideCurve(const String& guideId) {
     });
     rebuildGuideResourceIndex();
     rebuildGuideAssignmentIndexes();
+    removeUnreferencedGuideHeatmaps();
     ++revision;
     return true;
 }
@@ -154,6 +156,42 @@ bool NodeGraph::replaceGuideCurve(GuideCurveResource resource) {
     *existing = std::move(resource);
     ++revision;
     return true;
+}
+
+bool NodeGraph::addGuideHeatmap(GuideHeatmapAssetPtr asset) {
+    if (asset == nullptr || asset->id().isEmpty()) {
+        return false;
+    }
+    if (findGuideHeatmap(asset->id()) != nullptr) {
+        return true;
+    }
+    guideHeatmaps.push_back(std::move(asset));
+    guideHeatmapIndex[guideHeatmaps.back()->id()] = guideHeatmaps.size() - 1;
+    ++revision;
+    return true;
+}
+
+const GuideHeatmapAsset* NodeGraph::findGuideHeatmap(const String& assetId) const {
+    const auto found = guideHeatmapIndex.find(assetId);
+    return found != guideHeatmapIndex.end() && found->second < guideHeatmaps.size()
+            ? guideHeatmaps[found->second].get()
+            : nullptr;
+}
+
+void NodeGraph::removeUnreferencedGuideHeatmaps() {
+    std::unordered_set<String, StringHash> referenced;
+    for (const auto& guide : guideCurves) {
+        if (guide.heatmapAssetId.isNotEmpty()) {
+            referenced.insert(guide.heatmapAssetId);
+        }
+    }
+    eraseIf(guideHeatmaps, [&](const GuideHeatmapAssetPtr& asset) {
+        return asset == nullptr || referenced.find(asset->id()) == referenced.end();
+    });
+    guideHeatmapIndex.clear();
+    for (size_t index = 0; index < guideHeatmaps.size(); ++index) {
+        guideHeatmapIndex[guideHeatmaps[index]->id()] = index;
+    }
 }
 
 bool NodeGraph::moveGuideCurve(const String& guideId, int shelfOrder) {

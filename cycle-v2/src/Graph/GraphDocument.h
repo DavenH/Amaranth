@@ -32,7 +32,7 @@ public:
     juce::String toJson() const;
     bool undo();
     bool redo();
-    void recordExternalChange(juce::String beforeJson, GraphChangeSet change = {});
+    void recordExternalChange(NodeGraph beforeGraph, GraphChangeSet change = {});
     bool canUndo() const { return !undoHistory.empty(); }
     bool canRedo() const { return !redoHistory.empty(); }
     void setListener(Listener listenerToUse) { listener = std::move(listenerToUse); }
@@ -41,16 +41,16 @@ private:
     friend class GraphCommandDispatcher;
 
     NodeGraph& graphForCommand() { return currentGraph; }
-    void recordBeforeChange(juce::String json);
+    void recordBeforeChange(NodeGraph graph);
     void publishChange(GraphChangeSet change);
-    bool restoreJson(const juce::String& json);
+    bool restoreGraph(NodeGraph graph);
 
     static constexpr size_t maximumHistoryDepth = 64;
 
     NodeGraph currentGraph;
     juce::File currentFile;
-    std::vector<juce::String> undoHistory;
-    std::vector<juce::String> redoHistory;
+    std::vector<NodeGraph> undoHistory;
+    std::vector<NodeGraph> redoHistory;
     GraphChangeSet latestChange;
     Listener listener;
     uint64_t documentRevision { 1 };

@@ -1425,7 +1425,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
     commands.beginTransientEdit();
     const GraphEditResult result = commands.publishGuideCurveState({
             guideId,
-            guide->model->revision(),
+            guide->revision,
             guide->model,
             controls
     });
@@ -1720,7 +1720,7 @@ bool NodeCanvas::publishCurveState(
         return false;
     }
     const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
-            durableGuide->model != nullptr ? durableGuide->model->revision() : 0);
+            durableGuide->revision);
     const auto result = commands.publishGuideCurveState({
             expandedGuideId,
             durableBaseRevision,
@@ -1742,7 +1742,7 @@ void NodeCanvas::beginCurveTransaction() {
     if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
         return;
     }
-    guideTransactionBaseRevision = guide->model != nullptr ? guide->model->revision() : 0;
+    guideTransactionBaseRevision = guide->revision;
     commands.beginTransientEdit();
 }
 

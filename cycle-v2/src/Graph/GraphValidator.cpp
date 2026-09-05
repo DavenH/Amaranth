@@ -106,6 +106,17 @@ std::vector<GraphValidationIssue> GraphValidator::validate(const NodeGraph& grap
         }
     }
 
+    for (const auto& guide : graph.getGuideCurves()) {
+        if (guide.revision < 1
+                || (guide.heatmapAssetId.isNotEmpty()
+                        && graph.findGuideHeatmap(guide.heatmapAssetId) == nullptr)) {
+            addIssue(
+                    issues,
+                    GraphValidationCode::InvalidAttachmentDestination,
+                    "Guide resource references an invalid heatmap asset");
+        }
+    }
+
     validateOperationInputs(graph, resolution, issues);
 
     return issues;

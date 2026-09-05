@@ -5,6 +5,8 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/FlatCurvePreparation.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Guide/GuideHeatmapSampler.h"
 
 namespace CycleV2 {
 
@@ -21,7 +23,9 @@ GuideCurveSnapshotProvider::GuideCurveSnapshotProvider() :
             Buffer<float>(noise.data(), (int) noise.size()));
 }
 
-bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
+bool GuideCurveSnapshotProvider::addGuide(
+        const GuideCurveResource& resource,
+        const GuideHeatmapAsset* heatmap) {
     GuideSnapshot snapshot;
     snapshot.table.resize(tableSize);
     snapshot.parameters.noiseLevel = resource.noise;
@@ -48,11 +52,23 @@ bool GuideCurveSnapshotProvider::addGuide(const GuideCurveResource& resource) {
     }
 
     const float interval = (1.f - 2.f * kGuidePadding) / (float) (tableSize - 1);
+    Buffer<float> table(snapshot.table.data(), (int) snapshot.table.size());
     preparation.sampler().sampleWithInterval(
-            Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()),
+            table,
             interval,
             kGuidePadding);
-    Buffer<float>(snapshot.table.data(), (int) snapshot.table.size()).add(-0.5f);
+    if (heatmap != nullptr) {
+        std::vector<float> sampled(snapshot.table.size());
+        if (!GuideHeatmapSampler::samplePath(
+                *heatmap,
+                table,
+                Buffer<float>(sampled.data(), (int) sampled.size()))) {
+            return false;
+        }
+        snapshot.table = std::move(sampled);
+        table = Buffer<float>(snapshot.table.data(), (int) snapshot.table.size());
+    }
+    table.add(-0.5f);
     guides.push_back(std::move(snapshot));
     return true;
 }

@@ -106,7 +106,10 @@ PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
             continue;
         }
         const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
-        if (resource != nullptr && result.provider->addGuide(*resource)) {
+        const GuideHeatmapAsset* heatmap = resource != nullptr
+                ? graph.findGuideHeatmap(resource->heatmapAssetId)
+                : nullptr;
+        if (resource != nullptr && result.provider->addGuide(*resource, heatmap)) {
             slots.emplace(resource->id, result.provider->size() - 1);
         }
     }
@@ -137,7 +140,9 @@ String TrimeshGuidePreparation::configurationKey(
                 << ":field=" << (int) assignment.target.field;
         const GuideCurveResource* resource = graph.findGuideCurve(assignment.guideId);
         if (resource != nullptr) {
-            key << ":enabled=" << (resource->enabled ? 1 : 0)
+            key << ":revision=" << String((int64) resource->revision)
+                    << ":heatmap=" << resource->heatmapAssetId
+                    << ":enabled=" << (resource->enabled ? 1 : 0)
                     << ":noise=" << resource->noise
                     << ":dc=" << resource->dcOffset
                     << ":phase=" << resource->phase;
