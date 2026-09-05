@@ -35,6 +35,8 @@ orchestration code.
    production fixture can verify the complete click sequence.
 6. The sample ruler omits off-screen grid landmarks while zoomed; it must not
    clamp hidden labels into a stack or paint stray ticks beyond the plot.
+7. Pointer activation does not leave a button looking selected. Keyboard
+   traversal can still focus either action and receive the shared focus ring.
 
 ## Layout And Icon Contract
 
@@ -43,9 +45,12 @@ orchestration code.
   plot or slider rail.
 - Use 24 px square controls on the shared spacing rhythm, with attack first and
   full view second.
-- Store both outline SVGs under the shared `ui-icons` resource set. Their
-  waveform and framing marks must remain recognizable at the production size.
+- Store both outline SVGs under the shared `ui-icons` resource set. Match Cycle
+  v1's framing metaphors: `||←` for attack and `|↔|` for full view. Both must
+  remain recognizable at the production size.
 - Use the shared control radius, border, focus ring, and interaction colours.
+- Show persistent focus only for keyboard navigation; mouse activation uses
+  hover and pressed feedback without retaining the focus ring.
 
 ## Negative Boundaries
 
@@ -69,9 +74,12 @@ orchestration code.
   only route these operations, and tests observe repaint without graph begin,
   publish, or commit events.
 - `zoomAttack.svg` and `zoomFull.svg` are generated through the shared
-  `ui-icons` resource set. Their keyboard-focusable 24 px buttons float as a
-  horizontal cluster inside the plot's upper-right corner, following the
-  production-review correction that removed the awkward strip above the plot.
+  `ui-icons` resource set and use Cycle v1's `||←` and `|↔|` framing symbols.
+  Their keyboard-focusable 24 px buttons float as a horizontal cluster inside
+  the plot's upper-right corner, following the production-review correction
+  that removed the awkward strip above the plot.
+- Both actions remain in the keyboard focus order, but pointer clicks do not
+  grab focus, so neither icon retains a selected-looking blue ring after use.
 - Zoomed IR ruler generation now drops off-screen grid landmarks instead of
   clamping their labels together. The 256-sample attack fixture reports only
   the visible `0` and `32` landmarks.

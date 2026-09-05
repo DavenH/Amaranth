@@ -47,6 +47,7 @@ public:
         setDescription(description);
         setTooltip(tooltip);
         setWantsKeyboardFocus(true);
+        setMouseClickGrabsKeyboardFocus(false);
         setMouseCursor(MouseCursor::PointingHandCursor);
     }
 
@@ -596,6 +597,8 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));
     state.setProperty("zoomAttackBounds", boundsToVar(impl->zoomAttack.getBounds()));
     state.setProperty("zoomFullBounds", boundsToVar(impl->zoomFull.getBounds()));
+    state.setProperty("zoomAttackFocused", impl->zoomAttack.hasKeyboardFocus(false));
+    state.setProperty("zoomFullFocused", impl->zoomFull.hasKeyboardFocus(false));
     state.setProperty(
             "landmarks",
             sampleLandmarkAutomation(buildSampleLandmarks(
