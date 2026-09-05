@@ -1,5 +1,8 @@
-#include "UI/NodeCanvasPresentation.h"
+#include <cmath>
+#include <cstring>
 
+#include "UI/NodeCanvasPresentation.h"
+#include "Runtime/FingerprintBuilder.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
@@ -10,13 +13,28 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/GraphValidator.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "UI/Preview/EffectPlotPalette.h"
-
-#include <cmath>
 
 namespace CycleV2 {
 
 namespace {
+
+uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
+    uint64_t durationBits {};
+    std::memcpy(&durationBits, &context.voiceDurationSeconds, sizeof(durationBits));
+    FingerprintBuilder fingerprint;
+    fingerprint
+            .add((uint64_t) context.midiNote)
+            .add(durationBits)
+            .add(context.pitchEnvelopeUnitValues.size());
+    for (const float value : context.pitchEnvelopeUnitValues) {
+        uint32_t valueBits {};
+        std::memcpy(&valueBits, &value, sizeof(valueBits));
+        fingerprint.add(valueBits);
+    }
+    return fingerprint.value();
+}
 
 const Colour kCanvasBackground { 0xff101318 };
 const Colour kCanvasGridMajor { 0x2f5b6370 };
@@ -440,18 +458,25 @@ void paintOutputAction(
 
 NodeCanvasPresentation::NodeCanvasPresentation(
         NodeCanvasScene& sceneToUse,
-        NodePreviewRenderer& previewRendererToUse) :
+        NodePreviewRenderer& previewRendererToUse,
+        NodeCanvasPresentationPerformanceObserver* performanceObserverToUse) :
         scene(sceneToUse)
     ,   previewRenderer(previewRendererToUse)
-    ,   signalProbeRail(previewRendererToUse)
-    ,   signalProbeDetailView(previewRendererToUse) {
+    ,   signalProbeRail(previewRendererToUse, performanceObserverToUse)
+    ,   signalProbeDetailView(previewRendererToUse)
+    ,   performanceObserver(performanceObserverToUse) {
 }
 
 void NodeCanvasPresentation::paint(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    paintGrid(graphics, frame);
-    GuideRelationshipPresentation::paintTether(graphics, frame);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Backdrop);
+        paintGrid(graphics, frame);
+        GuideRelationshipPresentation::paintTether(graphics, frame);
+    }
 
     {
         Graphics::ScopedSaveState contentClip(graphics);
@@ -472,65 +497,140 @@ void NodeCanvasPresentation::paint(
                     frame.probeRailState.expandedHeight,
                     frame.dockSplitRatio
             });
-    if (frame.probeRailState.expanded) {
-        guideCurveShelf.paint(
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::GuideShelf);
+        if (frame.probeRailState.expanded) {
+            guideCurveShelf.paint(
+                    graphics,
+                    frame.graph,
+                    frame.workspaceBounds,
+                    frame.probeRailState,
+                    frame.dockSplitRatio,
+                    frame.guideShelfState,
+                    frame.dockFocus);
+        }
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SpyRail);
+        signalProbeRail.paintRail(
                 graphics,
                 frame.graph,
-                frame.workspaceBounds,
+                frame.previewResult,
+                frame.probeRailState.expanded
+                        ? GuideCurveShelf::spyWorkspace(
+                                frame.workspaceBounds,
+                                frame.dockSplitRatio,
+                                frame.guideShelfState.minimized,
+                                frame.probeRailState.minimized)
+                        : frame.workspaceBounds,
                 frame.probeRailState,
-                frame.dockSplitRatio,
-                frame.guideShelfState,
                 frame.dockFocus);
     }
-    signalProbeRail.paintRail(
-            graphics,
-            frame.graph,
-            frame.previewResult,
-            frame.probeRailState.expanded
-                    ? GuideCurveShelf::spyWorkspace(
-                            frame.workspaceBounds,
-                            frame.dockSplitRatio,
-                            frame.guideShelfState.minimized,
-                            frame.probeRailState.minimized)
-                    : frame.workspaceBounds,
-            frame.probeRailState,
-            frame.dockFocus);
-    WorkspaceDock::paintChrome(
-            graphics,
-            dock,
-            "Curve Guides",
-            "Spies",
-            frame.probeRailState.expanded,
-            frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
-    GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
-    signalProbeDetailView.paint(
-            graphics,
-            frame.canvasBounds,
-            frame.probeDetailState);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::DockAndDetail);
+        WorkspaceDock::paintChrome(
+                graphics,
+                dock,
+                "Curve Guides",
+                "Spies",
+                frame.probeRailState.expanded,
+                frame.dockFocus.target == WorkspaceDockFocusTarget::Collapse);
+        GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
+        signalProbeDetailView.paint(
+                graphics,
+                frame.canvasBounds,
+                frame.probeDetailState);
+    }
 }
 
 void NodeCanvasPresentation::paintContent(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    paintSnapGuides(graphics, frame);
-    paintEdges(graphics, frame);
-    signalProbeRail.paintCableAnnotations(
-            graphics,
-            frame.graph,
-            scene.snapshot(),
-            GuideCurveShelf::spyWorkspace(
-                    frame.workspaceBounds,
-                    frame.dockSplitRatio,
-                    frame.guideShelfState.minimized,
-                    frame.probeRailState.minimized),
-            frame.probeRailState);
-    paintPendingConnection(graphics, frame);
-    paintNodes(graphics, frame);
-    GuideRelationshipPresentation::paintHighlights(graphics, frame);
-    paintMiniMap(graphics, frame);
-    paintLegend(graphics, frame);
-    paintPalette(graphics, frame);
-    paintStatus(graphics, frame);
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::SnapGuides);
+        paintSnapGuides(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Cables);
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::CableBodies);
+            paintEdges(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::CableAnnotations);
+            signalProbeRail.paintCableAnnotations(
+                    graphics,
+                    frame.graph,
+                    scene.snapshot(),
+                    GuideCurveShelf::spyWorkspace(
+                            frame.workspaceBounds,
+                            frame.dockSplitRatio,
+                            frame.guideShelfState.minimized,
+                            frame.probeRailState.minimized),
+                    frame.probeRailState);
+        }
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::PendingConnection);
+        paintPendingConnection(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Nodes);
+        paintCachedNodes(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::RelationshipHighlights);
+        GuideRelationshipPresentation::paintHighlights(graphics, frame);
+    }
+    {
+        ScopedNodeCanvasPresentationStage measurement(
+                performanceObserver,
+                NodeCanvasPresentationStage::Utilities);
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::MiniMap);
+            paintMiniMap(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Legend);
+            paintLegend(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Palette);
+            paintPalette(graphics, frame);
+        }
+        {
+            ScopedNodeCanvasPresentationStage childMeasurement(
+                    performanceObserver,
+                    NodeCanvasPresentationStage::Status);
+            paintStatus(graphics, frame);
+        }
+    }
 }
 
 bool NodeCanvasPresentation::renderOpenGL(
@@ -544,7 +644,7 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.viewport.getZoom(),
             frame.viewport.getPan());
     renderOpenGLEffectPreviews(frame, scaleFactor);
-    return guideCurveShelf.renderOpenGL(
+    const bool guideSnapshotUpdated = guideCurveShelf.renderOpenGL(
             frame.graph,
             frame.workspaceBounds,
             frame.canvasBounds,
@@ -552,10 +652,24 @@ bool NodeCanvasPresentation::renderOpenGL(
             frame.dockSplitRatio,
             frame.guideShelfState,
             scaleFactor);
+    if (guideSnapshotUpdated) {
+        renderer.renderBackground(
+                frame.canvasBounds,
+                frame.workspaceBounds.getHeight(),
+                scaleFactor,
+                frame.viewport.getZoom(),
+                frame.viewport.getPan());
+    }
+    return guideSnapshotUpdated;
 }
 
 bool NodeCanvasPresentation::guideShelfNeedsOpenGLPreviewRender() const {
     return guideCurveShelf.needsOpenGLPreviewRender();
+}
+
+void NodeCanvasPresentation::clearDocumentCaches() {
+    nodeLayerCache.clear();
+    signalProbeRail.clearPreviewCache();
 }
 
 void NodeCanvasPresentation::paintGrid(
@@ -593,7 +707,11 @@ void NodeCanvasPresentation::paintGrid(
 void NodeCanvasPresentation::paintEdges(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    const uint64_t startedAt = performanceObserver != nullptr
+            ? performanceObserver->presentationTimestamp()
+            : 0;
     const float zoom = frame.viewport.getZoom();
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const auto& edges = frame.graph.getEdges();
     const auto& snapshot = scene.build(
             frame.graph,
@@ -601,6 +719,9 @@ void NodeCanvasPresentation::paintEdges(
             frame.presentationRevision,
             frame.documentRevision);
 
+    if (!frame.nodeDragActive) {
+        cableLayerCache.beginFrame(frame.canvasBounds.toNearestInt(), physicalScale);
+    }
     for (const auto& sceneEdge : snapshot.edges) {
         if (sceneEdge.edgeIndex < 0 || sceneEdge.edgeIndex >= (int) edges.size()) {
             continue;
@@ -616,13 +737,59 @@ void NodeCanvasPresentation::paintEdges(
         const Colour colour = invalid
                 ? Colour(0xffff5a5f)
                 : colourForDomain(edgeDomain(frame.graph, edge));
-        NodeCableRenderer::paint(graphics, sceneEdge, {
+        const NodeCableStyle style {
                 colour,
                 invalid,
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
                 sceneEdge.modulationBundle
-        }, zoom);
+        };
+        if (frame.nodeDragActive) {
+            NodeCableRenderer::paint(graphics, sceneEdge, style, zoom);
+        } else {
+            prepareCachedEdge(sceneEdge, style, zoom, physicalScale);
+        }
+    }
+    if (frame.nodeDragActive) {
+        return;
+    }
+    const NodeCanvasCableLayerCacheFrame cacheFrame = cableLayerCache.endFrame();
+    cableLayerCache.drawComposite(graphics, cacheFrame);
+    if (performanceObserver != nullptr) {
+        const uint64_t elapsed = performanceObserver->presentationTimestamp() - startedAt;
+        performanceObserver->cableLayerCacheCompleted(
+                cacheFrame.spriteStats.hits,
+                cacheFrame.spriteStats.misses,
+                elapsed);
+        performanceObserver->cableCompositeCacheCompleted(
+                cacheFrame.compositeHit,
+                elapsed);
+    }
+}
+
+void NodeCanvasPresentation::prepareCachedEdge(
+        const NodeSceneEdge& sceneEdge,
+        const NodeCableStyle& style,
+        float zoom,
+        float physicalScale) {
+    const Rectangle<int> logicalBounds = NodeCableRenderer::visibleBounds(sceneEdge, zoom)
+            .getSmallestIntegerContainer();
+    const NodeCanvasCableLayerCacheAccess cache = cableLayerCache.access(
+            sceneEdge,
+            style,
+            logicalBounds,
+            zoom,
+            physicalScale);
+    if (!cache.hit) {
+        Graphics imageGraphics(*cache.image);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -logicalBounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -logicalBounds.getY() * physicalScale));
+        NodeCableRenderer::paint(imageGraphics, sceneEdge, style, zoom);
     }
 }
 
@@ -695,15 +862,70 @@ void NodeCanvasPresentation::paintSnapGuides(
     }
 }
 
-void NodeCanvasPresentation::paintNodes(
+void NodeCanvasPresentation::paintCachedNodes(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
+    const uint64_t startedAt = performanceObserver != nullptr
+            ? performanceObserver->presentationTimestamp()
+            : 0;
+    if (!frame.nodeDragActive) {
+        nodeLayerCache.beginFrame();
+    }
+    const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
-    for (const auto& node : frame.graph.getNodes()) {
-        if (frame.viewport.toScreen(node.bounds).intersects(visibleArea)) {
+    for (const Node& node : frame.graph.getNodes()) {
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        if (!nodeBounds.intersects(visibleArea)) {
+            continue;
+        }
+        if (frame.nodeDragActive) {
             paintNode(graphics, frame, node);
+        } else {
+            paintCachedNode(graphics, frame, node, physicalScale);
         }
     }
+    if (frame.nodeDragActive) {
+        return;
+    }
+    const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
+    if (performanceObserver != nullptr) {
+        performanceObserver->nodeLayerCacheCompleted(
+                stats.hits,
+                stats.misses,
+                performanceObserver->presentationTimestamp() - startedAt);
+    }
+}
+
+void NodeCanvasPresentation::paintCachedNode(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node,
+        float physicalScale) {
+    const Rectangle<int> logicalBounds = frame.viewport.toScreen(node.bounds)
+            .expanded(32.f * portScale(frame.viewport.getZoom()))
+            .getSmallestIntegerContainer();
+    const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
+    const NodeCanvasNodeLayerCacheAccess cache = nodeLayerCache.access(
+            node,
+            logicalBounds,
+            frame.viewport.getRevision(),
+            previewRenderer.nodePresentationFingerprint(node.id),
+            renderContextFingerprintFor(frame, node),
+            runtimePreview,
+            node.id == frame.selectedNodeId,
+            physicalScale);
+    if (!cache.hit) {
+        Graphics imageGraphics(*cache.image);
+        imageGraphics.addTransform(AffineTransform(
+                physicalScale,
+                0.f,
+                -logicalBounds.getX() * physicalScale,
+                0.f,
+                physicalScale,
+                -logicalBounds.getY() * physicalScale));
+        paintNode(imageGraphics, frame, node);
+    }
+    nodeLayerCache.draw(graphics, cache);
 }
 
 UnisonPreviewContext NodeCanvasPresentation::unisonPreviewContextFor(
@@ -897,6 +1119,12 @@ const NodePreviewResult* NodeCanvasPresentation::previewFor(
 TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         const NodeCanvasPresentationFrame& frame,
         const Node& node) const {
+    return TrimeshRenderProfile::fromSemantic(renderSemanticFor(frame, node));
+}
+
+NodeRenderSemantic NodeCanvasPresentation::renderSemanticFor(
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node) const {
     NodeRenderSemantic semantic = GraphRenderSemanticResolver().semanticForNodeOutput(
             frame.graph,
             node.id,
@@ -905,7 +1133,31 @@ TrimeshRenderProfile NodeCanvasPresentation::profileFor(
         semantic.domain = node.outputs.front().domain;
     }
 
-    return TrimeshRenderProfile::fromSemantic(semantic);
+    return semantic;
+}
+
+uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
+        const NodeCanvasPresentationFrame& frame,
+        const Node& node) const {
+    const NodeRenderSemantic semantic = renderSemanticFor(frame, node);
+
+    FingerprintBuilder fingerprint;
+    fingerprint
+            .add((uint64_t) semantic.domain)
+            .add((uint64_t) semantic.scalePolicy)
+            .add((uint64_t) semantic.role);
+    if (node.kind == NodeKind::TrilinearMesh) {
+        fingerprint.add(TrimeshGuidePreparation::configurationKey(frame.graph, node.id));
+    }
+    if (node.kind == NodeKind::Unison) {
+        fingerprint.add(unisonContextFingerprint(unisonPreviewContextFor(
+                frame.compileResult.plan,
+                node.id,
+                frame.unisonPreviewContext)));
+    } else if (node.kind == NodeKind::VoiceContext) {
+        fingerprint.add(unisonContextFingerprint(frame.unisonPreviewContext));
+    }
+    return fingerprint.value();
 }
 
 void NodeCanvasPresentation::renderOpenGLEffectPreviews(

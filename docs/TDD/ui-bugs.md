@@ -1,5 +1,56 @@
 # UI Bug Notes
 
+## Fixed: Canvas overlay faded while dragging nodes
+
+Context:
+
+- Cache-hit node sprites and the cached cable layer could be presented at
+  greatly reduced opacity during a node drag, while the moving cache-miss node
+  and canvas grid remained bright.
+- Node-drag frames now use the authoritative node and cable renderers directly.
+  Mouse-up restores the optimized sprite and composite caches for stable
+  frames.
+- In the focused native drag, direct cable rendering took 1.63 ms and direct
+  node rendering took 3.68 ms; JUCE paints averaged 14.63 ms and peaked at
+  24.74 ms.
+- The native authoring sequence captures the cable and node presentation while
+  the drag is still held.
+
+Current status: fixed on 2026-08-29.
+
+## Open: Palette icon registry asserts during Trimesh performance session
+
+Context:
+
+- The Cycle V2 Trimesh/Spy external performance session on 2026-08-27 rendered
+  and completed its edit sequence, but logged
+  `NodePaletteEntryIconRenderer.cpp:27` because an icon source name did not
+  resolve through `NodeDefinitionRegistry`.
+- The same session subsequently logged the already-observed
+  `juce_String.cpp:327` assertions. The node-layer cache does not alter palette
+  registration or icon lookup.
+- Repro log: `/private/tmp/cycle-v2-node-sprite-cache.log`.
+
+Current status: open; identify the unmatched `NodeIconData` source name and
+align it with the authoritative node definition id.
+
+## Open: Canvas edge hover test returns unstable help text
+
+Context:
+
+- The full `standalone-debug` CTest run on 2026-08-26 failed test 415,
+  `Node canvas hit routing preserves action edge and palette placement semantics`,
+  at `TestNodeCanvasHitRouter.cpp:66`: `edgeHelp` did not start with
+  `Time signal from`.
+- The focused rerun failed identically and also logged a
+  `juce_String.cpp:327` assertion. The canvas performance instrumentation does
+  not modify hit routing, scene edge construction, or hover-text generation.
+- Repro output is in
+  `build/standalone-debug/Testing/Temporary/LastTest.log`.
+
+Current status: open; inspect hover-text String lifetime/initialization and the
+scene edge selected at the cable midpoint.
+
 ## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
 
 Context:
@@ -44,3 +95,16 @@ Context:
 
 Current status: open; inspect settings-map initialization separately from the
 Guide resource UI work.
+
+## Addressed: Curve preview resources created before OpenGL context
+
+Context:
+
+- During the presentation-cache lifecycle fix on 2026-08-31, synchronizing all
+  curve widgets in `NodeCanvas` construction caused `EXC_BAD_ACCESS` in
+  `Curve::recalculateCurve()` while the default Waveshaper rasterizer was being
+  prepared without the established OpenGL render lifecycle.
+- Repro crash: `~/Library/Logs/DiagnosticReports/CycleV2-2026-08-31-104535.ips`.
+
+Current status: addressed in the same work by creating and synchronizing curve
+preview resources at the existing OpenGL preview-render boundary.

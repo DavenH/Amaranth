@@ -8,6 +8,7 @@
 
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/GraphPresentationPerformanceMetrics.h"
 #include "Runtime/GraphRuntime.h"
 #include "Runtime/MessageThreadWorker.h"
 #include "Runtime/NodeUpdateGraph.h"
@@ -60,6 +61,8 @@ public:
         return previewAudioExecutor.diagnosticProcessCount(nodeId);
     }
     const UpdateAuditTrace& updateTrace() const { return updateGraph.trace(); }
+    juce::var performanceMetrics() const { return performance.toVar(); }
+    void resetPerformanceMetrics() { performance.reset(); }
 
     GraphAudioResult captureAudio(const NodeGraph& graph, size_t frameCount) const;
     static int auditionMidiNoteForProbe(
@@ -88,6 +91,8 @@ private:
         uint64_t requestFingerprint {};
         GraphPresentationSnapshot snapshot;
         std::function<void()> completion;
+        uint64_t requestedAtMicroseconds {};
+        uint64_t workerFinishedAtMicroseconds {};
         bool previewRendered {};
     };
 
@@ -134,6 +139,7 @@ private:
     String latestMovementStream;
     MessageThreadWorker asyncWorker;
     std::shared_ptr<AsyncState> asyncState;
+    GraphPresentationPerformanceMetrics performance;
 };
 
 }

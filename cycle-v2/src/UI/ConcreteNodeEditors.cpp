@@ -23,6 +23,15 @@ namespace CycleV2 {
 
 namespace {
 
+var rectangleToAutomationVar(Rectangle<int> bounds) {
+    auto* object = new DynamicObject();
+    object->setProperty("x", bounds.getX());
+    object->setProperty("y", bounds.getY());
+    object->setProperty("width", bounds.getWidth());
+    object->setProperty("height", bounds.getHeight());
+    return var(object);
+}
+
 class EffectParameterSlider final : public Slider {
 public:
     void setDelayTime(bool shouldUseDelayTime) {
@@ -334,6 +343,9 @@ public:
             value->setProperty("id", control->id);
             value->setProperty("value", control->slider.getValue());
             value->setProperty("readout", control->readout.getText());
+            value->setProperty(
+                    "sliderBounds",
+                    rectangleToAutomationVar(control->slider.getBounds()));
             values.add(value);
         }
         state->setProperty("controls", values);
@@ -415,7 +427,7 @@ private:
                     }
                 }
             }
-            if (kind == NodeKind::Equalizer) {
+            if (kind == NodeKind::Delay || kind == NodeKind::Equalizer) {
                 repaint();
             }
         };

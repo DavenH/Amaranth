@@ -48,6 +48,7 @@ public:
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision);
     uint64_t modelRevision() const;
     uint64_t contentRevision() const;
+    uint64_t previewRevision() const { return previewPresentationRevision; }
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     bool hasSingleSelectedEnvelopeVertex();
@@ -57,6 +58,7 @@ public:
 private:
     NodeKind kind;
     bool guideResource {};
+    uint64_t previewPresentationRevision { 1 };
     std::unique_ptr<CurvePanelController> controller;
 };
 

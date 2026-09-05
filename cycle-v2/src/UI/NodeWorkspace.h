@@ -52,6 +52,9 @@ public:
     var inspectNodeControlsForAutomation(const String& nodeId) const;
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
+    var inspectCanvasPerformanceForAutomation() const;
+    void resetCanvasPerformanceForAutomation();
+    void requestCanvasOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
     var performanceStateForAutomation() const;
     bool performancePointerDownForAutomation(int noteNumber, float velocity);

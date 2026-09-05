@@ -775,8 +775,8 @@ resource, but behavior is retained.
   drawers, and global collapse.
 - The dock is keyboard operable, its controls have unambiguous shelf ownership,
   and its active focus is visible.
-- Guide relationship tethers are hover-only and cannot persist across pointer
-  exit or document replacement.
+- Guide relationship tethers are activated only by Guide tile hover and cannot
+  persist across target-node hover, pointer exit, or document replacement.
 - A hovered shared Guide fans out to every visible unique target node while
   multiple assignments owned by one node retain a single route.
 - Guide relationship tethers remain below expanded Trimesh/effect editors and

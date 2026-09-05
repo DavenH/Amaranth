@@ -195,6 +195,7 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
     GraphPresentationModel presentation;
     REQUIRE(presentation.refresh(document.graph(), document.revision()));
     REQUIRE(presentation.previewResult().probes.size() == 1);
+    const size_t initialCompilations = presentation.compilationCount();
 
     const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
     REQUIRE(guide != nullptr);
@@ -223,6 +224,7 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
             commands.editingGraph(), document.revision(), commands.transientChanges()));
     const auto secondSpy = presentation.previewResult().probes.front().values;
     REQUIRE(firstSpy != secondSpy);
+    REQUIRE(presentation.compilationCount() == initialCompilations);
     commands.commitTransientEdit();
 
     REQUIRE(document.graph().findGuideCurve("guide1")->enabled);

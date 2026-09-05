@@ -11,6 +11,38 @@ using namespace gl;
 
 namespace CycleV2 {
 
+bool CurvePanelPreviewRenderCache::Key::operator==(const Key& other) const {
+    return width == other.width
+            && height == other.height
+            && scaleFactor == other.scaleFactor
+            && modelRevision == other.modelRevision
+            && contentRevision == other.contentRevision
+            && presentationRevision == other.presentationRevision
+            && invalidationGeneration == other.invalidationGeneration;
+}
+
+bool CurvePanelPreviewRenderCache::canReuse(const Key& key) {
+    if (valid && renderedKey == key) {
+        ++hits;
+        return true;
+    }
+    ++misses;
+    return false;
+}
+
+void CurvePanelPreviewRenderCache::didRender(Key key) {
+    renderedKey = key;
+    valid = true;
+}
+
+void CurvePanelPreviewRenderCache::invalidate() {
+    valid = false;
+}
+
+CurvePanelPreviewRenderCache::Diagnostics CurvePanelPreviewRenderCache::diagnostics() const {
+    return { hits.load(), misses.load() };
+}
+
 namespace CurvePanelInvalidation {
 
 constexpr uint32_t HostSnapshot = 1u << 0;
@@ -184,11 +216,33 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
 void CurvePanelHost::renderPreview(
         Rectangle<float> bounds,
         float scaleFactor,
-        bool preserveInteractiveZoom) {
+        bool preserveInteractiveZoom,
+        uint64_t modelRevision,
+        uint64_t contentRevision,
+        uint64_t presentationRevision) {
     if (bounds.isEmpty()) {
         renderSurfaceVisible = false;
         return;
     }
+    auto renderKey = previewRenderKey(
+            bounds,
+            scaleFactor,
+            modelRevision,
+            contentRevision,
+            presentationRevision);
+    if (previewRenderCache.canReuse(renderKey)) {
+        return;
+    }
+
+    renderPreviewUncached(bounds, scaleFactor, preserveInteractiveZoom);
+    renderKey.invalidationGeneration = previewInvalidationGeneration.load();
+    previewRenderCache.didRender(renderKey);
+}
+
+void CurvePanelHost::renderPreviewUncached(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        bool preserveInteractiveZoom) {
     renderSurfaceVisible = true;
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
@@ -238,6 +292,7 @@ void CurvePanelHost::releaseSharedGlResources() {
     panelGfx = nullptr;
     sharedGlResourcesInitialised = false;
     renderSurfaceVisible = false;
+    previewRenderCache.invalidate();
 }
 
 void CurvePanelHost::initialiseComponent() {
@@ -300,6 +355,23 @@ void CurvePanelHost::captureRenderedPanelImage(
     hasVisibleContent = nextHasVisibleContent;
 }
 
+CurvePanelPreviewRenderCache::Key CurvePanelHost::previewRenderKey(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        uint64_t modelRevision,
+        uint64_t contentRevision,
+        uint64_t presentationRevision) const {
+    return {
+            bounds.getWidth(),
+            bounds.getHeight(),
+            scaleFactor,
+            modelRevision,
+            contentRevision,
+            presentationRevision,
+            previewInvalidationGeneration.load()
+    };
+}
+
 PanelHostCallbacks CurvePanelHost::callbacks() const {
     PanelHostCallbacks result;
     result.setRepaintCallback([this](Panel*, PanelDirtyState::Flag flag) {
@@ -314,6 +386,7 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
 }
 
 void CurvePanelHost::requestPanelInvalidation(PanelDirtyState::Flag flag) {
+    ++previewInvalidationGeneration;
     uint32_t categories = CurvePanelInvalidation::Owner;
     if (flag == PanelDirtyState::Flag::StaticVisual
             || flag == PanelDirtyState::Flag::SurfaceCache

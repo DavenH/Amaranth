@@ -194,6 +194,18 @@ var NodeWorkspace::inspectOpenGLDiagnosticsForAutomation() const {
     return canvas.inspectOpenGLDiagnosticsForAutomation();
 }
 
+var NodeWorkspace::inspectCanvasPerformanceForAutomation() const {
+    return canvas.inspectPerformanceMetricsForAutomation();
+}
+
+void NodeWorkspace::resetCanvasPerformanceForAutomation() {
+    canvas.resetPerformanceMetricsForAutomation();
+}
+
+void NodeWorkspace::requestCanvasOpenGLFrameForAutomation() {
+    canvas.requestOpenGLFrameForAutomation();
+}
+
 var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
     return canvas.captureAudioForAutomation(frameCount);
 }

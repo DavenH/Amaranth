@@ -1,0 +1,85 @@
+{
+  "commands": [
+    {
+      "command": "resetCanvasPerformance"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "move",
+      "x": 420,
+      "y": 260
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "move",
+      "x": 460,
+      "y": 280
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "move",
+      "x": 500,
+      "y": 300
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 800,
+      "y": 500,
+      "deltaX": 0.02,
+      "deltaY": -0.02
+    },
+    {
+      "command": "addNode",
+      "kind": "envelope",
+      "x": 420,
+      "y": 220
+    },
+    {
+      "command": "moveNode",
+      "nodeId": "env2",
+      "x": 480,
+      "y": 260
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env2",
+      "parameterId": "level",
+      "label": "Level",
+      "value": "0.750"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "down",
+      "x": 500,
+      "y": 280
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "drag",
+      "x": 540,
+      "y": 300
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "up",
+      "x": 540,
+      "y": 300
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 100
+    },
+    {
+      "command": "inspectCanvasPerformance"
+    }
+  ],
+  "quit": true
+}

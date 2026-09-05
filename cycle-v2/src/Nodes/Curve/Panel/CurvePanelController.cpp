@@ -54,8 +54,17 @@ public:
         host->render(bounds, clipBounds, scaleFactor);
     }
 
-    void renderPreview(Rectangle<float> bounds, float scaleFactor) override {
-        host->renderPreview(bounds, scaleFactor, preservesInteractivePreviewZoom());
+    void renderPreview(
+            Rectangle<float> bounds,
+            float scaleFactor,
+            uint64_t presentationRevision) override {
+        host->renderPreview(
+                bounds,
+                scaleFactor,
+                preservesInteractivePreviewZoom(),
+                publicationRevision,
+                transientContentRevision,
+                presentationRevision);
     }
 
     bool paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const override {
@@ -85,6 +94,9 @@ public:
             object->setProperty(
                     "previewPreservesInteractiveZoom",
                     preservesInteractivePreviewZoom());
+            const auto previewCache = host->previewRenderDiagnostics();
+            object->setProperty("previewRenderCacheHits", (int64) previewCache.hits);
+            object->setProperty("previewRenderCacheMisses", (int64) previewCache.misses);
         }
         return state;
     }

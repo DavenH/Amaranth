@@ -41,6 +41,7 @@ public:
             const Node& node,
             Rectangle<float> area,
             float scaleFactor);
+    uint64_t nodePresentationFingerprint(const String& nodeId) const;
 
 private:
     bool paintAuthoritativeModel(Graphics& graphics, const NodePreviewRenderRequest& request);

@@ -114,6 +114,8 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeGraphRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationModel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPresentationPerformanceMetrics.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PerformanceDistribution.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphRuntime.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeUpdateGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeAudioProcessor.cpp"
@@ -135,6 +137,7 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasPerformanceMetrics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeSelector.cpp"
@@ -150,6 +153,8 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasEditorCoordinator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasHitRouter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasCableLayerCache.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasNodeLayerCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasQueryModel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
@@ -169,6 +174,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeRail.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDockInteractionController.cpp"
@@ -288,7 +294,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -ggdb -O0)
 
     if(BUILD_TESTING)
-        file(GLOB_RECURSE TEST_SOURCES
+        file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h"
         )

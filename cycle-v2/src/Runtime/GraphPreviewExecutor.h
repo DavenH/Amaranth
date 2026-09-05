@@ -19,7 +19,13 @@ struct NodePreviewResult {
     TraversalGridFrequencySampling frequencySampling {
             TraversalGridFrequencySampling::LinearBins };
     int frequencyMidiNote { 48 };
+    uint64_t contentRevision {};
 };
+
+uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview);
+bool nodePreviewResultsHaveEqualContent(
+        const NodePreviewResult& first,
+        const NodePreviewResult& second);
 
 struct GraphPreviewResult {
     struct SignalProbePreview {

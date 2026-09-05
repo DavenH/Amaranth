@@ -52,7 +52,7 @@
     {
       "command": "assertState",
       "path": "guideDock.hoveredGuideId",
-      "equals": "guide2"
+      "equals": ""
     },
     {
       "command": "pointer",

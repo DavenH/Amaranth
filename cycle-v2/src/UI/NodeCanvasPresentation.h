@@ -3,7 +3,10 @@
 #include <JuceHeader.h>
 
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodeCanvasCableLayerCache.h"
 #include "UI/NodeCanvasGlRenderer.h"
+#include "UI/NodeCanvasNodeLayerCache.h"
+#include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePreviewRenderer.h"
@@ -47,6 +50,7 @@ struct NodeCanvasPresentationFrame {
     int selectedEdgeIndex { -1 };
     int spliceTargetEdgeIndex { -1 };
     bool openGLUnderlay { true };
+    bool nodeDragActive {};
     Rectangle<float> workspaceBounds;
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };
@@ -65,7 +69,8 @@ class NodeCanvasPresentation {
 public:
     NodeCanvasPresentation(
             NodeCanvasScene& sceneToUse,
-            NodePreviewRenderer& previewRendererToUse);
+            NodePreviewRenderer& previewRendererToUse,
+            NodeCanvasPresentationPerformanceObserver* performanceObserver = nullptr);
 
     void paint(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool renderOpenGL(
@@ -84,23 +89,34 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
+    void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     bool guideShelfNeedsOpenGLPreviewRender() const;
+    void clearDocumentCaches();
     SignalProbeRail& probeRail() { return signalProbeRail; }
 
 private:
     void paintGrid(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintEdges(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void prepareCachedEdge(
+            const NodeSceneEdge& sceneEdge,
+            const NodeCableStyle& style,
+            float zoom,
+            float physicalScale);
     void paintPendingConnection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintCachedNode(
+            Graphics& graphics,
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node,
+            float physicalScale);
     void paintNode(
             Graphics& graphics,
             const NodeCanvasPresentationFrame& frame,
             const Node& node);
     void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
-    void paintStatus(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
 
     void renderOpenGLEffectPreviews(
@@ -110,6 +126,12 @@ private:
     const NodePreviewResult* previewFor(
             const GraphPreviewResult& previews,
             const String& nodeId) const;
+    uint64_t renderContextFingerprintFor(
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node) const;
+    NodeRenderSemantic renderSemanticFor(
+            const NodeCanvasPresentationFrame& frame,
+            const Node& node) const;
     TrimeshRenderProfile profileFor(const NodeCanvasPresentationFrame& frame, const Node& node) const;
 
     NodeCanvasScene& scene;
@@ -117,6 +139,9 @@ private:
     SignalProbeRail signalProbeRail;
     GuideCurveShelf guideCurveShelf;
     SignalProbeDetailView signalProbeDetailView;
+    NodeCanvasPresentationPerformanceObserver* performanceObserver;
+    NodeCanvasCableLayerCache cableLayerCache;
+    NodeCanvasNodeLayerCache nodeLayerCache;
 };
 
 }

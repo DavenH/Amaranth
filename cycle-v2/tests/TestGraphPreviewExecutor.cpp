@@ -622,6 +622,7 @@ TEST_CASE("Graph preview executor renders previewable compiled nodes", "[cycle-v
     REQUIRE(findPreview(result, "waveMesh").gridColumns == 8);
     REQUIRE(findPreview(result, "waveMesh").gridRows == 4);
     REQUIRE(findPreview(result, "waveMesh").domain == PortDomain::TimeSignal);
+    REQUIRE(findPreview(result, "waveMesh").contentRevision != 0);
     REQUIRE(findPreview(result, "env").role == PreviewModuleRole::Envelope);
     REQUIRE(std::none_of(
             result.nodes.begin(),
@@ -646,6 +647,8 @@ TEST_CASE("Incremental preview rendering preserves clean cached nodes",
             graph.getSignalProbes(),
             16);
     const auto cleanBefore = findPreview(result, "waveMesh").primary;
+    const uint64_t cleanRevision = findPreview(result, "waveMesh").contentRevision;
+    const uint64_t dirtyRevision = findPreview(result, "env").contentRevision;
 
     GraphAudioResultView audioView;
     for (const auto& node : audio.nodes) {
@@ -661,6 +664,8 @@ TEST_CASE("Incremental preview rendering preserves clean cached nodes",
 
     REQUIRE(result.renderedNodeCount == 1);
     REQUIRE(findPreview(result, "waveMesh").primary == cleanBefore);
+    REQUIRE(findPreview(result, "waveMesh").contentRevision == cleanRevision);
+    REQUIRE(findPreview(result, "env").contentRevision == dirtyRevision);
 }
 
 TEST_CASE("Graph preview executor skips non-preview utility nodes", "[cycle-v2][runtime]") {

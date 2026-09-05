@@ -7,8 +7,9 @@
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
-#include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
@@ -36,6 +37,46 @@ public:
     CurveTableScope() { Curve::calcTable(); }
     ~CurveTableScope() { Curve::deleteTable(); }
 };
+
+TEST_CASE("Curve preview snapshots are reused until a rendering dependency changes",
+        "[cycle-v2][node-editor-host][performance]") {
+    CurvePanelPreviewRenderCache cache;
+    const CurvePanelPreviewRenderCache::Key initial {
+            180.f, 96.f, 2.f, 7, 11, 13, 17
+    };
+
+    REQUIRE_FALSE(cache.canReuse(initial));
+    cache.didRender(initial);
+    REQUIRE(cache.canReuse(initial));
+
+    auto changed = initial;
+    changed.width += 1.f;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.height += 1.f;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.scaleFactor = 1.f;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    ++changed.modelRevision;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    ++changed.contentRevision;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    ++changed.presentationRevision;
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    ++changed.invalidationGeneration;
+    REQUIRE_FALSE(cache.canReuse(changed));
+
+    cache.invalidate();
+    REQUIRE_FALSE(cache.canReuse(initial));
+    const auto diagnostics = cache.diagnostics();
+    REQUIRE(diagnostics.hits == 1);
+    REQUIRE(diagnostics.misses == 9);
+}
 
 struct EditorStats {
     int creations {};
