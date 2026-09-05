@@ -23,6 +23,9 @@
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
 
+#include <cmath>
+#include <limits>
+
 using namespace CycleV2;
 
 namespace {
@@ -803,6 +806,28 @@ TEST_CASE("IR modelled source retains Cycle 1 audio and display sample views",
     REQUIRE(audioConfiguration != nullptr);
     REQUIRE(audioConfiguration->impulse == analysis.filteredImpulse);
     REQUIRE(audioConfiguration->impulse != analysis.filteredDisplayImpulse);
+}
+
+TEST_CASE("IR analysis removes DC from audio and display at any positive cutoff",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis][dc]") {
+    ImpulseResponseSource source;
+    source.rawImpulse.assign(128, 0.25f);
+    source.displayImpulse.assign(128, 0.25f);
+
+    const auto passThrough = prepareImpulseResponseAnalysis(source, 0.f);
+    const auto highPassed = prepareImpulseResponseAnalysis(
+            source, std::numeric_limits<float>::epsilon());
+
+    REQUIRE(passThrough.filteredImpulse.front() == Catch::Approx(0.25f));
+    REQUIRE(passThrough.filteredDisplayImpulse.front() == Catch::Approx(0.25f));
+    float audioSum = 0.f;
+    float displaySum = 0.f;
+    for (size_t index = 0; index < source.rawImpulse.size(); ++index) {
+        audioSum += highPassed.filteredImpulse[index];
+        displaySum += highPassed.filteredDisplayImpulse[index];
+    }
+    REQUIRE(std::abs(audioSum) < 1.0e-5f);
+    REQUIRE(std::abs(displaySum) < 1.0e-5f);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",

@@ -136,6 +136,7 @@ void IrModeller::filterImpulse(ConvState& chan) {
             chan.rawImpulse,
             chan.impulse,
             levelBuff,
+            prefilt.getTargetValue() > 0.f,
             chan.fft);
 
     if (isGraphic) {

@@ -103,7 +103,9 @@ void applyIrFrequencyPrefilter(
         Buffer<float> rawImpulse,
         Buffer<float> filteredImpulse,
         Buffer<float> levels,
+        bool removeDc,
         Transform& transform) {
+    transform.setRemovesOffset(removeDc);
     transform.forward(rawImpulse);
     transform.getMagnitudes().mul(levels);
     transform.inverse(filteredImpulse);

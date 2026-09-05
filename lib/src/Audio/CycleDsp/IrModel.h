@@ -38,6 +38,7 @@ void applyIrFrequencyPrefilter(
         Buffer<float> rawImpulse,
         Buffer<float> filteredImpulse,
         Buffer<float> levels,
+        bool removeDc,
         Transform& transform);
 
 }

@@ -1,5 +1,40 @@
 # UI Bug Notes
 
+## P0: IR High Pass leaves a DC component
+
+Context:
+
+- The post-high-pass impulse retains a vertical/DC offset that becomes more
+  obvious when Post Gain is raised.
+- Real FFT DC is stored outside the ordinary magnitude array currently
+  multiplied by the IR prefilter levels.
+
+Acceptance:
+
+- High Pass at exactly 0 Hz remains an identity.
+- Every value above 0 Hz removes DC from both the audible kernel and OpenGL
+  diagnostic trace without suppressing the first non-DC bin prematurely.
+- Post Gain scales the zero-mean result and cannot reintroduce DC.
+
+Current status: fixed in `ir-prefilter-dc-removal.md` (2026-09-05).
+
+## P1: IR expanded editor needs more curve width
+
+Context:
+
+- The IR expanded editor should be 20 percent wider.
+- The complete increase belongs to the editable curve region; the property
+  rail and its slider tracks must not grow.
+
+Acceptance:
+
+- Preferred width grows from 900 to 1080 pixels while height remains 430.
+- At the preferred size, the property rail retains its current 348-pixel
+  allocation and the IR panel gains the full 180 pixels.
+- Compact/clamped placement remains on-screen.
+
+Current status: queued after `ir-prefilter-dc-removal.md`.
+
 ## 2026-08-31 UI intake: recommended order
 
 Address correctness and containment before the broader editor rearrangement.

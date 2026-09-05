@@ -104,12 +104,14 @@ ImpulseResponseAnalysis prepareImpulseResponseAnalysis(
             rawImpulseBuffer,
             { result.filteredImpulse.data(), (int) result.filteredImpulse.size() },
             levels,
+            highPass > 0.f,
             transform);
     CycleDsp::applyIrFrequencyPrefilter(
             { const_cast<float*>(source.displayImpulse.data()), impulseLength },
             { result.filteredDisplayImpulse.data(),
                     (int) result.filteredDisplayImpulse.size() },
             levels,
+            highPass > 0.f,
             transform);
 
     Buffer<float> magnitudes = transform.getMagnitudes();
