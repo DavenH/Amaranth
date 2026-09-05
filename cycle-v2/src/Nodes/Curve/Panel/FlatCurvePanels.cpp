@@ -423,6 +423,7 @@ public:
             jassert(renderer != nullptr);
             contentImageTex->rect = Rectangle<float>::leftTopRightBottom(
                     sx(kGuidePadding), sy(1.f), sx(1.f - kGuidePadding), sy(0.f));
+            renderer->setCurrentColour(1.f, 1.f, 1.f, 1.f);
             renderer->drawTexture(contentImageTex);
         }
         auto canvas = drawingCanvas();
@@ -441,9 +442,13 @@ public:
 
         PanelRenderer* renderer = getPanelRenderer();
         jassert(renderer != nullptr);
+        renderer->setCurrentColour(Color(0.f, 0.f, 0.f, 0.95f));
+        renderer->setCurrentLineWidth(6.f);
+        renderer->drawLineStrip(xy, true);
         renderer->setCurrentColour(Color(0.15f, 0.85f, 1.f, 0.9f));
         renderer->setCurrentLineWidth(3.f);
-        renderer->drawLineStrip(xy, true);
+        // The outline draw scales xy in place; reuse those panel coordinates.
+        renderer->drawLineStrip(xy, false);
         renderer->setCurrentLineWidth(1.f);
     }
 

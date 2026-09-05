@@ -79,7 +79,7 @@ TEST_CASE("Guide heatmaps decode luminance alpha and use bottom-up bicubic coord
     REQUIRE(asset->intensityAt(1, 0) == Catch::Approx(0.106f).margin(0.005f));
     REQUIRE(asset->intensityAt(1, 1) == 0.f);
     REQUIRE(asset->image().getPixelAt(1, 0).getRed()
-            > juce::roundToInt(255.f * asset->intensityAt(1, 0)));
+            == juce::roundToInt(255.f * asset->intensityAt(1, 0)));
     REQUIRE(GuideHeatmapSampler::sampleBicubic(*asset, 0.f, 1.f)
             == Catch::Approx(1.f));
     REQUIRE(GuideHeatmapSampler::sampleBicubic(*asset, 0.f, 0.f)

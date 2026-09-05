@@ -21,10 +21,12 @@ and prepared data. PNG and JPEG inputs are embedded in the graph; external file
 paths, drag-and-drop, channel selection, aspect controls, and automatic ridge
 following are deferred.
 
-The displayed scalar image uses a 3.2x brightness gain without changing the
-sampled intensity plane. Native previews prepare 512 output points and render
-the derived trace at 3 px so image detail and the resulting signal remain
-legible at expanded-editor scale.
+The displayed image uses the exact scalar intensity plane. Its texture draw
+explicitly uses an opaque white colour because the fixed-function OpenGL path
+otherwise modulates texture pixels by stale panel colour state. Native previews
+prepare 512 output points and render the derived trace as a 6 px black
+under-stroke followed by a 3 px cyan stroke, keeping it legible over both bright
+and dark image regions.
 
 ## Authoritative Implementations And Boundary
 
