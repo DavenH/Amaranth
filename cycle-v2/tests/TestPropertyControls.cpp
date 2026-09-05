@@ -7,6 +7,12 @@
 using namespace CycleV2;
 using namespace juce;
 
+TEST_CASE("Property rail content does not double-inset its outer edge",
+        "[cycle-v2][ui][property-controls][geometry]") {
+    const Rectangle<int> content = propertyRailContentBounds({ 917, 44, 336, 422 });
+    REQUIRE(content == Rectangle<int>(929, 56, 324, 398));
+}
+
 TEST_CASE("Property slider layout preserves useful travel or switches compact form",
         "[cycle-v2][ui][property-controls][geometry]") {
     const PropertySliderLayout ordinary = propertySliderLayout({ 0, 0, 312, 30 }, true);

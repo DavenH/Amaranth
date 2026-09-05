@@ -28,8 +28,8 @@ struct GuideCurveEditorComponent::Impl {
                          "Toggles this Guide curve",
                          "Enable or disable this Guide curve")
         ,   noise       (owner, "Noise")
-        ,   dcOffset    (owner, "DC Offset")
-        ,   phase       (owner, "Phase") {
+        ,   dcOffset    (owner, "Y Randomness")
+        ,   phase       (owner, "X Randomness") {
         imageTitle.setText("Guide image", dontSendNotification);
         imageTitle.setFont(FontOptions(
                 CanvasChromeMetrics::labelFontSize).withStyle("Bold"));
@@ -97,12 +97,12 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) 
             ControlSetup {
                     &impl->dcOffset,
                     "dcOffset",
-                    "Random DC offset range. Shift-drag for fine adjustment; double-click to reset."
+                    "Random vertical (DC) offset range. Shift-drag for fine adjustment; double-click to reset."
             },
             ControlSetup {
                     &impl->phase,
                     "phase",
-                    "Random phase range. Shift-drag for fine adjustment; double-click to reset."
+                    "Random horizontal (phase) offset range. Shift-drag for fine adjustment; double-click to reset."
             } }) {
         setup.control->setCompactLayout(true);
         setup.control->slider.setRange(0.0, 1.0, 0.00001);
@@ -248,7 +248,8 @@ void GuideCurveEditorComponent::paintEditor(Graphics&) {
 }
 
 void GuideCurveEditorComponent::layoutEditor() {
-    Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
+    Rectangle<int> bounds = propertyRailContentBounds(
+            editorControlBounds().toNearestInt());
     for (auto* slider : { &impl->noise, &impl->dcOffset, &impl->phase }) {
         slider->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::compactRowHeight),

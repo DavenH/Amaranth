@@ -451,7 +451,8 @@ void ImpulseResponseEditorComponent::layoutEditor() {
     impl->zoomAttack.toFront(false);
     impl->zoomFull.toFront(false);
 
-    Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
+    Rectangle<int> bounds = propertyRailContentBounds(
+            editorControlBounds().toNearestInt());
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::compactRowHeight),

@@ -20,6 +20,7 @@ constexpr int compactRowHeight = 50;
 constexpr int minimumUsableTrackWidth = 140;
 constexpr int compactLabelHeight = 18;
 constexpr int compactSliderTop = 14;
+constexpr int railContentInset = 12;
 constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
 constexpr float indicatorWidth = 1.5f;
@@ -47,6 +48,7 @@ struct PropertyValueText {
 bool operator==(const PropertyValueText& lhs, const PropertyValueText& rhs);
 PropertyValueText splitPropertyValueText(const juce::String& text);
 
+juce::Rectangle<int> propertyRailContentBounds(juce::Rectangle<int> railBounds);
 PropertySliderLayout propertySliderLayout(
         juce::Rectangle<int> bounds,
         bool showsValue,

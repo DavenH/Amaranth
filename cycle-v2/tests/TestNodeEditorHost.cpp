@@ -1215,6 +1215,8 @@ TEST_CASE("Guide editor uses compact host and control layout",
     int textButtonCount = 0;
     int emptyToggleCount = 0;
     int enabledLabelCount = 0;
+    int xRandomnessLabelCount = 0;
+    int yRandomnessLabelCount = 0;
     int valueLabelCount = 0;
     int lowestControlBottom = 0;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
@@ -1232,6 +1234,8 @@ TEST_CASE("Guide editor uses compact host and control layout",
             lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
         } else if (auto* label = dynamic_cast<Label*>(child)) {
             enabledLabelCount += label->getText() == "Enabled" ? 1 : 0;
+            xRandomnessLabelCount += label->getText() == "X Randomness" ? 1 : 0;
+            yRandomnessLabelCount += label->getText() == "Y Randomness" ? 1 : 0;
             valueLabelCount += label->getComponentID().endsWith(".value") ? 1 : 0;
         }
     }
@@ -1239,6 +1243,8 @@ TEST_CASE("Guide editor uses compact host and control layout",
     REQUIRE(textButtonCount == 2);
     REQUIRE(emptyToggleCount == 1);
     REQUIRE(enabledLabelCount == 0);
+    REQUIRE(xRandomnessLabelCount == 1);
+    REQUIRE(yRandomnessLabelCount == 1);
     REQUIRE(valueLabelCount == 3);
     REQUIRE(lowestControlBottom < 300);
 
@@ -1258,12 +1264,23 @@ TEST_CASE("Guide editor uses compact host and control layout",
     REQUIRE(noiseValue.getWidth() == 48.f);
     REQUIRE(noiseValue.getX() - noiseLabel.getRight() == 4.f);
     REQUIRE(noiseLabel.getY() == noiseValue.getY());
-    REQUIRE(noiseSlider.getWidth() == 312.f);
+    REQUIRE(noiseSlider.getWidth() == 324.f);
     REQUIRE(noiseTrack.getY() - noiseLabel.getBottom() <= 10.f);
     const Rectangle<float> panelBounds = rectangleProperty(state, "panelBounds");
     const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
     REQUIRE(controlBounds.getWidth() == 336.f);
     REQUIRE(panelBounds.getWidth() == 905.f);
+    const float leftTrackInset = noiseTrack.getX() - controlBounds.getX();
+    const float rightTrackInset = (float) editor.getWidth() - noiseTrack.getRight();
+    REQUIRE(leftTrackInset == rightTrackInset);
+    const Rectangle<float> dcOffsetTrack = rectangleProperty(
+            state.getProperty("dcOffsetLayout", {}), "track");
+    const Rectangle<float> phaseTrack = rectangleProperty(
+            state.getProperty("phaseLayout", {}), "track");
+    REQUIRE(dcOffsetTrack.getX() == noiseTrack.getX());
+    REQUIRE(dcOffsetTrack.getRight() == noiseTrack.getRight());
+    REQUIRE(phaseTrack.getX() == noiseTrack.getX());
+    REQUIRE(phaseTrack.getRight() == noiseTrack.getRight());
     REQUIRE(state.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
     REQUIRE_FALSE(static_cast<bool>(state.getProperty("heatmapSublabelVisible", {})));
     auto* loadImage = dynamic_cast<TextButton*>(

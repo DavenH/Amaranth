@@ -89,6 +89,13 @@ int PropertySliderLayout::usableTrackWidth() const {
     return roundToInt(track.getWidth());
 }
 
+Rectangle<int> propertyRailContentBounds(Rectangle<int> railBounds) {
+    railBounds.removeFromLeft(PropertyControlMetrics::railContentInset);
+    railBounds.removeFromTop(PropertyControlMetrics::railContentInset);
+    railBounds.removeFromBottom(PropertyControlMetrics::railContentInset);
+    return railBounds;
+}
+
 PropertySliderLayout propertySliderLayout(
         Rectangle<int> bounds,
         bool showsValue,

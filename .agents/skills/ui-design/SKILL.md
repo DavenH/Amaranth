@@ -70,6 +70,12 @@ not to empty containers.
   by the size of the surrounding panel.
 - Remove repeated nested insets. Padding should belong to one clear container
   boundary rather than accumulate at every child.
+- Measure repeated rows against the visible edges that users perceive, not
+  only against an already-inset child rectangle. A divider-to-content inset
+  and content-to-outer-edge inset should balance unless hierarchy deliberately
+  calls for asymmetry. Add a geometry assertion for equal opposing margins;
+  nested container padding can otherwise make locally symmetric code render
+  asymmetrically.
 - Use a small spacing scale consistently. Similar gaps imply grouping; larger
   gaps or separators mark a genuine change of section.
 - Avoid stranded space: unexplained central voids, one-label rows, sparse

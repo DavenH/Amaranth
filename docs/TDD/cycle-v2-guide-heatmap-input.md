@@ -118,6 +118,10 @@ one consolidated semantic edit.
 - In the Guide rail, reserve 48 px for each value readout and 4 px between the
   slider and readout. The compact readout must remain editable with its unit
   outside the numeric field.
+- Label horizontal phase variation as `X Randomness` and vertical/DC variation
+  as `Y Randomness`. Align every Guide slider track, and keep its inset from
+  the editor/control divider equal to its inset from the visible outer edge;
+  do not apply the content container's right inset a second time.
 - Place the Guide enablement power toggle in the shared top-right header action
   position. Do not retain a labeled checkbox row in the property rail.
 - Present image resource actions as a named `Guide image` group with one compact
@@ -146,20 +150,24 @@ one consolidated semantic edit.
   surface. The Guide power action occupies the shared top-right header slot.
   Shelf previews, undo/redo, graph reload, and editor rebinding consume the
   same graph asset.
+- Shared property-rail geometry owns divider-side, vertical, and outer-edge
+  inset behavior. Guide and IR controls reuse it, avoiding a second outer-edge
+  inset and producing equal visible track margins.
 - The merge retains the branch's IR/audio-resource behavior alongside the
   image-backed Guide behavior. Content identity delegates SHA-256 calculation
   to JUCE's cryptography module rather than maintaining a local implementation.
-- Focused post-layout verification passed: 72 Guide editor assertions in 3
+- Focused post-layout verification passed: 79 Guide editor assertions in 3
   cases, 66 heatmap assertions in 5 cases, 8 serialization assertions in 2
-  cases, and 41 audio-resource assertions in 3 cases.
+  cases, 41 audio-resource assertions in 3 cases, 48 property-control geometry
+  assertions in 5 cases, and 152 IR editor assertions in 2 cases.
 - `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
-  run completed with 11,284 of 11,285 assertions passing; its sole failure is
+  run completed with 11,292 of 11,293 assertions passing; its sole failure is
   the pre-existing hit-router copy mismatch recorded in `ui-bugs.md`.
 - The post-merge automation fixture passed all 21 commands, including
   clear/undo and embedded save/reload. Native rendering was inspected in
   `/private/tmp/cycle-v2-guide-heatmap.png` at the final `1265 x 476` host
   geometry; the filtered launch log is
-  `/private/tmp/cycle-v2-guide-compact-layout-logs.txt`.
+  `/private/tmp/cycle-v2-guide-balanced-layout-logs.txt`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
 
