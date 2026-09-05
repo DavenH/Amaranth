@@ -1358,8 +1358,24 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     editor.setBounds(0, 0, 900, 430);
     editor.setNode(ir);
 
+    const var narrowState = editor.automationState();
+    editor.setBounds(0, 0, 1080, 430);
     const var state = editor.automationState();
     const var panel = state.getProperty("panelBounds", {});
+    const var narrowPanel = narrowState.getProperty("panelBounds", {});
+    const var controls = state.getProperty("controlBounds", {});
+    const var narrowControls = narrowState.getProperty("controlBounds", {});
+    REQUIRE(static_cast<double>(controls.getProperty("width", {}))
+            == Catch::Approx(348.0));
+    REQUIRE(static_cast<double>(controls.getProperty("width", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowControls.getProperty("width", {}))));
+    REQUIRE(static_cast<double>(panel.getProperty("width", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowPanel.getProperty("width", {})) + 180.0));
+    REQUIRE(static_cast<double>(panel.getProperty("height", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowPanel.getProperty("height", {}))));
     const Rectangle<float> headerActionBounds = rectangleProperty(
             state,
             "headerActionBounds");

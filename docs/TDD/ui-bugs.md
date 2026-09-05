@@ -33,7 +33,7 @@ Acceptance:
   allocation and the IR panel gains the full 180 pixels.
 - Compact/clamped placement remains on-screen.
 
-Current status: queued after `ir-prefilter-dc-removal.md`.
+Current status: fixed in `cycle-v2-ir-editor-width.md` (2026-09-05).
 
 ## 2026-08-31 UI intake: recommended order
 
