@@ -1,6 +1,6 @@
 # Cycle V2 Spectral Key-Scale Grid
 
-Status: In progress
+Status: Implemented 2026-09-05
 
 ## Objective
 
@@ -88,6 +88,10 @@ not copy pitch normalization, logarithmic mapping, rasterization, or DSP.
 - Standalone Debug builds. The complete Cycle V2 suite passes 10,696 of 10,697
   assertions; the sole failure is the pre-existing edge-hover help assertion in
   `TestNodeCanvasHitRouter.cpp:66`.
-- OS-pixel inspection remains unavailable because this agent session lacks
-  macOS Screen Recording permission. Keep this TDD in progress until the
-  pitch-warped grid receives that final production-size visual review.
+- A 3456 x 1924 production capture with Red assigned as the primary key-scale
+  axis shows the spectral mapping changing continuously across the surface
+  columns. Its matching report confirms the inclusive MIDI endpoints remain
+  `20` and `127`, both OpenGL hosts remain live, and no fixture command fails.
+  Evidence is in
+  `/private/tmp/cycle-v2-spectral-key-scale-grid-verify-report.json` and
+  `/private/tmp/cycle-v2-spectral-key-scale-grid-verify.png`.

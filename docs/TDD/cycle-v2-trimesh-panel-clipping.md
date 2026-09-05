@@ -1,6 +1,6 @@
 # Cycle V2 Trimesh OpenGL Panel Clipping
 
-Status: In progress
+Status: Implemented 2026-09-05
 
 ## Objective
 
@@ -69,7 +69,9 @@ unrelated legacy renderer callers retain their existing behavior.
   expanded `phaseLayer1` editor without command failures. The full Cycle V2
   suite passes 10,665 of 10,666 assertions; the only failure is the known
   edge-hover help regression in `TestNodeCanvasHitRouter.cpp:66`.
-- Final OS-pixel verification remains open because macOS Screen Recording
-  permission is unavailable in the current agent session (`screencapture`
-  reported that it could not create the requested image). The ready fixture is
-  `scripts/fixtures/cycle-v2-agent-phase-panel-clipping.json`.
+- The production phase-editor fixture passes without command failures and a
+  3456 x 1924 Retina capture confirms the 2D phase background, grid, waveform,
+  and overlays stop at the lower host boundary. No pixels spill into the 3D
+  surface or controls. Evidence is in
+  `/private/tmp/cycle-v2-phase-clipping-verify-report.json` and
+  `/private/tmp/cycle-v2-phase-clipping-verify.png`.

@@ -1,6 +1,6 @@
 # Cycle V2 Property Value Editing
 
-Status: In progress
+Status: Implemented 2026-09-05
 
 ## Objective
 
@@ -85,7 +85,10 @@ unit after every successful commit, including transitions between `Hz` and
 - Standalone Debug builds. The complete Cycle V2 suite passes 10,721 of 10,722
   assertions; the sole failure is the pre-existing edge-hover help assertion in
   `TestNodeCanvasHitRouter.cpp:66`.
-- The app-side window snapshot is blank because the canvas is OpenGL-composited,
-  and OS capture remains unavailable without Screen Recording permission. Keep
-  this TDD in progress until the production-size pixel review confirms the
-  baseline and focus treatment.
+- Production Retina captures confirm both states. The resting `60 Hz` readout
+  has no field rectangle. On focus, the restrained outline encloses only the
+  right-aligned numeric `60`; its baseline remains stable and `Hz` stays outside
+  the editable selection. The focused fixture and evidence are
+  `scripts/fixtures/cycle-v2-agent-property-value-focus.json`,
+  `/private/tmp/cycle-v2-property-value-focus-report.json`, and
+  `/private/tmp/cycle-v2-property-value-focus-detail.png`.

@@ -175,11 +175,11 @@ Acceptance:
   size, Retina scale, and after resize.
 - 3D content remains unchanged and no JUCE paint mask is introduced.
 
-Current status: implementation complete 2026-09-01 in
-`cycle-v2-trimesh-panel-clipping.md`; final OS screenshot validation is blocked
-by missing Screen Recording permission. Curve and Trimesh now share the mature
-scissor conversion and GL-state restoration, with 1x/2x numerical coverage and
-no JUCE paint mask.
+Current status: verified 2026-09-05 in
+`cycle-v2-trimesh-panel-clipping.md`. Curve and Trimesh share the mature scissor
+conversion and GL-state restoration, with 1x/2x numerical coverage and no JUCE
+paint mask. A 2x production capture confirms the lower 2D background, grid, and
+waveform stop at the host boundary without entering the 3D panel or controls.
 
 ## P1: Magnitude-spectrum log grid ignores the key-scale morph axis
 
@@ -201,7 +201,10 @@ Acceptance:
   mapping logic.
 - Tests cover at least two notes, two axis assignments, and an endpoint.
 
-Current status: in progress in `cycle-v2-spectral-key-scale-grid.md`.
+Current status: verified 2026-09-05 in
+`cycle-v2-spectral-key-scale-grid.md`. The production fixture confirms an
+inclusive MIDI span of `20` through `127`, and a 2x OpenGL capture shows the
+spectral mapping changing continuously across the Red key-scale columns.
 
 ## P1: IR sample ruler chooses irregular intervals and omits its endpoint
 
@@ -239,12 +242,11 @@ Acceptance:
 - The band remains centered after resize and does not change the phase-offset
   value mapping.
 
-Current status: not reproduced in the 2026-09-01 coordinate audit. At phase
-`0.5`, the production panel reports width `740`, zoom x `0.025` with width
-`0.95`, and symmetric phase-band domain endpoints `0.275` and `0.725`; both
-transform around panel x `370`. Do not add an offset without contradictory
-OpenGL pixel evidence. Final visual confirmation is blocked by the same missing
-macOS Screen Recording permission noted above.
+Current status: closed as not reproduced 2026-09-05. At phase `0.5`, the
+production panel reports width `740`, zoom x `0.025` with width `0.95`, and
+symmetric phase-band domain endpoints `0.275` and `0.725`; both transform around
+panel x `370`. A 2x production capture confirms symmetric horizontal and
+vertical margins inside the OpenGL panel. No corrective offset was added.
 
 ## P1: Numeric property entry changes geometry and includes units
 
@@ -264,7 +266,10 @@ Acceptance:
 - Editing selects only the numeric value. Units remain outside the editor and
   parsing/formatting round-trips without precision loss.
 
-Current status: in progress in `cycle-v2-property-value-editing.md`.
+Current status: verified 2026-09-05 in
+`cycle-v2-property-value-editing.md`. Production Retina captures confirm the
+resting readout has no field rectangle; focus outlines only the numeric value,
+preserves its right-aligned baseline, and leaves the unit outside the editor.
 
 ## P1: Envelope vertex Guide selector has misleading help text
 
