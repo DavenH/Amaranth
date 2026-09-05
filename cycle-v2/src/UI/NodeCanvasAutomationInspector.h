@@ -35,6 +35,9 @@ struct GuideDockAutomationPresentation {
     juce::String keyboardFocusTarget;
     juce::String keyboardFocusItemId;
     juce::String expandedGuideId;
+    int heatmapGuideCount {};
+    bool expandedGuideHeatmapActive {};
+    juce::String expandedGuideHeatmapFilename;
     juce::Rectangle<float> dockBounds;
     juce::Rectangle<float> guideShelfBounds;
     juce::Rectangle<float> spyShelfBounds;

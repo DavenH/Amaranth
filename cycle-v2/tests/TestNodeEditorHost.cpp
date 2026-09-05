@@ -10,22 +10,23 @@
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
-#include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
-#include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Unison/UnisonPreviewPainter.h"
-#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
-#include "UI/NodeCanvasAutomationController.h"
-#include "UI/NodeCanvasAutomationInspector.h"
-#include "UI/EnvelopePurposeSelector.h"
-#include "UI/EditorChromeLayout.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/EnvelopePurposeSelector.h"
+#include "UI/NodeCanvasAutomationController.h"
+#include "UI/NodeCanvasAutomationInspector.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
@@ -1225,6 +1226,7 @@ TEST_CASE("Guide editor uses compact host and control layout",
             lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
         } else if (dynamic_cast<TextButton*>(child) != nullptr) {
             ++textButtonCount;
+            lowestControlBottom = jmax(lowestControlBottom, child->getBottom());
         } else if (auto* toggle = dynamic_cast<ToggleButton*>(child)) {
             emptyToggleCount += toggle->getButtonText().isEmpty() ? 1 : 0;
             lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
@@ -1234,18 +1236,42 @@ TEST_CASE("Guide editor uses compact host and control layout",
         }
     }
     REQUIRE(sliderCount == 3);
-    REQUIRE(textButtonCount == 0);
+    REQUIRE(textButtonCount == 2);
     REQUIRE(emptyToggleCount == 1);
-    REQUIRE(enabledLabelCount == 1);
+    REQUIRE(enabledLabelCount == 0);
     REQUIRE(valueLabelCount == 3);
-    REQUIRE(lowestControlBottom < 230);
+    REQUIRE(lowestControlBottom < 300);
 
     const var state = editor.automationState();
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
     const var noiseLayout = state.getProperty("noiseLayout", {});
     REQUIRE(noiseLayout.getProperty("display", {}).toString() == "77%");
     REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE_FALSE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+    REQUIRE(state.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
+    REQUIRE_FALSE(static_cast<bool>(state.getProperty("heatmapSublabelVisible", {})));
+    auto* loadImage = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.loadImage"));
+    auto* clearImage = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.clearImage"));
+    REQUIRE(loadImage != nullptr);
+    REQUIRE(clearImage != nullptr);
+    REQUIRE(loadImage->getButtonText() == "Load");
+    REQUIRE(clearImage->getButtonText() == "Clear");
+    REQUIRE(loadImage->getHeight() == 24);
+    REQUIRE(clearImage->getHeight() == loadImage->getHeight());
+    REQUIRE(clearImage->getY() == loadImage->getY());
+    REQUIRE(loadImage->getWidth() == 72);
+    REQUIRE_FALSE(clearImage->isEnabled());
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            editor.findChildWithID("guideEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
 }
 
 TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
@@ -1264,6 +1290,16 @@ TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
             { 0.f, 0.f, 1200.f, 800.f }).toNearestInt());
     editor.setGuideResource(guide);
 
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            editor.findChildWithID("guideEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getWantsKeyboardFocus());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Guide curve");
+    enabled->setToggleState(false, sendNotificationSync);
+    REQUIRE_FALSE(enabled->getToggleState());
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
     PrecisionSlider* noise = nullptr;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
         auto* slider = dynamic_cast<PrecisionSlider*>(editor.getChildComponent(index));
@@ -1758,6 +1794,69 @@ TEST_CASE("IR attack zoom changes presentation without publishing the graph",
     REQUIRE(static_cast<double>(restoredZoom.getProperty("h", {}))
             == Catch::Approx(fullHeight));
     REQUIRE(delegate.events == StringArray { "repaint" });
+}
+
+TEST_CASE("Guide editor presents heatmap state and clears through its semantic action",
+        "[cycle-v2][node-editor-host][guides][heatmap]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Image image(Image::RGB, 2, 2, false);
+    image.setPixelAt(0, 0, Colours::black);
+    image.setPixelAt(1, 0, Colours::white);
+    image.setPixelAt(0, 1, Colours::white);
+    image.setPixelAt(1, 1, Colours::black);
+    MemoryOutputStream output;
+    PNGImageFormat format;
+    REQUIRE(format.writeImageToStream(image, output));
+    String error;
+    const auto heatmap = GuideHeatmapAsset::decode(
+            output.getMemoryBlock(), "checker.png", error);
+    REQUIRE(heatmap != nullptr);
+
+    CurveEditorWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+    bool cleared = false;
+    editor.setHeatmapActions(
+            {},
+            [&](const String& guideId, uint64_t revision) {
+                cleared = guideId == guide.id && revision == guide.revision;
+                return true;
+            });
+    editor.setGuideResource(guide, heatmap);
+
+    const var editorState = editor.automationState();
+    REQUIRE((bool) editorState.getProperty("heatmapActive", {}));
+    REQUIRE(editorState.getProperty("heatmapFilename", {}).toString() == "checker.png");
+    REQUIRE(editorState.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
+    REQUIRE_FALSE((bool) editorState.getProperty("heatmapSublabelVisible", {}));
+    const var panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("heatmapActive", {}));
+    REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 512);
+    const double initialOutput = panelState.getProperty("heatmapOutputStart", {});
+    REQUIRE(widget.setSelectedVertexParameter("vertex.amp", 0.1f));
+    REQUIRE(widget.modelPublication() != nullptr);
+    REQUIRE((double) widget.automationState().getProperty("heatmapOutputStart", {})
+            != Catch::Approx(initialOutput).margin(0.001));
+
+    auto* loadButton = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.loadImage"));
+    auto* clearButton = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.clearImage"));
+    REQUIRE(loadButton != nullptr);
+    REQUIRE(clearButton != nullptr);
+    REQUIRE(loadButton->getButtonText() == "Replace");
+    REQUIRE(clearButton->isEnabled());
+    REQUIRE(loadButton->getY() == clearButton->getY());
+    REQUIRE(loadButton->getHeight() == 24);
+    clearButton->onClick();
+    REQUIRE(cleared);
+    REQUIRE_FALSE(clearButton->isEnabled());
+
+    editor.setGuideResource(guide, nullptr);
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",

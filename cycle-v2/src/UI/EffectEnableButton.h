@@ -6,7 +6,10 @@ namespace CycleV2 {
 
 class EffectEnableButton final : public juce::ToggleButton {
 public:
-    EffectEnableButton();
+    explicit EffectEnableButton(
+            const juce::String& title = "Effect enabled",
+            const juce::String& description = "Toggles processing for this effect",
+            const juce::String& tooltip = "Enable or bypass effect");
 
     void paintButton(
             juce::Graphics& graphics,

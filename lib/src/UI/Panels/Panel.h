@@ -124,6 +124,7 @@ public:
     void setNameTextureId(int id)           { currentNameId = id;           }
     void setNumCornersOverlapped(int num)   { numCornersOverlapped = num;   }
     void setComponent(Component* comp);
+    void setContentImage(Image image);
 
     void triggerPendingNameUpdate()         { pendingNameUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
     void triggerPendingScaleUpdate()        { pendingScaleUpdate = true; dirtyState.mark(PanelDirtyState::Flag::StaticVisual); }
@@ -210,6 +211,7 @@ protected:
     bool drawLinesAfterFill;
     bool isTransparent;
     bool pendingDeformUpdate;
+    bool pendingContentImageUpdate;
     bool pendingNameUpdate;
     bool pendingScaleUpdate;
     bool shouldBakeTextures;
@@ -235,8 +237,19 @@ protected:
 
     Point<float> nameCornerPos;
 
-    Texture *grabTex, *nameTexA, *guideCurveTex, *nameTexB, *scalesTex;
-    Image scalesImage, guideCurveImage, grabImage, nameImage, nameImageB;
+    Texture* grabTex;
+    Texture* nameTexA;
+    Texture* guideCurveTex;
+    Texture* nameTexB;
+    Texture* scalesTex;
+    Texture* contentImageTex;
+
+    Image scalesImage;
+    Image guideCurveImage;
+    Image grabImage;
+    Image nameImage;
+    Image nameImageB;
+    Image contentImage;
 
     BufferXY    xy;
     PanelDirtyState dirtyState;

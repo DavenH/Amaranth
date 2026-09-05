@@ -20,11 +20,15 @@ const Drawable* enableIcon() {
 
 }
 
-EffectEnableButton::EffectEnableButton() : ToggleButton("Effect enabled") {
+EffectEnableButton::EffectEnableButton(
+        const String& title,
+        const String& description,
+        const String& tooltip) :
+        ToggleButton(title) {
     setButtonText({});
-    setTitle("Effect enabled");
-    setDescription("Toggles processing for this effect");
-    setTooltip("Enable or bypass effect");
+    setTitle(title);
+    setDescription(description);
+    setTooltip(tooltip);
     setWantsKeyboardFocus(true);
     setMouseCursor(MouseCursor::PointingHandCursor);
 }

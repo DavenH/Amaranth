@@ -6,6 +6,7 @@
 
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
 
@@ -550,6 +551,13 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty("keyboardFocusTarget", state.guideDock.keyboardFocusTarget);
     guideDock->setProperty("keyboardFocusItemId", state.guideDock.keyboardFocusItemId);
     guideDock->setProperty("guideTileCount", (int) state.guideDock.guideTiles.size());
+    guideDock->setProperty("heatmapGuideCount", state.guideDock.heatmapGuideCount);
+    guideDock->setProperty(
+            "expandedGuideHeatmapActive",
+            state.guideDock.expandedGuideHeatmapActive);
+    guideDock->setProperty(
+            "expandedGuideHeatmapFilename",
+            state.guideDock.expandedGuideHeatmapFilename);
     guideDock->setProperty("bounds", AutomationValueEncoder::rectangleToVar(state.guideDock.dockBounds));
     guideDock->setProperty(
             "guideShelfBounds",
@@ -641,6 +649,12 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         guideObject->setProperty("noise", guide.noise);
         guideObject->setProperty("dcOffset", guide.dcOffset);
         guideObject->setProperty("phase", guide.phase);
+        guideObject->setProperty("heatmapActive", guide.heatmapAssetId.isNotEmpty());
+        if (const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(guide.heatmapAssetId)) {
+            guideObject->setProperty("heatmapFilename", heatmap->filename());
+            guideObject->setProperty("heatmapWidth", heatmap->width());
+            guideObject->setProperty("heatmapHeight", heatmap->height());
+        }
         guideObject->setProperty("model", guide.model != nullptr ? guide.model->writeJSON() : var());
         guides.add(guideObject);
     }

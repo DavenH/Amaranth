@@ -68,6 +68,8 @@ public:
     bool deleteNodeForAutomation(const String& nodeId);
     bool deleteEdgeForAutomation(int edgeIndex);
     bool deleteGuideCurveForAutomation(const String& guideId);
+    bool loadGuideHeatmapForAutomation(const String& guideId, const File& file);
+    bool clearGuideHeatmapForAutomation(const String& guideId);
     bool undoForAutomation();
     bool setGuideParameterForAutomation(
             const String& guideId,
@@ -223,6 +225,12 @@ private:
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
+    void rebindGuideEditor();
+    bool setGuideHeatmap(
+            const String& guideId,
+            GuideHeatmapAssetPtr asset,
+            uint64_t expectedRevision);
+    bool clearGuideHeatmap(const String& guideId, uint64_t expectedRevision);
 
     void closeNodeEditor() override;
     void repaintNodeEditor(bool openGl) override;

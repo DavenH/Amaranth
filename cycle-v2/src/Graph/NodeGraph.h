@@ -11,6 +11,9 @@ namespace CycleV2 {
 
 using namespace juce;
 
+class GuideHeatmapAsset;
+using GuideHeatmapAssetPtr = std::shared_ptr<const GuideHeatmapAsset>;
+
 enum class PortDomain {
     DomainContext,
     TimeSignal,
@@ -165,6 +168,8 @@ struct GuideCurveResource {
     float dcOffset {};
     float phase {};
     NodeModelStatePtr model;
+    String heatmapAssetId;
+    uint64_t revision { 1 };
 };
 
 struct AudioSampleResource {
@@ -274,6 +279,7 @@ public:
     const std::vector<Node>& getNodes() const { return nodes; }
     const std::vector<Edge>& getEdges() const { return edges; }
     const std::vector<GuideCurveResource>& getGuideCurves() const { return guideCurves; }
+    const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const { return guideHeatmaps; }
     const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
     const std::vector<AudioSampleResource>& getAudioResources() const { return audioResources; }
@@ -292,6 +298,10 @@ public:
     GuideCurveResource* findGuideCurveForEditing(const String& guideId);
     const GuideCurveResource* findGuideCurve(const String& guideId) const;
     bool replaceGuideCurve(GuideCurveResource resource);
+    bool addGuideHeatmap(GuideHeatmapAssetPtr asset);
+    const GuideHeatmapAsset* findGuideHeatmap(const String& assetId) const;
+    GuideHeatmapAssetPtr guideHeatmapAsset(const String& assetId) const;
+    void removeUnreferencedGuideHeatmaps();
     bool moveGuideCurve(const String& guideId, int shelfOrder);
     bool assignGuideCurve(GuideCurveAssignment assignment);
     bool removeGuideAssignment(
@@ -363,11 +373,13 @@ private:
     std::vector<Node> nodes;
     std::vector<Edge> edges;
     std::vector<GuideCurveResource> guideCurves;
+    std::vector<GuideHeatmapAssetPtr> guideHeatmaps;
     std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
     std::vector<AudioSampleResource> audioResources;
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> guideResourceIndex;
+    std::unordered_map<String, size_t, StringHash> guideHeatmapIndex;
     std::unordered_map<
             GuideTargetAddress,
             size_t,

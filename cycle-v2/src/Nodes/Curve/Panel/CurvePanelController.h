@@ -25,7 +25,9 @@ public:
     virtual ~CurvePanelController() = default;
 
     virtual void syncFromNode(const Node& node) = 0;
-    virtual bool syncFromGuideResource(const GuideCurveResource&) { return false; }
+    virtual bool syncFromGuideResource(
+            const GuideCurveResource&,
+            const GuideHeatmapAssetPtr&) { return false; }
     virtual Component* panelHostComponent() = 0;
     virtual Component* panelHostComponentIfCreated() = 0;
     virtual void setDelegate(CurvePanelControllerDelegate* delegate) = 0;

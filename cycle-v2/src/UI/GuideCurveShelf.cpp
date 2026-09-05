@@ -158,7 +158,9 @@ float GuideCurveShelf::maximumHorizontalOffset(
     return jmax(0.f, contentWidth - shelf.getWidth());
 }
 
-GuideCurveShelf::Preview& GuideCurveShelf::previewFor(const GuideCurveResource& guide) const {
+GuideCurveShelf::Preview& GuideCurveShelf::previewFor(
+        const GuideCurveResource& guide,
+        const NodeGraph& graph) const {
     Preview& preview = previews[guide.id];
     if (preview.widget == nullptr) {
         preview.widget = std::make_unique<CurveEditorWidget>(true);
@@ -168,13 +170,17 @@ GuideCurveShelf::Preview& GuideCurveShelf::previewFor(const GuideCurveResource& 
             || preview.enabled != guide.enabled
             || preview.noise != guide.noise
             || preview.dcOffset != guide.dcOffset
-            || preview.phase != guide.phase) {
-        preview.widget->syncFromGuideResource(guide);
+            || preview.phase != guide.phase
+            || preview.heatmapAssetId != guide.heatmapAssetId) {
+        preview.widget->syncFromGuideResource(
+                guide,
+                graph.guideHeatmapAsset(guide.heatmapAssetId));
         preview.model = guide.model;
         preview.enabled = guide.enabled;
         preview.noise = guide.noise;
         preview.dcOffset = guide.dcOffset;
         preview.phase = guide.phase;
+        preview.heatmapAssetId = guide.heatmapAssetId;
         preview.needsOpenGLRender = true;
     }
     return preview;
@@ -278,7 +284,7 @@ void GuideCurveShelf::paint(
         const Rectangle<float> thumbnail = previewBoundsFor(tile);
         graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.72f));
         graphics.fillRoundedRectangle(thumbnail, CanvasChromeMetrics::insetCornerRadius);
-        Preview& preview = previewFor(guide);
+        Preview& preview = previewFor(guide, graph);
         preview.widget->paintPreviewSnapshot(graphics, thumbnail);
         if (hasDisplayName(guide)) {
             graphics.setColour(CanvasChromePalette::text);
@@ -326,7 +332,7 @@ bool GuideCurveShelf::renderOpenGL(
     const Rectangle<float> shelf = boundsFor(workspace, dockState, splitRatio, state);
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];
-        Preview& preview = previewFor(guide);
+        Preview& preview = previewFor(guide, graph);
         if (!preview.needsOpenGLRender) {
             continue;
         }

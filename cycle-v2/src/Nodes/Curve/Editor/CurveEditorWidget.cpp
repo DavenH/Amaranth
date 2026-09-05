@@ -112,11 +112,13 @@ void CurveEditorWidget::syncFromNode(const Node& node) {
     controller->syncFromNode(node);
 }
 
-void CurveEditorWidget::syncFromGuideResource(const GuideCurveResource& guide) {
+void CurveEditorWidget::syncFromGuideResource(
+        const GuideCurveResource& guide,
+        const GuideHeatmapAssetPtr& heatmap) {
     if (!guideResource) {
         return;
     }
-    controller->syncFromGuideResource(guide);
+    controller->syncFromGuideResource(guide, heatmap);
     controller->setControlValues(
             guide.enabled,
             guide.noise,

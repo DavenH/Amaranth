@@ -1243,6 +1243,14 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
             dockInteraction->focus().target);
     dock.keyboardFocusItemId = dockInteraction->focus().itemId;
     dock.expandedGuideId = expandedGuideId;
+    for (const auto& guide : graph.getGuideCurves()) {
+        dock.heatmapGuideCount += guide.heatmapAssetId.isNotEmpty() ? 1 : 0;
+    }
+    if (const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId)) {
+        const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(guide->heatmapAssetId);
+        dock.expandedGuideHeatmapActive = heatmap != nullptr;
+        dock.expandedGuideHeatmapFilename = heatmap != nullptr ? heatmap->filename() : String {};
+    }
     dock.dockBounds = workspaceDock.dock;
     dock.guideShelfBounds = workspaceDock.leftShelf;
     dock.spyShelfBounds = workspaceDock.rightShelf;
@@ -1384,10 +1392,37 @@ bool NodeCanvas::deleteGuideCurveForAutomation(const String& guideId) {
     return true;
 }
 
+bool NodeCanvas::loadGuideHeatmapForAutomation(
+        const String& guideId,
+        const File& file) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    if (guide == nullptr || !file.existsAsFile()) {
+        return false;
+    }
+    MemoryBlock data;
+    String error;
+    if (!file.loadFileAsData(data)) {
+        return false;
+    }
+    const GuideHeatmapAssetPtr asset = GuideHeatmapAsset::decode(
+            data,
+            file.getFileName(),
+            error);
+    return asset != nullptr && setGuideHeatmap(guideId, asset, guide->revision);
+}
+
+bool NodeCanvas::clearGuideHeatmapForAutomation(const String& guideId) {
+    const GuideCurveResource* guide = graph.findGuideCurve(guideId);
+    return guide != nullptr && clearGuideHeatmap(guideId, guide->revision);
+}
+
 bool NodeCanvas::undoForAutomation() {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     const auto result = authoring.undo();
     applyAuthoringResult(result);
+    if (result.succeeded) {
+        rebindGuideEditor();
+    }
     return result.succeeded;
 }
 
@@ -1419,7 +1454,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
     commands.beginTransientEdit();
     const GraphEditResult result = commands.publishGuideCurveState({
             guideId,
-            guide->model->revision(),
+            guide->revision,
             guide->model,
             controls
     });
@@ -1428,6 +1463,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
         return false;
     }
     commands.commitTransientEdit();
+    rebindGuideEditor();
     refreshCompiledStateAsync();
     requestCanvasRepaint();
     return true;
@@ -1569,6 +1605,7 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 bool NodeCanvas::loadGraphFromFile(const File& file) {
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        closeGuideEditor();
         resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
@@ -1587,6 +1624,7 @@ bool NodeCanvas::loadSnapshot() {
     const auto result = authoring.loadSnapshot(snapshotFile());
     applyAuthoringResult(result);
     if (result.succeeded) {
+        closeGuideEditor();
         resetDocumentPresentation();
         clearDockEphemeralState();
         probeDetailState.close();
@@ -1598,12 +1636,18 @@ bool NodeCanvas::loadSnapshot() {
 bool NodeCanvas::undo() {
     const auto result = authoring.undo();
     applyAuthoringResult(result);
+    if (result.succeeded) {
+        rebindGuideEditor();
+    }
     return result.handled;
 }
 
 bool NodeCanvas::redo() {
     const auto result = authoring.redo();
     applyAuthoringResult(result);
+    if (result.succeeded) {
+        rebindGuideEditor();
+    }
     return result.handled;
 }
 
@@ -1661,6 +1705,13 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
         guideEditorWidget = std::make_unique<CurveEditorWidget>(true);
         guideEditor = std::make_unique<GuideCurveEditorComponent>(*guideEditorWidget);
         guideEditor->setDelegate(this);
+        guideEditor->setHeatmapActions(
+                [this](const String& guideId, GuideHeatmapAssetPtr asset, uint64_t expectedRevision) {
+                    return setGuideHeatmap(guideId, std::move(asset), expectedRevision);
+                },
+                [this](const String& guideId, uint64_t expectedRevision) {
+                    return clearGuideHeatmap(guideId, expectedRevision);
+                });
         guideEditor->setTitle("Guide Curve");
         addAndMakeVisible(*guideEditor);
     }
@@ -1668,12 +1719,46 @@ void NodeCanvas::openGuideEditor(const String& guideId) {
     expandedNodeId = {};
     editorCoordinator.close();
     expandedGuideId = guideId;
-    guideEditor->setGuideResource(*guide);
+    guideEditor->setGuideResource(
+            *guide,
+            graph.guideHeatmapAsset(guide->heatmapAssetId));
     guideEditor->setBounds(
             GuideCurveEditorComponent::preferredHostBounds(canvasContentBounds()).toNearestInt());
     guideEditor->setVisible(true);
     guideEditor->toFront(false);
     notifyOverlayOcclusionChanged();
+}
+
+bool NodeCanvas::setGuideHeatmap(
+        const String& guideId,
+        GuideHeatmapAssetPtr asset,
+        uint64_t expectedRevision) {
+    const auto result = commands.setGuideHeatmap(
+            guideId,
+            expectedRevision,
+            std::move(asset));
+    if (!result.succeeded()) {
+        return false;
+    }
+    rebindGuideEditor();
+    editStatusMessage = "Guide heatmap loaded";
+    refreshCompiledStateAsync();
+    requestCanvasRepaint();
+    return true;
+}
+
+bool NodeCanvas::clearGuideHeatmap(
+        const String& guideId,
+        uint64_t expectedRevision) {
+    const auto result = commands.clearGuideHeatmap(guideId, expectedRevision);
+    if (!result.succeeded()) {
+        return false;
+    }
+    rebindGuideEditor();
+    editStatusMessage = "Guide heatmap cleared";
+    refreshCompiledStateAsync();
+    requestCanvasRepaint();
+    return true;
 }
 
 void NodeCanvas::closeGuideEditor() {
@@ -1688,6 +1773,20 @@ void NodeCanvas::closeGuideEditor() {
     }
     notifyOverlayOcclusionChanged();
     requestCanvasRepaint();
+}
+
+void NodeCanvas::rebindGuideEditor() {
+    if (guideEditor == nullptr || !guideEditor->isVisible()) {
+        return;
+    }
+    const GuideCurveResource* guide = graph.findGuideCurve(expandedGuideId);
+    if (guide == nullptr) {
+        closeGuideEditor();
+        return;
+    }
+    guideEditor->setGuideResource(
+            *guide,
+            graph.guideHeatmapAsset(guide->heatmapAssetId));
 }
 
 void NodeCanvas::closeCurveEditor() {
@@ -1714,7 +1813,7 @@ bool NodeCanvas::publishCurveState(
         return false;
     }
     const uint64_t durableBaseRevision = guideTransactionBaseRevision.value_or(
-            durableGuide->model != nullptr ? durableGuide->model->revision() : 0);
+            durableGuide->revision);
     const auto result = commands.publishGuideCurveState({
             expandedGuideId,
             durableBaseRevision,
@@ -1736,7 +1835,7 @@ void NodeCanvas::beginCurveTransaction() {
     if (guide == nullptr || guideTransactionBaseRevision.has_value()) {
         return;
     }
-    guideTransactionBaseRevision = guide->model != nullptr ? guide->model->revision() : 0;
+    guideTransactionBaseRevision = guide->revision;
     commands.beginTransientEdit();
 }
 

@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 3,
+    "formatVersion": 4,
     "nodes": [
         {
             "id": "voice",
@@ -95,6 +95,7 @@
         }
     ],
     "guides": [],
+    "guideHeatmaps": [],
     "guideAssignments": [],
     "edges": [
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "saw", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },

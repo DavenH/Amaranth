@@ -13,6 +13,7 @@
 #include <UI/Panels/CurvePanelDrawing.h>
 #include <UI/Panels/Panel2D.h>
 #include <UI/ColorGradient.h>
+#include <UI/Panels/Texture.h>
 #include <Util/Arithmetic.h>
 
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
@@ -415,7 +416,9 @@ public:
     }
 };
 
-class GuideCurvePanel final : public FlatCurvePanelBase {
+class GuideCurvePanel final :
+        public FlatCurvePanelBase
+    ,   public GuideCurvePanelPresentation {
 public:
     GuideCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
@@ -423,12 +426,63 @@ public:
                     kGuidePadding, kGuidePadding, 0.f, true)
         ,   SingletonAccessor(repo, "CycleV2GuideCurvePanel") {}
 
+    void setHeatmapPresentation(Image image, std::vector<float> nextOutput) override {
+        setContentImage(std::move(image));
+        output = std::move(nextOutput);
+        repaint();
+    }
+
+    var automationState() const override {
+        var state = FlatCurvePanelBase::automationState();
+        if (auto* object = state.getDynamicObject()) {
+            object->setProperty("heatmapActive", !contentImage.isNull());
+            object->setProperty("heatmapOutputPointCount", (int) output.size());
+            if (!output.empty()) {
+                object->setProperty("heatmapOutputStart", output.front());
+                object->setProperty("heatmapOutputCentre", output[output.size() / 2]);
+                object->setProperty("heatmapOutputEnd", output.back());
+            }
+        }
+        return state;
+    }
+
     void preDraw() override {
+        if (!contentImage.isNull()) {
+            PanelRenderer* renderer = getPanelRenderer();
+            jassert(renderer != nullptr);
+            contentImageTex->rect = Rectangle<float>::leftTopRightBottom(
+                    sx(kGuidePadding), sy(1.f), sx(1.f - kGuidePadding), sy(0.f));
+            renderer->setCurrentColour(1.f, 1.f, 1.f, 1.f);
+            renderer->drawTexture(contentImageTex);
+        }
         auto canvas = drawingCanvas();
         CurvePanelDrawing::drawGuideBackground(canvas, {
             kGuidePadding, firstControl(), secondControl(), thirdControl()
         });
     }
+
+    void postCurveDraw() override {
+        if (output.size() < 2) {
+            return;
+        }
+        prepareBuffers((int) output.size());
+        xy.x.ramp(kGuidePadding, (1.f - 2.f * kGuidePadding) / (float) (output.size() - 1));
+        Buffer<float>(output.data(), (int) output.size()).copyTo(xy.y);
+
+        PanelRenderer* renderer = getPanelRenderer();
+        jassert(renderer != nullptr);
+        renderer->setCurrentColour(Color(0.f, 0.f, 0.f, 0.95f));
+        renderer->setCurrentLineWidth(6.f);
+        renderer->drawLineStrip(xy, true);
+        renderer->setCurrentColour(Color(0.15f, 0.85f, 1.f, 0.9f));
+        renderer->setCurrentLineWidth(3.f);
+        // The outline draw scales xy in place; reuse those panel coordinates.
+        renderer->drawLineStrip(xy, false);
+        renderer->setCurrentLineWidth(1.f);
+    }
+
+private:
+    std::vector<float> output;
 };
 
 class ImpulseResponseCurvePanel final : public ImpulseResponseCurvePanelContract,

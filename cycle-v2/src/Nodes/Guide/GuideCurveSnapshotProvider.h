@@ -13,7 +13,9 @@ class GuideCurveSnapshotProvider final : public GuideCurveProvider {
 public:
     GuideCurveSnapshotProvider();
 
-    bool addGuide(const GuideCurveResource& resource);
+    bool addGuide(
+            const GuideCurveResource& resource,
+            const GuideHeatmapAsset* heatmap = nullptr);
 
     float getTableValue(
             int guideIndex,

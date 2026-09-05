@@ -33,6 +33,8 @@ public:
     bool deleteNodeForAutomation(const String& nodeId);
     bool deleteEdgeForAutomation(int edgeIndex);
     bool deleteGuideCurveForAutomation(const String& guideId);
+    bool loadGuideHeatmapForAutomation(const String& guideId, const File& file);
+    bool clearGuideHeatmapForAutomation(const String& guideId);
     bool undoForAutomation();
     bool setGuideParameterForAutomation(
             const String& guideId,

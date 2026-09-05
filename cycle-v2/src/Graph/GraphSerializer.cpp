@@ -6,6 +6,7 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <cmath>
 #include <unordered_set>
@@ -330,7 +331,23 @@ var guideToJSON(const GuideCurveResource& guide) {
     result->setProperty("noise", guide.noise);
     result->setProperty("dcOffset", guide.dcOffset);
     result->setProperty("phase", guide.phase);
+    result->setProperty("revision", (int64) guide.revision);
+    if (guide.heatmapAssetId.isNotEmpty()) {
+        result->setProperty("heatmapAssetId", guide.heatmapAssetId);
+    }
     result->setProperty("model", guide.model != nullptr ? guide.model->writeJSON() : var());
+    return var(result.release());
+}
+
+var guideHeatmapToJSON(const GuideHeatmapAsset& asset) {
+    auto result = std::make_unique<DynamicObject>();
+    result->setProperty("id", asset.id());
+    result->setProperty("filename", asset.filename());
+    result->setProperty("mediaType", asset.mediaType());
+    result->setProperty("width", asset.width());
+    result->setProperty("height", asset.height());
+    result->setProperty("data", Base64::toBase64(
+            asset.encodedData().getData(), asset.encodedData().getSize()));
     return var(result.release());
 }
 
@@ -546,6 +563,14 @@ var GraphSerializer::writeJSON(const NodeGraph& graph) const {
     }
     root->setProperty("guides", var(std::move(guides)));
 
+    Array<var> guideHeatmaps;
+    for (const auto& heatmap : graph.getGuideHeatmaps()) {
+        if (heatmap != nullptr) {
+            guideHeatmaps.add(guideHeatmapToJSON(*heatmap));
+        }
+    }
+    root->setProperty("guideHeatmaps", var(std::move(guideHeatmaps)));
+
     Array<var> guideAssignments;
     for (const auto& assignment : graph.getGuideAssignments()) {
         guideAssignments.add(guideAssignmentToJSON(assignment));
@@ -583,11 +608,13 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const auto* encodedEdges = root->getProperty("edges").getArray();
     const auto* encodedProbes = root->getProperty("probes").getArray();
     const auto* encodedGuides = root->getProperty("guides").getArray();
+    const auto* encodedGuideHeatmaps = root->getProperty("guideHeatmaps").getArray();
     const auto* encodedGuideAssignments = root->getProperty("guideAssignments").getArray();
     if (encodedNodes == nullptr || encodedEdges == nullptr || encodedProbes == nullptr
-            || encodedGuides == nullptr || encodedGuideAssignments == nullptr) {
+            || encodedGuides == nullptr || encodedGuideHeatmaps == nullptr
+            || encodedGuideAssignments == nullptr) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema,
-                "Graph nodes, edges, probes, guides, and guide assignments must be arrays" });
+                "Graph nodes, edges, probes, guides, heatmaps, and guide assignments must be arrays" });
         return result;
     }
 
@@ -749,6 +776,41 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         }
     }
 
+    std::unordered_set<String, StringHash> heatmapIds;
+    for (const auto& encodedValue : *encodedGuideHeatmaps) {
+        const auto* encoded = encodedValue.getDynamicObject();
+        String id;
+        String filename;
+        String mediaType;
+        String base64;
+        if (encoded == nullptr
+                || !readRequiredString(*encoded, "id", id)
+                || !readRequiredString(*encoded, "filename", filename)
+                || !readRequiredString(*encoded, "mediaType", mediaType)
+                || !readRequiredString(*encoded, "data", base64)
+                || !heatmapIds.emplace(id).second) {
+            result.issues.push_back({ GraphLoadCode::DuplicateIdentity,
+                    "Guide heatmap identity and encoded data must be unique and non-empty" });
+            continue;
+        }
+        MemoryOutputStream decoded;
+        String error;
+        if (!Base64::convertFromBase64(decoded, base64)) {
+            result.issues.push_back({ GraphLoadCode::InvalidModel,
+                    "Guide heatmap data is not valid Base64" });
+            continue;
+        }
+        const GuideHeatmapAssetPtr asset = GuideHeatmapAsset::decode(
+                decoded.getMemoryBlock(), filename, error);
+        if (asset == nullptr || asset->id() != id || asset->mediaType() != mediaType
+                || asset->width() != (int) encoded->getProperty("width")
+                || asset->height() != (int) encoded->getProperty("height")
+                || !result.graph.addGuideHeatmap(asset)) {
+            result.issues.push_back({ GraphLoadCode::InvalidModel,
+                    "Invalid Guide heatmap asset: " + error });
+        }
+    }
+
     std::unordered_set<String, StringHash> guideIds;
     std::unordered_set<String, StringHash> guideLabels;
     for (const auto& encodedValue : *encodedGuides) {
@@ -780,6 +842,17 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         guide.noise = (float) noise;
         guide.dcOffset = (float) dcOffset;
         guide.phase = (float) phase;
+        const var encodedRevision = encoded->getProperty("revision");
+        const int64 guideRevision = (int64) encodedRevision;
+        guide.heatmapAssetId = encoded->getProperty("heatmapAssetId").toString();
+        if (encodedRevision.isVoid() || guideRevision < 1
+                || (guide.heatmapAssetId.isNotEmpty()
+                        && result.graph.findGuideHeatmap(guide.heatmapAssetId) == nullptr)) {
+            result.issues.push_back({ GraphLoadCode::InvalidModel,
+                    "Guide revision and heatmap reference must be valid" });
+            continue;
+        }
+        guide.revision = (uint64_t) guideRevision;
         String error;
         guide.model = readGuideCurveModelJSON(encoded->getProperty("model"), error);
         if (guide.model == nullptr || !result.graph.addGuideCurve(std::move(guide))) {

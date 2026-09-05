@@ -100,6 +100,16 @@ bool NodeWorkspace::deleteGuideCurveForAutomation(const String& guideId) {
     return canvas.deleteGuideCurveForAutomation(guideId);
 }
 
+bool NodeWorkspace::loadGuideHeatmapForAutomation(
+        const String& guideId,
+        const File& file) {
+    return canvas.loadGuideHeatmapForAutomation(guideId, file);
+}
+
+bool NodeWorkspace::clearGuideHeatmapForAutomation(const String& guideId) {
+    return canvas.clearGuideHeatmapForAutomation(guideId);
+}
+
 bool NodeWorkspace::undoForAutomation() {
     return canvas.undoForAutomation();
 }

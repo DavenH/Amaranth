@@ -28,7 +28,9 @@ public:
     void zoomImpulseResponseToAttack();
     void resetImpulseResponseZoom();
     void syncFromNode(const Node& node);
-    void syncFromGuideResource(const GuideCurveResource& guide);
+    void syncFromGuideResource(
+            const GuideCurveResource& guide,
+            const GuideHeatmapAssetPtr& heatmap = nullptr);
     void renderExpandedPanelOpenGL(
             const Node& node,
             Rectangle<float> bounds,
