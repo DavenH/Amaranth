@@ -21,7 +21,7 @@ and prepared data. PNG and JPEG inputs are embedded in the graph; external file
 paths, drag-and-drop, channel selection, aspect controls, and automatic ridge
 following are deferred.
 
-The displayed scalar image uses a 1.6x brightness gain without changing the
+The displayed scalar image uses a 3.2x brightness gain without changing the
 sampled intensity plane. Native previews prepare 512 output points and render
 the derived trace at 3 px so image detail and the resulting signal remain
 legible at expanded-editor scale.

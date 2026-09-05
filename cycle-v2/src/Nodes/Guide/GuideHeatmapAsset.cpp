@@ -8,7 +8,7 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kDisplayGain = 1.6f;
+constexpr float kDisplayGain = 3.2f;
 
 constexpr std::array<uint32_t, 64> kRoundConstants {
     0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
