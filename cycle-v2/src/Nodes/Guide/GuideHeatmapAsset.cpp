@@ -8,6 +8,8 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr float kDisplayGain = 1.6f;
+
 constexpr std::array<uint32_t, 64> kRoundConstants {
     0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu, 0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u,
     0xd807aa98u, 0x12835b01u, 0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u, 0xc19bf174u,
@@ -177,7 +179,13 @@ std::shared_ptr<const GuideHeatmapAsset> GuideHeatmapAsset::decode(
             const juce::uint8 value = (juce::uint8) juce::roundToInt(
                     luminance * colour.getFloatAlpha());
             intensity[(size_t) y * (size_t) width + (size_t) x] = value;
-            scalarPixels.setPixelColour(x, y, juce::Colour(value, value, value));
+            const juce::uint8 displayValue = (juce::uint8) juce::jmin(
+                    255,
+                    juce::roundToInt(kDisplayGain * (float) value));
+            scalarPixels.setPixelColour(
+                    x,
+                    y,
+                    juce::Colour(displayValue, displayValue, displayValue));
         }
     }
     error.clear();

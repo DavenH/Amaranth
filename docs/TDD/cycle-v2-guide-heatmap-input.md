@@ -21,6 +21,11 @@ and prepared data. PNG and JPEG inputs are embedded in the graph; external file
 paths, drag-and-drop, channel selection, aspect controls, and automatic ridge
 following are deferred.
 
+The displayed scalar image uses a 1.6x brightness gain without changing the
+sampled intensity plane. Native previews prepare 512 output points and render
+the derived trace at 3 px so image detail and the resulting signal remain
+legible at expanded-editor scale.
+
 ## Authoritative Implementations And Boundary
 
 - `FlatCurveModel`, `FlatCurvePreparation`, and the mature curve panel continue
@@ -111,7 +116,7 @@ one consolidated semantic edit.
 - The expanded editor loads on a worker thread, applies results through
   `GraphCommandDispatcher`, and exposes clear/status controls. Shelf previews,
   undo/redo, graph reload, and editor rebinding consume the same graph asset.
-- Focused verification passed: 98 heatmap assertions in 7 cases, 144 Guide
+- Focused verification passed: 99 heatmap assertions in 7 cases, 144 Guide
   assertions in 10 cases, including two live image-backed path publications,
   downstream refresh, commit, and one-step undo.
 - `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
@@ -124,3 +129,15 @@ one consolidated semantic edit.
   is `/private/tmp/cycle-v2-guide-heatmap-logs-final.txt`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
+
+## Deferred Post-filter Contract
+
+The existing IR modeller prefilter is not suitable for suppressing dominant
+high-frequency heatmap detail: `buildIrPrefilterLevels` removes low FFT bins,
+which increases the relative contribution of high frequencies. Reusing it
+would therefore violate the requested behavior.
+
+A Guide post-filter should be designed as a separately controlled low-pass or
+anti-aliasing stage over the prepared 8192-sample table. Its cutoff mapping,
+default value, phase behavior, and placement relative to Guide noise, offset,
+phase, and downsampling need an explicit product contract before it is added.

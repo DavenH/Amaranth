@@ -442,7 +442,7 @@ public:
         PanelRenderer* renderer = getPanelRenderer();
         jassert(renderer != nullptr);
         renderer->setCurrentColour(Color(0.15f, 0.85f, 1.f, 0.9f));
-        renderer->setCurrentLineWidth(1.5f);
+        renderer->setCurrentLineWidth(3.f);
         renderer->drawLineStrip(xy, true);
         renderer->setCurrentLineWidth(1.f);
     }

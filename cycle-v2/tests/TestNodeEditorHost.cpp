@@ -804,7 +804,7 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
     REQUIRE(editorState.getProperty("heatmapFilename", {}).toString() == "checker.png");
     const var panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("heatmapActive", {}));
-    REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 256);
+    REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 512);
     const double initialOutput = panelState.getProperty("heatmapOutputStart", {});
     REQUIRE(widget.setSelectedVertexParameter("vertex.amp", 0.1f));
     REQUIRE(widget.modelPublication() != nullptr);

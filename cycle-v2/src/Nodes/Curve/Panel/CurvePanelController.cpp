@@ -322,7 +322,7 @@ private:
             return;
         }
 
-        constexpr int resolution = 256;
+        constexpr int resolution = 512;
         std::vector<float> path(resolution);
         std::vector<float> output(resolution);
         const bool prepared = GuideCurvePreparation::prepare(
