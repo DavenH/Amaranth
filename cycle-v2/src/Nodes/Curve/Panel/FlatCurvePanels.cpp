@@ -461,11 +461,11 @@ public:
                     (int) (magnitude * (float) (gradientColours.size() - 1)));
             spectrumColours.push_back(gradientColours[(size_t) index]);
         }
-        xBuffer.ensureSize((int) analysis->filteredImpulse.size());
+        xBuffer.ensureSize((int) analysis->filteredDisplayImpulse.size());
         yBuffer.ensureSize(jmax(
-                (int) analysis->filteredImpulse.size(),
+                (int) analysis->filteredDisplayImpulse.size(),
                 (int) analysis->frequencyRows.size()));
-        spliceBuffer.ensureSize((int) analysis->filteredImpulse.size() * 2);
+        spliceBuffer.ensureSize((int) analysis->filteredDisplayImpulse.size() * 2);
     }
 
     void preDraw() override {
@@ -488,15 +488,18 @@ public:
                     spectrumColours);
         }
 
-        const int impulseSize = (int) analysis->filteredImpulse.size();
+        const int impulseSize = (int) analysis->filteredDisplayImpulse.size();
         if (impulseSize > 0) {
             prepareBuffers(impulseSize);
-            VecOps::copy(analysis->filteredImpulse.data(), xy.y.get(), impulseSize);
+            VecOps::copy(
+                    analysis->filteredDisplayImpulse.data(), xy.y.get(), impulseSize);
             xy.y.mul(CycleDsp::irPostGain(secondControl()));
             Arithmetic::unpolarize(xy.y);
             xy.x.ramp(
                     CycleDsp::irDomainPadding,
-                    (1.f - CycleDsp::irDomainPadding) / (float) impulseSize);
+                    impulseSize > 1
+                            ? (1.f - CycleDsp::irDomainPadding) / (float) (impulseSize - 1)
+                            : 0.f);
             gfx->enableSmoothing();
             gfx->setCurrentLineWidth(1.5f);
             gfx->setCurrentColour(1.f, 0.62f, 0.7f, 0.75f);
@@ -532,16 +535,23 @@ public:
                     analysis != nullptr ? (int) analysis->normalizedMagnitudes.size() : 0);
             object->setProperty(
                     "irFilteredImpulsePointCount",
-                    analysis != nullptr ? (int) analysis->filteredImpulse.size() : 0);
+                    analysis != nullptr
+                            ? (int) analysis->filteredDisplayImpulse.size()
+                            : 0);
             object->setProperty(
                     "irFilteredImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredDisplayImpulse.empty()
+                            ? analysis->filteredDisplayImpulse.front()
+                            : 0.f);
+            object->setProperty(
+                    "irAudioImpulseFirstSample",
                     analysis != nullptr && !analysis->filteredImpulse.empty()
                             ? analysis->filteredImpulse.front()
                             : 0.f);
             object->setProperty(
                     "irDisplayedImpulseFirstSample",
-                    analysis != nullptr && !analysis->filteredImpulse.empty()
-                            ? analysis->filteredImpulse.front()
+                    analysis != nullptr && !analysis->filteredDisplayImpulse.empty()
+                            ? analysis->filteredDisplayImpulse.front()
                                     * CycleDsp::irPostGain(secondControl())
                             : 0.f);
             object->setProperty(

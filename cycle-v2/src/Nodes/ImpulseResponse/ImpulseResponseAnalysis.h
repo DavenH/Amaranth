@@ -9,10 +9,12 @@ namespace CycleV2 {
 
 struct ImpulseResponseSource {
     std::vector<float> rawImpulse;
+    std::vector<float> displayImpulse;
 };
 
 struct ImpulseResponseAnalysis {
     std::vector<float> filteredImpulse;
+    std::vector<float> filteredDisplayImpulse;
     std::vector<float> normalizedMagnitudes;
     std::vector<float> frequencyRows;
 };

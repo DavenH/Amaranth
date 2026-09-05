@@ -82,7 +82,9 @@ filter coefficients.
 5. Capture default, zero-cutoff, raised-cutoff, and raised-Post production
    states. Compare the sampled trace against the editable curve at zero cutoff
    and record any remaining sampling/display mismatch before changing the
-   mature rasterization boundary.
+   mature rasterization boundary. The follow-up
+   `cycle-v2-ir-display-identity.md` restores Cycle 1's distinct graphic sample
+   view after production evidence exposed audio-downsampler ringing.
 
 ## Negative Boundaries
 
@@ -129,6 +131,10 @@ filter coefficients.
   waveform RMS identity below `0.03`, live High Pass analysis with source
   reuse, cheap Post Gain scaling, deferred Size sampling, and the `1 kHz`
   physical midpoint.
+- The follow-up `cycle-v2-ir-display-identity.md` tightens sampled/editor RMS
+  identity below `0.005` and guards visible topology. Audio and display now
+  share model, sampler, domain, controls, and filtering, while retaining Cycle
+  1's intentionally distinct final sampling paths.
 - Production fixtures passed for the cached live-control sequence and the
   zero-cutoff identity state. Screenshots were inspected at
   `/private/tmp/cycle-v2-ir-live-visuals.png` and

@@ -394,14 +394,15 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
-double irSampledCurveIdentityRootMeanSquare(
-        const ImpulseResponseSource& source,
+std::vector<double> irEditableSamplesAt(
+        size_t sampleCount,
         const Array<var>& waveformPoints) {
-    double squaredError = 0.0;
+    std::vector<double> result;
+    result.reserve(sampleCount);
     int waveformIndex = 0;
-    for (size_t index = 0; index < source.rawImpulse.size(); ++index) {
+    for (size_t index = 0; index < sampleCount; ++index) {
         const double proportion = static_cast<double>(index)
-                / static_cast<double>(source.rawImpulse.size() - 1);
+                / static_cast<double>(sampleCount - 1);
         const double targetX = CycleDsp::irDomainPadding
                 + (1.0 - CycleDsp::irDomainPadding) * proportion;
         while (waveformIndex + 1 < waveformPoints.size()) {
@@ -416,12 +417,42 @@ double irSampledCurveIdentityRootMeanSquare(
             }
             ++waveformIndex;
         }
-        const double editableValue = waveformPoints[waveformIndex].getProperty("y", {});
-        const double sampledValue = source.rawImpulse[index] * 0.5 + 0.5;
-        const double error = editableValue - sampledValue;
+        result.push_back(waveformPoints[waveformIndex].getProperty("y", {}));
+    }
+    return result;
+}
+
+double irSampledCurveIdentityRootMeanSquare(
+        const std::vector<float>& samples,
+        const std::vector<double>& editableSamples) {
+    double squaredError = 0.0;
+    for (size_t index = 0; index < samples.size(); ++index) {
+        const double sampledValue = samples[index] * 0.5 + 0.5;
+        const double error = editableSamples[index] - sampledValue;
         squaredError += error * error;
     }
-    return std::sqrt(squaredError / static_cast<double>(source.rawImpulse.size()));
+    return std::sqrt(squaredError / static_cast<double>(samples.size()));
+}
+
+template<typename Sample>
+int significantTurningPointCount(
+        const std::vector<Sample>& samples,
+        double minimumDelta) {
+    int previousDirection = 0;
+    int result = 0;
+    for (size_t index = 1; index < samples.size(); ++index) {
+        const double delta = static_cast<double>(samples[index])
+                - static_cast<double>(samples[index - 1]);
+        const int direction = delta > minimumDelta ? 1 : delta < -minimumDelta ? -1 : 0;
+        if (direction == 0) {
+            continue;
+        }
+        if (previousDirection != 0 && direction != previousDirection) {
+            ++result;
+        }
+        previousDirection = direction;
+    }
+    return result;
 }
 
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
@@ -1360,13 +1391,24 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
             == 1024);
     REQUIRE(panelState.getProperty("irBackdropRenderer", {}).toString() == "OpenGL");
     const auto modelledSource = prepareImpulseResponseSource(ir.parameters, ir.model);
+    const auto modelledAnalysis = prepareImpulseResponseAnalysis(ir.parameters, ir.model);
     const Array<var>* waveformPoints = panelState.getProperty("waveformPoints", {}).getArray();
     REQUIRE(modelledSource.has_value());
+    REQUIRE(modelledAnalysis.has_value());
     REQUIRE(waveformPoints != nullptr);
     REQUIRE_FALSE(waveformPoints->isEmpty());
-    REQUIRE(irSampledCurveIdentityRootMeanSquare(*modelledSource, *waveformPoints) < 0.03);
+    const auto editableSamples = irEditableSamplesAt(
+            modelledSource->displayImpulse.size(), *waveformPoints);
+    REQUIRE(irSampledCurveIdentityRootMeanSquare(
+            modelledSource->displayImpulse, editableSamples) < 0.005);
+    REQUIRE(significantTurningPointCount(modelledSource->displayImpulse, 0.002)
+            <= significantTurningPointCount(editableSamples, 0.001));
     const float modelledFirstSample = panelState.getProperty(
             "irFilteredImpulseFirstSample", {});
+    REQUIRE(modelledFirstSample
+            == Catch::Approx(modelledAnalysis->filteredDisplayImpulse.front()));
+    REQUIRE(static_cast<float>(panelState.getProperty("irAudioImpulseFirstSample", {}))
+            == Catch::Approx(modelledAnalysis->filteredImpulse.front()));
     const Array<var>* majorGridLines = panelState
             .getProperty("verticalMajorGridLines", {})
             .getArray();

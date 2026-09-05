@@ -760,15 +760,49 @@ TEST_CASE("IR analysis reuses one sampled source across live high-pass changes",
             *source, 0.8f);
 
     REQUIRE(zeroCutoff.filteredImpulse.size() == source->rawImpulse.size());
+    REQUIRE(zeroCutoff.filteredDisplayImpulse.size() == source->displayImpulse.size());
     float maximumIdentityError = 0.f;
+    float maximumDisplayIdentityError = 0.f;
     for (size_t index = 0; index < source->rawImpulse.size(); ++index) {
         maximumIdentityError = jmax(
                 maximumIdentityError,
                 std::abs(zeroCutoff.filteredImpulse[index] - source->rawImpulse[index]));
+        maximumDisplayIdentityError = jmax(
+                maximumDisplayIdentityError,
+                std::abs(zeroCutoff.filteredDisplayImpulse[index]
+                        - source->displayImpulse[index]));
     }
     REQUIRE(maximumIdentityError < 1.0e-5f);
+    REQUIRE(maximumDisplayIdentityError < 1.0e-5f);
     REQUIRE(raisedCutoff.filteredImpulse != zeroCutoff.filteredImpulse);
+    REQUIRE(raisedCutoff.filteredDisplayImpulse
+            != zeroCutoff.filteredDisplayImpulse);
     REQUIRE(source->rawImpulse.front() == 1.f);
+}
+
+TEST_CASE("IR modelled source retains Cycle 1 audio and display sample views",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    auto parameters = ir.parameters;
+    for (auto& parameter : parameters) {
+        if (parameter.id == "size") {
+            parameter.value = "0";
+        } else if (parameter.id == "highPass") {
+            parameter.value = "0";
+        }
+    }
+
+    const auto source = prepareImpulseResponseSource(parameters, ir.model);
+    REQUIRE(source.has_value());
+    const auto analysis = prepareImpulseResponseAnalysis(*source, 0.f);
+    const auto audioConfiguration = IrSignalProcessor::buildConfiguration(
+            parameters, ir.model);
+
+    REQUIRE(source->displayImpulse.size() == source->rawImpulse.size());
+    REQUIRE(source->displayImpulse != source->rawImpulse);
+    REQUIRE(audioConfiguration != nullptr);
+    REQUIRE(audioConfiguration->impulse == analysis.filteredImpulse);
+    REQUIRE(audioConfiguration->impulse != analysis.filteredDisplayImpulse);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",

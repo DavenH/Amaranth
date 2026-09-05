@@ -5,7 +5,7 @@
 Address correctness and containment before the broader editor rearrangement.
 The first implementation train should be:
 
-1. **Reopened — IR visual/audio identity and live high-pass response.** This combines
+1. **Done — IR visual/audio identity and live high-pass response.** This combines
    the incorrect cutoff range/mapping, asynchronous visual response, missing
    post gain, and failure of the zero-cutoff sampled trace to overlay the
    editable curve. These symptoms share one preparation and invalidation
@@ -50,18 +50,23 @@ Acceptance:
   with shared numerical tests before altering the range.
 - A multi-update High Pass drag changes spectrum and impulse visuals on every
   update without synchronously rebuilding unrelated state.
-- The visual trace includes Post gain and uses the same prepared samples and
-  domain mapping as convolution.
+- The visual trace includes Post gain and shares convolution's prepared model,
+  sampler, controls, filter, and domain. It retains Cycle 1's direct graphic
+  sampling rather than displaying the ringing introduced by the distinct
+  oversampled audio-kernel path.
 - With High Pass at 0 Hz and unity Post gain, the sampled trace nearly overlays
   the editable curve within a documented rasterization tolerance, without
   introducing extrema or inflection points absent from the editable curve.
 
-Current status: reopened 2026-09-04 from production screenshot evidence. The
-2026-08-31 implementation in `cycle-v2-ir-live-visual-contract.md` aligned the
-stored/audio mapping, live invalidation, and Post Gain presentation, but its
-numerical identity fixture does not catch the visible second inflection at a
-0 Hz cutoff. The next slice must characterize the displayed editable curve and
-sampled trace from the same production state before changing either pipeline.
+Current status: implemented 2026-09-05 in
+`cycle-v2-ir-display-identity.md`. Cycle 1 uses an oversampled/downsampled audio
+kernel and a directly sampled graphic impulse from the same curve rasterizer.
+Cycle V2 now preserves that split, filters both through the shared high-pass
+implementation, uses the graphic result for the OpenGL trace/spectrum, and
+keeps the audio result for convolution. Focused tests guard exact zero-cutoff
+identity, audio/display ownership, tight curve agreement, and topology. The
+production 0 Hz/0 dB capture no longer shows the audio downsampler's ringing as
+a second visual inflection.
 
 ## P0: Trimesh editor link buttons do not toggle
 

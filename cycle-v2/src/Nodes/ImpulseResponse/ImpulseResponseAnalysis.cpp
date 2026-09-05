@@ -49,10 +49,12 @@ std::optional<ImpulseResponseSource> prepareImpulseResponseSource(
 
     ImpulseResponseSource result;
     result.rawImpulse.resize((size_t) impulseLength);
+    result.displayImpulse.resize((size_t) impulseLength);
     Buffer<float> rawImpulseBuffer(result.rawImpulse.data(), impulseLength);
     if (directResource != nullptr) {
         const int copyCount = jmin(impulseLength, (int) directResource->samples.size());
         VecOps::copy(directResource->samples.data(), rawImpulseBuffer.get(), copyCount);
+        result.displayImpulse = result.rawImpulse;
     } else {
         std::vector<float> oversampledImpulse((size_t) impulseLength * 2);
         Oversampler oversampler(8);
@@ -67,8 +69,15 @@ std::optional<ImpulseResponseSource> prepareImpulseResponseSource(
         if (!curve.prepare()) {
             return {};
         }
+        const auto sampler = curve.sampler();
+        const double interval = (1.0 - CycleDsp::irDomainPadding)
+                / (double) (impulseLength - 1);
+        (void) sampler.sampleWithInterval(
+                { result.displayImpulse.data(), impulseLength },
+                interval,
+                (double) CycleDsp::irDomainPadding);
         CycleDsp::rasterizeIrImpulse(
-                curve.sampler(),
+                sampler,
                 rawImpulseBuffer,
                 oversampler,
                 CycleDsp::irDomainPadding);
@@ -86,6 +95,7 @@ ImpulseResponseAnalysis prepareImpulseResponseAnalysis(
 
     ImpulseResponseAnalysis result;
     result.filteredImpulse.resize((size_t) impulseLength);
+    result.filteredDisplayImpulse.resize((size_t) impulseLength);
     Transform transform;
     transform.allocate(impulseLength, Transform::DivFwdByN, true);
     Buffer<float> levels(prefilterLevels.data(), (int) prefilterLevels.size());
@@ -93,6 +103,12 @@ ImpulseResponseAnalysis prepareImpulseResponseAnalysis(
     CycleDsp::applyIrFrequencyPrefilter(
             rawImpulseBuffer,
             { result.filteredImpulse.data(), (int) result.filteredImpulse.size() },
+            levels,
+            transform);
+    CycleDsp::applyIrFrequencyPrefilter(
+            { const_cast<float*>(source.displayImpulse.data()), impulseLength },
+            { result.filteredDisplayImpulse.data(),
+                    (int) result.filteredDisplayImpulse.size() },
             levels,
             transform);
 

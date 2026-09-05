@@ -21,7 +21,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
-      "equals": 2
+      "equals": 1
     },
     {
       "command": "setNodeParameter",
@@ -40,7 +40,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
-      "equals": 3
+      "equals": 2
     },
     {
       "command": "setNodeParameter",
@@ -59,7 +59,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.irAnalysisRevision",
-      "equals": 3
+      "equals": 2
     },
     {
       "command": "assertState",
