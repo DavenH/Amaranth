@@ -2,7 +2,9 @@
 
 ## Status
 
-Completed 2026-07-16.
+Completed 2026-09-05. Curve-preview snapshot capture now rejects partial and
+off-screen framebuffer bounds without validating the position-independent
+preview cache.
 
 ## Problem
 
@@ -34,6 +36,10 @@ Painting visible nodes and cables remains `O(Vvisible + Evisible)`.
 - Multiple invalidations in one command cause one repaint and one required bake.
 - Separate UI frames remain separately visible.
 - Hidden/offscreen panels do not bake textures until made visible.
+- A curve preview snapshot is publishable and cacheable only when its complete
+  device-pixel rectangle lies inside the active OpenGL viewport. A clipped or
+  off-screen render may never become a position-independent cache hit after the
+  canvas pans.
 
 ## Completion Criteria
 
@@ -66,3 +72,7 @@ Painting visible nodes and cables remains `O(Vvisible + Evisible)`.
 - The focused Waveshaper editor fixture completed both commands and its macOS
   OS capture showed the hosted OpenGL editor and surrounding canvas correctly
   composited (`/private/tmp/cycle-v2-invalidation-os.png`).
+- `TestNodeEditorHost.cpp` verifies full framebuffer residency at every edge and
+  at 2x scale. The off-screen pan fixture passes and its final canvas capture
+  shows a clean Waveshaper preview
+  (`/private/tmp/cycle-v2-curve-preview-offscreen-pan.png`).

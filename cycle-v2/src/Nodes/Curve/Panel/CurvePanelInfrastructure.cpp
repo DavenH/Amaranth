@@ -12,6 +12,28 @@ using namespace gl;
 
 namespace CycleV2 {
 
+std::optional<Rectangle<int>> curvePanelFramebufferReadBounds(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        Rectangle<int> viewport) {
+    if (bounds.isEmpty() || scaleFactor <= 0.f || viewport.isEmpty()) {
+        return std::nullopt;
+    }
+
+    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
+    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
+    const Rectangle<int> readBounds {
+            viewport.getX() + roundToInt(bounds.getX() * scaleFactor),
+            viewport.getBottom() - roundToInt(bounds.getBottom() * scaleFactor),
+            width,
+            height
+    };
+    if (!viewport.contains(readBounds)) {
+        return std::nullopt;
+    }
+    return readBounds;
+}
+
 bool CurvePanelPreviewRenderCache::Key::operator==(const Key& other) const {
     return width == other.width
             && height == other.height
@@ -169,8 +191,10 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
 
     Image nextImage;
     bool hasVisibleContent {};
-    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
-    expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
+    if (captureRenderedPanelImage(
+            bounds, scaleFactor, nextImage, hasVisibleContent)) {
+        expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
+    }
 
     invalidation.request(
             CurvePanelInvalidation::HostSnapshot
@@ -198,12 +222,14 @@ void CurvePanelHost::renderPreview(
         return;
     }
 
-    renderPreviewUncached(bounds, scaleFactor, preserveInteractiveZoom);
+    if (!renderPreviewUncached(bounds, scaleFactor, preserveInteractiveZoom)) {
+        return;
+    }
     renderKey.invalidationGeneration = previewInvalidationGeneration.load();
     previewRenderCache.didRender(renderKey);
 }
 
-void CurvePanelHost::renderPreviewUncached(
+bool CurvePanelHost::renderPreviewUncached(
         Rectangle<float> bounds,
         float scaleFactor,
         bool preserveInteractiveZoom) {
@@ -233,8 +259,12 @@ void CurvePanelHost::renderPreviewUncached(
 
     Image nextImage;
     bool hasVisibleContent {};
-    captureRenderedPanelImage(bounds, scaleFactor, nextImage, hasVisibleContent);
+    if (!captureRenderedPanelImage(
+            bounds, scaleFactor, nextImage, hasVisibleContent)) {
+        return false;
+    }
     previewSnapshot.publish(std::move(nextImage), hasVisibleContent);
+    return true;
 }
 
 bool CurvePanelHost::paintExpandedSnapshot(Graphics& graphics, Rectangle<float> bounds) const {
@@ -285,24 +315,36 @@ void CurvePanelHost::initialiseSharedGlResources() {
     sharedGlResourcesInitialised = true;
 }
 
-void CurvePanelHost::captureRenderedPanelImage(
+bool CurvePanelHost::captureRenderedPanelImage(
         Rectangle<float> bounds,
         float scaleFactor,
         Image& destination,
         bool& hasVisibleContent) const {
-    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
-    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
-    const int sourceX = roundToInt(bounds.getX() * scaleFactor);
     GLint viewport[4] {};
     glGetIntegerv(GL_VIEWPORT, viewport);
-    const int sourceY = jmax(
-            0,
-            viewport[1] + viewport[3] - roundToInt(bounds.getBottom() * scaleFactor));
+    const auto readBounds = curvePanelFramebufferReadBounds(
+            bounds,
+            scaleFactor,
+            { viewport[0], viewport[1], viewport[2], viewport[3] });
+    if (!readBounds.has_value()) {
+        destination = {};
+        hasVisibleContent = false;
+        return false;
+    }
+    const int width = readBounds->getWidth();
+    const int height = readBounds->getHeight();
     HeapBlock<uint8> pixels(width * height * 4);
     glFlush();
     glReadBuffer(GL_BACK);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(sourceX, sourceY, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+    glReadPixels(
+            readBounds->getX(),
+            readBounds->getY(),
+            width,
+            height,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            pixels.get());
 
     Image nextImage(Image::RGB, width, height, true);
     Image::BitmapData bitmap(nextImage, Image::BitmapData::writeOnly);
@@ -317,6 +359,7 @@ void CurvePanelHost::captureRenderedPanelImage(
     }
     destination = nextImage;
     hasVisibleContent = nextHasVisibleContent;
+    return true;
 }
 
 CurvePanelPreviewRenderCache::Key CurvePanelHost::previewRenderKey(

@@ -49,6 +49,30 @@ public:
     ~CurveTableScope() { Curve::deleteTable(); }
 };
 
+TEST_CASE("Curve snapshot capture requires full framebuffer residency",
+        "[cycle-v2][node-editor-host][performance]") {
+    const Rectangle<int> viewport { 0, 0, 800, 600 };
+    const auto visible = curvePanelFramebufferReadBounds(
+            { 100.f, 80.f, 220.f, 140.f }, 1.f, viewport);
+    REQUIRE(visible.has_value());
+    REQUIRE(*visible == Rectangle<int>(100, 380, 220, 140));
+
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { -1.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 700.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 100.f, -1.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 100.f, 540.f, 220.f, 140.f }, 1.f, viewport).has_value());
+
+    const Rectangle<int> retinaViewport { 10, 20, 1600, 1200 };
+    const auto retina = curvePanelFramebufferReadBounds(
+            { 100.f, 80.f, 220.f, 140.f }, 2.f, retinaViewport);
+    REQUIRE(retina.has_value());
+    REQUIRE(*retina == Rectangle<int>(210, 780, 440, 280));
+}
+
 TEST_CASE("Curve preview snapshots are reused until a rendering dependency changes",
         "[cycle-v2][node-editor-host][performance]") {
     CurvePanelPreviewRenderCache cache;

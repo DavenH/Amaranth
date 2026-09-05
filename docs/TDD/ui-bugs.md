@@ -1,5 +1,33 @@
 # UI Bug Notes
 
+## P0: Partially off-screen curve previews bake torn snapshots
+
+Context:
+
+- The shared canvas scissors a curve preview to the visible framebuffer, but
+  snapshot capture reads the preview's complete nominal bounds.
+- A partially or fully off-screen Waveshaper can therefore cache undefined or
+  unrelated framebuffer pixels. Because preview cache identity is independent
+  of canvas position, panning the node onscreen reuses the torn image.
+
+Acceptance:
+
+- Snapshot readback and cache publication require the complete device-pixel
+  preview bounds to be resident in the active viewport.
+- Partial/off-screen attempts do not become cache hits; the preview renders and
+  publishes once it is fully visible.
+- A focused canvas pan fixture reproduces the off-screen-to-visible sequence
+  without torn, striped, or stale preview content.
+
+Resolved 2026-09-05:
+
+- `CurvePanelHost` now publishes a snapshot and validates its render-cache key
+  only after the complete framebuffer read rectangle passes viewport bounds.
+- `TestNodeEditorHost.cpp` covers every clipped edge plus scaled framebuffer
+  coordinates.
+- `cycle-v2-agent-curve-preview-offscreen-pan.json` moves a dirty Waveshaper
+  partially off-screen, pans it fully into view, and captures the clean result.
+
 ## Resolved: Guide grid spacing and image-backed margin flicker
 
 Context:
