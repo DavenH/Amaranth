@@ -104,6 +104,7 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) 
                     "phase",
                     "Random phase range. Shift-drag for fine adjustment; double-click to reset."
             } }) {
+        setup.control->setCompactLayout(true);
         setup.control->slider.setRange(0.0, 1.0, 0.00001);
         setup.control->slider.setComponentID("guideEditor." + String(setup.id));
         setup.control->value.setComponentID("guideEditor." + String(setup.id) + ".value");
@@ -250,7 +251,7 @@ void GuideCurveEditorComponent::layoutEditor() {
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
     for (auto* slider : { &impl->noise, &impl->dcOffset, &impl->phase }) {
         slider->setBounds(
-                bounds.removeFromTop(PropertyControlMetrics::rowHeight),
+                bounds.removeFromTop(PropertyControlMetrics::compactRowHeight),
                 PropertyControlMetrics::labelWidth,
                 kSliderValueGap,
                 kSliderValueWidth);

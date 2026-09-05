@@ -111,7 +111,9 @@ one consolidated semantic edit.
   rail at 336 px so the added horizontal space belongs to the editable Guide
   canvas.
 - Preserve the expanded editor's established 336 px property rail and shared
-  precision-slider rows; image support must not restore narrow tracks or
+  precision-slider rows. Guide parameters use the same compact row as IR,
+  Waveshaper, Delay, Reverb, and EQ: label and value share a heading above a
+  full-width track. Image support must not restore narrow tracks or
   slider-owned value boxes.
 - In the Guide rail, reserve 48 px for each value readout and 4 px between the
   slider and readout. The compact readout must remain editable with its unit
@@ -147,17 +149,17 @@ one consolidated semantic edit.
 - The merge retains the branch's IR/audio-resource behavior alongside the
   image-backed Guide behavior. Content identity delegates SHA-256 calculation
   to JUCE's cryptography module rather than maintaining a local implementation.
-- Focused post-layout verification passed: 69 Guide editor assertions in 3
+- Focused post-layout verification passed: 72 Guide editor assertions in 3
   cases, 66 heatmap assertions in 5 cases, 8 serialization assertions in 2
   cases, and 41 audio-resource assertions in 3 cases.
 - `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
-  run completed with 11,281 of 11,282 assertions passing; its sole failure is
+  run completed with 11,284 of 11,285 assertions passing; its sole failure is
   the pre-existing hit-router copy mismatch recorded in `ui-bugs.md`.
 - The post-merge automation fixture passed all 21 commands, including
   clear/undo and embedded save/reload. Native rendering was inspected in
   `/private/tmp/cycle-v2-guide-heatmap.png` at the final `1265 x 476` host
   geometry; the filtered launch log is
-  `/private/tmp/cycle-v2-guide-layout-logs.txt`.
+  `/private/tmp/cycle-v2-guide-compact-layout-logs.txt`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
 

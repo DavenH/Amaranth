@@ -1250,11 +1250,16 @@ TEST_CASE("Guide editor uses compact host and control layout",
     REQUIRE(noiseLayout.getProperty("display", {}).toString() == "77%");
     REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
-    REQUIRE_FALSE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+    REQUIRE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+    const Rectangle<float> noiseLabel = rectangleProperty(noiseLayout, "label");
     const Rectangle<float> noiseSlider = rectangleProperty(noiseLayout, "slider");
+    const Rectangle<float> noiseTrack = rectangleProperty(noiseLayout, "track");
     const Rectangle<float> noiseValue = rectangleProperty(noiseLayout, "value");
     REQUIRE(noiseValue.getWidth() == 48.f);
-    REQUIRE(noiseValue.getX() - noiseSlider.getRight() == 4.f);
+    REQUIRE(noiseValue.getX() - noiseLabel.getRight() == 4.f);
+    REQUIRE(noiseLabel.getY() == noiseValue.getY());
+    REQUIRE(noiseSlider.getWidth() == 312.f);
+    REQUIRE(noiseTrack.getY() - noiseLabel.getBottom() <= 10.f);
     const Rectangle<float> panelBounds = rectangleProperty(state, "panelBounds");
     const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
     REQUIRE(controlBounds.getWidth() == 336.f);
