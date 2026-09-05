@@ -83,6 +83,13 @@ Run a space audit: annotate the bounds of the panel, each section, its content,
 and each gap. Any large region must have a stated job. If removing a gap does
 not harm grouping, scanning, pointer safety, or calm, remove or reduce it.
 
+Also compare the occupied content bounds with their available region on both
+axes. Flag a repeated group that is pinned to one edge while leaving a large,
+unexplained residual area on the opposite edge. Propose a concrete correction:
+enlarge the information-bearing view, centre the group optically, redistribute
+peer groups, or reduce the container. Mathematical containment alone does not
+establish balanced space usage.
+
 When space is scarce, allocate it in this order: required content and legibility,
 minimum usable control geometry, recognizable proportions, group separation,
 then flexible breathing room. Leftover space belongs to the component that can

@@ -1202,7 +1202,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     }
 
     editor.setDelegate(&delegate);
-    editor.setBounds(0, 0, 720, 360);
+    editor.setBounds(0, 0, 824, 464);
     editor.setNode(node);
 
     const var state = editor.automationState();
@@ -1212,10 +1212,15 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
             "headerActionBounds");
     REQUIRE(static_cast<double>(panelBounds.getProperty("width", {}))
             == Catch::Approx(static_cast<double>(panelBounds.getProperty("height", {}))));
+    REQUIRE(static_cast<double>(panelBounds.getProperty("width", {})) >= 380.0);
     REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
             editor.getLocalBounds().toFloat(), true).enabled);
     const var preLayout = state.getProperty("preGainLayout", {});
     const var postLayout = state.getProperty("postGainLayout", {});
+    const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
+    const Rectangle<float> controlGroupBounds = rectangleProperty(state, "controlGroupBounds");
+    REQUIRE(controlGroupBounds.getCentreY()
+            == Catch::Approx(controlBounds.reduced(12.f).getCentreY()).margin(1.f));
     REQUIRE(static_cast<bool>(preLayout.getProperty("compact", {})));
     REQUIRE(static_cast<bool>(postLayout.getProperty("compact", {})));
     REQUIRE(preLayout.getProperty("display", {}).toString() == "+23 dB");
@@ -1233,7 +1238,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(preGain != nullptr);
     REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
     REQUIRE(rectangleProperty(preLayout, "label").getY()
-            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
+            == controlGroupBounds.getY());
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getWidth() <= 72);
     REQUIRE(oversampling->getNumItems() == 4);
@@ -1411,8 +1416,13 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
 
     auto* sizeSlider = dynamic_cast<PrecisionSlider*>(editor.findChildWithID("irEditor.size"));
     REQUIRE(sizeSlider != nullptr);
-    REQUIRE(rectangleProperty(state.getProperty("sizeLayout", {}), "label").getY()
+    const Rectangle<float> sizeLabel = rectangleProperty(
+            state.getProperty("sizeLayout", {}), "label");
+    const Rectangle<float> sizeTrack = rectangleProperty(
+            state.getProperty("sizeLayout", {}), "track");
+    REQUIRE(sizeLabel.getY()
             == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
+    REQUIRE(sizeTrack.getY() - sizeLabel.getBottom() <= 10.f);
 
     delegate.events.clear();
     const bool wasEnabled = enabled->getToggleState();

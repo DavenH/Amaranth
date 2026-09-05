@@ -1,0 +1,29 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelBounds.width",
+      "op": "greaterThanOrEqual",
+      "value": 380
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.controlGroupBounds.height",
+      "equals": 152
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

@@ -105,14 +105,14 @@ PropertySliderLayout propertySliderLayout(
     result.compact = showsValue && (forceCompact || bounds.getWidth() < requiredWidth);
 
     if (result.compact) {
-        auto heading = bounds.removeFromTop(22);
+        const Rectangle<int> compactBounds = bounds;
+        auto heading = bounds.removeFromTop(PropertyControlMetrics::compactLabelHeight);
         result.value = heading.removeFromRight(requestedValueWidth);
         heading.removeFromRight(gap);
         result.label = heading;
-        bounds.removeFromTop(4);
-        result.slider = bounds.withSizeKeepingCentre(
-                bounds.getWidth(),
-                PropertyControlMetrics::rowHeight);
+        result.slider = compactBounds
+                .withY(compactBounds.getY() + PropertyControlMetrics::compactSliderTop)
+                .withHeight(PropertyControlMetrics::rowHeight);
     } else {
         result.label = bounds.removeFromLeft(requestedLabelWidth);
         bounds.removeFromLeft(gap);

@@ -20,12 +20,13 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
 
     const PropertySliderLayout compact = propertySliderLayout({ 0, 0, 240, 56 }, true);
     REQUIRE(compact.compact);
-    REQUIRE(compact.label == Rectangle<int>(0, 0, 172, 22));
-    REQUIRE(compact.value == Rectangle<int>(180, 0, 60, 22));
-    REQUIRE(compact.slider == Rectangle<int>(0, 26, 240, 30));
+    REQUIRE(compact.label == Rectangle<int>(0, 0, 172, 18));
+    REQUIRE(compact.value == Rectangle<int>(180, 0, 60, 18));
+    REQUIRE(compact.slider == Rectangle<int>(0, 14, 240, 30));
     REQUIRE(compact.usableTrackWidth() == 232);
+    REQUIRE(compact.track.getY() - (float) compact.label.getBottom() <= 10.f);
     REQUIRE_FALSE(compact.label.intersects(compact.value));
-    REQUIRE_FALSE(compact.slider.intersects(compact.value));
+    REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
 }
 
 TEST_CASE("Property values use two significant figures without redundant decimals",
@@ -117,12 +118,13 @@ TEST_CASE("Property slider indicator remains centred at fractional positions",
                 centreX - PropertyControlMetrics::thumbWidth * 0.5f,
                 8.f,
                 PropertyControlMetrics::thumbWidth,
-                PropertyControlMetrics::thumbHeight);
+                PropertyControlMetrics::indicatorHeight);
         const Rectangle<float> indicator = propertySliderIndicatorBounds(thumb);
 
         REQUIRE(indicator.getCentreX() == Catch::Approx(thumb.getCentreX()));
         REQUIRE(indicator.getCentreY() == Catch::Approx(thumb.getCentreY()));
-        REQUIRE(indicator.getWidth() == Catch::Approx(1.f));
+        REQUIRE(indicator.getWidth() <= 2.f);
+        REQUIRE(indicator.getHeight() >= 14.f);
     }
 }
 

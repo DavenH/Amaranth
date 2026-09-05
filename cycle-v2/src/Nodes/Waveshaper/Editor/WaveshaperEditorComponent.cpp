@@ -14,7 +14,17 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kControlRailWidth = 336.f;
+constexpr float kPanelPreferredSize = 384.f;
 constexpr int kOversamplingWidth = 72;
+
+Rectangle<int> controlGroupBounds(Rectangle<float> controlArea) {
+    Rectangle<int> available = controlArea.toNearestInt().reduced(12, 12);
+    const int groupHeight = 2 * PropertyControlMetrics::compactRowHeight
+            + PropertyControlMetrics::rowGap
+            + PropertyControlMetrics::sectionGap
+            + PropertyControlMetrics::rowHeight;
+    return available.withSizeKeepingCentre(available.getWidth(), groupHeight);
+}
 
 String formatGain(double unitValue) {
     const float decibels = CycleDsp::waveshaperGainDecibels((float) unitValue);
@@ -105,15 +115,19 @@ Rectangle<float> WaveshaperEditorComponent::editorPanelBounds() const {
     auto bounds = contentBounds();
     bounds.removeFromRight(kControlRailWidth);
     bounds.reduce(18.f, 14.f);
-    const float size = jmin(320.f, jmin(bounds.getWidth(), bounds.getHeight()));
-    return Rectangle<float>(size, size).withCentre({ bounds.getX() + size * 0.5f, bounds.getCentreY() });
+    const float size = jmin(
+            kPanelPreferredSize,
+            jmin(bounds.getWidth(), bounds.getHeight()));
+    return Rectangle<float>(size, size).withCentre({
+            bounds.getX() + size * 0.5f,
+            bounds.getCentreY() });
 }
 
 void WaveshaperEditorComponent::paintEditor(Graphics&) {
 }
 
 void WaveshaperEditorComponent::layoutEditor() {
-    Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
+    Rectangle<int> bounds = controlGroupBounds(editorControlBounds());
     impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
     impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
@@ -160,6 +174,9 @@ void WaveshaperEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("postGain", impl->postGain.slider.getValue());
     state.setProperty("oversampling", impl->oversampling.getSelectedId());
     state.setProperty("oversamplingDisplay", impl->oversampling.getText());
+    state.setProperty(
+            "controlGroupBounds",
+            editorBoundsToVar(controlGroupBounds(editorControlBounds()).toFloat()));
     state.setProperty("preGainLayout", propertySliderRowAutomationState(impl->preGain));
     state.setProperty("postGainLayout", propertySliderRowAutomationState(impl->postGain));
 }

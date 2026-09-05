@@ -16,7 +16,7 @@ const Colour kFill { 0xffdce3ec };
 struct SliderPaintGeometry {
     Rectangle<float> bounds;
     Rectangle<float> track;
-    Rectangle<float> thumb;
+    Rectangle<float> indicator;
     float indicatorX {};
 };
 
@@ -35,12 +35,13 @@ SliderPaintGeometry sliderPaintGeometry(
     };
     result.track = propertySliderTrackBounds(result.bounds);
     result.indicatorX = jlimit(result.track.getX(), result.track.getRight(), sliderPosition);
-    result.thumb = {
+    const Rectangle<float> indicatorAnchor {
             result.indicatorX - PropertyControlMetrics::thumbWidth * 0.5f,
-            result.track.getCentreY() - PropertyControlMetrics::thumbHeight * 0.5f,
+            result.track.getCentreY() - PropertyControlMetrics::indicatorHeight * 0.5f,
             PropertyControlMetrics::thumbWidth,
-            PropertyControlMetrics::thumbHeight
+            PropertyControlMetrics::indicatorHeight
     };
+    result.indicator = propertySliderIndicatorBounds(indicatorAnchor);
     return result;
 }
 
@@ -55,18 +56,14 @@ void paintSliderTrack(
     graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
 }
 
-void paintSliderThumb(
+void paintSliderIndicator(
         Graphics& graphics,
         const SliderPaintGeometry& geometry,
         bool focused,
         bool enabled) {
-    graphics.setColour(Colour(0xff0d1116).withMultipliedAlpha(enabled ? 1.f : 0.75f));
-    graphics.fillRoundedRectangle(geometry.thumb, PropertyControlMetrics::thumbWidth * 0.5f);
-    graphics.setColour(kFill.withMultipliedAlpha(enabled ? 1.f : 0.5f));
-    graphics.drawRoundedRectangle(geometry.thumb, PropertyControlMetrics::thumbWidth * 0.5f, 1.25f);
     graphics.setColour((focused ? propertyControlFocusColour() : kFill)
             .withMultipliedAlpha(enabled ? 1.f : 0.55f));
-    graphics.fillRect(propertySliderIndicatorBounds(geometry.thumb));
+    graphics.fillRect(geometry.indicator);
 }
 
 class PropertyControlLookAndFeel final : public LookAndFeel_V4 {
@@ -89,7 +86,7 @@ public:
         const bool focused = slider.hasKeyboardFocus(false);
 
         paintSliderTrack(graphics, geometry, hovered, enabled);
-        paintSliderThumb(graphics, geometry, focused, enabled);
+        paintSliderIndicator(graphics, geometry, focused, enabled);
 
         if (focused) {
             graphics.setColour(propertyControlFocusColour().withAlpha(0.72f));
@@ -116,8 +113,8 @@ Colour propertyControlFocusColour() {
 
 Rectangle<float> propertySliderIndicatorBounds(Rectangle<float> thumbBounds) {
     return Rectangle<float>(
-            1.f,
-            thumbBounds.getHeight() - 4.f)
+            PropertyControlMetrics::indicatorWidth,
+            PropertyControlMetrics::indicatorHeight)
             .withCentre(thumbBounds.getCentre());
 }
 
@@ -128,7 +125,9 @@ Rectangle<float> morphSliderIndicatorBounds(
             (float) jlimit(0.0, 1.0, normalizedValue),
             bounds.getX(),
             bounds.getRight());
-    return Rectangle<float>(1.5f, PropertyControlMetrics::morphIndicatorHeight)
+    return Rectangle<float>(
+            PropertyControlMetrics::indicatorWidth,
+            PropertyControlMetrics::indicatorHeight)
             .withCentre({ position, bounds.getCentreY() });
 }
 
@@ -156,7 +155,7 @@ void paintPropertySlider(
         graphics.setColour(fill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
         graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
     }
-    paintSliderThumb(graphics, geometry, focused, enabled);
+    paintSliderIndicator(graphics, geometry, focused, enabled);
 }
 
 void paintMorphSlider(

@@ -331,6 +331,30 @@ Acceptance:
 Current status: implemented 2026-09-02 under
 `docs/TDD/cycle-v2-expanded-effect-controls.md`.
 
+## P1: Property slider density and Waveshaper space are imbalanced
+
+Context:
+
+- IR compact labels sit visibly too far above their tracks.
+- Ordinary property sliders retain a hollow capsule even though the newer
+  morph-slider hairline is clearer and more precise.
+- The Waveshaper property stack is pinned to the top of a tall control rail,
+  leaving an unexplained lower void, while the square transfer view remains
+  smaller than the surrounding editor can usefully support.
+
+Acceptance:
+
+- Use the shared minimal hairline indication without shrinking interaction
+  targets, and keep compact labels within 10 px of their visible tracks.
+- Grow the preferred square Waveshaper view by approximately 20% and centre the
+  complete property group vertically in its available rail.
+- Add a general residual-space audit rule to the UI-design skill.
+
+Current status: implemented 2026-09-05 under
+`docs/TDD/cycle-v2-slider-density-and-space-balance.md`. Production IR and
+Waveshaper captures confirm the tighter row density, minimal exact indicators,
+larger square transfer view, and vertically balanced property group.
+
 ## Open: Node-palette fallback icon asserts during the complete Cycle V2 suite
 
 Context:

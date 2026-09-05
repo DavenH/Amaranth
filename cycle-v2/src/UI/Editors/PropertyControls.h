@@ -16,12 +16,14 @@ constexpr int valueWidth = 60;
 constexpr int rowHeight = 30;
 constexpr int rowGap = 6;
 constexpr int sectionGap = 16;
-constexpr int compactRowHeight = 56;
+constexpr int compactRowHeight = 50;
 constexpr int minimumUsableTrackWidth = 140;
+constexpr int compactLabelHeight = 18;
+constexpr int compactSliderTop = 14;
 constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
-constexpr float thumbHeight = 14.f;
-constexpr float morphIndicatorHeight = 17.f;
+constexpr float indicatorWidth = 1.5f;
+constexpr float indicatorHeight = 17.f;
 
 }
 
