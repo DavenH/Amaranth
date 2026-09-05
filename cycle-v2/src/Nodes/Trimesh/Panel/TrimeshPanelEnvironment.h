@@ -14,6 +14,7 @@ public:
     MorphPositioner& getMorphPositioner() { return morphPositioner; }
 
     void setMorphPosition(const MorphPosition& position, int primaryAxis);
+    void setAxisLinks(bool yellow, bool red, bool blue);
 
 private:
     class NullConsole : public IConsole {

@@ -6,7 +6,6 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
 #include "UI/TransformCompactEditor.h"
-#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -21,13 +20,11 @@ enum class ExpandedEditorClickKind {
     Unclaimed,
     Captured,
     Close,
-    VoiceContextEdit,
     TransformMode
 };
 
 struct ExpandedEditorClick {
     ExpandedEditorClickKind kind { ExpandedEditorClickKind::Unclaimed };
-    std::optional<VoiceContextEdit> voiceContextEdit;
     std::optional<CycleV2::TransformMode> transformMode;
 };
 
@@ -55,7 +52,6 @@ public:
 
     void updateHost(const Node* node, Rectangle<float> availableBounds);
     void renderOpenGL(float scaleFactor);
-    void syncEffectNodes(const NodeGraph& graph);
     void releaseOpenGLResources();
     void clearPreviewCache();
     void close();

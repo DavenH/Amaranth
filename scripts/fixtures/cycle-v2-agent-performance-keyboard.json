@@ -18,12 +18,32 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 420
+      "equals": 276
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 126
+      "equals": 112
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyWidth",
+      "equals": 25
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyAspect",
+      "equals": 4.0
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonWidth",
+      "equals": 28
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonHeight",
+      "equals": 100
     },
     {
       "command": "assertState",
@@ -49,6 +69,31 @@
       "command": "assertState",
       "path": "performance.audioDeviceReady",
       "equals": true
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.OctaveUp",
+      "event": "click"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 72
+    },
+    {
+      "command": "assertState",
+      "path": "performance.highestNote",
+      "equals": 84
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.OctaveDown",
+      "event": "click"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.baseNote",
+      "equals": 60
     },
     {
       "command": "pointer",
@@ -86,6 +131,24 @@
       "path": "performance.rms",
       "op": "greaterThan",
       "value": 0.000001
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.leftAmplitude",
+      "op": "greaterThan",
+      "value": 0.00001
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.rightAmplitude",
+      "op": "greaterThan",
+      "value": 0.00001
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.leftDisplay",
+      "op": "greaterThan",
+      "value": 0.2
     },
     {
       "command": "screenshot",

@@ -1,4 +1,5 @@
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Util/StatusChecker.h>
 #include <Util/Util.h>
 #include "IrModeller.h"
@@ -74,40 +75,12 @@ void IrModeller::doPostDeconvolve(int size) {
 }
 
 void IrModeller::trimWave() {
-    int size = wavImpulse.audio.size();
-
-    if (size < 64) {
-        return;
-    }
-
-    static const float trimThres = 0.001f;
-    float movingAverage = 0;
-    int threshIdx = size - 1;
-
-    Buffer<float> channel = wavImpulse.audio.left;
-    ScopedAlloc<float> absMemory(size);
-    Buffer<float> magnitudes = absMemory.place(size);
-    channel.copyTo(magnitudes);
-    magnitudes.abs();
-
-    for (int i = 0; i < size; ++i) {
-        threshIdx = size - i - 1;
-        movingAverage = 0.95f * movingAverage + 0.05f * magnitudes[threshIdx];
-
-        if (movingAverage > trimThres) {
-            break;
-        }
-    }
-
-    if (threshIdx == 0) {
+    bool silent {};
+    const int newSize = CycleDsp::irTrimmedSampleCount(wavImpulse.audio.left, &silent);
+    if (silent) {
         showImportant("Wave file is silent");
     }
-
-    int newSize = threshIdx + 1;
-    NumberUtils::constrain(newSize, 64, 16384);
-    int diff = size - newSize;
-
-    if (diff > 0) {
+    if (newSize < wavImpulse.audio.size()) {
         wavImpulse.audio.left.resize(newSize);
         wavImpulse.audio.right.resize(newSize);
     }
@@ -163,6 +136,7 @@ void IrModeller::filterImpulse(ConvState& chan) {
             chan.rawImpulse,
             chan.impulse,
             levelBuff,
+            prefilt.getTargetValue() > 0.f,
             chan.fft);
 
     if (isGraphic) {

@@ -9,7 +9,6 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
-#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -451,27 +450,6 @@ public:
                 targets.add(pointerTargetToVar("expanded:" + node.id + "." + kind + "." + suffix, kind, targetBounds,
                                                node.id, {}, false, region.parameterId, region.axisValue));
             }
-        } else if (node.kind == NodeKind::VoiceContext) {
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".octave",
-                    "octave",
-                    VoiceContextCompactEditor::octaveControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".voiceLength",
-                    "voiceLength",
-                    VoiceContextCompactEditor::voiceLengthControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".pitch",
-                    "pitch",
-                    VoiceContextCompactEditor::pitchControlBounds(panel),
-                    node.id));
-            targets.add(pointerTargetToVar(
-                    "expanded:" + node.id + ".oversampling",
-                    "oversampling",
-                    VoiceContextCompactEditor::oversamplingControlBounds(panel),
-                    node.id));
         } else {
             addEffectParameterTargets(targets, node, panel, editorHost);
             if (node.kind == NodeKind::Envelope) {
@@ -590,6 +568,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     guideDock->setProperty(
             "guideEditorBounds",
             AutomationValueEncoder::rectangleToVar(state.guideDock.guideEditorBounds));
+    guideDock->setProperty("editor", state.guideDock.guideEditorState);
     root->setProperty("guideDock", guideDock);
 
     Array<var> causalUpdates;
@@ -854,6 +833,18 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "guideEditor:" + state.guideDock.expandedGuideId,
                 "guideEditor",
                 state.guideDock.guideEditorBounds));
+        for (const auto& target : state.guideDock.guideEditorTargets) {
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    target.id,
+                    "guideEditorControl",
+                    target.bounds));
+        }
+    }
+    for (const auto& target : context.editorHost.pointerTargetsForAutomation()) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                target.id,
+                "expandedEditorControl",
+                target.bounds));
     }
     if (state.probeDetailId.isNotEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(

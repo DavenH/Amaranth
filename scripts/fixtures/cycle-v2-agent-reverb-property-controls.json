@@ -1,0 +1,29 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "reverb", "x": 540, "y": 280 },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.compact", "equals": true },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.usableTrackWidth", "op": "greaterThanOrEqual", "value": 140 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "0.74 s" },
+    { "command": "inspectPointerTargets" },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.highPass", "targetX": 0.05 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.3, "downTargetX": 0.05 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.55, "downTargetX": 0.05 },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.55, "downTargetX": 0.05, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "op": "greaterThan", "value": 0.5 },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "equals": "0.05" },
+    { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.highPass", "targetX": 0.05 },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.15, "downTargetX": 0.05 },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.15, "downTargetX": 0.05, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "pointer", "event": "doubleClick", "targetId": "reverbEditor.highPass", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "equals": "0.050000" },
+    { "command": "pointer", "event": "down", "targetId": "reverbEditor.highPass", "targetX": 0.05, "shift": true },
+    { "command": "pointer", "event": "drag", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.25, "downTargetX": 0.05, "shift": true },
+    { "command": "pointer", "event": "up", "targetId": "reverbEditor.highPass", "downTargetId": "reverbEditor.highPass", "targetX": 0.25, "downTargetX": 0.05, "shift": true, "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "op": "greaterThan", "value": 0.05 },
+    { "command": "assertNodeParameter", "nodeId": "reverb", "parameterId": "highPass", "op": "lessThan", "value": 0.07 }
+  ],
+  "quit": true
+}

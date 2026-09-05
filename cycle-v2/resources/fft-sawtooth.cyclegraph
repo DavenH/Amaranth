@@ -14,7 +14,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 260.0, "y": 0.0 },
-            "parameters": { "yellow": 0.12, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow" },
+            "parameters": { "yellow": 0.12, "red": 0.5, "blue": 0.5, "primaryAxis": "yellow", "link.yellow": true, "link.red": false, "link.blue": false },
             "model": {
                 "schema": "trimesh",
                 "version": 2,

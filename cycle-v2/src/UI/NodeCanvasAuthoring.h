@@ -4,7 +4,6 @@
 
 #include "UI/NodeEditorHost.h"
 #include "UI/TransformCompactEditor.h"
-#include "UI/VoiceContextCompactEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Runtime/GraphPresentationModel.h"
 
@@ -112,14 +111,6 @@ public:
     NodeCanvasAuthoringResult cycleOperationPortLayout(const String& nodeId);
     NodeCanvasAuthoringResult cycleMeshOutputSide(const String& nodeId);
     NodeCanvasAuthoringResult cycleVoiceDomain(const String& nodeId);
-    NodeCanvasAuthoringResult applyVoiceContextEdit(
-            const String& nodeId,
-            const VoiceContextEdit& edit);
-    bool beginVoiceContextSliderGesture(
-            const String& nodeId,
-            const VoiceContextEdit& edit);
-    bool updateVoiceContextSliderGesture(const VoiceContextEdit& edit);
-    NodeCanvasAuthoringResult endVoiceContextSliderGesture();
     bool beginSpectralPanGesture(const String& nodeId);
     bool updateSpectralPanGesture(float value);
     NodeCanvasAuthoringResult endSpectralPanGesture();
@@ -161,9 +152,6 @@ private:
     GraphPresentationModel& presentation;
     NodeEditorCommands& editorCommands;
     NodeCanvasAuthoringSession authoringSession;
-    String voiceContextGestureNodeId;
-    VoiceContextEdit::Control voiceContextGestureControl { VoiceContextEdit::Control::Domain };
-    bool voiceContextGestureChanged {};
     String spectralPanGestureNodeId;
     bool spectralPanGestureChanged {};
 };

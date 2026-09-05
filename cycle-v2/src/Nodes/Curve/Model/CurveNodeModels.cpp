@@ -5,6 +5,7 @@
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/Vertex.h>
 
 #include <algorithm>
@@ -577,7 +578,7 @@ static var defaultCurveModelState(NodeKind kind) {
 
     std::vector<FlatCurveVertex> vertices;
     if (kind == NodeKind::ImpulseResponse) {
-        constexpr float padding = 0.0625f;
+        constexpr float padding = CycleDsp::irDomainPadding;
         vertices = {
                 { 1, padding * 0.5f, 0.5f, 0.f },
                 { 2, padding - 0.001f, 0.5f, 0.f },

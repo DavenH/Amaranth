@@ -1,6 +1,8 @@
 #include "UI/ModulationNodeEditors.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
 
 namespace CycleV2 {
 
@@ -197,21 +199,20 @@ public:
         graphics.setColour(Colour(0xff2b3340));
         graphics.drawRoundedRectangle(
                 getLocalBounds().toFloat().reduced(0.5f),
-                10.f,
-                1.f);
+                CanvasChromeMetrics::panelCornerRadius,
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f));
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
         graphics.drawText(
                 kind == NodeKind::ModulationTriple ? "MODULATION TRIPLE" : "MODULATION",
-                18,
-                10,
-                getWidth() - 80,
-                28,
+                header.title,
                 Justification::centredLeft);
     }
 
     void resized() override {
-        closeButton.setBounds(getWidth() - 42, 9, 28, 28);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), false);
+        closeButton.setBounds(header.close);
         Rectangle<int> area = getLocalBounds().reduced(16);
         area.removeFromTop(34);
         const int rowHeight = jmax(48, area.getHeight() / jmax(1, (int) rows.size()));

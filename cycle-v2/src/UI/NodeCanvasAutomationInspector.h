@@ -17,6 +17,11 @@ struct GuideTileAutomationPresentation {
     juce::Rectangle<float> bounds;
 };
 
+struct GuideEditorTargetAutomationPresentation {
+    juce::String id;
+    juce::Rectangle<float> bounds;
+};
+
 struct GuideDockAutomationPresentation {
     bool expanded { true };
     bool guidesMinimized {};
@@ -43,7 +48,9 @@ struct GuideDockAutomationPresentation {
     juce::Rectangle<float> spyMinimizeBounds;
     juce::Rectangle<float> addGuideBounds;
     juce::Rectangle<float> guideEditorBounds;
+    juce::var guideEditorState;
     std::vector<GuideTileAutomationPresentation> guideTiles;
+    std::vector<GuideEditorTargetAutomationPresentation> guideEditorTargets;
 };
 
 struct NodeCanvasAutomationPresentation {

@@ -1,5 +1,7 @@
 #include "UI/TransformCompactEditor.h"
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -18,28 +20,37 @@ void drawModeChoice(
         Colour colour) {
     Rectangle<float> labelArea = area.removeFromLeft(kLabelWidth);
     Rectangle<float> control = area.reduced(2.f, 0.f);
-    const float corner = 6.f;
+    const float corner = CanvasChromeMetrics::controlCornerRadius;
     const Rectangle<float> left = control.removeFromLeft(
             (control.getWidth() - 5.f) * 0.5f);
     control.removeFromLeft(5.f);
     const Rectangle<float> right = control;
     const Rectangle<float> active = rightActive ? right : left;
 
-    graphics.setFont(FontOptions(11.f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.setColour(kMutedText.withAlpha(0.76f));
     graphics.drawText(label, labelArea, Justification::centredLeft);
     graphics.setColour(Colour(0xff0e1318));
     graphics.fillRoundedRectangle(left, corner);
     graphics.fillRoundedRectangle(right, corner);
     graphics.setColour(kMutedText.withAlpha(0.32f));
-    graphics.drawRoundedRectangle(left, corner, 1.f);
-    graphics.drawRoundedRectangle(right, corner, 1.f);
+    graphics.drawRoundedRectangle(
+            left,
+            corner,
+            CanvasChromeMetrics::restingBorderWidth);
+    graphics.drawRoundedRectangle(
+            right,
+            corner,
+            CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(colour.withAlpha(0.18f));
     graphics.fillRoundedRectangle(active, corner);
     graphics.setColour(colour.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(active, corner, 1.2f);
+    graphics.drawRoundedRectangle(
+            active,
+            corner,
+            CanvasChromeMetrics::activeBorderWidth);
 
-    graphics.setFont(FontOptions(10.6f));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     graphics.setColour(rightActive
             ? kMutedText.withAlpha(0.62f)
             : kText.withAlpha(0.92f));

@@ -39,7 +39,6 @@
 
 namespace CycleV2 {
 
-struct VoiceContextEdit;
 enum class TransformMode;
 
 class NodeCanvas :
@@ -98,6 +97,10 @@ public:
     Rectangle<int> performanceKeyboardDockBounds() const;
     Rectangle<float> expandedEditorBoundsForOverlay() const;
     void setOverlayOcclusionChangedCallback(std::function<void()> callback);
+    void setRealtimeOutputMeterLevels(std::optional<OutputMeterLevels> measured);
+    std::optional<OutputMeterLevels> realtimeOutputMeterLevels() const {
+        return liveOutputMeterLevels;
+    }
 
     void paint(Graphics& g) override;
     void resized() override;
@@ -160,13 +163,14 @@ private:
     bool trimeshVertexParameterUndoPushed {};
     bool canvasOpenGlAttached {};
     bool compiledStateRefreshPending {};
-    std::optional<VoiceContextEdit::Control> draggingVoiceContextSlider;
     String draggingSpectralPanNodeId;
     float spectralPanDragStartValue {};
     SignalProbeRailState probeRailState;
     GuideCurveShelfState guideShelfState;
     float dockSplitRatio { 0.5f };
     SignalProbeDetailState probeDetailState;
+    OutputMeterBallistics outputMeterBallistics;
+    std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     UnisonPreviewContext globalUnisonPreviewContext;
     String draggingProbeId;
@@ -188,13 +192,14 @@ private:
     void requestCanvasStatusRepaint();
     void requestHoverRepaint(HoverRepaint repaint);
     void notifyOverlayOcclusionChanged();
+    std::optional<NodeAudioResourceSummary> audioResourceSummary(
+            const String& nodeId) const override;
     uint32_t availableRenderInvalidations() const override;
     void flushRenderInvalidations(uint32_t categories) override;
 
     Point<float> viewportCentreWorld() const;
     void refreshCompiledState();
     void refreshCompiledStateAsync();
-    void setPreviewVoiceLength(double seconds);
     void openProbeDetail(const String& probeId);
     void refreshProbeDetail();
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
@@ -258,6 +263,7 @@ private:
             const Node& node,
             Rectangle<float> bounds) override;
     UnisonPreviewContext unisonPreviewContext() const override;
+    void setPreviewVoiceLengthSeconds(double seconds) override;
 
     void closeCurveEditor() override;
     void repaintCurveEditorOpenGL() override;

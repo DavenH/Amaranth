@@ -1,0 +1,180 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.preGainLayout.usableTrackWidth",
+      "op": "greaterThanOrEqual",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.preGainLayout.display",
+      "equals": "0 dB"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.oversamplingDisplay",
+      "equals": "1x"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.enabled",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "waveshaperEditor.enabled",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "enabled",
+      "equals": "0"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "enabled",
+      "equals": "1"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "waveshaperEditor.preGain",
+      "targetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "waveshaperEditor.preGain",
+      "downTargetId": "waveshaperEditor.preGain",
+      "targetX": 0.65,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "waveshaperEditor.preGain",
+      "downTargetId": "waveshaperEditor.preGain",
+      "targetX": 0.75,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "waveshaperEditor.preGain",
+      "downTargetId": "waveshaperEditor.preGain",
+      "targetX": 0.75,
+      "downTargetX": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.preGainLayout.display",
+      "equals": "+24 dB"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "equals": "0.5"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "waveshaperEditor.preGain",
+      "targetX": 0.5,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "waveshaperEditor.preGain",
+      "downTargetId": "waveshaperEditor.preGain",
+      "targetX": 0.7,
+      "downTargetX": 0.5,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "waveshaperEditor.preGain",
+      "downTargetId": "waveshaperEditor.preGain",
+      "targetX": 0.7,
+      "downTargetX": 0.5,
+      "shift": true,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "op": "greaterThan",
+      "value": 0.5
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "op": "lessThan",
+      "value": 0.52
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "waveshaperEditor.preGain",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "equals": "0.50000000"
+    }
+  ],
+  "quit": true
+}

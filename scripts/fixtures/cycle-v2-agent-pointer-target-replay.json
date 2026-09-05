@@ -30,6 +30,11 @@
       "nodeId": "waveMesh",
       "parameterId": "link.blue",
       "equals": "1"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-morph-controls.png"
     }
   ],
   "quit": true

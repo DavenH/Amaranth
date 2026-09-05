@@ -1,0 +1,19 @@
+{
+  "commands": [
+    { "command": "openNodeEditor", "nodeId": "ir", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.zoomAttackBounds.width", "equals": 24 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.zoomFullBounds.width", "equals": 24 },
+    { "command": "pointer", "event": "click", "targetId": "irEditor.zoomAttack", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.zoom.x", "equals": 0.0625 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.zoom.w", "op": "lessThan", "value": 0.2 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.zoomAttackFocused", "equals": false },
+    { "command": "pointer", "event": "click", "targetId": "irEditor.zoomFull", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.zoom.x", "equals": 0.03125 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.panelState.zoom.w", "equals": 0.96875 },
+    { "command": "assertState", "path": "expandedNodeControls.effect2D.zoomFullFocused", "equals": false },
+    { "command": "pointer", "event": "click", "targetId": "irEditor.zoomAttack", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "inspectPointerTargets" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

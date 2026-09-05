@@ -2,6 +2,7 @@
 
 #include "UI/NodeEditorHost.h"
 
+#include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Runtime/PreviewPitchResolver.h"
 
@@ -28,9 +29,11 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const String& nodeId) {
 
 TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
     TrimeshWidget& widget = trimeshWidget(node.id);
-    widget.setPreviewMidiNote(graph != nullptr
-            ? PreviewPitchResolver::forNode(*graph, node.id)
-            : PreviewPitchResolver::defaultMidiNote);
+    const PreviewPitchContext preview = graph != nullptr
+            ? PreviewPitchResolver::contextForNode(*graph, node.id)
+            : PreviewPitchContext {};
+    widget.setPreviewMidiNote(preview.midiNote);
+    widget.setPreviewKeyScaleAxis(preview.keyScaleAxis);
     widget.syncFromNode(node);
     if (graph != nullptr) {
         widget.syncGuideContext(*graph, node);
@@ -39,14 +42,34 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(const Node& node) {
 }
 
 CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
+    CurveEditorWidget* widget {};
+    bool created {};
     for (auto& entry : curveEditorWidgets) {
         if (entry.first == node.id) {
-            return *entry.second;
+            widget = entry.second.get();
+            break;
         }
     }
 
-    curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
-    return *curveEditorWidgets.back().second;
+    if (widget == nullptr) {
+        curveEditorWidgets.emplace_back(node.id, std::make_unique<CurveEditorWidget>(node.kind));
+        widget = curveEditorWidgets.back().second.get();
+        created = true;
+    }
+    if (created && node.kind == NodeKind::ImpulseResponse) {
+        widget->setImpulseResponseAudioResource(
+                IrSignalProcessor::directResource(graph, node.id));
+    }
+    return *widget;
+}
+
+void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
+    CurveEditorWidget& widget = curveEditorWidget(node);
+    if (node.kind == NodeKind::ImpulseResponse) {
+        widget.setImpulseResponseAudioResource(
+                IrSignalProcessor::directResource(graph, node.id));
+    }
+    widget.syncFromNode(node);
 }
 
 CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId) {

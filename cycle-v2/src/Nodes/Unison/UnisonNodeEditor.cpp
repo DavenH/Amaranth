@@ -3,6 +3,9 @@
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
+#include "UI/EffectEnableButton.h"
 #include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
@@ -22,7 +25,6 @@ public:
         closeButton.onClick = [this] { presentation.closeNodeEditor(); };
         addAndMakeVisible(closeButton);
 
-        enabledButton.setButtonText("Enabled");
         enabledButton.onClick = [this] {
             commands.setNodeParameterValue(
                     node.id,
@@ -30,6 +32,7 @@ public:
                     "Enabled",
                     enabledButton.getToggleState() ? 1.f : 0.f);
         };
+        enabledButton.setComponentID("unisonEditor.enabled");
         addAndMakeVisible(enabledButton);
 
         modeSelector.addItem("Group", 1);
@@ -89,10 +92,14 @@ public:
     void paint(Graphics& graphics) override {
         graphics.fillAll(Colour(0xff11151b));
         graphics.setColour(Colour(0xff2b3340));
-        graphics.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f), 10.f, 1.f);
+        graphics.drawRoundedRectangle(
+                getLocalBounds().toFloat().reduced(0.5f),
+                CanvasChromeMetrics::panelCornerRadius,
+                CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(Colour(0xffeef2f6));
-        graphics.setFont(FontOptions(18.f));
-        graphics.drawText("UNISON", 18, 10, getWidth() - 80, 28, Justification::centredLeft);
+        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize));
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        graphics.drawText("UNISON", header.title, Justification::centredLeft);
         if (node.id.isNotEmpty()) {
             UnisonPreviewPainter().paint(
                     graphics,
@@ -104,8 +111,9 @@ public:
     }
 
     void resized() override {
-        closeButton.setBounds(getWidth() - 42, 9, 28, 28);
-        enabledButton.setBounds(getWidth() - 142, 12, 88, 24);
+        const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
+        closeButton.setBounds(header.close);
+        enabledButton.setBounds(header.enabled);
         modeSelector.setBounds(18, 216, 118, 26);
         voiceSelector.setBounds(146, 216, 126, 26);
         addVoiceButton.setBounds(282, 216, 30, 26);
@@ -407,7 +415,7 @@ private:
     NodeEditorResources& resources;
     Node node;
     TextButton closeButton;
-    ToggleButton enabledButton;
+    EffectEnableButton enabledButton;
     ComboBox modeSelector;
     ComboBox voiceSelector;
     TextButton addVoiceButton;

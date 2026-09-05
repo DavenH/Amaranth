@@ -82,6 +82,28 @@ void CurveEditorWidget::resetEnvelopeVerticalRange() {
     }
 }
 
+void CurveEditorWidget::setImpulseResponseAudioResource(
+        const AudioSampleResource* resource) {
+    if (auto* impulseResponse =
+            dynamic_cast<ImpulseResponseCurvePanelController*>(controller.get())) {
+        impulseResponse->setAudioResource(resource);
+    }
+}
+
+void CurveEditorWidget::zoomImpulseResponseToAttack() {
+    if (auto* impulse = dynamic_cast<ImpulseResponseCurvePanelController*>(
+                controller.get())) {
+        impulse->zoomToAttack();
+    }
+}
+
+void CurveEditorWidget::resetImpulseResponseZoom() {
+    if (auto* impulse = dynamic_cast<ImpulseResponseCurvePanelController*>(
+                controller.get())) {
+        impulse->resetZoom();
+    }
+}
+
 void CurveEditorWidget::syncFromNode(const Node& node) {
     if (guideResource || node.kind != kind) {
         return;
@@ -167,6 +189,10 @@ int CurveEditorWidget::vertexCountForAutomation() const {
 
 var CurveEditorWidget::automationState() const {
     return controller->automationState();
+}
+
+std::vector<CurvePanelGridLine> CurveEditorWidget::verticalMajorGridLines() const {
+    return controller->verticalMajorGridLines();
 }
 
 std::vector<CurvePreviewVertex> CurveEditorWidget::previewVertices() {

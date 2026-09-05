@@ -24,7 +24,7 @@ TEST_CASE("Node module registry describes source nodes", "[cycle-v2][runtime]") 
     REQUIRE(image.previewable);
 }
 
-TEST_CASE("Node module registry separates audio and previewless utility nodes", "[cycle-v2][runtime]") {
+TEST_CASE("Node module registry describes transform, math, and output previews", "[cycle-v2][runtime]") {
     const NodeModuleRegistry registry;
 
     const auto fft = registry.descriptorFor(NodeKind::Fft);
@@ -44,8 +44,8 @@ TEST_CASE("Node module registry separates audio and previewless utility nodes", 
 
     const auto output = registry.descriptorFor(NodeKind::Output);
     REQUIRE(output.audioRole == AudioModuleRole::Output);
-    REQUIRE(output.previewRole == PreviewModuleRole::None);
-    REQUIRE_FALSE(output.previewable);
+    REQUIRE(output.previewRole == PreviewModuleRole::OutputMeters);
+    REQUIRE(output.previewable);
 
 }
 

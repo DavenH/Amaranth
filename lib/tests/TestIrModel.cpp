@@ -4,6 +4,8 @@
 #include <Audio/CycleDsp/IrModel.h>
 
 #include <array>
+#include <cmath>
+#include <limits>
 
 TEST_CASE("IR model mappings preserve Cycle 1 parameter behavior", "[cycle-dsp][ir]") {
     REQUIRE(CycleDsp::irImpulseLength(0.) == 128);
@@ -12,6 +14,23 @@ TEST_CASE("IR model mappings preserve Cycle 1 parameter behavior", "[cycle-dsp][
     REQUIRE(CycleDsp::irImpulseLengthValue(16384) == Catch::Approx(1.));
     REQUIRE(CycleDsp::irPostGain(0.5) == Catch::Approx(1.f));
     REQUIRE(CycleDsp::irPrefilterAmount(0.5) == Catch::Approx(0.125f));
+    REQUIRE(CycleDsp::irPrefilterFrequency(0.5, 44100.0)
+            == Catch::Approx(2756.25f));
+    REQUIRE(CycleDsp::irPrefilterValueForFrequency(2756.25f, 44100.0)
+            == Catch::Approx(0.5));
+}
+
+TEST_CASE("IR sample fractions begin after the pre-impulse domain", "[cycle-dsp][ir]") {
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.f) == Catch::Approx(0.0625f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.25f) == Catch::Approx(0.296875f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.5f) == Catch::Approx(0.53125f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(0.75f) == Catch::Approx(0.765625f));
+    REQUIRE(CycleDsp::irSampleDomainPosition(1.f) == Catch::Approx(1.f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.0625f) == Catch::Approx(0.f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.296875f) == Catch::Approx(0.25f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.53125f) == Catch::Approx(0.5f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(0.765625f) == Catch::Approx(0.75f));
+    REQUIRE(CycleDsp::irSampleFractionAtDomainPosition(1.f) == Catch::Approx(1.f));
 }
 
 TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp][ir]") {
@@ -22,6 +41,21 @@ TEST_CASE("IR length values round trip at every discrete boundary", "[cycle-dsp]
         CAPTURE(exponent, length, value);
         REQUIRE(CycleDsp::irImpulseLength(value) == length);
     }
+}
+
+TEST_CASE("IR tail trimming preserves Cycle 1 moving-average boundaries", "[cycle-dsp][ir]") {
+    std::array<float, 256> samples {};
+    samples[31] = 1.f;
+    bool silent {};
+
+    REQUIRE(CycleDsp::irTrimmedSampleCount({ samples.data(), (int) samples.size() }, &silent)
+            == 64);
+    REQUIRE_FALSE(silent);
+
+    samples.fill(0.f);
+    REQUIRE(CycleDsp::irTrimmedSampleCount({ samples.data(), (int) samples.size() }, &silent)
+            == 64);
+    REQUIRE(silent);
 }
 
 TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-dsp][ir]") {
@@ -40,6 +74,7 @@ TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-
             { raw.data(), length },
             { filtered.data(), length },
             { levels.data(), (int) levels.size() },
+            false,
             transform);
 
     for (int i = 0; i < length; ++i) {
@@ -51,6 +86,7 @@ TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-
             { raw.data(), length },
             { filtered.data(), length },
             { levels.data(), (int) levels.size() },
+            true,
             transform);
 
     for (float level : levels) {
@@ -62,7 +98,8 @@ TEST_CASE("IR frequency prefilter preserves Cycle 1 endpoint behavior", "[cycle-
     }
 }
 
-TEST_CASE("IR curve-to-kernel path preserves Cycle 1 golden samples", "[cycle-dsp][ir]") {
+TEST_CASE("IR curve-to-kernel path preserves spectral golden samples without DC",
+        "[cycle-dsp][ir]") {
     constexpr int length = 128;
     constexpr int oversampledLength = length * 2;
     std::array<float, 2> waveX { -1.f, 2.f };
@@ -90,7 +127,7 @@ TEST_CASE("IR curve-to-kernel path preserves Cycle 1 golden samples", "[cycle-ds
             Rasterization::SamplerView(waveform, true),
             { raw.data(), length },
             oversampler,
-            0.0625);
+            CycleDsp::irDomainPadding);
 
     Transform transform;
     transform.allocate(length, Transform::DivFwdByN, true);
@@ -99,23 +136,75 @@ TEST_CASE("IR curve-to-kernel path preserves Cycle 1 golden samples", "[cycle-ds
             { raw.data(), length },
             { filtered.data(), length },
             { levels.data(), (int) levels.size() },
+            true,
             transform);
 
     constexpr std::array<int, 10> indices { 0, 1, 2, 3, 7, 15, 31, 63, 95, 127 };
     constexpr std::array<float, 10> expected {
-            0.112169f,
-            0.119890f,
-            0.116117f,
-            0.126807f,
-            0.286509f,
-            0.228395f,
-            0.239318f,
-            0.245683f,
-            0.251212f,
-            0.348778f
+            -0.130018f,
+            -0.122298f,
+            -0.126071f,
+            -0.115381f,
+            0.044322f,
+            -0.013793f,
+            -0.002870f,
+            0.003496f,
+            0.009025f,
+            0.106591f
     };
 
     for (size_t i = 0; i < indices.size(); ++i) {
         REQUIRE(filtered[(size_t) indices[i]] == Catch::Approx(expected[i]).margin(1.0e-5f));
+    }
+}
+
+TEST_CASE("IR frequency prefilter removes DC at every positive cutoff",
+        "[cycle-dsp][ir][high-pass][dc]") {
+    constexpr int length = 128;
+    std::array<float, length> raw;
+    std::array<float, length> filtered {};
+    std::array<float, length / 2> levels {};
+    raw.fill(0.25f);
+
+    Transform transform;
+    transform.allocate(length, Transform::DivFwdByN, true);
+
+    CycleDsp::buildIrPrefilterLevels(
+            { levels.data(), (int) levels.size() },
+            std::numeric_limits<double>::epsilon());
+    REQUIRE(levels.front() == 1.f);
+    CycleDsp::applyIrFrequencyPrefilter(
+            { raw.data(), length },
+            { filtered.data(), length },
+            { levels.data(), (int) levels.size() },
+            true,
+            transform);
+
+    Buffer<float> filteredBuffer(filtered.data(), length);
+    REQUIRE(std::abs(filteredBuffer.sum()) < 1.0e-5f);
+    REQUIRE(filteredBuffer.max() < 1.0e-5f);
+
+    for (int index = 0; index < length; ++index) {
+        raw[(size_t) index] = 0.25f + (index % 2 == 0 ? 0.5f : -0.5f);
+    }
+    CycleDsp::applyIrFrequencyPrefilter(
+            { raw.data(), length },
+            { filtered.data(), length },
+            { levels.data(), (int) levels.size() },
+            true,
+            transform);
+    REQUIRE(std::abs(filteredBuffer.sum()) < 1.0e-5f);
+    REQUIRE(filteredBuffer.max() > 0.49f);
+
+    raw.fill(0.25f);
+    CycleDsp::applyIrFrequencyPrefilter(
+            { raw.data(), length },
+            { filtered.data(), length },
+            { levels.data(), (int) levels.size() },
+            false,
+            transform);
+    for (int index = 0; index < length; ++index) {
+        REQUIRE(filtered[(size_t) index] == Catch::Approx(raw[(size_t) index])
+                .margin(1.0e-5f));
     }
 }

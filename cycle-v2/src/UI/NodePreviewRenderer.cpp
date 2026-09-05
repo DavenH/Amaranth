@@ -1,6 +1,11 @@
 #include <array>
 #include <cmath>
+#include <cstring>
 #include <limits>
+
+#include <Audio/CycleDsp/IrModel.h>
+
+#include "UI/NodePreviewRenderer.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -9,14 +14,15 @@
 #include "Nodes/Reverb/ReverbPreviewPainter.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
-#include "UI/NodePreviewRenderer.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromePalette.h"
+#include "UI/OutputMeterPresentation.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
 
 namespace {
 
-const Colour kMutedText { 0xff8793a1 };
 constexpr float kSignedLogDisplayScale = 0.1442695f;
 
 float fastSin(float value) {
@@ -123,50 +129,17 @@ void drawMeters(
         Graphics& graphics,
         Rectangle<float> area,
         const NodePreviewResult& preview,
-        Colour colour) {
-    const float left = preview.primary.empty()
+        Colour colour,
+        std::optional<OutputMeterLevels> liveLevels) {
+    const float previewLeft = preview.primary.empty()
             ? 0.f
             : jlimit(0.f, 1.f, preview.primary.front());
-    const float right = preview.secondary.empty()
-            ? left
+    const float previewRight = preview.secondary.empty()
+            ? previewLeft
             : jlimit(0.f, 1.f, preview.secondary.front());
-    Rectangle<float> meterArea = area.reduced(
-            area.getWidth() * 0.20f,
-            area.getHeight() * 0.08f);
-    const float width = meterArea.getWidth() * 0.28f;
-    const std::array<std::pair<Rectangle<float>, float>, 2> meters {{
-            { meterArea.removeFromLeft(width), left },
-            { meterArea.removeFromRight(width), right }
-    }};
-
-    for (const auto& meter : meters) {
-        constexpr int segments = 12;
-        const float gap = jmax(1.f, meter.first.getHeight() * 0.015f);
-        const float segmentHeight = (meter.first.getHeight() - gap * (float) (segments - 1))
-                / (float) segments;
-        const int litSegments = jlimit(0, segments, roundToInt(meter.second * (float) segments));
-
-        for (int index = 0; index < segments; ++index) {
-            const int levelIndex = segments - 1 - index;
-            const Rectangle<float> segment(
-                    meter.first.getX(),
-                    meter.first.getY() + (float) index * (segmentHeight + gap),
-                    meter.first.getWidth(),
-                    segmentHeight);
-            const float normalized = (float) levelIndex / (float) (segments - 1);
-            Colour segmentColour = colour;
-
-            if (normalized > 0.78f) {
-                segmentColour = Colour(0xffff705f);
-            } else if (normalized > 0.58f) {
-                segmentColour = Colour(0xfff4d35e);
-            }
-
-            const bool lit = levelIndex < litSegments;
-            graphics.setColour(segmentColour.withAlpha(lit ? 0.82f : 0.14f));
-            graphics.fillRoundedRectangle(segment, 1.4f);
-        }
-    }
+    const float left = liveLevels.has_value() ? liveLevels->left : previewLeft;
+    const float right = liveLevels.has_value() ? liveLevels->right : previewRight;
+    OutputMeterPresentation::paint(graphics, area, left, right, colour);
 }
 
 std::vector<float> mappedSurface(
@@ -280,8 +253,8 @@ void drawCurveFallback(
         NodeKind kind,
         const std::vector<CurvePreviewVertex>& vertices,
         float zoom) {
-    const Colour line { 0xffe2e8ef };
-    const Colour dim { 0xff8b95a3 };
+    const Colour line = CanvasChromePalette::text;
+    const Colour dim = CanvasChromePalette::mutedText;
     Rectangle<float> graph = area.reduced(8.f, 7.f);
 
     if (kind == NodeKind::Waveshaper) {
@@ -289,7 +262,7 @@ void drawCurveFallback(
         graph = Rectangle<float>(size, size).withCentre(graph.getCentre());
     }
 
-    graphics.setColour(Colour(0xff0d1117).withAlpha(0.34f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.34f));
     graphics.fillRect(graph);
 
     float maximumX = 1.f;
@@ -316,7 +289,8 @@ void drawCurveFallback(
     if (kind == NodeKind::Waveshaper) {
         frame = graph.reduced(graph.getWidth() * 0.125f, graph.getHeight() * 0.125f);
     } else if (kind == NodeKind::ImpulseResponse) {
-        frame = graph.withTrimmedLeft(graph.getWidth() * 0.0625f);
+        frame = graph.withTrimmedLeft(
+                graph.getWidth() * CycleDsp::irDomainPadding);
     }
 
     graphics.setColour(dim.withAlpha(0.44f));
@@ -528,7 +502,7 @@ void drawSpectralLayerPreview(
     };
     const Colour colour = colourForDomain(domain);
 
-    graphics.setColour(Colour(0xff11171d));
+    graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillEllipse(bounds);
     graphics.setColour(colour.withAlpha(0.88f));
     graphics.drawEllipse(bounds.reduced(stroke * 0.5f), stroke);
@@ -636,6 +610,11 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.liveOutputLevels.has_value()) {
+        paintUncached(graphics, request);
+        return;
+    }
+
     const int width = roundToInt(request.area.getWidth());
     const int height = roundToInt(request.area.getHeight());
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
@@ -732,7 +711,12 @@ bool NodePreviewRenderer::paintRuntimeResult(
     const NodePreviewResult& result = *request.runtimeResult;
     const Colour colour = previewColourForRole(result.role, request.node);
     if (result.role == PreviewModuleRole::OutputMeters) {
-        drawMeters(graphics, request.area, result, colour);
+        drawMeters(
+                graphics,
+                request.area,
+                result,
+                colour,
+                request.liveOutputLevels);
         return true;
     }
 
@@ -756,7 +740,7 @@ bool NodePreviewRenderer::paintRuntimeResult(
         graphics.setColour(EffectPlotPalette::forEnabledState(
                 EffectPlotPalette::insetBackground,
                 NodeParameterMap(request.node).boolValue("enabled", true)));
-        graphics.fillRoundedRectangle(background, 4.f);
+        graphics.fillRoundedRectangle(background, CanvasChromeMetrics::insetCornerRadius);
         EqualizerPreviewPainter().paintResponse(
                 graphics,
                 background.reduced(8.f, 6.f),
@@ -931,15 +915,14 @@ void NodePreviewRenderer::paintQualitative(
     if (kind == NodeKind::Output) {
         const NodePreviewResult meters {
                 request.node.id,
-                PreviewModuleRole::OutputMeters,
-                { 0.64f },
-                { 0.58f }
+                PreviewModuleRole::OutputMeters
         };
         drawMeters(
                 graphics,
                 request.area,
                 meters,
-                colourForDomain(PortDomain::TimeSignal));
+                colourForDomain(PortDomain::TimeSignal),
+                request.liveOutputLevels);
         return;
     }
 
@@ -951,7 +934,7 @@ void NodePreviewRenderer::paintQualitative(
         graphics.setColour(colourForDomain(PortDomain::TimeSignal).withAlpha(0.85f));
         graphics.drawLine(Line<float>({ left, y }, { right, y - request.area.getHeight() * 0.18f }), 2.f);
         graphics.drawLine(Line<float>({ left, y }, { right, y + request.area.getHeight() * 0.18f }), 2.f);
-        graphics.setColour(kMutedText.withAlpha(0.72f));
+        graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.72f));
         graphics.drawText(split ? "SPLIT" : "JOIN", request.area, Justification::centredBottom);
         return;
     }

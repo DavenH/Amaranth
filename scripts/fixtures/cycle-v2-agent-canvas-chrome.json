@@ -1,0 +1,48 @@
+{
+  "commands": [
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1200
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.expanded",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.expandedHeight",
+      "equals": 190
+    },
+    {
+      "command": "assertState",
+      "path": "guideDock.splitRatio",
+      "equals": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "performance.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.docked",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "performance.screenWidth",
+      "equals": 276
+    },
+    {
+      "command": "assertState",
+      "path": "performance.screenHeight",
+      "equals": 112
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

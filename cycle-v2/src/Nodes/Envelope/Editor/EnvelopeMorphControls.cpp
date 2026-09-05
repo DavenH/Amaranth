@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
+#include "UI/CanvasChromeMetrics.h"
 
 using namespace juce;
 
@@ -35,7 +36,7 @@ void drawSegmentedGroup(
         Rectangle<float> bounds,
         int selectedSegment) {
     graphics.setColour(kGroupFill);
-    graphics.fillRoundedRectangle(bounds, 5.f);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     if (selectedSegment >= 0) {
         graphics.setColour(kSelectedFill);
         graphics.fillPath(segmentedHighlight(bounds, selectedSegment));
@@ -44,7 +45,10 @@ void drawSegmentedGroup(
     graphics.drawVerticalLine(
             roundToInt(bounds.getCentreX()), bounds.getY() + 3.f, bounds.getBottom() - 3.f);
     graphics.setColour(kGroupBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(bounds, 5.f, 1.f);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 }
@@ -189,17 +193,32 @@ void EnvelopeMorphControls::draw(
     const bool linked[] { true, redLinked, blueLinked };
     drawPlane(graphics, controls, red, blue);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
+    TrimeshSidePanelRenderer::drawMorphColumnHeaders(
+            graphics,
+            morphRow(controls, 0),
+            axisBounds(controls, 0),
+            linkBounds(controls, 0));
 
     for (int axis = 0; axis < 3; ++axis) {
         const auto axisArea = axisBounds(controls, axis);
         const auto linkArea = linkBounds(controls, axis);
         const auto colour = axisColour(axis);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 0.45f : 0.06f));
-        graphics.fillRoundedRectangle(axisArea, 4.f);
+        graphics.fillRoundedRectangle(axisArea, CanvasChromeMetrics::controlCornerRadius);
         graphics.setColour(colour.withAlpha(axis == viewAxis ? 1.f : 0.32f));
-        graphics.drawRoundedRectangle(axisArea, 4.f, 1.4f);
+        graphics.drawRoundedRectangle(
+                axisArea,
+                CanvasChromeMetrics::controlCornerRadius,
+                axis == viewAxis
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
         graphics.setColour(colour.withAlpha(linked[axis] ? 0.9f : 0.25f));
-        graphics.drawRoundedRectangle(linkArea, 4.f, 1.4f);
+        graphics.drawRoundedRectangle(
+                linkArea,
+                CanvasChromeMetrics::controlCornerRadius,
+                linked[axis]
+                        ? CanvasChromeMetrics::activeBorderWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
     }
 }
 

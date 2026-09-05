@@ -37,6 +37,8 @@ struct TrimeshPanelRenderStats {
     int guideRailSegmentCount {};
     int componentGuideSegmentCount {};
     int curveGuideSegmentCount {};
+    int firstPanelMidiNote { -1 };
+    int lastPanelMidiNote { -1 };
     float minimum {};
     float maximum {};
     float centreSample {};
@@ -47,6 +49,7 @@ struct TrimeshPanelRenderStats {
     std::vector<juce::Point<float>> displayedIntercepts;
     std::vector<juce::Point<float>> displayedCurvePoints;
     bool curveHover {};
+    bool pitchSpansColumns {};
 };
 
 class TrimeshWidget {
@@ -56,6 +59,7 @@ public:
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPreviewMidiNote(int midiNote);
+    void setPreviewKeyScaleAxis(const juce::String& axis);
     void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
 
     void paintCompact(

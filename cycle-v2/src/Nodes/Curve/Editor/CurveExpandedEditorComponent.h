@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graph/NodeGraph.h"
+#include "Graph/GraphEditor.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 
 #include <JuceHeader.h>
@@ -25,6 +25,12 @@ public:
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
     virtual void curveTransientStateChanged(uint64_t) {}
+    virtual void setCurveEditorStatus(const String&) {}
+    virtual bool setAudioResource(NodeAudioResourceEdit) { return false; }
+    virtual bool removeAudioResource() { return false; }
+    virtual std::optional<NodeAudioResourceSummary> audioResourceSummary() const {
+        return std::nullopt;
+    }
 };
 
 class CurveExpandedEditorComponent : public Component,
@@ -66,6 +72,7 @@ protected:
     void publishCurrentState();
     void beginTransaction();
     void commitTransaction();
+    void setStatusMessage(const String& message);
     void requestRepaint();
     void refreshEditorSubject();
     void bindContinuousControl(LabeledParameterSlider& control);
@@ -73,7 +80,11 @@ protected:
     void bindDiscreteControl(ParameterToggle& control);
     void bindDiscreteControl(ComboBox& control);
     void publishDiscreteControlChange();
+    void setHeaderAction(Component& action);
     void setEditorModelState(NodeModelStatePtr model);
+    bool setAudioResource(NodeAudioResourceEdit edit);
+    bool removeAudioResource();
+    std::optional<NodeAudioResourceSummary> audioResourceSummary() const;
 
     template<typename Operation>
     void bindDiscreteAction(Button& button, Operation operation) {
@@ -109,6 +120,8 @@ private:
     bool transactionActive {};
     bool transientStateChanged {};
     uint64_t transactionBaseRevision {};
+    Component* headerAction {};
+    std::unique_ptr<Button> closeButton;
     NodeModelStatePtr editorModel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveExpandedEditorComponent)

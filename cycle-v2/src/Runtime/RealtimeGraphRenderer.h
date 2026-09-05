@@ -30,6 +30,8 @@ public:
         size_t droppedMidiEvents {};
         float peak {};
         float rms {};
+        float leftPeak {};
+        float rightPeak {};
     };
 
     RealtimeGraphRenderer();
@@ -54,7 +56,9 @@ public:
                 activeVoices.load(std::memory_order_acquire),
                 events.droppedEventCount(),
                 outputPeak.load(std::memory_order_acquire),
-                outputRms.load(std::memory_order_acquire)
+                outputRms.load(std::memory_order_acquire),
+                outputLeftPeak.load(std::memory_order_acquire),
+                outputRightPeak.load(std::memory_order_acquire)
         };
     }
 
@@ -107,6 +111,8 @@ private:
     std::atomic<size_t> activeVoices {};
     std::atomic<float> outputPeak {};
     std::atomic<float> outputRms {};
+    std::atomic<float> outputLeftPeak {};
+    std::atomic<float> outputRightPeak {};
 };
 
 }

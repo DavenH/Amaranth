@@ -58,6 +58,8 @@ public:
             const String& parameterId,
             const String& label,
             const String& value) { return false; }
+    virtual bool setNodeAudioResource(NodeAudioResourceEdit) { return false; }
+    virtual bool removeNodeAudioResource(const String&) { return false; }
     virtual void beginCurveTransaction() = 0;
     virtual void commitCurveTransaction() = 0;
     virtual bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) = 0;
@@ -130,6 +132,9 @@ public:
             const Node& node,
             Rectangle<float> bounds) = 0;
     virtual UnisonPreviewContext unisonPreviewContext() const { return {}; }
+    virtual void setPreviewVoiceLengthSeconds(double) {}
+    virtual std::optional<NodeAudioResourceSummary> audioResourceSummary(
+            const String&) const { return std::nullopt; }
 };
 
 struct NodeEditorContext {
@@ -219,6 +224,8 @@ public:
             const String& parameterId,
             const String& label,
             const String& value) override;
+    bool setNodeAudioResource(NodeAudioResourceEdit edit) override;
+    bool removeNodeAudioResource(const String& nodeId) override;
     void beginCurveTransaction() override;
     void commitCurveTransaction() override;
     bool setTrimeshPrimaryAxisValue(const String& nodeId, const String& axis) override;
@@ -279,6 +286,11 @@ private:
     bool activeParameterChanged {};
 };
 
+struct NodeEditorAutomationTarget {
+    String id;
+    Rectangle<float> bounds;
+};
+
 class NodeEditorHost {
 public:
     NodeEditorHost(
@@ -300,6 +312,7 @@ public:
     Component* component() const;
     void appendAutomationState(DynamicObject& state) const;
     Rectangle<float> panelBoundsForAutomation() const;
+    std::vector<NodeEditorAutomationTarget> pointerTargetsForAutomation() const;
 
 private:
     Component& parent;

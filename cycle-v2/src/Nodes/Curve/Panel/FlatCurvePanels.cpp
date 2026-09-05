@@ -1,5 +1,7 @@
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 
+#include <Binary/Gradients.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
@@ -10,9 +12,11 @@
 #include <UI/Panels/CommonGfx.h>
 #include <UI/Panels/CurvePanelDrawing.h>
 #include <UI/Panels/Panel2D.h>
+#include <UI/ColorGradient.h>
 #include <UI/Panels/Texture.h>
 #include <Util/Arithmetic.h>
 
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 
 #include <algorithm>
@@ -25,7 +29,6 @@ namespace {
 
 constexpr float kGuidePadding = 0.05f;
 constexpr float kWaveshaperPadding = 0.125f;
-constexpr float kIrPadding = 0.0625f;
 
 }
 
@@ -38,16 +41,18 @@ public:
             SingletonRepo* repo,
             const String& name,
             Mesh& meshToEdit,
-            float padding,
-            bool bipolar,
-            bool verticalPadding) :
+            float leftPadding,
+            float rightPadding,
+            float verticalPadding,
+            bool bipolar) :
             Panel2D         (repo, name, true, true)
         ,   Interactor2D    (repo, name, Dimensions(Vertex::Phase, Vertex::Amp))
         ,   SingletonAccessor(repo, name)
         ,   rasterizer      (repo, name + "Rasterizer")
         ,   mesh            (meshToEdit)
-        ,   domainPadding   (padding)
-        ,   padVertically   (verticalPadding) {
+        ,   domainPaddingLeft    (leftPadding)
+        ,   domainPaddingRight   (rightPadding)
+        ,   domainPaddingVertical(verticalPadding) {
         vertPadding = 0;
         paddingLeft = 0;
         paddingRight = 0;
@@ -57,10 +62,10 @@ public:
         alwaysDrawDepthLines = true;
         drawLinesAfterFill = false;
         curveIsBipolar = bipolar;
-        bgPaddingLeft = padding;
-        bgPaddingRight = padding;
-        bgPaddingTop = verticalPadding ? padding : 0.f;
-        bgPaddingBttm = verticalPadding ? padding : 0.f;
+        bgPaddingLeft = leftPadding;
+        bgPaddingRight = rightPadding;
+        bgPaddingTop = verticalPadding;
+        bgPaddingBttm = verticalPadding;
         colorA = Color(0.92f, 0.93f, 0.96f, 0.92f);
         colorB = colorA;
 
@@ -220,6 +225,18 @@ public:
         root->setProperty("curveHover", mouseFlag(WithinReshapeThresh));
         return var(root);
     }
+    std::vector<CurvePanelGridLine> verticalMajorGridLines() const override {
+        std::vector<CurvePanelGridLine> result;
+        if (zoomPanel == nullptr || zoomPanel->rect.w <= 0.f) {
+            return result;
+        }
+        result.reserve((size_t) vertMajorLines.size());
+        for (int index = 0; index < vertMajorLines.size(); ++index) {
+            const float domainX = vertMajorLines[index];
+            result.push_back({ domainX, sx(domainX) });
+        }
+        return result;
+    }
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const override {
         const auto& selected = const_cast<FlatCurvePanelBase*>(this)->getSelected();
         const Vertex* vertex = !selected.empty() ? selected.front() : firstEditableVertex();
@@ -256,10 +273,10 @@ public:
         if (zoomPanel == nullptr) {
             return;
         }
-        const float xMinimum = 0.5f * domainPadding;
-        const float xMaximum = 1.f - 0.5f * domainPadding;
-        const float yMinimum = padVertically ? 0.5f * domainPadding : 0.f;
-        const float yMaximum = padVertically ? 1.f - 0.5f * domainPadding : 1.f;
+        const float xMinimum = 0.5f * domainPaddingLeft;
+        const float xMaximum = 1.f - 0.5f * domainPaddingRight;
+        const float yMinimum = 0.5f * domainPaddingVertical;
+        const float yMaximum = 1.f - 0.5f * domainPaddingVertical;
         zoomPanel->rect.xMinimum = xMinimum;
         zoomPanel->rect.xMaximum = xMaximum;
         zoomPanel->rect.yMinimum = yMinimum;
@@ -321,6 +338,14 @@ private:
             zoom->setProperty("yMaximum", zoomPanel->rect.yMaximum);
             root.setProperty("zoom", var(zoom));
         }
+        Array<var> majorGridLines;
+        for (const auto& line : verticalMajorGridLines()) {
+            auto* encoded = new DynamicObject();
+            encoded->setProperty("domainX", line.domainX);
+            encoded->setProperty("panelX", line.panelX);
+            majorGridLines.add(var(encoded));
+        }
+        root.setProperty("verticalMajorGridLines", majorGridLines);
         if (state.currentVertex != nullptr) {
             auto* vertex = new DynamicObject();
             vertex->setProperty("x", state.currentVertex->values[Vertex::Phase]);
@@ -365,8 +390,9 @@ private:
 
     FXRasterizer rasterizer;
     Mesh& mesh;
-    float domainPadding {};
-    bool padVertically {};
+    float domainPaddingLeft {};
+    float domainPaddingRight {};
+    float domainPaddingVertical {};
     bool interactionInitialised {};
     bool enabled { true };
     float controlA { 0.5f };
@@ -380,7 +406,8 @@ class WaveshaperCurvePanel final : public FlatCurvePanelBase {
 public:
     WaveshaperCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
-                    repo, "CycleV2WaveshaperPanel", mesh, kWaveshaperPadding, false, true)
+                    repo, "CycleV2WaveshaperPanel", mesh,
+                    kWaveshaperPadding, kWaveshaperPadding, kWaveshaperPadding, false)
         ,   SingletonAccessor(repo, "CycleV2WaveshaperPanel") {}
 
     void postCurveDraw() override {
@@ -394,19 +421,42 @@ class GuideCurvePanel final :
     ,   public GuideCurvePanelPresentation {
 public:
     GuideCurvePanel(SingletonRepo* repo, Mesh& mesh) :
-            FlatCurvePanelBase(repo, "CycleV2GuideCurvePanel", mesh, kGuidePadding, true, false)
+            FlatCurvePanelBase(
+                    repo, "CycleV2GuideCurvePanel", mesh,
+                    kGuidePadding, kGuidePadding, 0.f, true)
         ,   SingletonAccessor(repo, "CycleV2GuideCurvePanel") {}
 
     void setHeatmapPresentation(Image image, std::vector<float> nextOutput) override {
-        setContentImage(std::move(image));
+        if (image != contentImage) {
+            setContentImage(std::move(image));
+            ++heatmapTextureRevision;
+        }
         output = std::move(nextOutput);
         repaint();
+    }
+
+    void updateZoomBounds(bool resetView) override {
+        if (zoomPanel == nullptr) {
+            return;
+        }
+        zoomPanel->rect.xMinimum = 0.f;
+        zoomPanel->rect.xMaximum = 1.f;
+        zoomPanel->rect.yMinimum = 0.f;
+        zoomPanel->rect.yMaximum = 1.f;
+        if (resetView) {
+            zoomPanel->rect.x = 0.f;
+            zoomPanel->rect.w = 1.f;
+            zoomPanel->rect.y = 0.f;
+            zoomPanel->rect.h = 1.f;
+        }
+        constrainZoom();
     }
 
     var automationState() const override {
         var state = FlatCurvePanelBase::automationState();
         if (auto* object = state.getDynamicObject()) {
             object->setProperty("heatmapActive", !contentImage.isNull());
+            object->setProperty("heatmapTextureRevision", heatmapTextureRevision);
             object->setProperty("heatmapOutputPointCount", (int) output.size());
             if (!output.empty()) {
                 object->setProperty("heatmapOutputStart", output.front());
@@ -454,23 +504,161 @@ public:
 
 private:
     std::vector<float> output;
+    int heatmapTextureRevision {};
 };
 
-class ImpulseResponseCurvePanel final : public FlatCurvePanelBase {
+class ImpulseResponseCurvePanel final : public ImpulseResponseCurvePanelContract,
+                                        public FlatCurvePanelBase {
 public:
     ImpulseResponseCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
-                    repo, "CycleV2ImpulseResponsePanel", mesh, kIrPadding, true, false)
-        ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {}
+                    repo, "CycleV2ImpulseResponsePanel", mesh,
+                    CycleDsp::irDomainPadding, 0.f, 0.f, true)
+        ,   SingletonAccessor(repo, "CycleV2ImpulseResponsePanel") {
+        Image image = PNGImageFormat::loadFrom(
+                Gradients::burntalum_png, Gradients::burntalum_pngSize);
+        gradient.read(image, false, true);
+        gradient.multiplyAlpha(0.4f);
+    }
+
+    void setImpulseResponseAnalysis(
+            std::shared_ptr<const ImpulseResponseAnalysis> nextAnalysis) override {
+        analysis = std::move(nextAnalysis);
+        spectrumColours.clear();
+        if (analysis == nullptr) {
+            return;
+        }
+
+        const auto& gradientColours = gradient.getColours();
+        spectrumColours.reserve(analysis->normalizedMagnitudes.size());
+        for (float magnitude : analysis->normalizedMagnitudes) {
+            const int index = jlimit(
+                    0,
+                    (int) gradientColours.size() - 1,
+                    (int) (magnitude * (float) (gradientColours.size() - 1)));
+            spectrumColours.push_back(gradientColours[(size_t) index]);
+        }
+        xBuffer.ensureSize((int) analysis->filteredDisplayImpulse.size());
+        yBuffer.ensureSize(jmax(
+                (int) analysis->filteredDisplayImpulse.size(),
+                (int) analysis->frequencyRows.size()));
+        spliceBuffer.ensureSize((int) analysis->filteredDisplayImpulse.size() * 2);
+    }
+
+    void zoomToAttack() override {
+        if (zoomPanel == nullptr) {
+            return;
+        }
+        zoomPanel->rect.x = CycleDsp::irDomainPadding;
+        zoomPanel->rect.w *= 0.2f;
+        zoomPanel->panelZoomChanged(false);
+    }
+
+    void resetZoom() override {
+        updateZoomBounds(true);
+        if (zoomPanel != nullptr) {
+            zoomPanel->panelZoomChanged(false);
+        }
+    }
 
     void preDraw() override {
         auto canvas = drawingCanvas();
-        CurvePanelDrawing::drawImpulseResponseBackground(canvas, kIrPadding);
+        CurvePanelDrawing::drawImpulseResponseBackground(
+                canvas, CycleDsp::irDomainPadding);
+        if (analysis == nullptr) {
+            return;
+        }
+
+        const int spectrumSize = (int) analysis->frequencyRows.size();
+        if (spectrumSize > 0 && spectrumColours.size() == (size_t) spectrumSize) {
+            Buffer<float> yScale = yBuffer.withSize(spectrumSize);
+            VecOps::copy(analysis->frequencyRows.data(), yScale.get(), spectrumSize);
+            applyNoZoomScaleY(yScale);
+            gfx->drawVerticalGradient(
+                    sx(CycleDsp::irDomainPadding),
+                    sx(1.f),
+                    yScale,
+                    spectrumColours);
+        }
+
+        const int impulseSize = (int) analysis->filteredDisplayImpulse.size();
+        if (impulseSize > 0) {
+            prepareBuffers(impulseSize);
+            VecOps::copy(
+                    analysis->filteredDisplayImpulse.data(), xy.y.get(), impulseSize);
+            xy.y.mul(CycleDsp::irPostGain(secondControl()));
+            Arithmetic::unpolarize(xy.y);
+            xy.x.ramp(
+                    CycleDsp::irDomainPadding,
+                    impulseSize > 1
+                            ? (1.f - CycleDsp::irDomainPadding) / (float) (impulseSize - 1)
+                            : 0.f);
+            gfx->enableSmoothing();
+            gfx->setCurrentLineWidth(1.5f);
+            gfx->setCurrentColour(1.f, 0.62f, 0.7f, 0.75f);
+            gfx->drawLineStrip(xy, true, true);
+            gfx->setCurrentLineWidth(1.f);
+        }
     }
     void postCurveDraw() override {
         auto canvas = drawingCanvas();
-        CurvePanelDrawing::drawImpulseResponseBounds(canvas, kIrPadding);
+        CurvePanelDrawing::drawImpulseResponseBounds(
+                canvas, CycleDsp::irDomainPadding);
     }
+
+    void updateBackground(bool onlyVerticalBackground = false) override {
+        FlatCurvePanelBase::updateBackground(onlyVerticalBackground);
+        const ScopedLock scopedLock(renderLock);
+        if (zoomPanel != nullptr
+                && 1.f >= zoomPanel->rect.x
+                && 1.f <= zoomPanel->rect.x + zoomPanel->rect.w + 0.00001f
+                && (vertMajorLines.empty()
+                        || !approximatelyEqual(vertMajorLines.back(), 1.f))) {
+            const int previousSize = vertMajorLines.size();
+            vertMajorLines.resize(previousSize + 1);
+            vertMajorLines[previousSize] = 1.f;
+        }
+    }
+
+    var automationState() const override {
+        var state = FlatCurvePanelBase::automationState();
+        if (auto* object = state.getDynamicObject()) {
+            object->setProperty(
+                    "irSpectrumPointCount",
+                    analysis != nullptr ? (int) analysis->normalizedMagnitudes.size() : 0);
+            object->setProperty(
+                    "irFilteredImpulsePointCount",
+                    analysis != nullptr
+                            ? (int) analysis->filteredDisplayImpulse.size()
+                            : 0);
+            object->setProperty(
+                    "irFilteredImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredDisplayImpulse.empty()
+                            ? analysis->filteredDisplayImpulse.front()
+                            : 0.f);
+            object->setProperty(
+                    "irAudioImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredImpulse.empty()
+                            ? analysis->filteredImpulse.front()
+                            : 0.f);
+            object->setProperty(
+                    "irDisplayedImpulseFirstSample",
+                    analysis != nullptr && !analysis->filteredDisplayImpulse.empty()
+                            ? analysis->filteredDisplayImpulse.front()
+                                    * CycleDsp::irPostGain(secondControl())
+                            : 0.f);
+            object->setProperty(
+                    "irDisplayGain",
+                    CycleDsp::irPostGain(secondControl()));
+            object->setProperty("irBackdropRenderer", "OpenGL");
+        }
+        return state;
+    }
+
+private:
+    ColorGradient gradient;
+    std::shared_ptr<const ImpulseResponseAnalysis> analysis;
+    std::vector<Color> spectrumColours;
 };
 
 std::unique_ptr<FlatCurvePanelContract> createFlatCurvePanel(

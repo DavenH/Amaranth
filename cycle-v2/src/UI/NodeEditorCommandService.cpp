@@ -197,7 +197,6 @@ void NodeEditorCommandService::endNodeParameterEdit() {
             presentation.refreshNodeEditorPresentation();
         }
     }
-    presentation.rebindNodeEditor();
     activeParameterNodeId = {};
     activeParameterId = {};
     activeParameterLabel = {};
@@ -248,6 +247,31 @@ bool NodeEditorCommandService::setNodeParameterText(
     presentation.refreshNodeEditorPresentation();
     presentation.rebindNodeEditor();
     presentation.repaintNodeEditor(false);
+    return true;
+}
+
+bool NodeEditorCommandService::setNodeAudioResource(NodeAudioResourceEdit edit) {
+    const String nodeId = edit.nodeId;
+    const auto result = commands.setNodeAudioResource(std::move(edit));
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(true);
+    return true;
+}
+
+bool NodeEditorCommandService::removeNodeAudioResource(const String& nodeId) {
+    const auto result = commands.removeNodeAudioResource(nodeId);
+    if (!result.succeeded()) {
+        return false;
+    }
+    presentation.selectEditedNode(nodeId);
+    presentation.refreshNodeEditorPresentation();
+    presentation.rebindNodeEditor();
+    presentation.repaintNodeEditor(true);
     return true;
 }
 

@@ -33,6 +33,7 @@ public:
     TrimeshPanel2D& getPanel2D() { return panel2D; }
     const TrimeshPanel2D& getPanel2D() const { return panel2D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }
+    const TrimeshPanelDataSource& getDataSource() const { return dataSource; }
     const TrimeshRenderData& getRenderData() const { return dataSource.getRenderData(); }
     Interactor2D& getInteractor2D() { return interactor2D; }
     const Interactor2D& getInteractor2D() const { return interactor2D; }
@@ -51,6 +52,7 @@ public:
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPreviewMidiNote(int midiNote);
+    void setPreviewKeyScaleAxis(int axis);
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
     int selectedVertexIndexForPanel();
@@ -84,6 +86,8 @@ private:
     int lastColumns {};
     int previewMidiNote { 48 };
     int lastPreviewMidiNote { -1 };
+    int previewKeyScaleAxis { -1 };
+    int lastPreviewKeyScaleAxis { -2 };
     bool pendingMeshEdit {};
     bool pendingMeshEditSourceIs3D {};
 };

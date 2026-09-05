@@ -1,5 +1,8 @@
 #include "UI/CanvasUtilityDock.h"
 
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromePalette.h"
+
 namespace CycleV2 {
 
 CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> contentBounds) {
@@ -21,16 +24,20 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             result.minimap.getX(),
             result.minimap.getBottom() + gap,
             utilityWidth,
-            98.f
+            preferredLegendHeight
     };
 
-    const float keyboardWidth = juce::jmin(420.f, availableWidth);
-    const float keyboardHeight = juce::jmin(
-            126.f,
-            juce::jmax(0.f, contentBounds.getHeight() - margin * 2.f));
+    const float keyboardWidth = juce::jmin(preferredKeyboardWidth, availableWidth);
+    const float keyboardBottom = contentBounds.getBottom() - margin;
+    const float compactKeyboardTop =
+            result.legend.getY() + minimumCompactLegendHeight + gap;
+    const float availableKeyboardHeight =
+            juce::jmax(0.f, keyboardBottom - compactKeyboardTop);
+    const float keyboardHeight =
+            juce::jmin(preferredKeyboardHeight, availableKeyboardHeight);
     result.keyboard = {
             right - keyboardWidth,
-            contentBounds.getBottom() - margin - keyboardHeight,
+            keyboardBottom - keyboardHeight,
             keyboardWidth,
             keyboardHeight
     };
@@ -57,10 +64,13 @@ void CanvasUtilityDock::paintSurface(
     if (bounds.isEmpty()) {
         return;
     }
-    graphics.setColour(juce::Colour(0xdd11171d));
-    graphics.fillRoundedRectangle(bounds, cornerRadius);
-    graphics.setColour(juce::Colour(0xff3d4a58));
-    graphics.drawRoundedRectangle(bounds, cornerRadius, 1.f);
+    graphics.setColour(CanvasChromePalette::insetBackground.withAlpha(0.87f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
+    graphics.setColour(CanvasChromePalette::border);
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::panelCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 }

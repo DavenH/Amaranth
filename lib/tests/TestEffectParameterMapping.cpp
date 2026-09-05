@@ -3,10 +3,33 @@
 #include <cmath>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/IrModel.h>
 
 using Catch::Approx;
 
 TEST_CASE("Effect parameter mappings preserve Cycle controls", "[CycleDsp][effects][mapping]") {
+    REQUIRE(CycleDsp::waveshaperGainDecibels(0.f) == Approx(-45.f));
+    REQUIRE(CycleDsp::waveshaperGainDecibels(0.5f) == Approx(0.f));
+    REQUIRE(CycleDsp::waveshaperGainDecibels(1.f) == Approx(45.f));
+    for (float decibels : { -45.f, -18.f, 0.f, 12.f, 45.f }) {
+        REQUIRE(CycleDsp::waveshaperGainDecibels(
+                CycleDsp::waveshaperGainUnitValue(decibels)) == Approx(decibels));
+    }
+
+    REQUIRE(CycleDsp::irImpulseLength(0.0) == 128);
+    REQUIRE(CycleDsp::irImpulseLength(1.0) == 16384);
+    for (int length : { 128, 256, 512, 1024, 2048, 4096, 8192, 16384 }) {
+        REQUIRE(CycleDsp::irImpulseLength(CycleDsp::irImpulseLengthValue(length)) == length);
+    }
+    for (float decibels : { -43.f, -18.f, 0.f, 18.f, 43.f }) {
+        REQUIRE(CycleDsp::irPostGainDecibels(
+                CycleDsp::irPostGainValueForDecibels(decibels)) == Approx(decibels));
+    }
+    for (float amount : { 0.f, 0.01f, 0.25f, 0.5f, 1.f }) {
+        REQUIRE(CycleDsp::irPrefilterAmount(
+                CycleDsp::irPrefilterValueForAmount(amount)) == Approx(amount));
+    }
+
     REQUIRE(CycleDsp::equalizerGainDecibels(0.f) == Approx(-30.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(0.5f) == Approx(0.f));
     REQUIRE(CycleDsp::equalizerGainDecibels(1.f) == Approx(30.f));

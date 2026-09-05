@@ -19,6 +19,7 @@ class Vertex;
 namespace CycleV2 {
 
 class TrimeshPanelEnvironment;
+struct ImpulseResponseAnalysis;
 
 class CurvePanel {
 public:
@@ -32,6 +33,7 @@ public:
     virtual void refreshRasterizer() = 0;
     virtual void updateZoomBounds(bool resetView) = 0;
     virtual var automationState() const = 0;
+    virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const { return {}; }
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
     virtual bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) = 0;
 };
@@ -40,6 +42,15 @@ class FlatCurvePanelContract : public CurvePanel {
 public:
     virtual Vertex* selectedFlatVertexForModel() = 0;
     virtual void restoreFlatSelection(Vertex* vertex) = 0;
+    virtual void setImpulseResponseAnalysis(
+            std::shared_ptr<const ImpulseResponseAnalysis>) {}
+};
+
+class ImpulseResponseCurvePanelContract {
+public:
+    virtual ~ImpulseResponseCurvePanelContract() = default;
+    virtual void zoomToAttack() = 0;
+    virtual void resetZoom() = 0;
 };
 
 class GuideCurvePanelPresentation {

@@ -58,6 +58,7 @@ struct NodeCanvasPresentationFrame {
     WorkspaceDockFocus dockFocus;
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
+    std::optional<OutputMeterLevels> liveOutputMeterLevels;
 };
 
 struct NodePortPresentation {

@@ -49,6 +49,16 @@ void TrimeshPanelEnvironment::setMorphPosition(
     morphPositioner.setPosition(position, primaryAxis);
 }
 
+void TrimeshPanelEnvironment::setAxisLinks(
+        bool yellow,
+        bool red,
+        bool blue) {
+    auto& settings = repo.get<Settings>("Settings");
+    settings.getGlobalSetting(AppSettings::LinkYellow) = yellow;
+    settings.getGlobalSetting(AppSettings::LinkRed) = red;
+    settings.getGlobalSetting(AppSettings::LinkBlue) = blue;
+}
+
 TrimeshPanelEnvironment::NullConsole::NullConsole(SingletonRepo* repo) :
         IConsole(repo, "CycleV2TrimeshNullConsole") {
 }

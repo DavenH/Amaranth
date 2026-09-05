@@ -104,6 +104,44 @@ one consolidated semantic edit.
   scalar-math hot-loop audit, applicable clang-tidy, focused tests, full Cycle
   V2 tests, and the standalone build complete before this status is Implemented.
 
+## UI Integration Contract
+
+- At ample canvas size, use a `1265 x 476` expanded host: 15 percent wider
+  and 15 percent shorter than the former `1100 x 560` host. Keep the property
+  rail at 336 px so the added horizontal space belongs to the editable Guide
+  canvas.
+- Preserve the expanded editor's established 336 px property rail and shared
+  precision-slider rows. Guide parameters use the same compact row as IR,
+  Waveshaper, Delay, Reverb, and EQ: label and value share a heading above a
+  full-width track. Image support must not restore narrow tracks or
+  slider-owned value boxes.
+- In the Guide rail, reserve 48 px for each value readout and 4 px between the
+  slider and readout. The compact readout must remain editable with its unit
+  outside the numeric field.
+- Label horizontal phase variation as `X Randomness` and vertical/DC variation
+  as `Y Randomness`. Align every Guide slider track, and keep its inset from
+  the editor/control divider equal to its inset from the visible outer edge;
+  do not apply the content container's right inset a second time.
+- Place the Guide enablement power toggle in the shared top-right header action
+  position. Do not retain a labeled checkbox row in the property rail.
+- Present image resource actions as a named `Guide image` group with one compact
+  24 px action row. Use `Load` when empty, `Replace` when bound, and `Clear` only
+  when an image exists.
+- Do not reserve panel space for persistent state narration such as `No image
+  loaded`. Loading progress, stale completions, and decode errors belong in the
+  editor's existing transient status surface.
+- Shelf previews retain the shared canvas colour and corner-radius tokens while
+  resolving the image asset through the graph.
+- The Guide image, authored curve, overlays, and background grid share the
+  exact normalized drawable domain `[0.05, 0.95]`. Eight major grid columns
+  divide that domain uniformly, placing the centre line at the panel centre
+  and leaving no oversized terminal column.
+- The two outside margins receive an opaque, deterministic OpenGL fill on
+  every panel render. Parameter-only Guide gestures must reuse an unchanged
+  image texture instead of scheduling a redundant upload, so dragging X or Y
+  Randomness cannot alternate the margin fill between the panel colour and the
+  cleared framebuffer.
+
 ## Implementation Evidence
 
 - `GuideHeatmapAsset`, `GuideHeatmapSampler`, and `GuideCurvePreparation`
@@ -116,19 +154,34 @@ one consolidated semantic edit.
   consumers. The native Guide panel adds an optional image texture and sampled
   output trace while retaining the authoritative flat-curve interaction.
 - The expanded editor loads on a worker thread, applies results through
-  `GraphCommandDispatcher`, and exposes clear/status controls. Shelf previews,
-  undo/redo, graph reload, and editor rebinding consume the same graph asset.
-- Focused verification passed: 99 heatmap assertions in 7 cases, 144 Guide
-  assertions in 10 cases, including two live image-backed path publications,
-  downstream refresh, commit, and one-step undo.
-- `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
-  run completed with 10,444 of 10,446 assertions passing; its two failures are
-  pre-existing issues recorded in `ui-bugs.md` (hit-router copy mismatch and a
-  sandbox-sensitive atomic temporary-file save).
-- The final automation fixture passed all 21 commands, including clear/undo
-  and embedded save/reload. Native rendering was inspected in
-  `/private/tmp/cycle-v2-guide-dock-native-final.png`; the filtered launch log
-  is `/private/tmp/cycle-v2-guide-heatmap-logs-final.txt`.
+  `GraphCommandDispatcher`, exposes compact `Load`/`Replace` and `Clear`
+  actions, and routes transient messages through the existing editor status
+  surface. The Guide power action occupies the shared top-right header slot.
+  Shelf previews, undo/redo, graph reload, and editor rebinding consume the
+  same graph asset.
+- Shared property-rail geometry owns divider-side, vertical, and outer-edge
+  inset behavior. Guide and IR controls reuse it, avoiding a second outer-edge
+  inset and producing equal visible track margins.
+- The merge retains the branch's IR/audio-resource behavior alongside the
+  image-backed Guide behavior. Content identity delegates SHA-256 calculation
+  to JUCE's cryptography module rather than maintaining a local implementation.
+- Focused post-layout verification passed: 79 Guide editor assertions in 3
+  cases, 66 heatmap assertions in 5 cases, 8 serialization assertions in 2
+  cases, 41 audio-resource assertions in 3 cases, 48 property-control geometry
+  assertions in 5 cases, and 152 IR editor assertions in 2 cases.
+- The Guide viewport now maps normalized `[0,1]` directly to the panel. Its
+  padded image and curve domain therefore produce eight equal major-grid
+  columns, including a centre line at exactly half the panel width. The two
+  focused editor cases pass 82 assertions covering the geometry and reuse of
+  an unchanged heatmap texture during a dynamic path update.
+- The expanded heatmap fixture now passes all 31 commands, including a live
+  Y Randomness gesture and stable texture-revision assertions. The final native
+  OpenGL render was inspected at
+  `/private/tmp/cycle-v2-guide-grid-native.png`; its report and filtered log are
+  `/private/tmp/cycle-v2-guide-grid-native-report.json` and
+  `/private/tmp/cycle-v2-guide-grid-native-logs.txt`.
+- The full 824-test repository run passed 823 tests. Its sole failure remains
+  the pre-existing hit-router copy mismatch recorded in `ui-bugs.md`.
 - The production diff and hot-loop scalar-math audit were clean, as was
   `git diff --check`. `clang-tidy` was not available in the local environment.
 

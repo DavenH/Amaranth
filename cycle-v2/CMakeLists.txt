@@ -66,6 +66,14 @@ generate_svg_data(
     control volume pitch scratch
 )
 
+generate_svg_data(
+    UI_ICON
+    ui-icons
+    UiIconData
+    UiIconData
+    effectEnable zoomAttack zoomFull
+)
+
 file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
@@ -75,9 +83,11 @@ list(APPEND APP_SOURCES
     ${PALETTE_ICON_FILES}
     ${NODE_ICON_FILES}
     ${ENVELOPE_PURPOSE_ICON_FILES}
+    ${UI_ICON_FILES}
     "${PALETTE_ICON_DATA_HEADER}"
     "${NODE_ICON_DATA_HEADER}"
     "${ENVELOPE_PURPOSE_ICON_DATA_HEADER}"
+    "${UI_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
@@ -137,6 +147,11 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControls.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/NodePropertyControlBinding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/VoiceContext/Editor/VoiceContextNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasPerformanceMetrics.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/CanvasUtilityDock.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EnvelopePurposeIconRenderer.cpp"
@@ -160,11 +175,13 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasScene.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasViewport.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePalette.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideCurveShelf.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideRelationshipPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
@@ -190,6 +207,8 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/FlatCurvePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/Editor/GuideCurveEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/ImpulseResponseAnalysis.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/ImpulseResponse/ImpulseResponseResourcePreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Waveshaper/Editor/WaveshaperEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Editor/EnvelopeCurvePanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/FlatCurvePanels.cpp"
@@ -202,10 +221,13 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/CurvePanelController.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Editor/CurveEditorWidget.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelayPreviewPainter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelayNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelayAudioProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Delay/DelaySignalProcessor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Equalizer/EqualizerPreviewPainter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Equalizer/EqualizerNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Reverb/ReverbPreviewPainter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Reverb/ReverbNodeEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Unison/UnisonPreviewPainter.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Effects/EffectSignalProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"

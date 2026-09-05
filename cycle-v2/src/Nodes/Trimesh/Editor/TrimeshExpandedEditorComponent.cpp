@@ -2,13 +2,15 @@
 
 #include <utility>
 
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/EditorChromeLayout.h"
+
 namespace CycleV2 {
 
 namespace {
 
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kHeaderHeight = 34.f;
 
 }
 
@@ -75,28 +77,32 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.excludeClipRegion(gridHole);
     g.excludeClipRegion(waveHole);
     g.setColour(Colours::black.withAlpha(0.38f));
-    g.fillRoundedRectangle(panel.translated(0.f, 10.f), 8.f);
+    g.fillRoundedRectangle(
+            panel.translated(0.f, 10.f),
+            CanvasChromeMetrics::panelCornerRadius);
     g.setColour(Colour(0xff141a21));
-    g.fillRoundedRectangle(panel, 8.f);
+    g.fillRoundedRectangle(panel, CanvasChromeMetrics::panelCornerRadius);
     g.restoreState();
 
-    auto header = panel.removeFromTop(kHeaderHeight);
+    const auto headerLayout = embeddedEditorHeaderLayout(panel);
+    const Rectangle<float> header = headerLayout.header;
     g.setColour(Colour(0xff202833));
-    g.fillRoundedRectangle(header, 8.f);
-    g.fillRect(header.withTrimmedTop(header.getHeight() - 8.f));
+    g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
+    g.fillRect(header.withTrimmedTop(
+            header.getHeight() - CanvasChromeMetrics::panelCornerRadius));
 
     g.setColour(kText);
-    g.setFont(FontOptions(14.f));
-    g.drawText(labelForNodeKind(node.kind), header.reduced(13.f, 4.f), Justification::centredLeft);
+    g.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
+    g.drawText(labelForNodeKind(node.kind), headerLayout.title, Justification::centredLeft);
     g.setColour(kMutedText);
-    g.setFont(FontOptions(10.f));
-    g.drawText("Trilinear Mesh", header.reduced(13.f, 4.f), Justification::centredRight);
+    g.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
+    g.drawText("Trilinear Mesh", headerLayout.title, Justification::centredRight);
 
     Rectangle<float> closeButton = closeButtonBounds();
     g.setColour(Colour(0xff0e1318));
     g.fillEllipse(closeButton);
     g.setColour(Colour(0xff354050));
-    g.drawEllipse(closeButton, 1.f);
+    g.drawEllipse(closeButton, CanvasChromeMetrics::restingBorderWidth);
     g.setColour(kText);
     g.drawLine(closeButton.getX() + 7.f, closeButton.getY() + 7.f,
                closeButton.getRight() - 7.f, closeButton.getBottom() - 7.f, 1.4f);
@@ -108,7 +114,10 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 
     panel = getLocalBounds().toFloat();
     g.setColour(Colour(0xffa7b0bd).withAlpha(0.62f));
-    g.drawRoundedRectangle(panel.reduced(0.75f), 8.f, 1.3f);
+    g.drawRoundedRectangle(
+            panel.reduced(0.75f),
+            CanvasChromeMetrics::panelCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 void TrimeshExpandedEditorComponent::resized() {
@@ -221,13 +230,12 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
-    const Rectangle<float> panel = getLocalBounds().toFloat();
-    return Rectangle<float>(22.f, 22.f).withCentre({ panel.getRight() - 22.f, kHeaderHeight * 0.5f });
+    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::contentBounds() const {
     Rectangle<float> panel = getLocalBounds().toFloat();
-    panel.removeFromTop(kHeaderHeight);
+    panel.removeFromTop(CanvasChromeMetrics::embeddedEditorHeaderHeight);
     return panel.reduced(10.f, 8.f);
 }
 

@@ -10,8 +10,9 @@
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
 #include "UI/NodeCanvas.h"
-
+#include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "UI/NodeViewModule.h"
@@ -31,9 +32,6 @@ constexpr uint32_t StatusRepaint = 1u << 1;
 
 namespace {
 
-const Colour kCanvasBackground { 0xff101318 };
-const Colour kCanvasGridMajor  { 0x2f5b6370 };
-const Colour kCanvasGridMinor  { 0x182f363f };
 constexpr bool kUseGlCanvasUnderlay = true;
 
 bool hasExpandedEditor(NodeKind kind) {
@@ -198,7 +196,6 @@ NodeCanvas::~NodeCanvas() {
 
 void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
-    const Node* expandedNode = queries.findNode(expandedNodeId);
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(frame.canvasBounds);
@@ -214,13 +211,6 @@ void NodeCanvas::paint(Graphics& g) {
     canvasPresentation.paint(g, frame);
     if (canvasPresentation.guideShelfNeedsOpenGLPreviewRender()) {
         openGLContext.triggerRepaint();
-    }
-    if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
-        VoiceContextCompactEditor::paintExpanded(
-                g,
-                editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
-                *expandedNode,
-                globalUnisonPreviewContext.voiceDurationSeconds);
     }
 }
 
@@ -371,7 +361,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     draggingTrimeshMorph = false;
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
-    draggingVoiceContextSlider.reset();
     draggingSpectralPanNodeId = {};
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
@@ -403,24 +392,6 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         if (click.kind == ExpandedEditorClickKind::Close) {
             editorCoordinator.close();
             notifyOverlayOcclusionChanged();
-        } else if (click.kind == ExpandedEditorClickKind::VoiceContextEdit) {
-            const auto control = click.voiceContextEdit->control;
-            if (control == VoiceContextEdit::Control::VoiceLength) {
-                draggingVoiceContextSlider = control;
-                setPreviewVoiceLength(click.voiceContextEdit->value.getDoubleValue());
-            } else if (control == VoiceContextEdit::Control::Octave
-                    || control == VoiceContextEdit::Control::Pitch
-                    || control == VoiceContextEdit::Control::Oversampling) {
-                if (authoring.beginVoiceContextSliderGesture(
-                            expandedNode->id,
-                            *click.voiceContextEdit)) {
-                    draggingVoiceContextSlider = control;
-                }
-            } else {
-                applyAuthoringResult(authoring.applyVoiceContextEdit(
-                        expandedNode->id,
-                        *click.voiceContextEdit));
-            }
         } else if (click.kind == ExpandedEditorClickKind::TransformMode) {
             applyAuthoringResult(authoring.setTransformMode(
                     expandedNode->id,
@@ -597,25 +568,6 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
 
-    if (draggingVoiceContextSlider.has_value()) {
-        const Node* expandedNode = queries.findNode(expandedNodeId);
-        if (expandedNode != nullptr && expandedNode->kind == NodeKind::VoiceContext) {
-            const auto edit = VoiceContextCompactEditor::sliderEditAt(
-                    *draggingVoiceContextSlider,
-                    editorCoordinator.boundsFor(expandedNode, canvasContentBounds()),
-                    event.position.x);
-            if (edit.has_value()) {
-                if (edit->control == VoiceContextEdit::Control::VoiceLength) {
-                    setPreviewVoiceLength(edit->value.getDoubleValue());
-                } else {
-                    authoring.updateVoiceContextSliderGesture(*edit);
-                    requestCanvasRepaint();
-                }
-            }
-        }
-        return;
-    }
-
     if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
@@ -659,14 +611,6 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     if (draggingSpectralPanNodeId.isNotEmpty()) {
         draggingSpectralPanNodeId = {};
         applyAuthoringResult(authoring.endSpectralPanGesture());
-        requestCanvasRepaint();
-        return;
-    }
-    if (draggingVoiceContextSlider.has_value()) {
-        if (*draggingVoiceContextSlider != VoiceContextEdit::Control::VoiceLength) {
-            applyAuthoringResult(authoring.endVoiceContextSliderGesture());
-        }
-        draggingVoiceContextSlider.reset();
         requestCanvasRepaint();
         return;
     }
@@ -859,7 +803,7 @@ void NodeCanvas::renderOpenGL() {
             CanvasPerformanceMetrics::Frame::OpenGlRender);
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
-        OpenGLHelpers::clear(kCanvasBackground);
+        OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
         const bool guideSnapshotUpdated = canvasPresentation.renderOpenGL(
                 renderer,
                 presentationFrame(),
@@ -877,7 +821,7 @@ void NodeCanvas::renderOpenGL() {
             guideEditor->renderOpenGL((float) openGLContext.getRenderingScale());
         }
     } else {
-        OpenGLHelpers::clear(kCanvasBackground);
+        OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
     }
 }
 
@@ -897,7 +841,6 @@ void NodeCanvas::timerCallback() {
         flushScheduledCompiledStateRefresh();
     }
 
-    editorCoordinator.syncEffectNodes(graph);
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), canvasContentBounds());
 
     const auto mouse = getMouseXYRelative().toFloat();
@@ -989,8 +932,29 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             probeRailState,
             dockInteraction->focus(),
             probeDetailState,
-            globalUnisonPreviewContext
+            globalUnisonPreviewContext,
+            liveOutputMeterLevels
     };
+}
+
+void NodeCanvas::setRealtimeOutputMeterLevels(
+        std::optional<OutputMeterLevels> measured) {
+    if (!measured.has_value()) {
+        const bool changed = liveOutputMeterLevels.has_value();
+        outputMeterBallistics.reset();
+        liveOutputMeterLevels.reset();
+        if (changed) {
+            requestCanvasRepaint();
+        }
+        return;
+    }
+
+    const bool becameLive = !liveOutputMeterLevels.has_value();
+    const bool changed = outputMeterBallistics.update(*measured);
+    liveOutputMeterLevels = outputMeterBallistics.levels();
+    if (becameLive || changed) {
+        requestCanvasRepaint();
+    }
 }
 
 Point<float> NodeCanvas::viewportCentreWorld() const {
@@ -1114,7 +1078,7 @@ void NodeCanvas::refreshCompiledStateAsync() {
             });
 }
 
-void NodeCanvas::setPreviewVoiceLength(double seconds) {
+void NodeCanvas::setPreviewVoiceLengthSeconds(double seconds) {
     const double duration = jlimit(
             CycleDsp::voiceLengthSeconds(0.f),
             CycleDsp::voiceLengthSeconds(1.f),
@@ -1125,7 +1089,7 @@ void NodeCanvas::setPreviewVoiceLength(double seconds) {
     globalUnisonPreviewContext.voiceDurationSeconds = duration;
     settings.getGlobalSetting(AppSettings::PreviewVoiceLengthMilliseconds) =
             roundToInt(duration * 1000.0);
-    editStatusMessage = "Voice length: " + String(duration, 2) + " seconds";
+    editStatusMessage = "Voice length: " + formatPropertyReal(duration) + " seconds";
     requestCanvasRepaint();
 }
 
@@ -1171,6 +1135,23 @@ UnisonPreviewContext NodeCanvas::unisonPreviewContext() const {
             presentation.compileResult().plan,
             expandedNodeId,
             globalUnisonPreviewContext);
+}
+
+std::optional<NodeAudioResourceSummary> NodeCanvas::audioResourceSummary(
+        const String& nodeId) const {
+    const NodeAudioResourceBinding* binding = graph.findAudioResourceBinding(nodeId);
+    if (binding == nullptr) {
+        return std::nullopt;
+    }
+    const AudioSampleResource* resource = graph.findAudioResource(binding->resourceId);
+    if (resource == nullptr) {
+        return std::nullopt;
+    }
+    return NodeAudioResourceSummary {
+            resource->name,
+            binding->mode,
+            (int) resource->samples.size()
+    };
 }
 
 bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
@@ -1290,6 +1271,19 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     dock.guideEditorBounds = guideEditor != nullptr && guideEditor->isVisible()
             ? guideEditor->getBounds().toFloat()
             : Rectangle<float> {};
+    dock.guideEditorState = guideEditor != nullptr && guideEditor->isVisible()
+            ? guideEditor->automationState()
+            : var();
+    if (!dock.guideEditorBounds.isEmpty()) {
+        for (const auto& [semanticId, localBounds] : guideEditor->automationPointerTargets()) {
+            dock.guideEditorTargets.push_back({
+                    semanticId,
+                    localBounds.translated(
+                            dock.guideEditorBounds.getX(),
+                            dock.guideEditorBounds.getY())
+            });
+        }
+    }
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         dock.guideTiles.push_back({
                 graph.getGuideCurves()[(size_t) index].id,

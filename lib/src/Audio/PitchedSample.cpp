@@ -424,7 +424,10 @@ int PitchedSample::load(const String& filename) {
     lastLoadedFilePath = audioFile.getFullPathName();
     copyAudio(audioBuffer);
 
-    float maxMag = audio.max();
+    float maxMag = jmax(audio.left.max(), -audio.left.min());
+    if (!audio.right.empty()) {
+        maxMag = jmax(maxMag, jmax(audio.right.max(), -audio.right.min()));
+    }
 
     if (maxMag != 0) {
         audio.mul(1.f / maxMag);

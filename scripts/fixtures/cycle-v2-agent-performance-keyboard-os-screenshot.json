@@ -1,0 +1,38 @@
+{
+  "commands": [
+    {
+      "command": "assertState",
+      "path": "performance.screenWidth",
+      "equals": 276
+    },
+    {
+      "command": "assertState",
+      "path": "performance.screenHeight",
+      "equals": 112
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyWidth",
+      "equals": 25
+    },
+    {
+      "command": "assertState",
+      "path": "performance.whiteKeyAspect",
+      "equals": 4.0
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonWidth",
+      "equals": 28
+    },
+    {
+      "command": "assertState",
+      "path": "performance.octaveButtonHeight",
+      "equals": 100
+    },
+    {
+      "command": "inspectPointerTargets"
+    }
+  ],
+  "quit": false
+}

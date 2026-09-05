@@ -1,0 +1,56 @@
+{
+  "commands": [
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "highPass",
+      "label": "High Pass",
+      "value": "0"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irBackdropRenderer",
+      "equals": "OpenGL"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irSpectrumPointCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irFilteredImpulsePointCount",
+      "equals": 256
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "highPass",
+      "label": "High Pass",
+      "value": "0.8",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.irSpectrumPointCount",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

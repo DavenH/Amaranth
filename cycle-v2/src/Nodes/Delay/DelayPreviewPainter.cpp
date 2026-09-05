@@ -4,6 +4,7 @@
 #include "Nodes/Delay/DelayPreviewPainter.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -36,7 +37,7 @@ void DelayPreviewPainter::paint(
     };
 
     graphics.setColour(colour(EffectPlotPalette::background));
-    graphics.fillRoundedRectangle(background, 4.f);
+    graphics.fillRoundedRectangle(background, CanvasChromeMetrics::insetCornerRadius);
     for (int beat = 0; beat <= visibleBeatCount; ++beat) {
         const float unit = (float) beat / (float) visibleBeatCount;
         const float x = content.getX() + unit * content.getWidth();

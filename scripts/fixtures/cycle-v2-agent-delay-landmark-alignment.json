@@ -1,0 +1,12 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "delay", "x": 540, "y": 280 },
+    { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "time", "label": "Time", "value": "0.70710678" },
+    { "command": "setNodeParameter", "nodeId": "delay", "parameterId": "spinIters", "label": "Pan Cycle", "value": "0.090909091" },
+    { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "2 beats" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.3.readout", "equals": "2×" },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

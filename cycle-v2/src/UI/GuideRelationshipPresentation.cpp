@@ -1,5 +1,7 @@
 #include "UI/GuideRelationshipPresentation.h"
 
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/WorkspaceDock.h"
@@ -8,26 +10,31 @@ namespace CycleV2 {
 
 namespace {
 
-const Colour kCanvasBackground { 0xff101318 };
-
 void paintHighlight(
         Graphics& graphics,
         Rectangle<float> bounds,
         const GuideCurveResource& guide) {
     const Colour colour = GuideCurveShelf::colourForGuide(guide);
     graphics.setColour(colour.withAlpha(0.9f));
-    graphics.drawRoundedRectangle(bounds.expanded(4.f), 10.f, 2.f);
+    graphics.drawRoundedRectangle(
+            bounds.expanded(4.f),
+            CanvasChromeMetrics::panelCornerRadius
+                    + CanvasChromeMetrics::microCornerRadius,
+            CanvasChromeMetrics::activeBorderWidth);
 
     const Rectangle<float> badge(
             bounds.getRight() - 37.f,
             bounds.getY() + 5.f,
             32.f,
             17.f);
-    graphics.setColour(kCanvasBackground.withAlpha(0.94f));
-    graphics.fillRoundedRectangle(badge, 5.f);
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
+    graphics.fillRoundedRectangle(badge, CanvasChromeMetrics::controlCornerRadius);
     graphics.setColour(colour);
-    graphics.drawRoundedRectangle(badge, 5.f, 1.f);
-    graphics.setFont(FontOptions(10.f));
+    graphics.drawRoundedRectangle(
+            badge,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+    graphics.setFont(FontOptions(CanvasChromeMetrics::captionFontSize));
     graphics.drawText(guide.shortLabel, badge, Justification::centred);
 }
 
@@ -166,7 +173,7 @@ void GuideRelationshipPresentation::paintTetherTerminal(
     }
 
     const Point<float> start = tetherStart(frame, *guide);
-    graphics.setColour(Colour(0xff101318).withAlpha(0.96f));
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
     graphics.fillRoundedRectangle(Rectangle<float>(16.f, 8.f).withCentre(start), 4.f);
     graphics.setColour(GuideCurveShelf::colourForGuide(*guide).withAlpha(0.92f));
     graphics.fillRoundedRectangle(Rectangle<float>(11.f, 4.f).withCentre(start), 2.f);

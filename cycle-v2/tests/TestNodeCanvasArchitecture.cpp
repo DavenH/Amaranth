@@ -14,14 +14,18 @@
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Graph/NodeDefinition.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UI/EffectEnableButton.h"
+#include "UI/EditorChromeLayout.h"
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
+#include "UI/NodeIconRenderer.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
 #include "UI/NodePreviewRenderer.h"
@@ -33,6 +37,7 @@
 #include "UI/WorkspaceDock.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
 
@@ -433,6 +438,52 @@ TEST_CASE("Signal probe preview pitch defaults to C3 without a Modulation Triple
             graph.getSignalProbes().front().id) == 48);
 }
 
+TEST_CASE("Preview pitch context follows the Modulation Triple key-scale axis",
+        "[cycle-v2][canvas][preview][key-scale]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node triple = factory.createNode(NodeKind::ModulationTriple, "triple", {});
+    graph.addNode(std::move(triple));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addEdge({
+            "triple", "modulation", "voice", "modulation",
+            PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
+            AttachmentType::ModulationTriple
+    });
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+
+    const int existingPreviewNote = Arithmetic::getGraphicNoteForValue(
+            0.5f,
+            {
+                    Constants::LowestMidiNote,
+                    Constants::HighestMidiNote
+            });
+    PreviewPitchContext context = PreviewPitchResolver::contextForNode(graph, "mesh");
+    REQUIRE(context.midiNote == existingPreviewNote);
+    REQUIRE(context.keyScaleAxis == "red");
+
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "triple",
+            "redSource",
+            "Red Source",
+            "modWheel").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "triple",
+            "yellowSource",
+            "Yellow Source",
+            "keyScale").succeeded());
+
+    context = PreviewPitchResolver::contextForNode(graph, "mesh");
+    REQUIRE(context.midiNote == existingPreviewNote);
+    REQUIRE(context.keyScaleAxis == "yellow");
+}
+
 TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at full resolution",
         "[cycle-v2][canvas][probe][detail]") {
     GraphNodeFactory factory;
@@ -575,6 +626,71 @@ TEST_CASE("Every registered node kind has a parseable palette icon",
         INFO("Missing or invalid icon for node type " << definition.typeId);
         REQUIRE(NodePaletteEntryIconRenderer::hasIcon(definition.kind));
     }
+}
+
+TEST_CASE("Guide controls render the shared semantic icon at production size",
+        "[cycle-v2][canvas][icons][guide]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    Image rendered(Image::ARGB, 30, 17, true);
+    const uint64_t blankChecksum = imageChecksum(rendered);
+    Graphics graphics(rendered);
+
+    REQUIRE(NodeIconRenderer::hasIcon("guideCurve"));
+    NodeIconRenderer::paint(
+            graphics,
+            "guideCurve",
+            rendered.getBounds().toFloat(),
+            0.82f);
+    REQUIRE(imageChecksum(rendered) != blankChecksum);
+}
+
+TEST_CASE("Effect enable actions share full and embedded header geometry",
+        "[cycle-v2][canvas][effects][chrome]") {
+    const Rectangle<int> fullEditor { 0, 0, 520, 520 };
+    const auto full = fullEditorHeaderLayout(fullEditor, true);
+    REQUIRE(full.enabled.getWidth() == 28);
+    REQUIRE(full.enabled.getHeight() == 28);
+    REQUIRE(full.enabled.getRight() + 8 == full.close.getX());
+    REQUIRE(full.enabled.getCentreY() == full.close.getCentreY());
+    REQUIRE(full.header.contains(full.enabled));
+
+    const Rectangle<float> embeddedEditor { 0.f, 0.f, 900.f, 430.f };
+    const auto embedded = embeddedEditorHeaderLayout(embeddedEditor, true);
+    REQUIRE(embedded.enabled.getWidth() == Catch::Approx(28.f));
+    REQUIRE(embedded.enabled.getHeight() == Catch::Approx(28.f));
+    REQUIRE(embedded.enabled.getRight() + 8.f == Catch::Approx(embedded.close.getX()));
+    REQUIRE(embedded.enabled.getCentreY() == Catch::Approx(embedded.close.getCentreY()));
+    REQUIRE(embedded.header.contains(embedded.enabled));
+}
+
+TEST_CASE("Effect enable button has distinct native-size on and bypass states",
+        "[cycle-v2][canvas][effects][chrome][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    EffectEnableButton button;
+    button.setBounds(0, 0, 28, 28);
+
+    const auto render = [&button](bool enabled) {
+        button.setToggleState(enabled, dontSendNotification);
+        Image image(Image::ARGB, 28, 28, true);
+        Graphics graphics(image);
+        button.paintButton(graphics, false, false);
+        return imageChecksum(image);
+    };
+
+    const uint64_t bypassed = render(false);
+    const uint64_t enabled = render(true);
+    REQUIRE(bypassed != imageChecksum(Image(Image::ARGB, 28, 28, true)));
+    REQUIRE(enabled != bypassed);
+    REQUIRE(button.getTooltip() == "Enable or bypass effect");
+    REQUIRE(button.getWantsKeyboardFocus());
+
+    button.setToggleState(false, dontSendNotification);
+    REQUIRE(static_cast<Component&>(button).keyPressed(
+            KeyPress(KeyPress::returnKey)));
+    MessageManager::getInstance()->runDispatchLoopUntil(50);
+    REQUIRE(button.getToggleState());
 }
 
 TEST_CASE("Every Envelope purpose has a parseable compact icon",
@@ -911,8 +1027,18 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
 
     const auto bounds = registry.moduleFor(NodeKind::ImpulseResponse)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
-    REQUIRE(bounds.getWidth() == Catch::Approx(1050.f));
-    REQUIRE(bounds.getHeight() == Catch::Approx(470.f));
+    REQUIRE(bounds.getWidth() == Catch::Approx(1080.f));
+    REQUIRE(bounds.getHeight() == Catch::Approx(430.f));
+
+    const auto clampedIrBounds = registry.moduleFor(NodeKind::ImpulseResponse)
+            .expandedEditorBounds({ 0.f, 0.f, 900.f, 600.f }, 18.f);
+    REQUIRE(clampedIrBounds.getWidth() == Catch::Approx(864.f));
+    REQUIRE(clampedIrBounds.getHeight() == Catch::Approx(430.f));
+
+    const auto waveshaperBounds = registry.moduleFor(NodeKind::Waveshaper)
+            .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
+    REQUIRE(waveshaperBounds.getWidth() == Catch::Approx(766.f));
+    REQUIRE(waveshaperBounds.getHeight() == Catch::Approx(464.f));
 
     const auto meshBounds = registry.moduleFor(NodeKind::TrilinearMesh)
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
@@ -1022,6 +1148,12 @@ TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
 
 TEST_CASE("Canvas legend collapses non-signal domains into Control",
         "[cycle-v2][canvas][legend]") {
+    REQUIRE(CanvasChromeMetrics::legendFontSize
+            == Catch::Approx(CanvasChromeMetrics::microFontSize * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendLineLength == Catch::Approx(17.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendLineWidth == Catch::Approx(2.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendRowStride == Catch::Approx(20.f * 1.3f));
+
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);
     REQUIRE(colourForDomain(PortDomain::MeshField) == control);
@@ -1033,16 +1165,9 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
-TEST_CASE("Voice context editor resolves every authored control from its painted rows",
+TEST_CASE("Voice context compact presentation retains its selector and summary",
         "[cycle-v2][canvas][compact-editor]") {
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
-    const Rectangle<float> panel { 0.f, 0.f, 700.f, 400.f };
-
-    auto editAt = [&](Point<float> point) {
-        const auto edit = VoiceContextCompactEditor::editAt(voice, panel, point);
-        REQUIRE(edit.has_value());
-        return *edit;
-    };
 
     REQUIRE(VoiceContextCompactEditor::domainLabel(voice) == "Waveform");
     REQUIRE(VoiceContextCompactEditor::nextDomain(voice) == "spectral");
@@ -1066,67 +1191,6 @@ TEST_CASE("Voice context editor resolves every authored control from its painted
     };
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice, 2.0)
             == "Octave 1  ·  2 seconds  ·  Glide");
-    voice.parameters.clear();
-
-    auto edit = editAt({ 252.f, 59.5f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Domain);
-    REQUIRE(edit.value == "spectral");
-
-    const Rectangle<float> octave = VoiceContextCompactEditor::octaveControlBounds(panel);
-    edit = editAt({ octave.getX(), octave.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Octave);
-    REQUIRE(edit.value == "-2");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Octave,
-            panel,
-            octave.getCentreX())->value == "0");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Octave,
-            panel,
-            octave.getRight())->value == "2");
-
-    const Rectangle<float> voiceLength = VoiceContextCompactEditor::voiceLengthControlBounds(panel);
-    edit = editAt({ voiceLength.getCentreX(), voiceLength.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::VoiceLength);
-    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getX())
-            == Catch::Approx(std::exp(-3.0)));
-    REQUIRE(VoiceContextCompactEditor::voiceLengthAt(panel, voiceLength.getRight())
-            == Catch::Approx(std::exp(5.0)));
-
-    const Rectangle<float> pitch = VoiceContextCompactEditor::pitchControlBounds(panel);
-    edit = editAt({ pitch.getX(), pitch.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Pitch);
-    REQUIRE(edit.value == "-12");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Pitch,
-            panel,
-            pitch.getCentreX())->value == "0");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Pitch,
-            panel,
-            pitch.getRight())->value == "12");
-
-    const Rectangle<float> oversampling =
-            VoiceContextCompactEditor::oversamplingControlBounds(panel);
-    edit = editAt({ oversampling.getX(), oversampling.getCentreY() });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Oversampling);
-    REQUIRE(edit.value == "1x");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Oversampling,
-            panel,
-            oversampling.getCentreX())->value == "4x");
-    REQUIRE(VoiceContextCompactEditor::sliderEditAt(
-            VoiceContextEdit::Control::Oversampling,
-            panel,
-            oversampling.getRight())->value == "8x");
-
-    REQUIRE(octave.getWidth() == Catch::Approx(voiceLength.getWidth()));
-    REQUIRE(octave.getWidth() == Catch::Approx(pitch.getWidth()));
-    REQUIRE(octave.getWidth() == Catch::Approx(oversampling.getWidth()));
-
-    edit = editAt({ 112.f, 237.f });
-    REQUIRE(edit.control == VoiceContextEdit::Control::Portamento);
-    REQUIRE(edit.value == "1");
 
     const Rectangle<float> selector = VoiceContextCompactEditor::nodeSelectorBounds(
             voice.bounds,

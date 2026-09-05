@@ -172,6 +172,25 @@ struct GuideCurveResource {
     uint64_t revision { 1 };
 };
 
+struct AudioSampleResource {
+    String id;
+    String name;
+    double sampleRate {};
+    std::vector<float> samples;
+};
+
+struct NodeAudioResourceBinding {
+    String nodeId;
+    String resourceId;
+    String mode;
+};
+
+struct NodeAudioResourceSummary {
+    String name;
+    String mode;
+    int sampleCount {};
+};
+
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -263,6 +282,10 @@ public:
     const std::vector<GuideHeatmapAssetPtr>& getGuideHeatmaps() const { return guideHeatmaps; }
     const std::vector<GuideCurveAssignment>& getGuideAssignments() const { return guideAssignments; }
     const std::vector<SignalProbe>& getSignalProbes() const { return signalProbes; }
+    const std::vector<AudioSampleResource>& getAudioResources() const { return audioResources; }
+    const std::vector<NodeAudioResourceBinding>& getAudioResourceBindings() const {
+        return audioResourceBindings;
+    }
     uint64_t getRevision() const { return revision; }
 
     const Node* findNode(const String& nodeId) const;
@@ -290,6 +313,13 @@ public:
     int guideUsageCount(const String& guideId) const;
     const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
     const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;
+    bool addAudioResource(AudioSampleResource resource);
+    bool removeAudioResource(const String& resourceId);
+    const AudioSampleResource* findAudioResource(const String& resourceId) const;
+    bool bindAudioResource(NodeAudioResourceBinding binding);
+    bool unbindAudioResource(const String& nodeId);
+    const NodeAudioResourceBinding* findAudioResourceBinding(const String& nodeId) const;
+    int audioResourceUsageCount(const String& resourceId) const;
     void addSignalProbe(SignalProbe probe);
     bool removeSignalProbe(const String& probeId);
     SignalProbe* findSignalProbeForEditing(const String& probeId);
@@ -346,6 +376,8 @@ private:
     std::vector<GuideHeatmapAssetPtr> guideHeatmaps;
     std::vector<GuideCurveAssignment> guideAssignments;
     std::vector<SignalProbe> signalProbes;
+    std::vector<AudioSampleResource> audioResources;
+    std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> guideResourceIndex;
     std::unordered_map<String, size_t, StringHash> guideHeatmapIndex;
     std::unordered_map<

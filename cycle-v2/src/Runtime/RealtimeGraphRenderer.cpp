@@ -314,6 +314,8 @@ void RealtimeGraphRenderer::publishMetrics(
     float peak {};
     double squaredNorm {};
     int measuredChannels {};
+    std::array<float, 2> channelPeaks {};
+    std::array<bool, 2> channelMeasured {};
     for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
         if (outputChannels[channel] == nullptr) {
             continue;
@@ -329,15 +331,22 @@ void RealtimeGraphRenderer::publishMetrics(
             Buffer<float> absolute(metricsScratch.data(), frameCount);
             output.copyTo(absolute);
             absolute.abs();
-            peak = jmax(peak, absolute.max());
+            channelPeaks[(size_t) channel] = absolute.max();
+            channelMeasured[(size_t) channel] = true;
+            peak = jmax(peak, channelPeaks[(size_t) channel]);
         }
         squaredNorm += (double) norm * (double) norm;
         ++measuredChannels;
     }
 
     const double denominator = (double) jmax(1, measuredChannels * frameCount);
+    const float fallbackPeak = channelMeasured[0] ? channelPeaks[0] : channelPeaks[1];
+    const float leftPeak = channelMeasured[0] ? channelPeaks[0] : fallbackPeak;
+    const float rightPeak = channelMeasured[1] ? channelPeaks[1] : leftPeak;
     outputPeak.store(peak, std::memory_order_relaxed);
     outputRms.store((float) std::sqrt(squaredNorm / denominator), std::memory_order_relaxed);
+    outputLeftPeak.store(leftPeak, std::memory_order_relaxed);
+    outputRightPeak.store(rightPeak, std::memory_order_relaxed);
 }
 
 }

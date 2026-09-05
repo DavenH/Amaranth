@@ -2,6 +2,8 @@
 
 #include <functional>
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
@@ -21,6 +23,7 @@ public:
             std::function<bool(const String&, GuideHeatmapAssetPtr, uint64_t)> loadAction,
             std::function<bool(const String&, uint64_t)> clearAction);
     void renderOpenGL(float scaleFactor) override;
+    std::vector<std::pair<String, Rectangle<float>>> automationPointerTargets() const;
 
 private:
     struct Impl;
@@ -32,6 +35,7 @@ private:
     void applyEditorStateToWidget() override;
     std::vector<NodeParameter> editorControls() const override;
     void appendEditorAutomation(DynamicObject&) const override;
+    void updateHeatmapControls();
 
     std::unique_ptr<Impl> impl;
     GuideCurveResource guide;

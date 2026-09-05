@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graph/NodeGraph.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include <JuceHeader.h>
 
@@ -9,15 +10,15 @@
 
 namespace CycleV2 {
 
-class LabeledParameterSlider {
+class LabeledParameterSlider : public PropertySliderRow {
 public:
     LabeledParameterSlider(Component& owner, const String& labelText);
-    ~LabeledParameterSlider();
 
-    void setBounds(Rectangle<int> bounds, int labelWidth = 82, int gap = 12);
-
-    Label label;
-    Slider slider;
+    void setBounds(
+            Rectangle<int> bounds,
+            int labelWidth = 82,
+            int gap = 12,
+            int valueWidth = PropertyControlMetrics::valueWidth);
 };
 
 class ParameterToggle {
@@ -39,8 +40,6 @@ public:
             std::initializer_list<TextButton*> buttons = {});
 };
 
-void styleParameterLabel(Label& label, const String& text);
-void styleParameterButton(TextButton& button, const String& text);
 void addEditorParameter(
         std::vector<NodeParameter>& result,
         const Node& node,

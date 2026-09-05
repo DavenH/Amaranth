@@ -6,6 +6,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "UI/RenderInvalidationAccumulator.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
@@ -15,6 +16,11 @@ class GLPanelRenderer;
 class Panel;
 
 namespace CycleV2 {
+
+std::optional<juce::Rectangle<int>> curvePanelFramebufferReadBounds(
+        juce::Rectangle<float> bounds,
+        float scaleFactor,
+        juce::Rectangle<int> viewport);
 
 class CurvePanelEnvironment {
 public:
@@ -117,7 +123,7 @@ private:
 
     void initialiseComponent();
     void initialiseSharedGlResources();
-    void captureRenderedPanelImage(
+    bool captureRenderedPanelImage(
             Rectangle<float> bounds,
             float scaleFactor,
             Image& destination,
@@ -128,7 +134,7 @@ private:
             uint64_t modelRevision,
             uint64_t contentRevision,
             uint64_t presentationRevision) const;
-    void renderPreviewUncached(
+    bool renderPreviewUncached(
             Rectangle<float> bounds,
             float scaleFactor,
             bool preserveInteractiveZoom);

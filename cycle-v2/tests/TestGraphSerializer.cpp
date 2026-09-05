@@ -113,6 +113,74 @@ TEST_CASE("Graph documents save canonical JSON with stable line endings",
     REQUIRE(destination.deleteFile());
 }
 
+TEST_CASE("Graph JSON embeds portable audio resources and node bindings",
+        "[cycle-v2][graph][audio-resource]") {
+    NodeGraph source;
+    source.addNode(GraphNodeFactory().createNode(
+            NodeKind::ImpulseResponse,
+            "ir",
+            {}));
+    REQUIRE(source.addAudioResource({
+            "audio-1",
+            "room.wav",
+            48000.0,
+            { 0.25f, -1.f, 0.5f, 0.f }
+    }));
+    REQUIRE(source.bindAudioResource({ "ir", "audio-1", "direct" }));
+
+    const GraphSerializer serializer;
+    const String encoded = serializer.toJsonString(source);
+    const GraphLoadResult loaded = serializer.loadJsonString(encoded);
+
+    REQUIRE(loaded.succeeded());
+    const AudioSampleResource* resource = loaded.graph.findAudioResource("audio-1");
+    const NodeAudioResourceBinding* binding = loaded.graph.findAudioResourceBinding("ir");
+    REQUIRE(resource != nullptr);
+    REQUIRE(resource->name == "room.wav");
+    REQUIRE(resource->sampleRate == 48000.0);
+    REQUIRE(resource->samples == std::vector<float> { 0.25f, -1.f, 0.5f, 0.f });
+    REQUIRE(binding != nullptr);
+    REQUIRE(binding->resourceId == "audio-1");
+    REQUIRE(binding->mode == "direct");
+    REQUIRE(serializer.toJsonString(loaded.graph) == encoded);
+}
+
+TEST_CASE("Graph JSON rejects malformed audio resources and dangling bindings",
+        "[cycle-v2][graph][audio-resource]") {
+    NodeGraph source;
+    source.addNode(GraphNodeFactory().createNode(
+            NodeKind::ImpulseResponse,
+            "ir",
+            {}));
+    source.addAudioResource({ "audio-1", "room.wav", 48000.0, { 0.25f } });
+    source.bindAudioResource({ "ir", "audio-1", "direct" });
+    const GraphSerializer serializer;
+
+    SECTION("non-finite sample") {
+        var encoded = serializer.writeJSON(source);
+        auto* resources = encoded.getProperty("audioResources", {}).getArray();
+        REQUIRE(resources != nullptr);
+        resources->getReference(0).getProperty("samples", {}).getArray()->set(0, "nan");
+        REQUIRE_FALSE(serializer.readJSON(encoded).succeeded());
+    }
+
+    SECTION("dangling binding") {
+        var encoded = serializer.writeJSON(source);
+        auto* resources = encoded.getProperty("audioResources", {}).getArray();
+        REQUIRE(resources != nullptr);
+        resources->clear();
+        REQUIRE_FALSE(serializer.readJSON(encoded).succeeded());
+    }
+
+    SECTION("duplicate identity") {
+        var encoded = serializer.writeJSON(source);
+        auto* resources = encoded.getProperty("audioResources", {}).getArray();
+        REQUIRE(resources != nullptr);
+        resources->add(resources->getReference(0).clone());
+        REQUIRE_FALSE(serializer.readJSON(encoded).succeeded());
+    }
+}
+
 TEST_CASE("Graph JSON derives immutable node names from definitions", "[cycle-v2][graph]") {
     GraphSerializer serializer;
     var encoded = serializer.writeJSON(NodeGraph::createDemoGraph());

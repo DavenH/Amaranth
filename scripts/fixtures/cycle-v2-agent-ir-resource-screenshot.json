@@ -1,0 +1,32 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceActionsAvailable",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceSectionLabel",
+      "equals": "IR sample"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 800
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": false
+}

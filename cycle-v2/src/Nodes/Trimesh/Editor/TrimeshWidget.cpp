@@ -1,6 +1,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <Util/Arithmetic.h>
@@ -72,6 +73,18 @@ void TrimeshWidget::setRenderProfile(TrimeshRenderProfile profile) {
 void TrimeshWidget::setPreviewMidiNote(int midiNote) {
     previewMidiNote = midiNote;
     bridge.setPreviewMidiNote(midiNote);
+}
+
+void TrimeshWidget::setPreviewKeyScaleAxis(const String& axis) {
+    int dimension = -1;
+    if (axis == "yellow") {
+        dimension = Vertex::Time;
+    } else if (axis == "red") {
+        dimension = Vertex::Red;
+    } else if (axis == "blue") {
+        dimension = Vertex::Blue;
+    }
+    bridge.setPreviewKeyScaleAxis(dimension);
 }
 
 void TrimeshWidget::setGuideAttachmentLabels(std::array<String, 6> labels) {
@@ -301,6 +314,13 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto samples = snapshot.waveY();
     const TrimeshPanel2D& panel = bridge.getPanel2D();
     TrimeshPanelRenderStats stats;
+    const auto& panelColumns = bridge.getDataSource().getPanelColumns();
+    if (!panelColumns.empty()) {
+        stats.firstPanelMidiNote = panelColumns.front().midiKey;
+        stats.lastPanelMidiNote = panelColumns.back().midiKey;
+        stats.pitchSpansColumns = stats.firstPanelMidiNote
+                != stats.lastPanelMidiNote;
+    }
     stats.sampleCount = samples.size();
     stats.interceptCount = (int) snapshot.intercepts().size();
     const bool hasPanelSize = panel.getWidth() > 0 && panel.getHeight() > 0;
@@ -632,18 +652,23 @@ void TrimeshWidget::drawPanelFrame(
 
     if (fillBody) {
         g.setColour(Colour(0xff0e1318));
-        g.fillRoundedRectangle(area, 6.f);
+        g.fillRoundedRectangle(area, CanvasChromeMetrics::panelCornerRadius);
         g.setColour(Colour(0xff151a20).withAlpha(0.78f));
         g.fillRect(area.withTrimmedTop(kPanelHeaderHeight));
     } else {
         Rectangle<float> header = area.removeFromTop(kPanelHeaderHeight);
         g.setColour(Colour(0xff0e1318));
-        g.fillRoundedRectangle(header, 6.f);
-        g.fillRect(header.withTrimmedTop(jmax(0.f, header.getHeight() - 6.f)));
+        g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
+        g.fillRect(header.withTrimmedTop(jmax(
+                0.f,
+                header.getHeight() - CanvasChromeMetrics::panelCornerRadius)));
     }
 
     g.setColour(Colour(0xff26313d));
-    g.drawRoundedRectangle(fullArea, 6.f, 1.f);
+    g.drawRoundedRectangle(
+            fullArea,
+            CanvasChromeMetrics::panelCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
     g.setColour(kMutedText);
     g.setFont(FontOptions(9.8f));
     g.drawText(title, fullArea.reduced(9.f, 4.f).removeFromTop(14.f), Justification::centredLeft);

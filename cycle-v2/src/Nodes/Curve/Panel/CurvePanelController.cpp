@@ -1,11 +1,15 @@
 #include "Nodes/Curve/Panel/CurvePanelController.h"
 
+#include <optional>
+
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Guide/GuideCurvePreparation.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
@@ -42,7 +46,7 @@ public:
         const ControlState next { enabled, first, second, third, menuId };
         const bool changed = controls != next;
         controls = next;
-        applyDomainControlValues(first, second);
+        applyDomainControlValues(first, second, third);
         if (changed) {
             ++publicationRevision;
         }
@@ -103,6 +107,12 @@ public:
         return state;
     }
 
+    std::vector<CurvePanelGridLine> verticalMajorGridLines() const override {
+        return panel != nullptr
+                ? panel->verticalMajorGridLines()
+                : std::vector<CurvePanelGridLine>();
+    }
+
     NodeModelStatePtr prepareModelPublication(uint64_t currentRevision) override {
         publicationRevision = jmax(publicationRevision, currentRevision + 1);
         return modelPublication();
@@ -160,7 +170,7 @@ protected:
     virtual bool registerMeshEdit() = 0;
     virtual void synchronizeSelection() = 0;
     virtual void applyDomainPanelSettings() {}
-    virtual void applyDomainControlValues(float, float) {}
+    virtual void applyDomainControlValues(float, float, float) {}
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
     virtual bool preservesInteractivePreviewZoom() const { return false; }
@@ -239,7 +249,7 @@ private:
     bool editChanged {};
 };
 
-class FlatPanelController final : public CurvePanelControllerBase {
+class FlatPanelController : public CurvePanelControllerBase {
 public:
     explicit FlatPanelController(NodeKind kindToUse) :
             adapter(kindToUse) {
@@ -258,6 +268,7 @@ public:
     }
 
     void syncFromNode(const Node& node) override {
+        beforeNodeSync(node);
         if (!adapter.needsNodeSync(node)) {
             return;
         }
@@ -308,6 +319,9 @@ public:
         }
         return publication;
     }
+
+protected:
+    virtual void beforeNodeSync(const Node&) {}
 
 private:
     void updateGuidePresentation(
@@ -370,6 +384,132 @@ private:
     FlatCurvePanelAdapter adapter;
     GuideCurveResource guideState;
     GuideHeatmapAssetPtr guideHeatmap;
+};
+
+class ImpulseResponsePanelController final :
+        public FlatPanelController,
+        public ImpulseResponseCurvePanelController {
+public:
+    ImpulseResponsePanelController() :
+            FlatPanelController(NodeKind::ImpulseResponse) {}
+
+    void setAudioResource(const AudioSampleResource* resource) override {
+        if (audioResourcesEqual(audioResource, resource)) {
+            return;
+        }
+        audioResource = resource != nullptr
+                ? std::optional<AudioSampleResource>(*resource)
+                : std::nullopt;
+        ++audioResourceRevision;
+        updateSource();
+        updateAnalysis(controls.third);
+    }
+
+    void zoomToAttack() override {
+        impulseResponsePanel().zoomToAttack();
+    }
+
+    void resetZoom() override {
+        impulseResponsePanel().resetZoom();
+    }
+
+    var automationState() const override {
+        var state = FlatPanelController::automationState();
+        if (auto* object = state.getDynamicObject()) {
+            object->setProperty("irSourceRevision", (int64) sourceRevision);
+            object->setProperty("irAnalysisRevision", (int64) analysisRevision);
+        }
+        return state;
+    }
+
+protected:
+    void beforeNodeSync(const Node& node) override {
+        currentNode = node;
+        updateSource();
+        const NodeParameterMap parameterMap(node.parameters);
+        updateAnalysis(parameterMap.floatValue("highPass", 0.5f));
+    }
+
+    void applyDomainControlValues(float, float, float highPass) override {
+        updateAnalysis(highPass);
+    }
+
+private:
+    ImpulseResponseCurvePanelContract& impulseResponsePanel() {
+        return dynamic_cast<ImpulseResponseCurvePanelContract&>(*panel);
+    }
+
+    void updateSource() {
+        if (!currentNode.has_value()) {
+            return;
+        }
+        const String signature = sourceSignature();
+        if (signature == preparedSourceSignature) {
+            return;
+        }
+        auto prepared = prepareImpulseResponseSource(
+                currentNode->parameters,
+                currentNode->model,
+                audioResource.has_value() ? &*audioResource : nullptr);
+        preparedSourceSignature = signature;
+        ++sourceRevision;
+        preparedAnalysisSignature = {};
+        if (!prepared.has_value()) {
+            source = nullptr;
+            static_cast<FlatCurvePanelContract&>(*panel)
+                    .setImpulseResponseAnalysis(nullptr);
+            ++analysisRevision;
+            return;
+        }
+        source = std::make_shared<const ImpulseResponseSource>(std::move(*prepared));
+    }
+
+    void updateAnalysis(float highPass) {
+        if (source == nullptr) {
+            return;
+        }
+        const String signature = String((int64) sourceRevision)
+                + ":" + String(highPass, 9);
+        if (signature == preparedAnalysisSignature) {
+            return;
+        }
+        auto analysis = prepareImpulseResponseAnalysis(*source, highPass);
+        static_cast<FlatCurvePanelContract&>(*panel).setImpulseResponseAnalysis(
+                std::make_shared<const ImpulseResponseAnalysis>(std::move(analysis)));
+        preparedAnalysisSignature = signature;
+        ++analysisRevision;
+    }
+
+    String sourceSignature() const {
+        const NodeParameterMap parameterMap(currentNode->parameters);
+        const uint64_t modelRevision = currentNode->model != nullptr
+                ? currentNode->model->revision()
+                : 0;
+        return String(parameterMap.floatValue("size", 0.5f), 9)
+                + ":" + String((int64) modelRevision)
+                + ":" + String((int64) audioResourceRevision);
+    }
+
+    static bool audioResourcesEqual(
+            const std::optional<AudioSampleResource>& current,
+            const AudioSampleResource* next) {
+        if (!current.has_value() || next == nullptr) {
+            return !current.has_value() && next == nullptr;
+        }
+        return current->id == next->id
+                && current->name == next->name
+                && current->sampleRate == next->sampleRate
+                && current->samples == next->samples;
+    }
+
+    std::optional<Node> currentNode;
+    std::optional<AudioSampleResource> audioResource;
+    std::shared_ptr<const ImpulseResponseSource> source;
+    String preparedSourceSignature;
+    String preparedAnalysisSignature;
+    uint64_t audioResourceRevision {};
+    uint64_t sourceRevision {};
+    uint64_t analysisRevision {};
 };
 
 class EnvelopePanelController final : public CurvePanelControllerBase,
@@ -481,7 +621,7 @@ private:
         envelopePanel().setEnvelopeAxisLinks(adapter.redLinked(), adapter.blueLinked());
     }
 
-    void applyDomainControlValues(float red, float blue) override {
+    void applyDomainControlValues(float red, float blue, float) override {
         adapter.setMorph(red, blue);
     }
 
@@ -514,8 +654,10 @@ std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind) 
     if (kind == NodeKind::Envelope) {
         return std::make_unique<EnvelopePanelController>();
     }
-    if (kind == NodeKind::ImpulseResponse
-            || kind == NodeKind::Waveshaper) {
+    if (kind == NodeKind::ImpulseResponse) {
+        return std::make_unique<ImpulseResponsePanelController>();
+    }
+    if (kind == NodeKind::Waveshaper) {
         return std::make_unique<FlatPanelController>(kind);
     }
     return nullptr;

@@ -32,10 +32,9 @@
       "vertexIndex": 0
     },
     {
-      "command": "assertNodeParameter",
-      "nodeId": "waveMesh",
-      "parameterId": "selectedVertexIndex",
-      "equals": "0"
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexIndex",
+      "equals": 0
     },
     {
       "command": "setVertexParameter",
@@ -44,10 +43,9 @@
       "value": 0.75
     },
     {
-      "command": "assertNodeParameter",
-      "nodeId": "waveMesh",
-      "parameterId": "mesh.vertex.0.amp",
-      "equals": "0.750"
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.4.value",
+      "equals": 0.75
     },
     {
       "command": "inspectNodeControls",

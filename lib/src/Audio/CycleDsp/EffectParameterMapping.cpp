@@ -19,6 +19,14 @@ float unitValue(float value) {
 
 }
 
+float waveshaperGainDecibels(float value) {
+    return 90.f * (unitValue(value) - 0.5f);
+}
+
+float waveshaperGainUnitValue(float decibels) {
+    return unitValue(decibels / 90.f + 0.5f);
+}
+
 float equalizerGainDecibels(float value) {
     return 60.f * (unitValue(value) - 0.5f);
 }

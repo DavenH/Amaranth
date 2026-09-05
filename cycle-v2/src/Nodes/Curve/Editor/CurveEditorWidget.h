@@ -24,6 +24,9 @@ public:
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
+    void setImpulseResponseAudioResource(const AudioSampleResource* resource);
+    void zoomImpulseResponseToAttack();
+    void resetImpulseResponseZoom();
     void syncFromNode(const Node& node);
     void syncFromGuideResource(
             const GuideCurveResource& guide,
@@ -44,6 +47,7 @@ public:
     void releaseSharedGlResources();
     int vertexCountForAutomation() const;
     var automationState() const;
+    std::vector<CurvePanelGridLine> verticalMajorGridLines() const;
     std::vector<CurvePreviewVertex> previewVertices();
     String serializedMeshState();
     NodeModelStatePtr modelPublication();

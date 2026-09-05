@@ -1,0 +1,234 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sizeLayout.usableTrackWidth",
+      "op": "greaterThanOrEqual",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.postGainLayout.usableTrackWidth",
+      "op": "greaterThanOrEqual",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.highPassLayout.usableTrackWidth",
+      "op": "greaterThanOrEqual",
+      "value": 140
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sizeLayout.display",
+      "equals": "256 smp"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.postGainLayout.display",
+      "equals": "0 dB"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.highPassLayout.display",
+      "equals": "2.8 kHz"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.8.sample",
+      "equals": 256
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceActionsAvailable",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceSectionLabel",
+      "equals": "IR sample"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceBound",
+      "equals": false
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.enabled",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "irEditor.enabled",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "enabled",
+      "equals": "0"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "enabled",
+      "equals": "1"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "irEditor.postGain",
+      "targetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "irEditor.postGain",
+      "downTargetId": "irEditor.postGain",
+      "targetX": 0.65,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "irEditor.postGain",
+      "downTargetId": "irEditor.postGain",
+      "targetX": 0.75,
+      "downTargetX": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "irEditor.postGain",
+      "downTargetId": "irEditor.postGain",
+      "targetX": 0.75,
+      "downTargetX": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "equals": "0.5"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "irEditor.postGain",
+      "targetX": 0.5,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "irEditor.postGain",
+      "downTargetId": "irEditor.postGain",
+      "targetX": 0.7,
+      "downTargetX": 0.5,
+      "shift": true
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "irEditor.postGain",
+      "downTargetId": "irEditor.postGain",
+      "targetX": 0.7,
+      "downTargetX": 0.5,
+      "shift": true,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "op": "greaterThan",
+      "value": 0.5
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "op": "lessThan",
+      "value": 0.52
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "irEditor.postGain",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "ir",
+      "parameterId": "post",
+      "equals": "0.50000000"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "irEditor.size",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sizeLayout.display",
+      "equals": "1024 smp"
+    },
+    {
+      "command": "key",
+      "area": "canvas",
+      "key": "escape"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeId",
+      "equals": ""
+    }
+  ],
+  "quit": true
+}

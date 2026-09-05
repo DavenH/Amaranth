@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCommandDispatcher.h"
@@ -11,14 +12,19 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Runtime/NodeDspConfiguration.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
+
+#include <cmath>
+#include <limits>
 
 using namespace CycleV2;
 
@@ -651,6 +657,177 @@ TEST_CASE("Typed curve snapshots build deterministic immutable DSP data",
     const auto firstIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
     const auto secondIr = IrSignalProcessor::buildConfiguration(typedParameters, typedModel);
     REQUIRE(firstIr->impulse == secondIr->impulse);
+}
+
+TEST_CASE("Direct IR resources reach configuration preparation and its cache key",
+        "[cycle-v2][curve-model][dsp][audio-resource]") {
+    NodeGraph graph;
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    graph.addNode(ir);
+    const NodeDspConfigurationFactory factory;
+    const AudioExecutionSpec spec;
+    const String curveKey = factory.keyFor(
+            AudioModuleRole::ImpulseResponse,
+            ir.parameters,
+            ir.model,
+            spec,
+            &graph,
+            ir.id);
+    const auto curveConfiguration = std::dynamic_pointer_cast<const IrConfiguration>(
+            factory.create(
+                    AudioModuleRole::ImpulseResponse,
+                    ir.parameters,
+                    ir.model,
+                    spec,
+                    &graph,
+                    ir.id));
+
+    REQUIRE(graph.addAudioResource({ "audio-1", "Impulse.wav", 48000.0, { 1.f, -0.5f } }));
+    REQUIRE(graph.bindAudioResource({ ir.id, "audio-1", "direct" }));
+    const String directKey = factory.keyFor(
+            AudioModuleRole::ImpulseResponse,
+            ir.parameters,
+            ir.model,
+            spec,
+            &graph,
+            ir.id);
+    const auto directConfiguration = std::dynamic_pointer_cast<const IrConfiguration>(
+            factory.create(
+                    AudioModuleRole::ImpulseResponse,
+                    ir.parameters,
+                    ir.model,
+                    spec,
+                    &graph,
+                    ir.id));
+
+    REQUIRE(curveConfiguration != nullptr);
+    REQUIRE(directConfiguration != nullptr);
+    REQUIRE(directKey != curveKey);
+    REQUIRE(directKey.contains("audio-1:direct"));
+    REQUIRE(directConfiguration->impulse != curveConfiguration->impulse);
+}
+
+TEST_CASE("IR visual analysis reuses the filtered audio impulse",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    AudioSampleResource resource { "impulse", "Impulse.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+
+    auto lowPassThroughParameters = ir.parameters;
+    auto highPassParameters = ir.parameters;
+    for (auto& parameter : lowPassThroughParameters) {
+        if (parameter.id == "highPass") {
+            parameter.value = "0";
+        }
+    }
+    for (auto& parameter : highPassParameters) {
+        if (parameter.id == "highPass") {
+            parameter.value = "0.8";
+        }
+    }
+
+    const auto unfiltered = prepareImpulseResponseAnalysis(
+            lowPassThroughParameters, ir.model, &resource);
+    const auto filtered = prepareImpulseResponseAnalysis(
+            highPassParameters, ir.model, &resource);
+    const auto audioConfiguration = IrSignalProcessor::buildConfiguration(
+            highPassParameters, ir.model, &resource);
+
+    REQUIRE(unfiltered.has_value());
+    REQUIRE(filtered.has_value());
+    REQUIRE(audioConfiguration != nullptr);
+    REQUIRE(filtered->filteredImpulse == audioConfiguration->impulse);
+    REQUIRE(filtered->filteredImpulse != unfiltered->filteredImpulse);
+    REQUIRE(filtered->normalizedMagnitudes.size() <= 512);
+    REQUIRE(filtered->frequencyRows.size() == filtered->normalizedMagnitudes.size());
+    REQUIRE(filtered->normalizedMagnitudes.front() < 1.0e-5f);
+    REQUIRE(unfiltered->normalizedMagnitudes.front() > 0.9f);
+    REQUIRE(resource.samples.front() == 1.f);
+}
+
+TEST_CASE("IR analysis reuses one sampled source across live high-pass changes",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    AudioSampleResource resource { "impulse", "Impulse.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+
+    const auto source = prepareImpulseResponseSource(
+            ir.parameters, ir.model, &resource);
+    REQUIRE(source.has_value());
+
+    const ImpulseResponseAnalysis zeroCutoff = prepareImpulseResponseAnalysis(
+            *source, 0.f);
+    const ImpulseResponseAnalysis raisedCutoff = prepareImpulseResponseAnalysis(
+            *source, 0.8f);
+
+    REQUIRE(zeroCutoff.filteredImpulse.size() == source->rawImpulse.size());
+    REQUIRE(zeroCutoff.filteredDisplayImpulse.size() == source->displayImpulse.size());
+    float maximumIdentityError = 0.f;
+    float maximumDisplayIdentityError = 0.f;
+    for (size_t index = 0; index < source->rawImpulse.size(); ++index) {
+        maximumIdentityError = jmax(
+                maximumIdentityError,
+                std::abs(zeroCutoff.filteredImpulse[index] - source->rawImpulse[index]));
+        maximumDisplayIdentityError = jmax(
+                maximumDisplayIdentityError,
+                std::abs(zeroCutoff.filteredDisplayImpulse[index]
+                        - source->displayImpulse[index]));
+    }
+    REQUIRE(maximumIdentityError < 1.0e-5f);
+    REQUIRE(maximumDisplayIdentityError < 1.0e-5f);
+    REQUIRE(raisedCutoff.filteredImpulse != zeroCutoff.filteredImpulse);
+    REQUIRE(raisedCutoff.filteredDisplayImpulse
+            != zeroCutoff.filteredDisplayImpulse);
+    REQUIRE(source->rawImpulse.front() == 1.f);
+}
+
+TEST_CASE("IR modelled source retains Cycle 1 audio and display sample views",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    auto parameters = ir.parameters;
+    for (auto& parameter : parameters) {
+        if (parameter.id == "size") {
+            parameter.value = "0";
+        } else if (parameter.id == "highPass") {
+            parameter.value = "0";
+        }
+    }
+
+    const auto source = prepareImpulseResponseSource(parameters, ir.model);
+    REQUIRE(source.has_value());
+    const auto analysis = prepareImpulseResponseAnalysis(*source, 0.f);
+    const auto audioConfiguration = IrSignalProcessor::buildConfiguration(
+            parameters, ir.model);
+
+    REQUIRE(source->displayImpulse.size() == source->rawImpulse.size());
+    REQUIRE(source->displayImpulse != source->rawImpulse);
+    REQUIRE(audioConfiguration != nullptr);
+    REQUIRE(audioConfiguration->impulse == analysis.filteredImpulse);
+    REQUIRE(audioConfiguration->impulse != analysis.filteredDisplayImpulse);
+}
+
+TEST_CASE("IR analysis removes DC from audio and display at any positive cutoff",
+        "[cycle-v2][curve-model][impulse-response][visual-analysis][dc]") {
+    ImpulseResponseSource source;
+    source.rawImpulse.assign(128, 0.25f);
+    source.displayImpulse.assign(128, 0.25f);
+
+    const auto passThrough = prepareImpulseResponseAnalysis(source, 0.f);
+    const auto highPassed = prepareImpulseResponseAnalysis(
+            source, std::numeric_limits<float>::epsilon());
+
+    REQUIRE(passThrough.filteredImpulse.front() == Catch::Approx(0.25f));
+    REQUIRE(passThrough.filteredDisplayImpulse.front() == Catch::Approx(0.25f));
+    float audioSum = 0.f;
+    float displaySum = 0.f;
+    for (size_t index = 0; index < source.rawImpulse.size(); ++index) {
+        audioSum += highPassed.filteredImpulse[index];
+        displaySum += highPassed.filteredDisplayImpulse[index];
+    }
+    REQUIRE(std::abs(audioSum) < 1.0e-5f);
+    REQUIRE(std::abs(displaySum) < 1.0e-5f);
 }
 
 TEST_CASE("Typed Envelope DSP configuration owns independent mesh and rasterizer state",

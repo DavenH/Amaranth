@@ -1,0 +1,36 @@
+{
+  "commands": [
+    {
+      "command": "openNodeEditor",
+      "nodeId": "ir",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.0.sample",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.1.sample",
+      "equals": 32
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.2.sample",
+      "equals": 64
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.landmarks.8.sample",
+      "equals": 256
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-ir-power-of-two-ruler.png"
+    }
+  ],
+  "quit": true
+}

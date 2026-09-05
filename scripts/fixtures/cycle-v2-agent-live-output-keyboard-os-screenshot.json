@@ -1,0 +1,34 @@
+{
+  "commands": [
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 500,
+      "path": "/private/tmp/cycle-v2-live-output-meter.wav",
+      "peakGreaterThan": 0.00001,
+      "rmsGreaterThan": 0.000001,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.leftDisplay",
+      "op": "greaterThan",
+      "value": 0.2
+    },
+    {
+      "command": "assertState",
+      "path": "liveOutputMeter.rightDisplay",
+      "op": "greaterThan",
+      "value": 0.2
+    },
+    {
+      "command": "inspectPointerTargets"
+    }
+  ],
+  "quit": false
+}

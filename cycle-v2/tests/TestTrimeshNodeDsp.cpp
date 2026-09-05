@@ -6,6 +6,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
+#include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
@@ -441,31 +442,112 @@ TEST_CASE("Trimesh side panel renderer keeps vertex rails inside parameter rows"
     }
 }
 
-TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
-    const Rectangle<float> sideArea { 100.f, 50.f, 240.f, 420.f };
+TEST_CASE("Envelope vertex rails reclaim unsupported Guide control space",
+        "[cycle-v2][nodes][envelope][geometry][guide]") {
+    const Rectangle<float> row { 0.f, 0.f, 260.f, 30.f };
+    const Rectangle<float> trimeshRail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                    row,
+                    TrimeshSidePanelRenderer::GuideControls::Visible);
+    const Rectangle<float> envelopeRail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(
+                    row,
+                    TrimeshSidePanelRenderer::GuideControls::Hidden);
+    const Rectangle<float> guide =
+            TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
 
-    REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphCubeBounds(sideArea)));
+    REQUIRE(envelopeRail.getWidth() > trimeshRail.getWidth() + 40.f);
+    REQUIRE(envelopeRail.getRight() > guide.getX());
+    REQUIRE(trimeshRail.getRight() < guide.getX());
+}
+
+TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
+    const Rectangle<float> sideArea { 100.f, 50.f, 360.f, 420.f };
+
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> parameterArea =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+    REQUIRE(sideArea.contains(cube));
+    REQUIRE(sideArea.contains(parameterArea));
+    REQUIRE_FALSE(cube.intersects(parameterArea));
+    REQUIRE(cube.getWidth() >= 80.f);
 
     for (int i = 0; i < 3; ++i) {
+        const Rectangle<float> morphRail =
+                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i);
         const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
         const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
 
-        REQUIRE(sideArea.contains(TrimeshSidePanelRenderer::morphRailBounds(sideArea, i)));
+        REQUIRE(sideArea.contains(morphRail));
+        REQUIRE(morphRail.getWidth() >= 96.f);
         REQUIRE(sideArea.contains(primary));
         REQUIRE(sideArea.contains(link));
         REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
         REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
     }
 
-    const Rectangle<float> parameterArea =
-            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
-
-    REQUIRE(sideArea.contains(parameterArea));
-
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         REQUIRE(parameterArea.contains(row));
+        REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
     }
+}
+
+TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph travel",
+        "[cycle-v2][nodes][trimesh][geometry]") {
+    const Rectangle<float> sideArea { 0.f, 0.f, 1080.f, 260.f };
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> vertex =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+    const Rectangle<float> rail = TrimeshSidePanelRenderer::morphRailBounds(sideArea, 0);
+    const Rectangle<float> axis = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, 0);
+
+    REQUIRE(vertex.getRight() == Catch::Approx(sideArea.getRight() - 9.f));
+    REQUIRE(vertex.getHeight() == Catch::Approx(sideArea.getHeight()));
+    REQUIRE(cube.getRight() < vertex.getX());
+    REQUIRE(rail.getWidth() > 400.f);
+    REQUIRE(rail.getRight() < axis.getX());
+    REQUIRE(axis.getX() - rail.getRight() <= 12.f);
+}
+
+TEST_CASE("Trimesh Guide dropdowns are full-height trailing controls outside slider bodies",
+        "[cycle-v2][nodes][trimesh][geometry][guide]") {
+    const Rectangle<float> row { 20.f, 40.f, 280.f, 29.f };
+    const Rectangle<float> rail =
+            TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+    const Rectangle<float> guide =
+            TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
+
+    REQUIRE(guide.getHeight() == Catch::Approx(row.getHeight()));
+    REQUIRE(guide.getRight() == Catch::Approx(row.getRight()));
+    REQUIRE(rail.getRight() < guide.getX());
+    REQUIRE(guide.getX() - rail.getRight() >= 8.f);
+}
+
+TEST_CASE("Shared morph controls expose precise markers and aligned group headers",
+        "[cycle-v2][nodes][trimesh][envelope][geometry]") {
+    const Rectangle<float> rail { 20.f, 40.f, 120.f, 7.f };
+    const Rectangle<float> marker =
+            TrimeshSidePanelRenderer::morphMarkerBounds(rail, 0.25f);
+
+    REQUIRE(marker.getCentreX() == Catch::Approx(50.f));
+    REQUIRE(marker.getWidth() <= 2.f);
+    REQUIRE(marker.getHeight() >= 14.f);
+    REQUIRE(marker.getHeight() > marker.getWidth() * 7.f);
+
+    const Rectangle<float> firstRow { 100.f, 80.f, 180.f, 31.f };
+    const Rectangle<float> axisButton { 218.f, 85.5f, 20.f, 20.f };
+    const Rectangle<float> linkButton { 244.f, 85.5f, 20.f, 20.f };
+    const Rectangle<float> axisHeader =
+            TrimeshSidePanelRenderer::morphColumnHeaderBounds(axisButton, firstRow);
+    const Rectangle<float> linkHeader =
+            TrimeshSidePanelRenderer::morphColumnHeaderBounds(linkButton, firstRow);
+
+    REQUIRE(axisHeader.getCentreX() == Catch::Approx(axisButton.getCentreX()));
+    REQUIRE(linkHeader.getCentreX() == Catch::Approx(linkButton.getCentreX()));
+    REQUIRE(axisHeader.getBottom() <= firstRow.getY());
+    REQUIRE(linkHeader.getBottom() <= firstRow.getY());
+    REQUIRE_FALSE(axisHeader.intersects(linkHeader));
 }
 
 TEST_CASE("Trimesh blockwise DSP renders a source cycle from a trilinear mesh", "[cycle-v2][nodes][trimesh]") {
@@ -1118,6 +1200,83 @@ TEST_CASE("Spectral Trimesh panels share pitch-dependent LogRegions coordinates"
     }
 }
 
+TEST_CASE("Trimesh preview pitch positions whichever morph axis owns key scale",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Time);
+    bridge.setPreviewMidiNote(48);
+    bridge.syncFromNode(node, 10, 3);
+    const float c3Position = ModulationSource::normalizeKey(
+            48,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
+            == Catch::Approx(c3Position));
+    REQUIRE(bridge.getModel().getMorphPosition().red.getCurrentValue()
+            == Catch::Approx(0.5f));
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Blue);
+    bridge.setPreviewMidiNote(72);
+    bridge.syncFromNode(node, 10, 3);
+    const float c5Position = ModulationSource::normalizeKey(
+            72,
+            Constants::LowestMidiNote,
+            Constants::HighestMidiNote);
+    REQUIRE(bridge.getModel().getMorphPosition().time.getCurrentValue()
+            == Catch::Approx(0.5f));
+    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
+            == Catch::Approx(c5Position));
+
+    bridge.setPreviewMidiNote(Constants::HighestMidiNote);
+    bridge.syncFromNode(node, 10, 3);
+    REQUIRE(bridge.getModel().getMorphPosition().blue.getCurrentValue()
+            == Catch::Approx(1.f));
+}
+
+TEST_CASE("Spectral Trimesh columns span pitch only on the key-scale primary axis",
+        "[cycle-v2][nodes][trimesh][spectral][key-scale][grid]") {
+    ScopedJuceInitialiser_GUI juce;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    TrimeshPanelBridge bridge;
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal));
+    bridge.setPreviewMidiNote(72);
+    bridge.setPreviewKeyScaleAxis(Vertex::Time);
+    bridge.syncFromNode(node, 10, 5);
+
+    const auto& yellowColumns = bridge.getDataSource().getColumns();
+    REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE((int) yellowColumns.front().midiKey == Constants::LowestMidiNote);
+    REQUIRE((int) yellowColumns.back().midiKey == Constants::HighestMidiNote);
+    REQUIRE(yellowColumns.front().size()
+            == LogRegionMapping(Constants::LowestMidiNote).regionSize());
+    REQUIRE(yellowColumns.back().size()
+            == LogRegionMapping(Constants::HighestMidiNote).regionSize());
+
+    bridge.setPreviewKeyScaleAxis(Vertex::Red);
+    bridge.syncFromNode(node, 10, 5);
+    const auto& nonKeyColumns = bridge.getDataSource().getColumns();
+    REQUIRE_FALSE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE(std::all_of(
+            nonKeyColumns.begin(),
+            nonKeyColumns.end(),
+            [](const Column& column) { return (int) column.midiKey == 72; }));
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "primaryAxis") {
+            parameter.value = "red";
+        }
+    }
+    bridge.syncFromNode(node, 10, 5);
+    const auto& redColumns = bridge.getDataSource().getColumns();
+    REQUIRE(bridge.getPanel3D().willAdjustSurfaceColumns());
+    REQUIRE((int) redColumns.front().midiKey == Constants::LowestMidiNote);
+    REQUIRE((int) redColumns.back().midiKey == Constants::HighestMidiNote);
+}
+
 TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     TrimeshPanelBridge bridge;
@@ -1131,6 +1290,33 @@ TEST_CASE("Trimesh panel bridge hosts panel cores without legacy OpenGL leaves",
     REQUIRE(bridge.getPanel2D().getComponent() == panel2DHost);
     REQUIRE(bridge.getPanel3D().getOpenglPanel() == nullptr);
     REQUIRE(bridge.getPanel2D().getOpenglPanel() == nullptr);
+}
+
+TEST_CASE("Trimesh link parameters drive mature linked-vertex interaction",
+        "[cycle-v2][nodes][trimesh][links]") {
+    ScopedJuceInitialiser_GUI juce;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    TrimeshPanelBridge bridge;
+    GraphEditor editor;
+
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    VertCube* cube = bridge.getModel().getMeshForPanel().getCubes().front();
+    Vertex* vertex = cube->getVertex(0);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 2);
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.red", "Link Red", "1").succeeded());
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 4);
+
+    REQUIRE(editor.setNodeParameter(
+            graph, "mesh", "link.blue", "Link Blue", "1").succeeded());
+    bridge.syncFromNode(*graph.findNode("mesh"), 32, 8);
+    REQUIRE(bridge.getInteractor2D().getVerticesToMove(cube, vertex).size() == 8);
 }
 
 TEST_CASE("Trimesh panel hosts use component cursors and delegated repaint",
@@ -1217,6 +1403,17 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     controls.beginPointerInteraction(primaryAxis.bounds.getCentre(), {});
     REQUIRE(delegate.primaryAxis == primaryAxis.axisValue);
     REQUIRE(controls.cursorFor(primaryAxis.bounds.getCentre()) == MouseCursor::PointingHandCursor);
+
+    const auto& linkToggle = findRegion(TrimeshExpandedHitRegionKind::LinkToggle);
+    controls.beginPointerInteraction(linkToggle.bounds.getCentre(), {});
+    REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
+    REQUIRE(controls.cursorFor(linkToggle.bounds.getCentre()) == MouseCursor::PointingHandCursor);
+    auto* keyboardLink = controls.findChildWithID(
+            "trimesh.link." + linkToggle.axisValue);
+    REQUIRE(keyboardLink != nullptr);
+    delegate.linkedAxis = {};
+    REQUIRE(keyboardLink->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE(delegate.linkedAxis == linkToggle.axisValue);
 
     const auto& morph = findRegion(TrimeshExpandedHitRegionKind::MorphControl);
     controls.beginPointerInteraction(morph.bounds.getCentre(), {});

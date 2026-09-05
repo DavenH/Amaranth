@@ -1,6 +1,7 @@
 #include "Nodes/Reverb/ReverbPreviewPainter.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/Preview/EffectPlotPalette.h"
 
 namespace CycleV2 {
@@ -26,7 +27,7 @@ void ReverbPreviewPainter::paint(
     };
 
     graphics.setColour(colour(EffectPlotPalette::background));
-    graphics.fillRoundedRectangle(content, 4.f);
+    graphics.fillRoundedRectangle(content, CanvasChromeMetrics::insetCornerRadius);
     for (int index = 0; index < reflectionCount; ++index) {
         const float unit = (float) index / (float) jmax(1, reflectionCount - 1);
         const float x = content.getX() + unit * content.getWidth();

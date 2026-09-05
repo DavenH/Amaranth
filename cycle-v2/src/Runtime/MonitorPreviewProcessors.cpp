@@ -1,20 +1,26 @@
+#include <algorithm>
+#include <cmath>
+
 #include "Runtime/PreviewProcessorFactories.h"
 
 namespace CycleV2 {
 
 namespace {
 
-float averageSummary(const std::vector<float>* summary) {
-    if (summary == nullptr || summary->empty()) {
+float peakLevel(const SignalBlock& block) {
+    if (block.samples.empty()) {
         return 0.f;
     }
 
-    float total = 0.f;
-    for (const float value : *summary) {
-        total += value;
-    }
-
-    return total / (float) summary->size();
+    const auto extrema = std::minmax_element(block.samples.begin(), block.samples.end());
+    const float minimumMagnitude = *extrema.first < 0.f
+            ? -*extrema.first
+            : *extrema.first;
+    const float maximumMagnitude = *extrema.second < 0.f
+            ? -*extrema.second
+            : *extrema.second;
+    const float peak = jmax(minimumMagnitude, maximumMagnitude);
+    return std::isfinite(peak) ? jlimit(0.f, 1.f, peak) : 0.f;
 }
 
 class MeterPreviewProcessor final : public NodePreviewProcessor {
@@ -22,18 +28,14 @@ public:
     PreviewModuleRole role() const override { return PreviewModuleRole::OutputMeters; }
 
     void render(PreviewProcessContext& context) override {
-        context.primary.resize(context.pointCount);
-        context.secondary.resize(context.pointCount);
+        const SignalPayload* output = context.capturedOutput;
+        const float left = output != nullptr ? peakLevel(output->block) : 0.f;
+        const float right = output != nullptr && output->isStereo()
+                ? peakLevel(output->secondaryBlock)
+                : left;
 
-        const bool hasInput = context.input.summary != nullptr
-                && !context.input.summary->empty();
-        const float level = hasInput ? averageSummary(context.input.summary) : 0.65f;
-        const float secondaryLevel = hasInput ? level * 0.95f : 0.62f;
-
-        for (size_t i = 0; i < context.pointCount; ++i) {
-            context.primary[i] = level;
-            context.secondary[i] = secondaryLevel;
-        }
+        context.primary.assign(context.pointCount, left);
+        context.secondary.assign(context.pointCount, right);
     }
 };
 

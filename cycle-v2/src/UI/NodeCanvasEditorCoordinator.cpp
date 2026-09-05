@@ -16,12 +16,6 @@ bool hasHostedEditor(const Node& node) {
     return NodeViewModuleRegistry::instance().moduleFor(node.kind).capabilities().hostedEditor;
 }
 
-bool hasCurveModel(const Node& node) {
-    return node.kind == NodeKind::Envelope
-            || node.kind == NodeKind::ImpulseResponse
-            || node.kind == NodeKind::Waveshaper;
-}
-
 Rectangle<float> closeButton(const Node& node, Rectangle<float> panel) {
     const bool compact = node.kind == NodeKind::VoiceContext
             || node.kind == NodeKind::Fft
@@ -95,16 +89,10 @@ ExpandedEditorClick NodeCanvasEditorCoordinator::routeClick(
         return { ExpandedEditorClickKind::Captured };
     }
 
-    if (node->kind == NodeKind::VoiceContext) {
-        auto edit = VoiceContextCompactEditor::editAt(*node, panel, position);
-        return edit.has_value()
-                ? ExpandedEditorClick { ExpandedEditorClickKind::VoiceContextEdit, std::move(edit), {} }
-                : ExpandedEditorClick { ExpandedEditorClickKind::Captured };
-    }
     if (node->kind == NodeKind::Fft || node->kind == NodeKind::Ifft) {
         auto mode = TransformCompactEditor::modeAt(*node, panel, position);
         return mode.has_value()
-                ? ExpandedEditorClick { ExpandedEditorClickKind::TransformMode, {}, mode }
+                ? ExpandedEditorClick { ExpandedEditorClickKind::TransformMode, mode }
                 : ExpandedEditorClick { ExpandedEditorClickKind::Captured };
     }
 
@@ -123,14 +111,6 @@ void NodeCanvasEditorCoordinator::updateHost(
 
 void NodeCanvasEditorCoordinator::renderOpenGL(float scaleFactor) {
     editorHost.renderOpenGL(scaleFactor);
-}
-
-void NodeCanvasEditorCoordinator::syncEffectNodes(const NodeGraph& graph) {
-    for (const auto& node : graph.getNodes()) {
-        if (hasCurveModel(node)) {
-            resources.curveEditorWidget(node).syncFromNode(node);
-        }
-    }
 }
 
 void NodeCanvasEditorCoordinator::releaseOpenGLResources() {

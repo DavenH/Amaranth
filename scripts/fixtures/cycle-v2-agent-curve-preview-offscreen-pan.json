@@ -1,0 +1,64 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveshaper",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveshaper.close",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "moveNode",
+      "nodeId": "waveshaper",
+      "x": -180,
+      "y": 260
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "label": "Pre",
+      "value": "0.7"
+    },
+    { "command": "requestCanvasOpenGLFrame" },
+    { "command": "requestCanvasOpenGLFrame" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveshaper",
+      "parameterId": "pre",
+      "equals": "0.7"
+    },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "wheel",
+      "x": 800,
+      "y": 500,
+      "deltaX": 0.5,
+      "deltaY": 0
+    },
+    { "command": "assertState", "path": "panX", "op": "greaterThan", "value": 200 },
+    { "command": "requestCanvasOpenGLFrame" },
+    { "command": "waitForIdle", "idleDelayMs": 200 },
+    { "command": "requestCanvasOpenGLFrame" },
+    { "command": "waitForIdle", "idleDelayMs": 500 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-curve-preview-offscreen-pan.png"
+    },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

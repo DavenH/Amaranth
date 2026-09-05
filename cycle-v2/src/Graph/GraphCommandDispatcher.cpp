@@ -445,6 +445,20 @@ GraphEditResult GraphCommandDispatcher::setNodeEditorState(
     });
 }
 
+GraphEditResult GraphCommandDispatcher::setNodeAudioResource(
+        NodeAudioResourceEdit edit) {
+    return apply([&](auto& graph) {
+        return GraphEditor().setNodeAudioResource(graph, std::move(edit));
+    });
+}
+
+GraphEditResult GraphCommandDispatcher::removeNodeAudioResource(
+        const juce::String& nodeId) {
+    return apply([&](auto& graph) {
+        return GraphEditor().removeNodeAudioResource(graph, nodeId);
+    });
+}
+
 GraphEditResult GraphCommandDispatcher::publishCurveState(
         const CurveNodeStatePublication& publication) {
     return apply([&](auto& graph) {
@@ -745,6 +759,7 @@ void GraphCommandDispatcher::accumulateChange(
     destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
     destination.modelChanged = destination.modelChanged || change.modelChanged;
     destination.editorStateChanged = destination.editorStateChanged || change.editorStateChanged;
+    destination.resourcesChanged = destination.resourcesChanged || change.resourcesChanged;
 }
 
 GraphEditResult GraphCommandDispatcher::setNodeBounds(

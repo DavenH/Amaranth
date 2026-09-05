@@ -10,20 +10,30 @@
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
-#include "Nodes/Envelope/EnvelopePurpose.h"
-#include "Nodes/Unison/UnisonPreviewPainter.h"
-#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
+#include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
+#include "Nodes/Unison/UnisonPreviewPainter.h"
+#include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
+#include "UI/EffectEnableButton.h"
+#include "UI/EditorChromeLayout.h"
+#include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/EnvelopePurposeSelector.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAutomationInspector.h"
-#include "UI/EnvelopePurposeSelector.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
 
+#include <Audio/CycleDsp/CycleDelay.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/IrModel.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
@@ -38,6 +48,30 @@ public:
     CurveTableScope() { Curve::calcTable(); }
     ~CurveTableScope() { Curve::deleteTable(); }
 };
+
+TEST_CASE("Curve snapshot capture requires full framebuffer residency",
+        "[cycle-v2][node-editor-host][performance]") {
+    const Rectangle<int> viewport { 0, 0, 800, 600 };
+    const auto visible = curvePanelFramebufferReadBounds(
+            { 100.f, 80.f, 220.f, 140.f }, 1.f, viewport);
+    REQUIRE(visible.has_value());
+    REQUIRE(*visible == Rectangle<int>(100, 380, 220, 140));
+
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { -1.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 700.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 100.f, -1.f, 220.f, 140.f }, 1.f, viewport).has_value());
+    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+            { 100.f, 540.f, 220.f, 140.f }, 1.f, viewport).has_value());
+
+    const Rectangle<int> retinaViewport { 10, 20, 1600, 1200 };
+    const auto retina = curvePanelFramebufferReadBounds(
+            { 100.f, 80.f, 220.f, 140.f }, 2.f, retinaViewport);
+    REQUIRE(retina.has_value());
+    REQUIRE(*retina == Rectangle<int>(210, 780, 440, 280));
+}
 
 TEST_CASE("Curve preview snapshots are reused until a rendering dependency changes",
         "[cycle-v2][node-editor-host][performance]") {
@@ -88,7 +122,12 @@ struct EditorStats {
 
 class MockEditor final : public NodeEditor {
 public:
-    explicit MockEditor(EditorStats& statsToUse) : stats(statsToUse) { ++stats.creations; }
+    explicit MockEditor(EditorStats& statsToUse) : stats(statsToUse) {
+        ++stats.creations;
+        control.setComponentID("mock.control");
+        control.setBounds(5, 6, 20, 10);
+        editorComponent.addAndMakeVisible(control);
+    }
     ~MockEditor() override { ++stats.destructions; }
 
     Component& component() override { return editorComponent; }
@@ -106,6 +145,7 @@ public:
 private:
     EditorStats& stats;
     Component editorComponent;
+    TextButton control;
 };
 
 class MockFactory final : public NodeEditorFactory {
@@ -134,7 +174,7 @@ private:
     MockFactory factory;
 };
 
-class NullCommands final : public NodeEditorCommands {
+class NullCommands : public NodeEditorCommands {
 public:
     bool publishCurveState(const String&, NodeModelStatePtr,
             const std::vector<NodeParameter>&) override { return true; }
@@ -152,6 +192,32 @@ public:
             const String&, const String&, Rectangle<int>) override { return true; }
     bool selectTrimeshVertexIndex(const String&, int) override { return true; }
     void persistTrimeshMeshEdits(const String&, bool) override {}
+};
+
+class RecordingParameterCommands final : public NullCommands {
+public:
+    bool beginNodeParameterEdit(
+            const String&,
+            const String&,
+            const String&,
+            float value) override {
+        ++begins;
+        values.push_back(value);
+        return true;
+    }
+
+    bool updateNodeParameterEditValue(float value) override {
+        ++updates;
+        values.push_back(value);
+        return true;
+    }
+
+    void endNodeParameterEdit() override { ++ends; }
+
+    int begins {};
+    int updates {};
+    int ends {};
+    std::vector<float> values;
 };
 
 class NullPresentation final : public NodeEditorPresentation {
@@ -178,6 +244,7 @@ public:
     void refreshNodeEditorPresentation() override { ++immediateRefreshes; }
     Point<float> nodeEditorCreationPosition() const override { return {}; }
     void rebindNodeEditor() override { ++rebinds; }
+    void rebindNodeEditorTransient() override { ++transientRebinds; }
     void recordNodeEditorMovement(const String&, const String&, uint64_t) override {
         ++recordedMovements;
     }
@@ -196,10 +263,11 @@ public:
     int immediateRefreshes {};
     int localCommits {};
     int rebinds {};
+    int transientRebinds {};
     int recordedMovements {};
 };
 
-class NullResources final : public NodeEditorResources {
+class NullResources : public NodeEditorResources {
 public:
     CurveEditorWidget* curveEditorWidget(const Node&) override { return nullptr; }
     TrimeshWidget* trimeshWidget(const Node& node) override {
@@ -215,9 +283,75 @@ public:
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
+    UnisonPreviewContext unisonPreviewContext() const override {
+        UnisonPreviewContext result;
+        result.voiceDurationSeconds = previewVoiceLengthSeconds;
+        return result;
+    }
+    void setPreviewVoiceLengthSeconds(double seconds) override {
+        previewVoiceLengthSeconds = seconds;
+        ++previewVoiceLengthChanges;
+    }
 
     TrimeshWidget* activeTrimesh {};
     int synchronizingTrimeshLookups {};
+    double previewVoiceLengthSeconds { 1.0 };
+    int previewVoiceLengthChanges {};
+};
+
+class RecordingVoiceCommands final : public NullCommands {
+public:
+    bool beginNodeParameterEdit(
+            const String&,
+            const String& parameterId,
+            const String&,
+            float value) override {
+        activeParameterId = parameterId;
+        numericValues.push_back(value);
+        ++begins;
+        return true;
+    }
+
+    bool updateNodeParameterEditValue(float value) override {
+        numericValues.push_back(value);
+        ++updates;
+        return true;
+    }
+
+    void endNodeParameterEdit() override {
+        ++ends;
+        activeParameterId = {};
+    }
+
+    bool setNodeParameterValue(
+            const String&,
+            const String& parameterId,
+            const String&,
+            float value) override {
+        immediateParameterId = parameterId;
+        immediateValue = value;
+        return true;
+    }
+
+    bool setNodeParameterText(
+            const String&,
+            const String& parameterId,
+            const String&,
+            const String& value) override {
+        textParameterId = parameterId;
+        textValue = value;
+        return true;
+    }
+
+    String activeParameterId;
+    String immediateParameterId;
+    String textParameterId;
+    String textValue;
+    float immediateValue {};
+    int begins {};
+    int updates {};
+    int ends {};
+    std::vector<float> numericValues;
 };
 
 TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
@@ -286,6 +420,67 @@ TEST_CASE("Trimesh compact preview ignores a divergent captured heatmap",
     REQUIRE(checksum(withRuntime) == checksum(authoritative));
 }
 
+std::vector<double> irEditableSamplesAt(
+        size_t sampleCount,
+        const Array<var>& waveformPoints) {
+    std::vector<double> result;
+    result.reserve(sampleCount);
+    int waveformIndex = 0;
+    for (size_t index = 0; index < sampleCount; ++index) {
+        const double proportion = static_cast<double>(index)
+                / static_cast<double>(sampleCount - 1);
+        const double targetX = CycleDsp::irDomainPadding
+                + (1.0 - CycleDsp::irDomainPadding) * proportion;
+        while (waveformIndex + 1 < waveformPoints.size()) {
+            const double currentDistance = std::abs(
+                    static_cast<double>(waveformPoints[waveformIndex]
+                            .getProperty("x", {})) - targetX);
+            const double nextDistance = std::abs(
+                    static_cast<double>(waveformPoints[waveformIndex + 1]
+                            .getProperty("x", {})) - targetX);
+            if (nextDistance >= currentDistance) {
+                break;
+            }
+            ++waveformIndex;
+        }
+        result.push_back(waveformPoints[waveformIndex].getProperty("y", {}));
+    }
+    return result;
+}
+
+double irSampledCurveIdentityRootMeanSquare(
+        const std::vector<float>& samples,
+        const std::vector<double>& editableSamples) {
+    double squaredError = 0.0;
+    for (size_t index = 0; index < samples.size(); ++index) {
+        const double sampledValue = samples[index] * 0.5 + 0.5;
+        const double error = editableSamples[index] - sampledValue;
+        squaredError += error * error;
+    }
+    return std::sqrt(squaredError / static_cast<double>(samples.size()));
+}
+
+template<typename Sample>
+int significantTurningPointCount(
+        const std::vector<Sample>& samples,
+        double minimumDelta) {
+    int previousDirection = 0;
+    int result = 0;
+    for (size_t index = 1; index < samples.size(); ++index) {
+        const double delta = static_cast<double>(samples[index])
+                - static_cast<double>(samples[index - 1]);
+        const int direction = delta > minimumDelta ? 1 : delta < -minimumDelta ? -1 : 0;
+        if (direction == 0) {
+            continue;
+        }
+        if (previousDirection != 0 && direction != previousDirection) {
+            ++result;
+        }
+        previousDirection = direction;
+    }
+    return result;
+}
+
 class RecordingCurveDelegate final : public CurveExpandedEditorDelegate {
 public:
     void closeCurveEditor() override {}
@@ -300,8 +495,29 @@ public:
 
     void beginCurveTransaction() override { events.add("begin"); }
     void commitCurveTransaction() override { events.add("commit"); }
+    void setCurveEditorStatus(const String& message) override { status = message; }
+    bool setAudioResource(NodeAudioResourceEdit edit) override {
+        appliedResource = std::move(edit);
+        return true;
+    }
+    bool removeAudioResource() override {
+        if (!resourceRemovalSucceeds) {
+            return false;
+        }
+        ++resourceRemovals;
+        resource.reset();
+        return true;
+    }
+    std::optional<NodeAudioResourceSummary> audioResourceSummary() const override {
+        return resource;
+    }
 
     StringArray events;
+    String status;
+    NodeAudioResourceEdit appliedResource;
+    std::optional<NodeAudioResourceSummary> resource;
+    bool resourceRemovalSucceeds { true };
+    int resourceRemovals {};
 };
 
 class LifecycleCurveEditor final : public CurveExpandedEditorComponent {
@@ -442,6 +658,10 @@ TEST_CASE("Node editor host follows registered capability and stable identity") 
     REQUIRE(stats.creations == 1);
     REQUIRE(stats.bindings == 1);
     REQUIRE(host.component()->getBounds() == Rectangle<int>(10, 20, 300, 200));
+    const auto pointerTargets = host.pointerTargetsForAutomation();
+    REQUIRE(pointerTargets.size() == 1);
+    REQUIRE(pointerTargets.front().id == "mock.control");
+    REQUIRE(pointerTargets.front().bounds == Rectangle<float>(15.f, 26.f, 20.f, 10.f));
     DynamicObject automation;
     host.appendAutomationState(automation);
     REQUIRE((bool) automation.getProperty("mock"));
@@ -515,6 +735,273 @@ TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
     REQUIRE(jitter->getBottom() <= host.component()->getHeight() - 18);
 }
 
+TEST_CASE("Voice Context hosts semantic controls for every visible property",
+        "[cycle-v2][editor][voice-context][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    RecordingVoiceCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
+
+    REQUIRE(host.bind(&voice, { 0, 0, 440, 276 }));
+    DynamicObject automation;
+    host.appendAutomationState(automation);
+    const var state = automation.getProperty("voiceContext");
+    REQUIRE(state.getProperty("kind", {}).toString() == "VOICE_CONTEXT");
+    REQUIRE(state.getProperty("domain", {}).toString() == "waveform");
+    REQUIRE(state.getProperty("octave", {}).getProperty("display", {}).toString() == "0");
+    REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
+    REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
+    REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
+    REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
+    REQUIRE((int) state.getProperty("pitch", {}).getProperty("usableTrackWidth", {}) >= 140);
+
+    auto* pitchValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.pitch.value"));
+    REQUIRE(pitchValue != nullptr);
+    pitchValue->setText("7 semitones", sendNotificationSync);
+    REQUIRE(commands.begins == 1);
+    REQUIRE(commands.updates == 1);
+    REQUIRE(commands.ends == 1);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(7.f));
+    pitchValue->setText("7.5 semitones", sendNotificationSync);
+    REQUIRE(commands.updates == 1);
+
+    for (const String& domain : { String("spectral"), String("waveform") }) {
+        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+                "voiceContextEditor.domain." + domain));
+        REQUIRE(option != nullptr);
+        option->onClick();
+        REQUIRE(commands.textParameterId == "domain");
+        REQUIRE(commands.textValue == domain);
+    }
+    for (const String& factor : { String("1x"), String("2x"), String("4x"), String("8x") }) {
+        auto* option = dynamic_cast<TextButton*>(host.component()->findChildWithID(
+                "voiceContextEditor.oversampling." + factor));
+        REQUIRE(option != nullptr);
+        option->onClick();
+        REQUIRE(commands.textParameterId == "oversampling");
+        REQUIRE(commands.textValue == factor);
+    }
+    auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamento"));
+    REQUIRE(portamento != nullptr);
+    portamento->setToggleState(true, dontSendNotification);
+    portamento->onClick();
+    REQUIRE(commands.immediateParameterId == "portamento");
+    REQUIRE(commands.immediateValue == Catch::Approx(1.f));
+
+    auto* voiceLengthValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.voiceLength.value"));
+    REQUIRE(voiceLengthValue != nullptr);
+    voiceLengthValue->setText("2 s", sendNotificationSync);
+    REQUIRE(resources.previewVoiceLengthChanges == 1);
+    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.0).margin(0.0001));
+    auto* voiceLength = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.voiceLength"));
+    REQUIRE(voiceLength != nullptr);
+    REQUIRE(voiceLength->keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(resources.previewVoiceLengthChanges == 2);
+    REQUIRE(resources.previewVoiceLengthSeconds == Catch::Approx(2.01).margin(0.001));
+}
+
+TEST_CASE("Delay and Reverb own shared semantic property rows",
+        "[cycle-v2][editor][delay][reverb][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+
+    const auto controlWithId = [](const DynamicObject& automation, const String& id) {
+        const Array<var>* controls = automation.getProperty("effectParameters")
+                .getProperty("controls", {})
+                .getArray();
+        REQUIRE(controls != nullptr);
+        for (const var& control : *controls) {
+            if (control.getProperty("id", {}).toString() == id) {
+                return control;
+            }
+        }
+        return var();
+    };
+
+    Node delay = GraphNodeFactory().createNode(NodeKind::Delay, "delay", {});
+    REQUIRE(host.bind(&delay, { 0, 0, 520, 520 }));
+    DynamicObject delayAutomation;
+    host.appendAutomationState(delayAutomation);
+    REQUIRE(delayAutomation.getProperty("effectParameters")
+            .getProperty("kind", {}).toString() == "DELAY");
+    const var time = controlWithId(delayAutomation, "time");
+    REQUIRE(time.getProperty("readout", {}).toString() == "1 beat");
+    REQUIRE((bool) time.getProperty("compact", {}));
+    REQUIRE((int) time.getProperty("usableTrackWidth", {}) >= 140);
+    const var panCycle = controlWithId(delayAutomation, "spinIters");
+    REQUIRE(panCycle.getProperty("readout", {}).toString() == String::fromUTF8("1×"));
+    auto* timeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "delayEditor.time.value"));
+    REQUIRE(timeValue != nullptr);
+    timeValue->setText("2 beats", sendNotificationSync);
+    DynamicObject editedDelay;
+    host.appendAutomationState(editedDelay);
+    REQUIRE(controlWithId(editedDelay, "time").getProperty("value", {})
+            == Catch::Approx(CycleDsp::delayUnitValueForBeats(2.0, 4)));
+    auto* timeSlider = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "delayEditor.time"));
+    auto* panCycleSlider = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "delayEditor.spinIters"));
+    REQUIRE(timeSlider != nullptr);
+    REQUIRE(panCycleSlider != nullptr);
+    const Rectangle<float> timeTrack = propertySliderTrackBounds(
+            timeSlider->getLocalBounds().toFloat());
+    REQUIRE(propertySliderValuePosition(
+                    *timeSlider,
+                    CycleDsp::delayUnitValueForBeats(2.0, 4))
+            == Catch::Approx(timeTrack.getX()
+                    + timeTrack.getWidth()
+                            * CycleDsp::delayUnitValueForBeats(2.0, 4)));
+
+    const Rectangle<float> panCycleTrack = propertySliderTrackBounds(
+            panCycleSlider->getLocalBounds().toFloat());
+    float previousPosition = propertySliderValuePosition(
+            *panCycleSlider,
+            CycleDsp::delaySpinUnitValueForIterations(1));
+    REQUIRE(previousPosition == Catch::Approx(panCycleTrack.getX()));
+    for (int iterations = 2; iterations <= 12; ++iterations) {
+        const float position = propertySliderValuePosition(
+                *panCycleSlider,
+                CycleDsp::delaySpinUnitValueForIterations(iterations));
+        REQUIRE(position - previousPosition
+                == Catch::Approx(panCycleTrack.getWidth() / 11.f));
+        previousPosition = position;
+    }
+    REQUIRE(previousPosition == Catch::Approx(panCycleTrack.getRight()));
+
+    Node reverb = GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {});
+    REQUIRE(host.bind(&reverb, { 0, 0, 520, 520 }));
+    DynamicObject reverbAutomation;
+    host.appendAutomationState(reverbAutomation);
+    REQUIRE(reverbAutomation.getProperty("effectParameters")
+            .getProperty("kind", {}).toString() == "REVERB");
+    const var size = controlWithId(reverbAutomation, "size");
+    REQUIRE(size.getProperty("readout", {}).toString() == "0.74 s");
+    REQUIRE((bool) size.getProperty("compact", {}));
+    REQUIRE((int) size.getProperty("usableTrackWidth", {}) >= 140);
+    const var wet = controlWithId(reverbAutomation, "wet");
+    REQUIRE(wet.getProperty("readout", {}).toString() == "40%");
+    auto* sizeValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "reverbEditor.size.value"));
+    REQUIRE(sizeValue != nullptr);
+    sizeValue->setText("1.49 s", sendNotificationSync);
+    DynamicObject editedReverb;
+    host.appendAutomationState(editedReverb);
+    REQUIRE(controlWithId(editedReverb, "size").getProperty("readout", {}).toString()
+            == "1.5 s");
+}
+
+TEST_CASE("Expanded effects share one enable action placement",
+        "[cycle-v2][editor][effects][chrome]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+
+    struct EffectEditorCase {
+        NodeKind kind;
+        String nodeId;
+        String controlId;
+        Rectangle<int> bounds;
+    };
+    const std::array<EffectEditorCase, 4> cases {{
+            { NodeKind::Delay, "delay", "delayEditor.enabled", { 0, 0, 520, 520 } },
+            { NodeKind::Reverb, "reverb", "reverbEditor.enabled", { 0, 0, 520, 520 } },
+            { NodeKind::Equalizer, "eq", "equalizerEditor.enabled", { 0, 0, 760, 650 } },
+            { NodeKind::Unison, "unison", "unisonEditor.enabled", { 0, 0, 520, 520 } }
+    }};
+
+    for (const auto& effect : cases) {
+        Node node = GraphNodeFactory().createNode(effect.kind, effect.nodeId, {});
+        REQUIRE(host.bind(&node, effect.bounds));
+        const auto* enabled = dynamic_cast<EffectEnableButton*>(
+                host.component()->findChildWithID(effect.controlId));
+        REQUIRE(enabled != nullptr);
+        REQUIRE(enabled->getBounds()
+                == fullEditorHeaderLayout(host.component()->getLocalBounds(), true).enabled);
+    }
+}
+
+TEST_CASE("Property rows collapse nested slider notifications into one gesture",
+        "[cycle-v2][editor][properties][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    RecordingParameterCommands commands;
+    NodePropertySliderRow row(owner, commands, "feedback", "Feedback");
+    row.bind("delay", 0.6);
+
+    row.slider.onDragStart();
+    row.slider.onDragStart();
+    row.slider.setValue(0.5, sendNotificationSync);
+    row.slider.onDragEnd();
+    row.slider.onDragEnd();
+
+    REQUIRE(commands.begins == 1);
+    REQUIRE(commands.updates == 1);
+    REQUIRE(commands.ends == 1);
+    REQUIRE(commands.values == std::vector<float> { 0.6f, 0.5f });
+}
+
+TEST_CASE("Equalizer retains paired columns with semantic shared rows",
+        "[cycle-v2][editor][equalizer][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component parent;
+    NullCommands commands;
+    NullPresentation presentation;
+    NullResources resources;
+    NodeEditorHost host(parent, commands, presentation, resources);
+    Node equalizer = GraphNodeFactory().createNode(NodeKind::Equalizer, "eq", {});
+
+    REQUIRE(host.bind(&equalizer, { 0, 0, 760, 650 }));
+    DynamicObject automation;
+    host.appendAutomationState(automation);
+    const Array<var>* controls = automation.getProperty("effectParameters")
+            .getProperty("controls", {})
+            .getArray();
+    REQUIRE(controls != nullptr);
+    REQUIRE(controls->size() == 10);
+    REQUIRE(controls->getReference(0).getProperty("readout", {}).toString() == "0 dB");
+    REQUIRE(controls->getReference(1).getProperty("readout", {}).toString() == "60 Hz");
+    REQUIRE((bool) controls->getReference(0).getProperty("compact", {}));
+    REQUIRE((int) controls->getReference(0).getProperty("usableTrackWidth", {}) >= 140);
+
+    auto* gainValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "equalizerEditor.band1Gain.value"));
+    auto* frequencyValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "equalizerEditor.band1Frequency.value"));
+    REQUIRE(gainValue != nullptr);
+    REQUIRE(frequencyValue != nullptr);
+    gainValue->setText("+6 dB", sendNotificationSync);
+    frequencyValue->setText("1.5 kHz", sendNotificationSync);
+
+    DynamicObject edited;
+    host.appendAutomationState(edited);
+    const Array<var>* editedControls = edited.getProperty("effectParameters")
+            .getProperty("controls", {})
+            .getArray();
+    REQUIRE(editedControls != nullptr);
+    REQUIRE(editedControls->getReference(0).getProperty("value", {})
+            == Catch::Approx(CycleDsp::equalizerGainUnitValue(6.f)));
+    REQUIRE(editedControls->getReference(1).getProperty("value", {})
+            == Catch::Approx(CycleDsp::equalizerFrequencyUnitValue(1500.f)));
+}
+
 TEST_CASE("Canvas automation inspection is semantic and side effect free",
         "[cycle-v2][canvas][automation]") {
     ScopedJuceInitialiser_GUI juce;
@@ -577,6 +1064,10 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     state.guideDock.addGuideBounds = { 566.f, 618.f, 22.f, 22.f };
     state.guideDock.expandedGuideId = "guide1";
     state.guideDock.guideEditorBounds = { 36.f, 24.f, 1128.f, 562.f };
+    state.guideDock.guideEditorTargets.push_back({
+            "guideEditor.noise",
+            { 900.f, 140.f, 148.f, 30.f }
+    });
     state.guideDock.guideTiles.push_back({ "guide1", { 12.f, 652.f, 220.f, 136.f } });
     const uint64_t documentRevision = document.revision();
     const uint64_t presentationRevision = presentation.revision();
@@ -605,6 +1096,7 @@ TEST_CASE("Canvas automation inspection is semantic and side effect free",
     REQUIRE(targetWithId("guideDock.resize") != nullptr);
     REQUIRE(targetWithId("guideDock.divider") != nullptr);
     REQUIRE(targetWithId("guideShelf.minimize") != nullptr);
+    REQUIRE(targetWithId("guideEditor.noise") != nullptr);
     REQUIRE(targetWithId("spyShelf.minimize") != nullptr);
     REQUIRE(targetWithId("guideShelf.add") != nullptr);
     REQUIRE(targetWithId("guide:guide1") != nullptr);
@@ -730,12 +1222,15 @@ TEST_CASE("Guide editor uses compact host and control layout",
     GuideCurveEditorComponent editor(widget);
     GuideCurveResource guide;
     guide.id = "guide1";
+    guide.noise = 0.76562f;
     guide.model = createDefaultGuideCurveModel();
 
     const Rectangle<float> host = GuideCurveEditorComponent::preferredHostBounds(
-            { 0.f, 0.f, 1200.f, 800.f });
-    REQUIRE(host.getHeight() == 560.f);
-    REQUIRE(host.getCentreY() == 400.f);
+            { 0.f, 0.f, 1600.f, 900.f });
+    REQUIRE(host.getHeight() == 476.f);
+    REQUIRE(host.getWidth() == 1265.f);
+    REQUIRE(host.getCentreX() == 800.f);
+    REQUIRE(host.getCentreY() == 450.f);
 
     editor.setBounds(host.toNearestInt());
     editor.setGuideResource(guide);
@@ -744,12 +1239,16 @@ TEST_CASE("Guide editor uses compact host and control layout",
     int textButtonCount = 0;
     int emptyToggleCount = 0;
     int enabledLabelCount = 0;
+    int xRandomnessLabelCount = 0;
+    int yRandomnessLabelCount = 0;
+    int valueLabelCount = 0;
     int lowestControlBottom = 0;
     for (int index = 0; index < editor.getNumChildComponents(); ++index) {
         Component* child = editor.getChildComponent(index);
         if (auto* slider = dynamic_cast<Slider*>(child)) {
             ++sliderCount;
-            REQUIRE(slider->getTextBoxPosition() == Slider::TextBoxRight);
+            REQUIRE(slider->getTextBoxPosition() == Slider::NoTextBox);
+            REQUIRE(slider->getComponentID().startsWith("guideEditor."));
             lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
         } else if (dynamic_cast<TextButton*>(child) != nullptr) {
             ++textButtonCount;
@@ -759,13 +1258,619 @@ TEST_CASE("Guide editor uses compact host and control layout",
             lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
         } else if (auto* label = dynamic_cast<Label*>(child)) {
             enabledLabelCount += label->getText() == "Enabled" ? 1 : 0;
+            xRandomnessLabelCount += label->getText() == "X Randomness" ? 1 : 0;
+            yRandomnessLabelCount += label->getText() == "Y Randomness" ? 1 : 0;
+            valueLabelCount += label->getComponentID().endsWith(".value") ? 1 : 0;
         }
     }
     REQUIRE(sliderCount == 3);
     REQUIRE(textButtonCount == 2);
     REQUIRE(emptyToggleCount == 1);
-    REQUIRE(enabledLabelCount == 1);
-    REQUIRE(lowestControlBottom < 320);
+    REQUIRE(enabledLabelCount == 0);
+    REQUIRE(xRandomnessLabelCount == 1);
+    REQUIRE(yRandomnessLabelCount == 1);
+    REQUIRE(valueLabelCount == 3);
+    REQUIRE(lowestControlBottom < 300);
+
+    const var state = editor.automationState();
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
+    const var noiseLayout = state.getProperty("noiseLayout", {});
+    REQUIRE(noiseLayout.getProperty("display", {}).toString() == "77%");
+    REQUIRE(static_cast<int>(noiseLayout.getProperty("usableTrackWidth", {}))
+            >= PropertyControlMetrics::minimumUsableTrackWidth);
+    REQUIRE(static_cast<bool>(noiseLayout.getProperty("compact", {})));
+    const Rectangle<float> noiseLabel = rectangleProperty(noiseLayout, "label");
+    const Rectangle<float> noiseSlider = rectangleProperty(noiseLayout, "slider");
+    const Rectangle<float> noiseTrack = rectangleProperty(noiseLayout, "track");
+    const Rectangle<float> noiseValue = rectangleProperty(noiseLayout, "value");
+    REQUIRE(noiseValue.getWidth() == 48.f);
+    REQUIRE(noiseValue.getX() - noiseLabel.getRight() == 4.f);
+    REQUIRE(noiseLabel.getY() == noiseValue.getY());
+    REQUIRE(noiseSlider.getWidth() == 324.f);
+    REQUIRE(noiseTrack.getY() - noiseLabel.getBottom() <= 10.f);
+    const Rectangle<float> panelBounds = rectangleProperty(state, "panelBounds");
+    const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
+    REQUIRE(controlBounds.getWidth() == 336.f);
+    REQUIRE(panelBounds.getWidth() == 905.f);
+    const float leftTrackInset = noiseTrack.getX() - controlBounds.getX();
+    const float rightTrackInset = (float) editor.getWidth() - noiseTrack.getRight();
+    REQUIRE(leftTrackInset == rightTrackInset);
+    const Rectangle<float> dcOffsetTrack = rectangleProperty(
+            state.getProperty("dcOffsetLayout", {}), "track");
+    const Rectangle<float> phaseTrack = rectangleProperty(
+            state.getProperty("phaseLayout", {}), "track");
+    REQUIRE(dcOffsetTrack.getX() == noiseTrack.getX());
+    REQUIRE(dcOffsetTrack.getRight() == noiseTrack.getRight());
+    REQUIRE(phaseTrack.getX() == noiseTrack.getX());
+    REQUIRE(phaseTrack.getRight() == noiseTrack.getRight());
+    const var panelState = state.getProperty("panelState", {});
+    const var zoom = panelState.getProperty("zoom", {});
+    REQUIRE(static_cast<double>(zoom.getProperty("x", {}))
+            == Catch::Approx(0.0));
+    REQUIRE(static_cast<double>(zoom.getProperty("w", {}))
+            == Catch::Approx(1.0));
+    const Array<var>* majorGridLines = panelState
+            .getProperty("verticalMajorGridLines", {})
+            .getArray();
+    REQUIRE(majorGridLines != nullptr);
+    REQUIRE(majorGridLines->size() == 8);
+    const double expectedGridSpacing = 0.9 / 8.0;
+    for (int index = 0; index < majorGridLines->size(); ++index) {
+        REQUIRE(static_cast<double>((*majorGridLines)[index]
+                .getProperty("domainX", {}))
+                == Catch::Approx(0.05 + expectedGridSpacing * index));
+    }
+    REQUIRE(static_cast<double>((*majorGridLines)[4].getProperty("panelX", {}))
+            == Catch::Approx(panelBounds.getWidth() * 0.5));
+    REQUIRE(panelBounds.getWidth() * 0.95
+                    - static_cast<double>(majorGridLines->getLast()
+                            .getProperty("panelX", {}))
+            == Catch::Approx(panelBounds.getWidth() * expectedGridSpacing));
+    REQUIRE(state.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
+    REQUIRE_FALSE(static_cast<bool>(state.getProperty("heatmapSublabelVisible", {})));
+    auto* loadImage = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.loadImage"));
+    auto* clearImage = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.clearImage"));
+    REQUIRE(loadImage != nullptr);
+    REQUIRE(clearImage != nullptr);
+    REQUIRE(loadImage->getButtonText() == "Load");
+    REQUIRE(clearImage->getButtonText() == "Clear");
+    REQUIRE(loadImage->getHeight() == 24);
+    REQUIRE(clearImage->getHeight() == loadImage->getHeight());
+    REQUIRE(clearImage->getY() == loadImage->getY());
+    REQUIRE(loadImage->getWidth() == 72);
+    REQUIRE_FALSE(clearImage->isEnabled());
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            editor.findChildWithID("guideEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
+}
+
+TEST_CASE("Guide property keyboard edits use one complete Curve transaction",
+        "[cycle-v2][node-editor-host][guides][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(GuideCurveEditorComponent::preferredHostBounds(
+            { 0.f, 0.f, 1200.f, 800.f }).toNearestInt());
+    editor.setGuideResource(guide);
+
+    auto* enabled = dynamic_cast<EffectEnableButton*>(
+            editor.findChildWithID("guideEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getWantsKeyboardFocus());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Guide curve");
+    enabled->setToggleState(false, sendNotificationSync);
+    REQUIRE_FALSE(enabled->getToggleState());
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    PrecisionSlider* noise = nullptr;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        auto* slider = dynamic_cast<PrecisionSlider*>(editor.getChildComponent(index));
+        if (slider != nullptr && slider->getComponentID() == "guideEditor.noise") {
+            noise = slider;
+            break;
+        }
+    }
+    REQUIRE(noise != nullptr);
+    REQUIRE(noise->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(noise->getValue() == Catch::Approx(0.01));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    REQUIRE(noise->keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(noise->getValue() == Catch::Approx(0.011));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+}
+
+TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows",
+        "[cycle-v2][node-editor-host][waveshaper][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    WaveshaperEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    Node node = GraphNodeFactory().createNode(NodeKind::Waveshaper, "waveshaper", {});
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "pre") {
+            parameter.value = "0.75";
+        } else if (parameter.id == "post") {
+            parameter.value = "0.25";
+        } else if (parameter.id == "aaFactor") {
+            parameter.value = "4";
+        }
+    }
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 766, 464);
+    editor.setNode(node);
+
+    const var state = editor.automationState();
+    const Rectangle<float> panel = rectangleProperty(state, "panelBounds");
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
+    REQUIRE(panel.getWidth() == Catch::Approx(panel.getHeight()));
+    REQUIRE(panel.getWidth() >= 380.f);
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
+    const var preLayout = state.getProperty("preGainLayout", {});
+    const var postLayout = state.getProperty("postGainLayout", {});
+    const Rectangle<float> controlBounds = rectangleProperty(state, "controlBounds");
+    const Rectangle<float> controlGroupBounds = rectangleProperty(state, "controlGroupBounds");
+    REQUIRE(controlBounds.getWidth() == Catch::Approx(336.f));
+    REQUIRE(controlGroupBounds.getX() - panel.getRight()
+            == Catch::Approx(24.f));
+    REQUIRE(controlGroupBounds.getCentreY()
+            == Catch::Approx(controlBounds.reduced(12.f).getCentreY()).margin(1.f));
+    REQUIRE(static_cast<bool>(preLayout.getProperty("compact", {})));
+    REQUIRE(static_cast<bool>(postLayout.getProperty("compact", {})));
+    REQUIRE(preLayout.getProperty("display", {}).toString() == "+23 dB");
+    REQUIRE(postLayout.getProperty("display", {}).toString() == "-23 dB");
+    REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
+            >= PropertyControlMetrics::minimumUsableTrackWidth);
+    REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
+    auto* oversampling = dynamic_cast<ComboBox*>(
+            editor.findChildWithID("waveshaperEditor.oversampling"));
+    auto* enabled = dynamic_cast<ToggleButton*>(
+            editor.findChildWithID("waveshaperEditor.enabled"));
+    auto* preGain = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("waveshaperEditor.preGain"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(preGain != nullptr);
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
+    REQUIRE(rectangleProperty(preLayout, "label").getY()
+            == controlGroupBounds.getY());
+    REQUIRE(oversampling != nullptr);
+    REQUIRE(oversampling->getWidth() <= 72);
+    REQUIRE(oversampling->getNumItems() == 4);
+    REQUIRE(oversampling->getItemText(0) == "1x");
+    REQUIRE(oversampling->getItemText(1) == "2x");
+    REQUIRE(oversampling->getItemText(2) == "4x");
+    REQUIRE(oversampling->getItemText(3) == "8x");
+
+    auto* preGainValue = dynamic_cast<Label*>(
+            editor.findChildWithID("waveshaperEditor.preGain.value"));
+    REQUIRE(preGainValue != nullptr);
+    preGainValue->setText("+12 dB", sendNotificationSync);
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("preGain", {}))
+            == Catch::Approx(CycleDsp::waveshaperGainUnitValue(12.f)));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    preGainValue->setText("46 dB", sendNotificationSync);
+    REQUIRE(static_cast<double>(editor.automationState().getProperty("preGain", {}))
+            == Catch::Approx(CycleDsp::waveshaperGainUnitValue(12.f)));
+    REQUIRE(delegate.events.isEmpty());
+    REQUIRE_FALSE(static_cast<bool>(editor.automationState()
+            .getProperty("preGainLayout", {})
+            .getProperty("valid", {})));
+
+    delegate.events.clear();
+    const bool wasEnabled = enabled->getToggleState();
+    enabled->setToggleState(!wasEnabled, sendNotificationSync);
+    REQUIRE(enabled->getToggleState() != wasEnabled);
+    REQUIRE(static_cast<bool>(editor.automationState().getProperty("enabled", {}))
+            != wasEnabled);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+}
+
+TEST_CASE("Impulse response editor exposes truthful precision properties",
+        "[cycle-v2][node-editor-host][impulse-response][properties]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::ImpulseResponse);
+    ImpulseResponseEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 900, 430);
+    editor.setNode(ir);
+
+    const var narrowState = editor.automationState();
+    editor.setBounds(0, 0, 1080, 430);
+    const var state = editor.automationState();
+    const var panel = state.getProperty("panelBounds", {});
+    const var narrowPanel = narrowState.getProperty("panelBounds", {});
+    const var controls = state.getProperty("controlBounds", {});
+    const var narrowControls = narrowState.getProperty("controlBounds", {});
+    REQUIRE(static_cast<double>(controls.getProperty("width", {}))
+            == Catch::Approx(348.0));
+    REQUIRE(static_cast<double>(controls.getProperty("width", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowControls.getProperty("width", {}))));
+    REQUIRE(static_cast<double>(panel.getProperty("width", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowPanel.getProperty("width", {})) + 180.0));
+    REQUIRE(static_cast<double>(panel.getProperty("height", {}))
+            == Catch::Approx(static_cast<double>(
+                    narrowPanel.getProperty("height", {}))));
+    const Rectangle<float> headerActionBounds = rectangleProperty(
+            state,
+            "headerActionBounds");
+    REQUIRE(static_cast<double>(panel.getProperty("width", {}))
+            > static_cast<double>(panel.getProperty("height", {})));
+    REQUIRE(headerActionBounds == embeddedEditorHeaderLayout(
+            editor.getLocalBounds().toFloat(), true).enabled);
+    REQUIRE(state.getProperty("sizeLayout", {}).getProperty("display", {}).toString()
+            == "1024 smp");
+    REQUIRE(state.getProperty("postGainLayout", {}).getProperty("display", {}).toString()
+            == "0 dB");
+    REQUIRE(state.getProperty("highPassLayout", {}).getProperty("display", {}).toString()
+            == "2.8 kHz");
+    for (const Identifier property : {
+            Identifier("sizeLayout"),
+            Identifier("postGainLayout"),
+            Identifier("highPassLayout") }) {
+        REQUIRE(static_cast<bool>(state.getProperty(property, {})
+                .getProperty("compact", {})));
+        REQUIRE(static_cast<int>(state.getProperty(property, {})
+                .getProperty("usableTrackWidth", {}))
+                >= PropertyControlMetrics::minimumUsableTrackWidth);
+    }
+    const Array<var>* landmarks = state.getProperty("landmarks", {}).getArray();
+    REQUIRE(landmarks != nullptr);
+    const var panelState = state.getProperty("panelState", {});
+    REQUIRE(static_cast<int>(panelState.getProperty("irSpectrumPointCount", {})) > 0);
+    REQUIRE(static_cast<int>(panelState.getProperty("irFilteredImpulsePointCount", {}))
+            == 1024);
+    REQUIRE(panelState.getProperty("irBackdropRenderer", {}).toString() == "OpenGL");
+    const auto modelledSource = prepareImpulseResponseSource(ir.parameters, ir.model);
+    const auto modelledAnalysis = prepareImpulseResponseAnalysis(ir.parameters, ir.model);
+    const Array<var>* waveformPoints = panelState.getProperty("waveformPoints", {}).getArray();
+    REQUIRE(modelledSource.has_value());
+    REQUIRE(modelledAnalysis.has_value());
+    REQUIRE(waveformPoints != nullptr);
+    REQUIRE_FALSE(waveformPoints->isEmpty());
+    const auto editableSamples = irEditableSamplesAt(
+            modelledSource->displayImpulse.size(), *waveformPoints);
+    REQUIRE(irSampledCurveIdentityRootMeanSquare(
+            modelledSource->displayImpulse, editableSamples) < 0.005);
+    REQUIRE(significantTurningPointCount(modelledSource->displayImpulse, 0.002)
+            <= significantTurningPointCount(editableSamples, 0.001));
+    const float modelledFirstSample = panelState.getProperty(
+            "irFilteredImpulseFirstSample", {});
+    REQUIRE(modelledFirstSample
+            == Catch::Approx(modelledAnalysis->filteredDisplayImpulse.front()));
+    REQUIRE(static_cast<float>(panelState.getProperty("irAudioImpulseFirstSample", {}))
+            == Catch::Approx(modelledAnalysis->filteredImpulse.front()));
+    const Array<var>* majorGridLines = panelState
+            .getProperty("verticalMajorGridLines", {})
+            .getArray();
+    REQUIRE(majorGridLines != nullptr);
+    REQUIRE(landmarks->size() == majorGridLines->size());
+    REQUIRE(landmarks->size() == 9);
+    for (int index = 0; index < landmarks->size(); ++index) {
+        REQUIRE((int) (*landmarks)[index].getProperty("sample", {})
+                == index * 128);
+    }
+    const double panelX = panel.getProperty("x", {});
+    const double panelWidth = panel.getProperty("width", {});
+    const var zoom = panelState.getProperty("zoom", {});
+    const double expectedZeroX = panelX + panelWidth
+            * (CycleDsp::irDomainPadding
+                    - static_cast<double>(zoom.getProperty("x", {})))
+            / static_cast<double>(zoom.getProperty("w", {}));
+    REQUIRE(static_cast<double>(landmarks->getFirst().getProperty("x", {}))
+            == Catch::Approx(expectedZeroX));
+    for (int index = 0; index < landmarks->size(); ++index) {
+        REQUIRE(static_cast<double>((*landmarks)[index].getProperty("x", {}))
+                == Catch::Approx(
+                        panelX
+                        + static_cast<double>((*majorGridLines)[index]
+                                .getProperty("panelX", {}))));
+    }
+    const var firstLandmark = landmarks->getFirst();
+    const var lastLandmark = landmarks->getLast();
+    REQUIRE(static_cast<double>(lastLandmark.getProperty("x", {}))
+            == Catch::Approx(panelX + panelWidth));
+    REQUIRE(static_cast<double>(firstLandmark.getProperty("labelX", {}))
+                    + static_cast<double>(firstLandmark.getProperty("labelWidth", {})) * 0.5
+            == Catch::Approx(static_cast<double>(firstLandmark.getProperty("x", {}))));
+    REQUIRE(static_cast<double>(lastLandmark.getProperty("labelX", {}))
+                    + static_cast<double>(lastLandmark.getProperty("labelWidth", {}))
+            <= panelX + panelWidth + 0.001);
+    REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
+    REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
+    REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");
+    REQUIRE_FALSE((bool) state.getProperty("resourceSublabelVisible", {}));
+
+    int textButtonCount = 0;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        textButtonCount += dynamic_cast<TextButton*>(editor.getChildComponent(index)) != nullptr
+                ? 1 : 0;
+    }
+    REQUIRE(textButtonCount == 3);
+    auto* loadAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.loadAudio"));
+    auto* modelAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.modelAudio"));
+    auto* unloadAudio = dynamic_cast<TextButton*>(editor.findChildWithID("irEditor.unloadAudio"));
+    REQUIRE(loadAudio != nullptr);
+    REQUIRE(modelAudio != nullptr);
+    REQUIRE(unloadAudio != nullptr);
+    REQUIRE(loadAudio->getButtonText() == "Load");
+    REQUIRE(modelAudio->getButtonText() == "Model");
+    REQUIRE(unloadAudio->getButtonText() == "Unload");
+    REQUIRE(loadAudio->getWantsKeyboardFocus());
+
+    AudioSampleResource resource { "direct", "Direct.wav", 48000.0, {} };
+    resource.samples.resize(1024);
+    resource.samples.front() = 1.f;
+    widget.setImpulseResponseAudioResource(&resource);
+    const var directPanelState = editor.automationState()
+            .getProperty("panelState", {});
+    const auto directAnalysis = prepareImpulseResponseAnalysis(
+            ir.parameters, ir.model, &resource);
+    REQUIRE(directAnalysis.has_value());
+    REQUIRE(static_cast<float>(directPanelState.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            == Catch::Approx(directAnalysis->filteredImpulse.front()));
+    REQUIRE(static_cast<float>(directPanelState.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            != Catch::Approx(modelledFirstSample));
+    REQUIRE(modelAudio->getWantsKeyboardFocus());
+    REQUIRE_FALSE(unloadAudio->isEnabled());
+    REQUIRE(loadAudio->getHeight() == 24);
+    REQUIRE(modelAudio->getHeight() == loadAudio->getHeight());
+    REQUIRE(unloadAudio->getHeight() == loadAudio->getHeight());
+    REQUIRE(loadAudio->getY() == modelAudio->getY());
+    REQUIRE(modelAudio->getY() == unloadAudio->getY());
+    REQUIRE(loadAudio->getWidth() < 100);
+
+    auto* enabled = dynamic_cast<ToggleButton*>(editor.findChildWithID("irEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->isVisible());
+    REQUIRE(enabled->getLocalBounds().contains(15, 15));
+    REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
+
+    auto* sizeSlider = dynamic_cast<PrecisionSlider*>(editor.findChildWithID("irEditor.size"));
+    REQUIRE(sizeSlider != nullptr);
+    const Rectangle<float> sizeLabel = rectangleProperty(
+            state.getProperty("sizeLayout", {}), "label");
+    const Rectangle<float> sizeTrack = rectangleProperty(
+            state.getProperty("sizeLayout", {}), "track");
+    REQUIRE(sizeLabel.getY()
+            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
+    REQUIRE(sizeTrack.getY() - sizeLabel.getBottom() <= 10.f);
+
+    delegate.events.clear();
+    const bool wasEnabled = enabled->getToggleState();
+    enabled->setToggleState(!wasEnabled, sendNotificationSync);
+    REQUIRE(enabled->getToggleState() != wasEnabled);
+    REQUIRE(static_cast<bool>(editor.automationState().getProperty("enabled", {}))
+            != wasEnabled);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    auto* sizeValue = dynamic_cast<Label*>(editor.findChildWithID("irEditor.size.value"));
+    REQUIRE(sizeValue != nullptr);
+    sizeValue->setText("4096 samples", sendNotificationSync);
+    REQUIRE(CycleDsp::irImpulseLength(static_cast<double>(
+            editor.automationState().getProperty("size", {}))) == 4096);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    sizeValue->setText("3000 samples", sendNotificationSync);
+    REQUIRE(CycleDsp::irImpulseLength(static_cast<double>(
+            editor.automationState().getProperty("size", {}))) == 4096);
+    REQUIRE_FALSE((bool) editor.automationState()
+            .getProperty("sizeLayout", {})
+            .getProperty("valid", {}));
+    REQUIRE(delegate.events.isEmpty());
+
+    auto* highPass = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("irEditor.highPass"));
+    REQUIRE(highPass != nullptr);
+    const double oneKilohertzValue = CycleDsp::irPrefilterValueForFrequency(
+            1000.f, 44100.0);
+    const double minimumPosition = highPass->getPositionOfValue(highPass->getMinimum());
+    const double maximumPosition = highPass->getPositionOfValue(highPass->getMaximum());
+    REQUIRE(highPass->getPositionOfValue(oneKilohertzValue)
+            == Catch::Approx((minimumPosition + maximumPosition) * 0.5).margin(1.0));
+
+    const var beforeHighPassPanel = editor.automationState().getProperty("panelState", {});
+    const int64 sourceRevision = beforeHighPassPanel.getProperty("irSourceRevision", {});
+    const int64 analysisRevision = beforeHighPassPanel.getProperty("irAnalysisRevision", {});
+    const float filteredSample = beforeHighPassPanel.getProperty(
+            "irFilteredImpulseFirstSample", {});
+    const float cutoffBefore = CycleDsp::irPrefilterFrequency(
+            highPass->getValue(),
+            44100.0);
+    REQUIRE(highPass->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(CycleDsp::irPrefilterFrequency(highPass->getValue(), 44100.0)
+            == Catch::Approx(cutoffBefore + 100.f).margin(0.1f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+    const var afterHighPassPanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterHighPassPanel.getProperty("irSourceRevision", {}))
+            == sourceRevision);
+    REQUIRE(static_cast<int64>(afterHighPassPanel.getProperty("irAnalysisRevision", {}))
+            > analysisRevision);
+    REQUIRE(static_cast<float>(afterHighPassPanel.getProperty(
+                    "irFilteredImpulseFirstSample", {}))
+            != Catch::Approx(filteredSample));
+
+    delegate.events.clear();
+    auto* highPassValue = dynamic_cast<Label*>(
+            editor.findChildWithID("irEditor.highPass.value"));
+    REQUIRE(highPassValue != nullptr);
+    highPassValue->setText("880 Hz", sendNotificationSync);
+    REQUIRE(CycleDsp::irPrefilterFrequency(highPass->getValue(), 44100.0)
+            == Catch::Approx(880.f).margin(0.1f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.events.clear();
+    auto* postGain = dynamic_cast<PrecisionSlider*>(
+            editor.findChildWithID("irEditor.postGain"));
+    REQUIRE(postGain != nullptr);
+    const var beforePostPanel = editor.automationState().getProperty("panelState", {});
+    const int64 sourceRevisionBeforePost = beforePostPanel.getProperty(
+            "irSourceRevision", {});
+    const int64 analysisRevisionBeforePost = beforePostPanel.getProperty(
+            "irAnalysisRevision", {});
+    const float displayedSampleBeforePost = beforePostPanel.getProperty(
+            "irDisplayedImpulseFirstSample", {});
+    REQUIRE(postGain->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(CycleDsp::irPostGainDecibels(postGain->getValue())
+            == Catch::Approx(1.f).margin(0.001f));
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+    const var afterPostPanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterPostPanel.getProperty("irSourceRevision", {}))
+            == sourceRevisionBeforePost);
+    REQUIRE(static_cast<int64>(afterPostPanel.getProperty("irAnalysisRevision", {}))
+            == analysisRevisionBeforePost);
+    REQUIRE(static_cast<float>(afterPostPanel.getProperty(
+                    "irDisplayedImpulseFirstSample", {}))
+            != Catch::Approx(displayedSampleBeforePost));
+
+    delegate.events.clear();
+    const int64 sourceRevisionBeforeSize = afterPostPanel.getProperty(
+            "irSourceRevision", {});
+    const int64 analysisRevisionBeforeSize = afterPostPanel.getProperty(
+            "irAnalysisRevision", {});
+    REQUIRE(sizeSlider->keyPressed(KeyPress(KeyPress::leftKey)));
+    const var afterSizePanel = editor.automationState().getProperty("panelState", {});
+    REQUIRE(static_cast<int64>(afterSizePanel.getProperty("irSourceRevision", {}))
+            == sourceRevisionBeforeSize);
+    REQUIRE(static_cast<int64>(afterSizePanel.getProperty("irAnalysisRevision", {}))
+            == analysisRevisionBeforeSize);
+    REQUIRE(delegate.events == StringArray { "begin", "repaint", "publish", "commit" });
+
+    delegate.resource = NodeAudioResourceSummary { "room.wav", "direct", 101 };
+    editor.setNode(ir);
+    REQUIRE((bool) editor.automationState().getProperty("resourceBound", {}));
+    REQUIRE(editor.automationState().getProperty("resourceMode", {}).toString() == "direct");
+    REQUIRE(unloadAudio->isEnabled());
+    REQUIRE(unloadAudio->getWantsKeyboardFocus());
+
+    delegate.resourceRemovalSucceeds = false;
+    unloadAudio->onClick();
+    REQUIRE(delegate.status == "The embedded audio could not be unloaded.");
+    REQUIRE(delegate.resourceRemovals == 0);
+
+    delegate.resourceRemovalSucceeds = true;
+    unloadAudio->onClick();
+    REQUIRE(delegate.resourceRemovals == 1);
+    REQUIRE(delegate.status.isEmpty());
+    REQUIRE_FALSE((bool) editor.automationState().getProperty("resourceBound", {}));
+}
+
+TEST_CASE("IR attack zoom changes presentation without publishing the graph",
+        "[cycle-v2][node-editor-host][impulse-response][zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::ImpulseResponse);
+    ImpulseResponseEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 1080, 430);
+    editor.setNode(ir);
+
+    auto* zoomAttack = dynamic_cast<Button*>(
+            editor.findChildWithID("irEditor.zoomAttack"));
+    auto* zoomFull = dynamic_cast<Button*>(
+            editor.findChildWithID("irEditor.zoomFull"));
+    REQUIRE(zoomAttack != nullptr);
+    REQUIRE(zoomFull != nullptr);
+    REQUIRE(zoomAttack->isVisible());
+    REQUIRE(zoomFull->isVisible());
+    REQUIRE(zoomAttack->getWantsKeyboardFocus());
+    REQUIRE(zoomFull->getWantsKeyboardFocus());
+    REQUIRE(zoomAttack->getTooltip() == "Zoom to the impulse attack");
+    REQUIRE(zoomFull->getTooltip() == "Show the full impulse response");
+
+    const var fullState = editor.automationState();
+    const var fullZoom = fullState
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    const Rectangle<float> panel = rectangleProperty(fullState, "panelBounds");
+    const double fullX = fullZoom.getProperty("x", {});
+    const double fullY = fullZoom.getProperty("y", {});
+    const double fullWidth = fullZoom.getProperty("w", {});
+    const double fullHeight = fullZoom.getProperty("h", {});
+
+    delegate.events.clear();
+    zoomAttack->onClick();
+    const var attackState = editor.automationState();
+    const var attackZoom = attackState
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    REQUIRE(static_cast<double>(attackZoom.getProperty("x", {}))
+            == Catch::Approx(CycleDsp::irDomainPadding));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("w", {}))
+            == Catch::Approx(fullWidth * 0.2));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("y", {}))
+            == Catch::Approx(fullY));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("h", {}))
+            == Catch::Approx(fullHeight));
+    REQUIRE(delegate.events == StringArray { "repaint" });
+
+    const Array<var>* attackLandmarks = attackState.getProperty("landmarks", {}).getArray();
+    REQUIRE(attackLandmarks != nullptr);
+    REQUIRE(attackLandmarks->size() == 2);
+    REQUIRE((int) attackLandmarks->getFirst().getProperty("sample", {}) == 0);
+    REQUIRE((int) attackLandmarks->getLast().getProperty("sample", {}) == 128);
+    for (const var& landmark : *attackLandmarks) {
+        const double x = landmark.getProperty("x", {});
+        REQUIRE(x >= panel.getX());
+        REQUIRE(x <= panel.getRight());
+    }
+    REQUIRE(rectangleProperty(attackState, "zoomAttackBounds").getWidth() == 24.f);
+    REQUIRE(rectangleProperty(attackState, "zoomFullBounds").getWidth() == 24.f);
+    REQUIRE(panel.contains(rectangleProperty(attackState, "zoomAttackBounds")));
+    REQUIRE(panel.contains(rectangleProperty(attackState, "zoomFullBounds")));
+
+    delegate.events.clear();
+    zoomFull->onClick();
+    const var restoredZoom = editor.automationState()
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("x", {}))
+            == Catch::Approx(fullX));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("w", {}))
+            == Catch::Approx(fullWidth));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("y", {}))
+            == Catch::Approx(fullY));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("h", {}))
+            == Catch::Approx(fullHeight));
+    REQUIRE(delegate.events == StringArray { "repaint" });
 }
 
 TEST_CASE("Guide editor presents heatmap state and clears through its semantic action",
@@ -802,25 +1907,35 @@ TEST_CASE("Guide editor presents heatmap state and clears through its semantic a
     const var editorState = editor.automationState();
     REQUIRE((bool) editorState.getProperty("heatmapActive", {}));
     REQUIRE(editorState.getProperty("heatmapFilename", {}).toString() == "checker.png");
+    REQUIRE(editorState.getProperty("heatmapSectionLabel", {}).toString() == "Guide image");
+    REQUIRE_FALSE((bool) editorState.getProperty("heatmapSublabelVisible", {}));
     const var panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("heatmapActive", {}));
     REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 512);
+    const int initialTextureRevision = panelState.getProperty(
+            "heatmapTextureRevision", {});
     const double initialOutput = panelState.getProperty("heatmapOutputStart", {});
     REQUIRE(widget.setSelectedVertexParameter("vertex.amp", 0.1f));
     REQUIRE(widget.modelPublication() != nullptr);
-    REQUIRE((double) widget.automationState().getProperty("heatmapOutputStart", {})
+    const var updatedPanelState = widget.automationState();
+    REQUIRE((double) updatedPanelState.getProperty("heatmapOutputStart", {})
             != Catch::Approx(initialOutput).margin(0.001));
+    REQUIRE((int) updatedPanelState.getProperty("heatmapTextureRevision", {})
+            == initialTextureRevision);
 
-    TextButton* clearButton = nullptr;
-    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
-        auto* button = dynamic_cast<TextButton*>(editor.getChildComponent(index));
-        if (button != nullptr && button->getName() == "Clear Guide heatmap") {
-            clearButton = button;
-        }
-    }
+    auto* loadButton = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.loadImage"));
+    auto* clearButton = dynamic_cast<TextButton*>(
+            editor.findChildWithID("guideEditor.clearImage"));
+    REQUIRE(loadButton != nullptr);
     REQUIRE(clearButton != nullptr);
+    REQUIRE(loadButton->getButtonText() == "Replace");
+    REQUIRE(clearButton->isEnabled());
+    REQUIRE(loadButton->getY() == clearButton->getY());
+    REQUIRE(loadButton->getHeight() == 24);
     clearButton->onClick();
     REQUIRE(cleared);
+    REQUIRE_FALSE(clearButton->isEnabled());
 
     editor.setGuideResource(guide, nullptr);
     REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
@@ -977,6 +2092,12 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
+    REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
+    const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
+    REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
+    REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
     REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
@@ -1112,6 +2233,38 @@ TEST_CASE("Node editor command service publishes a curve drag as one transaction
     REQUIRE_FALSE(document.canUndo());
 }
 
+TEST_CASE("Node editor resource commands use the atomic dispatcher boundary",
+        "[cycle-v2][node-editor-host][audio-resource]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+
+    REQUIRE(commands.setNodeAudioResource({
+            "ir",
+            { "audio-1", "room.wav", 48000.0, { 1.f, 0.f } },
+            "direct"
+    }));
+    REQUIRE(document.graph().findAudioResourceBinding("ir") != nullptr);
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(presentation.rebinds == 1);
+
+    REQUIRE(commands.removeNodeAudioResource("ir"));
+    REQUIRE(document.graph().findAudioResourceBinding("ir") == nullptr);
+    REQUIRE(presentation.immediateRefreshes == 2);
+    REQUIRE(presentation.rebinds == 2);
+}
+
 TEST_CASE("Node editor command service publishes model edits as one transaction",
         "[cycle-v2][editor][model]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1180,6 +2333,65 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     REQUIRE(presentation.localCommits == 1);
 }
 
+TEST_CASE("Trimesh link toggles survive rebind and undo",
+        "[cycle-v2][editor][trimesh][links]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    const Rectangle<int> bounds { 0, 0, 900, 620 };
+    const auto redLinkSelected = [&host] {
+        DynamicObject state;
+        host.appendAutomationState(state);
+        const Array<var>* links = state.getProperty("linkToggles").getArray();
+        REQUIRE(links != nullptr);
+        REQUIRE(links->size() == 3);
+        REQUIRE((*links)[1].getProperty("id", {}).toString() == "red");
+        return static_cast<bool>((*links)[1].getProperty("selected", {}));
+    };
+    const auto rebind = [&] {
+        REQUIRE(host.bind(
+                document.graph().findNode("mesh"),
+                bounds,
+                document.revision()));
+    };
+
+    rebind();
+    REQUIRE_FALSE(redLinkSelected());
+
+    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
+    rebind();
+    REQUIRE(redLinkSelected());
+
+    REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "0");
+    rebind();
+    REQUIRE_FALSE(redLinkSelected());
+
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
+    rebind();
+    REQUIRE(redLinkSelected());
+}
+
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;
@@ -1237,7 +2449,46 @@ TEST_CASE("Effect parameter drag publishes continuously as one undo transaction"
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(presentation.scheduledRefreshes == 0);
     REQUIRE(presentation.recordedMovements == 2);
-    REQUIRE(presentation.rebinds == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 0);
+}
+
+TEST_CASE("Voice Context hosted pitch gesture commits two updates and one undo",
+        "[cycle-v2][editor][voice-context][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 440, 276 }));
+    auto* pitch = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.pitch"));
+    REQUIRE(pitch != nullptr);
+    pitch->onDragStart();
+    pitch->setValue(3.0, sendNotificationSync);
+    pitch->setValue(9.0, sendNotificationSync);
+    REQUIRE(parameterValueForNode(*dispatcher.editingGraph().findNode("voice"), "pitch") == "9.000000");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
+    REQUIRE_FALSE(document.canUndo());
+
+    pitch->onDragEnd();
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "9.000000");
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "pitch") == "0");
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.immediateRefreshes == 1);
 }
 
 TEST_CASE("Unison drag exposes every transient preview before one undoable commit",
@@ -1290,7 +2541,8 @@ TEST_CASE("Unison drag exposes every transient preview before one undoable commi
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == "60.000000");
     REQUIRE(presentation.recordedMovements == 3);
     REQUIRE(presentation.repaints == 3);
-    REQUIRE(presentation.rebinds == 1);
+    REQUIRE(presentation.rebinds == 0);
+    REQUIRE(presentation.transientRebinds == 0);
     REQUIRE(document.canUndo());
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("unison"), "width") == originalWidth);

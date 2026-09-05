@@ -1,18 +1,20 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Control/ModulationTriple.h"
 
 #include <App/AppConstants.h>
 #include <Util/Arithmetic.h>
 
 #include <algorithm>
+#include <array>
 #include <set>
 
 namespace CycleV2 {
 
 namespace {
 
-int attachedKeyNote(
+PreviewPitchContext attachedPitchContext(
         const NodeGraph& graph,
         const String& voiceContextId,
         int fallbackMidiNote) {
@@ -34,13 +36,28 @@ int attachedKeyNote(
             continue;
         }
 
-        const float key = NodeParameterMap(*triple).floatValue(
+        const NodeParameterMap parameters(*triple);
+        const float key = parameters.floatValue(
                 "redConstant",
                 fallbackKey);
-        return Arithmetic::getGraphicNoteForValue(key, midiRange);
+        const auto configuration = buildModulationTripleConfiguration(
+                triple->parameters);
+        const std::array<String, 3> axes { "yellow", "red", "blue" };
+        String keyScaleAxis;
+        for (size_t index = 0; index < axes.size(); ++index) {
+            if (configuration->sources[index].mode
+                    == ModulationSourceMode::KeyScale) {
+                keyScaleAxis = axes[index];
+                break;
+            }
+        }
+        return {
+                Arithmetic::getGraphicNoteForValue(key, midiRange),
+                keyScaleAxis
+        };
     }
 
-    return fallbackMidiNote;
+    return { fallbackMidiNote, {} };
 }
 
 const SignalProbe* findProbe(const NodeGraph& graph, const String& probeId) {
@@ -58,7 +75,7 @@ const SignalProbe* findProbe(const NodeGraph& graph, const String& probeId) {
 int PreviewPitchResolver::forGraph(const NodeGraph& graph) {
     for (const auto& node : graph.getNodes()) {
         if (node.kind == NodeKind::VoiceContext) {
-            return attachedKeyNote(graph, node.id, defaultMidiNote);
+            return attachedPitchContext(graph, node.id, defaultMidiNote).midiNote;
         }
     }
 
@@ -66,6 +83,13 @@ int PreviewPitchResolver::forGraph(const NodeGraph& graph) {
 }
 
 int PreviewPitchResolver::forNode(
+        const NodeGraph& graph,
+        const String& nodeId,
+        int fallbackMidiNote) {
+    return contextForNode(graph, nodeId, fallbackMidiNote).midiNote;
+}
+
+PreviewPitchContext PreviewPitchResolver::contextForNode(
         const NodeGraph& graph,
         const String& nodeId,
         int fallbackMidiNote) {
@@ -81,7 +105,7 @@ int PreviewPitchResolver::forNode(
 
         const Node* node = graph.findNode(currentId);
         if (node != nullptr && node->kind == NodeKind::VoiceContext) {
-            return attachedKeyNote(graph, currentId, fallbackMidiNote);
+            return attachedPitchContext(graph, currentId, fallbackMidiNote);
         }
 
         for (const auto& edge : graph.getEdges()) {
@@ -91,7 +115,7 @@ int PreviewPitchResolver::forNode(
         }
     }
 
-    return fallbackMidiNote;
+    return { fallbackMidiNote, {} };
 }
 
 int PreviewPitchResolver::forProbe(

@@ -1,5 +1,23 @@
 # Audio Bug Notes
 
+## Open: Full library order corrupts rasterizer comparison curve resolution
+
+Context:
+
+- The complete `AmaranthLib_tests` run on 2026-08-28 failed
+  `TestFXRasterizerPointSource.cpp:158` and `TestWaveformBake.cpp:116` through
+  `RasterizerCompare.h:114`.
+- The comparisons reported `curveRes` mismatches of `0 == 32` for curve 5 and
+  `0 == 975335533` for curve 7. The latter value resembles uninitialized or
+  corrupted state.
+- Both cases pass independently with 262 and 1252 assertions. The failures are
+  therefore full-suite-order dependent and are unrelated to the IR domain-axis
+  change, which does not alter a rasterizer implementation.
+- The failing full log is `/private/tmp/ir-ticks-lib-full-tests.txt`.
+
+Current status: open; identify the preceding test or shared rasterizer state
+that leaves `curveRes` uninitialized before restoring the full library gate.
+
 ## Resolved: Native Envelope edit smoke exported non-finite audio samples
 
 Context:

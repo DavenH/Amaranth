@@ -15,19 +15,22 @@ public:
             int rows,
             int columns,
             PortDomain domain = PortDomain::TimeSignal,
-            int midiNote = 48);
+            int midiNote = 48,
+            int keyScaleAxis = -1);
     void rebuild(
             TrimeshNodeModel& model,
             int rows,
             int columns,
             const TrimeshRenderProfile& renderProfile,
-            int midiNote = 48);
+            int midiNote = 48,
+            int keyScaleAxis = -1);
 
     Buffer<float> getColumnArray() override;
     const std::vector<Column>& getColumns() override;
     CriticalSection& getGridLock() override;
 
     const TrimeshRenderData& getRenderData() const { return renderData; }
+    const std::vector<Column>& getPanelColumns() const { return panelColumns; }
 
 private:
     TrimeshRenderData renderData;

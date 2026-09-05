@@ -27,7 +27,9 @@ void drawGuideBackground(Canvas& canvas, const GuideView& view) {
     const int innerLeft = canvas.scaleX(view.padding);
     const int innerRight = canvas.scaleX(1.f - view.padding);
 
-    canvas.gfx.setCurrentColour(0.1f, 0.1f, 0.1f, 0.5f);
+    constexpr float marginBrightness = 0.085f;
+    canvas.gfx.setCurrentColour(
+            marginBrightness, marginBrightness, marginBrightness, 1.f);
     canvas.gfx.fillRect(0, canvas.height, innerLeft, 0, false);
     canvas.gfx.fillRect(canvas.width, canvas.height, innerRight, 0, false);
 

@@ -8,6 +8,7 @@
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelInputHostComponent.h>
+#include <UI/Panels/ScopedGLScissor.h>
 
 namespace CycleV2 {
 
@@ -200,6 +201,7 @@ void TrimeshPanelHosts::renderPanel(
     context.scaleFactor = scaleFactor;
     context.visible = true;
     context.callbacks = createPanelHostCallbacks();
+    ScopedGLScissor scissor(bounds, scaleFactor);
     panel.render(context);
 }
 

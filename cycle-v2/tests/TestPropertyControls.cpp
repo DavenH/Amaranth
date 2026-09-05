@@ -1,0 +1,273 @@
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyControls.h"
+
+using namespace CycleV2;
+using namespace juce;
+
+TEST_CASE("Property rail content does not double-inset its outer edge",
+        "[cycle-v2][ui][property-controls][geometry]") {
+    const Rectangle<int> content = propertyRailContentBounds({ 917, 44, 336, 422 });
+    REQUIRE(content == Rectangle<int>(929, 56, 324, 398));
+}
+
+TEST_CASE("Property slider layout preserves useful travel or switches compact form",
+        "[cycle-v2][ui][property-controls][geometry]") {
+    const PropertySliderLayout ordinary = propertySliderLayout({ 0, 0, 312, 30 }, true);
+    REQUIRE_FALSE(ordinary.compact);
+    REQUIRE(ordinary.label == Rectangle<int>(0, 0, 88, 30));
+    REQUIRE(ordinary.slider == Rectangle<int>(96, 0, 148, 30));
+    REQUIRE(ordinary.value == Rectangle<int>(252, 0, 60, 30));
+    REQUIRE(ordinary.usableTrackWidth() == PropertyControlMetrics::minimumUsableTrackWidth);
+    REQUIRE_FALSE(ordinary.label.intersects(ordinary.slider));
+    REQUIRE_FALSE(ordinary.slider.intersects(ordinary.value));
+
+    const PropertySliderLayout compact = propertySliderLayout({ 0, 0, 240, 56 }, true);
+    REQUIRE(compact.compact);
+    REQUIRE(compact.label == Rectangle<int>(0, 0, 172, 18));
+    REQUIRE(compact.value == Rectangle<int>(180, 0, 60, 18));
+    REQUIRE(compact.slider == Rectangle<int>(0, 14, 240, 30));
+    REQUIRE(compact.usableTrackWidth() == 232);
+    REQUIRE(compact.track.getY() - (float) compact.label.getBottom() <= 10.f);
+    REQUIRE_FALSE(compact.label.intersects(compact.value));
+    REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
+}
+
+TEST_CASE("Property values use two significant figures without redundant decimals",
+        "[cycle-v2][ui][property-controls][formatting]") {
+    REQUIRE(formatPropertyReal(0.0) == "0");
+    REQUIRE(formatPropertyReal(4.0) == "4");
+    REQUIRE(formatPropertyReal(1.49) == "1.5");
+    REQUIRE(formatPropertyReal(0.76562) == "0.77");
+    REQUIRE(formatPropertyReal(0.05) == "0.05");
+    REQUIRE(formatPropertyReal(-24.4) == "-24");
+    REQUIRE(formatPropertyPercentage(0.5) == "50%");
+    REQUIRE(formatPropertyPercentage(0.76562) == "77%");
+    REQUIRE(formatPropertyFrequency(880.0) == "880 Hz");
+    REQUIRE(formatPropertyFrequency(2756.25) == "2.8 kHz");
+    REQUIRE(parsePropertyFrequency("880 Hz", 0.0, 22050.0).value()
+            == Catch::Approx(880.0));
+    REQUIRE(parsePropertyFrequency("2.8 kHz", 0.0, 22050.0).value()
+            == Catch::Approx(2800.0));
+    REQUIRE_FALSE(parsePropertyFrequency("23 kHz", 0.0, 22050.0).has_value());
+}
+
+TEST_CASE("Property readouts separate numeric text from stable units",
+        "[cycle-v2][ui][property-controls][readout]") {
+    REQUIRE(splitPropertyValueText("0.77")
+            == PropertyValueText { "0.77", {} });
+    REQUIRE(splitPropertyValueText("50%")
+            == PropertyValueText { "50", "%" });
+    REQUIRE(splitPropertyValueText("880 Hz")
+            == PropertyValueText { "880", "Hz" });
+    REQUIRE(splitPropertyValueText("2.8 kHz")
+            == PropertyValueText { "2.8", "kHz" });
+    REQUIRE(splitPropertyValueText("-6 dB")
+            == PropertyValueText { "-6", "dB" });
+    REQUIRE(splitPropertyValueText(String::fromUTF8("1\xc3\x97"))
+            == PropertyValueText { "1", String::fromUTF8("\xc3\x97") });
+}
+
+TEST_CASE("Property value editing preserves geometry and keeps units external",
+        "[cycle-v2][ui][property-controls][readout][focus]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    owner.setBounds(0, 0, 360, 60);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+    PropertySliderRow row(owner, "Frequency");
+    row.slider.setRange(20.0, 20000.0, 0.01);
+    row.configureValuePresentation(
+            formatPropertyFrequency,
+            [](const String& text) {
+                return parsePropertyFrequency(text, 20.0, 20000.0);
+            },
+            1000.0,
+            10.0,
+            1.0,
+            "Frequency help");
+    row.setBounds({ 0, 0, 340, 30 }, 88, 8, 72);
+    row.slider.setValue(2756.25, sendNotificationSync);
+
+    REQUIRE(row.numericValueText() == "2.8");
+    REQUIRE(row.unitText() == "kHz");
+    REQUIRE(row.valueText() == "2.8 kHz");
+    REQUIRE(row.value.findColour(Label::backgroundColourId).isTransparent());
+    REQUIRE(row.value.findColour(Label::outlineColourId).isTransparent());
+    REQUIRE_FALSE(row.value.getBounds().intersects(row.unit.getBounds()));
+
+    row.value.showEditor();
+    TextEditor* editor = row.value.getCurrentTextEditor();
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->getJustificationType() == Justification::centredRight);
+    REQUIRE(editor->getText() == "2.8");
+    REQUIRE(editor->getHighlightedRegion() == Range<int>(0, 3));
+    REQUIRE(editor->getFont().getHeight()
+            == Catch::Approx(row.value.getFont().getHeight()));
+    REQUIRE(row.unit.isVisible());
+    REQUIRE(row.unit.getText() == "kHz");
+
+    editor->setText("3.1", true);
+    row.value.hideEditor(false);
+    REQUIRE(row.slider.getValue() == Catch::Approx(3100.0));
+    REQUIRE(row.numericValueText() == "3.1");
+    REQUIRE(row.unitText() == "kHz");
+    REQUIRE(row.valueText() == "3.1 kHz");
+}
+
+TEST_CASE("Property slider indicator remains centred at fractional positions",
+        "[cycle-v2][ui][property-controls][geometry]") {
+    for (float centreX : { 40.f, 40.25f, 40.5f, 40.75f, 41.f }) {
+        const Rectangle<float> thumb(
+                centreX - PropertyControlMetrics::thumbWidth * 0.5f,
+                8.f,
+                PropertyControlMetrics::thumbWidth,
+                PropertyControlMetrics::indicatorHeight);
+        const Rectangle<float> indicator = propertySliderIndicatorBounds(thumb);
+
+        REQUIRE(indicator.getCentreX() == Catch::Approx(thumb.getCentreX()));
+        REQUIRE(indicator.getCentreY() == Catch::Approx(thumb.getCentreY()));
+        REQUIRE(indicator.getWidth() <= 2.f);
+        REQUIRE(indicator.getHeight() >= 14.f);
+    }
+}
+
+TEST_CASE("Property slider landmarks share the interactive value track",
+        "[cycle-v2][ui][property-controls][geometry][landmarks]") {
+    ScopedJuceInitialiser_GUI juce;
+    PrecisionSlider slider;
+    slider.setBounds(0, 0, 920, 30);
+    slider.setRange(0.0, 1.0, 0.00001);
+
+    const Rectangle<float> visibleTrack = propertySliderTrackBounds(
+            slider.getLocalBounds().toFloat());
+    const Rectangle<float> interactiveTrack = slider.getLookAndFeel()
+            .getSliderLayout(slider)
+            .sliderBounds
+            .toFloat();
+    REQUIRE(interactiveTrack.getX() == Catch::Approx(visibleTrack.getX()));
+    REQUIRE(interactiveTrack.getRight() == Catch::Approx(visibleTrack.getRight()));
+
+    for (double value : { 0.0, 0.25, 0.5, 0.75, 1.0 }) {
+        REQUIRE(propertySliderValuePosition(slider, value)
+                == Catch::Approx(visibleTrack.getX()
+                        + visibleTrack.getWidth() * (float) value));
+    }
+
+    slider.setSkewFactor(2.0);
+    REQUIRE(propertySliderValuePosition(slider, 0.25)
+            == Catch::Approx(visibleTrack.getX()
+                    + visibleTrack.getWidth()
+                            * (float) slider.valueToProportionOfLength(0.25)));
+}
+
+TEST_CASE("Morph slider presentation uses a precise line marker",
+        "[cycle-v2][ui][property-controls][morph][geometry]") {
+    const Rectangle<float> bounds { 10.f, 20.f, 180.f, 30.f };
+    const Rectangle<float> marker = morphSliderIndicatorBounds(bounds, 0.25);
+
+    REQUIRE(marker.getCentreX()
+            == Catch::Approx(bounds.getX() + bounds.getWidth() * 0.25f));
+    REQUIRE(marker.getCentreY() == Catch::Approx(bounds.getCentreY()));
+    REQUIRE(marker.getWidth() <= 2.f);
+    REQUIRE(marker.getHeight() >= 14.f);
+}
+
+TEST_CASE("Property slider supports semantic entry, invalid correction, and keyboard precision",
+        "[cycle-v2][ui][property-controls][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    PropertySliderRow row(owner, "Amount");
+    row.slider.setRange(0.0, 1.0, 0.00001);
+    row.configureValuePresentation(
+            formatPropertyPercentage,
+            parsePropertyPercentage,
+            0.0,
+            0.01,
+            0.001,
+            "Amount help");
+    row.setBounds({ 0, 0, 312, 30 });
+
+    int dragStarts = 0;
+    int dragEnds = 0;
+    row.slider.onDragStart = [&dragStarts] { ++dragStarts; };
+    row.slider.onDragEnd = [&dragEnds] { ++dragEnds; };
+
+    row.slider.setValue(0.76562, sendNotificationSync);
+    REQUIRE(row.valueText() == "77%");
+    REQUIRE(row.valueTextIsValid());
+    REQUIRE(row.slider.getDoubleClickReturnValue() == 0.0);
+
+    row.value.setText("37.5%", sendNotificationSync);
+    REQUIRE(row.slider.getValue() == Catch::Approx(0.375));
+    REQUIRE(row.valueText() == "38%");
+    REQUIRE(row.valueTextIsValid());
+    REQUIRE(dragStarts == 1);
+    REQUIRE(dragEnds == 1);
+
+    row.value.setText("not a value", sendNotificationSync);
+    REQUIRE(row.slider.getValue() == Catch::Approx(0.375));
+    REQUIRE(row.valueText() == "not a value");
+    REQUIRE(row.numericValueText() == "not a value");
+    REQUIRE(row.unitText() == "%");
+    REQUIRE_FALSE(row.valueTextIsValid());
+    REQUIRE(dragStarts == 1);
+    REQUIRE(dragEnds == 1);
+
+    row.value.setText("50", sendNotificationSync);
+    REQUIRE(row.slider.getValue() == Catch::Approx(0.5));
+    REQUIRE(row.valueText() == "50%");
+    REQUIRE(row.valueTextIsValid());
+    REQUIRE(dragStarts == 2);
+    REQUIRE(dragEnds == 2);
+
+    REQUIRE(row.slider.keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(row.slider.getValue() == Catch::Approx(0.51));
+    REQUIRE(row.slider.keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(row.slider.getValue() == Catch::Approx(0.511));
+    REQUIRE(dragStarts == 4);
+    REQUIRE(dragEnds == 4);
+}
+
+TEST_CASE("Property slider supports semantic keyboard steps and wider values",
+        "[cycle-v2][ui][property-controls][interaction]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    PropertySliderRow row(owner, "Amount");
+    row.slider.setRange(0.0, 1.0, 0.00001);
+    row.configureValuePresentation(
+            formatPropertyPercentage,
+            parsePropertyPercentage,
+            0.0,
+            0.01,
+            0.001,
+            "Amount help");
+    row.slider.setKeyboardStepper([](double current, bool increase, bool fine) {
+        const double amount = current * current * current;
+        const double nextAmount = jlimit(
+                0.0,
+                1.0,
+                amount + (increase ? 1.0 : -1.0) * (fine ? 0.001 : 0.01));
+        return std::cbrt(nextAmount);
+    });
+    row.setBounds({ 0, 0, 324, 30 }, 88, 8, 72);
+
+    REQUIRE_FALSE(row.currentLayout().compact);
+    REQUIRE(row.currentLayout().value.getWidth() == 72);
+    REQUIRE(row.currentLayout().usableTrackWidth()
+            == PropertyControlMetrics::minimumUsableTrackWidth);
+
+    row.slider.setValue(0.5, sendNotificationSync);
+    REQUIRE(row.slider.keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(std::pow(row.slider.getValue(), 3.0) == Catch::Approx(0.135).margin(0.00001));
+    REQUIRE(row.slider.keyPressed(KeyPress(
+            KeyPress::leftKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(std::pow(row.slider.getValue(), 3.0) == Catch::Approx(0.134).margin(0.00001));
+}

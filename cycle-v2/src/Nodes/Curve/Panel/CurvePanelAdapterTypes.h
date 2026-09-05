@@ -8,5 +8,9 @@ struct CurvePreviewVertex {
     float curve {};
 };
 
-}
+struct CurvePanelGridLine {
+    float domainX {};
+    float panelX {};
+};
 
+}

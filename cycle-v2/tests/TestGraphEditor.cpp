@@ -140,6 +140,60 @@ TEST_CASE("Envelope purpose edit restores its removed routing through document u
     REQUIRE(document.graph().getEdges().front().connectionKind == ConnectionKind::Signal);
 }
 
+TEST_CASE("Audio resource edits publish atomically with undo replacement and unload",
+        "[cycle-v2][graph][audio-resource][undo]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::ImpulseResponse,
+            "ir",
+            {}));
+    const String initialSize = parameterValueForNode(*graph.findNode("ir"), "size");
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+
+    const auto imported = commands.setNodeAudioResource({
+            "ir",
+            { "audio-1", "room.wav", 48000.0, { 1.f, 0.5f, 0.25f } },
+            "direct",
+            { { "size", "Size", String(CycleDsp::irImpulseLengthValue(128), 9) } }
+    });
+    REQUIRE(imported.succeeded());
+    REQUIRE(imported.changes.resourcesChanged);
+    REQUIRE(imported.changes.nodeIds == std::vector<String> { "ir" });
+    REQUIRE(document.graph().findAudioResource("audio-1") != nullptr);
+    REQUIRE(document.graph().findAudioResourceBinding("ir") != nullptr);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("ir"), "size") != initialSize);
+
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findAudioResource("audio-1") == nullptr);
+    REQUIRE(document.graph().findAudioResourceBinding("ir") == nullptr);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("ir"), "size") == initialSize);
+    REQUIRE(document.redo());
+    REQUIRE(document.graph().findAudioResource("audio-1") != nullptr);
+
+    const auto replaced = commands.setNodeAudioResource({
+            "ir",
+            { "audio-2", "hall.wav", 44100.0, { 1.f, -0.25f } },
+            "modelled",
+            {}
+    });
+    REQUIRE(replaced.succeeded());
+    REQUIRE(document.graph().findAudioResource("audio-1") == nullptr);
+    REQUIRE(document.graph().findAudioResource("audio-2") != nullptr);
+    REQUIRE(document.graph().findAudioResourceBinding("ir")->mode == "modelled");
+
+    const NodeModelStatePtr retainedModel = document.graph().findNode("ir")->model;
+    const auto unloaded = commands.removeNodeAudioResource("ir");
+    REQUIRE(unloaded.succeeded());
+    REQUIRE(unloaded.changes.resourcesChanged);
+    REQUIRE(document.graph().findAudioResourceBinding("ir") == nullptr);
+    REQUIRE(document.graph().findAudioResource("audio-2") == nullptr);
+    REQUIRE(document.graph().findNode("ir")->model == retainedModel);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findAudioResource("audio-2") != nullptr);
+    REQUIRE(document.graph().findAudioResourceBinding("ir")->mode == "modelled");
+}
+
 TEST_CASE("Graph editor rejects normalized no-op parameter attempts", "[cycle-v2][graph][causal]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));

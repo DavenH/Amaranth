@@ -4,6 +4,7 @@
 #include "Graph/NodeDefinition.h"
 #include "Nodes/Curve/Panel/FlatCurvePreparation.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Util/NumberUtils.h>
 
 namespace CycleV2 {
@@ -12,8 +13,8 @@ namespace {
 
 constexpr float kWaveshaperPadding = 0.125f;
 
-float cycle1GainForParameter(float value) {
-    return (float) NumberUtils::fromDecibels(45.f * (2.f * value - 1.f));
+float gainForParameter(float value) {
+    return (float) NumberUtils::fromDecibels(CycleDsp::waveshaperGainDecibels(value));
 }
 
 }
@@ -36,8 +37,8 @@ std::shared_ptr<const WaveshaperConfiguration> WaveshaperSignalProcessor::buildC
     preparedTransfer->rasterizeFrom(curve.sampler(), kWaveshaperPadding);
 
     result->transfer = std::move(preparedTransfer);
-    result->preGain = cycle1GainForParameter(parameterMap.floatValue("pre", 0.5f));
-    result->postGain = cycle1GainForParameter(parameterMap.floatValue("post", 0.5f));
+    result->preGain = gainForParameter(parameterMap.floatValue("pre", 0.5f));
+    result->postGain = gainForParameter(parameterMap.floatValue("post", 0.5f));
     const int requestedFactor = parameterMap.intValue("aaFactor", 1);
     result->oversampleFactor = requestedFactor >= 8 ? 8
             : requestedFactor >= 4 ? 4

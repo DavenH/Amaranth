@@ -7,6 +7,9 @@ namespace CycleDsp {
 constexpr int equalizerBandCount = 5;
 constexpr int reverbSizeStepCount = 7;
 
+float waveshaperGainDecibels(float unitValue);
+float waveshaperGainUnitValue(float decibels);
+
 float equalizerGainDecibels(float unitValue);
 float equalizerGainUnitValue(float decibels);
 float equalizerGainSnappedUnitValue(

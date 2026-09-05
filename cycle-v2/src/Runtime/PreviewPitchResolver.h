@@ -4,12 +4,21 @@
 
 namespace CycleV2 {
 
+struct PreviewPitchContext {
+    int midiNote { 48 };
+    juce::String keyScaleAxis;
+};
+
 class PreviewPitchResolver {
 public:
     static constexpr int defaultMidiNote = 48;
 
     static int forGraph(const NodeGraph& graph);
     static int forNode(
+            const NodeGraph& graph,
+            const String& nodeId,
+            int fallbackMidiNote = defaultMidiNote);
+    static PreviewPitchContext contextForNode(
             const NodeGraph& graph,
             const String& nodeId,
             int fallbackMidiNote = defaultMidiNote);
