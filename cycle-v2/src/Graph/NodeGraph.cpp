@@ -178,6 +178,13 @@ const GuideHeatmapAsset* NodeGraph::findGuideHeatmap(const String& assetId) cons
             : nullptr;
 }
 
+GuideHeatmapAssetPtr NodeGraph::guideHeatmapAsset(const String& assetId) const {
+    const auto found = guideHeatmapIndex.find(assetId);
+    return found != guideHeatmapIndex.end()
+            ? guideHeatmaps[found->second]
+            : nullptr;
+}
+
 void NodeGraph::removeUnreferencedGuideHeatmaps() {
     std::unordered_set<String, StringHash> referenced;
     for (const auto& guide : guideCurves) {

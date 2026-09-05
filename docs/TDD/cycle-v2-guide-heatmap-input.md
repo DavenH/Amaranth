@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress (2026-09-05).
+Implemented (2026-09-05).
 
 Depends on `cycle-v2-guide-resource-dock.md` and
 `cycle-v2-trimesh-guide-curve-parity.md`.
@@ -97,3 +97,30 @@ one consolidated semantic edit.
   scalar-math hot-loop audit, applicable clang-tidy, focused tests, full Cycle
   V2 tests, and the standalone build complete before this status is Implemented.
 
+## Implementation Evidence
+
+- `GuideHeatmapAsset`, `GuideHeatmapSampler`, and `GuideCurvePreparation`
+  provide immutable validated PNG/JPEG data, luminance-alpha conversion,
+  clamped Catmull-Rom sampling, and one shared curve/heatmap preparation path.
+- Graph format 4 embeds content-addressed assets. Graph commands cover load,
+  replace, clear, stale completion, deduplication, orphan cleanup, and snapshot
+  history without repeated payload serialization.
+- The snapshot provider feeds the existing Guide table DSP and Trimesh
+  consumers. The native Guide panel adds an optional image texture and sampled
+  output trace while retaining the authoritative flat-curve interaction.
+- The expanded editor loads on a worker thread, applies results through
+  `GraphCommandDispatcher`, and exposes clear/status controls. Shelf previews,
+  undo/redo, graph reload, and editor rebinding consume the same graph asset.
+- Focused verification passed: 98 heatmap assertions in 7 cases, 144 Guide
+  assertions in 10 cases, including two live image-backed path publications,
+  downstream refresh, commit, and one-step undo.
+- `CycleV2` and `CycleV2_tests` built with 10-way parallelism. The full test
+  run completed with 10,444 of 10,446 assertions passing; its two failures are
+  pre-existing issues recorded in `ui-bugs.md` (hit-router copy mismatch and a
+  sandbox-sensitive atomic temporary-file save).
+- The final automation fixture passed all 21 commands, including clear/undo
+  and embedded save/reload. Native rendering was inspected in
+  `/private/tmp/cycle-v2-guide-dock-native-final.png`; the filtered launch log
+  is `/private/tmp/cycle-v2-guide-heatmap-logs-final.txt`.
+- The production diff and hot-loop scalar-math audit were clean, as was
+  `git diff --check`. `clang-tidy` was not available in the local environment.

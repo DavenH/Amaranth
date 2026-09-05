@@ -61,6 +61,8 @@ private:
     var deleteNode(const var& commandValue);
     var deleteEdge(const var& commandValue);
     var deleteGuideCurve(const var& commandValue);
+    var loadGuideHeatmap(const var& commandValue);
+    var clearGuideHeatmap(const var& commandValue);
     var undo();
     var setGuideParameter(const var& commandValue);
     var setNodeParameter(const var& commandValue);

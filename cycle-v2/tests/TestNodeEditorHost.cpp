@@ -11,6 +11,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -752,6 +753,7 @@ TEST_CASE("Guide editor uses compact host and control layout",
             lowestControlBottom = jmax(lowestControlBottom, slider->getBottom());
         } else if (dynamic_cast<TextButton*>(child) != nullptr) {
             ++textButtonCount;
+            lowestControlBottom = jmax(lowestControlBottom, child->getBottom());
         } else if (auto* toggle = dynamic_cast<ToggleButton*>(child)) {
             emptyToggleCount += toggle->getButtonText().isEmpty() ? 1 : 0;
             lowestControlBottom = jmax(lowestControlBottom, toggle->getBottom());
@@ -760,10 +762,68 @@ TEST_CASE("Guide editor uses compact host and control layout",
         }
     }
     REQUIRE(sliderCount == 3);
-    REQUIRE(textButtonCount == 0);
+    REQUIRE(textButtonCount == 2);
     REQUIRE(emptyToggleCount == 1);
     REQUIRE(enabledLabelCount == 1);
-    REQUIRE(lowestControlBottom < 230);
+    REQUIRE(lowestControlBottom < 320);
+}
+
+TEST_CASE("Guide editor presents heatmap state and clears through its semantic action",
+        "[cycle-v2][node-editor-host][guides][heatmap]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    Image image(Image::RGB, 2, 2, false);
+    image.setPixelAt(0, 0, Colours::black);
+    image.setPixelAt(1, 0, Colours::white);
+    image.setPixelAt(0, 1, Colours::white);
+    image.setPixelAt(1, 1, Colours::black);
+    MemoryOutputStream output;
+    PNGImageFormat format;
+    REQUIRE(format.writeImageToStream(image, output));
+    String error;
+    const auto heatmap = GuideHeatmapAsset::decode(
+            output.getMemoryBlock(), "checker.png", error);
+    REQUIRE(heatmap != nullptr);
+
+    CurveEditorWidget widget(true);
+    GuideCurveEditorComponent editor(widget);
+    GuideCurveResource guide;
+    guide.id = "guide1";
+    guide.model = createDefaultGuideCurveModel();
+    bool cleared = false;
+    editor.setHeatmapActions(
+            {},
+            [&](const String& guideId, uint64_t revision) {
+                cleared = guideId == guide.id && revision == guide.revision;
+                return true;
+            });
+    editor.setGuideResource(guide, heatmap);
+
+    const var editorState = editor.automationState();
+    REQUIRE((bool) editorState.getProperty("heatmapActive", {}));
+    REQUIRE(editorState.getProperty("heatmapFilename", {}).toString() == "checker.png");
+    const var panelState = widget.automationState();
+    REQUIRE((bool) panelState.getProperty("heatmapActive", {}));
+    REQUIRE((int) panelState.getProperty("heatmapOutputPointCount", {}) == 256);
+    const double initialOutput = panelState.getProperty("heatmapOutputStart", {});
+    REQUIRE(widget.setSelectedVertexParameter("vertex.amp", 0.1f));
+    REQUIRE(widget.modelPublication() != nullptr);
+    REQUIRE((double) widget.automationState().getProperty("heatmapOutputStart", {})
+            != Catch::Approx(initialOutput).margin(0.001));
+
+    TextButton* clearButton = nullptr;
+    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
+        auto* button = dynamic_cast<TextButton*>(editor.getChildComponent(index));
+        if (button != nullptr && button->getName() == "Clear Guide heatmap") {
+            clearButton = button;
+        }
+    }
+    REQUIRE(clearButton != nullptr);
+    clearButton->onClick();
+    REQUIRE(cleared);
+
+    editor.setGuideResource(guide, nullptr);
+    REQUIRE_FALSE((bool) widget.automationState().getProperty("heatmapActive", {}));
 }
 
 TEST_CASE("Selected flat curve state binds before its panel host exists",

@@ -277,6 +277,7 @@ public:
     bool replaceGuideCurve(GuideCurveResource resource);
     bool addGuideHeatmap(GuideHeatmapAssetPtr asset);
     const GuideHeatmapAsset* findGuideHeatmap(const String& assetId) const;
+    GuideHeatmapAssetPtr guideHeatmapAsset(const String& assetId) const;
     void removeUnreferencedGuideHeatmaps();
     bool moveGuideCurve(const String& guideId, int shelfOrder);
     bool assignGuideCurve(GuideCurveAssignment assignment);

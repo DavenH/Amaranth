@@ -33,9 +33,10 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     ,   guideCurveApplicable    (true)
     ,   doesDrawMouseHint       (false)
     ,   drawLinesAfterFill      (false)
-    ,   pendingDeformUpdate     (true)
-    ,   pendingNameUpdate       (false)
-    ,   pendingScaleUpdate      (false)
+    ,   pendingDeformUpdate       (true)
+    ,   pendingContentImageUpdate (false)
+    ,   pendingNameUpdate         (false)
+    ,   pendingScaleUpdate        (false)
     ,   shouldBakeTextures      (true)
     ,   speedApplicable         (true)
 
@@ -72,6 +73,7 @@ Panel::Panel(SingletonRepo* repo, const String& name, bool isTransparent) :
     ,   guideCurveTex           (nullptr)
     ,   grabTex                 (nullptr)
     ,   scalesTex               (nullptr)
+    ,   contentImageTex         (nullptr)
 
     ,   panelName               (name)
     ,   currentNameId           (NameTexture)
@@ -122,6 +124,13 @@ void Panel::setComponent(Component* comp) {
     this->comp = comp;
     componentChanged();
     bindInteractorToComponent();
+}
+
+void Panel::setContentImage(Image image) {
+    const ScopedLock lock(renderLock);
+    contentImage = std::move(image);
+    pendingContentImageUpdate = true;
+    dirtyState.mark(PanelDirtyState::Flag::Resource);
 }
 
 void Panel::setInteractor(Interactor* itr) {
@@ -577,6 +586,16 @@ void Panel::highlightSelectedVerts() {
 }
 
 void Panel::handlePendingUpdates() {
+    if (Util::assignAndWereDifferent(pendingContentImageUpdate, false)
+            && contentImageTex != nullptr) {
+        contentImageTex->setImage(contentImage);
+
+        PanelRenderer* renderer = getRenderer(this);
+        jassert(renderer != nullptr);
+        renderer->updateTexture(contentImageTex);
+        dirtyState.clear(PanelDirtyState::Flag::Resource);
+    }
+
     if (Util::assignAndWereDifferent(pendingScaleUpdate, false)) {
         createScales();
         scalesTex->setImage(scalesImage, textTextureScale);

@@ -7,6 +7,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Guide/GuideHeatmapLoader.h"
 #include "Nodes/Guide/GuideHeatmapSampler.h"
 
 using namespace CycleV2;
@@ -30,6 +31,16 @@ GuideHeatmapAssetPtr gradientHeatmap() {
     }
     String error;
     auto asset = GuideHeatmapAsset::decode(encodePng(image), "gradient.png", error);
+    REQUIRE(asset != nullptr);
+    REQUIRE(error.isEmpty());
+    return asset;
+}
+
+GuideHeatmapAssetPtr solidHeatmap(Colour colour, String filename) {
+    Image image(Image::ARGB, 2, 2, true);
+    image.clear(image.getBounds(), colour);
+    String error;
+    auto asset = GuideHeatmapAsset::decode(encodePng(image), std::move(filename), error);
     REQUIRE(asset != nullptr);
     REQUIRE(error.isEmpty());
     return asset;
@@ -71,6 +82,41 @@ TEST_CASE("Guide heatmaps decode luminance alpha and use bottom-up bicubic coord
             == Catch::Approx(1.f));
     REQUIRE(GuideHeatmapSampler::sampleBicubic(*asset, 0.f, 0.f)
             == Catch::Approx(0.f));
+}
+
+TEST_CASE("Guide heatmaps load asynchronously from image files",
+        "[cycle-v2][guide][heatmap][loader]") {
+    ScopedJuceInitialiser_GUI juce;
+    Image image(Image::RGB, 2, 2, false);
+    image.clear(image.getBounds(), Colours::white);
+    const MemoryBlock png = encodePng(image);
+    const File file = File("/private/tmp")
+            .getNonexistentChildFile("cycle-v2-guide-heatmap", ".png");
+    {
+        FileOutputStream outputFile(file);
+        REQUIRE(outputFile.openedOk());
+        REQUIRE(outputFile.write(png.getData(), png.getSize()));
+        outputFile.flush();
+    }
+
+    GuideHeatmapLoader loader;
+    GuideHeatmapAssetPtr loaded;
+    String loadError;
+    bool completed = false;
+    loader.load(file, [&](GuideHeatmapAssetPtr asset, String error) {
+        loaded = std::move(asset);
+        loadError = std::move(error);
+        completed = true;
+    });
+    for (int attempt = 0; attempt < 100 && !completed; ++attempt) {
+        MessageManager::getInstance()->runDispatchLoopUntil(10);
+    }
+
+    REQUIRE(completed);
+    REQUIRE(loaded != nullptr);
+    REQUIRE(loadError.isEmpty());
+    REQUIRE(loaded->filename() == file.getFileName());
+    REQUIRE(file.deleteFile());
 }
 
 TEST_CASE("Guide heatmap paths become bipolar provider tables",
@@ -118,5 +164,29 @@ TEST_CASE("Guide heatmap assets deduplicate serialize and survive graph history"
     REQUIRE(document.undo());
     REQUIRE(document.graph().getGuideHeatmaps().size() == 1);
     REQUIRE(document.redo());
+    REQUIRE(document.graph().getGuideHeatmaps().empty());
+}
+
+TEST_CASE("Guide heatmap replacement rejects stale loads and deletion cleans orphan assets",
+        "[cycle-v2][guide][heatmap][graph]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    const auto first = solidHeatmap(Colours::black, "black.png");
+    const auto second = solidHeatmap(Colours::white, "white.png");
+    const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    const uint64_t unloadedRevision = guide->revision;
+
+    REQUIRE(commands.setGuideHeatmap("guide1", unloadedRevision, first).succeeded());
+    REQUIRE(commands.setGuideHeatmap("guide1", unloadedRevision, second).code
+            == GraphEditCode::StaleRevision);
+    guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide->heatmapAssetId == first->id());
+    REQUIRE(commands.setGuideHeatmap("guide1", guide->revision, second).succeeded());
+    REQUIRE(document.graph().findGuideHeatmap(first->id()) == nullptr);
+    REQUIRE(document.graph().findGuideHeatmap(second->id()) != nullptr);
+
+    REQUIRE(commands.removeGuideCurve("guide1").succeeded());
     REQUIRE(document.graph().getGuideHeatmaps().empty());
 }

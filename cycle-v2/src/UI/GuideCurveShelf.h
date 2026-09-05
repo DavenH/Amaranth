@@ -96,10 +96,11 @@ private:
         float noise {};
         float dcOffset {};
         float phase {};
+        String heatmapAssetId;
         bool needsOpenGLRender {};
     };
 
-    Preview& previewFor(const GuideCurveResource& guide) const;
+    Preview& previewFor(const GuideCurveResource& guide, const NodeGraph& graph) const;
 
     mutable std::map<String, Preview> previews;
 };

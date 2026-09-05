@@ -6,6 +6,8 @@
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 #include "Nodes/Curve/Panel/FlatCurvePanelAdapter.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Guide/GuideCurvePreparation.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 
 namespace CycleV2 {
 
@@ -269,15 +271,20 @@ public:
         }
     }
 
-    bool syncFromGuideResource(const GuideCurveResource& guide) override {
-        if (!adapter.syncFromGuideResource(guide)) {
-            return false;
+    bool syncFromGuideResource(
+            const GuideCurveResource& guide,
+            const GuideHeatmapAssetPtr& heatmap) override {
+        guideState = guide;
+        guideHeatmap = heatmap;
+        const bool modelChanged = adapter.syncFromGuideResource(guide);
+        if (modelChanged) {
+            auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
+            panel->clearInteractionState();
+            finishGuideSync(guide);
+            flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
         }
-        auto& flatPanel = static_cast<FlatCurvePanelContract&>(*panel);
-        panel->clearInteractionState();
-        finishGuideSync(guide);
-        flatPanel.restoreFlatSelection(adapter.selectedMeshVertex());
-        return true;
+        updateGuidePresentation(guide, heatmap);
+        return modelChanged;
     }
 
     std::vector<CurvePreviewVertex> previewVertices() override {
@@ -295,11 +302,42 @@ public:
         if (publication == nullptr) {
             panel->clearInteractionState();
             panel->refreshRasterizer();
+        } else if (guideHeatmap != nullptr) {
+            guideState.model = publication;
+            updateGuidePresentation(guideState, guideHeatmap);
         }
         return publication;
     }
 
 private:
+    void updateGuidePresentation(
+            const GuideCurveResource& guide,
+            const GuideHeatmapAssetPtr& heatmap) {
+        auto* presentation = dynamic_cast<GuideCurvePanelPresentation*>(panel.get());
+        if (presentation == nullptr) {
+            return;
+        }
+        if (heatmap == nullptr) {
+            presentation->setHeatmapPresentation({}, {});
+            return;
+        }
+
+        constexpr int resolution = 256;
+        std::vector<float> path(resolution);
+        std::vector<float> output(resolution);
+        const bool prepared = GuideCurvePreparation::prepare(
+                guide,
+                heatmap.get(),
+                Buffer<float>(path.data(), resolution),
+                Buffer<float>(output.data(), resolution));
+        if (!prepared) {
+            presentation->setHeatmapPresentation({}, {});
+            return;
+        }
+        Buffer<float>(output.data(), resolution).add(0.5f);
+        presentation->setHeatmapPresentation(heatmap->image(), std::move(output));
+    }
+
     void finishGuideSync(const GuideCurveResource& guide) {
         publicationRevision = guide.model != nullptr ? guide.model->revision() : 1;
         applyPanelSettings();
@@ -330,6 +368,8 @@ private:
     }
 
     FlatCurvePanelAdapter adapter;
+    GuideCurveResource guideState;
+    GuideHeatmapAssetPtr guideHeatmap;
 };
 
 class EnvelopePanelController final : public CurvePanelControllerBase,

@@ -1,16 +1,17 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphRuntime.h"
-
-#include <algorithm>
 
 using namespace CycleV2;
 
@@ -54,6 +55,33 @@ const NodePreviewResult& findNodePreview(
 
     REQUIRE(found != result.nodes.end());
     return *found;
+}
+
+GuideHeatmapAssetPtr verticalGradientHeatmap() {
+    Image image(Image::RGB, 2, 4, false);
+    for (int y = 0; y < image.getHeight(); ++y) {
+        const uint8 value = (uint8) roundToInt(255.f * (float) y / 3.f);
+        image.setPixelAt(0, y, Colour(value, value, value));
+        image.setPixelAt(1, y, Colour(value, value, value));
+    }
+    MemoryOutputStream output;
+    PNGImageFormat format;
+    REQUIRE(format.writeImageToStream(image, output));
+    String error;
+    auto asset = GuideHeatmapAsset::decode(
+            output.getMemoryBlock(), "vertical-gradient.png", error);
+    REQUIRE(asset != nullptr);
+    REQUIRE(error.isEmpty());
+    return asset;
+}
+
+NodeModelStatePtr horizontalGuideModel(float y, uint64_t revision) {
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({
+            { 1, 0.05f, y, 1.f },
+            { 2, 0.95f, y, 1.f }
+    }));
+    return CurveNodeModelState::copyOf(curve, revision);
 }
 
 }
@@ -232,6 +260,56 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
     REQUIRE(document.undo());
     REQUIRE(document.graph().findGuideCurve("guide1")->enabled);
     REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.f);
+}
+
+TEST_CASE("Two live image-backed Guide path updates refresh downstream before one undo",
+        "[cycle-v2][runtime][guides][heatmap][gesture]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "amp").succeeded());
+    REQUIRE(commands.toggleSignalProbe(3).succeeded());
+    const auto heatmap = verticalGradientHeatmap();
+    const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    REQUIRE(commands.setGuideHeatmap("guide1", guide->revision, heatmap).succeeded());
+
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    guide = document.graph().findGuideCurve("guide1");
+    REQUIRE(guide != nullptr);
+    const uint64_t durableRevision = guide->revision;
+    const uint64_t modelRevision = guide->model->revision();
+    const auto publication = [&](float y, uint64_t revision) {
+        return GuideCurveStatePublication {
+                "guide1",
+                durableRevision,
+                horizontalGuideModel(y, revision),
+                {
+                    { "enabled", "Enabled", guide->enabled ? "1" : "0" },
+                    { "noise", "Noise", String(guide->noise) },
+                    { "dcOffset", "DC Offset", String(guide->dcOffset) },
+                    { "phase", "Phase", String(guide->phase) }
+                }
+        };
+    };
+
+    commands.beginTransientEdit();
+    REQUIRE(commands.publishGuideCurveState(publication(0.1f, modelRevision + 1)).succeeded());
+    REQUIRE(presentation.refresh(
+            commands.editingGraph(), document.revision(), commands.transientChanges()));
+    const auto firstOutput = presentation.previewResult().probes.front().values;
+    REQUIRE(commands.publishGuideCurveState(publication(0.9f, modelRevision + 2)).succeeded());
+    REQUIRE(presentation.refresh(
+            commands.editingGraph(), document.revision(), commands.transientChanges()));
+    const auto secondOutput = presentation.previewResult().probes.front().values;
+    REQUIRE(firstOutput != secondOutput);
+    commands.commitTransientEdit();
+
+    REQUIRE(document.graph().findGuideCurve("guide1")->model->revision() == modelRevision + 2);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findGuideCurve("guide1")->model->revision() == modelRevision);
+    REQUIRE(document.graph().findGuideCurve("guide1")->heatmapAssetId == heatmap->id());
 }
 
 TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",

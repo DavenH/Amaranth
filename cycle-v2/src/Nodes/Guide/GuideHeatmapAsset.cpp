@@ -1,8 +1,8 @@
-#include "Nodes/Guide/GuideHeatmapAsset.h"
-
 #include <array>
 #include <cstdint>
 #include <cstring>
+
+#include "Nodes/Guide/GuideHeatmapAsset.h"
 
 namespace CycleV2 {
 
@@ -165,15 +165,19 @@ std::shared_ptr<const GuideHeatmapAsset> GuideHeatmapAsset::decode(
     }
 
     std::vector<juce::uint8> intensity((size_t) width * (size_t) height);
+    juce::Image scalarImage(juce::Image::ARGB, width, height, false);
     juce::Image::BitmapData pixels(image, juce::Image::BitmapData::readOnly);
+    juce::Image::BitmapData scalarPixels(scalarImage, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             const juce::Colour colour = pixels.getPixelColour(x, y);
             const float luminance = 0.2126f * (float) colour.getRed()
                     + 0.7152f * (float) colour.getGreen()
                     + 0.0722f * (float) colour.getBlue();
-            intensity[(size_t) y * (size_t) width + (size_t) x]
-                    = (juce::uint8) juce::roundToInt(luminance * colour.getFloatAlpha());
+            const juce::uint8 value = (juce::uint8) juce::roundToInt(
+                    luminance * colour.getFloatAlpha());
+            intensity[(size_t) y * (size_t) width + (size_t) x] = value;
+            scalarPixels.setPixelColour(x, y, juce::Colour(value, value, value));
         }
     }
     error.clear();
@@ -182,7 +186,7 @@ std::shared_ptr<const GuideHeatmapAsset> GuideHeatmapAsset::decode(
             filename,
             mediaType,
             data,
-            std::move(image),
+            std::move(scalarImage),
             std::move(intensity)));
 }
 

@@ -2,6 +2,7 @@
 
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Guide/GuideHeatmapLoader.h"
 
 #include "Graph/NodeParameterMap.h"
 
@@ -28,12 +29,29 @@ struct GuideCurveEditorComponent::Impl {
             enabled     (owner, "Enabled")
         ,   noise       (owner, "Noise")
         ,   dcOffset    (owner, "DC Offset")
-        ,   phase       (owner, "Phase") {}
+        ,   phase       (owner, "Phase") {
+        loadButton.setName("Load Guide heatmap");
+        loadButton.setButtonText("Load image...");
+        clearButton.setName("Clear Guide heatmap");
+        clearButton.setButtonText("Clear image");
+        status.setName("Guide heatmap status");
+        status.setColour(Label::textColourId, Colour(0xffaeb8c5));
+        status.setFont(FontOptions(12.f));
+        status.setJustificationType(Justification::centredLeft);
+        owner.addAndMakeVisible(loadButton);
+        owner.addAndMakeVisible(clearButton);
+        owner.addAndMakeVisible(status);
+    }
 
     ParameterToggle enabled;
     LabeledParameterSlider noise;
     LabeledParameterSlider dcOffset;
     LabeledParameterSlider phase;
+    TextButton loadButton;
+    TextButton clearButton;
+    Label status;
+    std::unique_ptr<FileChooser> chooser;
+    GuideHeatmapLoader loader;
 };
 
 GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) :
@@ -48,6 +66,51 @@ GuideCurveEditorComponent::GuideCurveEditorComponent(CurveEditorWidget& target) 
     }
     bindDiscreteControl(impl->enabled);
     bindContinuousControls({ &impl->noise, &impl->dcOffset, &impl->phase });
+
+    impl->loadButton.onClick = [this] {
+        impl->chooser = std::make_unique<FileChooser>(
+                "Choose a Guide heatmap",
+                File {},
+                "*.png;*.jpg;*.jpeg");
+        impl->chooser->launchAsync(
+                FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
+                [safeThis = SafePointer<GuideCurveEditorComponent>(this)](const FileChooser& chooser) {
+                    if (safeThis == nullptr) {
+                        return;
+                    }
+                    const File file = chooser.getResult();
+                    if (!file.existsAsFile()) {
+                        return;
+                    }
+                    safeThis->impl->loadButton.setEnabled(false);
+                    safeThis->impl->status.setText("Loading...", dontSendNotification);
+                    auto completion = [safeThis](GuideHeatmapAssetPtr asset, String error) mutable {
+                        if (safeThis == nullptr) {
+                            return;
+                        }
+                        safeThis->impl->loadButton.setEnabled(true);
+                        if (asset == nullptr) {
+                            safeThis->impl->status.setText(error, dontSendNotification);
+                            return;
+                        }
+                        if (safeThis->loadHeatmap == nullptr
+                                || !safeThis->loadHeatmap(
+                                        safeThis->guide.id,
+                                        asset,
+                                        safeThis->guide.revision)) {
+                            safeThis->impl->status.setText(
+                                    "The Guide changed while the image was loading",
+                                    dontSendNotification);
+                        }
+                    };
+                    safeThis->impl->loader.load(file, std::move(completion));
+                });
+    };
+    impl->clearButton.onClick = [this] {
+        if (clearHeatmap != nullptr && clearHeatmap(guide.id, guide.revision)) {
+            impl->status.setText("No image loaded", dontSendNotification);
+        }
+    };
 }
 
 GuideCurveEditorComponent::~GuideCurveEditorComponent() = default;
@@ -58,14 +121,24 @@ Rectangle<float> GuideCurveEditorComponent::preferredHostBounds(Rectangle<float>
             .withCentre(available.getCentre());
 }
 
-void GuideCurveEditorComponent::setGuideResource(const GuideCurveResource& nextGuide) {
+void GuideCurveEditorComponent::setGuideResource(
+        const GuideCurveResource& nextGuide,
+        const GuideHeatmapAssetPtr& nextHeatmap) {
     guide = nextGuide;
+    heatmap = nextHeatmap;
     setEditorModelState(guide.model);
-    widget.syncFromGuideResource(guide);
+    widget.syncFromGuideResource(guide, heatmap);
     const ScopedValueSetter<bool> guard(syncingControls, true);
     syncEditorFromNode();
     applyEditorStateToWidget();
     refreshEditorSubject();
+}
+
+void GuideCurveEditorComponent::setHeatmapActions(
+        std::function<bool(const String&, GuideHeatmapAssetPtr, uint64_t)> loadAction,
+        std::function<bool(const String&, uint64_t)> clearAction) {
+    loadHeatmap = std::move(loadAction);
+    clearHeatmap = std::move(clearAction);
 }
 
 void GuideCurveEditorComponent::renderOpenGL(float scaleFactor) {
@@ -102,6 +175,12 @@ void GuideCurveEditorComponent::layoutEditor() {
         slider->setBounds(bounds.removeFromTop(rowHeight), labelWidth, labelGap);
         bounds.removeFromTop(rowGap);
     }
+    bounds.removeFromTop(4);
+    impl->loadButton.setBounds(bounds.removeFromTop(rowHeight));
+    bounds.removeFromTop(rowGap);
+    impl->clearButton.setBounds(bounds.removeFromTop(rowHeight));
+    bounds.removeFromTop(4);
+    impl->status.setBounds(bounds.removeFromTop(54));
 }
 
 void GuideCurveEditorComponent::syncEditorFromNode() {
@@ -109,6 +188,12 @@ void GuideCurveEditorComponent::syncEditorFromNode() {
     impl->noise.slider.setValue(guide.noise, dontSendNotification);
     impl->dcOffset.slider.setValue(guide.dcOffset, dontSendNotification);
     impl->phase.slider.setValue(guide.phase, dontSendNotification);
+    impl->clearButton.setEnabled(heatmap != nullptr);
+    const String status = heatmap != nullptr
+            ? heatmap->filename() + " - " + String(heatmap->width())
+                    + "x" + String(heatmap->height())
+            : "No image loaded";
+    impl->status.setText(status, dontSendNotification);
 }
 
 void GuideCurveEditorComponent::applyEditorStateToWidget() {
@@ -134,6 +219,9 @@ void GuideCurveEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("noise", impl->noise.slider.getValue());
     state.setProperty("dcOffset", impl->dcOffset.slider.getValue());
     state.setProperty("phase", impl->phase.slider.getValue());
+    state.setProperty("heatmapActive", heatmap != nullptr);
+    state.setProperty("heatmapFilename", heatmap != nullptr ? heatmap->filename() : String {});
+    state.setProperty("heatmapStatus", impl->status.getText());
 }
 
 }
