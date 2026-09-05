@@ -72,6 +72,8 @@ class ImpulseResponseCurvePanelController {
 public:
     virtual ~ImpulseResponseCurvePanelController() = default;
     virtual void setAudioResource(const AudioSampleResource* resource) = 0;
+    virtual void zoomToAttack() = 0;
+    virtual void resetZoom() = 0;
 };
 
 std::unique_ptr<CurvePanelController> createCurvePanelController(NodeKind kind);

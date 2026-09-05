@@ -6,6 +6,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UiIconData.h"
 
 #include <Audio/CycleDsp/IrModel.h>
 
@@ -20,6 +21,8 @@ constexpr float kControlRailWidth = 348.f;
 constexpr int kValueWidth = 72;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
+constexpr int kViewButtonSize = 24;
+constexpr int kViewButtonGap = 4;
 constexpr float kSampleLabelWidth = 56.f;
 constexpr float kSampleLabelHeight = 14.f;
 constexpr double kReferenceSampleRate = 44100.0;
@@ -30,6 +33,62 @@ struct SampleLandmark {
     float x {};
     Rectangle<float> labelBounds;
 };
+
+class IrViewButton final : public Button {
+public:
+    IrViewButton(
+            const String& title,
+            const String& description,
+            const String& tooltip,
+            const char* svg) :
+            Button(title)
+        ,   icon(createIcon(svg)) {
+        setTitle(title);
+        setDescription(description);
+        setTooltip(tooltip);
+        setWantsKeyboardFocus(true);
+        setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+
+    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
+        const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
+        const Colour accent { 0xff65b8ff };
+        graphics.setColour(Colour(0xff0e1318).brighter(
+                down ? 0.12f : highlighted ? 0.06f : 0.f));
+        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+        graphics.setColour(hasKeyboardFocus(false) ? accent : Colour(0xff536171));
+        graphics.drawRoundedRectangle(
+                bounds,
+                CanvasChromeMetrics::controlCornerRadius,
+                hasKeyboardFocus(false)
+                        ? CanvasChromeMetrics::focusRingWidth
+                        : CanvasChromeMetrics::restingBorderWidth);
+        if (icon != nullptr) {
+            icon->drawWithin(
+                    graphics,
+                    bounds.reduced(4.f),
+                    RectanglePlacement::centred,
+                    1.f);
+        }
+    }
+
+private:
+    static std::unique_ptr<Drawable> createIcon(const char* svg) {
+        const std::unique_ptr<XmlElement> document = parseXML(svg);
+        return document != nullptr ? Drawable::createFromSVG(*document) : nullptr;
+    }
+
+    std::unique_ptr<Drawable> icon;
+};
+
+var boundsToVar(Rectangle<int> bounds) {
+    auto* result = new DynamicObject();
+    result->setProperty("x", bounds.getX());
+    result->setProperty("y", bounds.getY());
+    result->setProperty("width", bounds.getWidth());
+    result->setProperty("height", bounds.getHeight());
+    return var(result);
+}
 
 std::optional<double> parseNumber(String text) {
     text = text.trim();
@@ -216,6 +275,9 @@ std::vector<SampleLandmark> buildSampleLandmarks(
                 1.f,
                 CycleDsp::irSampleFractionAtDomainPosition(gridLine.domainX));
         const float tickX = panel.getX() + gridLine.panelX;
+        if (tickX < panel.getX() || tickX > panel.getRight()) {
+            continue;
+        }
         const Rectangle<float> label = sampleTickLabelBounds(panel, labelLimits, tickX);
         result.push_back({ fraction, roundToInt(sampleCount * fraction), tickX, label });
     }
@@ -240,9 +302,22 @@ Array<var> sampleLandmarkAutomation(const std::vector<SampleLandmark>& landmarks
 
 struct ImpulseResponseEditorComponent::Impl {
     explicit Impl(Component& owner) :
-            size        (owner, "Size")
+            zoomAttack  ("Zoom to attack",
+                         "Frames the impulse onset and early response",
+                         "Zoom to the impulse attack",
+                         UiIconData::zoomAttack)
+        ,   zoomFull    ("Full impulse view",
+                         "Restores the complete impulse response",
+                         "Show the full impulse response",
+                         UiIconData::zoomFull)
+        ,   size        (owner, "Size")
         ,   postGain    (owner, "Post Gain")
         ,   highPass    (owner, "High Pass") {
+        zoomAttack.setComponentID("irEditor.zoomAttack");
+        zoomFull.setComponentID("irEditor.zoomFull");
+        owner.addAndMakeVisible(zoomAttack);
+        owner.addAndMakeVisible(zoomFull);
+
         resourceTitle.setText("IR sample", dontSendNotification);
         resourceTitle.setFont(FontOptions(
                 CanvasChromeMetrics::labelFontSize).withStyle("Bold"));
@@ -267,6 +342,8 @@ struct ImpulseResponseEditorComponent::Impl {
     }
 
     EffectEnableButton enabled;
+    IrViewButton zoomAttack;
+    IrViewButton zoomFull;
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
@@ -294,6 +371,14 @@ ImpulseResponseEditorComponent::ImpulseResponseEditorComponent(CurveEditorWidget
     setHeaderAction(impl->enabled);
     bindDiscreteAction(impl->enabled, [] {});
     bindContinuousControls({ &impl->size, &impl->postGain, &impl->highPass });
+    impl->zoomAttack.onClick = [this] {
+        widget.zoomImpulseResponseToAttack();
+        requestRepaint();
+    };
+    impl->zoomFull.onClick = [this] {
+        widget.resetImpulseResponseZoom();
+        requestRepaint();
+    };
     impl->loadAudio.onClick = [this] {
         chooseAudio(ImpulseResponseImportMode::Direct);
     };
@@ -350,6 +435,21 @@ void ImpulseResponseEditorComponent::paintEditor(Graphics& graphics) {
 }
 
 void ImpulseResponseEditorComponent::layoutEditor() {
+    const Rectangle<int> panel = editorPanelBounds().toNearestInt();
+    constexpr int viewButtonInset = 8;
+    const int viewButtonX = panel.getRight()
+            - viewButtonInset - 2 * kViewButtonSize - kViewButtonGap;
+    const int viewButtonY = panel.getY() + viewButtonInset;
+    impl->zoomAttack.setBounds(
+            viewButtonX, viewButtonY, kViewButtonSize, kViewButtonSize);
+    impl->zoomFull.setBounds(
+            viewButtonX + kViewButtonSize + kViewButtonGap,
+            viewButtonY,
+            kViewButtonSize,
+            kViewButtonSize);
+    impl->zoomAttack.toFront(false);
+    impl->zoomFull.toFront(false);
+
     Rectangle<int> bounds = editorControlBounds().toNearestInt().reduced(12, 12);
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
@@ -494,6 +594,8 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("sizeLayout", propertySliderRowAutomationState(impl->size));
     state.setProperty("postGainLayout", propertySliderRowAutomationState(impl->postGain));
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));
+    state.setProperty("zoomAttackBounds", boundsToVar(impl->zoomAttack.getBounds()));
+    state.setProperty("zoomFullBounds", boundsToVar(impl->zoomFull.getBounds()));
     state.setProperty(
             "landmarks",
             sampleLandmarkAutomation(buildSampleLandmarks(

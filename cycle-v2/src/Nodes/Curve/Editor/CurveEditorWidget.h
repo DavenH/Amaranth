@@ -25,6 +25,8 @@ public:
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void setImpulseResponseAudioResource(const AudioSampleResource* resource);
+    void zoomImpulseResponseToAttack();
+    void resetImpulseResponseZoom();
     void syncFromNode(const Node& node);
     void syncFromGuideResource(const GuideCurveResource& guide);
     void renderExpandedPanelOpenGL(

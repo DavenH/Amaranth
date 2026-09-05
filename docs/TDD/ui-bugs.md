@@ -397,7 +397,10 @@ Acceptance:
 - The SVG belongs to the shared icon system and remains legible at production
   size.
 
-Current status: open.
+Current status: implemented 2026-09-05 in `cycle-v2-ir-attack-zoom.md`. Shared
+SVG attack/full controls now float inside the plot's upper-right corner. The
+attack action uses Cycle v1's padded origin and 20-percent span, full view
+restores the declared domain, and the zoomed ruler omits off-screen ticks.
 
 ## P2: Effect property controls are not unified
 

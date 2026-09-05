@@ -431,7 +431,8 @@ public:
     }
 };
 
-class ImpulseResponseCurvePanel final : public FlatCurvePanelBase {
+class ImpulseResponseCurvePanel final : public ImpulseResponseCurvePanelContract,
+                                        public FlatCurvePanelBase {
 public:
     ImpulseResponseCurvePanel(SingletonRepo* repo, Mesh& mesh) :
             FlatCurvePanelBase(
@@ -466,6 +467,22 @@ public:
                 (int) analysis->filteredDisplayImpulse.size(),
                 (int) analysis->frequencyRows.size()));
         spliceBuffer.ensureSize((int) analysis->filteredDisplayImpulse.size() * 2);
+    }
+
+    void zoomToAttack() override {
+        if (zoomPanel == nullptr) {
+            return;
+        }
+        zoomPanel->rect.x = CycleDsp::irDomainPadding;
+        zoomPanel->rect.w *= 0.2f;
+        zoomPanel->panelZoomChanged(false);
+    }
+
+    void resetZoom() override {
+        updateZoomBounds(true);
+        if (zoomPanel != nullptr) {
+            zoomPanel->panelZoomChanged(false);
+        }
     }
 
     void preDraw() override {

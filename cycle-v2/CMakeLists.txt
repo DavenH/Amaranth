@@ -71,7 +71,7 @@ generate_svg_data(
     ui-icons
     UiIconData
     UiIconData
-    effectEnable
+    effectEnable zoomAttack zoomFull
 )
 
 file(GLOB_RECURSE APP_SOURCES

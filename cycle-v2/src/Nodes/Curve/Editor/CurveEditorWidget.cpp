@@ -90,6 +90,20 @@ void CurveEditorWidget::setImpulseResponseAudioResource(
     }
 }
 
+void CurveEditorWidget::zoomImpulseResponseToAttack() {
+    if (auto* impulse = dynamic_cast<ImpulseResponseCurvePanelController*>(
+                controller.get())) {
+        impulse->zoomToAttack();
+    }
+}
+
+void CurveEditorWidget::resetImpulseResponseZoom() {
+    if (auto* impulse = dynamic_cast<ImpulseResponseCurvePanelController*>(
+                controller.get())) {
+        impulse->resetZoom();
+    }
+}
+
 void CurveEditorWidget::syncFromNode(const Node& node) {
     if (guideResource || node.kind != kind) {
         return;

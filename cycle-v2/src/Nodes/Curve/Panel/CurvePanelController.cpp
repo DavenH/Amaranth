@@ -365,6 +365,14 @@ public:
         updateAnalysis(controls.third);
     }
 
+    void zoomToAttack() override {
+        impulseResponsePanel().zoomToAttack();
+    }
+
+    void resetZoom() override {
+        impulseResponsePanel().resetZoom();
+    }
+
     var automationState() const override {
         var state = FlatPanelController::automationState();
         if (auto* object = state.getDynamicObject()) {
@@ -387,6 +395,10 @@ protected:
     }
 
 private:
+    ImpulseResponseCurvePanelContract& impulseResponsePanel() {
+        return dynamic_cast<ImpulseResponseCurvePanelContract&>(*panel);
+    }
+
     void updateSource() {
         if (!currentNode.has_value()) {
             return;

@@ -46,6 +46,13 @@ public:
             std::shared_ptr<const ImpulseResponseAnalysis>) {}
 };
 
+class ImpulseResponseCurvePanelContract {
+public:
+    virtual ~ImpulseResponseCurvePanelContract() = default;
+    virtual void zoomToAttack() = 0;
+    virtual void resetZoom() = 0;
+};
+
 class EnvelopeCurvePanelContract : public CurvePanel {
 public:
     virtual VertCube* selectedEnvelopeCubeForModel() = 0;

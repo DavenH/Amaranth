@@ -1677,6 +1677,89 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE_FALSE((bool) editor.automationState().getProperty("resourceBound", {}));
 }
 
+TEST_CASE("IR attack zoom changes presentation without publishing the graph",
+        "[cycle-v2][node-editor-host][impulse-response][zoom]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::ImpulseResponse);
+    ImpulseResponseEditorComponent editor(widget);
+    RecordingCurveDelegate delegate;
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+
+    editor.setDelegate(&delegate);
+    editor.setBounds(0, 0, 1080, 430);
+    editor.setNode(ir);
+
+    auto* zoomAttack = dynamic_cast<Button*>(
+            editor.findChildWithID("irEditor.zoomAttack"));
+    auto* zoomFull = dynamic_cast<Button*>(
+            editor.findChildWithID("irEditor.zoomFull"));
+    REQUIRE(zoomAttack != nullptr);
+    REQUIRE(zoomFull != nullptr);
+    REQUIRE(zoomAttack->isVisible());
+    REQUIRE(zoomFull->isVisible());
+    REQUIRE(zoomAttack->getWantsKeyboardFocus());
+    REQUIRE(zoomFull->getWantsKeyboardFocus());
+    REQUIRE(zoomAttack->getTooltip() == "Zoom to the impulse attack");
+    REQUIRE(zoomFull->getTooltip() == "Show the full impulse response");
+
+    const var fullState = editor.automationState();
+    const var fullZoom = fullState
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    const Rectangle<float> panel = rectangleProperty(fullState, "panelBounds");
+    const double fullX = fullZoom.getProperty("x", {});
+    const double fullY = fullZoom.getProperty("y", {});
+    const double fullWidth = fullZoom.getProperty("w", {});
+    const double fullHeight = fullZoom.getProperty("h", {});
+
+    delegate.events.clear();
+    zoomAttack->onClick();
+    const var attackState = editor.automationState();
+    const var attackZoom = attackState
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    REQUIRE(static_cast<double>(attackZoom.getProperty("x", {}))
+            == Catch::Approx(CycleDsp::irDomainPadding));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("w", {}))
+            == Catch::Approx(fullWidth * 0.2));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("y", {}))
+            == Catch::Approx(fullY));
+    REQUIRE(static_cast<double>(attackZoom.getProperty("h", {}))
+            == Catch::Approx(fullHeight));
+    REQUIRE(delegate.events == StringArray { "repaint" });
+
+    const Array<var>* attackLandmarks = attackState.getProperty("landmarks", {}).getArray();
+    REQUIRE(attackLandmarks != nullptr);
+    REQUIRE(attackLandmarks->size() == 2);
+    REQUIRE((int) attackLandmarks->getFirst().getProperty("sample", {}) == 0);
+    REQUIRE((int) attackLandmarks->getLast().getProperty("sample", {}) == 128);
+    for (const var& landmark : *attackLandmarks) {
+        const double x = landmark.getProperty("x", {});
+        REQUIRE(x >= panel.getX());
+        REQUIRE(x <= panel.getRight());
+    }
+    REQUIRE(rectangleProperty(attackState, "zoomAttackBounds").getWidth() == 24.f);
+    REQUIRE(rectangleProperty(attackState, "zoomFullBounds").getWidth() == 24.f);
+    REQUIRE(panel.contains(rectangleProperty(attackState, "zoomAttackBounds")));
+    REQUIRE(panel.contains(rectangleProperty(attackState, "zoomFullBounds")));
+
+    delegate.events.clear();
+    zoomFull->onClick();
+    const var restoredZoom = editor.automationState()
+            .getProperty("panelState", {})
+            .getProperty("zoom", {});
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("x", {}))
+            == Catch::Approx(fullX));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("w", {}))
+            == Catch::Approx(fullWidth));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("y", {}))
+            == Catch::Approx(fullY));
+    REQUIRE(static_cast<double>(restoredZoom.getProperty("h", {}))
+            == Catch::Approx(fullHeight));
+    REQUIRE(delegate.events == StringArray { "repaint" });
+}
+
 TEST_CASE("Selected flat curve state binds before its panel host exists",
           "[cycle-v2][node-editor-host][presets][selection]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
