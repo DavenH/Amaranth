@@ -87,25 +87,32 @@ void NodeCanvasPresentation::paintLegend(
             { PortDomain::ControlSignal, "Control" }
     };
     const Rectangle<float> legend = CanvasUtilityDock::layout(frame.canvasBounds).legend;
+    Graphics::ScopedSaveState scopedState(graphics);
+    graphics.reduceClipRegion(legend.toNearestInt());
     CanvasUtilityDock::paintSurface(graphics, legend);
-    graphics.setFont(FontOptions(CanvasChromeMetrics::microFontSize));
+    graphics.setFont(FontOptions(CanvasChromeMetrics::legendFontSize));
 
-    float y = legend.getY() + 17.f;
+    float y = legend.getY() + CanvasChromeMetrics::legendTopInset;
     for (const auto& entry : entries) {
-        const float x = legend.getX() + 12.f;
+        const float x = legend.getX() + CanvasChromeMetrics::legendHorizontalInset;
         Path line;
         line.startNewSubPath(x, y);
-        line.lineTo(x + 17.f, y);
+        line.lineTo(x + CanvasChromeMetrics::legendLineLength, y);
         graphics.setColour(colourForDomain(entry.domain).withAlpha(0.90f));
 
-        graphics.strokePath(line, PathStrokeType(2.f));
+        graphics.strokePath(line, PathStrokeType(CanvasChromeMetrics::legendLineWidth));
 
         graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText(
                 entry.label,
-                Rectangle<float>(x + 24.f, y - 10.f, 76.f, 20.f),
+                Rectangle<float>(
+                        x + CanvasChromeMetrics::legendLineLength
+                                + CanvasChromeMetrics::legendTextGap,
+                        y - CanvasChromeMetrics::legendTextHeight * 0.5f,
+                        CanvasChromeMetrics::legendTextWidth,
+                        CanvasChromeMetrics::legendTextHeight),
                 Justification::centredLeft);
-        y += 20.f;
+        y += CanvasChromeMetrics::legendRowStride;
     }
 }
 

@@ -18,6 +18,17 @@ inline constexpr float labelFontSize = 12.f;
 inline constexpr float sectionTitleFontSize = 14.f;
 inline constexpr float editorTitleFontSize = 18.f;
 
+inline constexpr float legendScale = 1.3f;
+inline constexpr float legendFontSize = microFontSize * legendScale;
+inline constexpr float legendHorizontalInset = 12.f * legendScale;
+inline constexpr float legendTopInset = 17.f * legendScale;
+inline constexpr float legendLineLength = 17.f * legendScale;
+inline constexpr float legendLineWidth = 2.f * legendScale;
+inline constexpr float legendTextGap = 7.f * legendScale;
+inline constexpr float legendTextWidth = 76.f * legendScale;
+inline constexpr float legendTextHeight = 20.f * legendScale;
+inline constexpr float legendRowStride = 20.f * legendScale;
+
 inline constexpr int fullEditorHeaderHeight = 44;
 inline constexpr int fullEditorHorizontalInset = 18;
 inline constexpr int fullEditorTitleVerticalInset = 8;

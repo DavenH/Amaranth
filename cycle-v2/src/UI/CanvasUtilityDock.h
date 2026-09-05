@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include "UI/CanvasChromeMetrics.h"
+
 namespace CycleV2 {
 
 struct CanvasUtilityDockLayout {
@@ -17,7 +19,10 @@ public:
     static constexpr float gap = 8.f;
     static constexpr float preferredKeyboardWidth = 276.f;
     static constexpr float preferredKeyboardHeight = 112.5f;
-    static constexpr float minimumCompactLegendHeight = 30.f;
+    static constexpr float preferredLegendHeight =
+            98.f * CanvasChromeMetrics::legendScale;
+    static constexpr float minimumCompactLegendHeight =
+            30.f * CanvasChromeMetrics::legendScale;
 
     static CanvasUtilityDockLayout layout(juce::Rectangle<float> contentBounds);
     static void paintSurface(

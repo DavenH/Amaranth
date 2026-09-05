@@ -14,6 +14,7 @@
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Graph/NodeDefinition.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EffectEnableButton.h"
@@ -1142,6 +1143,12 @@ TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
 
 TEST_CASE("Canvas legend collapses non-signal domains into Control",
         "[cycle-v2][canvas][legend]") {
+    REQUIRE(CanvasChromeMetrics::legendFontSize
+            == Catch::Approx(CanvasChromeMetrics::microFontSize * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendLineLength == Catch::Approx(17.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendLineWidth == Catch::Approx(2.f * 1.3f));
+    REQUIRE(CanvasChromeMetrics::legendRowStride == Catch::Approx(20.f * 1.3f));
+
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);
     REQUIRE(colourForDomain(PortDomain::MeshField) == control);

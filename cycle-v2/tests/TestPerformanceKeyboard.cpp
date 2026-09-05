@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "UI/CanvasUtilityDock.h"
@@ -127,6 +128,8 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE(layout.status.getY() == content.getY() + CanvasUtilityDock::margin);
     REQUIRE(layout.legend.getY()
             == layout.minimap.getBottom() + CanvasUtilityDock::gap);
+    REQUIRE(layout.legend.getHeight()
+            == Catch::Approx(CanvasUtilityDock::preferredLegendHeight));
     REQUIRE_FALSE(layout.status.intersects(layout.minimap));
     REQUIRE(content.contains(layout.minimap));
     REQUIRE(content.contains(layout.legend));
@@ -137,7 +140,8 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
     REQUIRE(compact.keyboard.getWidth() == 276.f);
     REQUIRE(compact.keyboard.getHeight() == 112.5f);
-    REQUIRE(compact.legend.getHeight() >= 30.f);
+    REQUIRE(compact.legend.getHeight() >= CanvasUtilityDock::minimumCompactLegendHeight);
+    REQUIRE(compact.minimap.getHeight() == 92.f);
     REQUIRE_FALSE(compact.status.intersects(compact.minimap));
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
     REQUIRE(compactContent.contains(compact.keyboard));

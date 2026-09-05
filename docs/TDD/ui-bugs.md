@@ -299,7 +299,11 @@ Acceptance:
   containment at the compact window size.
 - Do not reduce performance-keyboard or minimap minimums to make room.
 
-Current status: open.
+Current status: implemented 2026-09-05 in
+`cycle-v2-canvas-legend-scale.md`. Text, domain samples, strokes, spacing, and
+surface height are scaled together by exactly 30 percent through centralized
+metrics. Responsive painting is clipped to the dock's returned legend bounds,
+while the compact minimap and performance keyboard retain their dimensions.
 
 ## P2: IR editor needs an attack-zoom action
 

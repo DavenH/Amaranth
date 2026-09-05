@@ -24,7 +24,7 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
             result.minimap.getX(),
             result.minimap.getBottom() + gap,
             utilityWidth,
-            98.f
+            preferredLegendHeight
     };
 
     const float keyboardWidth = juce::jmin(preferredKeyboardWidth, availableWidth);
