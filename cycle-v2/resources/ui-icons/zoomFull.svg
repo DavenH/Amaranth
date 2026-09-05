@@ -2,7 +2,7 @@
   <path d="M7 10v28M41 10v28M13 24h22"
         fill="none" stroke="#d2d9e2" stroke-width="3"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m21 16-8 8 8 8M27 16l8 8-8 8"
+  <path d="m19 18-6 6 6 6M29 18l6 6-6 6"
         fill="none" stroke="#d2d9e2" stroke-width="3"
         stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

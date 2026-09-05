@@ -47,7 +47,9 @@ orchestration code.
   full view second.
 - Store both outline SVGs under the shared `ui-icons` resource set. Match Cycle
   v1's framing metaphors: `||←` for attack and `|↔|` for full view. Both must
-  remain recognizable at the production size.
+  remain recognizable at the production size. The full-view arrowheads must
+  retain a visible central gap and use shallow chevrons so the symbol does not
+  become a cramped knot at 24 px.
 - Use the shared control radius, border, focus ring, and interaction colours.
 - Show persistent focus only for keyboard navigation; mouse activation uses
   hover and pressed feedback without retaining the focus ring.
@@ -75,6 +77,8 @@ orchestration code.
   publish, or commit events.
 - `zoomAttack.svg` and `zoomFull.svg` are generated through the shared
   `ui-icons` resource set and use Cycle v1's `||←` and `|↔|` framing symbols.
+  The full-view symbol uses separated, shallow arrowheads to preserve its
+  internal negative space at production size.
   Their keyboard-focusable 24 px buttons float as a horizontal cluster inside
   the plot's upper-right corner, following the production-review correction
   that removed the awkward strip above the plot.
