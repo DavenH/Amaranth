@@ -252,7 +252,7 @@ Point<float> SignalProbeRail::markerCentre(
     const NodeSceneEdge* anchor = anchorFor(probe, graph, scene);
     if (anchor != nullptr) {
         return anchor->cablePath.getPointAlongPath(
-                anchor->cablePath.getLength() * jlimit(0.f, 1.f, probe.tapPosition));
+                anchor->cablePath.getLength() * 0.5f);
     }
 
     const String sourceSemanticId = "output:" + probe.sourceNodeId + "." + probe.sourcePortId;

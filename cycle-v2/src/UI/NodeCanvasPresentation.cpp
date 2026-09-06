@@ -888,7 +888,8 @@ void NodeCanvasPresentation::paintCachedNodes(
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
-        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
         if (!nodeBounds.intersects(visibleArea)) {
             continue;
         }
@@ -915,7 +916,8 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<int> logicalBounds = frame.viewport.toScreen(node.bounds)
+    const Rectangle<int> logicalBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, node))
             .expanded(32.f * portScale(frame.viewport.getZoom()))
             .getSmallestIntegerContainer();
     const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
@@ -976,7 +978,8 @@ void NodeCanvasPresentation::paintNode(
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
-    const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, node));
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
         return;
@@ -990,20 +993,16 @@ void NodeCanvasPresentation::paintNode(
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
-                nodeBounds.reduced(12.f * zoom),
+                nodeBounds.reduced(5.f * zoom),
                 profileFor(frame, node),
                 zoom,
                 true,
                 frame.unisonPreviewContext
         });
-        graphics.setColour(CanvasChromePalette::border.withAlpha(0.7f));
-        graphics.drawEllipse(
-                nodeBounds.reduced(2.f * zoom),
-                CanvasChromeMetrics::restingBorderWidth * scale);
         if (node.id == frame.selectedNodeId) {
             graphics.setColour(Colours::white.withAlpha(0.86f));
             graphics.drawEllipse(
-                    nodeBounds.expanded(2.f * zoom),
+                    nodeBounds.reduced(6.f * zoom),
                     CanvasChromeMetrics::focusRingWidth * scale);
         }
     } else {
@@ -1097,14 +1096,16 @@ void NodeCanvasPresentation::paintNode(
         paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
     };
 
-    for (const auto& port : node.inputs) {
-        if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+    if (node.kind != NodeKind::SpectralLayer) {
+        for (const auto& port : node.inputs) {
+            if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+                paintPort(port);
+            }
+        }
+
+        for (const auto& port : node.outputs) {
             paintPort(port);
         }
-    }
-
-    for (const auto& port : node.outputs) {
-        paintPort(port);
     }
 
     if (ModulationCableBundle::supportsDestination(node)) {
@@ -1193,7 +1194,8 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
         float scaleFactor) {
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
-        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
         if (!nodeBounds.intersects(visibleArea)
                 || (!frame.canvasOcclusion.isEmpty()
                     && frame.canvasOcclusion.intersects(nodeBounds))) {

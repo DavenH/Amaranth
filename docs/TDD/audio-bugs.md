@@ -1,5 +1,18 @@
 # Audio Bug Notes
 
+## Open: Full Cycle V2 suite intermittently cannot create IR fixture waves
+
+Context:
+
+- The complete `CycleV2_tests` run on 2026-09-05 failed both cases using
+  `writeImpulseWave()` at `TestImpulseResponseResourcePreparation.cpp:47`
+  because `File::createOutputStream()` returned null.
+- The cable Pan presentation work does not alter IR resource preparation or
+  temporary-file handling; all focused Pan tests pass.
+
+Current status: open; reproduce under the full-suite temporary-file lifecycle
+and determine whether fixture filenames or cleanup race with another case.
+
 ## Open: Full library order corrupts rasterizer comparison curve resolution
 
 Context:

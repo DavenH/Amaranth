@@ -1,0 +1,30 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.15,
+      "expectedCursor": "upDownResize"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pan-cable-presentation.png"
+    }
+  ],
+  "quit": true
+}

@@ -1111,6 +1111,63 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
                     *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
+TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
+        "[cycle-v2][canvas][scene][pan][spy]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 0.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", { 220.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 80.f }));
+    graph.addEdge({
+            "mesh", "out", "pan", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    graph.addEdge({
+            "pan", "out", "ifft", "mag",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+
+    const Node& mesh = *graph.findNode("mesh");
+    const Node& ifft = *graph.findNode("ifft");
+    const Point<float> source = NodeCanvasScene::portWorldCentre(mesh, mesh.outputs.front());
+    const Point<float> destination = NodeCanvasScene::portWorldCentre(ifft, ifft.inputs.front());
+    const Rectangle<float> panOnly = NodeCanvasScene::presentationWorldBounds(
+            graph,
+            *graph.findNode("pan"));
+    REQUIRE(panOnly.getCentreX() == Catch::Approx((source.x + destination.x) * 0.5f));
+    REQUIRE(panOnly.getCentreY() == Catch::Approx((source.y + destination.y) * 0.5f));
+
+    graph.addSignalProbe({
+            "probe1", "mesh", "out", "pan", "in", "Spy 1", 0.91f, 0 });
+    const Rectangle<float> panWithSpy = NodeCanvasScene::presentationWorldBounds(
+            graph,
+            *graph.findNode("pan"));
+    REQUIRE(panWithSpy.getCentreX()
+            == Catch::Approx(source.x + (destination.x - source.x) * 2.f / 3.f));
+    REQUIRE(panWithSpy.getCentreY()
+            == Catch::Approx(source.y + (destination.y - source.y) * 2.f / 3.f));
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const auto& scene = sceneBuilder.build(graph, viewport, 1, 1);
+    REQUIRE(std::none_of(scene.targets.begin(), scene.targets.end(), [](const auto& target) {
+        return target.nodeId == "pan" && target.isPort();
+    }));
+    REQUIRE_FALSE(scene.edges[0].destinationEndpointVisible);
+    REQUIRE_FALSE(scene.edges[1].sourceEndpointVisible);
+    REQUIRE(NodeCanvasScene::cableExtraEdgeIndex(graph, 1) == 0);
+
+    REQUIRE(graph.removeSignalProbe("probe1"));
+    graph.addSignalProbe({
+            "probe2", "pan", "out", "ifft", "mag", "Spy 1", 0.08f, 0 });
+    const Rectangle<float> outgoingSpyPan = NodeCanvasScene::presentationWorldBounds(
+            graph,
+            *graph.findNode("pan"));
+    REQUIRE(outgoingSpyPan.getCentreX()
+            == Catch::Approx(source.x + (destination.x - source.x) / 3.f));
+    REQUIRE(outgoingSpyPan.getCentreY()
+            == Catch::Approx(source.y + (destination.y - source.y) / 3.f));
+}
+
 TEST_CASE("Cable renderer uses one solid grammar with edit-state semantics",
         "[cycle-v2][canvas][cables]") {
     NodeSceneEdge edge;

@@ -28,6 +28,8 @@ bool NodeCanvasCableLayerCache::Entry::matches(
             && destinationPortLike == edge.destinationPortLike
             && modulationBundle == edge.modulationBundle
             && destinationBundleIncludesYellow == edge.destinationBundleIncludesYellow
+            && sourceEndpointVisible == edge.sourceEndpointVisible
+            && destinationEndpointVisible == edge.destinationEndpointVisible
             && cableStyleEqual(styleSnapshot, style)
             && logicalBounds == bounds
             && zoom == currentZoom
@@ -94,6 +96,8 @@ void NodeCanvasCableLayerCache::replaceEntry(
     entry.destinationPortLike = sceneEdge.destinationPortLike;
     entry.modulationBundle = sceneEdge.modulationBundle;
     entry.destinationBundleIncludesYellow = sceneEdge.destinationBundleIncludesYellow;
+    entry.sourceEndpointVisible = sceneEdge.sourceEndpointVisible;
+    entry.destinationEndpointVisible = sceneEdge.destinationEndpointVisible;
     entry.image = Image(Image::ARGB, imageWidth, imageHeight, true);
 }
 

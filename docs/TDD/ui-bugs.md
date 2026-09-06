@@ -538,6 +538,19 @@ Context:
 Current status: open; inspect why the scene edge midpoint resolves to empty or
 non-edge hover text before changing the product assertion.
 
+## Open: Graph serializer full-suite save can fail in the temporary directory
+
+Context:
+
+- The complete `CycleV2_tests` run on 2026-09-05 failed
+  `TestGraphSerializer.cpp:111` at `document.save(destination)` and logged a
+  JUCE assertion at `juce_TemporaryFile.cpp:126`.
+- The cable Pan presentation change does not alter serialization or temporary
+  file handling; its focused graph, authoring, and automation checks pass.
+
+Current status: open; reproduce the temporary-file failure independently and
+inspect full-suite temporary-path lifecycle before changing serializer code.
+
 ## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
 
 Context:

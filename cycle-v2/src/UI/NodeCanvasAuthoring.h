@@ -64,6 +64,7 @@ public:
 
     NodeCanvasAuthoringResult openEditor(const String& nodeId);
     NodeCanvasAuthoringResult addNode(NodeKind kind, Point<float> position);
+    NodeCanvasAuthoringResult insertPanIntoEdge(int edgeIndex, Point<float> position);
     NodeCanvasAuthoringResult moveNode(const String& nodeId, Point<float> position);
     void beginNodeMoveGesture();
     bool resizeNodeDuringGesture(const String& nodeId, Rectangle<float> bounds);
