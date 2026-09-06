@@ -11,6 +11,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -2021,13 +2022,13 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     EnvelopePurposeSelector* modeSelector = nullptr;
+    EnvelopeAxisScaleSelector* axisScaleSelector = nullptr;
     Button* pitchMode = nullptr;
     Button* scratchMode = nullptr;
     ImageButton* loopMarker = nullptr;
     ImageButton* sustainMarker = nullptr;
     ImageButton* fitVertical = nullptr;
     ImageButton* fullVertical = nullptr;
-    StringArray actionLabels;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
             modeSelector = selector;
@@ -2039,8 +2040,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
                     scratchMode = button;
                 }
             }
-        } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
-            actionLabels.add(button->getButtonText());
+        } else if (auto* selector = dynamic_cast<EnvelopeAxisScaleSelector*>(
+                           editor->getChildComponent(index))) {
+            axisScaleSelector = selector;
         } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
             if (button->getName() == "Set selected vertex as loop start") {
                 loopMarker = button;
@@ -2054,6 +2056,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         }
     }
     REQUIRE(modeSelector != nullptr);
+    REQUIRE(axisScaleSelector != nullptr);
     REQUIRE(modeSelector->getNumChildComponents() == 4);
     REQUIRE(pitchMode != nullptr);
     REQUIRE(scratchMode != nullptr);
@@ -2061,7 +2064,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(sustainMarker != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
-    REQUIRE(actionLabels == StringArray({ "Log" }));
+    REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
+    REQUIRE_FALSE(axisScaleSelector->isEnabled());
     REQUIRE(loopMarker->getNormalImage().isValid());
     REQUIRE(sustainMarker->getNormalImage().isValid());
     REQUIRE_FALSE(loopMarker->isEnabled());
@@ -2071,24 +2075,27 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
     const auto modeBounds = rectangleProperty(state, "modeBounds");
-    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Mode");
-    REQUIRE(state.getProperty("vertexModeLabel", {}).toString() == "Vertex");
+    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Envelope purpose");
+    REQUIRE(state.getProperty("markerGroupLabel", {}).toString() == "Envelope markers");
     REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
     REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
     REQUIRE(modeBounds == purposeBounds);
     const var modeOptions = state.getProperty("modeOptions", {});
     REQUIRE(modeOptions.isArray());
     REQUIRE(modeOptions.getArray()->size() == 4);
-    REQUIRE(fitBounds.getWidth() == Catch::Approx(28.f));
-    REQUIRE(fullBounds.getWidth() == Catch::Approx(28.f));
+    REQUIRE(fitBounds.getWidth() >= 28.f);
+    REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
     REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
-    const auto markerGroupBounds = rectangleProperty(state, "vertexModeGroupBounds");
-    const auto logarithmicBounds = rectangleProperty(state, "logarithmicBounds");
+    const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
+    const auto axisScaleBounds = rectangleProperty(state, "axisScaleBounds");
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
-    REQUIRE(markerGroupBounds.getRight() < logarithmicBounds.getX());
-    REQUIRE(logarithmicBounds.getRight() < rangeGroupBounds.getX());
+    REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
+    REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
+    const var axisScaleOptions = state.getProperty("axisScaleOptions", {});
+    REQUIRE(axisScaleOptions.isArray());
+    REQUIRE(axisScaleOptions.getArray()->size() == 2);
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
@@ -2148,24 +2155,59 @@ TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
     GraphNodeFactory factory;
-    GraphEditor graphEditor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    REQUIRE(graphEditor.setNodeParameter(
-            graph, "env", "logarithmic", "Logarithmic", "1").succeeded());
 
     CurveEditorWidget widget(NodeKind::Envelope);
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    RecordingCurveDelegate delegate;
+    editor->setDelegate(&delegate);
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
 
-    const var panelState = widget.automationState();
+    EnvelopeAxisScaleSelector* selector {};
+    for (auto* child : editor->getChildren()) {
+        selector = dynamic_cast<EnvelopeAxisScaleSelector*>(child);
+        if (selector != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(selector != nullptr);
+    REQUIRE(selector->isEnabled());
+    REQUIRE_FALSE(selector->isLogarithmic());
+
+    Button* logarithmic {};
+    Button* linear {};
+    for (auto* child : selector->getChildren()) {
+        auto* button = dynamic_cast<Button*>(child);
+        REQUIRE(button != nullptr);
+        if (button->getName() == "Logarithmic axis scale") {
+            logarithmic = button;
+        } else if (button->getName() == "Linear axis scale") {
+            linear = button;
+        }
+    }
+    REQUIRE(logarithmic != nullptr);
+    REQUIRE(linear != nullptr);
+
+    logarithmic->onClick();
+    REQUIRE(selector->isLogarithmic());
+    REQUIRE(logarithmic->getToggleState());
+    REQUIRE_FALSE(linear->getToggleState());
+    REQUIRE(delegate.events.contains("publish"));
+
+    var panelState = widget.automationState();
     REQUIRE((int) panelState.getProperty("horizontalMinorGridLineCount", {}) == 12);
     REQUIRE((int) panelState.getProperty("horizontalMajorGridLineCount", {}) == 4);
     REQUIRE(static_cast<double>(panelState.getProperty("minorGridBrightness", {}))
             == Catch::Approx(0.085 * 1.2));
     REQUIRE(static_cast<double>(panelState.getProperty("majorGridBrightness", {}))
             == Catch::Approx(0.14));
+
+    linear->onClick();
+    REQUIRE_FALSE(selector->isLogarithmic());
+    REQUIRE(linear->getToggleState());
+    REQUIRE_FALSE(logarithmic->getToggleState());
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

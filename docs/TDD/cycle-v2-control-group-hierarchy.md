@@ -137,6 +137,21 @@ production capture, and an imperative commit before the next slice.
   `/private/tmp/trimesh-group-labels-logs.txt`; the editor remains unboxed and
   all five control-group headings are visible without clipping or reduced rail
   travel.
+- Slice 2 replaces Envelope's context-free `Log` toggle with a domain-owned
+  two-segment Axis scale selector. Linear and Logarithmic are separate
+  keyboard-focusable buttons with equal-spacing and expanding-spacing diagrams,
+  persistent selected underlines, tooltips, and accessible names. Both use the
+  same extracted segmented-control shell as `EnvelopePurposeSelector`.
+- Envelope's unchanged 246 px control band now identifies Envelope purpose,
+  Morph plane, Morph position, Envelope markers, Axis scale, Vertical range,
+  Axis, Link, and Vertex parameters. The former `Vertex` label and `Log` button
+  are deleted; no graph height or morph/parameter travel is lost.
+- Hosted tests cover 109 assertions across purpose, marker/range geometry,
+  Linear/Logarithmic selection, real curve publication, grid changes, and shared
+  morph controls. The semantic marker fixture passes. Production control review
+  used `/private/tmp/envelope-groups-after.png`; macOS rejected the OS compositor
+  handoff, so the app-side capture intentionally leaves the OpenGL curve region
+  black while preserving the native control band under review.
 
 ## Deletion Targets
 

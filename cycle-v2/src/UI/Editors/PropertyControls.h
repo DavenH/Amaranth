@@ -72,6 +72,11 @@ void paintPropertyGroupLabel(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
         const juce::String& text);
+void paintPropertySegmentedControl(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds,
+        int segmentCount,
+        int selectedSegment);
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);
