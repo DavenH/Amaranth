@@ -1,9 +1,6 @@
 #include "App/StandaloneAudioEngine.h"
 
-#include <Array/Buffer.h>
-
 #include <algorithm>
-#include <cmath>
 
 namespace CycleV2 {
 
@@ -117,59 +114,14 @@ StandaloneAudioEngine::Status StandaloneAudioEngine::status() const {
 
 StandaloneAudioEngine::LiveCapture StandaloneAudioEngine::captureLiveAudio(
         int durationMs) {
-    LiveCapture capture;
-    capture.sampleRate = currentSampleRate.load(std::memory_order_acquire);
-    if (!ready.load(std::memory_order_acquire) || capture.sampleRate <= 0.) {
-        return capture;
+    const double sampleRate = currentSampleRate.load(std::memory_order_acquire);
+    if (!ready.load(std::memory_order_acquire)
+            || !liveCapture.begin(sampleRate, durationMs)) {
+        return {};
     }
-
-    const size_t requestedFrames = jlimit(
-            (size_t) 1,
-            liveCaptureCapacity,
-            (size_t) roundToInt(capture.sampleRate * (double) jmax(1, durationMs) / 1000.0));
-    liveCapturePosition.store(0, std::memory_order_relaxed);
-    liveCaptureFirstCallback.store(
-            renderer.diagnostics(midiEvents).callbackCount + 1,
-            std::memory_order_relaxed);
-    liveCaptureLastCallback.store(0, std::memory_order_relaxed);
-    liveCaptureTarget.store(requestedFrames, std::memory_order_release);
 
     const uint32 timeoutMs = (uint32) jlimit(100, 5000, durationMs * 2 + 500);
-    const uint32 started = Time::getMillisecondCounter();
-    while (liveCaptureTarget.load(std::memory_order_acquire) != 0
-            && Time::getMillisecondCounter() - started < timeoutMs) {
-        Thread::sleep(5);
-    }
-
-    const size_t capturedFrames = liveCapturePosition.load(std::memory_order_acquire);
-    capture.completed = liveCaptureTarget.load(std::memory_order_acquire) == 0
-            && capturedFrames >= requestedFrames;
-    if (!capture.completed) {
-        liveCaptureTarget.store(0, std::memory_order_release);
-        return capture;
-    }
-
-    capture.firstCallback = liveCaptureFirstCallback.load(std::memory_order_acquire);
-    capture.lastCallback = liveCaptureLastCallback.load(std::memory_order_acquire);
-    capture.left.assign(liveCaptureLeft.begin(), liveCaptureLeft.begin() + (int) requestedFrames);
-    capture.right.assign(liveCaptureRight.begin(), liveCaptureRight.begin() + (int) requestedFrames);
-
-    Buffer<float> left(capture.left.data(), (int) capture.left.size());
-    Buffer<float> right(capture.right.data(), (int) capture.right.size());
-    const double leftNorm = left.normL2();
-    const double rightNorm = right.normL2();
-    const double squaredNorm = leftNorm * leftNorm + rightNorm * rightNorm;
-    std::vector<float> absolute = capture.left;
-    Buffer<float> absoluteBuffer(absolute.data(), (int) absolute.size());
-    absoluteBuffer.abs();
-    capture.peak = absoluteBuffer.max();
-    absolute = capture.right;
-    absoluteBuffer = Buffer<float>(absolute.data(), (int) absolute.size());
-    absoluteBuffer.abs();
-    capture.peak = jmax(capture.peak, absoluteBuffer.max());
-    capture.rms = (float) std::sqrt(
-            squaredNorm / (double) (requestedFrames * 2));
-    return capture;
+    return liveCapture.waitForCompletion((int) timeoutMs);
 }
 
 bool StandaloneAudioEngine::enqueueMidiMessage(
@@ -200,7 +152,7 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
             frameCount,
             currentSampleRate.load(std::memory_order_relaxed),
             currentTimeSeconds());
-    captureOutput(outputChannelData, outputChannelCount, frameCount);
+    liveCapture.append(outputChannelData, outputChannelCount, frameCount);
 }
 
 void StandaloneAudioEngine::audioDeviceAboutToStart(AudioIODevice* device) {
@@ -263,43 +215,6 @@ void StandaloneAudioEngine::reclaimGraph(PreparedGraph* graph) {
             [&](const auto& owner) { return owner.get() == graph; });
     if (found != graphOwners.end()) {
         graphOwners.erase(found);
-    }
-}
-
-void StandaloneAudioEngine::captureOutput(
-        float* const* outputChannelData,
-        int outputChannelCount,
-        int frameCount) {
-    const size_t target = liveCaptureTarget.load(std::memory_order_acquire);
-    if (target == 0 || frameCount <= 0) {
-        return;
-    }
-    const size_t position = liveCapturePosition.load(std::memory_order_relaxed);
-    if (position >= target) {
-        return;
-    }
-
-    const int copyCount = (int) jmin((size_t) frameCount, target - position);
-    Buffer<float> left(liveCaptureLeft.data() + position, copyCount);
-    Buffer<float> right(liveCaptureRight.data() + position, copyCount);
-    if (outputChannelCount > 0 && outputChannelData[0] != nullptr) {
-        Buffer<float>(outputChannelData[0], copyCount).copyTo(left);
-    } else {
-        left.zero();
-    }
-    if (outputChannelCount > 1 && outputChannelData[1] != nullptr) {
-        Buffer<float>(outputChannelData[1], copyCount).copyTo(right);
-    } else {
-        left.copyTo(right);
-    }
-
-    const size_t nextPosition = position + (size_t) copyCount;
-    liveCapturePosition.store(nextPosition, std::memory_order_release);
-    if (nextPosition >= target) {
-        liveCaptureLastCallback.store(
-                renderer.diagnostics(midiEvents).callbackCount,
-                std::memory_order_relaxed);
-        liveCaptureTarget.store(0, std::memory_order_release);
     }
 }
 

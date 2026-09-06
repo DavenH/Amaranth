@@ -67,7 +67,7 @@ public:
 
       #if ! PLUGIN_MODE
         auto* audioSettingsComp = new AudioDeviceSelectorComponent(
-                *(getObj(AudioHub).getAudioDeviceManager()), 0, 1, 2, 2, true, false, true, false);
+                *(getObj(AudioHub).getAudioDeviceManager()), 0, 0, 2, 2, true, false, true, false);
         tabs.addTab("Audio", Colour::greyLevel(0.08f), audioSettingsComp, true);
       #endif
 

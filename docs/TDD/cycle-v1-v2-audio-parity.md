@@ -2,10 +2,11 @@
 
 ## Status
 
-Implemented. Both applications render the same scheduled MIDI contract, the
-checked-in Subbass fixture has a strict source/graph equivalence manifest, and
-the four-note differential render passes its waveform, spectrum, and cyclogram
-thresholds.
+Implemented. Both applications render the same scheduled offline MIDI contract,
+the checked-in Subbass fixture has a strict source/graph equivalence manifest,
+and the four-note differential render passes its waveform, spectrum, and
+cyclogram thresholds. Cycle 1 also has an end-to-end UI-keyboard-to-device
+fixture that requires callback progress and finite nonzero output.
 
 ## Goal
 
@@ -23,6 +24,9 @@ a DSP mismatch.
   per-voice execution, stereo folding, output headroom, and block processing.
 - `scripts/port_cycle_v1_preset.py` owns the supported representation
   translation from Cycle 1 canonical JSON into a Cycle V2 graph.
+- `AudioHub` owns Cycle 1's live device, keyboard-state merge, selected source,
+  and callback lifecycle. Cycle V2's equivalent owner is
+  `StandaloneAudioEngine`.
 - Cycle 1's `SynthFilterVoice` and the shared `CycleDsp` oscillator primitives
   remain authoritative for spectral-frame reconstruction semantics.
 
@@ -30,6 +34,11 @@ The new offline renderer is a narrow lifecycle adapter around
 `RealtimeGraphRenderer`. It translates sample-offset events into its timestamped
 queue and copies block output into an owned capture. It does not duplicate
 voice allocation, scheduling, oscillator, spectral, effect, or mixing logic.
+
+Live validation uses one shared callback-capture primitive below both device
+owners. Each owner retains device setup, MIDI routing, and rendering; the
+shared primitive only preallocates capture storage, copies callback output, and
+reports callback bounds and signal metrics. It is not an alternate renderer.
 
 ## Initial Supported Preset Contract
 
@@ -117,6 +126,8 @@ sample parity. Preview products are not substitutes for audio products.
 - Do not copy Cycle 1 oscillator or effect algorithms into the harness.
 - Do not bless manually adjusted Cycle V2 presets as exact ports without a
   regenerated equivalence manifest.
+- Do not treat offline `processBlock()` output as proof that the standalone
+  audio device is open or that UI keyboard events reach its callback.
 
 ## Implementation Slices
 
@@ -133,6 +144,13 @@ sample parity. Preview products are not substitutes for audio products.
 6. Add stage capture only where the first final-output discrepancy requires it.
    No stage capture was needed: correcting the legacy MIDI reference produced
    final-output parity and disproved the apparent reconstruction fault.
+7. Exercise Cycle 1's actual UI-keyboard-to-device path with callback capture.
+   Share the capture mechanics with Cycle V2, and require callback progress plus
+   finite nonzero stereo output from a held keyboard note. This exposed and
+   corrected `AudioSourceProcessor` constructing a zero-channel realtime view
+   whenever JUCE supplied the usual zero `startSample`. Cycle 1 now requests no
+   unnecessary input channels and the Subbass live fixture passes through the
+   real device callback.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
@@ -149,6 +167,8 @@ coherent commit before the next slice.
   expected comparison thresholds.
 - A mismatch can be localized to the earliest available stage without using a
   preview approximation.
+- Cycle 1's UI keyboard produces finite, non-clipping audio through its real
+  standalone device callback without requiring an input device.
 
 ## First Differential Result
 

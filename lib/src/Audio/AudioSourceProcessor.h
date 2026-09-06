@@ -11,7 +11,9 @@ protected:
 public:
     void getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill) override {
         AudioBuffer section(bufferToFill.buffer->getArrayOfWritePointers(),
-                            bufferToFill.startSample, bufferToFill.numSamples);
+                            bufferToFill.buffer->getNumChannels(),
+                            bufferToFill.startSample,
+                            bufferToFill.numSamples);
 
         MidiBuffer midi;
         processBlock(section, midi);

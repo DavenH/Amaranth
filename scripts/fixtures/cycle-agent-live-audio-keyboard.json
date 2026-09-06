@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "subbass",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "down",
+      "normalizedX": 0.5,
+      "normalizedY": 0.85,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 500,
+      "path": "/private/tmp/cycle-live-keyboard.wav",
+      "peakGreaterThan": 0.0001,
+      "rmsGreaterThan": 0.00001,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "up",
+      "normalizedX": 0.5,
+      "normalizedY": 0.85,
+      "normalizedDownX": 0.5,
+      "normalizedDownY": 0.85
+    }
+  ],
+  "quit": true
+}

@@ -1,5 +1,29 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 standalone keyboard produced silent device buffers
+
+Context:
+
+- Cycle 1's UI keyboard registered the held MIDI note and its audio-device
+  callback advanced, but a callback capture remained exactly zero.
+- `AudioSourceProcessor::getNextAudioBlock()` passed JUCE's `startSample` as
+  the external buffer constructor's channel count. The normal zero offset
+  therefore presented zero channels to every Cycle 1 realtime processor.
+- Offline renders call `processBlock()` with an owned stereo buffer and bypassed
+  this bridge, so they could not reveal the standalone failure.
+
+Resolution:
+
+- The shared bridge now preserves the device buffer's channel count and passes
+  the offset through the four-argument external-buffer constructor.
+- Cycle 1 no longer requires an unused audio input device to initialize its
+  output-only synth path.
+- A focused bridge test checks channels and offset placement. The live Subbass
+  keyboard fixture captured 500 ms from 44 callbacks at 44.1 kHz with peak
+  0.588 and RMS 0.268.
+
+Current status: resolved on 2026-09-06.
+
 ## Open: Full Cycle V2 suite intermittently cannot create IR fixture waves
 
 Context:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AudioCallbackCapture.h"
 #include "AudioSourceProcessor.h"
 #include "../App/SingletonAccessor.h"
 #include "../Definitions.h"
@@ -13,6 +14,8 @@ class AudioHub:
         public AudioSourceProcessor
     ,   public SingletonAccessor {
 public:
+    using LiveCapture = AudioCallbackCapture::Result;
+
     class SettingListener {
     public:
         enum {
@@ -84,8 +87,10 @@ public:
 
     AudioSourceProcessor* getAudioSourceProcessor() const { return currentProcessor; }
     void setAudioSourceProcessor(AudioSourceProcessor* processor);
+    LiveCapture captureLiveAudio(int durationMs);
 
     String getDeviceErrorAndReset();
+    uint64_t getAudioCallbackCount() const { return liveCapture.callbackCount(); }
 
     void resetKeyboardState()                   { keyboardState.reset();            }
     void addListener(SettingListener* listener) { settingListeners.add(listener);   }
@@ -104,6 +109,7 @@ protected:
     AudioSourcePlayer    audioSourcePlayer;
     MidiMessageCollector midiCollector;
     MidiKeyboardState    keyboardState;
+    AudioCallbackCapture liveCapture;
 
     AudioSourceProcessor* currentProcessor;
 
