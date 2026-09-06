@@ -44,46 +44,70 @@ float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
 }
 
-void paintPanGestureKnob(
+void paintPanGestureArc(
         Graphics& graphics,
         Rectangle<float> nodeBounds,
         float pan,
         Colour colour,
-        float zoom,
         float scale) {
-    const float diameter = jmin(nodeBounds.getWidth(), nodeBounds.getHeight()) * 0.42f;
-    const Rectangle<float> knob = Rectangle<float>(diameter, diameter)
-            .withCentre(nodeBounds.getCentre().translated(0.f, 1.5f * zoom));
-    const Point<float> centre = knob.getCentre();
+    constexpr float startAngle = MathConstants<float>::pi * 1.25f;
+    constexpr float centreAngle = MathConstants<float>::twoPi;
+    constexpr float endAngle = MathConstants<float>::pi * 2.75f;
+    const Point<float> centre = nodeBounds.getCentre();
+    const float radius = jmin(nodeBounds.getWidth(), nodeBounds.getHeight()) * 0.52f;
     const bool centred = std::abs(pan - 0.5f) < 0.0001f;
-    const float angle = MathConstants<float>::pi * (-0.75f + pan * 1.5f);
-    const float pointerRadius = diameter * 0.30f;
-    const Point<float> pointer {
-            centre.x + std::sin(angle) * pointerRadius,
-            centre.y - std::cos(angle) * pointerRadius
+    const float valueAngle = startAngle + pan * (endAngle - startAngle);
+    const Point<float> marker {
+            centre.x + std::sin(valueAngle) * radius,
+            centre.y - std::cos(valueAngle) * radius
     };
-    const Colour indicatorColour = centred ? Colours::white : colour;
 
-    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.97f));
-    graphics.fillEllipse(knob);
-    graphics.setColour(colour.withAlpha(0.92f));
-    graphics.drawEllipse(knob, jmax(1.2f, 1.6f * scale));
+    Path rangeArc;
+    rangeArc.addCentredArc(
+            centre.x,
+            centre.y,
+            radius,
+            radius,
+            0.f,
+            startAngle,
+            endAngle,
+            true);
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.72f));
+    graphics.strokePath(
+            rangeArc,
+            PathStrokeType(jmax(1.2f, 1.5f * scale), PathStrokeType::curved));
 
-    const float detentTop = knob.getY() - 2.5f * scale;
-    const float detentBottom = knob.getY() + 3.5f * scale;
-    graphics.setColour(indicatorColour.withAlpha(centred ? 0.98f : 0.45f));
+    if (!centred) {
+        Path valueArc;
+        valueArc.addCentredArc(
+                centre.x,
+                centre.y,
+                radius,
+                radius,
+                0.f,
+                jmin(centreAngle, valueAngle),
+                jmax(centreAngle, valueAngle),
+                true);
+        graphics.setColour(colour.withAlpha(0.98f));
+        graphics.strokePath(
+                valueArc,
+                PathStrokeType(
+                        jmax(1.8f, 2.4f * scale),
+                        PathStrokeType::curved,
+                        PathStrokeType::rounded));
+    }
+
+    const Point<float> detentInner(centre.x, centre.y - radius + 2.f * scale);
+    const Point<float> detentOuter(centre.x, centre.y - radius - 3.f * scale);
+    graphics.setColour((centred ? Colours::white : colour).withAlpha(centred ? 1.f : 0.58f));
     graphics.drawLine(
-            centre.x,
-            detentTop,
-            centre.x,
-            detentBottom,
+            Line<float>(detentInner, detentOuter),
             jmax(1.f, (centred ? 2.2f : 1.2f) * scale));
 
-    graphics.setColour(indicatorColour.withAlpha(0.98f));
-    graphics.drawLine(
-            Line<float>(centre, pointer),
-            jmax(1.2f, (centred ? 2.2f : 1.8f) * scale));
-    graphics.fillEllipse(Rectangle<float>(3.2f * scale, 3.2f * scale).withCentre(centre));
+    const float markerDiameter = (centred ? 4.8f : 4.f) * scale;
+    graphics.setColour((centred ? Colours::white : colour).withAlpha(0.98f));
+    graphics.fillEllipse(
+            Rectangle<float>(markerDiameter, markerDiameter).withCentre(marker));
 }
 
 void paintConfigurationSocket(
@@ -974,7 +998,7 @@ void NodeCanvasPresentation::paintInlinePanGesture(
             NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
     const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
     const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
-    paintPanGestureKnob(graphics, nodeBounds, pan, colour, zoom, scale);
+    paintPanGestureArc(graphics, nodeBounds, pan, colour, scale);
 }
 
 void NodeCanvasPresentation::paintCachedNode(

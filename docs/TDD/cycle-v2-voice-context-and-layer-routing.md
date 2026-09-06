@@ -157,8 +157,10 @@ hit-test cable from the outer source to the outer destination. The headset and
 Spy badge sample positions along that shared curve; Pan does not act as a cable
 endpoint or influence the curve's control points.
 The complete headset hit target uses conventional vertical dragging. During a
-gesture, a compact dial appears inside the headset with an exact value pointer
-and a dedicated centre detent; there is no persistent circular selection ring.
+gesture, a 270-degree radial track appears outside the headset from 225 degrees
+through the top to 135 degrees. A directional value arc extends from the
+12-o'clock centre detent to an exact position marker; the indicator never
+overlaps the headset, and there is no persistent circular selection ring.
 Ear-pad bias uses only the pad colour intensity, without an expanded background
 glow. Pan gestures snap within 5% of hard left, centre, and hard right. Pan can
 be added from a cable context menu or by dragging the palette item onto a

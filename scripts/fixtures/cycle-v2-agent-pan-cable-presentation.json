@@ -48,7 +48,7 @@
     {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-pan-drag-knob.png"
+      "path": "/private/tmp/cycle-v2-pan-drag-arc.png"
     },
     {
       "command": "pointer",
