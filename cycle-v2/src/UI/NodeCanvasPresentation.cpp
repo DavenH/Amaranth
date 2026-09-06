@@ -3,6 +3,7 @@
 
 #include "UI/NodeCanvasPresentation.h"
 
+#include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -41,6 +42,48 @@ uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
 
 float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
+}
+
+void paintPanGestureKnob(
+        Graphics& graphics,
+        Rectangle<float> nodeBounds,
+        float pan,
+        Colour colour,
+        float zoom,
+        float scale) {
+    const float diameter = jmin(nodeBounds.getWidth(), nodeBounds.getHeight()) * 0.42f;
+    const Rectangle<float> knob = Rectangle<float>(diameter, diameter)
+            .withCentre(nodeBounds.getCentre().translated(0.f, 1.5f * zoom));
+    const Point<float> centre = knob.getCentre();
+    const bool centred = std::abs(pan - 0.5f) < 0.0001f;
+    const float angle = MathConstants<float>::pi * (-0.75f + pan * 1.5f);
+    const float pointerRadius = diameter * 0.30f;
+    const Point<float> pointer {
+            centre.x + std::sin(angle) * pointerRadius,
+            centre.y - std::cos(angle) * pointerRadius
+    };
+    const Colour indicatorColour = centred ? Colours::white : colour;
+
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.97f));
+    graphics.fillEllipse(knob);
+    graphics.setColour(colour.withAlpha(0.92f));
+    graphics.drawEllipse(knob, jmax(1.2f, 1.6f * scale));
+
+    const float detentTop = knob.getY() - 2.5f * scale;
+    const float detentBottom = knob.getY() + 3.5f * scale;
+    graphics.setColour(indicatorColour.withAlpha(centred ? 0.98f : 0.45f));
+    graphics.drawLine(
+            centre.x,
+            detentTop,
+            centre.x,
+            detentBottom,
+            jmax(1.f, (centred ? 2.2f : 1.2f) * scale));
+
+    graphics.setColour(indicatorColour.withAlpha(0.98f));
+    graphics.drawLine(
+            Line<float>(centre, pointer),
+            jmax(1.2f, (centred ? 2.2f : 1.8f) * scale));
+    graphics.fillEllipse(Rectangle<float>(3.2f * scale, 3.2f * scale).withCentre(centre));
 }
 
 void paintConfigurationSocket(
@@ -900,6 +943,7 @@ void NodeCanvasPresentation::paintCachedNodes(
         }
     }
     if (frame.nodeDragActive) {
+        paintInlinePanGesture(graphics, frame);
         return;
     }
     const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
@@ -909,6 +953,28 @@ void NodeCanvasPresentation::paintCachedNodes(
                 stats.misses,
                 performanceObserver->presentationTimestamp() - startedAt);
     }
+    paintInlinePanGesture(graphics, frame);
+}
+
+void NodeCanvasPresentation::paintInlinePanGesture(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    if (frame.panGestureNodeId.isEmpty()) {
+        return;
+    }
+
+    const Node* node = frame.graph.findNode(frame.panGestureNodeId);
+    if (node == nullptr || node->kind != NodeKind::SpectralLayer) {
+        return;
+    }
+
+    const float zoom = frame.viewport.getZoom();
+    const float scale = portScale(zoom);
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
+    const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
+    const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
+    paintPanGestureKnob(graphics, nodeBounds, pan, colour, zoom, scale);
 }
 
 void NodeCanvasPresentation::paintCachedNode(
@@ -999,12 +1065,6 @@ void NodeCanvasPresentation::paintNode(
                 true,
                 frame.unisonPreviewContext
         });
-        if (node.id == frame.selectedNodeId) {
-            graphics.setColour(Colours::white.withAlpha(0.86f));
-            graphics.drawEllipse(
-                    nodeBounds.reduced(6.f * zoom),
-                    CanvasChromeMetrics::focusRingWidth * scale);
-        }
     } else {
         Rectangle<float> body = nodeBounds;
         const Rectangle<float> header = body.removeFromTop(42.f * zoom);

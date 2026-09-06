@@ -156,13 +156,16 @@ The scene collapses the two durable graph edges around Pan into one visual and
 hit-test cable from the outer source to the outer destination. The headset and
 Spy badge sample positions along that shared curve; Pan does not act as a cable
 endpoint or influence the curve's control points.
-The complete headset hit target uses conventional vertical dragging, and Pan
-gestures snap within 5% of hard left, centre, and hard right. Pan can be added
-from a cable context menu or by dragging the palette item onto a compatible
-cable. Cable extras use one spacing rule: a lone Spy marker or Pan headset is
-centred; when both are present, Spy occupies one third and Pan two thirds in
-signal-flow order. Spy ordinals are always centred at their assigned position
-rather than preserving the pointer coordinate used to create them.
+The complete headset hit target uses conventional vertical dragging. During a
+gesture, a compact dial appears inside the headset with an exact value pointer
+and a dedicated centre detent; there is no persistent circular selection ring.
+Ear-pad bias uses only the pad colour intensity, without an expanded background
+glow. Pan gestures snap within 5% of hard left, centre, and hard right. Pan can
+be added from a cable context menu or by dragging the palette item onto a
+compatible cable. Cable extras use one spacing rule: a lone Spy marker or Pan
+headset is centred; when both are present, Spy occupies one third and Pan two
+thirds in signal-flow order. Spy ordinals are always centred at their assigned
+position rather than preserving the pointer coordinate used to create them.
 An open expanded editor captures pointer input only inside its visible panel;
 canvas nodes outside it, including the inline Pan headset, retain their normal
 gestures. The Pan hit region follows the complete visible headset footprint, so

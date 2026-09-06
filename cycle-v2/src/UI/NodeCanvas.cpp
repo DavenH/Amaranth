@@ -944,7 +944,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             dockInteraction->focus(),
             probeDetailState,
             globalUnisonPreviewContext,
-            liveOutputMeterLevels
+            liveOutputMeterLevels,
+            draggingSpectralPanNodeId
     };
 }
 

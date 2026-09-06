@@ -521,13 +521,11 @@ void drawSpectralLayerPreview(
 
     const auto paintPad = [&](Rectangle<float> pad, float affinity) {
         const float corner = padWidth * 0.44f;
-        graphics.setColour(colour.withAlpha(0.10f + affinity * 0.26f));
-        graphics.fillRoundedRectangle(pad.expanded(stroke * (0.8f + affinity)), corner);
         graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
         graphics.fillRoundedRectangle(pad, corner);
         graphics.setColour(colour.withAlpha(0.38f + affinity * 0.62f));
         graphics.drawRoundedRectangle(pad, corner, stroke + affinity * stroke * 0.45f);
-        graphics.setColour(colour.withAlpha(0.14f + affinity * 0.56f));
+        graphics.setColour(colour.withAlpha(0.10f + affinity * 0.66f));
         graphics.fillRoundedRectangle(pad.reduced(stroke * 1.05f), corner * 0.62f);
     };
     paintPad(leftPad, leftAffinity);
