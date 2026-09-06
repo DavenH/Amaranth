@@ -3,6 +3,8 @@
     { "command": "addNode", "kind": "delay", "x": 540, "y": 280 },
     { "command": "openNodeEditor", "nodeId": "delay", "waitForIdle": true, "idleDelayMs": 300 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.kind", "equals": "DELAY" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.echoGroup.label", "equals": "Echo" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.stereoOutputGroup.label", "equals": "Stereo / output" },
     { "command": "assertState", "path": "expandedNodeControls.parameters.4.label", "equals": "Pan Amount" },
     { "command": "assertState", "path": "expandedNodeControls.parameters.5.label", "equals": "Pan Cycle" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1 beat" },

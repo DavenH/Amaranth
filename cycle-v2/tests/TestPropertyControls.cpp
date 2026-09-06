@@ -73,6 +73,13 @@ TEST_CASE("Property group labels establish scope without a surrounding box",
     REQUIRE(paintedPixels > 100);
     REQUIRE(image.getPixelAt(0, 0).isTransparent());
     REQUIRE(image.getPixelAt(image.getWidth() - 1, image.getHeight() - 1).isTransparent());
+
+    PropertyGroupLabel label("IR sample");
+    label.setBounds(10, 20, 180, 18);
+    const var automation = propertyGroupLabelAutomationState(label);
+    REQUIRE(automation.getProperty("label", {}).toString() == "IR sample");
+    REQUIRE((int) automation.getProperty("bounds", {}).getProperty("x", {}) == 10);
+    REQUIRE((int) automation.getProperty("bounds", {}).getProperty("width", {}) == 180);
 }
 
 TEST_CASE("Property values use two significant figures without redundant decimals",

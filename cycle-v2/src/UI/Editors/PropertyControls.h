@@ -105,6 +105,8 @@ private:
     juce::String labelText;
 };
 
+juce::var propertyGroupLabelAutomationState(const PropertyGroupLabel& label);
+
 class PrecisionSlider final : public juce::Slider {
 public:
     using KeyboardStepper = std::function<double(double, bool, bool)>;

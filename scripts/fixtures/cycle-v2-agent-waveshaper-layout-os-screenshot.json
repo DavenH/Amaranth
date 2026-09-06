@@ -15,7 +15,17 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.controlGroupBounds.height",
-      "equals": 152
+      "equals": 188
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.gainGroup.label",
+      "equals": "Gain"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.qualityGroup.label",
+      "equals": "Quality"
     },
     {
       "command": "inspectPointerTargets"

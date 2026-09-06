@@ -268,6 +268,13 @@ void PropertyGroupLabel::paint(Graphics& graphics) {
     paintPropertyGroupLabel(graphics, getLocalBounds().toFloat(), labelText);
 }
 
+var propertyGroupLabelAutomationState(const PropertyGroupLabel& label) {
+    auto* result = new DynamicObject();
+    result->setProperty("label", label.getText());
+    result->setProperty("bounds", boundsToVar(label.getBounds().toFloat()));
+    return result;
+}
+
 void stylePropertyLabel(Label& label, const String& text) {
     label.setText(text, dontSendNotification);
     label.setColour(Label::textColourId, kMutedText);
