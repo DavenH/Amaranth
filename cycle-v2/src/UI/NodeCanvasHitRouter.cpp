@@ -68,10 +68,10 @@ bool actionContains(
 String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryModel& queries) {
     switch (action.kind) {
         case CanvasNodeActionKind::CycleOperationLayout:
-            return "Click to change this operation’s port arrangement.";
+            return "Click to change this operation's port arrangement.";
 
         case CanvasNodeActionKind::CycleSinglePortLayout:
-            return "Click to rotate this node’s input and output arrangement.";
+            return "Click to rotate this node's input and output arrangement.";
 
         case CanvasNodeActionKind::CycleMeshOutputSide:
             return "Click to move this mesh output to another side.";
