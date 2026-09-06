@@ -11,6 +11,7 @@
 #include "UI/NodeCanvasGlRenderer.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodePortLayout.h"
 #include "UI/NodePortGeometry.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
@@ -531,6 +532,47 @@ void paintOutputAction(
     graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
     graphics.drawEllipse(Rectangle<float>(dot, dot).withCentre(centre), stroke);
     graphics.drawLine(Line<float>(centre, output), stroke);
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.fillEllipse(Rectangle<float>(dot, dot).withCentre(output));
+}
+
+void paintSinglePortAction(
+        Graphics& graphics,
+        Rectangle<float> button,
+        float scale,
+        SinglePortLayout layout) {
+    paintActionButton(graphics, button, scale);
+
+    const Rectangle<float> icon = button.reduced(button.getWidth() * 0.24f);
+    const float stroke = jmax(1.f, button.getWidth() * 0.085f);
+    const float dot = jmax(2.f, button.getWidth() * 0.14f);
+    Point<float> input;
+    Point<float> output;
+
+    switch (layout) {
+        case SinglePortLayout::LeftToRight:
+            input = { icon.getX(), icon.getCentreY() };
+            output = { icon.getRight(), icon.getCentreY() };
+            break;
+        case SinglePortLayout::LeftToBottom:
+            input = { icon.getX(), icon.getCentreY() };
+            output = { icon.getCentreX(), icon.getBottom() };
+            break;
+        case SinglePortLayout::TopToBottom:
+            input = { icon.getCentreX(), icon.getY() };
+            output = { icon.getCentreX(), icon.getBottom() };
+            break;
+    }
+
+    Path path;
+    path.startNewSubPath(input);
+    path.lineTo(icon.getCentre());
+    path.lineTo(output);
+    graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.78f));
+    graphics.strokePath(
+            path,
+            PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.drawEllipse(Rectangle<float>(dot, dot).withCentre(input), stroke);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.fillEllipse(Rectangle<float>(dot, dot).withCentre(output));
 }
@@ -1126,6 +1168,12 @@ void NodeCanvasPresentation::paintNode(
                     actionButton(nodeBounds, zoom),
                     scale,
                     nextLayout(operationLayout(node)));
+        } else if (supportsSinglePortLayout(node)) {
+            paintSinglePortAction(
+                    graphics,
+                    actionButton(nodeBounds, zoom),
+                    scale,
+                    nextSinglePortLayout(singlePortLayout(node)));
         } else if (capabilities.outputSideControl) {
             paintOutputAction(
                     graphics,

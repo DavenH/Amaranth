@@ -110,6 +110,7 @@ public:
 
     NodeCanvasAuthoringResult spliceSelectedNodeIntoEdge(int edgeIndex);
     NodeCanvasAuthoringResult cycleOperationPortLayout(const String& nodeId);
+    NodeCanvasAuthoringResult cycleSinglePortLayout(const String& nodeId);
     NodeCanvasAuthoringResult cycleMeshOutputSide(const String& nodeId);
     NodeCanvasAuthoringResult cycleVoiceDomain(const String& nodeId);
     bool beginSpectralPanGesture(const String& nodeId);

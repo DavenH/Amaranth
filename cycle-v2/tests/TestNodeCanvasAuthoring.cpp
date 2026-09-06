@@ -121,6 +121,37 @@ TEST_CASE("Node port layout cycling survives document serialization",
     REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
 }
 
+TEST_CASE("Single input and output port layouts cycle forward and undo",
+        "[cycle-v2][canvas][authoring][layout]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    REQUIRE(authoring.cycleSinglePortLayout("delay").succeeded);
+    const Node* delay = document.graph().findNode("delay");
+    REQUIRE(delay->inputs.front().side == PortSide::Left);
+    REQUIRE(delay->outputs.front().side == PortSide::Bottom);
+
+    REQUIRE(authoring.cycleSinglePortLayout("delay").succeeded);
+    delay = document.graph().findNode("delay");
+    REQUIRE(delay->inputs.front().side == PortSide::Top);
+    REQUIRE(delay->outputs.front().side == PortSide::Bottom);
+
+    REQUIRE(authoring.cycleSinglePortLayout("delay").succeeded);
+    delay = document.graph().findNode("delay");
+    REQUIRE(delay->inputs.front().side == PortSide::Left);
+    REQUIRE(delay->outputs.front().side == PortSide::Right);
+
+    REQUIRE(authoring.undo().succeeded);
+    delay = document.graph().findNode("delay");
+    REQUIRE(delay->inputs.front().side == PortSide::Top);
+    REQUIRE(delay->outputs.front().side == PortSide::Bottom);
+}
+
 TEST_CASE("Hosted effect editors open without requiring a compact preview",
         "[cycle-v2][canvas][authoring][effects]") {
     NodeGraph graph;

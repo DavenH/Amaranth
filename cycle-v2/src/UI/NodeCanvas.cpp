@@ -450,6 +450,13 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 }
                 break;
 
+            case CanvasNodeActionKind::CycleSinglePortLayout:
+                if (cycleSinglePortLayout(action->nodeId)) {
+                    editStatusMessage = "Port layout cycled";
+                    requestCanvasRepaint();
+                }
+                break;
+
             case CanvasNodeActionKind::CycleMeshOutputSide:
                 if (cycleMeshOutputSide(action->nodeId)) {
                     editStatusMessage = "Output side cycled";
@@ -1704,6 +1711,10 @@ void NodeCanvas::clearDockEphemeralState() {
 
 bool NodeCanvas::cycleOperationPortLayout(const String& nodeId) {
     return applyAuthoringResult(authoring.cycleOperationPortLayout(nodeId));
+}
+
+bool NodeCanvas::cycleSinglePortLayout(const String& nodeId) {
+    return applyAuthoringResult(authoring.cycleSinglePortLayout(nodeId));
 }
 
 bool NodeCanvas::cycleMeshOutputSide(const String& nodeId) {
