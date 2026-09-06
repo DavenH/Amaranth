@@ -53,11 +53,16 @@ public:
             SignalPayload& output);
     void renderCycleInto(Buffer<float> output, PortDomain domain);
     void renderPreparedInto(Buffer<float> output);
+    // Index zero is the first authored harmonic; DC is owned by the FFT boundary.
+    void renderPreparedHarmonicsInto(Buffer<float> output);
 
 private:
     void configureGuideCurveSeeds(PortDomain domain);
     Rasterization::RasterizationRequest createRequest(PortDomain domain) const;
     void sampleOutput(Buffer<float> output);
+    void sampleOutputAtPositions(
+            Buffer<float> output,
+            Buffer<float> positions);
     Buffer<float> frequencyPositionsFor(int size);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 

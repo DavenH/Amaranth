@@ -151,6 +151,21 @@ void TrimeshBlockwiseDsp::renderPreparedInto(Buffer<float> output) {
     sampleOutput(output);
 }
 
+void TrimeshBlockwiseDsp::renderPreparedHarmonicsInto(Buffer<float> output) {
+    output.zero();
+    if (output.empty()
+            || mesh == nullptr
+            || !mesh->hasEnoughCubesForCrossSection()
+            || (preparedDomain != PortDomain::SpectralMagnitudeSignal
+                    && preparedDomain != PortDomain::SpectralPhaseSignal)) {
+        return;
+    }
+
+    const int regionSize = LogRegionMapping(frequencyMidiNote).regionSize();
+    auto positions = frequencyPositionsFor(regionSize);
+    sampleOutputAtPositions(output, positions.withSize(output.size()));
+}
+
 Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
         PortDomain domain) const {
     Rasterization::RasterizationRequest request;
@@ -166,22 +181,28 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
 }
 
 void TrimeshBlockwiseDsp::sampleOutput(Buffer<float> dest) {
-    auto sampler = rasterizer.sampler();
-
-    if (!sampler.isSampleable()) {
-        return;
-    }
-
     const bool spectral = preparedDomain == PortDomain::SpectralMagnitudeSignal
             || preparedDomain == PortDomain::SpectralPhaseSignal;
     const Buffer<float> positions = spectral
             ? frequencyPositionsFor(dest.size())
             : Buffer<float>();
+    sampleOutputAtPositions(dest, positions);
+}
+
+void TrimeshBlockwiseDsp::sampleOutputAtPositions(
+        Buffer<float> dest,
+        Buffer<float> positions) {
+    auto sampler = rasterizer.sampler();
+    if (!sampler.isSampleable()
+            || (!positions.empty() && positions.size() < dest.size())) {
+        return;
+    }
+
     const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
     int currentIndex = sampler.initialIndex();
 
     for (int i = 0; i < dest.size(); ++i) {
-        const float phase = spectral ? positions[i] : (float) i * delta;
+        const float phase = positions.empty() ? (float) i * delta : positions[i];
 
         if (sampler.isSampleableAt(phase)) {
             dest[i] = sampler.sampleAt(phase, currentIndex);

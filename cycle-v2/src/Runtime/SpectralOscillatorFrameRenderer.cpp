@@ -223,9 +223,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
                             false,
                             operation.outputDomain);
                     operation.spectralRasterizer->prepareSampling(
-                            (size_t) valueCount(
-                                    operation.outputDomain,
-                                    maximumFrameSize));
+                            (size_t) maximumFrameSize);
                 }
                 break;
             }
@@ -313,7 +311,9 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
 
             case OperationType::SpectralTrimesh:
                 operation.spectralRasterizer->setFrequencyMidiNote(midiNote);
-                operation.spectralRasterizer->renderPreparedInto(leftOutput);
+                leftOutput.zero();
+                operation.spectralRasterizer->renderPreparedHarmonicsInto(
+                        leftOutput.section(1, count - 1));
                 leftOutput.mul(operation.configuration->gain);
                 leftOutput.copyTo(rightOutput);
                 break;
