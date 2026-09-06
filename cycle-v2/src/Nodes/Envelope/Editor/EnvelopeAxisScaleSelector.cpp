@@ -9,20 +9,23 @@ using namespace juce;
 namespace {
 
 const Colour kIndicator { 0xffdbe5ef };
+constexpr int kScaleLineCount = 4;
+constexpr float kLinearPositions[] { 0.f, 0.333f, 0.667f, 1.f };
+constexpr float kLogarithmicPositions[] { 0.f, 0.08f, 0.30f, 1.f };
 
 void drawScaleDiagram(Graphics& graphics, Rectangle<float> bounds, bool logarithmic) {
     bounds.reduce(6.f, 5.f);
     graphics.setColour(kIndicator.withAlpha(0.82f));
-    constexpr int lineCount = 4;
-    for (int index = 0; index < lineCount; ++index) {
-        const float unit = static_cast<float>(index) / static_cast<float>(lineCount - 1);
-        const float position = logarithmic ? unit * unit : unit;
+    const float* positions = logarithmic
+            ? kLogarithmicPositions
+            : kLinearPositions;
+    for (int index = 0; index < kScaleLineCount; ++index) {
+        const float position = positions[index];
         const float y = bounds.getY() + position * bounds.getHeight();
-        const float inset = index % 2 == 0 ? 0.f : 3.f;
         graphics.drawHorizontalLine(
                 roundToInt(y),
-                bounds.getX() + inset,
-                bounds.getRight() - inset);
+                bounds.getX(),
+                bounds.getRight());
     }
 }
 

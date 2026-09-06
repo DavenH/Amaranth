@@ -308,7 +308,7 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
     state.setProperty("viewAxis", impl->viewAxis);
-    state.setProperty("modeLabel", "Envelope purpose");
+    state.setProperty("modeLabel", "Purpose");
     state.setProperty("mode", envelopePurposeLabel(impl->mode.purpose()));
     state.setProperty("purpose", envelopePurposeLabel(impl->mode.purpose()));
     state.setProperty(

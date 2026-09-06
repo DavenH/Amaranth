@@ -18,12 +18,12 @@ const Colour kSelectedFill { 0xff2b415a };
 constexpr float kMorphLabelY = 0.f;
 constexpr float kMorphRowsY = 28.f;
 constexpr float kMorphRowStride = 44.f;
-constexpr float kActionLabelY = 238.f;
-constexpr float kActionControlY = 256.f;
 constexpr float kActionControlHeight = 30.f;
 constexpr float kActionEdgeInset = 8.f;
-constexpr float kActionColumnGap = 12.f;
+constexpr float kActionColumnGap = 28.f;
 constexpr float kActionColumnWidths[] { 136.f, 72.f, 84.f, 64.f };
+constexpr float kActionBarHeight = PropertyControlMetrics::groupLabelHeight
+        + kActionControlHeight + 2.f * kActionEdgeInset;
 
 Path segmentedHighlight(Rectangle<float> bounds, int selectedSegment) {
     auto selected = bounds;
@@ -90,19 +90,11 @@ Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) co
 }
 
 Rectangle<float> EnvelopeMorphControls::purposeGroupLabelBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 0);
-    return { column.getX(), column.getY() + kActionLabelY,
-             column.getWidth(), (float) PropertyControlMetrics::groupLabelHeight };
+    return actionGroupLabelBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::purposeSelectorBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 0);
-    return {
-            column.getX(),
-            column.getY() + kActionControlY,
-            column.getWidth(),
-            kActionControlHeight
-    };
+    return actionColumnBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {
@@ -123,23 +115,21 @@ Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int 
 }
 
 Rectangle<float> EnvelopeMorphControls::actionBarBounds(Rectangle<float> controls) const {
-    auto bar = controls.reduced(12.f, 8.f);
-    bar.removeFromTop(kActionLabelY - kActionEdgeInset);
-    return bar.removeFromTop(
-            kActionControlY - kActionLabelY
-                    + kActionControlHeight + 2.f * kActionEdgeInset);
+    const float horizontalInset = controls.getX();
+    auto bar = controls.expanded(horizontalInset, 0.f);
+    return bar.removeFromBottom(kActionBarHeight);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionRow(Rectangle<float> controls) const {
-    auto row = controls.reduced(12.f, 8.f);
-    row.removeFromTop(kActionControlY);
-    return row.removeFromTop(kActionControlHeight);
+    auto row = actionBarBounds(controls);
+    row.removeFromBottom(kActionEdgeInset);
+    return row.removeFromBottom(kActionControlHeight);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
         Rectangle<float> controls,
         int column) const {
-    auto area = controls.reduced(12.f, 8.f);
+    auto area = actionRow(controls);
     const float totalWidth = kActionColumnWidths[0]
             + kActionColumnWidths[1]
             + kActionColumnWidths[2]
@@ -153,51 +143,36 @@ Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
 }
 
 Rectangle<float> EnvelopeMorphControls::markerGroupLabelBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 1);
-    return { column.getX(), column.getY() + kActionLabelY,
-             column.getWidth(), (float) PropertyControlMetrics::groupLabelHeight };
+    return actionGroupLabelBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 1);
-    return {
-            column.getX(),
-            column.getY() + kActionControlY,
-            column.getWidth(),
-            kActionControlHeight
-    };
+    return actionColumnBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleGroupLabelBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 2);
-    return { column.getX(), column.getY() + kActionLabelY,
-             column.getWidth(), (float) PropertyControlMetrics::groupLabelHeight };
+    return actionGroupLabelBounds(controls, 2);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 2);
-    return {
-            column.getX(),
-            column.getY() + kActionControlY,
-            column.getWidth(),
-            kActionControlHeight
-    };
+    return actionColumnBounds(controls, 2);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupLabelBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 3);
-    return { column.getX(), column.getY() + kActionLabelY,
-             column.getWidth(), (float) PropertyControlMetrics::groupLabelHeight };
+    return actionGroupLabelBounds(controls, 3);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> controls) const {
-    auto column = actionColumnBounds(controls, 3);
-    return {
-            column.getX(),
-            column.getY() + kActionControlY,
-            column.getWidth(),
-            kActionControlHeight
-    };
+    return actionColumnBounds(controls, 3);
+}
+
+Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
+        Rectangle<float> controls,
+        int column) const {
+    auto bounds = actionColumnBounds(controls, column);
+    bounds.setY(actionBarBounds(controls).getY() + kActionEdgeInset);
+    bounds.setHeight((float) PropertyControlMetrics::groupLabelHeight);
+    return bounds;
 }
 
 Rectangle<float> EnvelopeMorphControls::axisGroupLabelBounds(
@@ -303,7 +278,7 @@ void EnvelopeMorphControls::draw(
     paintPropertyGroupLabel(
             graphics,
             purposeGroupLabelBounds(controls),
-            "Envelope purpose");
+            "Purpose");
     paintPropertyGroupLabel(
             graphics,
             morphGroupLabelBounds(controls),

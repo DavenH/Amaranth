@@ -51,6 +51,9 @@ public:
 private:
     Rectangle<float> squareColumn(Rectangle<float> controls) const;
     Rectangle<float> actionColumnBounds(Rectangle<float> controls, int column) const;
+    Rectangle<float> actionGroupLabelBounds(
+            Rectangle<float> controls,
+            int column) const;
     Colour axisColour(int axis) const;
     void drawPlane(
             Graphics& graphics,

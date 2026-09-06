@@ -41,7 +41,7 @@ component boundary; it does not own envelope view behavior.
 | Waveshaper | A large gap implies groups but names neither | Gain, Quality |
 | Impulse Response | `IR sample` is left aligned over three equal actions | Response, IR sample |
 | Trimesh | Cube, morph, and vertex headings float without scope rules | Cube display, Morph position, Vertex parameters; retain Axis and Link |
-| Envelope | Purpose, morph, markers, scale, range, and parameters share one band; `Vertex` and `Log` are ambiguous | Envelope purpose, Morph position, Envelope markers, Axis scale, Vertical range, Vertex parameters |
+| Envelope | Purpose, morph, markers, scale, range, and parameters share one band; `Vertex` and `Log` are ambiguous | Purpose, Morph position, Envelope markers, Axis scale, Vertical range, Vertex parameters |
 
 Group labels describe a shared operation, property, or outcome. They do not
 repeat the editor title, narrate a single obvious control, or name only the
@@ -119,7 +119,7 @@ labels/icons and hit targets remain clear.
 4. Make Unison's voice-editing modes and actions explicit, then complete the
    cross-editor production screenshot and automation review.
 5. Rebalance the Envelope band around one aligned top row and one aligned
-   action row. Move Envelope purpose beside Markers, Scaling, and Zoom; shorten
+   action row. Move Purpose beside Markers, Scaling, and Zoom; shorten
    those peer labels; replace the four Cycle v1 PNG-atlas action icons with a
    dedicated SVG family; and increase the Envelope editor height by the same
    amount as the control band so the graph retains its vertical budget.
@@ -184,20 +184,25 @@ production capture, and an imperative commit before the next slice.
   preserving the graph's vertical budget. Morph plane, Morph position, Axis,
   Link, and Vertex parameters now share one heading baseline; the morph plane
   begins 10 px below its heading instead of floating in residual space.
-- Envelope purpose joins Markers, Scaling, and Zoom in a single separated
+- Purpose joins Markers, Scaling, and Zoom in a single separated
   action toolbar. A follow-up composition pass gives that toolbar a dedicated
-  row below all visible upper controls, spans it across the full panel scope,
-  centres the four-group cluster, and balances its top and bottom insets. Tests
-  cover the scope edges, occupied-content centre, peer baselines, opposing
-  insets, and clearance below the last visible vertex-parameter rail.
+  row below all visible upper controls, spans it flush to the editor frame and
+  into the graph edge, centres the four-group cluster with 28 px inter-group
+  spacing, and balances its top and bottom insets. Tests cover the scope edges,
+  occupied-content centre, peer baselines, opposing insets, graph attachment,
+  and clearance below the last visible vertex-parameter rail.
 - Loop, Sustain, Fit, and Full no longer read from the Cycle v1 24 px PNG
   atlas. Four embedded SVGs use a shared 48 px viewBox, 2.4 px square-ended
   strokes, precise marker/arrow terminations, and inward-versus-outward zoom
   topology. XML validation, the embedded-component icon check, 90 hosted
   Envelope assertions, the purpose and marker fixtures, and the standalone
-  build all pass. Final production review used
-  `/private/tmp/envelope-toolbar-fixed.png`; its filtered log contains no
-  warnings, assertions, failures, or crashes.
+  build all pass. The refined Loop symbol places its loop above a horizontal
+  timeline and lands its arrow on a marked intercept. Scaling diagrams now use
+  one line length and distinguish equal spacing from a more pronounced
+  logarithmic progression. Final production review used
+  `/private/tmp/envelope-toolbar-icons-final.png`, with the enabled-marker
+  review at `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`; the
+  filtered logs contain no warnings, assertions, failures, or crashes.
 
 ## Deletion Targets
 

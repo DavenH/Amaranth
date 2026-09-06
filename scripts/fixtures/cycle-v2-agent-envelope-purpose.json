@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.modeLabel",
-      "equals": "Envelope purpose"
+      "equals": "Purpose"
     },
     {
       "command": "assertState",
