@@ -51,6 +51,9 @@ struct NodeSceneEdge {
     bool destinationPortLike { true };
     bool modulationBundle {};
     bool destinationBundleIncludesYellow { true };
+    bool sourceEndpointVisible { true };
+    bool destinationEndpointVisible { true };
+    bool inlinePan {};
 };
 
 struct NodeCanvasSceneSnapshot {
@@ -72,6 +75,10 @@ public:
     const NodeCanvasSceneSnapshot& snapshot() const { return current; }
 
     static juce::Point<float> portWorldCentre(const Node& node, const Port& port);
+    static juce::Rectangle<float> presentationWorldBounds(
+            const NodeGraph& graph,
+            const Node& node);
+    static int cableExtraEdgeIndex(const NodeGraph& graph, int edgeIndex);
     static juce::Path cablePath(
             juce::Point<float> source,
             juce::Point<float> destination,

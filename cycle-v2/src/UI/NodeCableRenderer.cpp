@@ -139,12 +139,18 @@ void paintEndpoints(
     const Rectangle<float> sourceMarker = endpoint.withCentre(edge.source);
     const Rectangle<float> destinationMarker = endpoint.withCentre(edge.destination);
 
-    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
-    graphics.fillEllipse(sourceMarker);
-    graphics.setColour(style.colour.withAlpha(0.96f));
-    graphics.drawEllipse(
-            sourceMarker,
-            (style.spliceTarget ? 2.8f : (style.selected ? 2.4f : 1.8f)) * scale);
+    if (edge.sourceEndpointVisible) {
+        graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.92f));
+        graphics.fillEllipse(sourceMarker);
+        graphics.setColour(style.colour.withAlpha(0.96f));
+        graphics.drawEllipse(
+                sourceMarker,
+                (style.spliceTarget ? 2.8f : (style.selected ? 2.4f : 1.8f)) * scale);
+    }
+
+    if (!edge.destinationEndpointVisible) {
+        return;
+    }
 
     if (edge.destinationPortLike) {
         graphics.fillEllipse(destinationMarker.reduced(

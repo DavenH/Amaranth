@@ -141,27 +141,37 @@ The first complete implementation slice is the authored spectral-layer path:
 Implemented initially with parameters on Trilinear Mesh. That representation
 made the graph look unchanged and hid a real signal-processing stage inside a
 geometry node. The stable end state is an explicit Pan node rendered
-as a cable-inline pan dial rather than a full-size processing panel. Selection
+as a cable-inline headset rather than a full-size processing panel. Selection
 still exposes its range and magnitude-mode parameters for authoring.
 `SpectralLayerCore` remains shared with Cycle 1 for the mature magnitude and
 phase formulas; flat FFT/IFFT, probes, and traversal payloads preserve both channels;
 and the oscillator-region slot graph reconstructs distinct left and right
 frames before existing Unison materialization. Parameter changes invalidate DSP
 state without changing graph topology.
-The Channel palette names the operation Pan. Its inner dial uses conventional
-vertical knob dragging, while its visible outer ring retains ordinary node
-movement through a circular hit boundary and four-way cursor. Cable sockets
-remain available at the left and right edges. The
-Stengah automation fixture proves both gestures and verifies that a dial drag
-does not change edge count. Cursor routing publishes the resolved affordance to
-the active JUCE mouse source as well as the component under the pointer; the
-focused cursor fixture covers the Pan dial, its move ring, and a Trimesh editor
-control. Pan gestures snap within 5% of hard left, centre, and hard right.
+The Channel palette names the operation Pan. Its compact presentation is a
+headset whose independently emphasized ear pads reveal left/right bias. It has
+no visible input/output sockets or movable outer node ring: once inserted, its
+position is derived from the cable endpoints so it reads as a cable property.
+The scene collapses the two durable graph edges around Pan into one visual and
+hit-test cable from the outer source to the outer destination. The headset and
+Spy badge sample positions along that shared curve; Pan does not act as a cable
+endpoint or influence the curve's control points.
+The complete headset hit target uses conventional vertical dragging. During a
+gesture, a 270-degree radial track appears outside the headset from 225 degrees
+through the top to 135 degrees. A directional value arc extends from the
+12-o'clock centre detent to an exact position marker; the indicator never
+overlaps the headset, and there is no persistent circular selection ring.
+Ear-pad bias uses only the pad colour intensity, without an expanded background
+glow. Pan gestures snap within 5% of hard left, centre, and hard right. Pan can
+be added from a cable context menu or by dragging the palette item onto a
+compatible cable. Cable extras use one spacing rule: a lone Spy marker or Pan
+headset is centred; when both are present, Spy occupies one third and Pan two
+thirds in signal-flow order. Spy ordinals are always centred at their assigned
+position rather than preserving the pointer coordinate used to create them.
 An open expanded editor captures pointer input only inside its visible panel;
-canvas nodes outside it, including Pan dials and move rings, retain their normal
-gestures. The Pan hit region is the complete visible circular chrome rather
-than the smaller rectangular node body, so cursor and drag ownership cannot
-flicker at the ring boundary.
+canvas nodes outside it, including the inline Pan headset, retain their normal
+gestures. The Pan hit region follows the complete visible headset footprint, so
+cursor and drag ownership cannot flicker at its boundary.
 
 Compact and expanded Trimesh views consume one render-profile contract. Domain
 and scale policy are both part of mesh-data and sprite invalidation: changing a
@@ -181,7 +191,8 @@ Pan, checks stable hover affordances, and compares the two presentations.
 - Do not hide spectral range, magnitude mode, or pan inside Trilinear Mesh;
   these are signal operations and must remain visible on the canvas.
 - Keep single-control routing operations proportional to their visual payload;
-  Pan occupies a knob-sized interruption in its signal cable.
+  Pan occupies a headset-sized interruption in its signal cable without
+  exposing graph-implementation sockets.
 - Migrate generic scratch attachment edges to typed scratch-channel routing
   without losing their source-layer selections.
 - Remove repeated imported morph edges when voice-context defaults and explicit

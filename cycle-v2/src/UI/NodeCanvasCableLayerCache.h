@@ -55,6 +55,8 @@ private:
         bool destinationPortLike { true };
         bool modulationBundle {};
         bool destinationBundleIncludesYellow { true };
+        bool sourceEndpointVisible { true };
+        bool destinationEndpointVisible { true };
         Image image;
 
         bool matches(

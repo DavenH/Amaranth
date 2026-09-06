@@ -59,6 +59,7 @@ struct NodeCanvasPresentationFrame {
     SignalProbeDetailState probeDetailState;
     UnisonPreviewContext unisonPreviewContext;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
+    String panGestureNodeId;
 };
 
 struct NodePortPresentation {
@@ -107,6 +108,9 @@ private:
     void paintPendingConnection(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintSnapGuides(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintCachedNodes(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
+    void paintInlinePanGesture(
+            Graphics& graphics,
+            const NodeCanvasPresentationFrame& frame);
     void paintCachedNode(
             Graphics& graphics,
             const NodeCanvasPresentationFrame& frame,

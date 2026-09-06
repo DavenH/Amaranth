@@ -3,6 +3,7 @@
 
 #include "UI/NodeCanvasPresentation.h"
 
+#include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -41,6 +42,72 @@ uint64_t unisonContextFingerprint(const UnisonPreviewContext& context) {
 
 float portScale(float zoom) {
     return zoom / NodePortGeometry::referenceZoom;
+}
+
+void paintPanGestureArc(
+        Graphics& graphics,
+        Rectangle<float> nodeBounds,
+        float pan,
+        Colour colour,
+        float scale) {
+    constexpr float startAngle = MathConstants<float>::pi * 1.25f;
+    constexpr float centreAngle = MathConstants<float>::twoPi;
+    constexpr float endAngle = MathConstants<float>::pi * 2.75f;
+    const Point<float> centre = nodeBounds.getCentre();
+    const float radius = jmin(nodeBounds.getWidth(), nodeBounds.getHeight()) * 0.52f;
+    const bool centred = std::abs(pan - 0.5f) < 0.0001f;
+    const float valueAngle = startAngle + pan * (endAngle - startAngle);
+    const Point<float> marker {
+            centre.x + std::sin(valueAngle) * radius,
+            centre.y - std::cos(valueAngle) * radius
+    };
+
+    Path rangeArc;
+    rangeArc.addCentredArc(
+            centre.x,
+            centre.y,
+            radius,
+            radius,
+            0.f,
+            startAngle,
+            endAngle,
+            true);
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.72f));
+    graphics.strokePath(
+            rangeArc,
+            PathStrokeType(jmax(1.2f, 1.5f * scale), PathStrokeType::curved));
+
+    if (!centred) {
+        Path valueArc;
+        valueArc.addCentredArc(
+                centre.x,
+                centre.y,
+                radius,
+                radius,
+                0.f,
+                jmin(centreAngle, valueAngle),
+                jmax(centreAngle, valueAngle),
+                true);
+        graphics.setColour(colour.withAlpha(0.98f));
+        graphics.strokePath(
+                valueArc,
+                PathStrokeType(
+                        jmax(1.8f, 2.4f * scale),
+                        PathStrokeType::curved,
+                        PathStrokeType::rounded));
+    }
+
+    const Point<float> detentInner(centre.x, centre.y - radius + 2.f * scale);
+    const Point<float> detentOuter(centre.x, centre.y - radius - 3.f * scale);
+    graphics.setColour((centred ? Colours::white : colour).withAlpha(centred ? 1.f : 0.58f));
+    graphics.drawLine(
+            Line<float>(detentInner, detentOuter),
+            jmax(1.f, (centred ? 2.2f : 1.2f) * scale));
+
+    const float markerDiameter = (centred ? 4.8f : 4.f) * scale;
+    graphics.setColour((centred ? Colours::white : colour).withAlpha(0.98f));
+    graphics.fillEllipse(
+            Rectangle<float>(markerDiameter, markerDiameter).withCentre(marker));
 }
 
 void paintConfigurationSocket(
@@ -888,7 +955,8 @@ void NodeCanvasPresentation::paintCachedNodes(
     const float physicalScale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const Node& node : frame.graph.getNodes()) {
-        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
         if (!nodeBounds.intersects(visibleArea)) {
             continue;
         }
@@ -899,6 +967,7 @@ void NodeCanvasPresentation::paintCachedNodes(
         }
     }
     if (frame.nodeDragActive) {
+        paintInlinePanGesture(graphics, frame);
         return;
     }
     const NodeCanvasNodeLayerCacheStats stats = nodeLayerCache.endFrame();
@@ -908,6 +977,28 @@ void NodeCanvasPresentation::paintCachedNodes(
                 stats.misses,
                 performanceObserver->presentationTimestamp() - startedAt);
     }
+    paintInlinePanGesture(graphics, frame);
+}
+
+void NodeCanvasPresentation::paintInlinePanGesture(
+        Graphics& graphics,
+        const NodeCanvasPresentationFrame& frame) {
+    if (frame.panGestureNodeId.isEmpty()) {
+        return;
+    }
+
+    const Node* node = frame.graph.findNode(frame.panGestureNodeId);
+    if (node == nullptr || node->kind != NodeKind::SpectralLayer) {
+        return;
+    }
+
+    const float zoom = frame.viewport.getZoom();
+    const float scale = portScale(zoom);
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, *node));
+    const float pan = jlimit(0.f, 1.f, NodeParameterMap(*node).floatValue("pan", 0.5f));
+    const Colour colour = colourForDomain(profileFor(frame, *node).getDomain());
+    paintPanGestureArc(graphics, nodeBounds, pan, colour, scale);
 }
 
 void NodeCanvasPresentation::paintCachedNode(
@@ -915,7 +1006,8 @@ void NodeCanvasPresentation::paintCachedNode(
         const NodeCanvasPresentationFrame& frame,
         const Node& node,
         float physicalScale) {
-    const Rectangle<int> logicalBounds = frame.viewport.toScreen(node.bounds)
+    const Rectangle<int> logicalBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, node))
             .expanded(32.f * portScale(frame.viewport.getZoom()))
             .getSmallestIntegerContainer();
     const NodePreviewResult* runtimePreview = previewFor(frame.previewResult, node.id);
@@ -976,7 +1068,8 @@ void NodeCanvasPresentation::paintNode(
     const float zoom = frame.viewport.getZoom();
     const float scale = portScale(zoom);
     const float corner = CanvasChromeMetrics::panelCornerRadius * scale;
-    const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+    const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(frame.graph, node));
     if (node.kind == NodeKind::ModulationSource) {
         paintSingleModulationNode(graphics, frame, node, nodeBounds, zoom, scale);
         return;
@@ -990,22 +1083,12 @@ void NodeCanvasPresentation::paintNode(
         previewRenderer.paint(graphics, {
                 node,
                 nullptr,
-                nodeBounds.reduced(12.f * zoom),
+                nodeBounds.reduced(5.f * zoom),
                 profileFor(frame, node),
                 zoom,
                 true,
                 frame.unisonPreviewContext
         });
-        graphics.setColour(CanvasChromePalette::border.withAlpha(0.7f));
-        graphics.drawEllipse(
-                nodeBounds.reduced(2.f * zoom),
-                CanvasChromeMetrics::restingBorderWidth * scale);
-        if (node.id == frame.selectedNodeId) {
-            graphics.setColour(Colours::white.withAlpha(0.86f));
-            graphics.drawEllipse(
-                    nodeBounds.expanded(2.f * zoom),
-                    CanvasChromeMetrics::focusRingWidth * scale);
-        }
     } else {
         Rectangle<float> body = nodeBounds;
         const Rectangle<float> header = body.removeFromTop(42.f * zoom);
@@ -1097,14 +1180,16 @@ void NodeCanvasPresentation::paintNode(
         paintRoundSocket(graphics, location.bounds, scale, colour, port.input);
     };
 
-    for (const auto& port : node.inputs) {
-        if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+    if (node.kind != NodeKind::SpectralLayer) {
+        for (const auto& port : node.inputs) {
+            if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+                paintPort(port);
+            }
+        }
+
+        for (const auto& port : node.outputs) {
             paintPort(port);
         }
-    }
-
-    for (const auto& port : node.outputs) {
-        paintPort(port);
     }
 
     if (ModulationCableBundle::supportsDestination(node)) {
@@ -1193,7 +1278,8 @@ void NodeCanvasPresentation::renderOpenGLEffectPreviews(
         float scaleFactor) {
     const Rectangle<float> visibleArea = frame.canvasBounds.expanded(120.f);
     for (const auto& node : frame.graph.getNodes()) {
-        const Rectangle<float> nodeBounds = frame.viewport.toScreen(node.bounds);
+        const Rectangle<float> nodeBounds = frame.viewport.toScreen(
+                NodeCanvasScene::presentationWorldBounds(frame.graph, node));
         if (!nodeBounds.intersects(visibleArea)
                 || (!frame.canvasOcclusion.isEmpty()
                     && frame.canvasOcclusion.intersects(nodeBounds))) {

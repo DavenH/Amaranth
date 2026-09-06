@@ -489,25 +489,50 @@ void drawSpectralLayerPreview(
         const Node& node,
         PortDomain domain) {
     const float pan = jlimit(0.f, 1.f, NodeParameterMap(node).floatValue("pan", 0.5f));
-    const float diameter = jmin(area.getWidth(), area.getHeight());
-    const Rectangle<float> dial(diameter, diameter);
-    const Rectangle<float> bounds = dial.withCentre(area.getCentre());
-    const Point<float> centre = bounds.getCentre();
-    const float stroke = jmax(1.f, diameter * 0.055f);
-    const float radius = diameter * 0.31f;
-    const float angle = MathConstants<float>::pi * (-0.75f + pan * 1.5f);
-    const Point<float> indicator {
-            centre.x + std::sin(angle) * radius,
-            centre.y - std::cos(angle) * radius
-    };
+    const float size = jmin(area.getWidth(), area.getHeight());
+    const Rectangle<float> bounds(size, size);
+    const Rectangle<float> icon = bounds.withCentre(area.getCentre()).reduced(size * 0.08f);
+    const float stroke = jmax(1.35f, size * 0.075f);
+    const float padWidth = icon.getWidth() * 0.22f;
+    const float padHeight = icon.getHeight() * 0.40f;
+    const float padY = icon.getY() + icon.getHeight() * 0.48f;
+    const Rectangle<float> leftPad(
+            icon.getX(), padY, padWidth, padHeight);
+    const Rectangle<float> rightPad(
+            icon.getRight() - padWidth, padY, padWidth, padHeight);
+    const float leftAffinity = 1.f - pan;
+    const float rightAffinity = pan;
     const Colour colour = colourForDomain(domain);
 
-    graphics.setColour(CanvasChromePalette::insetBackground);
-    graphics.fillEllipse(bounds);
-    graphics.setColour(colour.withAlpha(0.88f));
-    graphics.drawEllipse(bounds.reduced(stroke * 0.5f), stroke);
-    graphics.drawLine(Line<float>(centre, indicator), stroke);
-    graphics.fillEllipse(Rectangle<float>(stroke * 1.8f, stroke * 1.8f).withCentre(indicator));
+    const float shoulderY = icon.getY() + icon.getHeight() * 0.36f;
+    Path headband;
+    headband.startNewSubPath(leftPad.getCentreX(), leftPad.getCentreY());
+    headband.lineTo(leftPad.getCentreX(), shoulderY);
+    headband.cubicTo(
+            leftPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
+            rightPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
+            rightPad.getCentreX(), shoulderY);
+    headband.lineTo(rightPad.getCentreX(), rightPad.getCentreY());
+    graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
+    graphics.strokePath(
+            headband,
+            PathStrokeType(stroke + 2.f, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.92f));
+    graphics.strokePath(
+            headband,
+            PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+
+    const auto paintPad = [&](Rectangle<float> pad, float affinity) {
+        const float corner = padWidth * 0.44f;
+        graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
+        graphics.fillRoundedRectangle(pad, corner);
+        graphics.setColour(colour.withAlpha(0.38f + affinity * 0.62f));
+        graphics.drawRoundedRectangle(pad, corner, stroke + affinity * stroke * 0.45f);
+        graphics.setColour(colour.withAlpha(0.10f + affinity * 0.66f));
+        graphics.fillRoundedRectangle(pad.reduced(stroke * 1.05f), corner * 0.62f);
+    };
+    paintPad(leftPad, leftAffinity);
+    paintPad(rightPad, rightAffinity);
 }
 
 }

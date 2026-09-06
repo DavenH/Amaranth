@@ -38,23 +38,21 @@ bool hasExpandedEditor(NodeKind kind) {
     return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().expandedEditor;
 }
 
-Rectangle<float> inlinePanDialBounds(
-        const NodeCanvasViewport& viewport,
-        const Node& node) {
-    return viewport.toScreen(node.bounds).reduced(12.f * viewport.getZoom());
-}
-
 Rectangle<float> inlinePanHitBounds(
         const NodeCanvasViewport& viewport,
+        const NodeGraph& graph,
         const Node& node) {
-    return viewport.toScreen(node.bounds).expanded(3.f * viewport.getZoom());
+    return viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(graph, node))
+            .reduced(3.f * viewport.getZoom());
 }
 
 bool inlinePanContains(
         const NodeCanvasViewport& viewport,
+        const NodeGraph& graph,
         const Node& node,
         Point<float> position) {
-    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, node);
+    const Rectangle<float> hitBounds = inlinePanHitBounds(viewport, graph, node);
     const float radius = jmin(hitBounds.getWidth(), hitBounds.getHeight()) * 0.5f;
     return hitBounds.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
 }
@@ -66,7 +64,7 @@ const Node* findInlinePanAt(
     const auto& nodes = graph.getNodes();
     for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
         if (node->kind == NodeKind::SpectralLayer
-                && inlinePanContains(viewport, *node, position)) {
+                && inlinePanContains(viewport, graph, *node, position)) {
             return &*node;
         }
     }
@@ -74,13 +72,23 @@ const Node* findInlinePanAt(
     return nullptr;
 }
 
-bool inlinePanDialContains(
-        const NodeCanvasViewport& viewport,
-        const Node& node,
-        Point<float> position) {
-    const Rectangle<float> dial = inlinePanDialBounds(viewport, node);
-    const float radius = jmin(dial.getWidth(), dial.getHeight()) * 0.5f;
-    return dial.getCentre().getDistanceSquaredFrom(position) <= radius * radius;
+const SignalProbe* cableExtraProbe(const NodeGraph& graph, int edgeIndex) {
+    const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
+    if (!isPositiveAndBelow(extraEdgeIndex, (int) graph.getEdges().size())) {
+        return nullptr;
+    }
+
+    const Edge& incoming = graph.getEdges()[(size_t) extraEdgeIndex];
+    if (const SignalProbe* probe = graph.findSignalProbeForSource(
+            incoming.sourceNodeId,
+            incoming.sourcePortId)) {
+        return probe;
+    }
+
+    const Node* pan = graph.findNode(incoming.destNodeId);
+    return pan != nullptr && pan->kind == NodeKind::SpectralLayer && !pan->outputs.empty()
+            ? graph.findSignalProbeForSource(pan->id, pan->outputs.front().id)
+            : nullptr;
 }
 
 Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
@@ -319,9 +327,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        cursor = inlinePanDialContains(viewport, *inlinePan, position)
-                ? MouseCursor::UpDownResizeCursor
-                : MouseCursor::UpDownLeftRightResizeCursor;
+        cursor = MouseCursor::UpDownResizeCursor;
     }
     setMouseCursor(cursor);
     performanceMetrics.recordOperation(
@@ -485,8 +491,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
     const Node* inlinePan = findInlinePanAt(graph, viewport, event.position);
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
-        if (inlinePanDialContains(viewport, *inlinePan, event.position)
-                && authoring.beginSpectralPanGesture(inlinePan->id)) {
+        if (authoring.beginSpectralPanGesture(inlinePan->id)) {
             draggingSpectralPanNodeId = inlinePan->id;
             spectralPanDragStartValue = NodeParameterMap(*inlinePan)
                     .floatValue("pan", 0.5f);
@@ -532,9 +537,14 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
         if (event.mods.isAltDown()) {
-            applyAuthoringResult(authoring.toggleSignalProbe(
-                    selectedEdgeIndex,
-                    tapPositionForEdge(selectedEdgeIndex, event.position)));
+            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+                    graph,
+                    selectedEdgeIndex);
+            if (const SignalProbe* probe = cableExtraProbe(graph, selectedEdgeIndex)) {
+                applyAuthoringResult(authoring.removeSignalProbe(probe->id));
+            } else {
+                applyAuthoringResult(authoring.toggleSignalProbe(extraEdgeIndex, 0.5f));
+            }
             return;
         }
 
@@ -627,10 +637,11 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
         draggingProbeId = {};
         const int edgeIndex = hitRouter.edgeAt(scene, event.position);
         if (edgeIndex >= 0) {
+            const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
             applyAuthoringResult(authoring.reattachSignalProbe(
                     probeId,
-                    edgeIndex,
-                    tapPositionForEdge(edgeIndex, event.position)));
+                    extraEdgeIndex,
+                    0.5f));
         }
         requestCanvasRepaint();
         return;
@@ -933,7 +944,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             dockInteraction->focus(),
             probeDetailState,
             globalUnisonPreviewContext,
-            liveOutputMeterLevels
+            liveOutputMeterLevels,
+            draggingSpectralPanNodeId
     };
 }
 
@@ -978,42 +990,42 @@ WorkspaceDockLayout NodeCanvas::workspaceDockLayout() const {
             });
 }
 
-float NodeCanvas::tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const {
-    const auto& scene = sceneBuilder.build(
-            graph,
-            viewport,
-            presentation.revision(),
-            document.revision());
-    for (const auto& edge : scene.edges) {
-        if (edge.edgeIndex != edgeIndex) {
-            continue;
-        }
-
-        Point<float> nearest;
-        const float distance = edge.cablePath.getNearestPoint(screenPosition, nearest);
-        const float length = edge.cablePath.getLength();
-        return length > 0.f ? jlimit(0.f, 1.f, distance / length) : 0.5f;
-    }
-    return 0.5f;
-}
-
 void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
     if (edgeIndex < 0 || edgeIndex >= (int) graph.getEdges().size()) {
         return;
     }
     const Edge edge = graph.getEdges()[(size_t) edgeIndex];
-    const bool spying = graph.findSignalProbeForSource(edge.sourceNodeId, edge.sourcePortId) != nullptr;
-    const float tapPosition = tapPositionForEdge(edgeIndex, screenPosition);
+    const SignalProbe* cableProbe = cableExtraProbe(graph, edgeIndex);
+    const bool spying = cableProbe != nullptr;
+    const String probeId = cableProbe != nullptr ? cableProbe->id : String {};
+    const Node* edgeSource = graph.findNode(edge.sourceNodeId);
+    const Node* edgeDestination = graph.findNode(edge.destNodeId);
+    const bool hasPan = (edgeSource != nullptr && edgeSource->kind == NodeKind::SpectralLayer)
+            || (edgeDestination != nullptr && edgeDestination->kind == NodeKind::SpectralLayer);
+    const auto& scene = sceneBuilder.build(
+            graph,
+            viewport,
+            presentation.revision(),
+            document.revision());
+    Point<float> panPosition = viewport.toWorld(screenPosition) - Point<float>(40.f, 40.f);
+    for (const auto& sceneEdge : scene.edges) {
+        if (sceneEdge.edgeIndex == edgeIndex) {
+            panPosition = viewport.toWorld(sceneEdge.cablePath.getPointAlongPath(
+                    sceneEdge.cablePath.getLength() * 0.5f)) - Point<float>(40.f, 40.f);
+            break;
+        }
+    }
 
     PopupMenu menu;
     menu.addItem(1, spying ? "Stop Spying" : "Spy on Signal");
+    menu.addItem(2, "Add Panning", !hasPan);
     menu.addSeparator();
-    menu.addItem(2, "Delete Cable");
+    menu.addItem(3, "Delete Cable");
     menu.showMenuAsync(
             PopupMenu::Options()
                     .withTargetComponent(this)
                     .withMousePosition(),
-            [safeThis = SafePointer<NodeCanvas>(this), edge, tapPosition](int result) {
+            [safeThis = SafePointer<NodeCanvas>(this), edge, panPosition, probeId](int result) {
                 if (safeThis == nullptr) {
                     return;
                 }
@@ -1031,9 +1043,21 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
                 const int currentEdgeIndex = (int) std::distance(edges.begin(), found);
 
                 if (result == 1) {
-                    safeThis->applyAuthoringResult(
-                            safeThis->authoring.toggleSignalProbe(currentEdgeIndex, tapPosition));
+                    if (probeId.isNotEmpty()
+                            && safeThis->graph.findSignalProbe(probeId) != nullptr) {
+                        safeThis->applyAuthoringResult(
+                                safeThis->authoring.removeSignalProbe(probeId));
+                    } else {
+                        const int currentExtraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(
+                                safeThis->graph,
+                                currentEdgeIndex);
+                        safeThis->applyAuthoringResult(
+                                safeThis->authoring.toggleSignalProbe(currentExtraEdgeIndex, 0.5f));
+                    }
                 } else if (result == 2) {
+                    safeThis->applyAuthoringResult(
+                            safeThis->authoring.insertPanIntoEdge(currentEdgeIndex, panPosition));
+                } else if (result == 3) {
                     safeThis->applyAuthoringResult(safeThis->authoring.deleteEdge(currentEdgeIndex));
                 }
             });

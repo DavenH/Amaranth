@@ -316,3 +316,39 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
     REQUIRE(NodeParameterMap(*document.graph().findNode("pan"))
             .floatValue("pan", 0.f) == 0.5f);
 }
+
+TEST_CASE("Pan can be added to a cable as one undoable authoring command",
+        "[cycle-v2][canvas][authoring][pan][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    Node voice = factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f });
+    voice.parameters = { { "domain", "Start Domain", "spectral" } };
+    graph.addNode(std::move(voice));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", { 20.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 80.f }));
+    graph.addEdge({
+            "voice", "context", "mesh", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({
+            "mesh", "out", "ifft", "mag",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto inserted = authoring.insertPanIntoEdge(1, { 220.f, 80.f });
+    REQUIRE(inserted.succeeded);
+    REQUIRE(inserted.graphChanged);
+    REQUIRE(document.graph().getEdges().size() == 3);
+    const Node* pan = document.graph().findNode(inserted.nodeId);
+    REQUIRE(pan != nullptr);
+    REQUIRE(pan->kind == NodeKind::SpectralLayer);
+    REQUIRE(authoring.session().selectedNodeId == pan->id);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
+    REQUIRE(document.graph().getEdges().size() == 2);
+}

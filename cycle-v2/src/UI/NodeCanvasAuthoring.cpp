@@ -167,6 +167,35 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::addNode(NodeKind kind, Point<floa
     return graphEditResult(edit, "Node added: " + edit.nodeId, edit.nodeId, { true, true, false });
 }
 
+NodeCanvasAuthoringResult NodeCanvasAuthoring::insertPanIntoEdge(
+        int edgeIndex,
+        Point<float> position) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
+        return {};
+    }
+
+    commands.beginCompoundEdit();
+    const auto added = commands.addNode(NodeKind::SpectralLayer, position);
+    if (!added.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(added, "Could not add panning", {});
+    }
+
+    const auto spliced = commands.spliceNodeIntoEdge((size_t) edgeIndex, added.nodeId);
+    if (!spliced.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(spliced, "Cable does not support panning", {});
+    }
+
+    commands.commitCompoundEdit();
+    authoringSession.expandedNodeId = {};
+    return graphEditResult(
+            spliced,
+            "Panning added to cable",
+            added.nodeId,
+            { true, true, false });
+}
+
 NodeCanvasAuthoringResult NodeCanvasAuthoring::moveNode(
         const String& nodeId,
         Point<float> position) {

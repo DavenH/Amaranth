@@ -101,52 +101,9 @@
       "equals": "1.000000"
     },
     {
-      "command": "pointer",
-      "event": "move",
-      "targetId": "node:magnitudeLayer1Process",
-      "targetX": 0.5,
-      "targetY": 0.04,
-      "expectedCursor": "move"
-    },
-    {
-      "command": "pointer",
-      "event": "down",
-      "targetId": "node:magnitudeLayer1Process",
-      "targetX": 0.5,
-      "targetY": 0.04
-    },
-    {
-      "command": "pointer",
-      "event": "drag",
-      "targetId": "node:magnitudeLayer1Process",
-      "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 0.5,
-      "targetY": -0.4,
-      "downTargetX": 0.5,
-      "downTargetY": 0.04
-    },
-    {
-      "command": "pointer",
-      "event": "up",
-      "targetId": "node:magnitudeLayer1Process",
-      "downTargetId": "node:magnitudeLayer1Process",
-      "targetX": 0.5,
-      "targetY": -0.4,
-      "downTargetX": 0.5,
-      "downTargetY": 0.04,
-      "waitForIdle": true,
-      "idleDelayMs": 150
-    },
-    {
-      "command": "assertState",
-      "path": "nodes.5.bounds.y",
-      "op": "lessThan",
-      "value": 538
-    },
-    {
       "command": "assertState",
       "path": "edgeCount",
-      "equals": 24
+      "equals": 22
     },
     {
       "command": "openMeshPopup",
