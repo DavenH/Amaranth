@@ -9,6 +9,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UI/EnvelopeToolbarMetrics.h"
 #include "UiIconData.h"
 
 namespace CycleV2 {
@@ -32,6 +33,12 @@ public:
 
     bool hasIcon() const { return icon != nullptr; }
 
+    Rectangle<float> iconCanvasBounds() const {
+        return getLocalBounds().toFloat().withSizeKeepingCentre(
+                EnvelopeToolbarMetrics::iconCanvasSize,
+                EnvelopeToolbarMetrics::iconCanvasSize);
+    }
+
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         const Rectangle<float> bounds = getLocalBounds().toFloat();
         if (down || highlighted) {
@@ -44,7 +51,7 @@ public:
                     : 0.25f;
             icon->drawWithin(
                     graphics,
-                    bounds.reduced(5.f, 3.f),
+                    iconCanvasBounds(),
                     RectanglePlacement::centred,
                     opacity);
         }
@@ -231,15 +238,19 @@ void EnvelopeEditorComponent::layoutEditor() {
 
     auto markerGroup = impl->presentation.markerGroupBounds(controls).toNearestInt();
     const int markerWidth = markerGroup.getWidth() / 2;
-    impl->loop.setBounds(markerGroup.removeFromLeft(markerWidth).reduced(1, 0));
-    impl->sustain.setBounds(markerGroup.reduced(1, 0));
+    const int pairedActionInset = roundToInt(
+            EnvelopeToolbarMetrics::pairedActionOuterInset);
+    impl->loop.setBounds(
+            markerGroup.removeFromLeft(markerWidth).reduced(pairedActionInset, 0));
+    impl->sustain.setBounds(markerGroup.reduced(pairedActionInset, 0));
     impl->axisScale.setBounds(
             impl->presentation.axisScaleBounds(controls).toNearestInt());
 
     auto rangeGroup = impl->presentation.rangeGroupBounds(controls).toNearestInt();
     const int rangeWidth = rangeGroup.getWidth() / 2;
-    impl->fitVertical.setBounds(rangeGroup.removeFromLeft(rangeWidth).reduced(1, 0));
-    impl->fullVertical.setBounds(rangeGroup.reduced(1, 0));
+    impl->fitVertical.setBounds(
+            rangeGroup.removeFromLeft(rangeWidth).reduced(pairedActionInset, 0));
+    impl->fullVertical.setBounds(rangeGroup.reduced(pairedActionInset, 0));
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -354,6 +365,12 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                         .translated(
                                 static_cast<float>(impl->mode.getX()),
                                 static_cast<float>(impl->mode.getY()))));
+        option->setProperty(
+                "iconBounds",
+                editorBoundsToVar(impl->mode.optionIconBounds(purpose)
+                        .translated(
+                                static_cast<float>(impl->mode.getX()),
+                                static_cast<float>(impl->mode.getY()))));
         modeOptions.add(option);
     }
     state.setProperty("modeOptions", modeOptions);
@@ -383,6 +400,17 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             editorBoundsToVar(impl->presentation.markerGroupBounds(controls)));
     state.setProperty("loopBounds", editorBoundsToVar(impl->loop.getBounds().toFloat()));
     state.setProperty("sustainBounds", editorBoundsToVar(impl->sustain.getBounds().toFloat()));
+    const auto actionIconBounds = [](const EnvelopeActionButton& button) {
+        return button.iconCanvasBounds().translated(
+                static_cast<float>(button.getX()),
+                static_cast<float>(button.getY()));
+    };
+    state.setProperty(
+            "loopIconBounds",
+            editorBoundsToVar(actionIconBounds(impl->loop)));
+    state.setProperty(
+            "sustainIconBounds",
+            editorBoundsToVar(actionIconBounds(impl->sustain)));
     state.setProperty("loopEnabled", impl->loop.isEnabled());
     state.setProperty("sustainEnabled", impl->sustain.isEnabled());
     state.setProperty("loopTooltip", impl->loop.getTooltip());
@@ -416,6 +444,12 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                         .translated(
                                 static_cast<float>(impl->axisScale.getX()),
                                 static_cast<float>(impl->axisScale.getY()))));
+        option->setProperty(
+                "diagramBounds",
+                editorBoundsToVar(impl->axisScale.optionDiagramBounds(logarithmic)
+                        .translated(
+                                static_cast<float>(impl->axisScale.getX()),
+                                static_cast<float>(impl->axisScale.getY()))));
         axisScaleOptions.add(option);
     }
     state.setProperty("axisScaleOptions", axisScaleOptions);
@@ -429,8 +463,14 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             "fitVerticalBounds",
             editorBoundsToVar(impl->fitVertical.getBounds().toFloat()));
     state.setProperty(
+            "fitVerticalIconBounds",
+            editorBoundsToVar(actionIconBounds(impl->fitVertical)));
+    state.setProperty(
             "fullVerticalBounds",
             editorBoundsToVar(impl->fullVertical.getBounds().toFloat()));
+    state.setProperty(
+            "fullVerticalIconBounds",
+            editorBoundsToVar(actionIconBounds(impl->fullVertical)));
     state.setProperty(
             "vertexParameterBounds",
             editorBoundsToVar(impl->presentation.vertexBounds(controls)));

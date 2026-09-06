@@ -17,6 +17,7 @@ public:
             juce::NotificationType notification = juce::dontSendNotification);
     bool isLogarithmic() const { return logarithmic; }
     juce::Rectangle<float> optionBounds(bool logarithmicOption) const;
+    juce::Rectangle<float> optionDiagramBounds(bool logarithmicOption) const;
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;

@@ -188,19 +188,25 @@ production capture, and an imperative commit before the next slice.
   action toolbar. A follow-up composition pass gives that toolbar a dedicated
   row below all visible upper controls, spans it flush to the editor frame and
   into the graph edge, centres the four-group cluster with 28 px inter-group
-  spacing, and balances its top and bottom insets. Tests cover the scope edges,
-  occupied-content centre, peer baselines, opposing insets, graph attachment,
-  and clearance below the last visible vertex-parameter rail.
+  spacing, and applies a tested 4 px upward optical correction to its visual
+  stack. Tests cover the scope edges, occupied-content centre, peer baselines,
+  intentional optical insets, graph attachment, and clearance below the last
+  visible vertex-parameter rail.
 - Loop, Sustain, Fit, and Full no longer read from the Cycle v1 24 px PNG
-  atlas. Four embedded SVGs use a shared 48 px viewBox, 2.4 px square-ended
-  strokes, precise marker/arrow terminations, and inward-versus-outward zoom
-  topology. XML validation, the embedded-component icon check, 90 hosted
+  atlas. Four embedded SVGs use a shared 48 px viewBox, 36 px live area, and
+  2.4 px square-ended strokes. Their 34 by 30 px controls render an exact
+  centred 24 px canvas, leaving 5 px horizontal and 3 px vertical margins.
+  Purpose segments use the same control and canvas metrics; the wider Scaling
+  diagrams are an explicit 42 by 30 px category with a 30 by 20 px plot area.
+  The shared metrics remove per-icon percentage sizing and define precise
+  marker/arrow terminations plus inward-versus-outward zoom topology. XML
+  validation, the embedded-component icon check, 640 hosted
   Envelope assertions, the purpose and marker fixtures, and the standalone
   build all pass. The refined Loop symbol places its loop above a horizontal
   timeline and lands its arrow on a marked intercept. Scaling diagrams now use
   one line length and distinguish equal spacing from a more pronounced
   logarithmic progression. Final production review used
-  `/private/tmp/envelope-toolbar-icons-final.png`, with the enabled-marker
+  `/private/tmp/envelope-toolbar-proportions-final.png`, with the enabled-marker
   review at `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`; the
   filtered logs contain no warnings, assertions, failures, or crashes.
 

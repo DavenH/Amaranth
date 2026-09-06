@@ -2,6 +2,7 @@
 
 #include "UI/Editors/PropertyControls.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopeToolbarMetrics.h"
 
 namespace CycleV2 {
 
@@ -22,17 +23,19 @@ public:
 
     EnvelopePurpose purpose() const { return purposeValue; }
 
+    Rectangle<float> iconBounds() const {
+        return getLocalBounds().toFloat().withSizeKeepingCentre(
+                EnvelopeToolbarMetrics::iconCanvasSize,
+                EnvelopeToolbarMetrics::iconCanvasSize);
+    }
+
     void paintButton(Graphics& graphics, bool highlighted, bool) override {
         const bool selected = getToggleState();
         const float opacity = selected ? 1.f : (highlighted ? 0.94f : 0.62f);
-        auto iconBounds = getLocalBounds().toFloat().reduced(5.f, 3.f);
-        iconBounds = iconBounds.withSizeKeepingCentre(
-                iconBounds.getWidth() * 0.85f,
-                iconBounds.getHeight() * 0.85f);
         EnvelopePurposeIconRenderer::paint(
                 graphics,
                 purposeValue,
-                iconBounds,
+                iconBounds(),
                 opacity);
     }
 
@@ -72,6 +75,16 @@ void EnvelopePurposeSelector::setPurpose(
 Rectangle<float> EnvelopePurposeSelector::optionBounds(EnvelopePurpose purposeValue) const {
     const PurposeButton* button = buttonFor(purposeValue);
     return button != nullptr ? button->getBounds().toFloat() : Rectangle<float>();
+}
+
+Rectangle<float> EnvelopePurposeSelector::optionIconBounds(
+        EnvelopePurpose purposeValue) const {
+    const PurposeButton* button = buttonFor(purposeValue);
+    return button != nullptr
+            ? button->iconBounds().translated(
+                    static_cast<float>(button->getX()),
+                    static_cast<float>(button->getY()))
+            : Rectangle<float>();
 }
 
 bool EnvelopePurposeSelector::isOptionHovered(EnvelopePurpose purposeValue) const {

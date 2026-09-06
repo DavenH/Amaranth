@@ -53,6 +53,22 @@ Define the system before polishing individual files. Adapt values to the host UI
 - a limited palette sampled from the application;
 - simple primitives and short paths that remain clear when rasterized.
 
+Record three separate, numeric geometry layers before drawing:
+
+1. **Control box:** the complete production hit target, stated as `W × H` pixels.
+2. **Icon canvas:** the rectangle passed to the vector renderer, stated as an exact
+   pixel size and exact horizontal/vertical margins inside the control.
+3. **Vector live area:** the intended artwork area inside the SVG `viewBox`, stated
+   as an inset or dimensions in SVG units.
+
+Do not use unexplained percentage reductions or tune each sibling against a
+different renderer rectangle. If a family needs more than one proportion—such
+as square action glyphs and wide data diagrams—declare each category and its
+metrics before drawing. Every sibling should occupy the shared live area on at
+least one axis and be optically centred within it. Keep any production-space
+optical correction to one pixel where practical, document it, and test the
+control and canvas bounds numerically.
+
 Use color to reinforce meaning, never as the only distinction. Keep critical geometry fully opaque. Faint strokes, transparency, gradients, filters, masks, and sub-pixel details often disappear at sidebar size.
 
 Prefer a few deliberate shapes over literal miniature diagrams. Similar visual weight matters more than identical bounding boxes: compensate optically for circles, diagonals, sparse icons, and dense icons.

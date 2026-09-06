@@ -4,6 +4,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/EnvelopeToolbarMetrics.h"
 
 using namespace juce;
 
@@ -18,12 +19,17 @@ const Colour kSelectedFill { 0xff2b415a };
 constexpr float kMorphLabelY = 0.f;
 constexpr float kMorphRowsY = 28.f;
 constexpr float kMorphRowStride = 44.f;
-constexpr float kActionControlHeight = 30.f;
-constexpr float kActionEdgeInset = 8.f;
+constexpr float kActionTopInset = 4.f;
+constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
-constexpr float kActionColumnWidths[] { 136.f, 72.f, 84.f, 64.f };
+constexpr float kActionColumnWidths[] {
+        EnvelopeToolbarMetrics::purposeSelectorWidth,
+        EnvelopeToolbarMetrics::pairedActionWidth,
+        EnvelopeToolbarMetrics::scalingSelectorWidth,
+        EnvelopeToolbarMetrics::pairedActionWidth
+};
 constexpr float kActionBarHeight = PropertyControlMetrics::groupLabelHeight
-        + kActionControlHeight + 2.f * kActionEdgeInset;
+        + EnvelopeToolbarMetrics::controlHeight + kActionTopInset + kActionBottomInset;
 
 Path segmentedHighlight(Rectangle<float> bounds, int selectedSegment) {
     auto selected = bounds;
@@ -122,8 +128,8 @@ Rectangle<float> EnvelopeMorphControls::actionBarBounds(Rectangle<float> control
 
 Rectangle<float> EnvelopeMorphControls::actionRow(Rectangle<float> controls) const {
     auto row = actionBarBounds(controls);
-    row.removeFromBottom(kActionEdgeInset);
-    return row.removeFromBottom(kActionControlHeight);
+    row.removeFromBottom(kActionBottomInset);
+    return row.removeFromBottom(EnvelopeToolbarMetrics::controlHeight);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
@@ -170,7 +176,7 @@ Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
         Rectangle<float> controls,
         int column) const {
     auto bounds = actionColumnBounds(controls, column);
-    bounds.setY(actionBarBounds(controls).getY() + kActionEdgeInset);
+    bounds.setY(actionBarBounds(controls).getY() + kActionTopInset);
     bounds.setHeight((float) PropertyControlMetrics::groupLabelHeight);
     return bounds;
 }

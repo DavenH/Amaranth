@@ -2093,9 +2093,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             == Catch::Approx(controlBounds.getX()));
     REQUIRE(actionBarBounds.getBottom() == Catch::Approx(panelBounds.getY()));
     REQUIRE(purposeLabelBounds.getY() - actionBarBounds.getY()
-            == Catch::Approx(8.f));
+            == Catch::Approx(4.f));
     REQUIRE(actionBarBounds.getBottom() - purposeBounds.getBottom()
-            == Catch::Approx(8.f));
+            == Catch::Approx(12.f));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -2162,6 +2162,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const var modeOptions = state.getProperty("modeOptions", {});
     REQUIRE(modeOptions.isArray());
     REQUIRE(modeOptions.getArray()->size() == 4);
+    for (const auto& option : *modeOptions.getArray()) {
+        const auto optionBounds = rectangleProperty(option, "bounds");
+        const auto iconBounds = rectangleProperty(option, "iconBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(34.f));
+        REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
+        REQUIRE(iconBounds.getWidth() == Catch::Approx(24.f));
+        REQUIRE(iconBounds.getHeight() == Catch::Approx(24.f));
+        REQUIRE(iconBounds.getX() - optionBounds.getX() == Catch::Approx(5.f));
+        REQUIRE(iconBounds.getY() - optionBounds.getY() == Catch::Approx(3.f));
+    }
     REQUIRE(fitBounds.getWidth() >= 28.f);
     REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
@@ -2199,9 +2209,35 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
     REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
     REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    const auto requireActionIconMetrics = [&state](
+            const char* controlProperty,
+            const char* iconProperty) {
+        const auto control = rectangleProperty(state, controlProperty);
+        const auto icon = rectangleProperty(state, iconProperty);
+        REQUIRE(control.getWidth() == Catch::Approx(34.f));
+        REQUIRE(control.getHeight() == Catch::Approx(30.f));
+        REQUIRE(icon.getWidth() == Catch::Approx(24.f));
+        REQUIRE(icon.getHeight() == Catch::Approx(24.f));
+        REQUIRE(icon.getX() - control.getX() == Catch::Approx(5.f));
+        REQUIRE(icon.getY() - control.getY() == Catch::Approx(3.f));
+    };
+    requireActionIconMetrics("loopBounds", "loopIconBounds");
+    requireActionIconMetrics("sustainBounds", "sustainIconBounds");
+    requireActionIconMetrics("fitVerticalBounds", "fitVerticalIconBounds");
+    requireActionIconMetrics("fullVerticalBounds", "fullVerticalIconBounds");
     const var axisScaleOptions = state.getProperty("axisScaleOptions", {});
     REQUIRE(axisScaleOptions.isArray());
     REQUIRE(axisScaleOptions.getArray()->size() == 2);
+    for (const auto& option : *axisScaleOptions.getArray()) {
+        const auto optionBounds = rectangleProperty(option, "bounds");
+        const auto diagramBounds = rectangleProperty(option, "diagramBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(42.f));
+        REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
+        REQUIRE(diagramBounds.getWidth() == Catch::Approx(30.f));
+        REQUIRE(diagramBounds.getHeight() == Catch::Approx(20.f));
+        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(6.f));
+        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(5.f));
+    }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);

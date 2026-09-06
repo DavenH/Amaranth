@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <g fill="none" stroke="#d2d9e2" stroke-width="2.4"
      stroke-linecap="butt" stroke-linejoin="miter">
-    <path d="M14 21h20M14 27h20M24 7v11M18 12l6 6 6-6"/>
-    <path d="M24 41V30M18 36l6-6 6 6"/>
+    <path d="M12 21h24M12 27h24M24 6v12M17 11l7 7 7-7"/>
+    <path d="M24 42V30M17 37l7-7 7 7"/>
   </g>
 </svg>
