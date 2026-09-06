@@ -109,6 +109,22 @@ enlarge the information-bearing view, centre the group optically, redistribute
 peer groups, or reduce the container. Mathematical containment alone does not
 establish balanced space usage.
 
+For a visually separated toolbar or control band, declare its semantic scope
+before laying it out. A panel-wide action bar must align to the panel's content
+bounds; a section-local bar must align to that section. Do not centre controls
+inside an arbitrary intermediate rectangle merely because the arithmetic is
+symmetric there. Choose one legible composition: tightly wrap the occupied
+visual bounds with shared insets, distribute the controls across the declared
+scope, or centre their occupied bounds within it.
+
+Measure a bar's occupied visual bounds as the union of its visible labels,
+icons, dividers, and control shapes, separately from hit targets. Check all four
+residual insets between that union and the bar. Opposing insets should balance
+unless the design contract names an intentional asymmetry, and visible controls
+must not touch a border or divider unless a flush edge is intentional. Within a
+row, align peer control tops, bottoms, or centres and align peer heading
+baselines; containment and non-overlap alone are insufficient layout tests.
+
 When space is scarce, allocate it in this order: required content and legibility,
 minimum usable control geometry, recognizable proportions, group separation,
 then flexible breathing room. Leftover space belongs to the component that can
@@ -204,6 +220,12 @@ For a nontrivial visual change:
    precision; fix specific discrepancies and repeat.
 6. Exercise hover, press, focus, drag, fine adjustment, resize, disabled state,
    and keyboard behavior as applicable.
+
+For bounded groups and toolbars, record the declared parent scope, container
+bounds, occupied visual bounds, and their centres on the comparison capture.
+Add geometry assertions for the intended centre relationship, minimum edge
+insets, opposing-inset balance, and shared row baselines. Do not substitute
+`contains`, non-overlap, or child ordering assertions for these invariants.
 
 Add a focused automation fixture or semantic assertion for a UI regression.
 Screenshots prove appearance; tests prove interaction and model effects. Use
