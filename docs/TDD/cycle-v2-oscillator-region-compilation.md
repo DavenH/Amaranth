@@ -644,6 +644,11 @@ until transitional adapters and deletion targets are gone.
   structure at low, middle, and high MIDI notes after realtime cyclic
   reconstruction. The analysis ignores only the bounded interpolation-history
   startup and rejects unexpected broadband or inharmonic energy.
+- At 48 kHz, the same preset renders a test-controlled 46.875 Hz pitch as
+  identical 1024-sample cyclogram rows after reconstruction startup. MIDI 72
+  is separately folded from its fractional 91/92-sample cycle schedule into a
+  normalized 512-bin phase grid, bounding inter-cycle drift without treating
+  the quantized cycle lengths as an integer-period signal.
 
 ### Block overlap and AM
 

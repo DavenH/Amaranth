@@ -531,6 +531,10 @@ Context:
   `TestNodeCanvasHitRouter.cpp:66`: `edgeHelp.startsWith("Time signal from")`.
 - The focused test reproduces consistently and also logs a JUCE assertion at
   `juce_String.cpp:327`.
+- Reproduced again during the 2026-09-06 spectral cyclogram test work: the
+  complete suite passed 585/586 cases, and focused CTest case 301 failed at the
+  same assertion. Evidence is in
+  `build/tests/cycle-v2/Testing/Temporary/LastTest.log`.
 - The Guide property-control change does not touch hit routing; its focused
   tests and automation remain green.
 - JUnit evidence: `/private/tmp/cycle-v2-tests-junit.xml`.

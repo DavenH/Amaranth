@@ -1,7 +1,13 @@
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <vector>
+
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <Algo/FFT.h>
+#include <Algo/Resampling.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Util/Arithmetic.h>
 
@@ -10,17 +16,42 @@
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 
-#include <cmath>
-#include <vector>
-
 using namespace CycleV2;
 
 namespace {
 
-constexpr double sampleRate = 44100.0;
+constexpr double sampleRate = 48000.0;
 constexpr int blockSize = 256;
-constexpr int renderedSamples = 32768;
+constexpr int renderedSamples = 33792;
 constexpr int startupSamples = 1024;
+constexpr int reconstructionLatencySamples = 1;
+constexpr int hermitePhaseDelaySamples = 3;
+
+struct FoldConsistency {
+    float maximumNormalizedError {};
+    float meanNormalizedError {};
+};
+
+GraphExecutionPlan loadSpectralReferencePlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("spectral-reference.cyclegraph");
+    REQUIRE(preset.existsAsFile());
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
 
 std::vector<float> renderNote(
         const GraphExecutionPlan& plan,
@@ -80,7 +111,84 @@ float amplitudeAt(
             + projectionImaginary * projectionImaginary) / count);
 }
 
-std::vector<float> fixedFrameMagnitudes(
+float pitchUnitForFrequency(int midiNote, double frequency) {
+    const double midiPitch = 69.0 + 12.0 * std::log2(frequency / 440.0);
+    const double semitoneOffset = midiPitch - (double) midiNote;
+    REQUIRE(semitoneOffset > -12.0);
+    REQUIRE(semitoneOffset < 12.0);
+    return (float) (0.5 + semitoneOffset / 24.0);
+}
+
+std::vector<std::vector<float>> phaseFold(
+        const std::vector<float>& samples,
+        double angleDelta,
+        int phaseBinCount,
+        int discardedCycleCount,
+        int retainedCycleCount) {
+    CycleDsp::ChainedCycleState clock;
+    int cycleStart = reconstructionLatencySamples;
+    std::vector<std::vector<float>> rows;
+    rows.reserve((size_t) retainedCycleCount);
+
+    for (int cycle = 0; cycle < discardedCycleCount + retainedCycleCount; ++cycle) {
+        CycleDsp::OscillatorLaneCore::advanceChainedCycle(clock, angleDelta);
+        const int cycleSampleCount = clock.samplesThisCycle;
+        REQUIRE(cycleSampleCount > 0);
+        REQUIRE(cycleStart + cycleSampleCount < (int) samples.size());
+
+        if (cycle >= discardedCycleCount) {
+            std::vector<float> row((size_t) phaseBinCount);
+            for (int bin = 0; bin < phaseBinCount; ++bin) {
+                const double position = (double) bin * cycleSampleCount / phaseBinCount;
+                const int lower = (int) position;
+                const float fraction = (float) (position - lower);
+                const float a = samples[(size_t) (cycleStart + lower)];
+                const float b = samples[(size_t) (cycleStart + lower + 1)];
+                row[(size_t) bin] = Resampling::lerp(a, b, fraction);
+            }
+            rows.push_back(std::move(row));
+        }
+        cycleStart += cycleSampleCount;
+    }
+    return rows;
+}
+
+float normalizedDifference(
+        const std::vector<float>& reference,
+        const std::vector<float>& row) {
+    REQUIRE(row.size() == reference.size());
+    double referenceEnergy = 0.0;
+    double errorEnergy = 0.0;
+    for (size_t sampleIndex = 0; sampleIndex < reference.size(); ++sampleIndex) {
+        const double sample = reference[sampleIndex];
+        const double difference = row[sampleIndex] - sample;
+        referenceEnergy += sample * sample;
+        errorEnergy += difference * difference;
+    }
+    REQUIRE(referenceEnergy > std::numeric_limits<double>::epsilon());
+    return (float) std::sqrt(errorEnergy / referenceEnergy);
+}
+
+FoldConsistency measureFoldConsistency(const std::vector<std::vector<float>>& rows) {
+    REQUIRE(rows.size() > 1);
+    const auto& reference = rows.front();
+    REQUIRE(!reference.empty());
+
+    double totalError = 0.0;
+    float maximumError = 0.f;
+    for (size_t rowIndex = 1; rowIndex < rows.size(); ++rowIndex) {
+        const float normalizedError = normalizedDifference(reference, rows[rowIndex]);
+        maximumError = std::max(maximumError, normalizedError);
+        totalError += normalizedError;
+    }
+
+    return {
+            maximumError,
+            (float) (totalError / (double) (rows.size() - 1))
+    };
+}
+
+std::vector<float> renderFixedFrame(
         const GraphExecutionPlan& plan,
         int midiNote) {
     REQUIRE(plan.oscillatorRegions.size() == 1);
@@ -98,11 +206,18 @@ std::vector<float> fixedFrameMagnitudes(
             midiNote,
             { frame.data(), frameSize },
             { right.data(), frameSize }));
+    return frame;
+}
+
+std::vector<float> fixedFrameMagnitudes(
+        const GraphExecutionPlan& plan,
+        int midiNote) {
+    auto frame = renderFixedFrame(plan, midiNote);
 
     Transform transform;
-    transform.allocate(frameSize, Transform::DivFwdByN, true);
-    transform.forward({ frame.data(), frameSize });
-    std::vector<float> magnitude((size_t) frameSize / 2 + 1);
+    transform.allocate((int) frame.size(), Transform::DivFwdByN, true);
+    transform.forward({ frame.data(), (int) frame.size() });
+    std::vector<float> magnitude(frame.size() / 2 + 1);
     std::vector<float> phase(magnitude.size());
     transform.copyFullPolarSpectrumTo(
             { magnitude.data(), (int) magnitude.size() },
@@ -115,25 +230,12 @@ std::vector<float> fixedFrameMagnitudes(
 TEST_CASE("Spectral reference content remains harmonic after realtime reconstruction",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][audio-regression]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
-    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
-            .getChildFile("content")
-            .getChildFile("presets")
-            .getChildFile("spectral-reference.cyclegraph");
-    REQUIRE(preset.existsAsFile());
-    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
-            preset.loadFileAsString());
-    REQUIRE(loaded.succeeded());
-    const NodeGraph& graph = loaded.graph;
-    const auto compiled = GraphCompiler().compile(graph);
-    REQUIRE(compiled.succeeded());
-    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
-    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
-            == OscillatorExecutionStrategy::SharedSpectralFrame);
+    const auto plan = loadSpectralReferencePlan();
 
     for (const int midiNote : { 36, 48, 60, 72 }) {
         DYNAMIC_SECTION("MIDI note " << midiNote) {
-            const auto expected = fixedFrameMagnitudes(compiled.plan, midiNote);
-            const auto audio = renderNote(compiled.plan, midiNote);
+            const auto expected = fixedFrameMagnitudes(plan, midiNote);
+            const auto audio = renderNote(plan, midiNote);
             const double fundamentalFrequency = MidiMessage::getMidiNoteInHertz(midiNote);
             const float actualFundamental = amplitudeAt(audio, fundamentalFrequency);
 
@@ -158,6 +260,78 @@ TEST_CASE("Spectral reference content remains harmonic after realtime reconstruc
             REQUIRE(betweenHarmonics / actualFundamental < 0.03f);
         }
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Exact-period spectral reconstruction repeats one stable cyclogram row",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][cyclogram]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    constexpr int midiNote = 36;
+    constexpr int samplesPerCycle = 1024;
+    constexpr double frequency = sampleRate / samplesPerCycle;
+    auto plan = loadSpectralReferencePlan();
+    REQUIRE(plan.voiceContexts.size() == 1);
+    plan.voiceContexts.front().pitchEnvelopeUnitValues = {
+            pitchUnitForFrequency(midiNote, frequency)
+    };
+
+    const auto audio = renderNote(plan, midiNote);
+    const auto rows = phaseFold(
+            audio,
+            1.0 / samplesPerCycle,
+            samplesPerCycle,
+            4,
+            24);
+    const auto consistency = measureFoldConsistency(rows);
+    auto expectedFrame = renderFixedFrame(plan, midiNote);
+    std::rotate(
+            expectedFrame.begin(),
+            expectedFrame.end() - hermitePhaseDelaySamples,
+            expectedFrame.end());
+    const float reconstructionError = normalizedDifference(expectedFrame, rows.front());
+
+    INFO("maximum normalized cyclogram-row error: "
+            << consistency.maximumNormalizedError);
+    INFO("mean normalized cyclogram-row error: "
+            << consistency.meanNormalizedError);
+    INFO("normalized error against the rendered spectral frame: "
+            << reconstructionError);
+    REQUIRE(consistency.maximumNormalizedError < 1.0e-4f);
+    REQUIRE(consistency.meanNormalizedError < 1.0e-5f);
+    REQUIRE(reconstructionError < 1.0e-4f);
+
+    const float fundamental = amplitudeAt(audio, frequency);
+    INFO("exact-period fundamental amplitude: " << fundamental);
+    REQUIRE(fundamental > 0.1f);
+    REQUIRE(amplitudeAt(audio, frequency * 1.5) / fundamental < 0.02f);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Fractional-period MIDI spectral reconstruction remains phase-folded",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][cyclogram]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    constexpr int midiNote = 72;
+    constexpr int phaseBinCount = 512;
+    const auto plan = loadSpectralReferencePlan();
+    const auto audio = renderNote(plan, midiNote);
+    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
+            midiNote,
+            0.f,
+            sampleRate);
+    const auto rows = phaseFold(audio, angleDelta, phaseBinCount, 12, 64);
+    const auto consistency = measureFoldConsistency(rows);
+
+    INFO("MIDI 72 period in samples: " << 1.0 / angleDelta);
+    INFO("maximum normalized phase-folded row error across cycle lengths: "
+            << consistency.maximumNormalizedError);
+    INFO("mean normalized phase-folded row error across cycle lengths: "
+            << consistency.meanNormalizedError);
+    REQUIRE(consistency.maximumNormalizedError < 0.05f);
+    REQUIRE(consistency.meanNormalizedError < 0.025f);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
