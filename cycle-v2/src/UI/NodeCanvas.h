@@ -217,11 +217,11 @@ private:
     bool handleDockNavigationKey(const KeyPress& key);
     void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
+    bool cycleSinglePortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
-    float tapPositionForEdge(int edgeIndex, Point<float> screenPosition) const;
     void showEdgeMenu(int edgeIndex, Point<float> screenPosition);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();

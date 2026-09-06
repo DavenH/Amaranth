@@ -18,7 +18,7 @@
       "targetId": "node:magnitudeLayer1Process",
       "targetX": 0.5,
       "targetY": 0.1,
-      "expectedCursor": "move"
+      "expectedCursor": "upDownResize"
     },
     {
       "command": "openNodeEditor",

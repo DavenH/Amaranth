@@ -62,6 +62,10 @@ public:
     static NodeRenderSemantic renderSemanticForProbe(
             const NodeGraph& graph,
             const String& probeId);
+    static Point<float> markerCentre(
+            const SignalProbe& probe,
+            const NodeGraph& graph,
+            const NodeCanvasSceneSnapshot& scene);
 
     String probeAt(
             Point<float> position,
@@ -91,10 +95,6 @@ public:
 private:
     static std::vector<const SignalProbe*> orderedProbes(const NodeGraph& graph);
     static const NodeSceneEdge* anchorFor(
-            const SignalProbe& probe,
-            const NodeGraph& graph,
-            const NodeCanvasSceneSnapshot& scene);
-    static Point<float> markerCentre(
             const SignalProbe& probe,
             const NodeGraph& graph,
             const NodeCanvasSceneSnapshot& scene);

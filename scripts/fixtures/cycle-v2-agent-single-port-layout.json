@@ -1,0 +1,44 @@
+{
+  "commands": [
+    { "command": "addNode", "kind": "delay", "x": 500, "y": 600 },
+    { "command": "assertState", "path": "nodes.14.inputs.0.side", "equals": "left" },
+    { "command": "assertState", "path": "nodes.14.outputs.0.side", "equals": "right" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-single-port-left-right.png" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "node:delay",
+      "targetX": 0.91,
+      "targetY": 0.19,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    { "command": "assertState", "path": "nodes.14.inputs.0.side", "equals": "left" },
+    { "command": "assertState", "path": "nodes.14.outputs.0.side", "equals": "bottom" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-single-port-left-bottom.png" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "node:delay",
+      "targetX": 0.91,
+      "targetY": 0.19,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    { "command": "assertState", "path": "nodes.14.inputs.0.side", "equals": "top" },
+    { "command": "assertState", "path": "nodes.14.outputs.0.side", "equals": "bottom" },
+    { "command": "screenshot", "area": "canvas", "path": "/private/tmp/cycle-v2-single-port-top-bottom.png" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "node:delay",
+      "targetX": 0.91,
+      "targetY": 0.19,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    { "command": "assertState", "path": "nodes.14.inputs.0.side", "equals": "left" },
+    { "command": "assertState", "path": "nodes.14.outputs.0.side", "equals": "right" }
+  ],
+  "quit": true
+}

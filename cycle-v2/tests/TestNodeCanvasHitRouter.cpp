@@ -86,3 +86,30 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(NodeCanvasScene::portWorldCentre(dragged, dragged.inputs.front()).y
             == Catch::Approx(500.f));
 }
+
+TEST_CASE("Single input and output nodes expose a port layout action",
+        "[cycle-v2][canvas][hit-router][layout]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Delay, "delay", { 40.f, 80.f }));
+    const auto compileResult = GraphCompiler().compile(graph);
+    RuntimeProcessTrace runtimeTrace;
+    GraphPreviewResult previewResult;
+    NodeCanvasQueryModel queries(graph, compileResult, runtimeTrace, previewResult);
+    NodePalette palette;
+    NodeCanvasHitRouter router(graph, palette, queries);
+    NodeCanvasViewport viewport;
+    viewport.setBounds({ 0.f, 0.f, 900.f, 700.f });
+    viewport.setTransform({}, 1.f);
+
+    const Node* delay = graph.findNode("delay");
+    REQUIRE(delay != nullptr);
+    const Point<float> actionPoint {
+            delay->bounds.getRight() - 21.f,
+            delay->bounds.getY() + 21.f
+    };
+    const auto action = router.nodeActionAt(viewport, actionPoint);
+    REQUIRE(action.has_value());
+    REQUIRE(action->kind == CanvasNodeActionKind::CycleSinglePortLayout);
+    REQUIRE(action->nodeId == "delay");
+    REQUIRE(router.hoverTextFor(viewport, {}, actionPoint).contains("input and output"));
+}

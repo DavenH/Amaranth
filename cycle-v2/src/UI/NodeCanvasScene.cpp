@@ -47,6 +47,71 @@ const Port* findPort(const Node& node, const juce::String& portId, bool input) {
     return found == ports.end() ? nullptr : &*found;
 }
 
+const Edge* singleSignalEdgeForNode(
+        const NodeGraph& graph,
+        const juce::String& nodeId,
+        bool incoming) {
+    const Edge* result = nullptr;
+    for (const auto& edge : graph.getEdges()) {
+        const bool matches = incoming
+                ? edge.destNodeId == nodeId
+                : edge.sourceNodeId == nodeId;
+        if (!matches || edge.connectionKind != ConnectionKind::Signal) {
+            continue;
+        }
+        if (result != nullptr) {
+            return nullptr;
+        }
+        result = &edge;
+    }
+    return result;
+}
+
+struct InlinePanRoute {
+    const Edge* incoming {};
+    const Edge* outgoing {};
+    const Node* sourceNode {};
+    const Node* destinationNode {};
+    const Port* sourcePort {};
+    const Port* destinationPort {};
+    int incomingIndex { -1 };
+    int outgoingIndex { -1 };
+};
+
+std::optional<InlinePanRoute> inlinePanRoute(
+        const NodeGraph& graph,
+        const Node& node) {
+    const Edge* incoming = singleSignalEdgeForNode(graph, node.id, true);
+    const Edge* outgoing = singleSignalEdgeForNode(graph, node.id, false);
+    if (incoming == nullptr || outgoing == nullptr) {
+        return std::nullopt;
+    }
+
+    const Node* sourceNode = findNode(graph, incoming->sourceNodeId);
+    const Node* destinationNode = findNode(graph, outgoing->destNodeId);
+    if (sourceNode == nullptr || destinationNode == nullptr) {
+        return std::nullopt;
+    }
+
+    const Port* sourcePort = findPort(*sourceNode, incoming->sourcePortId, false);
+    const Port* destinationPort = findPort(*destinationNode, outgoing->destPortId, true);
+    if (sourcePort == nullptr || destinationPort == nullptr) {
+        return std::nullopt;
+    }
+
+    const Edge* edgeData = graph.getEdges().data();
+    return InlinePanRoute {
+            incoming,
+            outgoing,
+            sourceNode,
+            destinationNode,
+            sourcePort,
+            destinationPort,
+            (int) std::distance(edgeData, incoming),
+            (int) std::distance(edgeData, outgoing)
+    };
+}
+
 juce::Point<float> outwardNormal(PortSide side) {
     switch (side) {
         case PortSide::Top:    return { 0.f, -1.f };
@@ -88,6 +153,73 @@ juce::Path buildCablePath(
     return result;
 }
 
+float inlinePanFraction(const NodeGraph& graph, const InlinePanRoute& route) {
+    const bool hasProbeBefore = graph.findSignalProbeForSource(
+            route.incoming->sourceNodeId,
+            route.incoming->sourcePortId) != nullptr;
+    const bool hasProbeAfter = graph.findSignalProbeForSource(
+            route.outgoing->sourceNodeId,
+            route.outgoing->sourcePortId) != nullptr;
+    return hasProbeBefore ? 2.f / 3.f : (hasProbeAfter ? 1.f / 3.f : 0.5f);
+}
+
+Path inlinePanPath(const InlinePanRoute& route) {
+    const Point<float> source = NodeCanvasScene::portWorldCentre(
+            *route.sourceNode,
+            *route.sourcePort);
+    const Point<float> destination = NodeCanvasScene::portWorldCentre(
+            *route.destinationNode,
+            *route.destinationPort);
+    return buildCablePath(
+            source,
+            destination,
+            route.sourcePort->side,
+            route.destinationPort->side,
+            1.f);
+}
+
+std::optional<Point<float>> inlinePanCentre(
+        const NodeGraph& graph,
+        const Node& node) {
+    const std::optional<InlinePanRoute> route = inlinePanRoute(graph, node);
+    if (!route.has_value()) {
+        return std::nullopt;
+    }
+
+    const Path path = inlinePanPath(*route);
+    return path.getPointAlongPath(path.getLength() * inlinePanFraction(graph, *route));
+}
+
+NodeSceneEdge inlinePanSceneEdge(
+        const InlinePanRoute& route,
+        const NodeCanvasViewport& viewport) {
+    const Point<float> source = viewport.toScreen(NodeCanvasScene::portWorldCentre(
+            *route.sourceNode,
+            *route.sourcePort));
+    const Point<float> destination = viewport.toScreen(NodeCanvasScene::portWorldCentre(
+            *route.destinationNode,
+            *route.destinationPort));
+    Path visiblePath = buildCablePath(
+            source,
+            destination,
+            route.sourcePort->side,
+            route.destinationPort->side,
+            viewport.getZoom());
+    Path hitPath;
+    PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
+            .createStrokedPath(hitPath, visiblePath);
+
+    NodeSceneEdge result;
+    result.edgeIndex = route.incomingIndex;
+    result.edgeIndices = { route.incomingIndex, route.outgoingIndex };
+    result.source = source;
+    result.destination = destination;
+    result.cablePath = std::move(visiblePath);
+    result.hitPath = std::move(hitPath);
+    result.inlinePan = true;
+    return result;
+}
+
 }
 
 juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port& port) {
@@ -115,6 +247,34 @@ juce::Point<float> NodeCanvasScene::portWorldCentre(const Node& node, const Port
             port.side == PortSide::Right ? node.bounds.getRight() : node.bounds.getX(),
             y
     };
+}
+
+juce::Rectangle<float> NodeCanvasScene::presentationWorldBounds(
+        const NodeGraph& graph,
+        const Node& node) {
+    if (node.kind != NodeKind::SpectralLayer) {
+        return node.bounds;
+    }
+
+    const std::optional<Point<float>> centre = inlinePanCentre(graph, node);
+    return centre.has_value() ? node.bounds.withCentre(*centre) : node.bounds;
+}
+
+int NodeCanvasScene::cableExtraEdgeIndex(const NodeGraph& graph, int edgeIndex) {
+    if (!isPositiveAndBelow(edgeIndex, (int) graph.getEdges().size())) {
+        return edgeIndex;
+    }
+
+    const Edge& edge = graph.getEdges()[(size_t) edgeIndex];
+    const Node* sourceNode = findNode(graph, edge.sourceNodeId);
+    if (sourceNode == nullptr || sourceNode->kind != NodeKind::SpectralLayer) {
+        return edgeIndex;
+    }
+
+    const Edge* incoming = singleSignalEdgeForNode(graph, sourceNode->id, true);
+    return incoming != nullptr
+            ? (int) std::distance(graph.getEdges().data(), incoming)
+            : edgeIndex;
 }
 
 juce::Path NodeCanvasScene::cablePath(
@@ -147,13 +307,14 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
 
     int zOrder = 100;
     for (const auto& node : graph.getNodes()) {
+        const Rectangle<float> presentationBounds = presentationWorldBounds(graph, node);
         current.targets.push_back({
                 NodeSceneTargetKind::Node,
                 "node:" + node.id,
                 node.id,
                 {},
                 {},
-                viewport.toScreen(node.bounds),
+                viewport.toScreen(presentationBounds),
                 -1,
                 zOrder++
         });
@@ -161,6 +322,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         auto appendPorts = [&](const std::vector<Port>& ports,
                 NodeSceneTargetKind kind,
                 bool configurationOnly = false) {
+            if (node.kind == NodeKind::SpectralLayer) {
+                return;
+            }
             for (const auto& port : ports) {
                 if (ModulationCableBundle::hidesIndividualPort(node, port)
                         || (configurationOnly
@@ -224,6 +388,21 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (sourceNode == nullptr || destinationNode == nullptr) {
             continue;
         }
+
+        if (sourceNode->kind == NodeKind::SpectralLayer) {
+            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *sourceNode);
+            if (route.has_value() && route->outgoingIndex == edgeIndex) {
+                continue;
+            }
+        }
+        if (destinationNode->kind == NodeKind::SpectralLayer) {
+            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *destinationNode);
+            if (route.has_value() && route->incomingIndex == edgeIndex) {
+                current.edges.push_back(inlinePanSceneEdge(*route, viewport));
+                continue;
+            }
+        }
+
         const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
         const Port* destinationPort = findPort(*destinationNode, edge.destPortId, true);
         if (sourcePort == nullptr) {
@@ -233,18 +412,22 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         const bool isModulationBundle = modulationBundle.has_value();
         const bool usesSharedModulationSource = isModulationBundle
                 || ModulationCableBundle::usesSharedSourceSocket(*sourceNode, edge);
+        Node presentedSourceNode = *sourceNode;
+        presentedSourceNode.bounds = presentationWorldBounds(graph, *sourceNode);
+        Node presentedDestinationNode = *destinationNode;
+        presentedDestinationNode.bounds = presentationWorldBounds(graph, *destinationNode);
         const auto source = viewport.toScreen(usesSharedModulationSource
-                ? ModulationCableBundle::worldCentre(*sourceNode, false)
-                : portWorldCentre(*sourceNode, *sourcePort));
+                ? ModulationCableBundle::worldCentre(presentedSourceNode, false)
+                : portWorldCentre(presentedSourceNode, *sourcePort));
         const auto attachmentCentre = NodeViewModuleRegistry::instance()
                 .moduleFor(destinationNode->kind).attachmentWorldCentre(*destinationNode, edge.destPortId);
         if (destinationPort == nullptr && !attachmentCentre.has_value()) {
             continue;
         }
         const auto destination = viewport.toScreen(isModulationBundle
-                ? ModulationCableBundle::worldCentre(*destinationNode, true)
+                ? ModulationCableBundle::worldCentre(presentedDestinationNode, true)
                 : destinationPort != nullptr
-                ? portWorldCentre(*destinationNode, *destinationPort)
+                ? portWorldCentre(presentedDestinationNode, *destinationPort)
                 : *attachmentCentre);
         const PortSide destinationSide = destinationPort != nullptr ? destinationPort->side : PortSide::Top;
         juce::Path visiblePath = cablePath(
@@ -266,7 +449,10 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 destinationPort != nullptr,
                 isModulationBundle,
                 !isModulationBundle
-                        || ModulationCableBundle::destinationIncludesYellow(*destinationNode)
+                        || ModulationCableBundle::destinationIncludesYellow(*destinationNode),
+                sourceNode->kind != NodeKind::SpectralLayer,
+                destinationNode->kind != NodeKind::SpectralLayer,
+                false
         });
     }
 

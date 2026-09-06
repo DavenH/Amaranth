@@ -1,0 +1,72 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.15,
+      "expectedCursor": "upDownResize"
+    },
+    {
+      "command": "inspectPointerTargets"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.6,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1Process",
+      "parameterId": "pan",
+      "equals": "0.5"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pan-drag-arc.png"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "node:magnitudeLayer1Process",
+      "downTargetId": "node:magnitudeLayer1Process",
+      "targetX": 0.5,
+      "targetY": 0.6,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-pan-resting.png"
+    }
+  ],
+  "quit": true
+}

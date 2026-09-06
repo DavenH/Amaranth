@@ -7,6 +7,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 
@@ -165,6 +166,35 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::addNode(NodeKind kind, Point<floa
 
     authoringSession.expandedNodeId = {};
     return graphEditResult(edit, "Node added: " + edit.nodeId, edit.nodeId, { true, true, false });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::insertPanIntoEdge(
+        int edgeIndex,
+        Point<float> position) {
+    if (edgeIndex < 0 || edgeIndex >= (int) document.graph().getEdges().size()) {
+        return {};
+    }
+
+    commands.beginCompoundEdit();
+    const auto added = commands.addNode(NodeKind::SpectralLayer, position);
+    if (!added.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(added, "Could not add panning", {});
+    }
+
+    const auto spliced = commands.spliceNodeIntoEdge((size_t) edgeIndex, added.nodeId);
+    if (!spliced.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(spliced, "Cable does not support panning", {});
+    }
+
+    commands.commitCompoundEdit();
+    authoringSession.expandedNodeId = {};
+    return graphEditResult(
+            spliced,
+            "Panning added to cable",
+            added.nodeId,
+            { true, true, false });
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::moveNode(
@@ -468,6 +498,19 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOperationPortLayout(const St
         edited.outputs[0].side = PortSide::Right;
     });
 
+    return graphEditResult(edit, {}, nodeId, { true });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleSinglePortLayout(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || !supportsSinglePortLayout(*node)) {
+        return {};
+    }
+
+    const SinglePortLayout layout = nextSinglePortLayout(singlePortLayout(*node));
+    const auto edit = commands.editNodePresentation(nodeId, [layout](Node& edited) {
+        applySinglePortLayout(edited, layout);
+    });
     return graphEditResult(edit, {}, nodeId, { true });
 }
 

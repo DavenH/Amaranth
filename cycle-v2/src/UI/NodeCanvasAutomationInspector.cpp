@@ -61,6 +61,16 @@ String guideFieldLabel(GuideCurveField field) {
     return {};
 }
 
+String portSideLabel(PortSide side) {
+    switch (side) {
+        case PortSide::Left:   return "left";
+        case PortSide::Top:    return "top";
+        case PortSide::Right:  return "right";
+        case PortSide::Bottom: return "bottom";
+    }
+    return {};
+}
+
 class AutomationValueEncoder {
 public:
     static var rectangleToVar(Rectangle<float> bounds) {
@@ -126,6 +136,7 @@ public:
         object->setProperty("channelLayout", labelForChannelLayout(port.channelLayout));
         object->setProperty("purpose", port.purpose == PortPurpose::ScratchAttachment ? "scratchAttachment" : "signal");
         object->setProperty("input", port.input);
+        object->setProperty("side", portSideLabel(port.side));
         return object;
     }
 
