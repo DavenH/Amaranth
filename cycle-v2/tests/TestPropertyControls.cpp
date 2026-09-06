@@ -35,6 +35,46 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
     REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
 }
 
+TEST_CASE("Property group labels establish scope without a surrounding box",
+        "[cycle-v2][ui][property-controls][group-label]") {
+    ScopedJuceInitialiser_GUI juce;
+    const Rectangle<float> bounds { 10.f, 20.f, 180.f, 18.f };
+    const PropertyGroupLabelLayout layout = propertyGroupLabelLayout(bounds, 42.f);
+
+    REQUIRE(bounds.contains(layout.text));
+    REQUIRE(bounds.contains(layout.leftRule));
+    REQUIRE(bounds.contains(layout.rightRule));
+    REQUIRE(layout.text.getCentreX() == Catch::Approx(bounds.getCentreX()));
+    REQUIRE(layout.leftRule.getWidth() > 0.f);
+    REQUIRE(layout.rightRule.getWidth() > 0.f);
+    REQUIRE(layout.text.getX() - layout.leftRule.getRight()
+            == Catch::Approx(PropertyControlMetrics::groupLabelTextGap));
+    REQUIRE(layout.rightRule.getX() - layout.text.getRight()
+            == Catch::Approx(PropertyControlMetrics::groupLabelTextGap));
+
+    const PropertyGroupLabelLayout compact = propertyGroupLabelLayout(
+            { 0.f, 0.f, 24.f, 10.f },
+            15.f);
+    REQUIRE(compact.leftRule.getWidth() >= 1.f);
+    REQUIRE(compact.rightRule.getWidth() >= 1.f);
+
+    Image image(Image::ARGB, 180, 18, true);
+    Graphics graphics(image);
+    paintPropertyGroupLabel(graphics, image.getBounds().toFloat(), "IR sample");
+    int paintedPixels {};
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            if (!image.getPixelAt(x, y).isTransparent()) {
+                ++paintedPixels;
+            }
+        }
+    }
+
+    REQUIRE(paintedPixels > 100);
+    REQUIRE(image.getPixelAt(0, 0).isTransparent());
+    REQUIRE(image.getPixelAt(image.getWidth() - 1, image.getHeight() - 1).isTransparent());
+}
+
 TEST_CASE("Property values use two significant figures without redundant decimals",
         "[cycle-v2][ui][property-controls][formatting]") {
     REQUIRE(formatPropertyReal(0.0) == "0");

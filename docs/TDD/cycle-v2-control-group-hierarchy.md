@@ -122,6 +122,22 @@ labels/icons and hit targets remain clear.
 Each slice receives a refactor pass, style check, focused semantic tests,
 production capture, and an imperative commit before the next slice.
 
+## Implementation Evidence
+
+- Slice 1 extracts Trimesh's local spanning-label painter into
+  `PropertyControls` as shared geometry, immediate painting, and a noninteractive
+  component. Geometry tests prove centered text, two nonzero rule runs,
+  deliberate text gaps, compact-width containment, visible raster output, and
+  the absence of a surrounding painted box.
+- Trimesh Axis and Link retain their existing geometry while Cube display,
+  Morph position, and Vertex parameters adopt the same shared treatment. The
+  existing complete pointer/keyboard interaction test passes unchanged.
+- Production review used
+  `/private/tmp/trimesh-group-labels.png` with filtered log
+  `/private/tmp/trimesh-group-labels-logs.txt`; the editor remains unboxed and
+  all five control-group headings are visible without clipping or reduced rail
+  travel.
+
 ## Deletion Targets
 
 - Delete `TrimeshSidePanelRenderer`'s private `drawSpanningGroupLabel` after
@@ -145,4 +161,3 @@ production capture, and an imperative commit before the next slice.
   selection directly.
 - All deletion targets, semantic tests, automation fixtures, production-size
   screenshots, standalone build, style review, and diff review are complete.
-

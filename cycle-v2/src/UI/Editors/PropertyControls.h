@@ -21,6 +21,9 @@ constexpr int minimumUsableTrackWidth = 140;
 constexpr int compactLabelHeight = 18;
 constexpr int compactSliderTop = 14;
 constexpr int railContentInset = 12;
+constexpr int groupLabelHeight = 18;
+constexpr float groupLabelFontSize = 8.5f;
+constexpr float groupLabelTextGap = 2.5f;
 constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
 constexpr float indicatorWidth = 1.5f;
@@ -36,6 +39,12 @@ struct PropertySliderLayout {
     juce::Rectangle<float> track;
 
     int usableTrackWidth() const;
+};
+
+struct PropertyGroupLabelLayout {
+    juce::Rectangle<float> text;
+    juce::Rectangle<float> leftRule;
+    juce::Rectangle<float> rightRule;
 };
 
 class PropertySliderRow;
@@ -56,6 +65,13 @@ PropertySliderLayout propertySliderLayout(
         int gap = PropertyControlMetrics::inlineGap,
         int valueWidth = PropertyControlMetrics::valueWidth,
         bool forceCompact = false);
+PropertyGroupLabelLayout propertyGroupLabelLayout(
+        juce::Rectangle<float> bounds,
+        float textWidth);
+void paintPropertyGroupLabel(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> bounds,
+        const juce::String& text);
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);
@@ -71,6 +87,18 @@ std::optional<double> parsePropertyFrequency(
         double minimum,
         double maximum);
 juce::var propertySliderRowAutomationState(const PropertySliderRow& row);
+
+class PropertyGroupLabel final : public juce::Component {
+public:
+    explicit PropertyGroupLabel(juce::String text);
+
+    void setText(juce::String text);
+    const juce::String& getText() const { return labelText; }
+    void paint(juce::Graphics& graphics) override;
+
+private:
+    juce::String labelText;
+};
 
 class PrecisionSlider final : public juce::Slider {
 public:

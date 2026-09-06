@@ -136,6 +136,77 @@ PropertySliderLayout propertySliderLayout(
     return result;
 }
 
+PropertyGroupLabelLayout propertyGroupLabelLayout(
+        Rectangle<float> bounds,
+        float requestedTextWidth) {
+    constexpr float minimumRuleWidth = 1.f;
+    const float maximumTextWidth = jmax(
+            0.f,
+            bounds.getWidth() - 2.f * (
+                    PropertyControlMetrics::groupLabelTextGap + minimumRuleWidth));
+    const float textWidth = jlimit(0.f, maximumTextWidth, requestedTextWidth);
+    const Rectangle<float> text = bounds.withSizeKeepingCentre(
+            textWidth,
+            bounds.getHeight());
+    const float ruleY = bounds.getCentreY() - 0.5f;
+
+    return {
+            text,
+            {
+                    bounds.getX(),
+                    ruleY,
+                    jmax(0.f, text.getX()
+                            - PropertyControlMetrics::groupLabelTextGap
+                            - bounds.getX()),
+                    1.f
+            },
+            {
+                    text.getRight() + PropertyControlMetrics::groupLabelTextGap,
+                    ruleY,
+                    jmax(0.f, bounds.getRight()
+                            - text.getRight()
+                            - PropertyControlMetrics::groupLabelTextGap),
+                    1.f
+            }
+    };
+}
+
+void paintPropertyGroupLabel(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        const String& text) {
+    const Font font { FontOptions(PropertyControlMetrics::groupLabelFontSize) };
+    const PropertyGroupLabelLayout layout = propertyGroupLabelLayout(
+            bounds,
+            font.getStringWidthFloat(text));
+
+    graphics.setColour(kMutedText.withAlpha(0.32f));
+    graphics.fillRect(layout.leftRule);
+    graphics.fillRect(layout.rightRule);
+    graphics.setColour(kMutedText.withAlpha(0.82f));
+    graphics.setFont(font);
+    graphics.drawText(text, layout.text, Justification::centred);
+}
+
+PropertyGroupLabel::PropertyGroupLabel(String text) :
+        labelText(std::move(text)) {
+    setInterceptsMouseClicks(false, false);
+    setAccessible(false);
+}
+
+void PropertyGroupLabel::setText(String text) {
+    if (labelText == text) {
+        return;
+    }
+
+    labelText = std::move(text);
+    repaint();
+}
+
+void PropertyGroupLabel::paint(Graphics& graphics) {
+    paintPropertyGroupLabel(graphics, getLocalBounds().toFloat(), labelText);
+}
+
 void stylePropertyLabel(Label& label, const String& text) {
     label.setText(text, dontSendNotification);
     label.setColour(Label::textColourId, kMutedText);
