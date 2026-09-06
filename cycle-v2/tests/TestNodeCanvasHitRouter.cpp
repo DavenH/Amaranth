@@ -63,8 +63,8 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "delay") == 0);
     REQUIRE(router.spliceTargetEdgeAt(scene, edgePoint, "wave") == -1);
     const String edgeHelp = router.hoverTextFor(viewport, scene, edgePoint);
-    REQUIRE(edgeHelp.startsWith("Time signal from"));
-    REQUIRE_FALSE(edgeHelp.contains(" / "));
+    REQUIRE(edgeHelp == queries.hoverTextForEdge(graph.getEdges().front()));
+    REQUIRE(edgeHelp == "Audio flows from Wave to Output.");
 
     const Point<float> paletteClick { 80.f, 420.f };
     const Point<float> creationPosition = router.paletteCreationWorldPosition(
