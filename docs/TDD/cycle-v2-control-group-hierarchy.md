@@ -118,6 +118,11 @@ labels/icons and hit targets remain clear.
    preserving current property and resource interaction contracts.
 4. Make Unison's voice-editing modes and actions explicit, then complete the
    cross-editor production screenshot and automation review.
+5. Rebalance the Envelope band around one aligned top row and one aligned
+   action row. Move Envelope purpose beside Markers, Scaling, and Zoom; shorten
+   those peer labels; replace the four Cycle v1 PNG-atlas action icons with a
+   dedicated SVG family; and increase the Envelope editor height by the same
+   amount as the control band so the graph retains its vertical budget.
 
 Each slice receives a refactor pass, style check, focused semantic tests,
 production capture, and an imperative commit before the next slice.
@@ -175,6 +180,21 @@ production capture, and an imperative commit before the next slice.
   `/private/tmp/group-unison-os.png`. Their filtered logs contain no failures,
   assertions, warnings, or crashes. Together with the Trimesh and Envelope
   captures above, these cover every editor in the audit.
+- Slice 5 increases the Envelope editor and its control band by 40 px together,
+  preserving the graph's vertical budget. Morph plane, Morph position, Axis,
+  Link, and Vertex parameters now share one heading baseline; the morph plane
+  begins 10 px below its heading instead of floating in residual space.
+- Envelope purpose joins Markers, Scaling, and Zoom in a single separated
+  action toolbar. The four groups are contained and ordered by tested geometry,
+  with smaller purposeful button widths and no overlap with the vertex column.
+- Loop, Sustain, Fit, and Full no longer read from the Cycle v1 24 px PNG
+  atlas. Four embedded SVGs use a shared 48 px viewBox, 2.4 px square-ended
+  strokes, precise marker/arrow terminations, and inward-versus-outward zoom
+  topology. XML validation, the embedded-component icon check, 90 hosted
+  Envelope assertions, the purpose and marker fixtures, and the standalone
+  build all pass. Final production review used
+  `/private/tmp/envelope-harmony-final.png`; its filtered log contains no
+  warnings, assertions, failures, or crashes.
 
 ## Deletion Targets
 

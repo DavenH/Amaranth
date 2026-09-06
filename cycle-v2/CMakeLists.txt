@@ -72,6 +72,7 @@ generate_svg_data(
     UiIconData
     UiIconData
     effectEnable zoomAttack zoomFull
+    envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
 )
 
 file(GLOB_RECURSE APP_SOURCES

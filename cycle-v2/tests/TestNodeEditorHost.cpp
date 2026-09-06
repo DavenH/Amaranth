@@ -2064,7 +2064,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     RecordingCurveDelegate delegate;
     editor->setDelegate(&delegate);
-    editor->setBounds(0, 0, 640, 400);
+    editor->setBounds(0, 0, 840, 660);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
     panelState = widget.automationState();
@@ -2073,12 +2073,14 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
+    const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
     const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
     REQUIRE(purposeBounds.getWidth() > 0.f);
     REQUIRE(blueMorphBounds.getWidth() > 0.f);
     REQUIRE(actionRowBounds.getWidth() > 0.f);
-    REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
+    REQUIRE(actionBarBounds.contains(purposeBounds));
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
+    REQUIRE(purposeBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -2086,10 +2088,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     EnvelopeAxisScaleSelector* axisScaleSelector = nullptr;
     Button* pitchMode = nullptr;
     Button* scratchMode = nullptr;
-    ImageButton* loopMarker = nullptr;
-    ImageButton* sustainMarker = nullptr;
-    ImageButton* fitVertical = nullptr;
-    ImageButton* fullVertical = nullptr;
+    Button* loopMarker = nullptr;
+    Button* sustainMarker = nullptr;
+    Button* fitVertical = nullptr;
+    Button* fullVertical = nullptr;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
             modeSelector = selector;
@@ -2104,7 +2106,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         } else if (auto* selector = dynamic_cast<EnvelopeAxisScaleSelector*>(
                            editor->getChildComponent(index))) {
             axisScaleSelector = selector;
-        } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
+        } else if (auto* button = dynamic_cast<Button*>(editor->getChildComponent(index))) {
             if (button->getName() == "Set selected vertex as loop start") {
                 loopMarker = button;
             } else if (button->getName() == "Set selected vertex as sustain point") {
@@ -2127,8 +2129,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(fullVertical != nullptr);
     REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
     REQUIRE_FALSE(axisScaleSelector->isEnabled());
-    REQUIRE(loopMarker->getNormalImage().isValid());
-    REQUIRE(sustainMarker->getNormalImage().isValid());
+    REQUIRE((bool) state.getProperty("actionIconsVector", {}));
     REQUIRE_FALSE(loopMarker->isEnabled());
     REQUIRE_FALSE(sustainMarker->isEnabled());
     REQUIRE(loopMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
@@ -2137,7 +2138,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
     const auto modeBounds = rectangleProperty(state, "modeBounds");
     REQUIRE(state.getProperty("modeLabel", {}).toString() == "Envelope purpose");
-    REQUIRE(state.getProperty("markerGroupLabel", {}).toString() == "Envelope markers");
+    REQUIRE(state.getProperty("markerGroupLabel", {}).toString() == "Markers");
+    REQUIRE(state.getProperty("axisScaleGroupLabel", {}).toString() == "Scaling");
+    REQUIRE(state.getProperty("rangeGroupLabel", {}).toString() == "Zoom");
     REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
     REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
     REQUIRE(modeBounds == purposeBounds);
@@ -2148,12 +2151,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
-    REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
+    REQUIRE(fitBounds.getY() == Catch::Approx(purposeBounds.getY()));
     const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
     const auto axisScaleBounds = rectangleProperty(state, "axisScaleBounds");
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
+    REQUIRE(purposeBounds.getRight() < markerGroupBounds.getX());
     REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
     REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
+    REQUIRE(actionBarBounds.contains(markerGroupBounds));
+    REQUIRE(actionBarBounds.contains(axisScaleBounds));
+    REQUIRE(actionBarBounds.contains(rangeGroupBounds));
     const var axisScaleOptions = state.getProperty("axisScaleOptions", {});
     REQUIRE(axisScaleOptions.isArray());
     REQUIRE(axisScaleOptions.getArray()->size() == 2);
@@ -2161,16 +2168,27 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
     REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
     const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
     REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
+    REQUIRE(axisGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE(linkGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
-    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
+    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(270.f));
+    REQUIRE(actionBarBounds.getRight() < vertexParameterBounds.getX());
+    const auto planeLabelBounds = rectangleProperty(
+            state, "morphPlaneGroupLabelBounds");
+    const auto planeBounds = rectangleProperty(state, "morphPlaneBounds");
+    REQUIRE(planeBounds.getY() - planeLabelBounds.getBottom() == Catch::Approx(10.f));
+    REQUIRE(planeLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE(vertexParameterBounds.getY() + 5.f
+            == Catch::Approx(morphLabelBounds.getY()));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
-    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(33.54f).margin(0.02f));
+    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(39.1f).margin(0.02f));
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
 
     VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();

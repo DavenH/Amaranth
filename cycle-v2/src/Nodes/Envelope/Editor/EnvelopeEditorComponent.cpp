@@ -1,5 +1,3 @@
-#include <Binary/Images.h>
-
 #include <array>
 
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
@@ -9,42 +7,65 @@
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeSelector.h"
+#include "UiIconData.h"
 
 namespace CycleV2 {
 
 namespace {
 
-Image cycleV1EnvelopeIcon(int atlasX, int atlasY) {
-    static const Image atlas = PNGImageFormat::loadFrom(
-            Images::icons_png, Images::icons_pngSize);
-    return atlas.getClippedImage({ atlasX * 24, atlasY * 24, 24, 24 });
-}
+class EnvelopeActionButton final : public Button {
+public:
+    EnvelopeActionButton(
+            const String& accessibleName,
+            const String& tooltip,
+            const char* svg) :
+            Button (accessibleName)
+        ,   icon   (createIcon(svg)) {
+        setTitle(accessibleName);
+        setDescription(tooltip);
+        setTooltip(tooltip);
+        setMouseCursor(MouseCursor::PointingHandCursor);
+        setWantsKeyboardFocus(true);
+    }
 
-void styleCycleV1EnvelopeButton(
-        ImageButton& button,
-        int atlasX,
-        int atlasY,
-        const String& tooltip,
-        bool keyboardFocus) {
-    const Image icon = cycleV1EnvelopeIcon(atlasX, atlasY);
-    button.setImages(
-            false,
-            false,
-            true,
-            icon,
-            0.74f,
-            Colours::transparentBlack,
-            icon,
-            1.f,
-            Colours::transparentBlack,
-            icon,
-            0.86f,
-            Colour(0xff5f91e8).withAlpha(0.24f));
-    button.setTooltip(tooltip);
-    button.setMouseCursor(MouseCursor::PointingHandCursor);
-    button.setWantsKeyboardFocus(keyboardFocus);
-}
+    bool hasIcon() const { return icon != nullptr; }
+
+    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
+        const Rectangle<float> bounds = getLocalBounds().toFloat();
+        if (down || highlighted) {
+            graphics.setColour(Colours::white.withAlpha(down ? 0.12f : 0.06f));
+            graphics.fillRect(bounds.reduced(2.f));
+        }
+        if (icon != nullptr) {
+            const float opacity = isEnabled()
+                    ? getToggleState() ? 1.f : highlighted ? 0.9f : 0.72f
+                    : 0.25f;
+            icon->drawWithin(
+                    graphics,
+                    bounds.reduced(5.f, 3.f),
+                    RectanglePlacement::centred,
+                    opacity);
+        }
+        if (hasKeyboardFocus(false)) {
+            graphics.setColour(Colour(0xff65b8ff));
+            graphics.drawRoundedRectangle(
+                    bounds.reduced(1.f),
+                    CanvasChromeMetrics::controlCornerRadius,
+                    CanvasChromeMetrics::focusRingWidth);
+        }
+    }
+
+private:
+    static std::unique_ptr<Drawable> createIcon(const char* svg) {
+        const std::unique_ptr<XmlElement> document = parseXML(String::fromUTF8(svg));
+        jassert(document != nullptr);
+        return document != nullptr ? Drawable::createFromSVG(*document) : nullptr;
+    }
+
+    std::unique_ptr<Drawable> icon;
+};
 
 }
 
@@ -59,14 +80,6 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(mode);
         owner.addAndMakeVisible(axisScale);
-        styleCycleV1EnvelopeButton(
-                loop, 4, 3, "Select one envelope vertex to set the loop start", true);
-        styleCycleV1EnvelopeButton(
-                sustain, 5, 3, "Select one envelope vertex to set the sustain point", true);
-        styleCycleV1EnvelopeButton(
-                fitVertical, 6, 0, "Fit envelope vertical range", false);
-        styleCycleV1EnvelopeButton(
-                fullVertical, 6, 1, "Show full envelope vertical range", false);
         owner.addAndMakeVisible(loop);
         owner.addAndMakeVisible(sustain);
         owner.addAndMakeVisible(fitVertical);
@@ -79,10 +92,26 @@ struct EnvelopeEditorComponent::Impl {
     Label timeLabel;
     EnvelopePurposeSelector mode;
     EnvelopeAxisScaleSelector axisScale;
-    ImageButton loop { "Set selected vertex as loop start" };
-    ImageButton sustain { "Set selected vertex as sustain point" };
-    ImageButton fitVertical { "Fit envelope vertical range" };
-    ImageButton fullVertical { "Show full envelope vertical range" };
+    EnvelopeActionButton loop {
+            "Set selected vertex as loop start",
+            "Select one envelope vertex to set the loop start",
+            UiIconData::envelopeLoop
+    };
+    EnvelopeActionButton sustain {
+            "Set selected vertex as sustain point",
+            "Select one envelope vertex to set the sustain point",
+            UiIconData::envelopeSustain
+    };
+    EnvelopeActionButton fitVertical {
+            "Fit envelope vertical range",
+            "Fit the vertical zoom to the envelope",
+            UiIconData::envelopeZoomFit
+    };
+    EnvelopeActionButton fullVertical {
+            "Show full envelope vertical range",
+            "Reset the vertical zoom to the full range",
+            UiIconData::envelopeZoomFull
+    };
     EnvelopeMorphControls presentation;
 
     EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
@@ -295,19 +324,17 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             "morphGroupLabelBounds",
             editorBoundsToVar(impl->presentation.morphGroupLabelBounds(controls)));
     state.setProperty(
+            "morphPlaneGroupLabelBounds",
+            editorBoundsToVar(impl->presentation.planeGroupLabelBounds(controls)));
+    state.setProperty(
             "morphPlaneBounds",
             editorBoundsToVar(impl->presentation.planeBounds(controls)));
-    const auto firstMorphRow = impl->presentation.morphRow(controls, 0);
     state.setProperty(
             "axisGroupLabelBounds",
-            editorBoundsToVar(TrimeshSidePanelRenderer::morphColumnHeaderBounds(
-                    impl->presentation.axisBounds(controls, 0),
-                    firstMorphRow)));
+            editorBoundsToVar(impl->presentation.axisGroupLabelBounds(controls)));
     state.setProperty(
             "linkGroupLabelBounds",
-            editorBoundsToVar(TrimeshSidePanelRenderer::morphColumnHeaderBounds(
-                    impl->presentation.linkBounds(controls, 0),
-                    firstMorphRow)));
+            editorBoundsToVar(impl->presentation.linkGroupLabelBounds(controls)));
     state.setProperty(
             "modeBounds",
             editorBoundsToVar(impl->mode.getBounds().toFloat()));
@@ -336,7 +363,18 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "actionRowBounds",
             editorBoundsToVar(impl->presentation.actionRow(controls)));
-    state.setProperty("markerGroupLabel", "Envelope markers");
+    state.setProperty(
+            "actionBarBounds",
+            editorBoundsToVar(impl->presentation.actionBarBounds(controls)));
+    state.setProperty("markerGroupLabel", "Markers");
+    state.setProperty("axisScaleGroupLabel", "Scaling");
+    state.setProperty("rangeGroupLabel", "Zoom");
+    state.setProperty(
+            "actionIconsVector",
+            impl->loop.hasIcon()
+                    && impl->sustain.hasIcon()
+                    && impl->fitVertical.hasIcon()
+                    && impl->fullVertical.hasIcon());
     state.setProperty(
             "markerGroupLabelBounds",
             editorBoundsToVar(impl->presentation.markerGroupLabelBounds(controls)));
