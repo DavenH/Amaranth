@@ -23,6 +23,8 @@ Context:
   `.raw` companion.
 
 Current status: open but not reproduced on 2026-09-06 across the native
-Envelope smoke and focused Cycle V2 hover-help and Guide-dock launches. Capture
-the initialized endpoint names and rapid-launch sequence if it recurs before
-changing MIDI initialization or teardown.
+Envelope smoke, focused Cycle V2 hover-help and Guide-dock launches, or five
+consecutive launches of the Reverb property-control fixture. All five Reverb
+runs completed with zero failed commands. Capture the initialized endpoint
+names and launch sequence if it recurs before changing MIDI initialization or
+teardown.
