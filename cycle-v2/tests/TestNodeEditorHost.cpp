@@ -2216,10 +2216,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         const auto icon = rectangleProperty(state, iconProperty);
         REQUIRE(control.getWidth() == Catch::Approx(34.f));
         REQUIRE(control.getHeight() == Catch::Approx(30.f));
-        REQUIRE(icon.getWidth() == Catch::Approx(24.f));
-        REQUIRE(icon.getHeight() == Catch::Approx(24.f));
-        REQUIRE(icon.getX() - control.getX() == Catch::Approx(5.f));
-        REQUIRE(icon.getY() - control.getY() == Catch::Approx(3.f));
+        REQUIRE(icon.getWidth() == Catch::Approx(21.f));
+        REQUIRE(icon.getHeight() == Catch::Approx(21.f));
+        REQUIRE(icon.getX() - control.getX() == Catch::Approx(6.5f));
+        REQUIRE(icon.getY() - control.getY() == Catch::Approx(4.5f));
     };
     requireActionIconMetrics("loopBounds", "loopIconBounds");
     requireActionIconMetrics("sustainBounds", "sustainIconBounds");
@@ -2233,10 +2233,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         const auto diagramBounds = rectangleProperty(option, "diagramBounds");
         REQUIRE(optionBounds.getWidth() == Catch::Approx(42.f));
         REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
-        REQUIRE(diagramBounds.getWidth() == Catch::Approx(30.f));
-        REQUIRE(diagramBounds.getHeight() == Catch::Approx(20.f));
-        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(6.f));
-        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(5.f));
+        REQUIRE(diagramBounds.getWidth() == Catch::Approx(24.f));
+        REQUIRE(diagramBounds.getHeight() == Catch::Approx(18.f));
+        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(9.f));
+        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(6.f));
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());

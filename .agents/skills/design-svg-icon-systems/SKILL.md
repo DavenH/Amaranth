@@ -69,6 +69,15 @@ least one axis and be optically centred within it. Keep any production-space
 optical correction to one pixel where practical, document it, and test the
 control and canvas bounds numerically.
 
+Equal control boxes or renderer canvases do not establish visual consistency.
+Rasterize every sibling at production size and measure the occupied pixel bounds
+and apparent visual mass inside its canvas. Choose a reference sibling, compare
+the others directly against it, and correct systematic overfill before changing
+individual paths. Wide diagrams may retain a distinct aspect ratio, but their
+height, density, and emphasis should remain subordinate to or aligned with the
+reference glyph family. Record any intentional occupancy exception; do not call
+an icon family normalized solely because all members receive the same canvas.
+
 Use color to reinforce meaning, never as the only distinction. Keep critical geometry fully opaque. Faint strokes, transparency, gradients, filters, masks, and sub-pixel details often disappear at sidebar size.
 
 Prefer a few deliberate shapes over literal miniature diagrams. Similar visual weight matters more than identical bounding boxes: compensate optically for circles, diagonals, sparse icons, and dense icons.

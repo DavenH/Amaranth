@@ -35,8 +35,8 @@ public:
 
     Rectangle<float> iconCanvasBounds() const {
         return getLocalBounds().toFloat().withSizeKeepingCentre(
-                EnvelopeToolbarMetrics::iconCanvasSize,
-                EnvelopeToolbarMetrics::iconCanvasSize);
+                EnvelopeToolbarMetrics::actionIconCanvasSize,
+                EnvelopeToolbarMetrics::actionIconCanvasSize);
     }
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {

@@ -194,11 +194,13 @@ production capture, and an imperative commit before the next slice.
   visible vertex-parameter rail.
 - Loop, Sustain, Fit, and Full no longer read from the Cycle v1 24 px PNG
   atlas. Four embedded SVGs use a shared 48 px viewBox, 36 px live area, and
-  2.4 px square-ended strokes. Their 34 by 30 px controls render an exact
-  centred 24 px canvas, leaving 5 px horizontal and 3 px vertical margins.
-  Purpose segments use the same control and canvas metrics; the wider Scaling
-  diagrams are an explicit 42 by 30 px category with a 30 by 20 px plot area.
-  The shared metrics remove per-icon percentage sizing and define precise
+  2.4 px square-ended strokes. Purpose, Marker, and Zoom use the same 34 by 30
+  px control footprint. Purpose retains a centred 24 px reference canvas;
+  the visually fuller Marker and Zoom symbols use a centred 21 px canvas,
+  reducing both axes by 12.5 percent without redrawing their topology. Scaling
+  remains an explicit 42 by 30 px diagram category, but its plot area is reduced
+  by 20 percent horizontally and 10 percent vertically to 24 by 18 px. The
+  shared metrics remove per-icon percentage sizing and define precise
   marker/arrow terminations plus inward-versus-outward zoom topology. XML
   validation, the embedded-component icon check, 640 hosted
   Envelope assertions, the purpose and marker fixtures, and the standalone
@@ -206,7 +208,7 @@ production capture, and an imperative commit before the next slice.
   timeline and lands its arrow on a marked intercept. Scaling diagrams now use
   one line length and distinguish equal spacing from a more pronounced
   logarithmic progression. Final production review used
-  `/private/tmp/envelope-toolbar-proportions-final.png`, with the enabled-marker
+  `/private/tmp/envelope-icon-footprints-final.png`, with the enabled-marker
   review at `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`; the
   filtered logs contain no warnings, assertions, failures, or crashes.
 

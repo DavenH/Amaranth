@@ -4,17 +4,25 @@ namespace CycleV2::EnvelopeToolbarMetrics {
 
 inline constexpr float controlWidth = 34.f;
 inline constexpr float controlHeight = 30.f;
-inline constexpr float iconCanvasSize = 24.f;
-inline constexpr float iconHorizontalMargin = (controlWidth - iconCanvasSize) * 0.5f;
-inline constexpr float iconVerticalMargin = (controlHeight - iconCanvasSize) * 0.5f;
+inline constexpr float purposeIconCanvasSize = 24.f;
+inline constexpr float purposeIconHorizontalMargin
+        = (controlWidth - purposeIconCanvasSize) * 0.5f;
+inline constexpr float purposeIconVerticalMargin
+        = (controlHeight - purposeIconCanvasSize) * 0.5f;
+
+inline constexpr float actionIconCanvasSize = 21.f;
+inline constexpr float actionIconHorizontalMargin
+        = (controlWidth - actionIconCanvasSize) * 0.5f;
+inline constexpr float actionIconVerticalMargin
+        = (controlHeight - actionIconCanvasSize) * 0.5f;
 
 inline constexpr float svgViewBoxSize = 48.f;
 inline constexpr float svgLiveAreaInset = 6.f;
 inline constexpr float svgLiveAreaSize = svgViewBoxSize - 2.f * svgLiveAreaInset;
 
 inline constexpr float diagramControlWidth = 42.f;
-inline constexpr float diagramCanvasWidth = 30.f;
-inline constexpr float diagramCanvasHeight = 20.f;
+inline constexpr float diagramCanvasWidth = 24.f;
+inline constexpr float diagramCanvasHeight = 18.f;
 inline constexpr float diagramHorizontalMargin
         = (diagramControlWidth - diagramCanvasWidth) * 0.5f;
 inline constexpr float diagramVerticalMargin
