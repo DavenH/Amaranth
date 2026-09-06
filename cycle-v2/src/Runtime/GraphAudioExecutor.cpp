@@ -602,6 +602,7 @@ void GraphAudioExecutor::prepareExecution(
             }
             auto preparedRegion = std::make_unique<PreparedVoice::OscillatorRegion>();
             preparedRegion->planRegionIndex = regionIndex;
+            preparedRegion->midiNoteOffset = compiledContext->octave * 12;
             preparedRegion->configurationRevisions.reserve(region.stepIndices.size());
             for (const int operationIndex : region.stepIndices) {
                 preparedRegion->configurationRevisions.push_back(
@@ -647,7 +648,7 @@ void GraphAudioExecutor::renderOscillatorRegion(
             return;
         }
         const bool rendered = region.processor->process(
-                voice.controls.noteNumber,
+                voice.controls.noteNumber + region.midiNoteOffset,
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),

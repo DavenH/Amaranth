@@ -44,6 +44,10 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
 }
 
+void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
+    voiceDurationSeconds = jmax(durationSeconds, 0.001f);
+}
+
 void RealtimeGraphRenderer::process(
         RealtimeMidiEventQueue& events,
         float* const* outputChannels,
@@ -248,7 +252,6 @@ void RealtimeGraphRenderer::renderVoices(
         int frameCount,
         double sampleRate) {
     size_t activeCount = 0;
-    constexpr float voiceDurationSeconds = 7.f;
     const float timeIncrement = sampleRate > 0.
             ? 1.f / ((float) sampleRate * voiceDurationSeconds)
             : 0.f;

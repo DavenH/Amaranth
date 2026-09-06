@@ -90,6 +90,8 @@ list(APPEND APP_SOURCES
     "${UI_ICON_DATA_HEADER}"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2Automation.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeCanvasGlRenderer.h"
 )
@@ -133,6 +135,7 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeDspConfiguration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodeModuleRegistry.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/NodePreviewProcessor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/OfflineGraphAudioRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreparedOscillatorRegion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PreviewPitchResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MonitorPreviewProcessors.cpp"
@@ -332,6 +335,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${NODE_SOURCES}
             ${CANVAS_ARCHITECTURE_SOURCES}
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
             ${TEST_SOURCES}
         )
 

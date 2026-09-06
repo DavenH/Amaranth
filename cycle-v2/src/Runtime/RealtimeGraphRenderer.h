@@ -41,6 +41,7 @@ public:
             uint64_t revision,
             const AudioExecutionSpec& spec);
     void setPreparedGraph(PreparedGraph* graph);
+    void setVoiceDurationSeconds(float durationSeconds);
     void process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
@@ -105,6 +106,7 @@ private:
     size_t scheduledEventCount {};
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
+    float voiceDurationSeconds { 7.f };
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};

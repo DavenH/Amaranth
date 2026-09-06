@@ -87,3 +87,62 @@ Context:
 Current status: addressed on 2026-08-21 by supplying canonical typed
 Waveshaper/IR models in the shared fixture helper; the full Cycle V2 suite now
 passes.
+## Resolved: Cycle 1 offline 48 kHz capture used an uninitialized resampler
+
+Context:
+
+- The Cycle 1/Cycle 2 differential render first attempted a 48 kHz capture of
+  `filter-saw` on 2026-09-06.
+- Cycle 1 crashed in `CircleBuffer::write()` through
+  `HermiteState::resample()` because `SynthAudioSource::prepareToPlay()` did
+  not initialize its non-44.1-kHz resampling storage.
+- The reproduction artifacts are
+  `/private/tmp/cycle-filter-saw-parity/midi-36/cycle-v1.log` and
+  `/private/tmp/cycle-filter-saw-parity/midi-36/cycle-v1.log.ips`.
+
+Resolution:
+
+- `SynthAudioSource::prepareToPlay()` now initializes the existing Hermite
+  resampler whenever the requested rate is not 44.1 kHz. This uses the mature
+  `initResampler()` allocation/reset path before the first offline block.
+
+Current status: resolved on 2026-09-06; the paired 48 kHz render is the
+integration regression.
+
+## Open: Cycle V2 compiled Voice Context pitch fields are only partially consumed
+
+Context:
+
+- The Subbass differential render showed that the compiled Voice Context
+  octave never reached `PreparedOscillatorRegion`; Cycle V2 rendered the graph
+  one octave above Cycle 1.
+- The octave now becomes an integer MIDI-note offset at the prepared region
+  boundary and has a focused equivalence test.
+- The neighbouring fractional `pitchSemitones`, `portamento`, and oscillator
+  oversampling fields remain compiled without a corresponding realtime
+  oscillator consumption path. They are outside the strict Subbass fixture but
+  represent the same incomplete Voice Context adoption.
+
+Current status: open for the remaining pitch/glide/oversampling semantics; the
+octave path is addressed on 2026-09-06.
+
+## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
+
+Context:
+
+- The first Subbass differential render appeared to show a dominant Cycle 1
+  subharmonic and unstable expected-period cyclogram.
+- Cycle 1's legacy `NumberUtils::noteToFrequency()` defines A440 as MIDI 81;
+  Cycle V2's shared `UnisonCore` correctly uses standard MIDI 69.
+- The preset converter preserved the displayed octave control but initially
+  omitted this one-octave boundary translation.
+
+Resolution:
+
+- Strict preset conversion now subtracts one additional octave and records the
+  legacy reference offset in the equivalence manifest.
+- The corrected four-note comparison reaches at least 0.99990 correlation and
+  no more than 0.0143 gain-matched residual. This disproves half-cycle carry as
+  the cause of the observed result.
+
+Current status: resolved on 2026-09-06.

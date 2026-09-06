@@ -111,6 +111,9 @@ void SynthAudioSource::init() {
 void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleRate) {
     calcDeclickEnvelope(sampleRate);
     synth.setCurrentPlaybackSampleRate(sampleRate);
+    if (sampleRate != 44100.0) {
+        initResampler();
+    }
 
     for (auto voice: voices) {
         voice->initCycleBuffers();

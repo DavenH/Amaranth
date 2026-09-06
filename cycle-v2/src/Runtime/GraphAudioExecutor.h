@@ -145,6 +145,7 @@ private:
     struct PreparedVoice {
         struct OscillatorRegion {
             int planRegionIndex { -1 };
+            int midiNoteOffset {};
             std::vector<uint64_t> configurationRevisions;
             std::vector<float> pitchEnvelopeUnitValues;
             std::unique_ptr<PreparedOscillatorRegion> processor;
