@@ -10,7 +10,7 @@ using juce::Rectangle;
 
 class EnvelopeMorphControls {
 public:
-    static constexpr float controlsHeight = 286.f;
+    static constexpr float controlsHeight = 310.f;
     static constexpr float vertexParameterHeightScale = 1.15f;
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;

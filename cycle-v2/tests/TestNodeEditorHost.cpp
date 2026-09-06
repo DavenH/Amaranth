@@ -2064,7 +2064,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     RecordingCurveDelegate delegate;
     editor->setDelegate(&delegate);
-    editor->setBounds(0, 0, 840, 660);
+    editor->setBounds(0, 0, 840, 684);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
     panelState = widget.automationState();
@@ -2072,6 +2072,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
+    const auto purposeLabelBounds = rectangleProperty(
+            state, "purposeGroupLabelBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
     const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
     const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
@@ -2081,6 +2083,12 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(actionBarBounds.contains(purposeBounds));
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
     REQUIRE(purposeBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(actionBarBounds.getX() == Catch::Approx(actionRowBounds.getX()));
+    REQUIRE(actionBarBounds.getRight() == Catch::Approx(actionRowBounds.getRight()));
+    REQUIRE(purposeLabelBounds.getY() - actionBarBounds.getY()
+            == Catch::Approx(8.f));
+    REQUIRE(actionBarBounds.getBottom() - purposeBounds.getBottom()
+            == Catch::Approx(8.f));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -2153,14 +2161,31 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
     REQUIRE(fitBounds.getY() == Catch::Approx(purposeBounds.getY()));
     const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
+    const auto markerLabelBounds = rectangleProperty(
+            state, "markerGroupLabelBounds");
     const auto axisScaleBounds = rectangleProperty(state, "axisScaleBounds");
+    const auto axisScaleLabelBounds = rectangleProperty(
+            state, "axisScaleGroupLabelBounds");
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
+    const auto rangeLabelBounds = rectangleProperty(
+            state, "rangeGroupLabelBounds");
     REQUIRE(purposeBounds.getRight() < markerGroupBounds.getX());
     REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
     REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
     REQUIRE(actionBarBounds.contains(markerGroupBounds));
     REQUIRE(actionBarBounds.contains(axisScaleBounds));
     REQUIRE(actionBarBounds.contains(rangeGroupBounds));
+    REQUIRE(purposeBounds.getX() - actionBarBounds.getX()
+            == Catch::Approx(actionBarBounds.getRight() - rangeGroupBounds.getRight()));
+    REQUIRE(markerGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(axisScaleBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(markerLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(axisScaleLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
     const var axisScaleOptions = state.getProperty("axisScaleOptions", {});
     REQUIRE(axisScaleOptions.isArray());
     REQUIRE(axisScaleOptions.getArray()->size() == 2);
@@ -2178,17 +2203,20 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(linkGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
     REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(270.f));
-    REQUIRE(actionBarBounds.getRight() < vertexParameterBounds.getX());
+    REQUIRE(actionBarBounds.getRight() == Catch::Approx(vertexParameterBounds.getRight()));
     const auto planeLabelBounds = rectangleProperty(
             state, "morphPlaneGroupLabelBounds");
     const auto planeBounds = rectangleProperty(state, "morphPlaneBounds");
+    REQUIRE(actionBarBounds.getX() == Catch::Approx(planeLabelBounds.getX()));
     REQUIRE(planeBounds.getY() - planeLabelBounds.getBottom() == Catch::Approx(10.f));
     REQUIRE(planeLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
     REQUIRE(vertexParameterBounds.getY() + 5.f
             == Catch::Approx(morphLabelBounds.getY()));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
+    const auto lastRail = rectangleProperty(parameterRails.getArray()->getLast(), "bounds");
     REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(39.1f).margin(0.02f));
+    REQUIRE(actionBarBounds.getY() - lastRail.getBottom() >= 20.f);
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
 
     VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();

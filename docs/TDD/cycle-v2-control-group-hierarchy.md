@@ -185,15 +185,18 @@ production capture, and an imperative commit before the next slice.
   Link, and Vertex parameters now share one heading baseline; the morph plane
   begins 10 px below its heading instead of floating in residual space.
 - Envelope purpose joins Markers, Scaling, and Zoom in a single separated
-  action toolbar. The four groups are contained and ordered by tested geometry,
-  with smaller purposeful button widths and no overlap with the vertex column.
+  action toolbar. A follow-up composition pass gives that toolbar a dedicated
+  row below all visible upper controls, spans it across the full panel scope,
+  centres the four-group cluster, and balances its top and bottom insets. Tests
+  cover the scope edges, occupied-content centre, peer baselines, opposing
+  insets, and clearance below the last visible vertex-parameter rail.
 - Loop, Sustain, Fit, and Full no longer read from the Cycle v1 24 px PNG
   atlas. Four embedded SVGs use a shared 48 px viewBox, 2.4 px square-ended
   strokes, precise marker/arrow terminations, and inward-versus-outward zoom
   topology. XML validation, the embedded-component icon check, 90 hosted
   Envelope assertions, the purpose and marker fixtures, and the standalone
   build all pass. Final production review used
-  `/private/tmp/envelope-harmony-final.png`; its filtered log contains no
+  `/private/tmp/envelope-toolbar-fixed.png`; its filtered log contains no
   warnings, assertions, failures, or crashes.
 
 ## Deletion Targets
