@@ -151,6 +151,11 @@ sample parity. Preview products are not substitutes for audio products.
    whenever JUCE supplied the usual zero `startSample`. Cycle 1 now requests no
    unnecessary input channels and the Subbass live fixture passes through the
    real device callback.
+8. Restore Cycle 1's sample-rate volume-envelope boundary and guard OohAah note
+   transitions. Volume playback is now advanced only by `SynthesizerVoice`,
+   multiplied from the existing `EnvRasterizer` playback output, and timed from
+   the voice's actual sample rate. The focused fixture requires a low-energy
+   first 50 ms and rejects large adjacent-sample jumps through release.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
@@ -192,9 +197,9 @@ The first run exposed three harness-invalidating defects before comparison:
   and applies this reference-note translation explicitly.
 
 The earlier apparent half-frequency component was this reference-note mismatch,
-not evidence of a carry defect. After correcting it, the 2026-09-06 report at
-`/private/tmp/cycle-subbass-parity-corrected/comparison.json` passes all four
-notes. Correlation is 0.99990 or better, gain-matched normalized residual is
-0.0143 or better, log-spectrum RMSE is 0.05 dB or better, and mean cyclogram
-difference is 0.0115 or better. The fit also consistently reports Cycle V2's
-intentional fixed output headroom as approximately 18.06 dB below Cycle 1.
+not evidence of a carry defect. After restoring Cycle 1's authored volume
+envelope, the 2026-09-06 report at `/tmp/cycle-audio-parity/comparison.json`
+passes all four notes. Correlation is 0.99738 or better, gain-matched normalized
+residual is 0.0723 or better, log-spectrum RMSE is 0.07 dB or better, and mean
+cyclogram difference is 0.0371 or better. The fit reports Cycle V2's fixed
+output headroom as 17.09 to 17.20 dB below the corrected Cycle 1 render.

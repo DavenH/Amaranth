@@ -18,7 +18,6 @@ public:
     float scratchTime;
 
     EnvRasterizer rast;
-    Buffer<float> rendBuffer;
 };
 
 struct EnvRastGroup
@@ -33,4 +32,3 @@ struct EnvRastGroup
 };
 
 typedef vector<EnvRenderContext>::iterator RenderIter;
-

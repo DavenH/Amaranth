@@ -3,7 +3,6 @@
 class SynthFlag
 {
 public:
-    bool haveVolume{};
     bool havePitch{};
     bool haveTime{};
     bool haveFFTPhase{};

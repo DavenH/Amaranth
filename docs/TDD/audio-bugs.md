@@ -1,5 +1,45 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 ignored volume-envelope amplitude and clicked at note boundaries
+
+Context:
+
+- OohAah advanced its active volume envelope and used its completion to stop
+  the voice, but `SynthFlag::haveVolume` was never enabled. The rendered audio
+  therefore stayed at full amplitude until a one-sample stop at the end of the
+  release.
+- The dormant multiplication path referenced an `EnvRenderContext` buffer that
+  was never populated instead of the existing `EnvRasterizer` playback output.
+- Cycle generation also advanced the volume envelope before the sample-rate
+  amplitude stage, skipping most of OohAah's authored attack before the first
+  audible block.
+
+Resolution:
+
+- The sample-rate voice boundary now renders and immediately applies the first
+  local volume envelope from `EnvRasterizer`; volume is excluded from the
+  pitch/scratch cycle-update loop so it has one playback owner.
+- Envelope timing uses the prepared voice sample rate, and layer property
+  lookups preserve each local context's actual library index.
+- The OohAah regression measures the first 50 ms and the maximum adjacent
+  sample delta. At 44.1 kHz the latter fell from 0.152 to about 0.018 at the
+  quiet test gain, with a gradual attack and release.
+
+Current status: resolved on 2026-09-06.
+
+## Open: Cycle 1 pitch-envelope initial-value gate is never enabled
+
+Context:
+
+- `CycleBasedVoice::initialiseNote()` gates the pitch envelope's initial sample
+  on `SynthFlag::havePitch`.
+- Repository search finds no assignment to that flag, so initialization always
+  starts from the neutral pitch value even when an active pitch envelope is
+  authored. Later per-cycle pitch-envelope updates follow a separate path.
+
+Current status: open; validate an audible pitch-envelope preset before changing
+the initialization contract.
+
 ## Resolved: Cycle 1 standalone keyboard produced silent device buffers
 
 Context:

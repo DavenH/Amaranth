@@ -853,6 +853,10 @@ inline void CycleBasedVoice::updateEnvelopes(int paramIndex, int deltaSamples) {
     for (int e = 0; e < numElementsInArray(parent->envGroups); ++e) {
         EnvRastGroup& group = *parent->envGroups[e];
 
+        if (group.layerGroup == LayerGroups::GroupVolume) {
+            continue;
+        }
+
         for (int i = 0; i < group.size(); ++i) {
             float tempoScale = 1.f; // TODO
             EnvRenderContext& renderRast = group[i];

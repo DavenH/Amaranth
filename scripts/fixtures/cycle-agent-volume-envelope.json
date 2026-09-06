@@ -1,0 +1,51 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "ooh-aah",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaDelay"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.1
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-ooh-aah-envelope.wav",
+      "durationMs": 1200,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.8,
+          "channel": 1
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 800,
+          "note": 60,
+          "channel": 1
+        }
+      ],
+      "peakGreaterThan": 0.1,
+      "peakLessThan": 0.35,
+      "rmsGreaterThan": 0.05,
+      "rmsLessThan": 0.15,
+      "initial50MsRmsLessThan": 0.05,
+      "maxAdjacentDeltaLessThan": 0.03
+    }
+  ],
+  "quit": true
+}

@@ -143,7 +143,7 @@ void SynthesizerVoice::stopNote(float velocity, bool allowTailOff) {
             EnvRenderContext& rast = volumeGroup[i];
             haveReleaseCurve |= rast.rast.hasReleaseCurve();
 
-            if (MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, i)) {
+            if (MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, rast.layerIndex)) {
                 isVolumeStillActive |= props->active;
             }
         }
@@ -204,14 +204,14 @@ void SynthesizerVoice::renderNextBlock(AudioSampleBuffer& audioBuffer, int start
     currentVoice->render(renderBuffer);
 
     /// volume env
-    calcEnvelopeBuffers(numSamples);
+    bool renderedVolume = renderVolumeEnvelope(numSamples);
 
-    if (flags.haveVolume) {
+    if (renderedVolume) {
         // TODO needs render graph
-        Buffer<float> volBuff = volumeGroup.envGroup.front().rendBuffer.withSize(numSamples);
+        Buffer<float> volume = volumeGroup.envGroup.front().rast.getRenderBuffer().withSize(numSamples);
 
-        volBuff.mul(mappedVelocity);
-        renderBuffer.mul(volBuff);
+        renderBuffer.mul(volume);
+        renderBuffer.mul(mappedVelocity);
     } else {
         renderBuffer.mul(mappedVelocity);
     }
@@ -282,7 +282,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 
         for (int i = 0; i < rastGroup.envGroup.size(); ++i) {
             EnvRenderContext& rast = rastGroup.envGroup[i];
-            MeshLibrary::EnvProps* props = meshLib->getEnvProps(rastGroup.layerGroup, i);
+            MeshLibrary::EnvProps* props = meshLib->getEnvProps(rastGroup.layerGroup, rast.layerIndex);
             rast.sampleable = false;
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
@@ -404,11 +404,14 @@ void SynthesizerVoice::resetNote() {
     clearCurrentNote();
 }
 
-void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
+bool SynthesizerVoice::renderVolumeEnvelope(int numSamples) {
     speedScale.update(numSamples);
-    double deltaX = speedScale.getCurrentValue() / 44100.0; //getSampleRate();
+    double sampleRate = getSampleRate();
+    jassert(sampleRate > 0.0);
+    double deltaX = speedScale.getCurrentValue() / jmax(1.0, sampleRate);
 
     bool anyActive = false;
+    bool renderedVolume = false;
 
     for (int i = 0; i < volumeGroup.size(); ++i) {
         EnvRenderContext& context = volumeGroup[i];
@@ -420,6 +423,9 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
             bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
             // TODO
             anyActive |= stillActive;
+            if (i == 0) {
+                renderedVolume = true;
+            }
             jassert(envRast.getRenderBuffer().size() >= numSamples);
         }
     }
@@ -427,6 +433,8 @@ void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
     if (!anyActive) {
         resetNote();
     }
+
+    return renderedVolume;
 }
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {
