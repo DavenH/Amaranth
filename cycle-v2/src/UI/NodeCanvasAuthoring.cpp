@@ -7,6 +7,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 
@@ -497,6 +498,19 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOperationPortLayout(const St
         edited.outputs[0].side = PortSide::Right;
     });
 
+    return graphEditResult(edit, {}, nodeId, { true });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleSinglePortLayout(const String& nodeId) {
+    const Node* node = findNode(nodeId);
+    if (node == nullptr || !supportsSinglePortLayout(*node)) {
+        return {};
+    }
+
+    const SinglePortLayout layout = nextSinglePortLayout(singlePortLayout(*node));
+    const auto edit = commands.editNodePresentation(nodeId, [layout](Node& edited) {
+        applySinglePortLayout(edited, layout);
+    });
     return graphEditResult(edit, {}, nodeId, { true });
 }
 

@@ -217,6 +217,7 @@ private:
     bool handleDockNavigationKey(const KeyPress& key);
     void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
+    bool cycleSinglePortLayout(const String& nodeId);
     bool cycleMeshOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;

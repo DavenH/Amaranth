@@ -1,5 +1,6 @@
 #include "UI/NodeCanvasHitRouter.h"
 
+#include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "UI/VoiceContextCompactEditor.h"
 #include "Graph/GraphNodeFactory.h"
@@ -28,16 +29,20 @@ bool hasOutputSideControl(NodeKind kind) {
             .outputSideControl;
 }
 
-std::optional<CanvasNodeActionKind> actionKindForNode(NodeKind kind) {
-    if (isOperationNode(kind)) {
+std::optional<CanvasNodeActionKind> actionKindForNode(const Node& node) {
+    if (isOperationNode(node.kind)) {
         return CanvasNodeActionKind::CycleOperationLayout;
     }
 
-    if (hasOutputSideControl(kind)) {
+    if (supportsSinglePortLayout(node)) {
+        return CanvasNodeActionKind::CycleSinglePortLayout;
+    }
+
+    if (hasOutputSideControl(node.kind)) {
         return CanvasNodeActionKind::CycleMeshOutputSide;
     }
 
-    if (kind == NodeKind::VoiceContext) {
+    if (node.kind == NodeKind::VoiceContext) {
         return CanvasNodeActionKind::CycleVoiceDomain;
     }
 
@@ -64,6 +69,9 @@ String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryM
     switch (action.kind) {
         case CanvasNodeActionKind::CycleOperationLayout:
             return "Click to change this operation’s port arrangement.";
+
+        case CanvasNodeActionKind::CycleSinglePortLayout:
+            return "Click to rotate this node’s input and output arrangement.";
 
         case CanvasNodeActionKind::CycleMeshOutputSide:
             return "Click to move this mesh output to another side.";
@@ -100,7 +108,7 @@ std::optional<CanvasNodeAction> NodeCanvasHitRouter::nodeActionAt(
 
     for (int i = (int) nodes.size() - 1; i >= 0; --i) {
         const auto& node = nodes[(size_t) i];
-        const auto actionKind = actionKindForNode(node.kind);
+        const auto actionKind = actionKindForNode(node);
 
         if (actionKind.has_value()
                 && actionContains(
