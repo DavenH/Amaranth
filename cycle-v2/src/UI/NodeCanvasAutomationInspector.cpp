@@ -346,10 +346,11 @@ public:
             const Node& node,
             Rectangle<float> panel,
             const DynamicObject& curveEditorState) {
-        const std::array<std::pair<const char*, const char*>, 5> actions {{
+        const std::array<std::pair<const char*, const char*>, 6> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
-            { "logarithmic", "logarithmicBounds" },
+            { "linear", "linearAxisScaleBounds" },
+            { "logarithmic", "logarithmicAxisScaleBounds" },
             { "fitVertical", "fitVerticalBounds" },
             { "fullVertical", "fullVerticalBounds" }
         }};

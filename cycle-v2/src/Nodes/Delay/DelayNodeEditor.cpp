@@ -14,7 +14,7 @@ namespace CycleV2 {
 namespace {
 
 constexpr int kPreviewHeight = 150;
-constexpr int kPropertyStart = 210;
+constexpr int kPropertyStart = 204;
 
 String formatBeats(double value) {
     const String beats = formatPropertyReal(CycleDsp::delayBeats((float) value, 4));
@@ -103,16 +103,24 @@ public:
         close.setBounds(header.close);
         enabled.setBounds(header.enabled);
         Rectangle<int> rows(18, kPropertyStart, getWidth() - 36, getHeight() - kPropertyStart);
-        for (auto* row : propertyRows()) {
-            row->setBounds(rows.removeFromTop(PropertyControlMetrics::compactRowHeight));
-            rows.removeFromTop(PropertyControlMetrics::rowGap);
-        }
+        echoGroup.setBounds(rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        layoutCompactRow(time, rows);
+        layoutCompactRow(feedback, rows);
+        stereoOutputGroup.setBounds(
+                rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        layoutCompactRow(panAmount, rows);
+        layoutCompactRow(panCycle, rows);
+        wet.setBounds(rows.removeFromTop(PropertyControlMetrics::compactRowHeight));
     }
 
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "DELAY");
         state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("echoGroup", propertyGroupLabelAutomationState(echoGroup));
+        state->setProperty(
+                "stereoOutputGroup",
+                propertyGroupLabelAutomationState(stereoOutputGroup));
         Array<var> controls;
         for (const auto* row : propertyRows()) {
             var value = propertySliderRowAutomationState(*row);
@@ -144,6 +152,8 @@ private:
         };
         addAndMakeVisible(close);
         addAndMakeVisible(enabled);
+        addAndMakeVisible(echoGroup);
+        addAndMakeVisible(stereoOutputGroup);
     }
 
     void configureControls() {
@@ -153,6 +163,13 @@ private:
         configurePercentage(panAmount, 0.5f);
         configurePercentage(wet, 0.5f);
         configurePanCycle();
+    }
+
+    static void layoutCompactRow(
+            NodePropertySliderRow& row,
+            Rectangle<int>& available) {
+        row.setBounds(available.removeFromTop(PropertyControlMetrics::compactRowHeight));
+        available.removeFromTop(PropertyControlMetrics::rowGap);
     }
 
     void configureRows() {
@@ -259,6 +276,8 @@ private:
     Node node;
     TextButton close;
     EffectEnableButton enabled;
+    PropertyGroupLabel echoGroup { "Echo" };
+    PropertyGroupLabel stereoOutputGroup { "Stereo / output" };
     NodePropertySliderRow time;
     NodePropertySliderRow feedback;
     NodePropertySliderRow panAmount;

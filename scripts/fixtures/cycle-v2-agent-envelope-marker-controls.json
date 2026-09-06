@@ -26,6 +26,26 @@
       "equals": "Select one envelope vertex to set the loop start"
     },
     {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.markerGroupLabel",
+      "equals": "Markers"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.axisScaleGroupLabel",
+      "equals": "Scaling"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.rangeGroupLabel",
+      "equals": "Zoom"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.actionIconsVector",
+      "equals": true
+    },
+    {
       "command": "inspectPointerTargets"
     },
     {

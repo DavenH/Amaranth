@@ -42,8 +42,6 @@ struct TrimeshSliceStyle {
     juce::Colour fillColour;
     juce::Colour minorGridColour;
     juce::Colour majorGridColour;
-    juce::String panel3DTitle;
-    juce::String panel2DTitle;
 
     bool isSpectral() const { return background != TrimeshSliceBackground::Waveform; }
 };

@@ -20,6 +20,7 @@ public:
             NotificationType notification = dontSendNotification);
     EnvelopePurpose purpose() const { return selectedPurpose; }
     Rectangle<float> optionBounds(EnvelopePurpose purpose) const;
+    Rectangle<float> optionIconBounds(EnvelopePurpose purpose) const;
     bool isOptionHovered(EnvelopePurpose purpose) const;
 
     void paint(Graphics& graphics) override;

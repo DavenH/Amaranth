@@ -6,11 +6,86 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/NodeEditorHost.h"
 
 namespace CycleV2 {
 
 namespace {
+
+class UnisonModeSelector final : public Component {
+public:
+    UnisonModeSelector() :
+            group      ("Group voice mode", "Group")
+        ,   individual ("Individual voice mode", "Individual") {
+        setComponentID("unisonEditor.mode");
+        group.setComponentID("unisonEditor.mode.group");
+        individual.setComponentID("unisonEditor.mode.individual");
+        group.setTooltip("Edit one shared set of Unison voice parameters");
+        individual.setTooltip("Edit each Unison voice independently");
+        group.onClick = [this] { setIndividual(false, sendNotificationSync); };
+        individual.onClick = [this] { setIndividual(true, sendNotificationSync); };
+        addAndMakeVisible(group);
+        addAndMakeVisible(individual);
+        setIndividual(false, dontSendNotification);
+    }
+
+    void setIndividual(bool shouldUseIndividual, NotificationType notification) {
+        const bool changed = individualMode != shouldUseIndividual;
+        individualMode = shouldUseIndividual;
+        group.setToggleState(!individualMode, dontSendNotification);
+        individual.setToggleState(individualMode, dontSendNotification);
+        repaint();
+        if (changed && notification != dontSendNotification && onChange) {
+            onChange(individualMode);
+        }
+    }
+
+    void paint(Graphics& graphics) override {
+        paintPropertySegmentedControl(
+                graphics,
+                getLocalBounds().toFloat().reduced(0.75f),
+                2,
+                individualMode ? 1 : 0);
+    }
+
+    void resized() override {
+        const int split = getWidth() / 2;
+        group.setBounds(0, 0, split, getHeight());
+        individual.setBounds(split, 0, getWidth() - split, getHeight());
+    }
+
+    std::function<void(bool)> onChange;
+
+private:
+    class ModeButton final : public Button {
+    public:
+        ModeButton(const String& accessibleName, String labelToUse) :
+                Button (accessibleName)
+            ,   label  (std::move(labelToUse)) {
+            setMouseCursor(MouseCursor::PointingHandCursor);
+            setWantsKeyboardFocus(true);
+        }
+
+        void paintButton(Graphics& graphics, bool highlighted, bool) override {
+            graphics.setColour(Colour(0xffe2e8ef).withAlpha(
+                    getToggleState() ? 1.f : highlighted ? 0.85f : 0.62f));
+            graphics.setFont(FontOptions(9.f).withStyle(
+                    getToggleState() ? "Bold" : "Regular"));
+            graphics.drawText(label, getLocalBounds(), Justification::centred);
+            if (getToggleState()) {
+                graphics.fillRect(getLocalBounds().removeFromBottom(2).reduced(5, 0));
+            }
+        }
+
+    private:
+        String label;
+    };
+
+    ModeButton group;
+    ModeButton individual;
+    bool individualMode {};
+};
 
 class UnisonEditorComponent final : public Component {
 public:
@@ -35,11 +110,16 @@ public:
         enabledButton.setComponentID("unisonEditor.enabled");
         addAndMakeVisible(enabledButton);
 
-        modeSelector.addItem("Group", 1);
-        modeSelector.addItem("Individual", 2);
-        modeSelector.onChange = [this] { modeChanged(); };
+        modeSelector.onChange = [this](bool individual) { modeChanged(individual); };
         addAndMakeVisible(modeSelector);
 
+        addAndMakeVisible(modeGroup);
+        addAndMakeVisible(voiceSelectionGroup);
+        addAndMakeVisible(parameterGroup);
+
+        voiceSelector.setComponentID("unisonEditor.voiceSelector");
+        voiceSelector.setTitle("Selected Unison voice");
+        voiceSelector.setTooltip("Choose the individual Unison voice to edit");
         voiceSelector.onChange = [this] {
             selectedVoice = jmax(0, voiceSelector.getSelectedItemIndex());
             updateIndividualControls();
@@ -47,10 +127,16 @@ public:
         addAndMakeVisible(voiceSelector);
 
         addVoiceButton.setButtonText("+");
+        addVoiceButton.setComponentID("unisonEditor.addVoice");
+        addVoiceButton.setTitle("Add Unison voice");
+        addVoiceButton.setTooltip("Add an individual Unison voice");
         addVoiceButton.onClick = [this] { addIndividualVoice(); };
         addAndMakeVisible(addVoiceButton);
 
         removeVoiceButton.setButtonText(String::fromUTF8("\xe2\x88\x92"));
+        removeVoiceButton.setComponentID("unisonEditor.removeVoice");
+        removeVoiceButton.setTitle("Remove selected Unison voice");
+        removeVoiceButton.setTooltip("Remove the selected individual Unison voice");
         removeVoiceButton.onClick = [this] { removeIndividualVoice(); };
         addAndMakeVisible(removeVoiceButton);
 
@@ -70,9 +156,7 @@ public:
         enabledButton.setToggleState(
                 parameters.boolValue("enabled", true),
                 dontSendNotification);
-        modeSelector.setSelectedId(
-                individualMode() ? 2 : 1,
-                dontSendNotification);
+        modeSelector.setIndividual(individualMode(), dontSendNotification);
         for (auto& control : controls) {
             if (control->kind != ControlKind::IndividualVoice) {
                 control->slider.setValue(
@@ -114,12 +198,23 @@ public:
         const auto header = fullEditorHeaderLayout(getLocalBounds(), true);
         closeButton.setBounds(header.close);
         enabledButton.setBounds(header.enabled);
-        modeSelector.setBounds(18, 216, 118, 26);
-        voiceSelector.setBounds(146, 216, 126, 26);
-        addVoiceButton.setBounds(282, 216, 30, 26);
-        removeVoiceButton.setBounds(318, 216, 30, 26);
+        modeGroup.setBounds(18, 204, 118, PropertyControlMetrics::groupLabelHeight);
+        modeSelector.setBounds(18, 222, 118, 26);
+        voiceSelectionGroup.setBounds(
+                146,
+                204,
+                202,
+                PropertyControlMetrics::groupLabelHeight);
+        voiceSelector.setBounds(146, 222, 126, 26);
+        addVoiceButton.setBounds(282, 222, 30, 26);
+        removeVoiceButton.setBounds(318, 222, 30, 26);
+        parameterGroup.setBounds(
+                18,
+                250,
+                getWidth() - 36,
+                PropertyControlMetrics::groupLabelHeight);
 
-        int y = 250;
+        int y = 268;
         for (auto& control : controls) {
             if (!control->slider.isVisible()) {
                 continue;
@@ -127,7 +222,7 @@ public:
             control->label.setBounds(18, y, getWidth() - 112, 16);
             control->readout.setBounds(getWidth() - 110, y, 92, 16);
             control->slider.setBounds(18, y + 18, getWidth() - 36, 24);
-            y += 50;
+            y += 48;
         }
     }
 
@@ -138,6 +233,13 @@ public:
         state->setProperty("mode", individualMode() ? "individual" : "group");
         state->setProperty("selectedVoice", selectedVoice);
         state->setProperty("voiceCount", individualVoiceCount());
+        state->setProperty("modeGroup", propertyGroupLabelAutomationState(modeGroup));
+        state->setProperty(
+                "voiceSelectionGroup",
+                propertyGroupLabelAutomationState(voiceSelectionGroup));
+        state->setProperty(
+                "parameterGroup",
+                propertyGroupLabelAutomationState(parameterGroup));
         Array<var> values;
         for (const auto& control : controls) {
             auto value = std::make_unique<DynamicObject>();
@@ -255,11 +357,11 @@ private:
                         || control.kind == ControlKind::Phase);
     }
 
-    void modeChanged() {
+    void modeChanged(bool individual) {
         if (bindingNode || node.id.isEmpty()) {
             return;
         }
-        const String mode = modeSelector.getSelectedId() == 2 ? "individual" : "group";
+        const String mode = individual ? "individual" : "group";
         commands.setNodeParameterText(node.id, "mode", "Mode", mode);
         setLocalNodeParameter("mode", mode);
         updateModePresentation();
@@ -285,6 +387,7 @@ private:
         }
         voiceSelector.setSelectedItemIndex(selectedVoice, dontSendNotification);
         voiceSelector.setVisible(individual);
+        voiceSelectionGroup.setVisible(individual);
         addVoiceButton.setVisible(individual);
         removeVoiceButton.setVisible(individual);
         addVoiceButton.setEnabled(individualVoiceCount() < CycleDsp::maximumUnisonOrder);
@@ -299,6 +402,7 @@ private:
             control->slider.setVisible(visible);
             control->readout.setVisible(visible);
         }
+        parameterGroup.setText(individual ? "Voice parameters" : "Group parameters");
         updateIndividualControls();
         resized();
     }
@@ -416,7 +520,10 @@ private:
     Node node;
     TextButton closeButton;
     EffectEnableButton enabledButton;
-    ComboBox modeSelector;
+    PropertyGroupLabel modeGroup { "Voice mode" };
+    PropertyGroupLabel voiceSelectionGroup { "Voice selection" };
+    PropertyGroupLabel parameterGroup { "Group parameters" };
+    UnisonModeSelector modeSelector;
     ComboBox voiceSelector;
     TextButton addVoiceButton;
     TextButton removeVoiceButton;

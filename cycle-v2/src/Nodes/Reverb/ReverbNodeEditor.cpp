@@ -16,7 +16,7 @@ namespace CycleV2 {
 namespace {
 
 constexpr int kPreviewHeight = 150;
-constexpr int kPropertyStart = 210;
+constexpr int kPropertyStart = 204;
 constexpr double kReferenceSampleRate = 44100.0;
 
 String formatSize(double value) {
@@ -114,16 +114,24 @@ public:
         close.setBounds(header.close);
         enabled.setBounds(header.enabled);
         Rectangle<int> rows(18, kPropertyStart, getWidth() - 36, getHeight() - kPropertyStart);
-        for (auto* row : propertyRows()) {
-            row->setBounds(rows.removeFromTop(PropertyControlMetrics::compactRowHeight));
-            rows.removeFromTop(PropertyControlMetrics::rowGap);
-        }
+        spaceGroup.setBounds(rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        layoutCompactRow(size, rows);
+        layoutCompactRow(damping, rows);
+        layoutCompactRow(width, rows);
+        toneOutputGroup.setBounds(
+                rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
+        layoutCompactRow(highPass, rows);
+        wet.setBounds(rows.removeFromTop(PropertyControlMetrics::compactRowHeight));
     }
 
     var automationState() const {
         auto* state = new DynamicObject();
         state->setProperty("kind", "REVERB");
         state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("spaceGroup", propertyGroupLabelAutomationState(spaceGroup));
+        state->setProperty(
+                "toneOutputGroup",
+                propertyGroupLabelAutomationState(toneOutputGroup));
         Array<var> controls;
         for (const auto* row : propertyRows()) {
             var value = propertySliderRowAutomationState(*row);
@@ -155,6 +163,8 @@ private:
         };
         addAndMakeVisible(close);
         addAndMakeVisible(enabled);
+        addAndMakeVisible(spaceGroup);
+        addAndMakeVisible(toneOutputGroup);
     }
 
     void configureControls() {
@@ -164,6 +174,13 @@ private:
         configurePercentage(width, 1.f);
         configurePercentage(highPass, 0.05f);
         configurePercentage(wet, 0.4f);
+    }
+
+    static void layoutCompactRow(
+            NodePropertySliderRow& row,
+            Rectangle<int>& available) {
+        row.setBounds(available.removeFromTop(PropertyControlMetrics::compactRowHeight));
+        available.removeFromTop(PropertyControlMetrics::rowGap);
     }
 
     void configureRows() {
@@ -240,6 +257,8 @@ private:
     Node node;
     TextButton close;
     EffectEnableButton enabled;
+    PropertyGroupLabel spaceGroup { "Space" };
+    PropertyGroupLabel toneOutputGroup { "Tone / output" };
     NodePropertySliderRow size;
     NodePropertySliderRow damping;
     NodePropertySliderRow width;

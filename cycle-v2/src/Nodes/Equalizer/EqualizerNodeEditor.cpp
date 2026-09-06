@@ -133,8 +133,16 @@ public:
         enabled.setBounds(header.enabled);
         const int columnWidth = (getWidth() - 76 - kColumnGap) / 2;
         const int frequencyX = 38 + columnWidth + kColumnGap;
-        gainHeader.setBounds(38, kPropertyStart - 22, columnWidth, 18);
-        frequencyHeader.setBounds(frequencyX, kPropertyStart - 22, columnWidth, 18);
+        gainHeader.setBounds(
+                38,
+                kPropertyStart - 22,
+                columnWidth,
+                PropertyControlMetrics::groupLabelHeight);
+        frequencyHeader.setBounds(
+                frequencyX,
+                kPropertyStart - 22,
+                columnWidth,
+                PropertyControlMetrics::groupLabelHeight);
         for (size_t band = 0; band < controls.size() / 2; ++band) {
             const int y = kPropertyStart
                     + (int) band * (PropertyControlMetrics::compactRowHeight
@@ -164,6 +172,10 @@ public:
         auto* state = new DynamicObject();
         state->setProperty("kind", "EQUALIZER");
         state->setProperty("enabled", enabled.getToggleState());
+        state->setProperty("gainGroup", propertyGroupLabelAutomationState(gainHeader));
+        state->setProperty(
+                "frequencyGroup",
+                propertyGroupLabelAutomationState(frequencyHeader));
         Array<var> values;
         for (const auto& control : controls) {
             var value = propertySliderRowAutomationState(control->row);
@@ -195,10 +207,6 @@ private:
         };
         addAndMakeVisible(close);
         addAndMakeVisible(enabled);
-        stylePropertyLabel(gainHeader, "GAIN");
-        stylePropertyLabel(frequencyHeader, "FREQUENCY");
-        gainHeader.setJustificationType(Justification::centredLeft);
-        frequencyHeader.setJustificationType(Justification::centredLeft);
         addAndMakeVisible(gainHeader);
         addAndMakeVisible(frequencyHeader);
     }
@@ -390,8 +398,8 @@ private:
     Node node;
     TextButton close;
     EffectEnableButton enabled;
-    Label gainHeader;
-    Label frequencyHeader;
+    PropertyGroupLabel gainHeader { "Gain" };
+    PropertyGroupLabel frequencyHeader { "Frequency" };
     int draggedBand { -1 };
     std::vector<std::unique_ptr<EqualizerControl>> controls;
 };

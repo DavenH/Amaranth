@@ -19,6 +19,16 @@
     },
     {
       "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.gainGroup.label",
+      "equals": "Gain"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effectParameters.frequencyGroup.label",
+      "equals": "Frequency"
+    },
+    {
+      "command": "assertState",
       "path": "expandedNodeControls.effectParameters.controls",
       "exists": true
     },

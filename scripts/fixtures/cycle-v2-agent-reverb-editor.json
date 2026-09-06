@@ -3,6 +3,8 @@
     { "command": "addNode", "kind": "reverb", "x": 540, "y": 280 },
     { "command": "openNodeEditor", "nodeId": "reverb", "waitForIdle": true, "idleDelayMs": 300 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.kind", "equals": "REVERB" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.spaceGroup.label", "equals": "Space" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.toneOutputGroup.label", "equals": "Tone / output" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "0.74 s" },
     { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "wet", "label": "Wet", "value": "0.73" },
     { "command": "setNodeParameter", "nodeId": "reverb", "parameterId": "size", "label": "Size", "value": "0.6666" },
