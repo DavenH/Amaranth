@@ -1,6 +1,6 @@
 # Cycle V2 Control Group Hierarchy
 
-Status: In progress
+Status: Implemented
 
 ## Objective
 
@@ -34,7 +34,7 @@ component boundary; it does not own envelope view behavior.
 
 | Editor | Current issue | Intended groups |
 | --- | --- | --- |
-| Delay | Five rows read as one undifferentiated list | Echo, Stereo motion, Output |
+| Delay | Five rows read as one undifferentiated list | Echo, Stereo / output |
 | Reverb | Space, filtering, and mix are visually flat | Space, Tone / output |
 | Equalizer | Gain and Frequency headings do not show column scope | Gain and Frequency spanning headings |
 | Unison | Group/Individual is hidden in a combo; `+`/`−` lack local meaning | Voice mode, Voice selection, active mode parameters |
@@ -152,19 +152,39 @@ production capture, and an imperative commit before the next slice.
   used `/private/tmp/envelope-groups-after.png`; macOS rejected the OS compositor
   handoff, so the app-side capture intentionally leaves the OpenGL curve region
   black while preserving the native control band under review.
+- Slice 3 applies the shared heading component to Delay (`Echo`,
+  `Stereo / output`), Reverb (`Space`, `Tone / output`), Equalizer (`Gain`,
+  `Frequency`), Waveshaper (`Gain`, `Quality`), and Impulse Response
+  (`Response`, `IR sample`). The effect mappings, row components, IR resource
+  actions, and preview ownership remain unchanged. Group headings and bounds
+  are exposed through the existing editor automation states.
+- Slice 4 replaces Unison's mode combo with a visible `Group | Individual`
+  segmented selector under `Voice mode`. `Voice selection` scopes the chooser
+  and add/remove actions in Individual mode, while the parameter heading
+  follows the active mode. Add/remove now have explicit accessible names and
+  tooltips. The parameter widgets keep their former sizes; only the unused
+  inter-row slack was reduced from 8 px to the shared 6 px gap.
+- Focused tests pass with 16 group-label, 42 Delay/Reverb, 14 Equalizer, 34
+  Waveshaper, 124 Impulse Response, 44 Unison, 78 Envelope purpose/interaction,
+  and 18 logarithmic-grid assertions. The standalone `CycleV2` target builds
+  successfully.
+- Updated semantic fixtures pass for all six effects. Production-size OS
+  review used `/private/tmp/group-delay-os.png`,
+  `/private/tmp/group-reverb-os.png`, `/private/tmp/group-equalizer-os.png`,
+  `/private/tmp/group-waveshaper-os.png`, `/private/tmp/group-ir-os.png`, and
+  `/private/tmp/group-unison-os.png`. Their filtered logs contain no failures,
+  assertions, warnings, or crashes. Together with the Trimesh and Envelope
+  captures above, these cover every editor in the audit.
 
 ## Deletion Targets
 
-- Delete `TrimeshSidePanelRenderer`'s private `drawSpanningGroupLabel` after
-  all callers use the shared property-control primitive.
-- Delete IR's plain `resourceTitle` label after `IR sample` uses the shared
-  group heading.
-- Delete Equalizer's plain column-header labels after the spanning equivalents
-  own their geometry.
-- Delete Envelope's `vertexModeLabel` and context-free `Log` button after the
-  semantic groups and Axis-scale selector replace them.
-- Delete Unison's mode combo if the production-size segmented mode selector
-  satisfies the layout and interaction contract.
+- Deleted `TrimeshSidePanelRenderer`'s private `drawSpanningGroupLabel`; all
+  callers use the shared property-control primitive.
+- Replaced IR's plain `resourceTitle` label with the shared group heading.
+- Replaced Equalizer's plain column-header labels with spanning equivalents.
+- Deleted Envelope's `vertexModeLabel` and context-free `Log` button.
+- Deleted Unison's mode combo after production-size review of the segmented
+  mode selector.
 
 ## Completion Criteria
 

@@ -693,7 +693,7 @@ TEST_CASE("Unison editor exposes structured individual voice state",
         "[cycle-v2][editor][unison][individual]") {
     ScopedJuceInitialiser_GUI juce;
     Component parent;
-    NullCommands commands;
+    RecordingVoiceCommands commands;
     NullPresentation presentation;
     NullResources resources;
     NodeEditorHost host(parent, commands, presentation, resources);
@@ -717,6 +717,42 @@ TEST_CASE("Unison editor exposes structured individual voice state",
     REQUIRE(effect->getProperty("mode").toString() == "individual");
     REQUIRE((int) effect->getProperty("voiceCount") == 2);
     REQUIRE((int) effect->getProperty("selectedVoice") == 0);
+    REQUIRE(effect->getProperty("modeGroup")
+            .getProperty("label", {}).toString() == "Voice mode");
+    REQUIRE(effect->getProperty("voiceSelectionGroup")
+            .getProperty("label", {}).toString() == "Voice selection");
+    REQUIRE(effect->getProperty("parameterGroup")
+            .getProperty("label", {}).toString() == "Voice parameters");
+
+    Component* modeSelector = host.component()->findChildWithID("unisonEditor.mode");
+    REQUIRE(modeSelector != nullptr);
+    auto* groupMode = dynamic_cast<Button*>(
+            modeSelector->findChildWithID("unisonEditor.mode.group"));
+    auto* individualMode = dynamic_cast<Button*>(
+            modeSelector->findChildWithID("unisonEditor.mode.individual"));
+    auto* addVoice = dynamic_cast<TextButton*>(
+            host.component()->findChildWithID("unisonEditor.addVoice"));
+    auto* removeVoice = dynamic_cast<TextButton*>(
+            host.component()->findChildWithID("unisonEditor.removeVoice"));
+    REQUIRE(groupMode != nullptr);
+    REQUIRE(individualMode != nullptr);
+    REQUIRE(addVoice != nullptr);
+    REQUIRE(removeVoice != nullptr);
+    REQUIRE(groupMode->getName() == "Group voice mode");
+    REQUIRE(individualMode->getName() == "Individual voice mode");
+    REQUIRE(addVoice->getTitle() == "Add Unison voice");
+    REQUIRE(removeVoice->getTitle() == "Remove selected Unison voice");
+
+    groupMode->onClick();
+    REQUIRE(commands.textParameterId == "mode");
+    REQUIRE(commands.textValue == "group");
+    DynamicObject groupAutomation;
+    host.appendAutomationState(groupAutomation);
+    REQUIRE(groupAutomation.getProperty("effectParameters")
+            .getProperty("mode", {}).toString() == "group");
+    REQUIRE(groupAutomation.getProperty("effectParameters")
+            .getProperty("parameterGroup", {})
+            .getProperty("label", {}).toString() == "Group parameters");
 }
 
 TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
@@ -839,6 +875,11 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     host.appendAutomationState(delayAutomation);
     REQUIRE(delayAutomation.getProperty("effectParameters")
             .getProperty("kind", {}).toString() == "DELAY");
+    const var delayState = delayAutomation.getProperty("effectParameters");
+    REQUIRE(delayState.getProperty("echoGroup", {})
+            .getProperty("label", {}).toString() == "Echo");
+    REQUIRE(delayState.getProperty("stereoOutputGroup", {})
+            .getProperty("label", {}).toString() == "Stereo / output");
     const var time = controlWithId(delayAutomation, "time");
     REQUIRE(time.getProperty("readout", {}).toString() == "1 beat");
     REQUIRE((bool) time.getProperty("compact", {}));
@@ -890,6 +931,11 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     host.appendAutomationState(reverbAutomation);
     REQUIRE(reverbAutomation.getProperty("effectParameters")
             .getProperty("kind", {}).toString() == "REVERB");
+    const var reverbState = reverbAutomation.getProperty("effectParameters");
+    REQUIRE(reverbState.getProperty("spaceGroup", {})
+            .getProperty("label", {}).toString() == "Space");
+    REQUIRE(reverbState.getProperty("toneOutputGroup", {})
+            .getProperty("label", {}).toString() == "Tone / output");
     const var size = controlWithId(reverbAutomation, "size");
     REQUIRE(size.getProperty("readout", {}).toString() == "0.74 s");
     REQUIRE((bool) size.getProperty("compact", {}));
@@ -981,6 +1027,11 @@ TEST_CASE("Equalizer retains paired columns with semantic shared rows",
     REQUIRE(controls->getReference(1).getProperty("readout", {}).toString() == "60 Hz");
     REQUIRE((bool) controls->getReference(0).getProperty("compact", {}));
     REQUIRE((int) controls->getReference(0).getProperty("usableTrackWidth", {}) >= 140);
+    const var effectState = automation.getProperty("effectParameters");
+    REQUIRE(effectState.getProperty("gainGroup", {})
+            .getProperty("label", {}).toString() == "Gain");
+    REQUIRE(effectState.getProperty("frequencyGroup", {})
+            .getProperty("label", {}).toString() == "Frequency");
 
     auto* gainValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "equalizerEditor.band1Gain.value"));
@@ -1447,6 +1498,10 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
+    REQUIRE(state.getProperty("gainGroup", {})
+            .getProperty("label", {}).toString() == "Gain");
+    REQUIRE(state.getProperty("qualityGroup", {})
+            .getProperty("label", {}).toString() == "Quality");
     auto* oversampling = dynamic_cast<ComboBox*>(
             editor.findChildWithID("waveshaperEditor.oversampling"));
     auto* enabled = dynamic_cast<ToggleButton*>(
@@ -1457,7 +1512,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(preGain != nullptr);
     REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
     REQUIRE(rectangleProperty(preLayout, "label").getY()
-            == controlGroupBounds.getY());
+            == controlGroupBounds.getY() + PropertyControlMetrics::groupLabelHeight);
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getWidth() <= 72);
     REQUIRE(oversampling->getNumItems() == 4);
@@ -1611,6 +1666,10 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
     REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
     REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");
+    REQUIRE(state.getProperty("responseGroup", {})
+            .getProperty("label", {}).toString() == "Response");
+    REQUIRE(state.getProperty("resourceGroup", {})
+            .getProperty("label", {}).toString() == "IR sample");
     REQUIRE_FALSE((bool) state.getProperty("resourceSublabelVisible", {}));
 
     int textButtonCount = 0;
@@ -1667,7 +1726,9 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     const Rectangle<float> sizeTrack = rectangleProperty(
             state.getProperty("sizeLayout", {}), "track");
     REQUIRE(sizeLabel.getY()
-            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
+            == rectangleProperty(state, "controlBounds").toNearestInt()
+                    .reduced(12, 12).getY()
+                    + PropertyControlMetrics::groupLabelHeight);
     REQUIRE(sizeTrack.getY() - sizeLabel.getBottom() <= 10.f);
 
     delegate.events.clear();

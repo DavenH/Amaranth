@@ -3,6 +3,8 @@
     { "command": "addNode", "kind": "unison", "x": 540, "y": 280 },
     { "command": "openNodeEditor", "nodeId": "unison", "waitForIdle": true, "idleDelayMs": 300 },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.kind", "equals": "Unison" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.modeGroup.label", "equals": "Voice mode" },
+    { "command": "assertState", "path": "expandedNodeControls.effectParameters.parameterGroup.label", "equals": "Group parameters" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.0.readout", "equals": "1 voice" },
     { "command": "assertState", "path": "expandedNodeControls.effectParameters.controls.1.readout", "equals": "35.0 cents" },
     { "command": "setNodeParameter", "nodeId": "unison", "parameterId": "order", "label": "Voices", "value": "5" },
