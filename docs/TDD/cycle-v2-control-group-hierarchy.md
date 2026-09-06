@@ -202,13 +202,15 @@ production capture, and an imperative commit before the next slice.
   marker/arrow terminations plus inward-versus-outward zoom topology. XML
   validation, the embedded-component icon check, 640 hosted
   Envelope assertions, the purpose and marker fixtures, and the standalone
-  build all pass. The refined Loop symbol places its loop above a horizontal
-  timeline and lands its arrow on a marked intercept. Scaling diagrams now use
+  build all pass. The refined Loop symbol uses a counter-clockwise return arrow
+  above a quieter horizontal timeline; its arrowhead aligns with a short,
+  separated loop-start intercept tick. Scaling diagrams now use
   one line length and distinguish equal spacing from a more pronounced
   logarithmic progression. Final production review used
   `/private/tmp/envelope-toolbar-proportions-final.png`, with the enabled-marker
-  review at `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`; the
-  filtered logs contain no warnings, assertions, failures, or crashes.
+  review at `/private/tmp/cycle-v2-envelope-marker-controls-enabled.png`, with
+  the disabled-state review at `/private/tmp/envelope-loop-disabled-final.png`;
+  the filtered logs contain no warnings, assertions, failures, or crashes.
 
 ## Deletion Targets
 
