@@ -160,6 +160,19 @@ scales and their readable separation, not to an unassigned central gulf.
   `--- IR sample ---`. Keep the rules behind the label with deliberate gaps;
   do not align the heading only to the first control or add another enclosing
   box. Use the same treatment for peer groups such as Axis and Link.
+- Make every button understandable from its local context: users should be able
+  to tell what property or action it controls and, for stateful controls, which
+  state is active. Do not rely on a short noun, an unexplained icon, or a lone
+  toggle label whose meaning changes with an implicit surrounding mode.
+- When a control chooses one of two named modes, prefer a labeled two-segment
+  selector over a context-free on/off toggle. Put the property being changed in
+  the group label above it, show both mode choices at once, and give the selected
+  segment an unmistakable non-colour indicator. Small diagrams may replace text
+  when they clearly depict the difference and remain legible at production size.
+- Name control groups for the shared operation, property, or outcome beneath
+  them, not merely for the object currently selected. A heading should help the
+  user predict what clicking its controls will do; if it does not, revise the
+  heading, labels, or icon treatment together.
 - Use color semantically and consistently. Never rely on color alone for state.
 - Make enabled, disabled, hover, pressed, selected, focused, warning, and error
   states related but unmistakable.

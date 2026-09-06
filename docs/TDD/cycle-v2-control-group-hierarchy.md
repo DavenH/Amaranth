@@ -1,0 +1,148 @@
+# Cycle V2 Control Group Hierarchy
+
+Status: In progress
+
+## Objective
+
+Make control scope and button meaning legible in every expanded effect,
+Trimesh, and Envelope editor without restoring wasteful outer boxes. Use a
+centered label with quiet flanking rules for genuine control groups. Replace
+context-free binary toggles with controls that identify the property being
+changed, show the available modes, and make the current mode explicit.
+
+## Authoritative Implementations
+
+- `PropertyControls` owns shared property-control typography, colour, spacing,
+  and presentation primitives. It will own the spanning group-label primitive.
+- `TrimeshSidePanelRenderer` owns Trimesh control geometry and painting. Its
+  existing Axis/Link spanning-label treatment is the mature visual behavior to
+  extract unchanged into `PropertyControls`.
+- `EnvelopeMorphControls` owns Envelope control-region geometry, while
+  `EnvelopeEditorComponent` owns the existing component interaction lifecycle.
+  `EnvelopePurposeSelector` is the mature segmented-choice interaction and
+  accessibility reference.
+- Delay, Reverb, Equalizer, Unison, Impulse Response, and Waveshaper retain
+  their domain editors, parameter mappings, command callbacks, gesture
+  publication, previews, and undo behavior unchanged.
+
+No compatibility adapter is required. The shared extraction translates only
+group-label presentation. The Envelope axis-scale selector translates an
+explicit Linear/Logarithmic choice to the existing `logarithmic` Boolean at the
+component boundary; it does not own envelope view behavior.
+
+## Audit And Intended Grouping
+
+| Editor | Current issue | Intended groups |
+| --- | --- | --- |
+| Delay | Five rows read as one undifferentiated list | Echo, Stereo motion, Output |
+| Reverb | Space, filtering, and mix are visually flat | Space, Tone / output |
+| Equalizer | Gain and Frequency headings do not show column scope | Gain and Frequency spanning headings |
+| Unison | Group/Individual is hidden in a combo; `+`/`−` lack local meaning | Voice mode, Voice selection, active mode parameters |
+| Waveshaper | A large gap implies groups but names neither | Gain, Quality |
+| Impulse Response | `IR sample` is left aligned over three equal actions | Response, IR sample |
+| Trimesh | Cube, morph, and vertex headings float without scope rules | Cube display, Morph position, Vertex parameters; retain Axis and Link |
+| Envelope | Purpose, morph, markers, scale, range, and parameters share one band; `Vertex` and `Log` are ambiguous | Envelope purpose, Morph position, Envelope markers, Axis scale, Vertical range, Vertex parameters |
+
+Group labels describe a shared operation, property, or outcome. They do not
+repeat the editor title, narrate a single obvious control, or name only the
+currently selected object. Small related actions share a row only when their
+labels/icons and hit targets remain clear.
+
+## Design Contract
+
+- A group heading owns the full width of the controls it describes. Its text is
+  centered between low-contrast horizontal rules with a deliberate text gap.
+- Group headings add hierarchy, not containers: no surrounding rounded
+  rectangle, nested background, or repeated outer inset is introduced.
+- The heading row is 18 px unless a production-size review proves a domain
+  needs a different established metric. Peer headings use identical geometry.
+- Controls remain at least as large and precise as before. Added headings use
+  existing stranded gaps where possible; otherwise editor content is
+  rebalanced rather than compressing rails below their contracts.
+- Envelope Axis scale is a two-segment selector labelled `Axis scale`, with
+  both Linear and Logarithmic choices visible. Each segment contains a small
+  line-spacing diagram and an accessible name. Selection uses fill, border, and
+  a persistent indicator, not hue alone.
+- Envelope marker actions are grouped as `Envelope markers`; their accessible
+  names and tooltips continue to say that they set/toggle the selected vertex
+  as Loop or Sustain.
+- Envelope range actions are grouped as `Vertical range`; their accessible
+  names remain Fit and Full rather than relying on icons alone.
+- Unison voice add/remove controls gain explicit accessible names and local
+  scope. Group/Individual becomes a visible mutually exclusive mode choice if
+  it fits without reducing the parameter controls below their current geometry.
+
+## Test-First Contract
+
+1. Shared group-label geometry centers the text, leaves two nonzero rule runs,
+   preserves a deliberate text gap, and remains contained at compact and
+   reference widths.
+2. Every affected editor exposes group-label bounds through its existing
+   automation state; peer groups are contained, non-overlapping, and span the
+   controls they name.
+3. Envelope exposes two Axis-scale options with accessible Linear and
+   Logarithmic names, distinct production-size diagrams, and a non-colour
+   selected-state difference.
+4. Selecting Linear then Logarithmic publishes through the existing discrete
+   command path, changes the rendered grid, supports undo, and survives rebind.
+5. Envelope Loop/Sustain, Fit/Full, morph, Axis/Link, and selected-vertex
+   gestures retain their complete existing interaction tests after relayout.
+6. All six effect editors retain enablement, parameter editing, undo, and
+   preview behavior. IR resource actions and Unison voice actions retain their
+   complete semantic sequences.
+7. Production-size before/after captures cover all six effects, Trimesh, and
+   Envelope in representative states.
+
+## Negative Boundaries
+
+- Do not restore outer grouping rectangles or title bands around visualization
+  regions.
+- Do not add headings to isolated controls when their property label already
+  provides complete context.
+- Do not use colour alone to distinguish a selected mode or toggle state.
+- Do not copy the Trimesh spanning-label painter into each editor. Extract it
+  once into the shared property presentation layer.
+- Do not move parameter IDs, mappings, graph commands, undo, DSP, or preview
+  policy into the shared presentation primitive.
+- Do not implement a generic node-kind switchboard for domain grouping.
+- Do not replace mature icons or interaction algorithms with approximations.
+
+## Implementation Slices
+
+1. Extract the shared spanning group-label primitive and migrate Trimesh's
+   Axis/Link plus Cube, Morph, and Vertex headings. Add geometry/raster tests.
+2. Reorganize Envelope controls and add the labelled Linear/Logarithmic Axis
+   scale selector through the existing discrete command path. Preserve all
+   marker, range, morph, vertex, and undo behavior.
+3. Apply the audited groups to Delay, Reverb, Equalizer, Waveshaper, and IR,
+   preserving current property and resource interaction contracts.
+4. Make Unison's voice-editing modes and actions explicit, then complete the
+   cross-editor production screenshot and automation review.
+
+Each slice receives a refactor pass, style check, focused semantic tests,
+production capture, and an imperative commit before the next slice.
+
+## Deletion Targets
+
+- Delete `TrimeshSidePanelRenderer`'s private `drawSpanningGroupLabel` after
+  all callers use the shared property-control primitive.
+- Delete IR's plain `resourceTitle` label after `IR sample` uses the shared
+  group heading.
+- Delete Equalizer's plain column-header labels after the spanning equivalents
+  own their geometry.
+- Delete Envelope's `vertexModeLabel` and context-free `Log` button after the
+  semantic groups and Axis-scale selector replace them.
+- Delete Unison's mode combo if the production-size segmented mode selector
+  satisfies the layout and interaction contract.
+
+## Completion Criteria
+
+- Every applicable control group in all six effect editors, Trimesh, and
+  Envelope has an explicit, correctly scoped heading without an outer box.
+- Every remaining button communicates its action/property and current state
+  through visible local context plus accessible naming.
+- Envelope Axis scale and Unison voice mode show their alternatives and current
+  selection directly.
+- All deletion targets, semantic tests, automation fixtures, production-size
+  screenshots, standalone build, style review, and diff review are complete.
+
