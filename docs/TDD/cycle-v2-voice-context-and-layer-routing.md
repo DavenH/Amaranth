@@ -152,6 +152,10 @@ The Channel palette names the operation Pan. Its compact presentation is a
 headset whose independently emphasized ear pads reveal left/right bias. It has
 no visible input/output sockets or movable outer node ring: once inserted, its
 position is derived from the cable endpoints so it reads as a cable property.
+The scene collapses the two durable graph edges around Pan into one visual and
+hit-test cable from the outer source to the outer destination. The headset and
+Spy badge sample positions along that shared curve; Pan does not act as a cable
+endpoint or influence the curve's control points.
 The complete headset hit target uses conventional vertical dragging, and Pan
 gestures snap within 5% of hard left, centre, and hard right. Pan can be added
 from a cable context menu or by dragging the palette item onto a compatible

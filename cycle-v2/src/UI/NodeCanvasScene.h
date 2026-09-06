@@ -53,6 +53,7 @@ struct NodeSceneEdge {
     bool destinationBundleIncludesYellow { true };
     bool sourceEndpointVisible { true };
     bool destinationEndpointVisible { true };
+    bool inlinePan {};
 };
 
 struct NodeCanvasSceneSnapshot {

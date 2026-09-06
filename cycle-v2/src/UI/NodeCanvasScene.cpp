@@ -67,7 +67,18 @@ const Edge* singleSignalEdgeForNode(
     return result;
 }
 
-std::optional<Point<float>> inlinePanCentre(
+struct InlinePanRoute {
+    const Edge* incoming {};
+    const Edge* outgoing {};
+    const Node* sourceNode {};
+    const Node* destinationNode {};
+    const Port* sourcePort {};
+    const Port* destinationPort {};
+    int incomingIndex { -1 };
+    int outgoingIndex { -1 };
+};
+
+std::optional<InlinePanRoute> inlinePanRoute(
         const NodeGraph& graph,
         const Node& node) {
     const Edge* incoming = singleSignalEdgeForNode(graph, node.id, true);
@@ -88,20 +99,17 @@ std::optional<Point<float>> inlinePanCentre(
         return std::nullopt;
     }
 
-    const Point<float> source = NodeCanvasScene::portWorldCentre(*sourceNode, *sourcePort);
-    const Point<float> destination = NodeCanvasScene::portWorldCentre(
-            *destinationNode,
-            *destinationPort);
-    const bool hasProbeBefore = graph.findSignalProbeForSource(
-            incoming->sourceNodeId,
-            incoming->sourcePortId) != nullptr;
-    const bool hasProbeAfter = graph.findSignalProbeForSource(
-            outgoing->sourceNodeId,
-            outgoing->sourcePortId) != nullptr;
-    const float position = hasProbeBefore
-            ? 2.f / 3.f
-            : (hasProbeAfter ? 1.f / 3.f : 0.5f);
-    return source + (destination - source) * position;
+    const Edge* edgeData = graph.getEdges().data();
+    return InlinePanRoute {
+            incoming,
+            outgoing,
+            sourceNode,
+            destinationNode,
+            sourcePort,
+            destinationPort,
+            (int) std::distance(edgeData, incoming),
+            (int) std::distance(edgeData, outgoing)
+    };
 }
 
 juce::Point<float> outwardNormal(PortSide side) {
@@ -142,6 +150,73 @@ juce::Path buildCablePath(
             source + normalizedOrFallback(vector, outwardNormal(sourceSide)) * sourceStrength,
             destination + outwardNormal(destinationSide) * destinationStrength,
             destination);
+    return result;
+}
+
+float inlinePanFraction(const NodeGraph& graph, const InlinePanRoute& route) {
+    const bool hasProbeBefore = graph.findSignalProbeForSource(
+            route.incoming->sourceNodeId,
+            route.incoming->sourcePortId) != nullptr;
+    const bool hasProbeAfter = graph.findSignalProbeForSource(
+            route.outgoing->sourceNodeId,
+            route.outgoing->sourcePortId) != nullptr;
+    return hasProbeBefore ? 2.f / 3.f : (hasProbeAfter ? 1.f / 3.f : 0.5f);
+}
+
+Path inlinePanPath(const InlinePanRoute& route) {
+    const Point<float> source = NodeCanvasScene::portWorldCentre(
+            *route.sourceNode,
+            *route.sourcePort);
+    const Point<float> destination = NodeCanvasScene::portWorldCentre(
+            *route.destinationNode,
+            *route.destinationPort);
+    return buildCablePath(
+            source,
+            destination,
+            route.sourcePort->side,
+            route.destinationPort->side,
+            1.f);
+}
+
+std::optional<Point<float>> inlinePanCentre(
+        const NodeGraph& graph,
+        const Node& node) {
+    const std::optional<InlinePanRoute> route = inlinePanRoute(graph, node);
+    if (!route.has_value()) {
+        return std::nullopt;
+    }
+
+    const Path path = inlinePanPath(*route);
+    return path.getPointAlongPath(path.getLength() * inlinePanFraction(graph, *route));
+}
+
+NodeSceneEdge inlinePanSceneEdge(
+        const InlinePanRoute& route,
+        const NodeCanvasViewport& viewport) {
+    const Point<float> source = viewport.toScreen(NodeCanvasScene::portWorldCentre(
+            *route.sourceNode,
+            *route.sourcePort));
+    const Point<float> destination = viewport.toScreen(NodeCanvasScene::portWorldCentre(
+            *route.destinationNode,
+            *route.destinationPort));
+    Path visiblePath = buildCablePath(
+            source,
+            destination,
+            route.sourcePort->side,
+            route.destinationPort->side,
+            viewport.getZoom());
+    Path hitPath;
+    PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
+            .createStrokedPath(hitPath, visiblePath);
+
+    NodeSceneEdge result;
+    result.edgeIndex = route.incomingIndex;
+    result.edgeIndices = { route.incomingIndex, route.outgoingIndex };
+    result.source = source;
+    result.destination = destination;
+    result.cablePath = std::move(visiblePath);
+    result.hitPath = std::move(hitPath);
+    result.inlinePan = true;
     return result;
 }
 
@@ -313,6 +388,21 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         if (sourceNode == nullptr || destinationNode == nullptr) {
             continue;
         }
+
+        if (sourceNode->kind == NodeKind::SpectralLayer) {
+            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *sourceNode);
+            if (route.has_value() && route->outgoingIndex == edgeIndex) {
+                continue;
+            }
+        }
+        if (destinationNode->kind == NodeKind::SpectralLayer) {
+            const std::optional<InlinePanRoute> route = inlinePanRoute(graph, *destinationNode);
+            if (route.has_value() && route->incomingIndex == edgeIndex) {
+                current.edges.push_back(inlinePanSceneEdge(*route, viewport));
+                continue;
+            }
+        }
+
         const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
         const Port* destinationPort = findPort(*destinationNode, edge.destPortId, true);
         if (sourcePort == nullptr) {
@@ -361,7 +451,8 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 !isModulationBundle
                         || ModulationCableBundle::destinationIncludesYellow(*destinationNode),
                 sourceNode->kind != NodeKind::SpectralLayer,
-                destinationNode->kind != NodeKind::SpectralLayer
+                destinationNode->kind != NodeKind::SpectralLayer,
+                false
         });
     }
 

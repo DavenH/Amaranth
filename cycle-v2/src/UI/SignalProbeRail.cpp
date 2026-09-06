@@ -28,6 +28,21 @@ const Edge* graphEdgeFor(const NodeGraph& graph, int edgeIndex) {
             : nullptr;
 }
 
+const Edge* graphEdgeForProbe(
+        const SignalProbe& probe,
+        const NodeGraph& graph,
+        const NodeSceneEdge& sceneEdge) {
+    for (const int edgeIndex : sceneEdge.edgeIndices) {
+        const Edge* edge = graphEdgeFor(graph, edgeIndex);
+        if (edge != nullptr
+                && edge->sourceNodeId == probe.sourceNodeId
+                && edge->sourcePortId == probe.sourcePortId) {
+            return edge;
+        }
+    }
+    return nullptr;
+}
+
 }
 
 Rectangle<float> SignalProbeRail::boundsFor(
@@ -213,9 +228,8 @@ const NodeSceneEdge* SignalProbeRail::anchorFor(
         const NodeCanvasSceneSnapshot& scene) {
     const NodeSceneEdge* fallback = nullptr;
     for (const auto& sceneEdge : scene.edges) {
-        const Edge* edge = graphEdgeFor(graph, sceneEdge.edgeIndex);
-        if (edge == nullptr || edge->sourceNodeId != probe.sourceNodeId
-                || edge->sourcePortId != probe.sourcePortId) {
+        const Edge* edge = graphEdgeForProbe(probe, graph, sceneEdge);
+        if (edge == nullptr) {
             continue;
         }
         if (fallback == nullptr) {
@@ -234,7 +248,7 @@ Colour SignalProbeRail::colourForProbe(
         const NodeGraph& graph,
         const NodeCanvasSceneSnapshot& scene) {
     const NodeSceneEdge* anchor = SignalProbeRail::anchorFor(probe, graph, scene);
-    const Edge* edge = anchor == nullptr ? nullptr : graphEdgeFor(graph, anchor->edgeIndex);
+    const Edge* edge = anchor == nullptr ? nullptr : graphEdgeForProbe(probe, graph, *anchor);
     if (edge == nullptr) {
         return CanvasChromePalette::mutedText;
     }
@@ -251,8 +265,15 @@ Point<float> SignalProbeRail::markerCentre(
         const NodeCanvasSceneSnapshot& scene) {
     const NodeSceneEdge* anchor = anchorFor(probe, graph, scene);
     if (anchor != nullptr) {
+        float position = 0.5f;
+        if (anchor->inlinePan) {
+            const Edge* edge = graphEdgeForProbe(probe, graph, *anchor);
+            position = edge == graphEdgeFor(graph, anchor->edgeIndices.front())
+                    ? 1.f / 3.f
+                    : 2.f / 3.f;
+        }
         return anchor->cablePath.getPointAlongPath(
-                anchor->cablePath.getLength() * 0.5f);
+                anchor->cablePath.getLength() * position);
     }
 
     const String sourceSemanticId = "output:" + probe.sourceNodeId + "." + probe.sourcePortId;
