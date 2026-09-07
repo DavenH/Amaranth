@@ -27,7 +27,6 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
     ,	lastAudioLevel		(0.f)
     ,	lastBlueLevel		(0.f)
     , 	tempoScale			(1.)
-    , 	samplesProcessed	(-1)
     , 	tempRendBuffer		(2)
     , 	resampBuff			(2)
     , 	numEnvelopeDims		(2)
@@ -143,11 +142,10 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     double sampleRate 	= getObj(AudioHub).getSampleRate();
     bool needToResample = sampleRate != 44100.0;
     int numSamples44k   = numSamples;
+    MidiBuffer midi44k;
 
     if (needToResample) {
-        double ratio = 44100.0 / sampleRate;
-        numSamples44k = (int) (ratio * (samplesProcessed + numSamples) + 0.999999999) -
-                        (int) (ratio * samplesProcessed + 0.999999999);
+        numSamples44k = internalRateBlockAdapter.convertBlock(numSamples, midiMessages, midi44k);
 
         for (int i = 0; i < buffer.getNumChannels(); ++i) {
             tempMemory[i].ensureSize(numSamples44k);
@@ -177,13 +175,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     float* channels[] = { rendBuffer.left.get(), rendBuffer.right.get() };
     AudioSampleBuffer buffer44k(channels, buffer.getNumChannels(), numSamples44k);
 
-    MidiBuffer* midiBuff = &midiMessages;
-    MidiBuffer midi44k;
-
-    if (needToResample) {
-        convertMidiTo44k(midiMessages, midi44k, numSamples44k);
-        midiBuff = &midi44k;
-    }
+    MidiBuffer* midiBuff = needToResample ? &midi44k : &midiMessages;
 
     // sound processing @ 44100
     if (numSamples44k > 0) {
@@ -228,7 +220,6 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
             }
         }
 
-        samplesProcessed += numSamples;
     }
 
     for (int ch = 0; ch < rendBuffer.numChannels; ++ch) {
@@ -387,33 +378,9 @@ void SynthAudioSource::calcFades() {
     }
 }
 
-void SynthAudioSource::convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k) {
-    if (numSamples44k == 0) {
-        carryMessages.clear();
-        for (const MidiMessageMetadata md : source) {
-            carryMessages.add(md.getMessage());
-        }
-        return;
-    }
-
-    const double srRatio = 44100.0 / getObj(AudioHub).getSampleRate();
-
-    dest.clear();
-
-    for (int i = 0; i < carryMessages.size(); ++i) {
-        dest.addEvent(carryMessages.getUnchecked(i), 0);
-    }
-
-    for (const MidiMessageMetadata md : source) {
-        const int position44k = roundToInt(md.samplePosition * srRatio + 0.5);
-        dest.addEvent(md.getMessage(), position44k);
-    }
-}
-
-
 void SynthAudioSource::initResampler() {
     double sampleRateReal = getObj(AudioHub).getSampleRate();
-    samplesProcessed = 0;
+    internalRateBlockAdapter.prepare(sampleRateReal);
 
     int totalSize = 0;
     int inRate, outRate;

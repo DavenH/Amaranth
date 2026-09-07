@@ -75,7 +75,7 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
-## Open: Legacy resampler can replay carried MIDI
+## Resolved: Legacy resampler could replay carried MIDI
 
 Context:
 
@@ -87,7 +87,19 @@ Context:
 - Normal device block sizes do not exercise the zero-internal-sample case; a
   useful fix needs a tiny-block, high-output-rate scheduling fixture.
 
-Current status: open; inherited behavior, not a reimplementation discrepancy.
+Resolution:
+
+- The internal-rate block boundary now owns cumulative sample conversion and
+  deferred MIDI as one lifecycle object below `SynthAudioSource`.
+- Consecutive zero-internal-sample blocks append their MIDI in order. The next
+  nonempty block consumes those messages once and clears the carry.
+- Current-block event positions now use the legacy nearest-sample conversion
+  directly instead of adding an extra half sample before `roundToInt()`.
+- Focused tests exercise consecutive empty internal blocks at 192 kHz, ordered
+  note/controller carry, absence of replay, position conversion, and an exact
+  cumulative 44,100 internal samples for one second at 48 kHz.
+
+Current status: resolved on 2026-09-07.
 
 ## Open: Legacy global scratch mixes output and internal sample-rate domains
 
