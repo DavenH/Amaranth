@@ -15,6 +15,9 @@ namespace {
 const Colour kText { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 const Colour kInvalid { 0xffdf7272 };
+const Colour kSelectedFill { 0xff2b415a };
+const Colour kControlFill { 0xff151c24 };
+const Colour kControlBorder { 0xff536171 };
 constexpr double kFloatMappingRoundingTolerance = 0.000001;
 constexpr int kMinimumUnitWidth = 14;
 constexpr int kMaximumUnitWidth = 34;
@@ -62,6 +65,34 @@ int propertyUnitWidth(const String& unit, int availableWidth) {
                     kMinimumUnitWidth,
                     kMaximumUnitWidth,
                     unit.length() * kUnitCharacterWidth + kUnitGap));
+}
+
+Path selectedSegmentPath(
+        Rectangle<float> bounds,
+        int segmentCount,
+        int selectedSegment) {
+    const float segmentWidth = bounds.getWidth() / (float) segmentCount;
+    const bool first = selectedSegment == 0;
+    const bool last = selectedSegment + 1 == segmentCount;
+    const Rectangle<float> selected {
+            bounds.getX() + segmentWidth * (float) selectedSegment,
+            bounds.getY(),
+            segmentWidth,
+            bounds.getHeight()
+    };
+    Path result;
+    result.addRoundedRectangle(
+            selected.getX(),
+            selected.getY(),
+            selected.getWidth(),
+            selected.getHeight(),
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::controlCornerRadius,
+            first,
+            last,
+            first,
+            last);
+    return result;
 }
 
 }
@@ -133,6 +164,114 @@ PropertySliderLayout propertySliderLayout(
     }
 
     result.track = propertySliderTrackBounds(result.slider.toFloat());
+    return result;
+}
+
+PropertyGroupLabelLayout propertyGroupLabelLayout(
+        Rectangle<float> bounds,
+        float requestedTextWidth) {
+    constexpr float minimumRuleWidth = 1.f;
+    const float maximumTextWidth = jmax(
+            0.f,
+            bounds.getWidth() - 2.f * (
+                    PropertyControlMetrics::groupLabelTextGap + minimumRuleWidth));
+    const float textWidth = jlimit(0.f, maximumTextWidth, requestedTextWidth);
+    const Rectangle<float> text = bounds.withSizeKeepingCentre(
+            textWidth,
+            bounds.getHeight());
+    const float ruleY = bounds.getCentreY() - 0.5f;
+
+    return {
+            text,
+            {
+                    bounds.getX(),
+                    ruleY,
+                    jmax(0.f, text.getX()
+                            - PropertyControlMetrics::groupLabelTextGap
+                            - bounds.getX()),
+                    1.f
+            },
+            {
+                    text.getRight() + PropertyControlMetrics::groupLabelTextGap,
+                    ruleY,
+                    jmax(0.f, bounds.getRight()
+                            - text.getRight()
+                            - PropertyControlMetrics::groupLabelTextGap),
+                    1.f
+            }
+    };
+}
+
+void paintPropertyGroupLabel(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        const String& text) {
+    const Font font { FontOptions(PropertyControlMetrics::groupLabelFontSize) };
+    const PropertyGroupLabelLayout layout = propertyGroupLabelLayout(
+            bounds,
+            font.getStringWidthFloat(text));
+
+    graphics.setColour(kMutedText.withAlpha(0.32f));
+    graphics.fillRect(layout.leftRule);
+    graphics.fillRect(layout.rightRule);
+    graphics.setColour(kMutedText.withAlpha(0.82f));
+    graphics.setFont(font);
+    graphics.drawText(text, layout.text, Justification::centred);
+}
+
+void paintPropertySegmentedControl(
+        Graphics& graphics,
+        Rectangle<float> bounds,
+        int segmentCount,
+        int selectedSegment) {
+    jassert(segmentCount > 1);
+    graphics.setColour(kControlFill);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+
+    if (selectedSegment >= 0 && selectedSegment < segmentCount) {
+        graphics.setColour(kSelectedFill);
+        graphics.fillPath(selectedSegmentPath(bounds, segmentCount, selectedSegment));
+    }
+
+    graphics.setColour(kControlBorder.withAlpha(0.74f));
+    for (int segment = 1; segment < segmentCount; ++segment) {
+        const float x = bounds.getX()
+                + bounds.getWidth() * (float) segment / (float) segmentCount;
+        graphics.drawVerticalLine(
+                roundToInt(x),
+                bounds.getY() + 3.f,
+                bounds.getBottom() - 3.f);
+    }
+    graphics.setColour(kControlBorder.withAlpha(0.82f));
+    graphics.drawRoundedRectangle(
+            bounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+}
+
+PropertyGroupLabel::PropertyGroupLabel(String text) :
+        labelText(std::move(text)) {
+    setInterceptsMouseClicks(false, false);
+    setAccessible(false);
+}
+
+void PropertyGroupLabel::setText(String text) {
+    if (labelText == text) {
+        return;
+    }
+
+    labelText = std::move(text);
+    repaint();
+}
+
+void PropertyGroupLabel::paint(Graphics& graphics) {
+    paintPropertyGroupLabel(graphics, getLocalBounds().toFloat(), labelText);
+}
+
+var propertyGroupLabelAutomationState(const PropertyGroupLabel& label) {
+    auto* result = new DynamicObject();
+    result->setProperty("label", label.getText());
+    result->setProperty("bounds", boundsToVar(label.getBounds().toFloat()));
     return result;
 }
 

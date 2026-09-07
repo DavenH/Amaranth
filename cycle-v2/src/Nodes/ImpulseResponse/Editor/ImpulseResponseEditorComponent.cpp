@@ -319,11 +319,7 @@ struct ImpulseResponseEditorComponent::Impl {
         owner.addAndMakeVisible(zoomAttack);
         owner.addAndMakeVisible(zoomFull);
 
-        resourceTitle.setText("IR sample", dontSendNotification);
-        resourceTitle.setFont(FontOptions(
-                CanvasChromeMetrics::labelFontSize).withStyle("Bold"));
-        resourceTitle.setColour(Label::textColourId, Colour(0xff8793a1));
-        resourceTitle.setJustificationType(Justification::centredLeft);
+        owner.addAndMakeVisible(responseTitle);
         owner.addAndMakeVisible(resourceTitle);
 
         configureButton(loadAudio, "Load", "irEditor.loadAudio");
@@ -348,7 +344,8 @@ struct ImpulseResponseEditorComponent::Impl {
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;
-    Label resourceTitle;
+    PropertyGroupLabel responseTitle { "Response" };
+    PropertyGroupLabel resourceTitle { "IR sample" };
     TextButton loadAudio;
     TextButton modelAudio;
     TextButton unload;
@@ -453,6 +450,8 @@ void ImpulseResponseEditorComponent::layoutEditor() {
 
     Rectangle<int> bounds = propertyRailContentBounds(
             editorControlBounds().toNearestInt());
+    impl->responseTitle.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
     for (auto* control : { &impl->size, &impl->postGain, &impl->highPass }) {
         control->setBounds(
                 bounds.removeFromTop(PropertyControlMetrics::compactRowHeight),
@@ -462,7 +461,8 @@ void ImpulseResponseEditorComponent::layoutEditor() {
         bounds.removeFromTop(PropertyControlMetrics::rowGap);
     }
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);
-    impl->resourceTitle.setBounds(bounds.removeFromTop(18));
+    impl->resourceTitle.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
     auto actionRow = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
     actionRow = actionRow.withTrimmedTop(
@@ -596,6 +596,12 @@ void ImpulseResponseEditorComponent::appendEditorAutomation(DynamicObject& state
     state.setProperty("sizeLayout", propertySliderRowAutomationState(impl->size));
     state.setProperty("postGainLayout", propertySliderRowAutomationState(impl->postGain));
     state.setProperty("highPassLayout", propertySliderRowAutomationState(impl->highPass));
+    state.setProperty(
+            "responseGroup",
+            propertyGroupLabelAutomationState(impl->responseTitle));
+    state.setProperty(
+            "resourceGroup",
+            propertyGroupLabelAutomationState(impl->resourceTitle));
     state.setProperty("zoomAttackBounds", boundsToVar(impl->zoomAttack.getBounds()));
     state.setProperty("zoomFullBounds", boundsToVar(impl->zoomFull.getBounds()));
     state.setProperty("zoomAttackFocused", impl->zoomAttack.hasKeyboardFocus(false));

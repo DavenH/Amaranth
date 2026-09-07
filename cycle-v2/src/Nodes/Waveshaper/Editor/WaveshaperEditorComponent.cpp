@@ -3,6 +3,7 @@
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 
@@ -19,7 +20,8 @@ constexpr int kOversamplingWidth = 72;
 
 Rectangle<int> controlGroupBounds(Rectangle<float> controlArea) {
     Rectangle<int> available = controlArea.toNearestInt().reduced(12, 12);
-    const int groupHeight = 2 * PropertyControlMetrics::compactRowHeight
+    const int groupHeight = 2 * PropertyControlMetrics::groupLabelHeight
+            + 2 * PropertyControlMetrics::compactRowHeight
             + PropertyControlMetrics::rowGap
             + PropertyControlMetrics::sectionGap
             + PropertyControlMetrics::rowHeight;
@@ -70,11 +72,15 @@ struct WaveshaperEditorComponent::Impl {
             preGain     (owner, "Pre Gain")
         ,   postGain    (owner, "Post Gain") {
         stylePropertyLabel(oversamplingLabel, "Antialiasing");
+        owner.addAndMakeVisible(gainGroup);
+        owner.addAndMakeVisible(qualityGroup);
         owner.addAndMakeVisible(oversamplingLabel);
         owner.addAndMakeVisible(oversampling);
     }
 
     EffectEnableButton enabled;
+    PropertyGroupLabel gainGroup { "Gain" };
+    PropertyGroupLabel qualityGroup { "Quality" };
     LabeledParameterSlider preGain;
     LabeledParameterSlider postGain;
     ComboBox oversampling;
@@ -128,10 +134,14 @@ void WaveshaperEditorComponent::paintEditor(Graphics&) {
 
 void WaveshaperEditorComponent::layoutEditor() {
     Rectangle<int> bounds = controlGroupBounds(editorControlBounds());
+    impl->gainGroup.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
     impl->preGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::rowGap);
     impl->postGain.setBounds(bounds.removeFromTop(PropertyControlMetrics::compactRowHeight));
     bounds.removeFromTop(PropertyControlMetrics::sectionGap);
+    impl->qualityGroup.setBounds(
+            bounds.removeFromTop(PropertyControlMetrics::groupLabelHeight));
 
     Rectangle<int> row = bounds.removeFromTop(PropertyControlMetrics::rowHeight);
     impl->oversamplingLabel.setBounds(row.removeFromLeft(PropertyControlMetrics::labelWidth));
@@ -174,6 +184,12 @@ void WaveshaperEditorComponent::appendEditorAutomation(DynamicObject& state) con
     state.setProperty("postGain", impl->postGain.slider.getValue());
     state.setProperty("oversampling", impl->oversampling.getSelectedId());
     state.setProperty("oversamplingDisplay", impl->oversampling.getText());
+    state.setProperty(
+            "gainGroup",
+            propertyGroupLabelAutomationState(impl->gainGroup));
+    state.setProperty(
+            "qualityGroup",
+            propertyGroupLabelAutomationState(impl->qualityGroup));
     state.setProperty(
             "controlGroupBounds",
             editorBoundsToVar(controlGroupBounds(editorControlBounds()).toFloat()));

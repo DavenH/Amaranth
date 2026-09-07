@@ -72,6 +72,7 @@ generate_svg_data(
     UiIconData
     UiIconData
     effectEnable zoomAttack zoomFull
+    envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
 )
 
 file(GLOB_RECURSE APP_SOURCES
@@ -206,6 +207,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationSource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Editor/CurveEditorPrimitives.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Editor/CurveNodeEditorFactory.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Editor/EnvelopeEditorComponent.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Editor/EnvelopeMorphControls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/FlatCurvePreparation.cpp"

@@ -370,7 +370,6 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE_FALSE(timeSliceStyle.isSpectral());
     REQUIRE(magSliceStyle.isSpectral());
     REQUIRE(phaseSliceStyle.isSpectral());
-    REQUIRE(timeSliceStyle.panel2DTitle != magSliceStyle.panel2DTitle);
     REQUIRE(timeSliceStyle.fillColour != magSliceStyle.fillColour);
     REQUIRE(timeSliceStyle.minorGridColour != magSliceStyle.minorGridColour);
     REQUIRE(timeSliceStyle.majorGridColour != magSliceStyle.majorGridColour);
@@ -394,6 +393,17 @@ TEST_CASE("Trimesh surface profiles colour time and spectral domains distinctly"
     REQUIRE(phaseCurveStyle.positiveColour.toColour() == colourForDomain(PortDomain::SpectralPhaseSignal).withAlpha(0.84f));
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.negativeColour);
     REQUIRE_FALSE(phaseCurveStyle.negativeColour == magCurveStyle.positiveColour);
+}
+
+TEST_CASE("Expanded Trimesh surfaces use their complete layout rows", "[cycle-v2][nodes][trimesh][ui]") {
+    const Rectangle<float> content { 10.f, 42.f, 880.f, 570.f };
+    const Rectangle<float> grid = TrimeshWidget::expandedGridPanelContentBounds(content);
+    const Rectangle<float> wave = TrimeshWidget::expandedWavePanelContentBounds(content);
+
+    REQUIRE(grid.getY() == Catch::Approx(content.getY()));
+    REQUIRE(grid.getHeight() == Catch::Approx(content.getHeight() * 0.54f));
+    REQUIRE(wave.getY() - grid.getBottom() == Catch::Approx(8.f));
+    REQUIRE(wave.getBottom() == Catch::Approx(content.getBottom()));
 }
 
 TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images", "[cycle-v2][nodes][trimesh]") {

@@ -17,6 +17,16 @@
       "equals": "IR sample"
     },
     {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.responseGroup.label",
+      "equals": "Response"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.resourceGroup.label",
+      "equals": "IR sample"
+    },
+    {
       "command": "waitForIdle",
       "idleDelayMs": 800
     },

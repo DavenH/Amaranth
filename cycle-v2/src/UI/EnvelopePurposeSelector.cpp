@@ -1,38 +1,12 @@
 #include "UI/EnvelopePurposeSelector.h"
 
-#include "UI/CanvasChromeMetrics.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/EnvelopePurposeIconRenderer.h"
+#include "UI/EnvelopeToolbarMetrics.h"
 
 namespace CycleV2 {
 
 namespace {
-
-const Colour kSelectedFill { 0xff2b415a };
-const Colour kControlFill { 0xff151c24 };
-const Colour kControlBorder { 0xff536171 };
-
-Path selectedCellPath(
-        Rectangle<float> bounds,
-        bool isFirst,
-        bool isLast) {
-    Path result;
-    if (isFirst || isLast) {
-        result.addRoundedRectangle(
-                bounds.getX(),
-                bounds.getY(),
-                bounds.getWidth(),
-                bounds.getHeight(),
-                CanvasChromeMetrics::controlCornerRadius,
-                CanvasChromeMetrics::controlCornerRadius,
-                isFirst,
-                isLast,
-                isFirst,
-                isLast);
-    } else {
-        result.addRectangle(bounds);
-    }
-    return result;
-}
 
 }
 
@@ -49,17 +23,19 @@ public:
 
     EnvelopePurpose purpose() const { return purposeValue; }
 
+    Rectangle<float> iconBounds() const {
+        return getLocalBounds().toFloat().withSizeKeepingCentre(
+                EnvelopeToolbarMetrics::purposeIconCanvasSize,
+                EnvelopeToolbarMetrics::purposeIconCanvasSize);
+    }
+
     void paintButton(Graphics& graphics, bool highlighted, bool) override {
         const bool selected = getToggleState();
         const float opacity = selected ? 1.f : (highlighted ? 0.94f : 0.62f);
-        auto iconBounds = getLocalBounds().toFloat().reduced(5.f, 3.f);
-        iconBounds = iconBounds.withSizeKeepingCentre(
-                iconBounds.getWidth() * 0.85f,
-                iconBounds.getHeight() * 0.85f);
         EnvelopePurposeIconRenderer::paint(
                 graphics,
                 purposeValue,
-                iconBounds,
+                iconBounds(),
                 opacity);
     }
 
@@ -101,6 +77,16 @@ Rectangle<float> EnvelopePurposeSelector::optionBounds(EnvelopePurpose purposeVa
     return button != nullptr ? button->getBounds().toFloat() : Rectangle<float>();
 }
 
+Rectangle<float> EnvelopePurposeSelector::optionIconBounds(
+        EnvelopePurpose purposeValue) const {
+    const PurposeButton* button = buttonFor(purposeValue);
+    return button != nullptr
+            ? button->iconBounds().translated(
+                    static_cast<float>(button->getX()),
+                    static_cast<float>(button->getY()))
+            : Rectangle<float>();
+}
+
 bool EnvelopePurposeSelector::isOptionHovered(EnvelopePurpose purposeValue) const {
     const PurposeButton* button = buttonFor(purposeValue);
     return button != nullptr && button->isMouseOverOrDragging();
@@ -108,32 +94,19 @@ bool EnvelopePurposeSelector::isOptionHovered(EnvelopePurpose purposeValue) cons
 
 void EnvelopePurposeSelector::paint(Graphics& graphics) {
     const auto outer = getLocalBounds().toFloat().reduced(0.75f);
-    Path clip;
-    clip.addRoundedRectangle(outer, CanvasChromeMetrics::controlCornerRadius);
-
-    graphics.setColour(kControlFill);
-    graphics.fillPath(clip);
+    int selectedIndex = -1;
     for (size_t index = 0; index < buttons.size(); ++index) {
         const auto& button = buttons[index];
         if (button->purpose() == selectedPurpose) {
-            graphics.setColour(kSelectedFill);
-            graphics.fillPath(selectedCellPath(
-                    button->getBounds().toFloat().getIntersection(outer),
-                    index == 0,
-                    index + 1 == buttons.size()));
+            selectedIndex = (int) index;
+            break;
         }
     }
-
-    graphics.setColour(kControlBorder.withAlpha(0.74f));
-    for (size_t index = 1; index < buttons.size(); ++index) {
-        const float x = static_cast<float>(buttons[index]->getX());
-        graphics.drawVerticalLine(roundToInt(x), outer.getY() + 3.f, outer.getBottom() - 3.f);
-    }
-    graphics.setColour(kControlBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(
+    paintPropertySegmentedControl(
+            graphics,
             outer,
-            CanvasChromeMetrics::controlCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
+            (int) buttons.size(),
+            selectedIndex);
 }
 
 void EnvelopePurposeSelector::resized() {

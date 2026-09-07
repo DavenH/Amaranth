@@ -11,6 +11,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -692,7 +693,7 @@ TEST_CASE("Unison editor exposes structured individual voice state",
         "[cycle-v2][editor][unison][individual]") {
     ScopedJuceInitialiser_GUI juce;
     Component parent;
-    NullCommands commands;
+    RecordingVoiceCommands commands;
     NullPresentation presentation;
     NullResources resources;
     NodeEditorHost host(parent, commands, presentation, resources);
@@ -716,6 +717,42 @@ TEST_CASE("Unison editor exposes structured individual voice state",
     REQUIRE(effect->getProperty("mode").toString() == "individual");
     REQUIRE((int) effect->getProperty("voiceCount") == 2);
     REQUIRE((int) effect->getProperty("selectedVoice") == 0);
+    REQUIRE(effect->getProperty("modeGroup")
+            .getProperty("label", {}).toString() == "Voice mode");
+    REQUIRE(effect->getProperty("voiceSelectionGroup")
+            .getProperty("label", {}).toString() == "Voice selection");
+    REQUIRE(effect->getProperty("parameterGroup")
+            .getProperty("label", {}).toString() == "Voice parameters");
+
+    Component* modeSelector = host.component()->findChildWithID("unisonEditor.mode");
+    REQUIRE(modeSelector != nullptr);
+    auto* groupMode = dynamic_cast<Button*>(
+            modeSelector->findChildWithID("unisonEditor.mode.group"));
+    auto* individualMode = dynamic_cast<Button*>(
+            modeSelector->findChildWithID("unisonEditor.mode.individual"));
+    auto* addVoice = dynamic_cast<TextButton*>(
+            host.component()->findChildWithID("unisonEditor.addVoice"));
+    auto* removeVoice = dynamic_cast<TextButton*>(
+            host.component()->findChildWithID("unisonEditor.removeVoice"));
+    REQUIRE(groupMode != nullptr);
+    REQUIRE(individualMode != nullptr);
+    REQUIRE(addVoice != nullptr);
+    REQUIRE(removeVoice != nullptr);
+    REQUIRE(groupMode->getName() == "Group voice mode");
+    REQUIRE(individualMode->getName() == "Individual voice mode");
+    REQUIRE(addVoice->getTitle() == "Add Unison voice");
+    REQUIRE(removeVoice->getTitle() == "Remove selected Unison voice");
+
+    groupMode->onClick();
+    REQUIRE(commands.textParameterId == "mode");
+    REQUIRE(commands.textValue == "group");
+    DynamicObject groupAutomation;
+    host.appendAutomationState(groupAutomation);
+    REQUIRE(groupAutomation.getProperty("effectParameters")
+            .getProperty("mode", {}).toString() == "group");
+    REQUIRE(groupAutomation.getProperty("effectParameters")
+            .getProperty("parameterGroup", {})
+            .getProperty("label", {}).toString() == "Group parameters");
 }
 
 TEST_CASE("Unison group editor keeps jitter inside the expanded panel",
@@ -838,6 +875,11 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     host.appendAutomationState(delayAutomation);
     REQUIRE(delayAutomation.getProperty("effectParameters")
             .getProperty("kind", {}).toString() == "DELAY");
+    const var delayState = delayAutomation.getProperty("effectParameters");
+    REQUIRE(delayState.getProperty("echoGroup", {})
+            .getProperty("label", {}).toString() == "Echo");
+    REQUIRE(delayState.getProperty("stereoOutputGroup", {})
+            .getProperty("label", {}).toString() == "Stereo / output");
     const var time = controlWithId(delayAutomation, "time");
     REQUIRE(time.getProperty("readout", {}).toString() == "1 beat");
     REQUIRE((bool) time.getProperty("compact", {}));
@@ -889,6 +931,11 @@ TEST_CASE("Delay and Reverb own shared semantic property rows",
     host.appendAutomationState(reverbAutomation);
     REQUIRE(reverbAutomation.getProperty("effectParameters")
             .getProperty("kind", {}).toString() == "REVERB");
+    const var reverbState = reverbAutomation.getProperty("effectParameters");
+    REQUIRE(reverbState.getProperty("spaceGroup", {})
+            .getProperty("label", {}).toString() == "Space");
+    REQUIRE(reverbState.getProperty("toneOutputGroup", {})
+            .getProperty("label", {}).toString() == "Tone / output");
     const var size = controlWithId(reverbAutomation, "size");
     REQUIRE(size.getProperty("readout", {}).toString() == "0.74 s");
     REQUIRE((bool) size.getProperty("compact", {}));
@@ -980,6 +1027,11 @@ TEST_CASE("Equalizer retains paired columns with semantic shared rows",
     REQUIRE(controls->getReference(1).getProperty("readout", {}).toString() == "60 Hz");
     REQUIRE((bool) controls->getReference(0).getProperty("compact", {}));
     REQUIRE((int) controls->getReference(0).getProperty("usableTrackWidth", {}) >= 140);
+    const var effectState = automation.getProperty("effectParameters");
+    REQUIRE(effectState.getProperty("gainGroup", {})
+            .getProperty("label", {}).toString() == "Gain");
+    REQUIRE(effectState.getProperty("frequencyGroup", {})
+            .getProperty("label", {}).toString() == "Frequency");
 
     auto* gainValue = dynamic_cast<Label*>(host.component()->findChildWithID(
             "equalizerEditor.band1Gain.value"));
@@ -1446,6 +1498,10 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(static_cast<int>(preLayout.getProperty("usableTrackWidth", {}))
             >= PropertyControlMetrics::minimumUsableTrackWidth);
     REQUIRE(state.getProperty("oversamplingDisplay", {}).toString() == "4x");
+    REQUIRE(state.getProperty("gainGroup", {})
+            .getProperty("label", {}).toString() == "Gain");
+    REQUIRE(state.getProperty("qualityGroup", {})
+            .getProperty("label", {}).toString() == "Quality");
     auto* oversampling = dynamic_cast<ComboBox*>(
             editor.findChildWithID("waveshaperEditor.oversampling"));
     auto* enabled = dynamic_cast<ToggleButton*>(
@@ -1456,7 +1512,7 @@ TEST_CASE("Waveshaper editor preserves a square graph and semantic property rows
     REQUIRE(preGain != nullptr);
     REQUIRE(enabled->getBounds().toFloat() == headerActionBounds);
     REQUIRE(rectangleProperty(preLayout, "label").getY()
-            == controlGroupBounds.getY());
+            == controlGroupBounds.getY() + PropertyControlMetrics::groupLabelHeight);
     REQUIRE(oversampling != nullptr);
     REQUIRE(oversampling->getWidth() <= 72);
     REQUIRE(oversampling->getNumItems() == 4);
@@ -1610,6 +1666,10 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     REQUIRE((bool) state.getProperty("resourceActionsAvailable", {}));
     REQUIRE_FALSE((bool) state.getProperty("resourceBound", {}));
     REQUIRE(state.getProperty("resourceSectionLabel", {}).toString() == "IR sample");
+    REQUIRE(state.getProperty("responseGroup", {})
+            .getProperty("label", {}).toString() == "Response");
+    REQUIRE(state.getProperty("resourceGroup", {})
+            .getProperty("label", {}).toString() == "IR sample");
     REQUIRE_FALSE((bool) state.getProperty("resourceSublabelVisible", {}));
 
     int textButtonCount = 0;
@@ -1666,7 +1726,9 @@ TEST_CASE("Impulse response editor exposes truthful precision properties",
     const Rectangle<float> sizeTrack = rectangleProperty(
             state.getProperty("sizeLayout", {}), "track");
     REQUIRE(sizeLabel.getY()
-            == rectangleProperty(state, "controlBounds").toNearestInt().reduced(12, 12).getY());
+            == rectangleProperty(state, "controlBounds").toNearestInt()
+                    .reduced(12, 12).getY()
+                    + PropertyControlMetrics::groupLabelHeight);
     REQUIRE(sizeTrack.getY() - sizeLabel.getBottom() <= 10.f);
 
     delegate.events.clear();
@@ -2002,7 +2064,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
     RecordingCurveDelegate delegate;
     editor->setDelegate(&delegate);
-    editor->setBounds(0, 0, 640, 400);
+    editor->setBounds(0, 0, 840, 684);
     editor->setNode(*graph.findNode("env"));
     const var state = editor->automationState();
     panelState = widget.automationState();
@@ -2010,24 +2072,41 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(state.getProperty("purpose", {}).toString() == "Pitch");
     REQUIRE(state.getProperty("polarity", {}).toString() == "bipolar");
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
+    const auto purposeLabelBounds = rectangleProperty(
+            state, "purposeGroupLabelBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
+    const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
     const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
+    const auto controlBounds = rectangleProperty(state, "controlBounds");
+    const auto panelBounds = rectangleProperty(state, "panelBounds");
     REQUIRE(purposeBounds.getWidth() > 0.f);
     REQUIRE(blueMorphBounds.getWidth() > 0.f);
     REQUIRE(actionRowBounds.getWidth() > 0.f);
-    REQUIRE(purposeBounds.getBottom() < blueMorphBounds.getY());
+    REQUIRE(actionBarBounds.contains(purposeBounds));
     REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
+    REQUIRE(purposeBounds.getY() == Catch::Approx(actionRowBounds.getY()));
+    REQUIRE(actionBarBounds.getX() == Catch::Approx(actionRowBounds.getX()));
+    REQUIRE(actionBarBounds.getRight() == Catch::Approx(actionRowBounds.getRight()));
+    REQUIRE(controlBounds.getX() - actionBarBounds.getX()
+            == Catch::Approx(controlBounds.getX()));
+    REQUIRE(actionBarBounds.getRight() - controlBounds.getRight()
+            == Catch::Approx(controlBounds.getX()));
+    REQUIRE(actionBarBounds.getBottom() == Catch::Approx(panelBounds.getY()));
+    REQUIRE(purposeLabelBounds.getY() - actionBarBounds.getY()
+            == Catch::Approx(4.f));
+    REQUIRE(actionBarBounds.getBottom() - purposeBounds.getBottom()
+            == Catch::Approx(12.f));
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
     EnvelopePurposeSelector* modeSelector = nullptr;
+    EnvelopeAxisScaleSelector* axisScaleSelector = nullptr;
     Button* pitchMode = nullptr;
     Button* scratchMode = nullptr;
-    ImageButton* loopMarker = nullptr;
-    ImageButton* sustainMarker = nullptr;
-    ImageButton* fitVertical = nullptr;
-    ImageButton* fullVertical = nullptr;
-    StringArray actionLabels;
+    Button* loopMarker = nullptr;
+    Button* sustainMarker = nullptr;
+    Button* fitVertical = nullptr;
+    Button* fullVertical = nullptr;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
             modeSelector = selector;
@@ -2039,9 +2118,10 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
                     scratchMode = button;
                 }
             }
-        } else if (auto* button = dynamic_cast<TextButton*>(editor->getChildComponent(index))) {
-            actionLabels.add(button->getButtonText());
-        } else if (auto* button = dynamic_cast<ImageButton*>(editor->getChildComponent(index))) {
+        } else if (auto* selector = dynamic_cast<EnvelopeAxisScaleSelector*>(
+                           editor->getChildComponent(index))) {
+            axisScaleSelector = selector;
+        } else if (auto* button = dynamic_cast<Button*>(editor->getChildComponent(index))) {
             if (button->getName() == "Set selected vertex as loop start") {
                 loopMarker = button;
             } else if (button->getName() == "Set selected vertex as sustain point") {
@@ -2054,6 +2134,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         }
     }
     REQUIRE(modeSelector != nullptr);
+    REQUIRE(axisScaleSelector != nullptr);
     REQUIRE(modeSelector->getNumChildComponents() == 4);
     REQUIRE(pitchMode != nullptr);
     REQUIRE(scratchMode != nullptr);
@@ -2061,9 +2142,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(sustainMarker != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
-    REQUIRE(actionLabels == StringArray({ "Log" }));
-    REQUIRE(loopMarker->getNormalImage().isValid());
-    REQUIRE(sustainMarker->getNormalImage().isValid());
+    REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
+    REQUIRE_FALSE(axisScaleSelector->isEnabled());
+    REQUIRE((bool) state.getProperty("actionIconsVector", {}));
     REQUIRE_FALSE(loopMarker->isEnabled());
     REQUIRE_FALSE(sustainMarker->isEnabled());
     REQUIRE(loopMarker->getTooltip().containsIgnoreCase("select one envelope vertex"));
@@ -2071,38 +2152,120 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto fitBounds = rectangleProperty(state, "fitVerticalBounds");
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
     const auto modeBounds = rectangleProperty(state, "modeBounds");
-    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Mode");
-    REQUIRE(state.getProperty("vertexModeLabel", {}).toString() == "Vertex");
+    REQUIRE(state.getProperty("modeLabel", {}).toString() == "Purpose");
+    REQUIRE(state.getProperty("markerGroupLabel", {}).toString() == "Markers");
+    REQUIRE(state.getProperty("axisScaleGroupLabel", {}).toString() == "Scaling");
+    REQUIRE(state.getProperty("rangeGroupLabel", {}).toString() == "Zoom");
     REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
     REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
     REQUIRE(modeBounds == purposeBounds);
     const var modeOptions = state.getProperty("modeOptions", {});
     REQUIRE(modeOptions.isArray());
     REQUIRE(modeOptions.getArray()->size() == 4);
-    REQUIRE(fitBounds.getWidth() == Catch::Approx(28.f));
-    REQUIRE(fullBounds.getWidth() == Catch::Approx(28.f));
+    for (const auto& option : *modeOptions.getArray()) {
+        const auto optionBounds = rectangleProperty(option, "bounds");
+        const auto iconBounds = rectangleProperty(option, "iconBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(34.f));
+        REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
+        REQUIRE(iconBounds.getWidth() == Catch::Approx(24.f));
+        REQUIRE(iconBounds.getHeight() == Catch::Approx(24.f));
+        REQUIRE(iconBounds.getX() - optionBounds.getX() == Catch::Approx(5.f));
+        REQUIRE(iconBounds.getY() - optionBounds.getY() == Catch::Approx(3.f));
+    }
+    REQUIRE(fitBounds.getWidth() >= 28.f);
+    REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
     REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
     REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
-    REQUIRE(fitBounds.getY() > purposeBounds.getBottom());
-    const auto markerGroupBounds = rectangleProperty(state, "vertexModeGroupBounds");
-    const auto logarithmicBounds = rectangleProperty(state, "logarithmicBounds");
+    REQUIRE(fitBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
+    const auto markerLabelBounds = rectangleProperty(
+            state, "markerGroupLabelBounds");
+    const auto axisScaleBounds = rectangleProperty(state, "axisScaleBounds");
+    const auto axisScaleLabelBounds = rectangleProperty(
+            state, "axisScaleGroupLabelBounds");
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
-    REQUIRE(markerGroupBounds.getRight() < logarithmicBounds.getX());
-    REQUIRE(logarithmicBounds.getRight() < rangeGroupBounds.getX());
+    const auto rangeLabelBounds = rectangleProperty(
+            state, "rangeGroupLabelBounds");
+    REQUIRE(purposeBounds.getRight() < markerGroupBounds.getX());
+    REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
+    REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
+    REQUIRE(markerGroupBounds.getX() - purposeBounds.getRight()
+            == Catch::Approx(28.f));
+    REQUIRE(axisScaleBounds.getX() - markerGroupBounds.getRight()
+            == Catch::Approx(28.f));
+    REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight()
+            == Catch::Approx(28.f));
+    REQUIRE(actionBarBounds.contains(markerGroupBounds));
+    REQUIRE(actionBarBounds.contains(axisScaleBounds));
+    REQUIRE(actionBarBounds.contains(rangeGroupBounds));
+    REQUIRE(purposeBounds.getX() - actionBarBounds.getX()
+            == Catch::Approx(actionBarBounds.getRight() - rangeGroupBounds.getRight()));
+    REQUIRE(markerGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(axisScaleBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(purposeBounds.getY()));
+    REQUIRE(markerLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(axisScaleLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(purposeLabelBounds.getY()));
+    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(purposeBounds.getBottom()));
+    const auto requireActionIconMetrics = [&state](
+            const char* controlProperty,
+            const char* iconProperty) {
+        const auto control = rectangleProperty(state, controlProperty);
+        const auto icon = rectangleProperty(state, iconProperty);
+        REQUIRE(control.getWidth() == Catch::Approx(34.f));
+        REQUIRE(control.getHeight() == Catch::Approx(30.f));
+        REQUIRE(icon.getWidth() == Catch::Approx(21.f));
+        REQUIRE(icon.getHeight() == Catch::Approx(21.f));
+        REQUIRE(icon.getX() - control.getX() == Catch::Approx(6.5f));
+        REQUIRE(icon.getY() - control.getY() == Catch::Approx(4.5f));
+    };
+    requireActionIconMetrics("loopBounds", "loopIconBounds");
+    requireActionIconMetrics("sustainBounds", "sustainIconBounds");
+    requireActionIconMetrics("fitVerticalBounds", "fitVerticalIconBounds");
+    requireActionIconMetrics("fullVerticalBounds", "fullVerticalIconBounds");
+    const var axisScaleOptions = state.getProperty("axisScaleOptions", {});
+    REQUIRE(axisScaleOptions.isArray());
+    REQUIRE(axisScaleOptions.getArray()->size() == 2);
+    for (const auto& option : *axisScaleOptions.getArray()) {
+        const auto optionBounds = rectangleProperty(option, "bounds");
+        const auto diagramBounds = rectangleProperty(option, "diagramBounds");
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(42.f));
+        REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
+        REQUIRE(diagramBounds.getWidth() == Catch::Approx(24.f));
+        REQUIRE(diagramBounds.getHeight() == Catch::Approx(18.f));
+        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(9.f));
+        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(6.f));
+    }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
     REQUIRE(parameterRails.getArray()->size() >= 2);
     REQUIRE_FALSE((bool) state.getProperty("guideControlsVisible", true));
+    const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
     const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
     REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
+    REQUIRE(axisGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE(linkGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
-    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(230.f));
+    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(270.f));
+    REQUIRE(actionBarBounds.getRight() > vertexParameterBounds.getRight());
+    const auto planeLabelBounds = rectangleProperty(
+            state, "morphPlaneGroupLabelBounds");
+    const auto planeBounds = rectangleProperty(state, "morphPlaneBounds");
+    REQUIRE(actionBarBounds.getX() < planeLabelBounds.getX());
+    REQUIRE(planeBounds.getY() - planeLabelBounds.getBottom() == Catch::Approx(10.f));
+    REQUIRE(planeLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE(vertexParameterBounds.getY() + 5.f
+            == Catch::Approx(morphLabelBounds.getY()));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
-    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(33.54f).margin(0.02f));
+    const auto lastRail = rectangleProperty(parameterRails.getArray()->getLast(), "bounds");
+    REQUIRE(secondRail.getY() - firstRail.getY() == Catch::Approx(39.1f).margin(0.02f));
+    REQUIRE(actionBarBounds.getY() - lastRail.getBottom() >= 20.f);
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
 
     VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
@@ -2148,24 +2311,59 @@ TEST_CASE("Logarithmic Envelope grid distinguishes major divisions",
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
     GraphNodeFactory factory;
-    GraphEditor graphEditor;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    REQUIRE(graphEditor.setNodeParameter(
-            graph, "env", "logarithmic", "Logarithmic", "1").succeeded());
 
     CurveEditorWidget widget(NodeKind::Envelope);
     auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+    RecordingCurveDelegate delegate;
+    editor->setDelegate(&delegate);
     editor->setBounds(0, 0, 640, 400);
     editor->setNode(*graph.findNode("env"));
 
-    const var panelState = widget.automationState();
+    EnvelopeAxisScaleSelector* selector {};
+    for (auto* child : editor->getChildren()) {
+        selector = dynamic_cast<EnvelopeAxisScaleSelector*>(child);
+        if (selector != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(selector != nullptr);
+    REQUIRE(selector->isEnabled());
+    REQUIRE_FALSE(selector->isLogarithmic());
+
+    Button* logarithmic {};
+    Button* linear {};
+    for (auto* child : selector->getChildren()) {
+        auto* button = dynamic_cast<Button*>(child);
+        REQUIRE(button != nullptr);
+        if (button->getName() == "Logarithmic axis scale") {
+            logarithmic = button;
+        } else if (button->getName() == "Linear axis scale") {
+            linear = button;
+        }
+    }
+    REQUIRE(logarithmic != nullptr);
+    REQUIRE(linear != nullptr);
+
+    logarithmic->onClick();
+    REQUIRE(selector->isLogarithmic());
+    REQUIRE(logarithmic->getToggleState());
+    REQUIRE_FALSE(linear->getToggleState());
+    REQUIRE(delegate.events.contains("publish"));
+
+    var panelState = widget.automationState();
     REQUIRE((int) panelState.getProperty("horizontalMinorGridLineCount", {}) == 12);
     REQUIRE((int) panelState.getProperty("horizontalMajorGridLineCount", {}) == 4);
     REQUIRE(static_cast<double>(panelState.getProperty("minorGridBrightness", {}))
             == Catch::Approx(0.085 * 1.2));
     REQUIRE(static_cast<double>(panelState.getProperty("majorGridBrightness", {}))
             == Catch::Approx(0.14));
+
+    linear->onClick();
+    REQUIRE_FALSE(selector->isLogarithmic());
+    REQUIRE(linear->getToggleState());
+    REQUIRE_FALSE(logarithmic->getToggleState());
 }
 
 TEST_CASE("Node editor command service publishes a curve drag as one transaction") {

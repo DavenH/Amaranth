@@ -161,11 +161,7 @@ private:
     };
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
-    static void drawPanelFrame(
-            juce::Graphics& g,
-            juce::Rectangle<float> area,
-            const juce::String& title,
-            bool fillBody = true);
+    static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
     static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);

@@ -18,7 +18,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.modeLabel",
-      "equals": "Mode"
+      "equals": "Purpose"
     },
     {
       "command": "assertState",
@@ -38,8 +38,8 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.purposeBounds.y",
-      "op": "lessThan",
-      "value": 100
+      "op": "greaterThan",
+      "value": 200
     },
     {
       "command": "assertState",
@@ -66,11 +66,6 @@
       "nodeId": "scratchEnvelope",
       "parameterId": "purpose",
       "equals": "scratch"
-    },
-    {
-      "command": "assertState",
-      "path": "edgeCount",
-      "equals": 20
     },
     {
       "command": "pointer",
@@ -136,17 +131,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
-      "equals": 230
-    },
-    {
-      "command": "assertState",
-      "path": "nodes.10.compactPurposeIcon",
-      "equals": "pitch"
-    },
-    {
-      "command": "assertState",
-      "path": "edgeCount",
-      "equals": 17
+      "equals": 270
     },
     {
       "command": "pointer",

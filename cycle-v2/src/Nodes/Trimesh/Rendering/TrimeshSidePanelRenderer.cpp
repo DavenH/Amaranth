@@ -4,6 +4,7 @@
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyControls.h"
 #include "UI/NodeIconRenderer.h"
 
 namespace CycleV2 {
@@ -285,20 +286,6 @@ std::array<bool, 8> linkedCubeHighlights(
     return selected;
 }
 
-void drawSpanningGroupLabel(Graphics& g, Rectangle<float> bounds, const String& label) {
-    const Font font { FontOptions(8.5f) };
-    const float textWidth = jmin(bounds.getWidth(), font.getStringWidthFloat(label) + 4.f);
-    const Rectangle<float> text = bounds.withSizeKeepingCentre(textWidth, bounds.getHeight());
-
-    g.setColour(kMutedText.withAlpha(0.32f));
-    g.drawHorizontalLine(roundToInt(bounds.getCentreY()), bounds.getX(), bounds.getRight());
-    g.setColour(Colour(0xff151a20));
-    g.fillRect(text);
-    g.setColour(kMutedText.withAlpha(0.82f));
-    g.setFont(font);
-    g.drawText(label, text, Justification::centred);
-}
-
 void drawAxisSlider(
         Graphics& g,
         Rectangle<float> row,
@@ -382,9 +369,10 @@ void TrimeshSidePanelRenderer::drawSidePanel(
 
     drawMorphCubePreview(g, morphCubeBounds(area), axes, cubeVertices);
 
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
-    g.drawText("morph Position", morphControls.removeFromTop(kMorphHeaderH), Justification::centred);
+    paintPropertyGroupLabel(
+            g,
+            morphControls.removeFromTop(kMorphHeaderH),
+            "Morph position");
 
     drawMorphColumnHeaders(
             g,
@@ -411,9 +399,7 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
     }
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
-    g.drawText("cube display", header, Justification::centred);
+    paintPropertyGroupLabel(g, header, "Cube display");
 
     area = area.withTrimmedTop(22.f).reduced(3.f, 0.f);
 
@@ -577,9 +563,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
-    g.drawText("vertex params", header, Justification::centred);
+    paintPropertyGroupLabel(g, header, "Vertex parameters");
 
     for (int i = 0; i < (int) parameters.size(); ++i) {
         const auto& parameter = parameters[(size_t) i];
@@ -646,8 +630,8 @@ void TrimeshSidePanelRenderer::drawMorphColumnHeaders(
         Rectangle<float> firstRow,
         Rectangle<float> axisButton,
         Rectangle<float> linkButton) {
-    drawSpanningGroupLabel(g, morphColumnHeaderBounds(axisButton, firstRow), "Axis");
-    drawSpanningGroupLabel(g, morphColumnHeaderBounds(linkButton, firstRow), "Link");
+    paintPropertyGroupLabel(g, morphColumnHeaderBounds(axisButton, firstRow), "Axis");
+    paintPropertyGroupLabel(g, morphColumnHeaderBounds(linkButton, firstRow), "Link");
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphCubeBounds(Rectangle<float> sideArea) {

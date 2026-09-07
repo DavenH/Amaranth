@@ -25,7 +25,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.modeLabel",
-      "equals": "Mode"
+      "equals": "Purpose"
     },
     {
       "command": "assertState",
@@ -40,7 +40,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
-      "equals": 230
+      "equals": 270
     },
     {
       "command": "inspectTargets",
