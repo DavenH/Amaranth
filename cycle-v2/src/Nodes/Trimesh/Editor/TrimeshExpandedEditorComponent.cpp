@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 
@@ -21,6 +22,13 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
+    enabled.setComponentID("trimeshEditor.enabled");
+    enabled.onClick = [this] {
+        if (delegate != nullptr) {
+            delegate->setTrimeshEnabled(enabled.getToggleState());
+        }
+    };
+    addAndMakeVisible(enabled);
     widget.setExpandedPanelHostDelegate(this);
 }
 
@@ -35,6 +43,9 @@ void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* 
 
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
+    enabled.setToggleState(
+            NodeParameterMap(node).boolValue("enabled", true),
+            dontSendNotification);
     updatePanelHosts();
     updateControlsHost();
     repaint();
@@ -84,7 +95,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(panel, CanvasChromeMetrics::panelCornerRadius);
     g.restoreState();
 
-    const auto headerLayout = embeddedEditorHeaderLayout(panel);
+    const auto headerLayout = embeddedEditorHeaderLayout(panel, true);
     const Rectangle<float> header = headerLayout.header;
     g.setColour(Colour(0xff202833));
     g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
@@ -121,6 +132,8 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 }
 
 void TrimeshExpandedEditorComponent::resized() {
+    enabled.setBounds(embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), true).enabled.toNearestInt());
     updatePanelHosts();
     updateControlsHost();
 }
@@ -230,7 +243,7 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
-    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
+    return embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true).close;
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::contentBounds() const {
@@ -303,6 +316,7 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
     panel2D->toFront(false);
 
     controls.toFront(false);
+    enabled.toFront(false);
 }
 
 void TrimeshExpandedEditorComponent::updateControlsHost() {
@@ -311,6 +325,7 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
     controls.setContentBounds(contentBounds());
     controls.setVisible(node.kind == NodeKind::TrilinearMesh);
     controls.toFront(false);
+    enabled.toFront(false);
 }
 
 }

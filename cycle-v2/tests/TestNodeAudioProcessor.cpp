@@ -4,6 +4,7 @@
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/NodeAudioProcessor.h"
 #include "Runtime/SmoothedMorphPosition.h"
+#include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopePreparationExchange.h"
@@ -249,6 +250,85 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
     }
 
     REQUIRE(factory.create(AudioModuleRole::None) == nullptr);
+}
+
+TEST_CASE("Disabled layer sources publish operation identities",
+        "[cycle-v2][runtime][layers][enabled]") {
+    NodeAudioProcessorFactory factory;
+
+    AudioProcessContext envelopeContext;
+    envelopeContext.frameCount = 4;
+    envelopeContext.parameters = {
+            { "enabled", "Enabled", "0" },
+            { "purpose", "Purpose", "volume" }
+    };
+    auto envelope = factory.create(AudioModuleRole::Envelope);
+    prepareProcessor(*envelope, AudioModuleRole::Envelope, envelopeContext);
+    envelope->process(envelopeContext);
+    REQUIRE(output(envelopeContext).block.samples == std::vector<float>(4, 1.f));
+
+    AudioProcessContext meshContext;
+    meshContext.frameCount = 4;
+    meshContext.parameters = { { "enabled", "Enabled", "0" } };
+    meshContext.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::LinkedStereo }
+    };
+    auto mesh = factory.create(AudioModuleRole::MeshSource);
+    prepareProcessor(*mesh, AudioModuleRole::MeshSource, meshContext);
+    mesh->process(meshContext);
+    REQUIRE(output(meshContext).block.samples == std::vector<float>(4, 0.f));
+}
+
+TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
+        "[cycle-v2][runtime][layers][enabled][spectral]") {
+    GraphNodeFactory nodeFactory;
+    NodeGraph graph;
+    Node mesh = nodeFactory.createNode(NodeKind::TrilinearMesh, "mesh", {});
+    for (auto& parameter : mesh.parameters) {
+        if (parameter.id == "enabled") {
+            parameter.value = "0";
+        }
+    }
+    graph.addNode(std::move(mesh));
+    Node panNode = nodeFactory.createNode(NodeKind::SpectralLayer, "pan", {});
+    for (auto& parameter : panNode.parameters) {
+        if (parameter.id == "mode") {
+            parameter.value = "multiplicative";
+        }
+    }
+    graph.addNode(std::move(panNode));
+    graph.addEdge({
+            "mesh", "out", "pan", "in", PortDomain::ControlSignal
+    });
+
+    const Node* pan = graph.findNode("pan");
+    REQUIRE(pan != nullptr);
+    const auto configuration = NodeDspConfigurationFactory().create(
+            AudioModuleRole::SpectralLayer,
+            pan->parameters,
+            {},
+            {},
+            &graph,
+            pan->id);
+    const auto spectral = std::dynamic_pointer_cast<
+            const SpectralLayerConfiguration>(configuration);
+    REQUIRE(spectral != nullptr);
+    REQUIRE_FALSE(spectral->sourceEnabled);
+
+    auto processor = NodeAudioProcessorFactory().create(AudioModuleRole::SpectralLayer);
+    REQUIRE(processor != nullptr);
+    processor->adoptConfiguration({ 1, "disabled-source", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 4;
+    spec.domain = PortDomain::SpectralMagnitudeSignal;
+    processor->prepareExecution(spec);
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.inputs.push_back(payload({ 0.2f, 0.3f, 0.4f, 0.5f }));
+    context.inputs.front().domain = PortDomain::SpectralMagnitudeSignal;
+    processor->process(context);
+    REQUIRE(output(context).block.samples == std::vector<float>(4, 1.f));
+    REQUIRE(output(context).secondaryBlock.samples == std::vector<float>(4, 1.f));
 }
 
 TEST_CASE("Wave source reuses the default Trimesh renderer", "[cycle-v2][runtime]") {

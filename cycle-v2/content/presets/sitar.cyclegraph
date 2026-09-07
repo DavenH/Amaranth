@@ -1,0 +1,1062 @@
+{
+    "format": "cycle-v2-graph",
+    "formatVersion": 4,
+    "nodes": [
+        {
+            "id": "voice",
+            "kind": "voiceContext",
+            "definitionVersion": 1,
+            "position": { "x": 100.0, "y": 520.0 },
+            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+        },
+        {
+            "id": "morph",
+            "kind": "modulationTriple",
+            "definitionVersion": 1,
+            "position": { "x": 100.0, "y": 100.0 },
+            "parameters": {
+                "yellowSource": "voiceTime",
+                "yellowController": 1,
+                "yellowConstant": 0.5,
+                "redSource": "keyScale",
+                "redController": 1,
+                "redConstant": 0.5,
+                "blueSource": "velocity",
+                "blueController": 1,
+                "blueConstant": 0.5
+            }
+        },
+        {
+            "id": "fft",
+            "kind": "fft",
+            "definitionVersion": 1,
+            "position": { "x": 1050.0, "y": 500.0 },
+            "parameters": { "cycleFrames": 2048, "mode": "cycle" }
+        },
+        {
+            "id": "ifft",
+            "kind": "ifft",
+            "definitionVersion": 1,
+            "position": { "x": 2150.0, "y": 500.0 },
+            "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
+        },
+        {
+            "id": "timeLayer1",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 470.0, "y": 570.0 },
+            "parameters": {
+                "enabled": true,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "TimeMesh0",
+                    "version": 1,
+                    "vertices": [],
+                    "cubes": []
+                }
+            }
+        },
+        {
+            "id": "magnitudeLayer1",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 1150.0, "y": 70.0 },
+            "parameters": {
+                "enabled": true,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "FreqMesh0",
+                    "version": 1,
+                    "vertices": [
+                        { "time": 0.0, "phase": 0.10314, "amp": 0.73965, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 0 },
+                        { "time": 0.0, "phase": 0.10314, "amp": 0.73965, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 1 },
+                        { "time": 0.0, "phase": 0.10314, "amp": 0.73965, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 2 },
+                        { "time": 0.0, "phase": 0.10314, "amp": 0.73965, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 3 },
+                        { "time": 1.0, "phase": 0.11069, "amp": 0.73669, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 4 },
+                        { "time": 1.0, "phase": 0.11069, "amp": 0.73669, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 5 },
+                        { "time": 1.0, "phase": 0.11069, "amp": 0.73669, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 6 },
+                        { "time": 1.0, "phase": 0.11069, "amp": 0.73669, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 7 },
+                        { "time": 0.0, "phase": 0.16985, "amp": 0.70118, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 8 },
+                        { "time": 0.0, "phase": 0.16985, "amp": 0.70118, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 9 },
+                        { "time": 0.0, "phase": 0.16985, "amp": 0.70118, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 10 },
+                        { "time": 0.0, "phase": 0.16985, "amp": 0.70118, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 11 },
+                        { "time": 1.0, "phase": 0.16855, "amp": 0.70118, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
+                        { "time": 1.0, "phase": 0.16855, "amp": 0.70118, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
+                        { "time": 1.0, "phase": 0.16855, "amp": 0.70118, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
+                        { "time": 1.0, "phase": 0.16855, "amp": 0.70118, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 },
+                        { "time": 0.0, "phase": 1.0, "amp": 0.59763, "key": 0.0, "mod": 0.0, "weight": 0.44351, "id": 16 },
+                        { "time": 0.0, "phase": 1.0, "amp": 0.59763, "key": 0.0, "mod": 1.0, "weight": 0.44351, "id": 17 },
+                        { "time": 0.0, "phase": 1.0, "amp": 0.59763, "key": 1.0, "mod": 0.0, "weight": 0.44351, "id": 18 },
+                        { "time": 0.0, "phase": 1.0, "amp": 0.59763, "key": 1.0, "mod": 1.0, "weight": 0.44351, "id": 19 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.79586, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 20 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.79586, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 21 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.79586, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 22 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.79586, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 23 }
+                    ],
+                    "cubes": [
+                        {
+                            "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                            "guides": { "time": 0, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 16, 17, 18, 19, 20, 21, 22, 23 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": 4, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "magnitudeLayer1Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 1490.0, "y": 70.0 },
+            "parameters": { "pan": 0.5, "range": 0.5, "mode": "additive" }
+        },
+        {
+            "id": "magnitudeOp1",
+            "kind": "add",
+            "definitionVersion": 1,
+            "position": { "x": 1810.0, "y": 70.0 },
+            "parameters": {}
+        },
+        {
+            "id": "magnitudeLayer2",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 1150.0, "y": 240.0 },
+            "parameters": {
+                "enabled": true,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "FreqLayer",
+                    "version": 1,
+                    "vertices": [
+                        { "time": 0.0, "phase": 0.8717, "amp": 0.93787, "key": 0.0, "mod": 0.0, "weight": 0.61226, "id": 0 },
+                        { "time": 0.0, "phase": 0.8717, "amp": 0.93787, "key": 0.0, "mod": 1.0, "weight": 0.61226, "id": 1 },
+                        { "time": 0.0, "phase": 0.8717, "amp": 0.93787, "key": 1.0, "mod": 0.0, "weight": 0.61226, "id": 2 },
+                        { "time": 0.0, "phase": 0.8717, "amp": 0.93787, "key": 1.0, "mod": 1.0, "weight": 0.61226, "id": 3 },
+                        { "time": 1.0, "phase": 0.42754, "amp": 0.98225, "key": 0.0, "mod": 0.0, "weight": 0.49391, "id": 4 },
+                        { "time": 1.0, "phase": 0.42754, "amp": 0.98225, "key": 0.0, "mod": 1.0, "weight": 0.49391, "id": 5 },
+                        { "time": 1.0, "phase": 0.42754, "amp": 0.98225, "key": 1.0, "mod": 0.0, "weight": 0.49391, "id": 6 },
+                        { "time": 1.0, "phase": 0.42754, "amp": 0.98225, "key": 1.0, "mod": 1.0, "weight": 0.49391, "id": 7 },
+                        { "time": 0.0, "phase": 0.81006, "amp": 0.51183, "key": 0.0, "mod": 0.0, "weight": 0.26262, "id": 8 },
+                        { "time": 0.0, "phase": 0.81006, "amp": 0.51183, "key": 0.0, "mod": 1.0, "weight": 0.26262, "id": 9 },
+                        { "time": 0.0, "phase": 0.81006, "amp": 0.51183, "key": 1.0, "mod": 0.0, "weight": 0.26262, "id": 10 },
+                        { "time": 0.0, "phase": 0.81006, "amp": 0.51183, "key": 1.0, "mod": 1.0, "weight": 0.26262, "id": 11 },
+                        { "time": 1.0, "phase": 0.36007, "amp": 0.48817, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 12 },
+                        { "time": 1.0, "phase": 0.36007, "amp": 0.48817, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 13 },
+                        { "time": 1.0, "phase": 0.36007, "amp": 0.48817, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 14 },
+                        { "time": 1.0, "phase": 0.36007, "amp": 0.48817, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 15 },
+                        { "time": 0.0, "phase": 0.93208, "amp": 0.45266, "key": 0.0, "mod": 0.0, "weight": 0.50055, "id": 16 },
+                        { "time": 0.0, "phase": 0.93208, "amp": 0.45266, "key": 0.0, "mod": 1.0, "weight": 0.50055, "id": 17 },
+                        { "time": 0.0, "phase": 0.93208, "amp": 0.45266, "key": 1.0, "mod": 0.0, "weight": 0.50055, "id": 18 },
+                        { "time": 0.0, "phase": 0.93208, "amp": 0.45266, "key": 1.0, "mod": 1.0, "weight": 0.50055, "id": 19 },
+                        { "time": 1.0, "phase": 0.53823, "amp": 0.48817, "key": 0.0, "mod": 0.0, "weight": 0.50055, "id": 20 },
+                        { "time": 1.0, "phase": 0.53823, "amp": 0.48817, "key": 0.0, "mod": 1.0, "weight": 0.50055, "id": 21 },
+                        { "time": 1.0, "phase": 0.53823, "amp": 0.48817, "key": 1.0, "mod": 0.0, "weight": 0.50055, "id": 22 },
+                        { "time": 1.0, "phase": 0.53823, "amp": 0.48817, "key": 1.0, "mod": 1.0, "weight": 0.50055, "id": 23 },
+                        { "time": 0.0, "phase": 0.07691, "amp": 0.55917, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 24 },
+                        { "time": 0.0, "phase": 0.07691, "amp": 0.55917, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 25 },
+                        { "time": 0.0, "phase": 0.07691, "amp": 0.55917, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 26 },
+                        { "time": 0.0, "phase": 0.07691, "amp": 0.55917, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 27 },
+                        { "time": 1.0, "phase": 0.07296, "amp": 0.55621, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 28 },
+                        { "time": 1.0, "phase": 0.07296, "amp": 0.55621, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 29 },
+                        { "time": 1.0, "phase": 0.07296, "amp": 0.55621, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 30 },
+                        { "time": 1.0, "phase": 0.07296, "amp": 0.55621, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 31 },
+                        { "time": 0.0, "phase": 0.9637, "amp": 0.46154, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 32 },
+                        { "time": 0.0, "phase": 0.9637, "amp": 0.46154, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 33 },
+                        { "time": 0.0, "phase": 0.9637, "amp": 0.46154, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 34 },
+                        { "time": 0.0, "phase": 0.9637, "amp": 0.46154, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 35 },
+                        { "time": 1.0, "phase": 0.80323, "amp": 0.43195, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 36 },
+                        { "time": 1.0, "phase": 0.80323, "amp": 0.43195, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 37 },
+                        { "time": 1.0, "phase": 0.80323, "amp": 0.43195, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 38 },
+                        { "time": 1.0, "phase": 0.80323, "amp": 0.43195, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 39 },
+                        { "time": 0.0, "phase": 0.98509, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 40 },
+                        { "time": 0.0, "phase": 0.98509, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 41 },
+                        { "time": 0.0, "phase": 0.98509, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 42 },
+                        { "time": 0.0, "phase": 0.98509, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 43 },
+                        { "time": 1.0, "phase": 0.9209, "amp": 0.92012, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 44 },
+                        { "time": 1.0, "phase": 0.9209, "amp": 0.92012, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 45 },
+                        { "time": 1.0, "phase": 0.9209, "amp": 0.92012, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 46 },
+                        { "time": 1.0, "phase": 0.9209, "amp": 0.92012, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 47 },
+                        { "time": 0.0, "phase": 0.99245, "amp": 0.35503, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 48 },
+                        { "time": 0.0, "phase": 0.99245, "amp": 0.35503, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 49 },
+                        { "time": 0.0, "phase": 0.99245, "amp": 0.35503, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 50 },
+                        { "time": 0.0, "phase": 0.99245, "amp": 0.35503, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 51 },
+                        { "time": 1.0, "phase": 0.92857, "amp": 0.47633, "key": 0.0, "mod": 0.0, "weight": 0.83484, "id": 52 },
+                        { "time": 1.0, "phase": 0.92857, "amp": 0.47633, "key": 0.0, "mod": 1.0, "weight": 0.83484, "id": 53 },
+                        { "time": 1.0, "phase": 0.92857, "amp": 0.47633, "key": 1.0, "mod": 0.0, "weight": 0.83484, "id": 54 },
+                        { "time": 1.0, "phase": 0.92857, "amp": 0.47633, "key": 1.0, "mod": 1.0, "weight": 0.83484, "id": 55 }
+                    ],
+                    "cubes": [
+                        {
+                            "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": 1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": 1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 16, 17, 18, 19, 20, 21, 22, 23 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": 1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 24, 25, 26, 27, 28, 29, 30, 31 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 32, 33, 34, 35, 36, 37, 38, 39 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 40, 41, 42, 43, 44, 45, 46, 47 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": 3, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 48, 49, 50, 51, 52, 53, 54, 55 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "magnitudeLayer2Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 1490.0, "y": 240.0 },
+            "parameters": { "pan": 0.5, "range": 0.675, "mode": "multiplicative" }
+        },
+        {
+            "id": "magnitudeOp2",
+            "kind": "multiply",
+            "definitionVersion": 1,
+            "position": { "x": 1810.0, "y": 240.0 },
+            "parameters": {}
+        },
+        {
+            "id": "magnitudeLayer3",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 1150.0, "y": 410.0 },
+            "parameters": {
+                "enabled": true,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "FreqLayer",
+                    "version": 1,
+                    "vertices": [
+                        { "time": 0.0, "phase": 0.28553, "amp": 0.50592, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                        { "time": 0.0, "phase": 0.28553, "amp": 0.50592, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                        { "time": 0.0, "phase": 0.28553, "amp": 0.50592, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                        { "time": 0.0, "phase": 0.28553, "amp": 0.50592, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                        { "time": 1.0, "phase": 0.28553, "amp": 0.50592, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                        { "time": 1.0, "phase": 0.28553, "amp": 0.50592, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                        { "time": 1.0, "phase": 0.28553, "amp": 0.50592, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                        { "time": 1.0, "phase": 0.28553, "amp": 0.50592, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                        { "time": 0.0, "phase": 0.95723, "amp": 0.49704, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 8 },
+                        { "time": 0.0, "phase": 0.95723, "amp": 0.49704, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 9 },
+                        { "time": 0.0, "phase": 0.95723, "amp": 0.49704, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 10 },
+                        { "time": 0.0, "phase": 0.95723, "amp": 0.49704, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 11 },
+                        { "time": 1.0, "phase": 0.95723, "amp": 0.49704, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 12 },
+                        { "time": 1.0, "phase": 0.95723, "amp": 0.49704, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 13 },
+                        { "time": 1.0, "phase": 0.95723, "amp": 0.49704, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 14 },
+                        { "time": 1.0, "phase": 0.95723, "amp": 0.49704, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 15 }
+                    ],
+                    "cubes": [
+                        {
+                            "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                            "guides": { "time": 5, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "magnitudeLayer3Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 1490.0, "y": 410.0 },
+            "parameters": { "pan": 0.5, "range": 0.5, "mode": "multiplicative" }
+        },
+        {
+            "id": "magnitudeOp3",
+            "kind": "multiply",
+            "definitionVersion": 1,
+            "position": { "x": 1810.0, "y": 410.0 },
+            "parameters": {}
+        },
+        {
+            "id": "magnitudeLayer4",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 1150.0, "y": 580.0 },
+            "parameters": {
+                "enabled": false,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "FreqLayer",
+                    "version": 1,
+                    "vertices": [
+                        { "time": 0.0, "phase": 0.11698, "amp": 0.44083, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                        { "time": 0.0, "phase": 0.11698, "amp": 0.44083, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                        { "time": 0.0, "phase": 0.11698, "amp": 0.44083, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                        { "time": 0.0, "phase": 0.11698, "amp": 0.44083, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                        { "time": 1.0, "phase": 0.27421, "amp": 0.43787, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                        { "time": 1.0, "phase": 0.27421, "amp": 0.43787, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                        { "time": 1.0, "phase": 0.27421, "amp": 0.43787, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                        { "time": 1.0, "phase": 0.27421, "amp": 0.43787, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                        { "time": 0.0, "phase": 0.89686, "amp": 0.51479, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 8 },
+                        { "time": 0.0, "phase": 0.89686, "amp": 0.51479, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 9 },
+                        { "time": 0.0, "phase": 0.89686, "amp": 0.51479, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 10 },
+                        { "time": 0.0, "phase": 0.89686, "amp": 0.51479, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 11 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.51775, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 12 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.51775, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 13 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.51775, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 14 },
+                        { "time": 1.0, "phase": 1.0, "amp": 0.51775, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 15 }
+                    ],
+                    "cubes": [
+                        {
+                            "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                            "guides": { "time": 0, "key": -1, "mod": -1, "phase": 3, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "magnitudeLayer4Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 1490.0, "y": 580.0 },
+            "parameters": { "pan": 0.5, "range": 0.5, "mode": "multiplicative" }
+        },
+        {
+            "id": "magnitudeOp4",
+            "kind": "multiply",
+            "definitionVersion": 1,
+            "position": { "x": 1810.0, "y": 580.0 },
+            "parameters": {}
+        },
+        {
+            "id": "phaseLayer1",
+            "kind": "trilinearMesh",
+            "definitionVersion": 1,
+            "position": { "x": 1150.0, "y": 820.0 },
+            "parameters": {
+                "enabled": true,
+                "yellow": 0.5,
+                "red": 0.5,
+                "blue": 0.5,
+                "primaryAxis": "yellow",
+                "link.yellow": true,
+                "link.red": false,
+                "link.blue": false
+            },
+            "model": {
+                "schema": "trimesh",
+                "version": 2,
+                "revision": 1,
+                "mesh": {
+                    "name": "PhaseMesh0",
+                    "version": 1,
+                    "vertices": [
+                        { "time": 0.0, "phase": 0.28302, "amp": 0.49112, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                        { "time": 0.0, "phase": 0.28302, "amp": 0.49112, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                        { "time": 0.0, "phase": 0.28302, "amp": 0.49112, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                        { "time": 0.0, "phase": 0.28302, "amp": 0.49112, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                        { "time": 1.0, "phase": 0.28302, "amp": 0.49408, "key": 0.0, "mod": 0.0, "weight": 0.08571, "id": 4 },
+                        { "time": 1.0, "phase": 0.28302, "amp": 0.49408, "key": 0.0, "mod": 1.0, "weight": 0.08571, "id": 5 },
+                        { "time": 1.0, "phase": 0.28302, "amp": 0.49408, "key": 1.0, "mod": 0.0, "weight": 0.08571, "id": 6 },
+                        { "time": 1.0, "phase": 0.28302, "amp": 0.49408, "key": 1.0, "mod": 1.0, "weight": 0.08571, "id": 7 },
+                        { "time": 0.0, "phase": 0.96981, "amp": 0.49408, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 8 },
+                        { "time": 0.0, "phase": 0.96981, "amp": 0.49408, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 9 },
+                        { "time": 0.0, "phase": 0.96981, "amp": 0.49408, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 10 },
+                        { "time": 0.0, "phase": 0.96981, "amp": 0.49408, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 11 },
+                        { "time": 1.0, "phase": 0.96981, "amp": 0.49408, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 12 },
+                        { "time": 1.0, "phase": 0.96981, "amp": 0.49408, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 13 },
+                        { "time": 1.0, "phase": 0.96981, "amp": 0.49408, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 14 },
+                        { "time": 1.0, "phase": 0.96981, "amp": 0.49408, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 15 }
+                    ],
+                    "cubes": [
+                        {
+                            "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                            "guides": { "time": 0, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        },
+                        {
+                            "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                            "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                            "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "phaseLayer1Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 1490.0, "y": 820.0 },
+            "parameters": { "pan": 0.5, "range": 0.45, "mode": "additive" }
+        },
+        {
+            "id": "phaseOp1",
+            "kind": "add",
+            "definitionVersion": 1,
+            "position": { "x": 1810.0, "y": 820.0 },
+            "parameters": {}
+        },
+        {
+            "id": "volumeEnvelope1",
+            "kind": "envelope",
+            "definitionVersion": 1,
+            "position": { "x": 2450.0, "y": 120.0 },
+            "parameters": { "enabled": false, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "model": {
+                "schema": "envelope",
+                "version": 2,
+                "revision": 1,
+                "state": {
+                    "version": 2,
+                    "type": "envelope",
+                    "revision": 1,
+                    "mesh": {
+                        "name": "Mesh",
+                        "mainMesh": {
+                            "name": "Mesh",
+                            "version": 1,
+                            "vertices": [
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                                { "time": 0.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.5, "id": 8 },
+                                { "time": 0.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.5, "id": 9 },
+                                { "time": 0.0, "phase": 0.05, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.5, "id": 10 },
+                                { "time": 0.0, "phase": 0.05, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.5, "id": 11 },
+                                { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.5, "id": 12 },
+                                { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.5, "id": 13 },
+                                { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.5, "id": 14 },
+                                { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.5, "id": 15 },
+                                { "time": 0.0, "phase": 0.7, "amp": 0.8, "key": 0.0, "mod": 0.0, "weight": 0.3, "id": 16 },
+                                { "time": 0.0, "phase": 0.7, "amp": 0.8, "key": 0.0, "mod": 1.0, "weight": 0.3, "id": 17 },
+                                { "time": 0.0, "phase": 0.7, "amp": 0.8, "key": 1.0, "mod": 0.0, "weight": 0.3, "id": 18 },
+                                { "time": 0.0, "phase": 0.7, "amp": 0.8, "key": 1.0, "mod": 1.0, "weight": 0.3, "id": 19 },
+                                { "time": 1.0, "phase": 0.7, "amp": 0.8, "key": 0.0, "mod": 0.0, "weight": 0.3, "id": 20 },
+                                { "time": 1.0, "phase": 0.7, "amp": 0.8, "key": 0.0, "mod": 1.0, "weight": 0.3, "id": 21 },
+                                { "time": 1.0, "phase": 0.7, "amp": 0.8, "key": 1.0, "mod": 0.0, "weight": 0.3, "id": 22 },
+                                { "time": 1.0, "phase": 0.7, "amp": 0.8, "key": 1.0, "mod": 1.0, "weight": 0.3, "id": 23 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.8, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 24 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.8, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 25 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.8, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 26 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.8, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 27 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.8, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 28 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.8, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 29 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.8, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 30 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.8, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 31 }
+                            ],
+                            "cubes": [
+                                {
+                                    "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 16, 17, 18, 19, 20, 21, 22, 23 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 24, 25, 26, 27, 28, 29, 30, 31 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                }
+                            ]
+                        },
+                        "loopIndices": [],
+                        "sustainIndices": [ 3 ]
+                    },
+                    "logarithmic": false,
+                    "red": 0.5,
+                    "blue": 0.5,
+                    "redLinked": false,
+                    "blueLinked": false,
+                    "cubeIds": [ 1, 2, 3, 4 ]
+                }
+            }
+        },
+        {
+            "id": "pitchEnvelope1",
+            "kind": "envelope",
+            "definitionVersion": 1,
+            "position": { "x": 2450.0, "y": 1050.0 },
+            "parameters": { "enabled": false, "purpose": "pitch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "model": {
+                "schema": "envelope",
+                "version": 2,
+                "revision": 1,
+                "state": {
+                    "version": 2,
+                    "type": "envelope",
+                    "revision": 1,
+                    "mesh": {
+                        "name": "Mesh",
+                        "mainMesh": {
+                            "name": "Mesh",
+                            "version": 1,
+                            "vertices": [
+                                { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 0 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 1 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 2 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 3 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 4 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 5 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 6 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 7 },
+                                { "time": 0.0, "phase": 0.5, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 8 },
+                                { "time": 0.0, "phase": 0.5, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 9 },
+                                { "time": 0.0, "phase": 0.5, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 10 },
+                                { "time": 0.0, "phase": 0.5, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 11 },
+                                { "time": 1.0, "phase": 0.5, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 12 },
+                                { "time": 1.0, "phase": 0.5, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 13 },
+                                { "time": 1.0, "phase": 0.5, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 14 },
+                                { "time": 1.0, "phase": 0.5, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 15 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 16 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 17 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 18 },
+                                { "time": 0.0, "phase": 0.999, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 19 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 20 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 21 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.5, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
+                                { "time": 1.0, "phase": 0.999, "amp": 0.5, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 }
+                            ],
+                            "cubes": [
+                                {
+                                    "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 16, 17, 18, 19, 20, 21, 22, 23 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                }
+                            ]
+                        },
+                        "loopIndices": [],
+                        "sustainIndices": [ 2 ]
+                    },
+                    "logarithmic": false,
+                    "red": 0.5,
+                    "blue": 0.5,
+                    "redLinked": false,
+                    "blueLinked": false,
+                    "cubeIds": [ 1, 2, 3 ]
+                }
+            }
+        },
+        {
+            "id": "scratchEnvelope1",
+            "kind": "envelope",
+            "definitionVersion": 1,
+            "position": { "x": 2450.0, "y": 1280.0 },
+            "parameters": { "enabled": false, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "model": {
+                "schema": "envelope",
+                "version": 2,
+                "revision": 1,
+                "state": {
+                    "version": 2,
+                    "type": "envelope",
+                    "revision": 1,
+                    "mesh": {
+                        "name": "Mesh",
+                        "mainMesh": {
+                            "name": "Mesh",
+                            "version": 1,
+                            "vertices": [
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 8 },
+                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 9 },
+                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 10 },
+                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 11 },
+                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
+                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
+                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
+                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 }
+                            ],
+                            "cubes": [
+                                {
+                                    "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                },
+                                {
+                                    "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
+                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
+                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
+                                }
+                            ]
+                        },
+                        "loopIndices": [],
+                        "sustainIndices": [ 1 ]
+                    },
+                    "logarithmic": false,
+                    "red": 0.5,
+                    "blue": 0.5,
+                    "redLinked": false,
+                    "blueLinked": false,
+                    "cubeIds": [ 1, 2 ]
+                }
+            }
+        },
+        {
+            "id": "output",
+            "kind": "output",
+            "definitionVersion": 1,
+            "position": { "x": 3150.0, "y": 500.0 },
+            "parameters": {}
+        }
+    ],
+    "guides": [
+        {
+            "id": "guide1",
+            "shortLabel": "G1",
+            "name": "",
+            "colourIndex": 0,
+            "shelfOrder": 0,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
+                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.93727, "y": 0.5, "curve": 1.0 },
+                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
+                        { "id": 5, "x": 0.08583, "y": 0.50296, "curve": 0.0 },
+                        { "id": 6, "x": 0.0948, "y": 0.22485, "curve": 0.0 },
+                        { "id": 7, "x": 0.12056, "y": 0.0858, "curve": 0.45893 },
+                        { "id": 8, "x": 0.13758, "y": 0.74556, "curve": 0.25396 },
+                        { "id": 9, "x": 0.17552, "y": 0.02663, "curve": 0.94857 },
+                        { "id": 10, "x": 0.23967, "y": 0.0, "curve": 0.94857 },
+                        { "id": 11, "x": 0.25165, "y": 0.78402, "curve": 0.13378 },
+                        { "id": 12, "x": 0.29017, "y": 0.00296, "curve": 0.0 },
+                        { "id": 13, "x": 0.37091, "y": 0.03254, "curve": 0.0 },
+                        { "id": 14, "x": 0.37993, "y": 0.49408, "curve": 0.03619 },
+                        { "id": 15, "x": 0.41045, "y": 0.33432, "curve": 0.0 },
+                        { "id": 16, "x": 0.42743, "y": 0.4142, "curve": 0.0 },
+                        { "id": 17, "x": 0.40059, "y": 0.00592, "curve": 0.0 },
+                        { "id": 18, "x": 0.43894, "y": 0.0, "curve": 0.0 },
+                        { "id": 19, "x": 0.44796, "y": 0.0, "curve": 0.0 },
+                        { "id": 20, "x": 0.75788, "y": 0.02663, "curve": 0.0 },
+                        { "id": 21, "x": 0.78886, "y": 0.0, "curve": 0.0 },
+                        { "id": 22, "x": 0.81016, "y": 0.0, "curve": 0.0 },
+                        { "id": 23, "x": 0.81233, "y": 0.0, "curve": 0.0 },
+                        { "id": 24, "x": 0.81903, "y": 0.39941, "curve": 0.0 },
+                        { "id": 25, "x": 0.83038, "y": 0.0, "curve": 0.0 },
+                        { "id": 26, "x": 0.83363, "y": 0.0, "curve": 0.0 },
+                        { "id": 27, "x": 0.83834, "y": 0.78994, "curve": 0.32004 },
+                        { "id": 28, "x": 0.84879, "y": 0.0, "curve": 0.0 },
+                        { "id": 29, "x": 0.85204, "y": 0.0, "curve": 0.0 },
+                        { "id": 30, "x": 0.85527, "y": 0.67456, "curve": 0.0 },
+                        { "id": 31, "x": 0.86264, "y": 0.20414, "curve": 0.0 },
+                        { "id": 32, "x": 0.87034, "y": 0.25148, "curve": 0.0 },
+                        { "id": 33, "x": 0.88129, "y": 0.0, "curve": 0.0 },
+                        { "id": 34, "x": 0.88346, "y": 0.0, "curve": 0.0 },
+                        { "id": 35, "x": 0.89042, "y": 0.40828, "curve": 0.0 },
+                        { "id": 36, "x": 0.90187, "y": 0.0, "curve": 0.0 },
+                        { "id": 37, "x": 0.90404, "y": 0.0, "curve": 0.0 },
+                        { "id": 38, "x": 0.91093, "y": 0.58876, "curve": 0.0 },
+                        { "id": 39, "x": 0.91776, "y": 0.0, "curve": 0.0 },
+                        { "id": 40, "x": 0.92029, "y": 0.0, "curve": 0.0 },
+                        { "id": 41, "x": 0.92607, "y": 0.7071, "curve": 0.71715 },
+                        { "id": 42, "x": 0.93256, "y": 0.0, "curve": 0.0 },
+                        { "id": 43, "x": 0.45132, "y": 0.0, "curve": 0.0 },
+                        { "id": 44, "x": 0.51358, "y": 0.0, "curve": 0.0 },
+                        { "id": 45, "x": 0.52856, "y": 0.01183, "curve": 0.0 },
+                        { "id": 46, "x": 0.55284, "y": 0.02071, "curve": 0.0 },
+                        { "id": 47, "x": 0.56192, "y": 0.68343, "curve": 0.19453 },
+                        { "id": 48, "x": 0.57361, "y": 0.04734, "curve": 0.0 },
+                        { "id": 49, "x": 0.61667, "y": 0.14793, "curve": 0.0 },
+                        { "id": 50, "x": 0.65699, "y": 0.01183, "curve": 0.0 },
+                        { "id": 51, "x": 0.67759, "y": 0.0858, "curve": 0.0 },
+                        { "id": 52, "x": 0.68381, "y": 0.86391, "curve": 0.41793 },
+                        { "id": 53, "x": 0.71017, "y": 0.03846, "curve": 0.0 },
+                        { "id": 54, "x": 0.72038, "y": 0.16272, "curve": 0.0 },
+                        { "id": 55, "x": 0.73126, "y": 0.0, "curve": 0.0 },
+                        { "id": 56, "x": 0.74324, "y": 0.01775, "curve": 0.0 },
+                        { "id": 57, "x": 0.74857, "y": 0.59763, "curve": 0.0 },
+                        { "id": 58, "x": 0.38523, "y": 0.79586, "curve": 0.0 },
+                        { "id": 59, "x": 0.50785, "y": 0.58876, "curve": 0.0 },
+                        { "id": 60, "x": 0.48824, "y": 0.28402, "curve": 0.0 },
+                        { "id": 61, "x": 0.40348, "y": 0.70118, "curve": 0.0 },
+                        { "id": 62, "x": 0.44458, "y": 0.39645, "curve": 0.0 },
+                        { "id": 63, "x": 0.29572, "y": 0.87574, "curve": 0.0 },
+                        { "id": 64, "x": 0.67051, "y": 0.51479, "curve": 0.0 },
+                        { "id": 65, "x": 0.7079, "y": 0.68343, "curve": 0.0 },
+                        { "id": 66, "x": 0.69428, "y": 0.11538, "curve": 0.0 },
+                        { "id": 67, "x": 0.59042, "y": 0.63609, "curve": 0.0 },
+                        { "id": 68, "x": 0.48247, "y": 0.79586, "curve": 0.0 },
+                        { "id": 69, "x": 0.46978, "y": 0.31657, "curve": 0.0 },
+                        { "id": 70, "x": 0.78256, "y": 0.68935, "curve": 0.0 },
+                        { "id": 71, "x": 0.59143, "y": 0.08876, "curve": 0.0 },
+                        { "id": 72, "x": 0.63414, "y": 0.21598, "curve": 0.0 },
+                        { "id": 73, "x": 0.87387, "y": 0.4645, "curve": 0.0 },
+                        { "id": 74, "x": 0.89251, "y": 0.07988, "curve": 0.0 },
+                        { "id": 75, "x": 0.89891, "y": 0.61834, "curve": 0.0 },
+                        { "id": 76, "x": 0.89625, "y": 0.04734, "curve": 0.0 },
+                        { "id": 77, "x": 0.82639, "y": 0.60355, "curve": 0.0 },
+                        { "id": 78, "x": 0.82452, "y": 0.05621, "curve": 0.0 },
+                        { "id": 79, "x": 0.80986, "y": 0.55325, "curve": 0.0 },
+                        { "id": 80, "x": 0.80186, "y": 0.03846, "curve": 0.0 },
+                        { "id": 81, "x": 0.73767, "y": 0.30473, "curve": 0.0 },
+                        { "id": 82, "x": 0.14622, "y": 0.17751, "curve": 0.0 },
+                        { "id": 83, "x": 0.19089, "y": 0.18343, "curve": 0.0 },
+                        { "id": 84, "x": 0.22675, "y": 0.24556, "curve": 0.0 },
+                        { "id": 85, "x": 0.31287, "y": 0.13018, "curve": 0.0 },
+                        { "id": 86, "x": 0.27803, "y": 0.68639, "curve": 0.0 },
+                        { "id": 87, "x": 0.26577, "y": 0.24852, "curve": 0.0 },
+                        { "id": 88, "x": 0.36722, "y": 0.71006, "curve": 0.0 },
+                        { "id": 89, "x": 0.104, "y": 0.65976, "curve": 0.0 },
+                        { "id": 90, "x": 0.5451, "y": 0.80769, "curve": 0.0 },
+                        { "id": 91, "x": 0.34179, "y": 0.19527, "curve": 0.0 },
+                        { "id": 92, "x": 0.19506, "y": 0.67456, "curve": 0.0 },
+                        { "id": 93, "x": 0.20676, "y": 0.19231, "curve": 0.0 },
+                        { "id": 94, "x": 0.3342, "y": 0.83136, "curve": 0.0 },
+                        { "id": 95, "x": 0.62679, "y": 0.83432, "curve": 0.0 },
+                        { "id": 96, "x": 0.17425, "y": 0.68343, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide2",
+            "shortLabel": "G2",
+            "name": "",
+            "colourIndex": 1,
+            "shelfOrder": 1,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 2, "x": 0.9336, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.19766, "y": 0.38757, "curve": 0.07243 },
+                        { "id": 4, "x": 0.13264, "y": 0.51479, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide3",
+            "shortLabel": "G3",
+            "name": "",
+            "colourIndex": 2,
+            "shelfOrder": 2,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 2, "x": 0.944, "y": 0.49704, "curve": 1.0 },
+                        { "id": 3, "x": 0.18986, "y": 0.39349, "curve": 0.0 },
+                        { "id": 4, "x": 0.11704, "y": 0.56509, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide4",
+            "shortLabel": "G4",
+            "name": "",
+            "colourIndex": 3,
+            "shelfOrder": 3,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0612, "y": 0.33728, "curve": 1.0 },
+                        { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 },
+                        { "id": 3, "x": 0.24577, "y": 0.53254, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide5",
+            "shortLabel": "G5",
+            "name": "",
+            "colourIndex": 4,
+            "shelfOrder": 4,
+            "enabled": true,
+            "noise": 0.0,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 2, "x": 0.9349, "y": 0.23964, "curve": 1.0 },
+                        { "id": 3, "x": 0.06502, "y": 0.75444, "curve": 0.0 },
+                        { "id": 4, "x": 0.07412, "y": 0.3432, "curve": 0.0 }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "guide6",
+            "shortLabel": "G6",
+            "name": "",
+            "colourIndex": 5,
+            "shelfOrder": 5,
+            "enabled": true,
+            "noise": 0.22562,
+            "dcOffset": 0.0,
+            "phase": 0.0,
+            "revision": 1,
+            "model": {
+                "schema": "flatCurve",
+                "version": 1,
+                "revision": 1,
+                "state": {
+                    "version": 1,
+                    "type": "flatCurve",
+                    "revision": 1,
+                    "vertices": [
+                        { "id": 1, "x": 0.0625, "y": 0.5, "curve": 1.0 },
+                        { "id": 2, "x": 0.9375, "y": 0.5, "curve": 1.0 }
+                    ]
+                }
+            }
+        }
+    ],
+    "guideHeatmaps": [],
+    "guideAssignments": [
+        {
+            "guideId": "guide1",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "time" }
+        },
+        {
+            "guideId": "guide5",
+            "targetNodeId": "magnitudeLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "amp" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "phase" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "phase" }
+        },
+        {
+            "guideId": "guide2",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 2, "field": "phase" }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer2",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 5, "field": "amp" }
+        },
+        {
+            "guideId": "guide6",
+            "targetNodeId": "magnitudeLayer3",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "magnitudeLayer4",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
+        },
+        {
+            "guideId": "guide4",
+            "targetNodeId": "magnitudeLayer4",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "phase" }
+        },
+        {
+            "guideId": "guide1",
+            "targetNodeId": "phaseLayer1",
+            "target": { "kind": "trimeshCubeComponent", "cubeIndex": 0, "field": "time" }
+        }
+    ],
+    "edges": [
+        { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1Process", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeLayer2Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer2Process", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer3", "sourcePortId": "out", "destNodeId": "magnitudeLayer3Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer3Process", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer4", "sourcePortId": "out", "destNodeId": "magnitudeLayer4Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeOp3", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer4Process", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeOp4", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "phaseOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseLayer1Process", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+    ],
+    "probes": []
+}

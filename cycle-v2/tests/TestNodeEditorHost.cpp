@@ -2107,6 +2107,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     Button* sustainMarker = nullptr;
     Button* fitVertical = nullptr;
     Button* fullVertical = nullptr;
+    EffectEnableButton* enabled = nullptr;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
             modeSelector = selector;
@@ -2122,7 +2123,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
                            editor->getChildComponent(index))) {
             axisScaleSelector = selector;
         } else if (auto* button = dynamic_cast<Button*>(editor->getChildComponent(index))) {
-            if (button->getName() == "Set selected vertex as loop start") {
+            if (auto* enableButton = dynamic_cast<EffectEnableButton*>(button)) {
+                enabled = enableButton;
+            } else if (button->getName() == "Set selected vertex as loop start") {
                 loopMarker = button;
             } else if (button->getName() == "Set selected vertex as sustain point") {
                 sustainMarker = button;
@@ -2142,6 +2145,11 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(sustainMarker != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getToggleState());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Envelope layer");
+    REQUIRE(enabled->getBounds().toFloat() == embeddedEditorHeaderLayout(
+            editor->getLocalBounds().toFloat(), true).enabled);
     REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
     REQUIRE_FALSE(axisScaleSelector->isEnabled());
     REQUIRE((bool) state.getProperty("actionIconsVector", {}));
@@ -2573,6 +2581,15 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
 
     rebind();
     REQUIRE_FALSE(redLinkSelected());
+    auto* enabled = dynamic_cast<ToggleButton*>(
+            host.component()->findChildWithID("trimeshEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getToggleState());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Trimesh layer");
+    enabled->setToggleState(false, sendNotificationSync);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "enabled") == "0");
+    rebind();
+    REQUIRE_FALSE(enabled->getToggleState());
 
     REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");

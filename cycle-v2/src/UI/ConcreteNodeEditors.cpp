@@ -143,6 +143,7 @@ public:
         Array<var> primaryAxisButtons;
         Array<var> linkToggles;
         const NodeParameterMap parameters(boundNode);
+        state.setProperty("enabled", parameters.boolValue("enabled", true));
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -263,6 +264,14 @@ private:
 
     void repaintTrimeshEditorOpenGL() override {
         presentation.repaintNodeEditor(true);
+    }
+
+    void setTrimeshEnabled(bool enabled) override {
+        commands.setNodeParameterValue(
+                nodeId,
+                "enabled",
+                "Enabled",
+                enabled ? 1.f : 0.f);
     }
 
     void setTrimeshPrimaryAxisValue(const String& axis) override {

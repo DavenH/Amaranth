@@ -567,6 +567,12 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                         context.pitchEnvelope);
                 if (envelope != nullptr) {
                     constexpr int previewSamples = 129;
+                    if (!envelope->enabled) {
+                        context.pitchEnvelopeUnitValues.assign(
+                                previewSamples,
+                                envelope->neutralValue);
+                        continue;
+                    }
                     Rasterization::EnvelopePlaybackEngine playback;
                     playback.ensureVoiceCount(1);
                     playback.validate(envelope->rasterizer->preparedPlaybackView());

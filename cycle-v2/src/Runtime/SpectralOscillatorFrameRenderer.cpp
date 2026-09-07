@@ -59,7 +59,16 @@ void applySpectralLayer(
         Buffer<float> right,
         float pan,
         float range,
-        bool additive) {
+        bool additive,
+        bool enabled) {
+    if (!enabled) {
+        const float identity = domain == PortDomain::SpectralMagnitudeSignal && !additive
+                ? 1.f
+                : 0.f;
+        left.set(identity);
+        right.set(identity);
+        return;
+    }
     if (domain == PortDomain::SpectralPhaseSignal) {
         CycleDsp::SpectralLayerCore::renderPhaseChannels(
                 source,
@@ -229,11 +238,16 @@ bool SpectralOscillatorFrameRenderer::prepare(
             }
             case AudioModuleRole::Fft:      operation.type = OperationType::Fft; break;
             case AudioModuleRole::SpectralLayer: {
-                const NodeParameterMap parameters(step.parameters);
+                const auto configuration = std::dynamic_pointer_cast<
+                        const SpectralLayerConfiguration>(step.configuration.value);
+                if (configuration == nullptr) {
+                    return false;
+                }
                 operation.type = OperationType::SpectralLayer;
-                operation.pan = parameters.floatValue("pan", 0.5f);
-                operation.range = parameters.floatValue("range", 0.5f);
-                operation.additive = parameters.stringValue("mode", "additive") == "additive";
+                operation.pan = configuration->pan;
+                operation.range = configuration->range;
+                operation.additive = configuration->additive;
+                operation.enabled = configuration->sourceEnabled;
                 break;
             }
             case AudioModuleRole::Ifft:     operation.type = OperationType::Ifft; break;
@@ -296,6 +310,11 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         auto rightOutput = slot(operation.outputs[0], 1, count);
         switch (operation.type) {
             case OperationType::TimeTrimesh:
+                if (!operation.configuration->enabled) {
+                    leftOutput.zero();
+                    rightOutput.zero();
+                    break;
+                }
                 CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
                         *operation.timeRasterizer,
                         {
@@ -310,6 +329,11 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                 break;
 
             case OperationType::SpectralTrimesh:
+                if (!operation.configuration->enabled) {
+                    leftOutput.zero();
+                    rightOutput.zero();
+                    break;
+                }
                 operation.spectralRasterizer->setFrequencyMidiNote(midiNote);
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
@@ -326,7 +350,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                         rightOutput,
                         operation.pan,
                         operation.range,
-                        operation.additive);
+                        operation.additive,
+                        operation.enabled);
                 break;
 
             case OperationType::Fft: {

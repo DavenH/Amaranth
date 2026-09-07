@@ -400,6 +400,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
+                            boolean("enabled", "Enabled", true, dsp | presentation),
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -462,6 +463,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
+                            boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             choice("purpose", "Purpose", "control",
                                     { "control", "volume", "pitch", "scratch" },
                                     graph | dsp | preview | presentation),

@@ -52,6 +52,7 @@ private:
         float pan { 0.5f };
         float range { 0.5f };
         bool additive { true };
+        bool enabled { true };
         std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
         std::unique_ptr<Rasterization::VoiceCycleState> timeState;
         std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;

@@ -57,6 +57,23 @@ Context:
 Current status: open; reproduce through the visual update path and decide which
 column resolution owns resampling before changing the assertion.
 
+## P2: Graph document save test cannot use JUCE's default temporary directory
+
+Context:
+
+- The full Cycle V2 suite and a focused rerun on 2026-09-07 fail
+  `Graph documents save canonical JSON with stable line endings` at
+  `TestGraphSerializer.cpp:111`.
+- JUCE first asserts at `juce_TemporaryFile.cpp:126`; the destination is chosen
+  from `File::tempDirectory`, and `GraphDocument::save()` then returns false.
+- Preset serialization itself passes in the workspace-backed native migration
+  runs, including 221 load/save/reopen cycles.
+- Full-suite log: `/private/tmp/cycle-v2-full-tests.log`.
+
+Current status: open as a sandbox/test-fixture path issue. Give temporary-file
+fixtures an explicitly writable test root rather than weakening document-save
+behavior.
+
 ## P1: Cycle 1 Calming Keys preset crashes during visual refresh
 
 Context:

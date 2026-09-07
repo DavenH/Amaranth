@@ -4,6 +4,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/EffectEnableButton.h"
 
 #include <JuceHeader.h>
 
@@ -17,6 +18,7 @@ public:
     virtual ~TrimeshExpandedEditorDelegate() = default;
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
+    virtual void setTrimeshEnabled(bool enabled) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual void beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
@@ -78,6 +80,11 @@ private:
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
+    EffectEnableButton enabled {
+            "Trimesh enabled",
+            "Toggles this Trimesh layer",
+            "Enable or disable this Trimesh layer"
+    };
     Node node;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
 

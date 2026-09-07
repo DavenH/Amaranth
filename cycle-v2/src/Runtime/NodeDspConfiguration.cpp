@@ -19,6 +19,42 @@ namespace CycleV2 {
 
 namespace {
 
+const Node* spectralLayerSource(const NodeGraph* graph, const String& nodeId) {
+    if (graph == nullptr) {
+        return nullptr;
+    }
+    for (const auto& edge : graph->getEdges()) {
+        if (edge.destNodeId == nodeId && edge.destPortId == "in") {
+            return graph->findNode(edge.sourceNodeId);
+        }
+    }
+    return nullptr;
+}
+
+bool spectralLayerSourceEnabled(const NodeGraph* graph, const String& nodeId) {
+    const Node* source = spectralLayerSource(graph, nodeId);
+    return source == nullptr
+            || source->kind != NodeKind::TrilinearMesh
+            || NodeParameterMap(*source).boolValue("enabled", true);
+}
+
+bool scratchSourceEnabled(const NodeGraph* graph, const String& nodeId) {
+    if (graph == nullptr) {
+        return true;
+    }
+    for (const auto& edge : graph->getEdges()) {
+        if (edge.destNodeId != nodeId
+                || edge.destPortId != "scratch"
+                || edge.attachmentType != AttachmentType::ScratchEnvelope) {
+            continue;
+        }
+        const Node* source = graph->findNode(edge.sourceNodeId);
+        return source == nullptr
+                || NodeParameterMap(*source).boolValue("enabled", true);
+    }
+    return true;
+}
+
 std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
@@ -33,6 +69,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     const NodeParameterMap parameterMap(parameters);
+    configuration->enabled = parameterMap.boolValue("enabled", true);
+    configuration->scratchSourceEnabled = scratchSourceEnabled(graph, nodeId);
     configuration->mesh = typedModel->sharedMesh();
     if (graph != nullptr) {
         const Node* node = graph->findNode(nodeId);
@@ -77,6 +115,12 @@ String NodeDspConfigurationFactory::keyFor(
     }
     if (graph != nullptr) {
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
+    }
+    if (role == AudioModuleRole::SpectralLayer) {
+        key << ":sourceEnabled=" << (spectralLayerSourceEnabled(graph, nodeId) ? 1 : 0);
+    }
+    if (role == AudioModuleRole::MeshSource) {
+        key << ":scratchSourceEnabled=" << (scratchSourceEnabled(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
@@ -147,14 +191,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     == "acyclicCarry";
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
-        { AudioModuleRole::SpectralLayer, [](AudioModuleRole, const auto& values, const auto&) {
-            auto configuration = std::make_shared<SpectralLayerConfiguration>();
-            const NodeParameterMap parameters(values);
-            configuration->pan = parameters.floatValue("pan", 0.5f);
-            configuration->range = parameters.floatValue("range", 0.5f);
-            configuration->additive = parameters.stringValue("mode", "additive") == "additive";
-            return std::shared_ptr<const INodeDspConfiguration>(configuration);
-        } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     WaveshaperSignalProcessor::buildConfiguration(values, modelState));
@@ -187,6 +223,16 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     EnvelopeSignalProcessor::buildConfiguration(values, modelState));
         } }
     };
+
+    if (role == AudioModuleRole::SpectralLayer) {
+        auto configuration = std::make_shared<SpectralLayerConfiguration>();
+        const NodeParameterMap parameterMap(parameters);
+        configuration->pan = parameterMap.floatValue("pan", 0.5f);
+        configuration->range = parameterMap.floatValue("range", 0.5f);
+        configuration->additive = parameterMap.stringValue("mode", "additive") == "additive";
+        configuration->sourceEnabled = spectralLayerSourceEnabled(graph, nodeId);
+        return configuration;
+    }
 
     for (const auto& registration : registrations) {
         if (registration.role == role) {

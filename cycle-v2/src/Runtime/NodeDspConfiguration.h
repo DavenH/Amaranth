@@ -44,6 +44,7 @@ struct SpectralLayerConfiguration final : public INodeDspConfiguration {
     float pan { 0.5f };
     float range { 0.5f };
     bool additive { true };
+    bool sourceEnabled { true };
 
     AudioModuleRole role() const override { return AudioModuleRole::SpectralLayer; }
 };

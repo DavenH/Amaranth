@@ -21,9 +21,26 @@ MESH_GROUPS = {
     "magnitude": 5,
     "phase": 6,
     "waveshaper": 9,
+    "impulseResponse": 10,
+}
+
+ENVELOPE_GROUPS = {
+    "volume": 0,
+    "pitch": 1,
+    "scratch": 2,
+    "wavePitch": 8,
 }
 
 LEGACY_MIDI_REFERENCE_OFFSET = -12
+
+MODULATION_SOURCE_NAMES = {
+    1: "voiceTime",
+    2: "velocity",
+    3: "inverseVelocity",
+    4: "keyScale",
+    5: "aftertouch",
+    101: "modWheel",
+}
 
 DEFAULT_MODULATION_MAPPINGS = [
     {"in": 1, "out": 100, "dim": 0},
@@ -132,6 +149,13 @@ def require_single_active_layer(groups, group_name):
     return active[0]
 
 
+def envelope_layers(preset, purpose):
+    group = preset["meshLibrary"]["groups"][ENVELOPE_GROUPS[purpose]]
+    if "layers" in group:
+        return group["layers"]
+    return preset["envelopeProps"]["groups"][purpose]["layers"]
+
+
 def guide_assignments_for_layer(layer, destination):
     field_names = {"key": "red", "mod": "blue"}
     result = []
@@ -153,8 +177,7 @@ def guide_assignments_for_layer(layer, destination):
 
 
 def active_envelope_layer(preset, purpose):
-    group = preset["envelopeProps"]["groups"][purpose]
-    active = [layer for layer in group["layers"]
+    active = [layer for layer in envelope_layers(preset, purpose)
               if layer["properties"]["active"]]
     if len(active) > 1:
         raise ValueError(
@@ -168,17 +191,62 @@ def translated_octave(octave_knob):
     return preset_octave + LEGACY_MIDI_REFERENCE_OFFSET // 12
 
 
-def envelope_node(preset, purpose, node_id, x, y, level=1.0):
-    layer = active_envelope_layer(preset, purpose)
-    if layer is None:
-        raise ValueError(f"Cannot port an inactive {purpose} envelope")
-    morph = preset["morphPanel"]
+def morph_state(preset):
+    authored = preset.get("morphPanel") or {}
+    return {
+        "position": authored.get(
+            "position", {"time": 0.5, "red": 0.5, "blue": 0.5}),
+        "linking": authored.get(
+            "linking", {"time": True, "red": False, "blue": False}),
+        "primaryAxis": authored.get("primaryAxis", 0),
+    }
+
+
+def default_modulation_mappings_for_preset(preset, blue_input=2):
+    groups = preset["meshLibrary"]["groups"]
+    result = []
+    for group_name, base_id in (("time", 100), ("magnitude", 200), ("phase", 300)):
+        for index, _ in enumerate(groups[MESH_GROUPS[group_name]]["layers"]):
+            output_id = base_id + 3 * index
+            result.extend([
+                {"in": 1, "out": output_id, "dim": 0},
+                {"in": 4, "out": output_id, "dim": 1},
+                {"in": blue_input, "out": output_id, "dim": 2},
+            ])
+    for purpose, base_id in (("volume", 400), ("pitch", 450), ("scratch", 500)):
+        for index, _ in enumerate(envelope_layers(preset, purpose)):
+            output_id = base_id + 2 * index
+            result.extend([
+                {"in": 4, "out": output_id, "dim": 1},
+                {"in": blue_input, "out": output_id, "dim": 2},
+            ])
+    return result
+
+
+def modulation_sources_for_preset(preset):
+    actual = preset.get("modMatrix", {}).get("mappings")
+    if actual is None:
+        actual = default_modulation_mappings_for_preset(preset)
+
+    for blue_input in (2, 101):
+        if actual == default_modulation_mappings_for_preset(preset, blue_input):
+            return {
+                "yellow": "voiceTime",
+                "red": "keyScale",
+                "blue": MODULATION_SOURCE_NAMES[blue_input],
+            }
+    return None
+
+
+def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
+    morph = morph_state(preset)
     return node(
         node_id,
         "envelope",
         x,
         y,
         {
+            "enabled": bool(layer["properties"]["active"]),
             "purpose": purpose,
             "logarithmic": bool(layer["properties"].get("logarithmic", False)),
             "red": morph["position"]["red"],
@@ -190,18 +258,21 @@ def envelope_node(preset, purpose, node_id, x, y, level=1.0):
 
 
 def convert(source):
+    issues = validate_conversion(source)
+    if issues:
+        formatted = "\n".join(f"- {issue}" for issue in issues)
+        raise ValueError(f"Preset cannot be represented without loss:\n{formatted}")
+
     preset = source["preset"]
     groups = preset["meshLibrary"]["groups"]
-    morph = preset["morphPanel"]
+    morph = morph_state(preset)
     position = morph["position"]
     axes = ["yellow", "red", "blue"]
-    oscillator_knobs = preset["oscControls"]["knobs"]
+    oscillator_knobs = list(preset["oscControls"].get("knobs", []))
+    oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
     octave = translated_octave(oscillator_knobs[1])
-    oversampling = preset["settings"]["OversampleFactorRltm"]
-
-    time_layer = require_single_active_layer(groups, "time")
-    magnitude_layer = require_single_active_layer(groups, "magnitude")
-    phase_layer = require_single_active_layer(groups, "phase")
+    oversampling = preset["settings"].get("OversampleFactorRltm", 1)
+    modulation_sources = modulation_sources_for_preset(preset)
     guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
 
     nodes = [
@@ -213,65 +284,121 @@ def convert(source):
             "oversampling": f"{oversampling}x",
         }),
         node("morph", "modulationTriple", 100, 100, {
-            "yellowSource": "voiceTime",
+            "yellowSource": modulation_sources["yellow"],
             "yellowController": 1,
             "yellowConstant": position["time"],
-            "redSource": "keyScale",
+            "redSource": modulation_sources["red"],
             "redController": 1,
             "redConstant": position["red"],
-            "blueSource": "modWheel",
+            "blueSource": modulation_sources["blue"],
             "blueController": 1,
             "blueConstant": position["blue"],
         }),
+        node("fft", "fft", 1050, 500, {"cycleFrames": 2048, "mode": "cycle"}),
+        node("ifft", "ifft", 2150, 500, {"cycleFrames": 2048, "mode": "cyclic"}),
     ]
-
+    edges = [
+        edge("morph", "modulation", "voice", "modulation",
+             "configurationAttachment", "modulationTriple"),
+    ]
+    unison = preset["effects"]["Unison"]
+    if unison["enabled"]:
+        knobs = unison["knobs"]
+        nodes.append(node("unison", "unison", 100, 300, {
+            "enabled": True,
+            "mode": "group",
+            "order": min(10, int(10 * knobs[3] + 1)),
+            "width": 70.0 * knobs[0],
+            "panSpread": knobs[1],
+            "phase": knobs[2],
+            "jitter": knobs[4],
+        }, {
+            "schema": "unisonVoices",
+            "version": 1,
+            "revision": 1,
+            "voices": [{"detune": 0.5, "pan": 0.5, "phase": 0.0}],
+        }))
+        edges.append(edge(
+            "unison", "unison", "voice", "unison",
+            "configurationAttachment", "unison"))
+    guide_assignments = []
     mesh_parameters = {
         "yellow": position["time"],
         "red": position["red"],
         "blue": position["blue"],
         "primaryAxis": axes[morph["primaryAxis"]],
     }
-    nodes.extend([
-        node("timeLayer1", "trilinearMesh", 480, 500,
-             mesh_parameters, trimesh_model(time_layer["mesh"])),
-        node("fft", "fft", 800, 500, {"cycleFrames": 2048, "mode": "cycle"}),
-        node("ifft", "ifft", 1750, 500, {"cycleFrames": 2048, "mode": "cyclic"}),
-    ])
-    if magnitude_layer["mesh"]["vertices"]:
-        nodes.extend([
-        node("magnitudeLayer1", "trilinearMesh", 850, 100,
-             mesh_parameters, trimesh_model(magnitude_layer["mesh"])),
-        node("magnitudeLayer1Process", "spectralLayer", 1190, 160, {
-            "pan": magnitude_layer["properties"]["pan"],
-            "range": magnitude_layer["properties"]["range"],
-            "mode": "additive" if magnitude_layer["properties"]["mode"] == 0
-                    else "multiplicative",
-        }),
-        node("magnitudeOp1", "multiply", 1480, 340),
-        ])
-    if phase_layer["mesh"]["vertices"]:
-        nodes.extend([
-        node("phaseLayer1", "trilinearMesh", 850, 780,
-             mesh_parameters, trimesh_model(phase_layer["mesh"])),
-        node("phaseLayer1Process", "spectralLayer", 1190, 800, {
-            "pan": phase_layer["properties"]["pan"],
-            "range": phase_layer["properties"]["range"],
-            "mode": "additive",
-        }),
-        node("phaseOp1", "add", 1480, 690),
-        ])
+    all_mesh_node_ids = []
+
+    time_source = None
+    for index, layer in enumerate(groups[MESH_GROUPS["time"]]["layers"], 1):
+        layer_id = f"timeLayer{index}"
+        parameters = dict(mesh_parameters)
+        parameters["enabled"] = bool(layer["properties"]["active"])
+        nodes.append(node(layer_id, "trilinearMesh", 470, 380 + 190 * index,
+                          parameters, trimesh_model(layer["mesh"])))
+        edges.append(edge("voice", "context", layer_id, "context"))
+        guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
+        all_mesh_node_ids.append(layer_id)
+        if time_source is None:
+            time_source = (layer_id, "out")
+            continue
+        operation_id = f"timeOp{index - 1}"
+        nodes.append(node(operation_id, "add", 780, 430 + 95 * index))
+        edges.append(edge(time_source[0], time_source[1], operation_id, "left"))
+        edges.append(edge(layer_id, "out", operation_id, "right"))
+        time_source = (operation_id, "out")
+    edges.append(edge(time_source[0], time_source[1], "fft", "time"))
+
+    def append_spectral_stack(group_name, fft_port, ifft_port, y, phase=False):
+        signal = ("fft", fft_port)
+        for index, layer in enumerate(groups[MESH_GROUPS[group_name]]["layers"], 1):
+            layer_id = f"{group_name}Layer{index}"
+            process_id = f"{layer_id}Process"
+            operation_id = f"{group_name}Op{index}"
+            parameters = dict(mesh_parameters)
+            parameters["enabled"] = bool(layer["properties"]["active"])
+            mode = "additive" if phase or layer["properties"]["mode"] == 0 \
+                else "multiplicative"
+            operation = "add" if mode == "additive" else "multiply"
+            nodes.extend([
+                node(layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
+                     parameters, trimesh_model(layer["mesh"])),
+                node(process_id, "spectralLayer", 1490, y + 170 * (index - 1), {
+                    "pan": layer["properties"].get("pan", 0.5),
+                    "range": layer["properties"].get("range", 0.5),
+                    "mode": mode,
+                }),
+                node(operation_id, operation, 1810, y + 170 * (index - 1)),
+            ])
+            edges.extend([
+                edge(layer_id, "out", process_id, "in"),
+                edge(signal[0], signal[1], operation_id, "left"),
+                edge(process_id, "out", operation_id, "right"),
+            ])
+            guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
+            all_mesh_node_ids.append(layer_id)
+            signal = (operation_id, "out")
+        edges.append(edge(signal[0], signal[1], "ifft", ifft_port))
+
+    append_spectral_stack("magnitude", "mag", "mag", 70)
+    append_spectral_stack("phase", "phase", "phase", 820, True)
 
     guide_props = preset["guideCurveProps"]["guides"]
     guides = []
     for index, layer in enumerate(guide_layers):
-        props = guide_props[index]
+        props = guide_props[index] if index < len(guide_props) else {
+            "noiseLevel": 0.0,
+            "offsetLevel": 0.0,
+            "phaseLevel": 0.0,
+        }
         guides.append({
             "id": f"guide{index + 1}",
             "shortLabel": f"G{index + 1}",
             "name": "",
             "colourIndex": index,
             "shelfOrder": index,
-            "enabled": True,
+            "enabled": bool(layer["properties"]["active"]),
             "noise": props["noiseLevel"],
             "dcOffset": props["offsetLevel"],
             "phase": props["phaseLevel"],
@@ -279,70 +406,106 @@ def convert(source):
             "model": flat_curve_model(layer["mesh"]),
         })
 
+    signal_node = "ifft"
+    signal_port = "time"
     waveshaper = preset["effects"]["Waveshaper"]
-    waveshaper_layer = groups[MESH_GROUPS["waveshaper"]]["layers"][0]
+    waveshaper_layers = groups[MESH_GROUPS["waveshaper"]]["layers"]
     if waveshaper["enabled"]:
-        nodes.append(node("waveshaper", "waveshaper", 2050, 500, {
+        nodes.append(node("waveshaper", "waveshaper", 2450, 500, {
             "enabled": True,
             "pre": waveshaper["knobs"][0],
             "post": waveshaper["knobs"][1],
             "aaFactor": str(waveshaper["oversampleFactor"]),
-        }, flat_curve_model(waveshaper_layer["mesh"])))
+        }, flat_curve_model(waveshaper_layers[0]["mesh"])))
 
-    volume_layer = active_envelope_layer(preset, "volume")
-    scratch_layer = active_envelope_layer(preset, "scratch")
-    if volume_layer is not None:
-        nodes.append(envelope_node(
-            preset, "volume", "volumeEnvelope", 2050, 180))
-        nodes.append(node("volumeMultiply", "multiply", 2350, 500))
-    if scratch_layer is not None:
-        nodes.append(envelope_node(
-            preset, "scratch", "scratchEnvelope", 850, 1080))
-    nodes.append(node("output", "output", 2650, 500))
+    envelope_y = {"volume": 120, "pitch": 1050, "scratch": 1280}
+    envelope_ids = {}
+    for purpose in ("volume", "pitch", "scratch"):
+        for index, layer in enumerate(envelope_layers(preset, purpose), 1):
+            envelope_id = f"{purpose}Envelope{index}"
+            nodes.append(envelope_node(
+                preset, layer, purpose, envelope_id,
+                2450 + 310 * (index - 1), envelope_y[purpose]))
+            if layer["properties"]["active"]:
+                envelope_ids[purpose] = envelope_id
 
-    edges = [
-        edge("voice", "context", "timeLayer1", "context"),
-        edge("timeLayer1", "out", "fft", "time"),
-        edge("morph", "modulation", "voice", "modulation",
-             "configurationAttachment", "modulationTriple"),
-    ]
-    if magnitude_layer["mesh"]["vertices"]:
-        edges.extend([
-            edge("magnitudeLayer1", "out", "magnitudeLayer1Process", "in"),
-            edge("fft", "mag", "magnitudeOp1", "left"),
-            edge("magnitudeLayer1Process", "out", "magnitudeOp1", "right"),
-            edge("magnitudeOp1", "out", "ifft", "mag"),
-        ])
-    else:
-        edges.append(edge("fft", "mag", "ifft", "mag"))
-    if phase_layer["mesh"]["vertices"]:
-        edges.extend([
-            edge("phaseLayer1", "out", "phaseLayer1Process", "in"),
-            edge("fft", "phase", "phaseOp1", "left"),
-            edge("phaseLayer1Process", "out", "phaseOp1", "right"),
-            edge("phaseOp1", "out", "ifft", "phase"),
-        ])
-    else:
-        edges.append(edge("fft", "phase", "ifft", "phase"))
-    signal_node = "ifft"
-    signal_port = "time"
+    volume_id = envelope_ids.get("volume")
+    if volume_id is not None:
+        nodes.append(node("volumeMultiply", "multiply", 2780, 500))
+        edges.append(edge(signal_node, signal_port, "volumeMultiply", "left"))
+        edges.append(edge(volume_id, "env", "volumeMultiply", "right"))
+        signal_node = "volumeMultiply"
+        signal_port = "out"
     if waveshaper["enabled"]:
         edges.append(edge(signal_node, signal_port, "waveshaper", "time"))
         signal_node = "waveshaper"
-    if volume_layer is not None:
-        edges.append(edge(signal_node, "time", "volumeMultiply", "left"))
-        edges.append(edge("volumeEnvelope", "env", "volumeMultiply", "right"))
-        signal_node = "volumeMultiply"
-        signal_port = "out"
-    edges.append(edge(signal_node, signal_port, "output", "time"))
-    if scratch_layer is not None and magnitude_layer["mesh"]["vertices"]:
+        signal_port = "time"
+
+    impulse = preset["effects"]["ImpulseModeller"]
+    if impulse["enabled"]:
+        impulse_layer = groups[MESH_GROUPS["impulseResponse"]]["layers"][0]
+        nodes.append(node("impulseResponse", "impulseResponse", 2600, 660, {
+            "enabled": True,
+            "size": impulse["knobs"][0],
+            "post": impulse["knobs"][1],
+            "highPass": impulse["knobs"][2] if len(impulse["knobs"]) > 2 else 0.0,
+        }, flat_curve_model(impulse_layer["mesh"])))
         edges.append(edge(
-            "scratchEnvelope", "env", "magnitudeLayer1", "scratch",
-            "processingAttachment", "scratchEnvelope"))
-    guide_assignments = []
-    guide_assignments.extend(guide_assignments_for_layer(time_layer, "timeLayer1"))
-    guide_assignments.extend(guide_assignments_for_layer(magnitude_layer, "magnitudeLayer1"))
-    guide_assignments.extend(guide_assignments_for_layer(phase_layer, "phaseLayer1"))
+            signal_node, signal_port, "impulseResponse", "time"))
+        signal_node = "impulseResponse"
+        signal_port = "time"
+
+    equalizer = preset["effects"].get("EQ") or {"enabled": False}
+    if equalizer["enabled"]:
+        knobs = equalizer["knobs"]
+        parameters = {"enabled": True}
+        for index in range(5):
+            parameters[f"band{index + 1}Gain"] = knobs[index]
+            parameters[f"band{index + 1}Frequency"] = knobs[index + 5]
+        nodes.append(node("equalizer", "equalizer", 2720, 660, parameters))
+        edges.append(edge(signal_node, signal_port, "equalizer", "time"))
+        signal_node = "equalizer"
+        signal_port = "time"
+
+    delay = preset["effects"]["Delay"]
+    if delay["enabled"]:
+        nodes.append(node("delay", "delay", 2860, 660, {
+            "enabled": True,
+            "time": delay["knobs"][0],
+            "feedback": delay["knobs"][1],
+            "spinIters": delay["knobs"][2],
+            "spin": delay["knobs"][3],
+            "wet": delay["knobs"][4],
+        }))
+        edges.append(edge(signal_node, signal_port, "delay", "time"))
+        signal_node = "delay"
+        signal_port = "time"
+
+    reverb = preset["effects"]["Reverb"]
+    if reverb["enabled"]:
+        nodes.append(node("reverb", "reverb", 3000, 660, {
+            "enabled": True,
+            "size": reverb["knobs"][0],
+            "damp": reverb["knobs"][1],
+            "width": reverb["knobs"][2],
+            "highPass": reverb["knobs"][3],
+            "wet": reverb["knobs"][4],
+        }))
+        edges.append(edge(signal_node, signal_port, "reverb", "time"))
+        signal_node = "reverb"
+        signal_port = "time"
+    pitch_id = envelope_ids.get("pitch")
+    if pitch_id is not None:
+        edges.append(edge(pitch_id, "env", "voice", "pitch"))
+    scratch_id = envelope_ids.get("scratch")
+    if scratch_id is not None:
+        for mesh_node_id in all_mesh_node_ids:
+            edges.append(edge(
+                scratch_id, "env", mesh_node_id, "scratch",
+                "processingAttachment", "scratchEnvelope"))
+
+    nodes.append(node("output", "output", 3150, 500))
+    edges.append(edge(signal_node, signal_port, "output", "time"))
 
     return {
         "format": "cycle-v2-graph",
@@ -354,6 +517,76 @@ def convert(source):
         "edges": edges,
         "probes": [],
     }
+
+
+def validate_conversion(source):
+    preset = source["preset"]
+    issues = []
+    required_sections = (
+        "meshLibrary", "oscControls", "effects", "settings", "guideCurveProps",
+    )
+    for section in required_sections:
+        if section not in preset:
+            issues.append(f"missing canonical section: {section}")
+    if issues:
+        return issues
+
+    groups = preset["meshLibrary"]["groups"]
+    if not groups[MESH_GROUPS["time"]]["layers"]:
+        issues.append("time layer group is empty")
+
+    for group_name in ("time", "magnitude", "phase"):
+        for index, layer in enumerate(groups[MESH_GROUPS[group_name]]["layers"], 1):
+            properties = layer["properties"]
+            if properties.get("gain", 0.0) != 0.0:
+                issues.append(
+                    f"{group_name} layer {index} has unmapped gain "
+                    f"{properties['gain']}")
+            if properties.get("fineTune", 0.0) != 0.0:
+                issues.append(
+                    f"{group_name} layer {index} has unmapped fine tune "
+                    f"{properties['fineTune']}")
+            if group_name == "time" and properties.get("pan", 0.5) != 0.5:
+                issues.append(
+                    f"time layer {index} has unmapped pan {properties['pan']}")
+
+    for purpose in ("volume", "pitch", "scratch"):
+        active_count = sum(
+            bool(layer["properties"]["active"])
+            for layer in envelope_layers(preset, purpose)
+        )
+        if active_count > 1:
+            issues.append(
+                f"{purpose} has {active_count} active Envelopes; Cycle V2 accepts one")
+    wave_loaded = preset["effects"]["ImpulseModeller"].get("waveLoaded", False) \
+        or bool(preset.get("multisample", {}).get("samples", []))
+    if wave_loaded and any(
+            layer["properties"]["active"]
+            for layer in envelope_layers(preset, "wavePitch")):
+        issues.append("active wave-pitch Envelope has no Cycle V2 destination")
+
+    if preset["effects"]["Unison"]["enabled"] \
+            and not preset["effects"]["Unison"].get("groupMode", True):
+        issues.append("active individual-mode Unison mapping is not implemented")
+    impulse = preset["effects"]["ImpulseModeller"]
+    if impulse["enabled"] and impulse.get("waveLoaded", False):
+        issues.append("sample-backed ImpulseModeller has no Cycle V2 resource mapping")
+    if impulse["enabled"] \
+            and not groups[MESH_GROUPS["impulseResponse"]]["layers"]:
+        issues.append("active ImpulseModeller has no authored curve layer")
+    if preset.get("multisample", {}).get("samples", []):
+        issues.append("external multisamples have no Cycle V2 destination")
+    if modulation_sources_for_preset(preset) is None:
+        issues.append("modulation matrix differs from the supported fixed mapping")
+
+    oversampling = preset["settings"].get("OversampleFactorRltm", 1)
+    if oversampling not in (1, 2, 4, 8):
+        issues.append(f"unsupported realtime oversampling factor: {oversampling}")
+    waveshaper = preset["effects"]["Waveshaper"]
+    if waveshaper["enabled"] \
+            and not groups[MESH_GROUPS["waveshaper"]]["layers"]:
+        issues.append("active Waveshaper has no authored curve layer")
+    return issues
 
 
 def validate_audio_parity_subset(source):
@@ -382,10 +615,9 @@ def validate_audio_parity_subset(source):
         if preset["effects"][effect_name]["enabled"]:
             issues.append(f"active {effect_name} is not supported by strict audio parity")
 
-    envelope_groups = preset["envelopeProps"]["groups"]
     active_envelopes = {
         purpose: [
-            layer for layer in envelope_groups[purpose]["layers"]
+            layer for layer in envelope_layers(preset, purpose)
             if layer["properties"]["active"]
         ]
         for purpose in ("volume", "pitch", "scratch")
@@ -395,10 +627,10 @@ def validate_audio_parity_subset(source):
 
     if preset["multisample"]["samples"]:
         issues.append("external multisamples are not supported by strict audio parity")
-    if preset["modMatrix"]["mappings"] != DEFAULT_MODULATION_MAPPINGS:
+    if modulation_sources_for_preset(preset) is None:
         issues.append("modulation matrix differs from the supported fixed mapping")
 
-    oversampling = preset["settings"]["OversampleFactorRltm"]
+    oversampling = preset["settings"].get("OversampleFactorRltm", 1)
     if oversampling not in (1, 2, 4, 8):
         issues.append(f"unsupported realtime oversampling factor: {oversampling}")
 
@@ -428,9 +660,11 @@ def file_sha256(path):
 
 def equivalence_manifest(source, source_document, destination, factory_preset):
     preset = source["preset"]
-    duration = math.exp(8.0 * preset["oscControls"]["knobs"][2] - 3.0)
-    master_gain = math.exp(6.0 * preset["oscControls"]["knobs"][0] - 3.0)
-    octave = translated_octave(preset["oscControls"]["knobs"][1])
+    oscillator_knobs = list(preset["oscControls"].get("knobs", []))
+    oscillator_knobs.extend([0.5] * (3 - len(oscillator_knobs)))
+    duration = math.exp(8.0 * oscillator_knobs[2] - 3.0)
+    master_gain = math.exp(6.0 * oscillator_knobs[0] - 3.0)
+    octave = translated_octave(oscillator_knobs[1])
     source_document = source_document.resolve()
     destination = destination.resolve()
     repository = Path(__file__).resolve().parents[1]

@@ -173,7 +173,10 @@ public:
         trimeshDsp.setFrequencyMidiNote(frequencyMidiNote);
         trimeshGridDsp.setFrequencyMidiNote(frequencyMidiNote);
 
-        const SignalPayload* scratch = scratchAttachment(context);
+        const SignalPayload* scratch = configuration == nullptr
+                        || configuration->scratchSourceEnabled
+                ? scratchAttachment(context)
+                : nullptr;
         const auto scratchDomain = scratchDomainFor(outputPort.domain);
         const bool scratchAppliesToBlock = scratch != nullptr
                 && !scratch->block.samples.empty()
@@ -197,6 +200,13 @@ public:
                 output);
         applyGain(output, context.frameCount);
 
+        if (configuration != nullptr && !configuration->enabled) {
+            payloadBuffer(output, context.frameCount).zero();
+            if (output.isStereo()) {
+                payloadBuffer(output, 1, context.frameCount).zero();
+            }
+        }
+
         if (context.captureTraversalGrid) {
             renderTraversal(
                     context,
@@ -207,6 +217,14 @@ public:
                     scratchDomain,
                     output);
             applyTraversalGain(output);
+            if (configuration != nullptr && !configuration->enabled) {
+                Buffer<float>(
+                        output.traversalGrid.values.data(),
+                        (int) output.traversalGrid.values.size()).zero();
+                Buffer<float>(
+                        output.secondaryTraversalGrid.values.data(),
+                        (int) output.secondaryTraversalGrid.values.size()).zero();
+            }
         }
 
         publishSingleOutput(context, std::move(output));

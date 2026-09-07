@@ -97,7 +97,7 @@ bool ChainedOscillatorRecipeRenderer::prepare(
             if (!operation.trimesh->prepare(configuration, region.laneCount)) {
                 return false;
             }
-            operation.gain = configuration->gain;
+            operation.gain = configuration->enabled ? configuration->gain : 0.f;
         } else {
             operation.type = step.audioRole == AudioModuleRole::Add
                     ? OperationType::Add

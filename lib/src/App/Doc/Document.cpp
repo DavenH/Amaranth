@@ -11,6 +11,41 @@
 #include "../../UI/IConsole.h"
 #include "../../Definitions.h"
 
+namespace {
+    var readArchivedPresetJSON(const File& file, DocumentDetails& details) {
+        ZipFile archive(file);
+        std::unique_ptr<XmlElement> presetElement;
+
+        for (int index = 0; index < archive.getNumEntries(); ++index) {
+            const auto* entry = archive.getEntry(index);
+            if (entry == nullptr) {
+                continue;
+            }
+
+            std::unique_ptr<InputStream> stream(archive.createStreamForEntry(index));
+            if (stream == nullptr) {
+                continue;
+            }
+
+            XmlDocument document(stream->readEntireStreamAsString());
+            std::unique_ptr<XmlElement> element(document.getDocumentElement());
+            if (element == nullptr) {
+                continue;
+            }
+
+            if (entry->filename.endsWithIgnoreCase(".details")) {
+                (void) details.readXML(element.get());
+            } else if (entry->filename.endsWithIgnoreCase(".preset")) {
+                presetElement = std::move(element);
+            }
+        }
+
+        return presetElement == nullptr
+                ? var()
+                : PresetMigrator::migrateXmlToCurrentJson(presetElement.get(), details);
+    }
+}
+
 Document::Document(SingletonRepo* repo) : SingletonAccessor(repo, "Document"), validator(nullptr) {
 }
 
@@ -170,8 +205,14 @@ var Document::readPresetJSON(const String& filename, int magicValue) {
         return {};
     }
 
-    std::unique_ptr<InputStream> stream(file.createInputStream());
     DocumentDetails details;
+
+    ZipFile archive(file);
+    if (archive.getNumEntries() > 0) {
+        return readArchivedPresetJSON(file, details);
+    }
+
+    std::unique_ptr<InputStream> stream(file.createInputStream());
     return readPresetJSON(stream.get(), details, magicValue);
 }
 

@@ -14,6 +14,15 @@ void renderLayer(
         Buffer<float> left,
         Buffer<float> right,
         const SpectralLayerConfiguration& configuration) {
+    if (!configuration.sourceEnabled) {
+        const float identity = domain == PortDomain::SpectralMagnitudeSignal
+                        && !configuration.additive
+                ? 1.f
+                : 0.f;
+        left.set(identity);
+        right.set(identity);
+        return;
+    }
     if (domain == PortDomain::SpectralPhaseSignal) {
         CycleDsp::SpectralLayerCore::renderPhaseChannels(
                 source,
