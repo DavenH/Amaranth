@@ -417,7 +417,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({ 260.f, 130.f }, { 286.f, 269.f })
                     .finish(),
             buildDefinition(definition("spectralLayer", NodeKind::SpectralLayer,
-                    "Pan", "spectral stereo", "pan",
+                    "Pan", "stereo placement", "pan",
                     { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
                     { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
                             number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -425,8 +425,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("mode", "Magnitude Mode", "additive",
                                     { "additive", "multiplicative" }, dsp | preview | presentation)
                     }))
-                    .help("Places a spectral layer in the stereo field.")
-                    .execution(NodeExecutionTrait::SpectralTransform)
+                    .help("Places a signal in the stereo field.")
+                    .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::SpectralLayer, PreviewModuleRole::None,
                             "cycle/src/Audio/Voices/SynthFilterVoice.cpp")
                     .presentation({}, { 80.f, 80.f })

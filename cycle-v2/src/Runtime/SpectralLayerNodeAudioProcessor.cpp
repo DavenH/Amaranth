@@ -1,4 +1,5 @@
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Util/Arithmetic.h>
 #include <vector>
 
 #include "Runtime/AudioProcessContextUtils.h"
@@ -11,9 +12,10 @@ namespace {
 void renderLayer(
         PortDomain domain,
         Buffer<float> source,
+        Buffer<float> secondarySource,
         Buffer<float> left,
         Buffer<float> right,
-        const SpectralLayerConfiguration& configuration) {
+        const PanConfiguration& configuration) {
     if (!configuration.sourceEnabled) {
         const float identity = domain == PortDomain::SpectralMagnitudeSignal
                         && !configuration.additive
@@ -44,6 +46,17 @@ void renderLayer(
         return;
     }
 
+    if (domain == PortDomain::TimeSignal) {
+        float leftPan {};
+        float rightPan {};
+        Arithmetic::getPans(configuration.pan, leftPan, rightPan);
+        source.copyTo(left);
+        secondarySource.copyTo(right);
+        left.mul(leftPan);
+        right.mul(rightPan);
+        return;
+    }
+
     left.zero();
     right.zero();
 }
@@ -51,9 +64,10 @@ void renderLayer(
 void renderTraversalGrid(
         PortDomain domain,
         const SignalTraversalGrid& source,
+        const SignalTraversalGrid& secondarySource,
         SignalTraversalGrid& left,
         SignalTraversalGrid& right,
-        const SpectralLayerConfiguration& configuration) {
+        const PanConfiguration& configuration) {
     for (size_t column = 0; column < source.columns; ++column) {
         const int offset = (int) (column * source.rows);
         const int rowCount = (int) source.rows;
@@ -61,6 +75,10 @@ void renderTraversalGrid(
                 domain,
                 {
                         const_cast<float*>(source.values.data()) + offset,
+                        rowCount
+                },
+                {
+                        const_cast<float*>(secondarySource.values.data()) + offset,
                         rowCount
                 },
                 { left.values.data() + offset, rowCount },
@@ -75,11 +93,12 @@ public:
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
         configuration = std::dynamic_pointer_cast<
-                const SpectralLayerConfiguration>(published.value);
+                const PanConfiguration>(published.value);
     }
 
     void prepareExecution(const AudioExecutionSpec& spec) override {
         sourceBlock.reserve(spec.maximumFrameCount);
+        secondarySourceBlock.reserve(spec.maximumFrameCount);
     }
 
     const SignalTraversalGrid* probeTraversalGrid(
@@ -113,12 +132,20 @@ public:
             context.workArena->reserve(output);
         }
         copyBlockExpandingScalars(sourceBlock, input->block, context.frameCount);
+        copyBlockExpandingScalars(
+                secondarySourceBlock,
+                input->isStereo() ? input->secondaryBlock : input->block,
+                context.frameCount);
 
         renderLayer(
                 output.domain,
                 {
                         sourceBlock.data(),
                         (int) sourceBlock.size()
+                },
+                {
+                        secondarySourceBlock.data(),
+                        (int) secondarySourceBlock.size()
                 },
                 payloadBuffer(output, context.frameCount),
                 payloadBuffer(output, 1, context.frameCount),
@@ -137,9 +164,14 @@ public:
                     input->traversalGrid.rows,
                     input->traversalGrid.metadata,
                     context.workArena);
+            const SignalTraversalGrid& secondaryInput = input->isStereo()
+                            && input->secondaryTraversalGrid.isValid()
+                    ? input->secondaryTraversalGrid
+                    : input->traversalGrid;
             renderTraversalGrid(
                     output.domain,
                     input->traversalGrid,
+                    secondaryInput,
                     output.traversalGrid,
                     output.secondaryTraversalGrid,
                     *configuration);
@@ -149,8 +181,9 @@ public:
     }
 
 private:
-    std::shared_ptr<const SpectralLayerConfiguration> configuration;
+    std::shared_ptr<const PanConfiguration> configuration;
     std::vector<float> sourceBlock;
+    std::vector<float> secondarySourceBlock;
 };
 
 }

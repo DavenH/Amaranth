@@ -30,6 +30,7 @@ public:
 private:
     enum class OperationType {
         Trimesh,
+        Pan,
         Add,
         Multiply
     };
@@ -39,6 +40,8 @@ private:
         int leftInput { -1 };
         int rightInput { -1 };
         float gain { 1.f };
+        float leftPan { 1.f };
+        float rightPan { 1.f };
         std::unique_ptr<TrimeshOscillatorCycleRenderer> trimesh;
     };
 

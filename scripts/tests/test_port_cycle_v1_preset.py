@@ -116,6 +116,31 @@ def convertible_source():
 
 
 class PortCycleV1PresetTest(unittest.TestCase):
+    def assert_compact_nodes_do_not_overlap(self, converted):
+        nodes = [
+            node for node in converted["nodes"]
+            if node["kind"] != "spectralLayer"
+        ]
+        for index, left in enumerate(nodes):
+            left_x = left["position"]["x"]
+            left_y = left["position"]["y"]
+            left_width, left_height = port_cycle_v1_preset.node_footprint(left)
+            for right in nodes[index + 1:]:
+                right_x = right["position"]["x"]
+                right_y = right["position"]["y"]
+                right_width, right_height = \
+                    port_cycle_v1_preset.node_footprint(right)
+                overlaps = (
+                    left_x < right_x + right_width
+                    and right_x < left_x + left_width
+                    and left_y < right_y + right_height
+                    and right_y < left_y + left_height
+                )
+                self.assertFalse(
+                    overlaps,
+                    f"{left['id']} overlaps {right['id']}",
+                )
+
     def test_converter_preserves_layer_enablement_and_operation_order(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
@@ -126,6 +151,46 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(nodes["magnitudeOp1"]["kind"], "add")
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
+
+    def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
+        source = convertible_source()
+        magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]
+        source["preset"]["meshLibrary"]["groups"][5]["layers"] = [
+            copy.deepcopy(magnitude) for _ in range(10)
+        ]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        self.assert_compact_nodes_do_not_overlap(converted)
+
+        self.assertLess(nodes["voice"]["position"]["x"],
+                        nodes["timeLayer1"]["position"]["x"])
+        self.assertLess(nodes["timeLayer1"]["position"]["x"],
+                        nodes["fft"]["position"]["x"])
+        self.assertLess(nodes["fft"]["position"]["x"],
+                        nodes["ifft"]["position"]["x"])
+        self.assertLess(nodes["ifft"]["position"]["x"],
+                        nodes["output"]["position"]["x"])
+
+        mesh = nodes["magnitudeLayer1"]
+        operation = nodes["magnitudeOp1"]
+        mesh_width, _ = port_cycle_v1_preset.node_footprint(mesh)
+        operation_width, _ = port_cycle_v1_preset.node_footprint(operation)
+        self.assertAlmostEqual(
+            mesh["position"]["x"] + mesh_width / 2.0,
+            operation["position"]["x"] + operation_width / 2.0,
+        )
+        self.assertEqual(
+            nodes["magnitudeOp5"]["portSides"]["outputs"]["out"],
+            "top",
+        )
+        self.assertEqual(
+            nodes["magnitudeOp6"]["portSides"]["inputs"]["left"],
+            "bottom",
+        )
 
     def test_converter_preserves_velocity_blue_modulation_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -144,14 +209,20 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
 
-    def test_time_layer_pan_is_rejected_without_a_time_domain_destination(self):
+    def test_time_layer_pan_uses_the_inline_pan_operation(self):
         source = convertible_source()
         source["preset"]["meshLibrary"]["groups"][4]["layers"][0] \
             ["properties"]["pan"] = 1.0
 
-        issues = port_cycle_v1_preset.validate_conversion(source)
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
 
-        self.assertIn("time layer 1 has unmapped pan 1.0", issues)
+        self.assertEqual(nodes["timeLayer1Process"]["parameters"]["pan"], 1.0)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "timeLayer1"
+            and edge["destNodeId"] == "timeLayer1Process"
+            for edge in converted["edges"]
+        ))
 
     def test_missing_realtime_oversampling_uses_cycle_default(self):
         source = convertible_source()

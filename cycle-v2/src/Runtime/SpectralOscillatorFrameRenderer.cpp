@@ -239,7 +239,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
             case AudioModuleRole::Fft:      operation.type = OperationType::Fft; break;
             case AudioModuleRole::SpectralLayer: {
                 const auto configuration = std::dynamic_pointer_cast<
-                        const SpectralLayerConfiguration>(step.configuration.value);
+                        const PanConfiguration>(step.configuration.value);
                 if (configuration == nullptr) {
                     return false;
                 }

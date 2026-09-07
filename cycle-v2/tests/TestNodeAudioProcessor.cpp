@@ -311,7 +311,7 @@ TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
             &graph,
             pan->id);
     const auto spectral = std::dynamic_pointer_cast<
-            const SpectralLayerConfiguration>(configuration);
+            const PanConfiguration>(configuration);
     REQUIRE(spectral != nullptr);
     REQUIRE_FALSE(spectral->sourceEnabled);
 
@@ -329,6 +329,29 @@ TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
     processor->process(context);
     REQUIRE(output(context).block.samples == std::vector<float>(4, 1.f));
     REQUIRE(output(context).secondaryBlock.samples == std::vector<float>(4, 1.f));
+}
+
+TEST_CASE("Pan places time signals with the mature layer gain law",
+        "[cycle-v2][runtime][pan][time]") {
+    NodeAudioProcessorFactory factory;
+    auto processor = factory.create(AudioModuleRole::SpectralLayer);
+    REQUIRE(processor != nullptr);
+
+    AudioProcessContext context;
+    context.frameCount = 4;
+    context.parameters = { { "pan", "Pan", "1" } };
+    context.inputs.push_back(payload({ 0.2f, -0.3f, 0.4f, -0.5f }));
+    context.outputPorts = {
+            { "out", PortDomain::TimeSignal, ChannelLayout::StereoPair }
+    };
+    prepareProcessor(*processor, AudioModuleRole::SpectralLayer, context);
+    processor->process(context);
+
+    REQUIRE(output(context).domain == PortDomain::TimeSignal);
+    REQUIRE(output(context).channelLayout == ChannelLayout::StereoPair);
+    REQUIRE(output(context).block.samples == std::vector<float>(4, 0.f));
+    REQUIRE(output(context).secondaryBlock.samples
+            == std::vector<float>({ 0.2f, -0.3f, 0.4f, -0.5f }));
 }
 
 TEST_CASE("Wave source reuses the default Trimesh renderer", "[cycle-v2][runtime]") {

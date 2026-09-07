@@ -94,3 +94,24 @@ class of failure. The migration exporter now decodes and migrates the source
 without applying it to the live document, isolating canonical export from
 editor, updater, rasterizer, and audio lifecycles. Reproduce normal interactive
 loads separately before changing Envelope or Unison rasterization ownership.
+
+## P1: Cycle V2 graph replacement races Envelope preview interaction state
+
+Context:
+
+- The Cycle 1 preset migration verification opened the converted `crash`
+  graph successfully, then Cycle V2 crashed on its OpenGL renderer thread.
+- The invalid read starts in `Interactor::getModPosition(bool)`, reached from
+  `Interactor::updateSelectionFrames()`,
+  `EnvelopeCurvePanel::setEnvelopeAxisLinks()`, and the node-preview render
+  path while the newly loaded graph is being presented.
+- The graph had already parsed without validation errors; the failure is in
+  editor/preview lifetime synchronization after document replacement, not in
+  converter serialization or Pan compilation.
+- Repro artifacts are
+  `/private/tmp/cycle-v2-migration-final-session.log` and
+  `/Users/daven/Library/Logs/DiagnosticReports/CycleV2-2026-09-07-201842.ips`.
+
+Current status: open. Reproduce with repeated graph replacement under active
+OpenGL previews, then make editor synchronization and preview rendering share
+a safe snapshot/lifetime boundary.

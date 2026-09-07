@@ -544,6 +544,53 @@ TEST_CASE("Every shipped graph is canonical JSON and compiles", "[cycle-v2][grap
   #endif
 }
 
+TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
+        "[cycle-v2][graph][presets][layout]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const StringArray protectedGraphs {
+            "african-horn.cyclegraph",
+            "alto-sax.cyclegraph",
+            "baroque-flute.cyclegraph",
+            "spectral-reference.cyclegraph",
+            "stengah.cyclegraph",
+            "subbass-parity.cyclegraph"
+    };
+    Array<File> graphs;
+    contentPreset(String()).findChildFiles(
+            graphs,
+            File::findFiles,
+            false,
+            "*.cyclegraph");
+
+    REQUIRE(graphs.size() == 230);
+    for (const File& file : graphs) {
+        if (protectedGraphs.contains(file.getFileName())) {
+            continue;
+        }
+        const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+                file.loadFileAsString());
+        INFO(file.getFileName());
+        REQUIRE(loaded.succeeded());
+
+        const auto& nodes = loaded.graph.getNodes();
+        for (size_t leftIndex = 0; leftIndex < nodes.size(); ++leftIndex) {
+            if (nodes[leftIndex].kind == NodeKind::SpectralLayer) {
+                continue;
+            }
+            for (size_t rightIndex = leftIndex + 1; rightIndex < nodes.size(); ++rightIndex) {
+                if (nodes[rightIndex].kind == NodeKind::SpectralLayer) {
+                    continue;
+                }
+                INFO(nodes[leftIndex].id << " overlaps " << nodes[rightIndex].id);
+                REQUIRE_FALSE(nodes[leftIndex].bounds.intersects(nodes[rightIndex].bounds));
+            }
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Legacy preset ports omit disabled effects and preserve delay controls",
           "[cycle-v2][graph][presets]") {
   #if defined(CYCLE_V2_SOURCE_DIR)

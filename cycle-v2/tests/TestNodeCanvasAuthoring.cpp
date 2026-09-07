@@ -383,3 +383,44 @@ TEST_CASE("Pan can be added to a cable as one undoable authoring command",
     REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
     REQUIRE(document.graph().getEdges().size() == 2);
 }
+
+TEST_CASE("Time cable Pan supports a complete edit and undo sequence",
+        "[cycle-v2][canvas][authoring][pan][time]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 600.f, 0.f }));
+    graph.addEdge({
+            "voice", "context", "wave", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto inserted = authoring.insertPanIntoEdge(1, { 450.f, 0.f });
+    REQUIRE(inserted.succeeded);
+    REQUIRE(inserted.effects.repaintRequested);
+    REQUIRE(authoring.beginSpectralPanGesture(inserted.nodeId));
+    REQUIRE(authoring.updateSpectralPanGesture(0.2f));
+    REQUIRE(authoring.updateSpectralPanGesture(0.8f));
+    const auto committed = authoring.endSpectralPanGesture();
+    REQUIRE(committed.succeeded);
+    REQUIRE(committed.effects.repaintRequested);
+    REQUIRE(NodeParameterMap(*document.graph().findNode(inserted.nodeId))
+            .floatValue("pan", 0.f) == 0.8f);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(NodeParameterMap(*document.graph().findNode(inserted.nodeId))
+            .floatValue("pan", 0.f) == 0.5f);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
+}

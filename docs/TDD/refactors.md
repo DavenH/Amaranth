@@ -10,11 +10,19 @@ owner and avoids audio-thread graph access, but the upstream inspection is a
 temporary boundary translation.
 
 Introduce domain-owned layer objects/stacks before adding broader layer
-controls such as time-domain pan. Move `enabled`, pan, range, and operation mode
-with that owner, then delete the upstream source inspection in
-`NodeDspConfiguration.cpp`. Reuse Cycle 1's `Arithmetic::getPans` behavior for
-time-layer stereo placement; do not route time data through the spectral-only
-Pan implementation or add another independently editable bypass flag.
+controls. Move `enabled`, pan, range, and operation mode with that owner, then
+delete the upstream source inspection in `NodeDspConfiguration.cpp`. The
+existing inline Pan operation now reuses Cycle 1's `Arithmetic::getPans`
+behavior for time-domain stereo placement without another editable bypass
+flag.
+
+Pan still carries compatibility-era internal names: serialized kind
+`spectralLayer`, `NodeKind::SpectralLayer`, `AudioModuleRole::SpectralLayer`,
+and `SpectralLayerNodeAudioProcessor`. When the graph format next supports a
+kind alias, rename these together behind a read-only `spectralLayer` alias and
+keep `PanConfiguration` as the domain-neutral runtime contract. Do not add a
+parallel time-Pan node or duplicate its gain law while that naming migration
+is pending.
 
 ## Panel line-strip coordinate ownership
 

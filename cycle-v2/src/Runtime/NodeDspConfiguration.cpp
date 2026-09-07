@@ -19,7 +19,7 @@ namespace CycleV2 {
 
 namespace {
 
-const Node* spectralLayerSource(const NodeGraph* graph, const String& nodeId) {
+const Node* panSource(const NodeGraph* graph, const String& nodeId) {
     if (graph == nullptr) {
         return nullptr;
     }
@@ -31,8 +31,8 @@ const Node* spectralLayerSource(const NodeGraph* graph, const String& nodeId) {
     return nullptr;
 }
 
-bool spectralLayerSourceEnabled(const NodeGraph* graph, const String& nodeId) {
-    const Node* source = spectralLayerSource(graph, nodeId);
+bool panSourceEnabled(const NodeGraph* graph, const String& nodeId) {
+    const Node* source = panSource(graph, nodeId);
     return source == nullptr
             || source->kind != NodeKind::TrilinearMesh
             || NodeParameterMap(*source).boolValue("enabled", true);
@@ -117,7 +117,7 @@ String NodeDspConfigurationFactory::keyFor(
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
     }
     if (role == AudioModuleRole::SpectralLayer) {
-        key << ":sourceEnabled=" << (spectralLayerSourceEnabled(graph, nodeId) ? 1 : 0);
+        key << ":sourceEnabled=" << (panSourceEnabled(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::MeshSource) {
         key << ":scratchSourceEnabled=" << (scratchSourceEnabled(graph, nodeId) ? 1 : 0);
@@ -225,12 +225,12 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
     };
 
     if (role == AudioModuleRole::SpectralLayer) {
-        auto configuration = std::make_shared<SpectralLayerConfiguration>();
+        auto configuration = std::make_shared<PanConfiguration>();
         const NodeParameterMap parameterMap(parameters);
         configuration->pan = parameterMap.floatValue("pan", 0.5f);
         configuration->range = parameterMap.floatValue("range", 0.5f);
         configuration->additive = parameterMap.stringValue("mode", "additive") == "additive";
-        configuration->sourceEnabled = spectralLayerSourceEnabled(graph, nodeId);
+        configuration->sourceEnabled = panSourceEnabled(graph, nodeId);
         return configuration;
     }
 

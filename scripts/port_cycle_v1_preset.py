@@ -60,6 +60,31 @@ DEFAULT_MODULATION_MAPPINGS = [
     {"in": 2, "out": 500, "dim": 2},
 ]
 
+LAYOUT_MARGIN = 100.0
+LAYOUT_GAP = 80.0
+LAYOUT_CELL_WIDTH = 366.0
+LAYOUT_BAND_HEIGHT = 470.0
+LAYOUT_SPINE_Y = 900.0
+
+NODE_FOOTPRINTS = {
+    "voiceContext": (280.0, 148.0),
+    "modulationTriple": (280.0, 126.0),
+    "trilinearMesh": (286.0, 269.0),
+    "spectralLayer": (80.0, 80.0),
+    "fft": (278.0, 178.0),
+    "ifft": (278.0, 178.0),
+    "envelope": (295.2, 244.0),
+    "add": (150.0, 118.0),
+    "multiply": (150.0, 118.0),
+    "impulseResponse": (256.0, 210.0),
+    "waveshaper": (241.0, 292.0),
+    "unison": (256.0, 230.0),
+    "reverb": (216.0, 194.0),
+    "delay": (216.0, 194.0),
+    "equalizer": (256.0, 230.0),
+    "output": (190.0, 160.0),
+}
+
 
 def node(node_id, kind, x, y, parameters=None, model=None):
     result = {
@@ -72,6 +97,199 @@ def node(node_id, kind, x, y, parameters=None, model=None):
     if model is not None:
         result["model"] = model
     return result
+
+
+def node_footprint(entry):
+    return NODE_FOOTPRINTS.get(entry["kind"], (216.0, 194.0))
+
+
+def set_node_position(nodes_by_id, node_id, x, y):
+    if node_id in nodes_by_id:
+        nodes_by_id[node_id]["position"] = {"x": x, "y": y}
+
+
+def set_port_side(nodes_by_id, node_id, group, port_id, side):
+    if node_id not in nodes_by_id:
+        return
+    port_sides = nodes_by_id[node_id].setdefault("portSides", {})
+    port_sides.setdefault(group, {})[port_id] = side
+
+
+def numbered_node_ids(nodes_by_id, prefix, suffix=""):
+    result = []
+    index = 1
+    while f"{prefix}{index}{suffix}" in nodes_by_id:
+        result.append(f"{prefix}{index}{suffix}")
+        index += 1
+    return result
+
+
+def layout_accumulator_branch(
+        nodes_by_id, prefix, start_x, operation_y, mesh_direction):
+    layer_ids = numbered_node_ids(nodes_by_id, f"{prefix}Layer")
+    if not layer_ids:
+        return start_x, start_x, 0
+
+    layer_count = len(layer_ids)
+    columns = layer_count if layer_count <= 4 else math.ceil(layer_count / 2)
+    rows = math.ceil(layer_count / columns)
+    placements = []
+    for zero_index, layer_id in enumerate(layer_ids):
+        row = zero_index // columns
+        local_column = zero_index % columns
+        column = local_column if row % 2 == 0 else columns - local_column - 1
+        x = start_x + column * LAYOUT_CELL_WIDTH
+        y = operation_y + row * mesh_direction * LAYOUT_BAND_HEIGHT
+        operation_id = f"{prefix}Op{zero_index + 1}"
+        mesh_y = y - 339.0 if mesh_direction < 0 else y + 188.0
+        set_node_position(nodes_by_id, layer_id, x - 68.0, mesh_y)
+        set_node_position(nodes_by_id, operation_id, x, y)
+        set_node_position(nodes_by_id, f"{layer_id}Process", x + 195.0, mesh_y + 94.0)
+        set_port_side(
+            nodes_by_id,
+            layer_id,
+            "outputs",
+            "out",
+            "bottom" if mesh_direction < 0 else "top")
+        set_port_side(
+            nodes_by_id,
+            operation_id,
+            "inputs",
+            "right",
+            "top" if mesh_direction < 0 else "bottom")
+        placements.append((row, column, operation_id))
+
+    for index, (row, column, operation_id) in enumerate(placements):
+        if index == 0:
+            input_side = "left"
+        else:
+            previous_row, previous_column, previous_id = placements[index - 1]
+            if previous_row == row:
+                input_side = "left" if column > previous_column else "right"
+            else:
+                input_side = "bottom" if mesh_direction < 0 else "top"
+                set_port_side(
+                    nodes_by_id,
+                    previous_id,
+                    "outputs",
+                    "out",
+                    "top" if mesh_direction < 0 else "bottom")
+        set_port_side(nodes_by_id, operation_id, "inputs", "left", input_side)
+
+        if index + 1 < len(placements) and placements[index + 1][0] == row:
+            next_column = placements[index + 1][1]
+            output_side = "right" if next_column > column else "left"
+        elif index + 1 < len(placements):
+            output_side = "top" if mesh_direction < 0 else "bottom"
+        else:
+            output_side = "right"
+        set_port_side(nodes_by_id, operation_id, "outputs", "out", output_side)
+
+    right_edge = start_x + (columns - 1) * LAYOUT_CELL_WIDTH \
+        + NODE_FOOTPRINTS["add"][0]
+    final_x = start_x + placements[-1][1] * LAYOUT_CELL_WIDTH
+    return right_edge, final_x, rows
+
+
+def apply_compact_layout(nodes):
+    nodes_by_id = {entry["id"]: entry for entry in nodes}
+    spine_y = LAYOUT_SPINE_Y
+
+    set_node_position(nodes_by_id, "morph", LAYOUT_MARGIN, spine_y - 300.0)
+    set_node_position(nodes_by_id, "voice", LAYOUT_MARGIN, spine_y)
+    set_node_position(nodes_by_id, "unison", LAYOUT_MARGIN, spine_y + 228.0)
+
+    time_layers = numbered_node_ids(nodes_by_id, "timeLayer")
+    time_start_x = LAYOUT_MARGIN + 380.0
+    set_node_position(nodes_by_id, "timeLayer1", time_start_x, spine_y - 60.0)
+    set_node_position(
+        nodes_by_id,
+        "timeLayer1Process",
+        time_start_x + 280.0,
+        spine_y + 35.0)
+    time_end_x = time_start_x + NODE_FOOTPRINTS["trilinearMesh"][0]
+    for zero_index, layer_id in enumerate(time_layers[1:]):
+        operation_id = f"timeOp{zero_index + 1}"
+        operation_x = time_start_x + NODE_FOOTPRINTS["trilinearMesh"][0] \
+            + LAYOUT_GAP + zero_index * LAYOUT_CELL_WIDTH
+        operation_y = spine_y + 16.0
+        set_node_position(nodes_by_id, operation_id, operation_x, operation_y)
+        set_node_position(nodes_by_id, layer_id, operation_x - 68.0, spine_y - 382.0)
+        set_node_position(
+            nodes_by_id,
+            f"{layer_id}Process",
+            operation_x + 195.0,
+            spine_y - 288.0)
+        set_port_side(nodes_by_id, layer_id, "outputs", "out", "bottom")
+        set_port_side(nodes_by_id, operation_id, "inputs", "right", "top")
+        time_end_x = operation_x + NODE_FOOTPRINTS["add"][0]
+
+    fft_x = time_end_x + 120.0
+    transform_y = spine_y - 14.0
+    set_node_position(nodes_by_id, "fft", fft_x, transform_y)
+
+    spectral_start_x = fft_x + NODE_FOOTPRINTS["fft"][0] + 120.0
+    magnitude_end_x, magnitude_final_x, magnitude_rows = layout_accumulator_branch(
+        nodes_by_id, "magnitude", spectral_start_x, spine_y - 170.0, -1)
+    phase_end_x, phase_final_x, phase_rows = layout_accumulator_branch(
+        nodes_by_id, "phase", spectral_start_x, spine_y + 230.0, 1)
+    spectral_end_x = max(magnitude_end_x, phase_end_x)
+    if magnitude_rows > 1 or phase_rows > 1:
+        ifft_x = max(magnitude_final_x, phase_final_x)
+        magnitude_ids = numbered_node_ids(nodes_by_id, "magnitudeOp")
+        phase_ids = numbered_node_ids(nodes_by_id, "phaseOp")
+        if magnitude_ids:
+            set_port_side(
+                nodes_by_id, magnitude_ids[-1], "outputs", "out", "bottom")
+        if phase_ids:
+            set_port_side(
+                nodes_by_id, phase_ids[-1], "outputs", "out", "top")
+    else:
+        ifft_x = spectral_end_x + 110.0
+    set_node_position(nodes_by_id, "ifft", ifft_x, transform_y)
+    set_port_side(nodes_by_id, "ifft", "inputs", "mag", "top")
+    set_port_side(nodes_by_id, "ifft", "inputs", "phase", "bottom")
+
+    post_x = max(spectral_end_x, ifft_x + NODE_FOOTPRINTS["ifft"][0]) \
+        + 100.0
+    for node_id in (
+            "volumeMultiply", "waveshaper", "impulseResponse", "equalizer",
+            "delay", "reverb", "output"):
+        if node_id not in nodes_by_id:
+            continue
+        _, height = node_footprint(nodes_by_id[node_id])
+        set_node_position(nodes_by_id, node_id, post_x, spine_y + 75.0 - height / 2.0)
+        width, _ = node_footprint(nodes_by_id[node_id])
+        post_x += width + LAYOUT_GAP
+
+    volume_envelopes = numbered_node_ids(nodes_by_id, "volumeEnvelope")
+    volume_anchor_x = max(
+        spectral_end_x,
+        ifft_x + NODE_FOOTPRINTS["ifft"][0]) + 100.0
+    for index, node_id in enumerate(volume_envelopes):
+        set_node_position(
+            nodes_by_id,
+            node_id,
+            volume_anchor_x + index * (NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP),
+            spine_y - 355.0)
+        set_port_side(nodes_by_id, node_id, "outputs", "env", "bottom")
+
+    auxiliary_x = LAYOUT_MARGIN
+    for purpose in ("pitch", "scratch"):
+        for node_id in numbered_node_ids(nodes_by_id, f"{purpose}Envelope"):
+            set_node_position(nodes_by_id, node_id, auxiliary_x, spine_y + 548.0)
+            auxiliary_x += NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP
+
+    visible_nodes = [
+        entry for entry in nodes if entry["kind"] != "spectralLayer"
+    ]
+    min_x = min(entry["position"]["x"] for entry in visible_nodes)
+    min_y = min(entry["position"]["y"] for entry in visible_nodes)
+    offset_x = LAYOUT_MARGIN - min_x
+    offset_y = LAYOUT_MARGIN - min_y
+    for entry in nodes:
+        entry["position"]["x"] += offset_x
+        entry["position"]["y"] += offset_y
 
 
 def edge(source, source_port, destination, destination_port,
@@ -333,20 +551,31 @@ def convert(source):
     time_source = None
     for index, layer in enumerate(groups[MESH_GROUPS["time"]]["layers"], 1):
         layer_id = f"timeLayer{index}"
+        process_id = f"{layer_id}Process"
         parameters = dict(mesh_parameters)
         parameters["enabled"] = bool(layer["properties"]["active"])
-        nodes.append(node(layer_id, "trilinearMesh", 470, 380 + 190 * index,
-                          parameters, trimesh_model(layer["mesh"])))
-        edges.append(edge("voice", "context", layer_id, "context"))
+        nodes.extend([
+            node(layer_id, "trilinearMesh", 470, 380 + 190 * index,
+                 parameters, trimesh_model(layer["mesh"])),
+            node(process_id, "spectralLayer", 700, 380 + 190 * index, {
+                "pan": layer["properties"].get("pan", 0.5),
+                "range": 0.5,
+                "mode": "additive",
+            }),
+        ])
+        edges.extend([
+            edge("voice", "context", layer_id, "context"),
+            edge(layer_id, "out", process_id, "in"),
+        ])
         guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
         all_mesh_node_ids.append(layer_id)
         if time_source is None:
-            time_source = (layer_id, "out")
+            time_source = (process_id, "out")
             continue
         operation_id = f"timeOp{index - 1}"
         nodes.append(node(operation_id, "add", 780, 430 + 95 * index))
         edges.append(edge(time_source[0], time_source[1], operation_id, "left"))
-        edges.append(edge(layer_id, "out", operation_id, "right"))
+        edges.append(edge(process_id, "out", operation_id, "right"))
         time_source = (operation_id, "out")
     edges.append(edge(time_source[0], time_source[1], "fft", "time"))
 
@@ -507,7 +736,7 @@ def convert(source):
     nodes.append(node("output", "output", 3150, 500))
     edges.append(edge(signal_node, signal_port, "output", "time"))
 
-    return {
+    graph = {
         "format": "cycle-v2-graph",
         "formatVersion": 4,
         "nodes": nodes,
@@ -517,6 +746,8 @@ def convert(source):
         "edges": edges,
         "probes": [],
     }
+    apply_compact_layout(nodes)
+    return graph
 
 
 def validate_conversion(source):
@@ -546,10 +777,6 @@ def validate_conversion(source):
                 issues.append(
                     f"{group_name} layer {index} has unmapped fine tune "
                     f"{properties['fineTune']}")
-            if group_name == "time" and properties.get("pan", 0.5) != 0.5:
-                issues.append(
-                    f"time layer {index} has unmapped pan {properties['pan']}")
-
     for purpose in ("volume", "pitch", "scratch"):
         active_count = sum(
             bool(layer["properties"]["active"])

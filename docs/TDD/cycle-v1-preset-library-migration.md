@@ -2,8 +2,10 @@
 
 ## Status
 
-Complete for every preset representable by the current Cycle V2 graph. Three
-presets remain explicitly blocked on time-domain layer panning.
+Complete. All 229 Cycle 1 factory sources now have a Cycle V2 destination.
+Generated graphs use a deterministic compact layout, and the existing inline
+Pan operation supports the time-domain layer placement needed by the final
+three presets.
 
 ## Goal
 
@@ -78,6 +80,42 @@ audio processing performs no graph lookup. Once native Cycle V2 layer stacks
 own a first-class layer object, this upstream inspection is a deletion target
 and `enabled` moves unchanged with that owner.
 
+### Generated graph layout
+
+Generated coordinates are durable preset presentation, not incidental output.
+The converter owns a deterministic layout pass after semantic graph assembly.
+It uses the production compact-node footprints from `naturalSizeForNode()` as
+the acceptance authority and conservative shared cell/gap constants rather
+than hand-authored coordinates for individual presets.
+
+The main audio path reads left to right: Voice Context and time sources, FFT,
+spectral fan-in, IFFT, effects, and Output. Magnitude meshes sit in aligned rows
+above their accumulator operations; phase meshes use corresponding rows below.
+Large layer stacks wrap into a bounded serpentine grid. At row turns, persisted
+port-side overrides point accumulator cables through the switchback instead of
+letting them cross node bodies. Modulation, Unison, pitch, scratch, and inactive
+Envelope nodes occupy aligned auxiliary lanes without competing with the audio
+spine.
+
+The layout contract is mechanical: no compact node rectangles overlap after
+Cycle V2 resolves their natural sizes, ordinary horizontal gaps are consistent,
+the signal spine is monotonic outside explicit serpentine branches, and the
+occupied aspect remains bounded for the largest factory graph. This is a
+converter-specific presentation pass; it does not duplicate canvas routing or
+become a hidden runtime auto-layout system. If user-authored graphs later need
+automatic organization, extract a shared service around `naturalSizeForNode()`
+and delete the converter-local footprint policy.
+
+### General inline Pan
+
+Cycle V2 already presents Pan as a cable-inline operation. Its current
+`SpectralLayer` name and validator/runtime restriction are an incomplete
+implementation, not evidence that time-layer panning has no graph destination.
+Generalize that existing operation to accept time signals and apply the mature
+`Arithmetic::getPans` channel gains without changing its spectral magnitude and
+phase contracts. The three remaining presets then place Pan immediately after
+each time Trimesh and before layer summation.
+
 ## Lifecycle And Ownership
 
 - Cycle 1 owns `.cyc` loading and canonical export on its GUI/message thread.
@@ -103,6 +141,8 @@ and `enabled` moves unchanged with that owner.
    only the time-domain layer-pan feature gap remained.
 6. Recorded final counts, verification evidence, and deletion targets here and
    in `refactors.md`.
+7. Codified compact non-overlapping generated layout, generalized inline Pan
+   to time signals, and migrated the final three presets.
 
 ## Verification
 
@@ -128,28 +168,35 @@ and `enabled` moves unchanged with that owner.
   documents continue through the existing path.
 - Cycle 1 live-document crashes discovered while establishing the direct
   boundary: `calming-keys` and `cluck-2`; tracked in `ui-bugs.md`.
-- New checked-in migrations: 221. Together with the five protected prior
-  migrations, 226 of 229 Cycle 1 sources now have a Cycle V2 destination.
+- New checked-in migrations: 224. Together with the five protected prior
+  migrations, all 229 Cycle 1 sources have a Cycle V2 destination. The bundled
+  library contains 230 graphs because `spectral-reference.cyclegraph` is a
+  native Cycle V2 reference rather than a Cycle 1 migration.
 - Every new graph preserves all time, magnitude, phase, volume, pitch, and
   scratch layers, including inactive layer state. Modulation blue-axis routing
   preserves the legacy distinction between velocity (input 2) and mod wheel
   (input 101).
-- Remaining blockers: `crash`, `cymbal`, and `downfall`. Each uses two active
-  time layers hard-panned to opposite channels. Cycle V2 has spectral-layer Pan
-  but no time-domain layer-pan node or parameter. Routing through the spectral
-  implementation would be a domain error, so these presets are intentionally
-  not emitted. The authoritative behavior is the per-layer
-  `Arithmetic::getPans` mix in `SynthFilterVoice`.
+- Remaining blockers: none. `crash`, `cymbal`, and `downfall` retain their two
+  active time layers and opposite stereo placement through the generalized
+  inline Pan operation and the authoritative `Arithmetic::getPans` gain law.
 
 ## Final Verification
 
-- Converter unit tests: 20 passed.
+- Converter unit tests: 21 passed.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
-- Cycle V2 bundled-preset tests: 420 assertions across 13 cases passed.
-- Native Cycle V2 batch verification: all 221 new graphs loaded, compiled,
-  saved, reopened, and compiled again; 1,105 automation operations completed
-  with zero failures across seven sessions.
+- Cycle V2 bundled-preset tests: 31,623 assertions across 14 cases passed,
+  including 31,376 pairwise layout assertions against production node bounds.
+- Cycle V2 Pan tests: 169 assertions across 11 cases passed, including direct
+  time processing, chained oscillator rendering, and a two-update cable edit,
+  commit, downstream effect, and undo sequence.
+- Native Cycle V2 batch verification: all 224 generated destinations loaded,
+  compiled, saved, reopened, and compiled again; 1,120 automation operations
+  completed with zero failures across the batch sessions.
+- Production-size macOS captures cover simple, four-effect, and 43-node layer
+  graphs at `/private/tmp/cycle-v2-layout-saw.png`,
+  `/private/tmp/cycle-v2-layout-thrash-guitar.png`, and
+  `/private/tmp/cycle-v2-layout-final.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
 
 ## Completion Criteria

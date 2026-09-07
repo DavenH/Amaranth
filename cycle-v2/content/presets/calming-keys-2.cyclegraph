@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 520.0 },
+            "position": { "x": 100.0, "y": 609.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 100.0 },
+            "position": { "x": 100.0, "y": 309.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,21 +30,24 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1050.0, "y": 500.0 },
+            "position": { "x": 886.0, "y": 595.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2150.0, "y": 500.0 },
+            "position": { "x": 1544.0, "y": 595.0 },
+            "portSides": {
+                "inputs": { "mag": "top", "phase": "bottom" }
+            },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 300.0 },
+            "position": { "x": 100.0, "y": 837.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 15.68, "panSpread": 1.0, "phase": 0.468, "jitter": 0.952 },
             "model": {
                 "schema": "unisonVoices",
@@ -59,7 +62,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 470.0, "y": 570.0 },
+            "position": { "x": 480.0, "y": 549.0 },
             "parameters": {
                 "enabled": true,
                 "yellow": 0.0,
@@ -111,10 +114,20 @@
             }
         },
         {
+            "id": "timeLayer1Process",
+            "kind": "spectralLayer",
+            "definitionVersion": 1,
+            "position": { "x": 760.0, "y": 644.0 },
+            "parameters": { "pan": 0.5, "range": 0.5, "mode": "additive" }
+        },
+        {
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1150.0, "y": 70.0 },
+            "position": { "x": 1216.0, "y": 100.0 },
+            "portSides": {
+                "outputs": { "out": "bottom" }
+            },
             "parameters": {
                 "enabled": true,
                 "yellow": 0.0,
@@ -182,21 +195,27 @@
             "id": "magnitudeLayer1Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1490.0, "y": 70.0 },
+            "position": { "x": 1479.0, "y": 194.0 },
             "parameters": { "pan": 0.5, "range": 0.625, "mode": "multiplicative" }
         },
         {
             "id": "magnitudeOp1",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1810.0, "y": 70.0 },
+            "position": { "x": 1284.0, "y": 439.0 },
+            "portSides": {
+                "inputs": { "right": "top" }
+            },
             "parameters": {}
         },
         {
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1150.0, "y": 820.0 },
+            "position": { "x": 1216.0, "y": 1027.0 },
+            "portSides": {
+                "outputs": { "out": "top" }
+            },
             "parameters": {
                 "enabled": true,
                 "yellow": 0.0,
@@ -223,21 +242,27 @@
             "id": "phaseLayer1Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 1490.0, "y": 820.0 },
+            "position": { "x": 1479.0, "y": 1121.0 },
             "parameters": { "pan": 0.5, "range": 0.5, "mode": "additive" }
         },
         {
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1810.0, "y": 820.0 },
+            "position": { "x": 1284.0, "y": 839.0 },
+            "portSides": {
+                "inputs": { "right": "bottom" }
+            },
             "parameters": {}
         },
         {
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2450.0, "y": 120.0 },
+            "position": { "x": 1922.0, "y": 254.0 },
+            "portSides": {
+                "outputs": { "env": "bottom" }
+            },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -351,7 +376,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2450.0, "y": 1050.0 },
+            "position": { "x": 100.0, "y": 1157.0 },
             "parameters": { "enabled": false, "purpose": "pitch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -426,7 +451,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2450.0, "y": 1280.0 },
+            "position": { "x": 475.20001, "y": 1157.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.37383, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -514,14 +539,14 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2780.0, "y": 500.0 },
+            "position": { "x": 1922.0, "y": 625.0 },
             "parameters": {}
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3150.0, "y": 500.0 },
+            "position": { "x": 2152.0, "y": 604.0 },
             "parameters": {}
         }
     ],
@@ -569,7 +594,8 @@
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "unison", "sourcePortId": "unison", "destNodeId": "voice", "destPortId": "unison", "connectionKind": "configurationAttachment", "attachmentType": "unison" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "timeLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "timeLayer1Process", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1Process", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
