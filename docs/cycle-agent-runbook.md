@@ -236,6 +236,12 @@ For the Cycle 1 OohAah release regression, run
 notes in separate application processes and asserts both the MIDI note-off and
 release-completion boundaries.
 
+For same-instance voice reuse, run
+`scripts/test_cycle1_ooh_aah_repeat_note.py`. Each case renders two equal notes
+with enough silence for the first release to finish, then compares their 5 ms
+RMS amplitude envelopes. The default matrix covers 100, 400, and 800 ms notes
+at both 44.1 and 48 kHz.
+
 ## Crash And Assertion Triage
 
 If Cycle crashes before writing a report, `scripts/run_cycle_agent.sh` can:

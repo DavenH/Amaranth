@@ -57,6 +57,7 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
         sizeToIndex[size] 	= fftOrderIdx;
 
         ffts[fftOrderIdx].allocate(size, Transform::ScaleType::DivFwdByN, true);
+        ffts[fftOrderIdx].setRemovesOffset(true);
     }
 
     getObj(Document).addListener(this);

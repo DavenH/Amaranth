@@ -1,5 +1,30 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 spectral notes accumulated DC across voice reuse
+
+Context:
+
+- The first OohAah note after launch sounded correct, but a second equal note
+  in the same process became severely distorted even after the first release
+  reached silence. With Delay and Unison disabled, the pre-capture peak rose
+  from about `0.16` to `4.30` at a master value of `0.1`.
+- The prior OohAah release integration launched a fresh process for every note
+  length, so it could not exercise reuse of the same synth and FFT instances.
+- Legacy cleared the packed DC slot before each inverse spectral transform.
+  The reimplementation's reusable `Transform` instead retained the preceding
+  inverse transform's first time-domain value and interpreted it as DC on the
+  next cycle.
+
+Resolution:
+
+- Cycle 1's synth-owned spectral transforms now use the existing DC-removal
+  mode, restoring the legacy zero-DC inverse-transform contract.
+- `scripts/test_cycle1_ooh_aah_repeat_note.py` renders two equal OohAah notes
+  per process and compares their 5 ms RMS amplitude contours. Its default
+  matrix covers three note lengths at both 44.1 and 48 kHz.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 volume-envelope completion hard-cut a nonzero tail
 
 Context:
