@@ -4,6 +4,8 @@
 
 class InternalRateBlockAdapter {
 public:
+    static constexpr double internalSampleRate = 44100.0;
+
     void prepare(double outputSampleRate);
     int convertBlock(
             int outputSamples,

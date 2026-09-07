@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <Audio/InternalRateBlockAdapter.h>
@@ -47,23 +48,27 @@ TEST_CASE("Internal-rate MIDI carry is consumed exactly once", "[cycle][audio][m
     REQUIRE(converted.isEmpty());
 }
 
-TEST_CASE("Internal-rate blocks preserve cumulative time and MIDI positions", "[cycle][audio][midi]") {
+TEST_CASE("Internal-rate blocks preserve envelope time and MIDI positions", "[cycle][audio][midi][scratch]") {
     InternalRateBlockAdapter adapter;
     adapter.prepare(48000.0);
 
     constexpr int outputBlockSize = 127;
     constexpr int outputSamples = 48000;
     int convertedSamples = 0;
+    double globalScratchProgress = 0.0;
     juce::MidiBuffer emptyMidi;
     juce::MidiBuffer converted;
 
     for (int startSample = 0; startSample < outputSamples; startSample += outputBlockSize) {
         int blockSamples = juce::jmin(outputBlockSize, outputSamples - startSample);
-        convertedSamples += adapter.convertBlock(blockSamples, emptyMidi, converted);
+        int internalSamples = adapter.convertBlock(blockSamples, emptyMidi, converted);
+        convertedSamples += internalSamples;
+        globalScratchProgress += double(internalSamples) / InternalRateBlockAdapter::internalSampleRate;
     }
 
     REQUIRE(converted.isEmpty());
-    REQUIRE(convertedSamples == 44100);
+    REQUIRE(convertedSamples == int(InternalRateBlockAdapter::internalSampleRate));
+    REQUIRE(globalScratchProgress == Catch::Approx(1.0));
 
     adapter.prepare(48000.0);
     juce::MidiBuffer positionedMidi;

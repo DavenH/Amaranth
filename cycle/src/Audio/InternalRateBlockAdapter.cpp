@@ -3,7 +3,7 @@
 void InternalRateBlockAdapter::prepare(double outputSampleRate) {
     jassert(outputSampleRate > 0.0);
 
-    outputToInternalRatio = 44100.0 / juce::jmax(1.0, outputSampleRate);
+    outputToInternalRatio = internalSampleRate / juce::jmax(1.0, outputSampleRate);
     outputSamplesProcessed = 0;
     carriedMidi.clearQuick();
 }

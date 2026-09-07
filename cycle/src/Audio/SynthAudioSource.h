@@ -131,6 +131,7 @@ public:
     void updateTempoScale();
     void updateGlobality();
     void rasterizeGlobalEnvs();
+    void renderGlobalEnvs(int internalSamples);
     void doAudioThreadUpdates() override;
 
 private:

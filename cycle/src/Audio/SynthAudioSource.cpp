@@ -161,16 +161,7 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
     StereoBuffer outBuffer(buffer);
     StereoBuffer& rendBuffer = needToResample ? tempRendBuffer : outBuffer;
-    auto& meshLib = getObj(MeshLibrary);
-
-    float deltaPerSample = 1.0 / 44100.0 / getObj(OscControlPanel).getLengthInSeconds();
-    for(auto& scratchRast : globalScratch) {
-        MeshLibrary::EnvProps* props = meshLib.getEnvProps(LayerGroups::GroupScratch, scratchRast.layerIndex);
-
-        if(props->active && scratchRast.sampleable) {
-            scratchRast.rast.renderToBuffer(numSamples, deltaPerSample, 0, *props, 1.f);
-        }
-    }
+    renderGlobalEnvs(numSamples44k);
 
     float* channels[] = { rendBuffer.left.get(), rendBuffer.right.get() };
     AudioSampleBuffer buffer44k(channels, buffer.getNumChannels(), numSamples44k);
@@ -565,6 +556,26 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
 
         if(scratchRast.sampleable) {
             rast.setNoteOn();
+        }
+    }
+}
+
+void SynthAudioSource::renderGlobalEnvs(int internalSamples) {
+    if (internalSamples <= 0) {
+        return;
+    }
+
+    auto& meshLib = getObj(MeshLibrary);
+    float deltaPerSample = 1.0f / float(InternalRateBlockAdapter::internalSampleRate)
+            / getObj(OscControlPanel).getLengthInSeconds();
+
+    for (auto& scratchRast : globalScratch) {
+        MeshLibrary::EnvProps* props = meshLib.getEnvProps(
+                LayerGroups::GroupScratch,
+                scratchRast.layerIndex);
+
+        if (props->active && scratchRast.sampleable) {
+            scratchRast.rast.renderToBuffer(internalSamples, deltaPerSample, 0, *props, 1.f);
         }
     }
 }

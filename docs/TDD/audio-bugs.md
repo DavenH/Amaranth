@@ -101,7 +101,7 @@ Resolution:
 
 Current status: resolved on 2026-09-07.
 
-## Open: Legacy global scratch mixes output and internal sample-rate domains
+## Resolved: Legacy global scratch mixed output and internal sample-rate domains
 
 Context:
 
@@ -111,8 +111,17 @@ Context:
   the wrong duration relative to local scratch and oscillator processing.
 - No current factory parity fixture uses a global scratch layer.
 
-Current status: open; author a global-scratch timing fixture before changing
-the shared legacy behavior.
+Resolution:
+
+- `SynthAudioSource` now passes the internal-rate block length returned by the
+  shared block adapter into a dedicated global-envelope render boundary.
+- Global and local scratch therefore advance on the same 44.1 kHz timeline,
+  independent of device sample rate; neither performs a second rate conversion.
+- The internal-rate timing regression accumulates irregular 48 kHz output
+  blocks and proves they advance global scratch by exactly one second and
+  44,100 samples.
+
+Current status: resolved on 2026-09-07.
 
 ## Resolved: Cycle 1 standalone keyboard produced silent device buffers
 
