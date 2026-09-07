@@ -1774,8 +1774,13 @@ namespace {
     var audioCaptureMetrics(AudioSampleBuffer& capture, double sampleRate) {
         int channels = capture.getNumChannels();
         int totalSamples = capture.getNumSamples();
+        int initialSamples = jmin(totalSamples, int(std::round(sampleRate * 0.05)));
+        int finalSamples = initialSamples;
         double sumSquares = 0.0;
+        double initialSumSquares = 0.0;
+        double finalSumSquares = 0.0;
         float peak = 0.0f;
+        float maxAdjacentDelta = 0.0f;
         Array<var> channelMetrics;
 
         for (int ch = 0; ch < channels; ++ch) {
@@ -1787,19 +1792,47 @@ namespace {
             float channelPeak = totalSamples > 0 ? magnitudes.max() : 0.0f;
             double channelNorm = totalSamples > 0 ? double(samples.normL2()) : 0.0;
             double channelRms = totalSamples > 0 ? channelNorm / std::sqrt(double(totalSamples)) : 0.0;
+            double initialNorm = initialSamples > 0 ? double(samples.withSize(initialSamples).normL2()) : 0.0;
+            double initial50MsRms = initialSamples > 0
+                    ? initialNorm / std::sqrt(double(initialSamples))
+                    : 0.0;
+            double finalNorm = finalSamples > 0
+                    ? double(samples.offset(totalSamples - finalSamples).normL2())
+                    : 0.0;
+            double final50MsRms = finalSamples > 0
+                    ? finalNorm / std::sqrt(double(finalSamples))
+                    : 0.0;
+            float channelMaxAdjacentDelta = 0.0f;
+
+            if (totalSamples > 1) {
+                ScopedAlloc<float> adjacentDeltas(totalSamples - 1);
+                samples.offset(1).copyTo(adjacentDeltas);
+                adjacentDeltas.sub(samples.withSize(totalSamples - 1)).abs();
+                channelMaxAdjacentDelta = adjacentDeltas.max();
+            }
 
             peak = jmax(peak, channelPeak);
+            maxAdjacentDelta = jmax(maxAdjacentDelta, channelMaxAdjacentDelta);
             sumSquares += channelNorm * channelNorm;
+            initialSumSquares += initialNorm * initialNorm;
+            finalSumSquares += finalNorm * finalNorm;
 
             auto channelJson = PresetJson::object();
             channelJson->setProperty("channel", ch);
             channelJson->setProperty("peak", channelPeak);
             channelJson->setProperty("rms", channelRms);
+            channelJson->setProperty("initial50MsRms", initial50MsRms);
+            channelJson->setProperty("final50MsRms", final50MsRms);
+            channelJson->setProperty("maxAdjacentDelta", channelMaxAdjacentDelta);
             channelMetrics.add(PresetJson::toVar(channelJson));
         }
 
         double rmsDenominator = double(jmax(1, channels * totalSamples));
         double rms = std::sqrt(sumSquares / rmsDenominator);
+        double initialRmsDenominator = double(jmax(1, channels * initialSamples));
+        double initial50MsRms = std::sqrt(initialSumSquares / initialRmsDenominator);
+        double finalRmsDenominator = double(jmax(1, channels * finalSamples));
+        double final50MsRms = std::sqrt(finalSumSquares / finalRmsDenominator);
 
         auto json = PresetJson::object();
         json->setProperty("sampleRate", sampleRate);
@@ -1808,6 +1841,9 @@ namespace {
         json->setProperty("durationMs", sampleRate > 0.0 ? 1000.0 * double(totalSamples) / sampleRate : 0.0);
         json->setProperty("peak", peak);
         json->setProperty("rms", rms);
+        json->setProperty("initial50MsRms", initial50MsRms);
+        json->setProperty("final50MsRms", final50MsRms);
+        json->setProperty("maxAdjacentDelta", maxAdjacentDelta);
         json->setProperty("channelMetrics", var(channelMetrics));
         return PresetJson::toVar(json);
     }
@@ -1839,7 +1875,52 @@ namespace {
         return checkAudioThreshold(command, metrics, "peakGreaterThan", "peak", "greaterThan", message)
             && checkAudioThreshold(command, metrics, "peakLessThan", "peak", "lessThan", message)
             && checkAudioThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
-            && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message);
+            && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message)
+            && checkAudioThreshold(command, metrics, "initial50MsRmsLessThan", "initial50MsRms", "lessThan", message)
+            && checkAudioThreshold(command, metrics, "final50MsRmsGreaterThan", "final50MsRms", "greaterThan", message)
+            && checkAudioThreshold(command, metrics, "maxAdjacentDeltaLessThan", "maxAdjacentDelta", "lessThan", message);
+    }
+
+    bool writeAudioCapture(
+            const String& path,
+            AudioSampleBuffer& capture,
+            double sampleRate,
+            String& message) {
+        if (path.isEmpty()) {
+            return true;
+        }
+
+        File file(path);
+        file.getParentDirectory().createDirectory();
+        std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
+        if (stream == nullptr || !stream->openedOk()) {
+            message = "Could not open audio capture path: " + path;
+            return false;
+        }
+        if (!stream->setPosition(0) || stream->truncate().failed()) {
+            message = "Could not replace audio capture path: " + path;
+            return false;
+        }
+
+        WavAudioFormat wavFormat;
+        std::unique_ptr<AudioFormatWriter> writer(wavFormat.createWriterFor(
+                stream.get(),
+                sampleRate,
+                (uint32) capture.getNumChannels(),
+                24,
+                {},
+                0));
+        if (writer == nullptr) {
+            message = "Could not create WAV writer: " + path;
+            return false;
+        }
+
+        stream.release();
+        if (!writer->writeFromAudioSampleBuffer(capture, 0, capture.getNumSamples())) {
+            message = "Could not write WAV capture: " + path;
+            return false;
+        }
+        return true;
     }
 }
 
@@ -2152,6 +2233,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = captureScreenshot(command, message, data);
     } else if (type == "captureAudio") {
         ok = captureAudio(command, message, data);
+    } else if (type == "captureLiveAudio") {
+        ok = captureLiveAudio(command, message, data);
     } else if (type == "exportState") {
         ok = exportState(command, message);
     } else if (type == "exportPreset") {
@@ -2451,31 +2534,8 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
         dataObject->setProperty("blockSize", blockSize);
     }
 
-    if (path.isNotEmpty()) {
-        File file(path);
-        file.getParentDirectory().createDirectory();
-        std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
-
-        if (stream == nullptr || !stream->openedOk()) {
-            message = "Could not open audio capture path: " + path;
-            return false;
-        }
-
-        WavAudioFormat wavFormat;
-        std::unique_ptr<AudioFormatWriter> writer(
-            wavFormat.createWriterFor(stream.get(), sampleRate, uint32(channels), 24, {}, 0));
-
-        if (writer == nullptr) {
-            message = "Could not create WAV writer: " + path;
-            return false;
-        }
-
-        stream.release();
-
-        if (!writer->writeFromAudioSampleBuffer(capture, 0, totalSamples)) {
-            message = "Could not write WAV capture: " + path;
-            return false;
-        }
+    if (!writeAudioCapture(path, capture, sampleRate, message)) {
+        return false;
     }
 
     if (!checkAudioThresholds(command, data, message)) {
@@ -2483,6 +2543,38 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     }
 
     message = path.isNotEmpty() ? "Audio captured: " + path : "Audio captured";
+    return true;
+}
+
+bool CycleAutomation::captureLiveAudio(const var& command, String& message, var& data) {
+    AudioHub& audioHub = getObj(AudioHub);
+    const int durationMs = jlimit(10, 1400, (int) getDouble(command, "durationMs", 500.0));
+    AudioHub::LiveCapture live = audioHub.captureLiveAudio(durationMs);
+    if (!live.completed || live.left.empty() || live.right.empty()) {
+        message = "Live audio-device capture did not complete";
+        return false;
+    }
+
+    AudioSampleBuffer capture(2, (int) live.left.size());
+    capture.copyFrom(0, 0, live.left.data(), (int) live.left.size());
+    capture.copyFrom(1, 0, live.right.data(), (int) live.right.size());
+    data = audioCaptureMetrics(capture, live.sampleRate);
+    DynamicObject* object = PresetJson::getObject(data);
+    const String path = getString(command, "path");
+    object->setProperty("source", "audioDeviceCallback");
+    object->setProperty("firstCallback", (int64) live.firstCallback);
+    object->setProperty("lastCallback", (int64) live.lastCallback);
+    object->setProperty("callbackCount", (int64) audioHub.getAudioCallbackCount());
+    object->setProperty("path", path);
+
+    if (!checkAudioThresholds(command, data, message)
+            || !writeAudioCapture(path, capture, live.sampleRate, message)) {
+        return false;
+    }
+
+    message = path.isNotEmpty()
+            ? "Live audio captured: " + path
+            : "Live audio captured";
     return true;
 }
 
@@ -3630,6 +3722,11 @@ bool CycleAutomation::pointer(const var& command, String& message, var& data) {
     json->setProperty("waitedForIdle", waitedForIdle);
     json->setProperty("localBounds", rectangleState(bounds));
     json->setProperty("screenBounds", rectangleState(component->getScreenBounds()));
+    if (auto* midiKeyboard = dynamic_cast<MidiKeyboard*>(component)) {
+        const int noteNumber = midiKeyboard->noteAt(position);
+        json->setProperty("note", noteNumber);
+        json->setProperty("noteOn", midiKeyboard->isNoteOn(noteNumber));
+    }
     data = PresetJson::toVar(json);
 
     message = "Pointer event executed";

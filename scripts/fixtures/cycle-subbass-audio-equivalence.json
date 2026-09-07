@@ -1,0 +1,35 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "verified",
+    "v1": {
+        "factoryPreset": "subbass",
+        "sourceDocument": "cycle/content/presets/subbass.cyc",
+        "sha256": "6d69896aa049bfa538fc33556dfc37dc63bd086f9700ff572ad04527ca7a6ed4"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/subbass-parity.cyclegraph",
+        "sha256": "add3f6cbbb47c27fa233ed0691d6b9ad569a31521c568642daa8d8fb4e0243c4",
+        "renderOverrides": {
+            "voiceDurationSeconds": 0.2789115780343647
+        }
+    },
+    "translation": {
+        "midiNoteOffset": -24,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputHeadroom": 0.125,
+        "timeLayer": "timeLayer1",
+        "magnitudeLayer": "magnitudeLayer1 -> magnitudeLayer1Process",
+        "phaseLayer": "phaseLayer1 -> phaseLayer1Process",
+        "volumeEnvelope": "volumeEnvelope when active",
+        "scratchEnvelope": "scratchEnvelope when active",
+        "morph": "morph",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    }
+}

@@ -221,6 +221,12 @@ var NodeWorkspace::captureAudioForAutomation(size_t frameCount) const {
     return canvas.captureAudioForAutomation(frameCount);
 }
 
+bool NodeWorkspace::copyAudioPlanForAutomation(
+        GraphExecutionPlan& plan,
+        uint64_t& revision) const {
+    return canvas.copyAudioPlan(plan, revision);
+}
+
 var NodeWorkspace::performanceStateForAutomation() const {
     const auto status = audioEngine.status();
     const Rectangle<float> whiteKey = keyboard.noteBounds(keyboard.baseNote());

@@ -46,7 +46,7 @@ AudioDeviceManager& AudioHub::ensureAudioDeviceManager() {
 void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
   #if !PLUGIN_MODE
     auto& deviceManager = ensureAudioDeviceManager();
-    const String error(deviceManager.initialise(1, 2, midiSettings, true));
+    const String error(deviceManager.initialise(0, 2, midiSettings, true));
     AudioIODevice* device = deviceManager.getCurrentAudioDevice();
     AudioDeviceManager::AudioDeviceSetup setup;
 
@@ -57,8 +57,10 @@ void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
     settingListeners.call(&SettingListener::samplerateChanged, sampleRate);
     settingListeners.call(&SettingListener::bufferSizeChanged, bufferSize);
 
-    if (error.isNotEmpty() || !device) {
-        deviceError = error;
+    if (error.isNotEmpty() || device == nullptr) {
+        deviceError = error.isNotEmpty()
+                ? error
+                : "No audio output device is available";
     } else {
         // start the IO device pulling its data from our callback.
         deviceManager.addAudioCallback(this);
@@ -72,6 +74,7 @@ void AudioHub::initialiseAudioDevice(XmlElement* midiSettings) {
 
 void AudioHub::suspendAudio() {
 #if !PLUGIN_MODE
+    liveCapture.cancel();
     if (audioDeviceManager == nullptr) {
         return;
     }
@@ -110,6 +113,7 @@ void AudioHub::audioDeviceIOCallbackWithContext(
         numSamples,
         context
     );
+    liveCapture.append(outputChannelData, totalNumOutputChannels, numSamples);
 }
 
 void AudioHub::audioDeviceAboutToStart(AudioIODevice* device) {
@@ -127,6 +131,7 @@ AudioDeviceManager* AudioHub::getAudioDeviceManager() {
 }
 
 void AudioHub::stopAudio() {
+    liveCapture.cancel();
     if (audioDeviceManager == nullptr) {
         return;
     }
@@ -190,6 +195,23 @@ void AudioHub::setAudioSourceProcessor(AudioSourceProcessor* processor) {
     if (currentProcessor != nullptr && sampleRate > 0 && bufferSize > 0) {
         currentProcessor->prepareToPlay(bufferSize, sampleRate);
     }
+}
+
+AudioHub::LiveCapture AudioHub::captureLiveAudio(int durationMs) {
+#if !PLUGIN_MODE
+    AudioIODevice* device = audioDeviceManager == nullptr
+            ? nullptr
+            : audioDeviceManager->getCurrentAudioDevice();
+    if (device == nullptr || !liveCapture.begin(sampleRate, durationMs)) {
+        return {};
+    }
+
+    const int timeoutMs = jlimit(100, 5000, durationMs * 2 + 500);
+    return liveCapture.waitForCompletion(timeoutMs);
+#else
+    ignoreUnused(durationMs);
+    return {};
+#endif
 }
 
 String AudioHub::getDeviceErrorAndReset() {

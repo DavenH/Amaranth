@@ -143,7 +143,7 @@ void SynthesizerVoice::stopNote(float velocity, bool allowTailOff) {
             EnvRenderContext& rast = volumeGroup[i];
             haveReleaseCurve |= rast.rast.hasReleaseCurve();
 
-            if (MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, i)) {
+            if (MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, rast.layerIndex)) {
                 isVolumeStillActive |= props->active;
             }
         }
@@ -204,14 +204,14 @@ void SynthesizerVoice::renderNextBlock(AudioSampleBuffer& audioBuffer, int start
     currentVoice->render(renderBuffer);
 
     /// volume env
-    calcEnvelopeBuffers(numSamples);
+    bool renderedVolume = renderVolumeEnvelope(numSamples);
 
-    if (flags.haveVolume) {
+    if (renderedVolume) {
         // TODO needs render graph
-        Buffer<float> volBuff = volumeGroup.envGroup.front().rendBuffer.withSize(numSamples);
+        Buffer<float> volume = volumeGroup.envGroup.front().rast.getRenderBuffer().withSize(numSamples);
 
-        volBuff.mul(mappedVelocity);
-        renderBuffer.mul(volBuff);
+        renderBuffer.mul(volume);
+        renderBuffer.mul(mappedVelocity);
     } else {
         renderBuffer.mul(mappedVelocity);
     }
@@ -282,7 +282,7 @@ void SynthesizerVoice::initialiseEnvMeshes() {
 
         for (int i = 0; i < rastGroup.envGroup.size(); ++i) {
             EnvRenderContext& rast = rastGroup.envGroup[i];
-            MeshLibrary::EnvProps* props = meshLib->getEnvProps(rastGroup.layerGroup, i);
+            MeshLibrary::EnvProps* props = meshLib->getEnvProps(rastGroup.layerGroup, rast.layerIndex);
             rast.sampleable = false;
 
             if (props->active && rast.rast.getCurrentMesh() != nullptr &&
@@ -292,6 +292,9 @@ void SynthesizerVoice::initialiseEnvMeshes() {
             }
         }
     }
+
+    flags.havePitch = !pitchGroup.envGroup.empty()
+            && pitchGroup.envGroup.front().sampleable;
 
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
@@ -404,29 +407,34 @@ void SynthesizerVoice::resetNote() {
     clearCurrentNote();
 }
 
-void SynthesizerVoice::calcEnvelopeBuffers(int numSamples) {
+bool SynthesizerVoice::renderVolumeEnvelope(int numSamples) {
     speedScale.update(numSamples);
-    double deltaX = speedScale.getCurrentValue() / 44100.0; //getSampleRate();
 
-    bool anyActive = false;
-
-    for (int i = 0; i < volumeGroup.size(); ++i) {
-        EnvRenderContext& context = volumeGroup[i];
-        EnvRasterizer& envRast = context.rast;
-        MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
-
-        if (props->active && envRast.getCurrentMesh() != nullptr &&
-            envRast.canRasterizeWaveform()) {
-            bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
-            // TODO
-            anyActive |= stillActive;
-            jassert(envRast.getRenderBuffer().size() >= numSamples);
-        }
+    if (volumeGroup.envGroup.empty()) {
+        return false;
     }
 
-    if (!anyActive) {
+    double sampleRate = getSampleRate();
+    jassert(sampleRate > 0.0);
+    double deltaX = speedScale.getCurrentValue() / jmax(1.0, sampleRate);
+
+    EnvRenderContext& context = volumeGroup.envGroup.front();
+    EnvRasterizer& rasterizer = context.rast;
+    MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
+
+    if (props == nullptr || !props->active || !context.sampleable) {
+        return false;
+    }
+
+    bool envelopeStillActive = rasterizer.renderToBuffer(
+            numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
+    jassert(rasterizer.getRenderBuffer().size() >= numSamples);
+
+    if (!envelopeStillActive) {
         resetNote();
     }
+
+    return true;
 }
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {
@@ -501,15 +509,14 @@ void SynthesizerVoice::enablementChanged() {
     }
 
     if (currentVoice != oldVoice) {
-        // TODO
-        //		if(flags.playing && volumeRasterizer.getMode() != EnvRasterizer::Releasing)
-        //		{
-        //			currentVoice->stealNoteFrom(oldVoice);
-        //		}
-        //		else
-        //		{
-        stop(false);
-        //		}
+        bool volumeReleasing = !volumeGroup.envGroup.empty()
+                && volumeGroup.envGroup.front().rast.getMode() == EnvRasterizer::Releasing;
+
+        if (flags.playing && !volumeReleasing) {
+            currentVoice->stealNoteFrom(oldVoice);
+        } else {
+            stop(false);
+        }
     }
 }
 

@@ -17,6 +17,7 @@ MidiKeyboard::MidiKeyboard(
     ,	const Orientation orientation) :
             AmaranthMidiKeyboard(state, orientation)
         ,	SingletonAccessor(repo, "MidiKeyboard")
+        ,   keyboardState(state)
         ,	auditionKey(60) {
     glow.setGlowProperties(3, Colours::white);
     setHighlightedNote(auditionKey);
@@ -29,6 +30,14 @@ MidiKeyboard::MidiKeyboard(
 
 String MidiKeyboard::getText(int note) {
     return AmaranthMidiKeyboard::getText(note);
+}
+
+int MidiKeyboard::noteAt(Point<float> position) {
+    return getNoteAndVelocityAtPosition(position).note;
+}
+
+bool MidiKeyboard::isNoteOn(int noteNumber) const {
+    return keyboardState.isNoteOn(1, noteNumber);
 }
 
 void MidiKeyboard::mouseEnter(const MouseEvent& e) {

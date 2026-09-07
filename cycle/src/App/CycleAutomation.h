@@ -38,6 +38,7 @@ private:
     bool runTourAction(const var& command, String& message);
     bool captureScreenshot(const var& command, String& message, var& data);
     bool captureAudio(const var& command, String& message, var& data);
+    bool captureLiveAudio(const var& command, String& message, var& data);
     bool exportState(const var& command, String& message);
     bool exportPreset(const var& command, String& message);
     bool savePreset(const var& command, String& message, var& data);

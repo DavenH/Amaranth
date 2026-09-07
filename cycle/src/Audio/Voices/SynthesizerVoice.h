@@ -128,7 +128,7 @@ private:
 	float normalizeKey(int midiNoteNumber);
 
 	void initialiseEnvMeshes();
-	void calcEnvelopeBuffers(int numSamples);
+	bool renderVolumeEnvelope(int numSamples);
 	int getRenderOffset();
 	void declickAttack();
 	void declickRelease();

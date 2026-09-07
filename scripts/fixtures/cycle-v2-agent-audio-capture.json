@@ -1,11 +1,33 @@
 {
   "commands": [
     {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/spectral-reference.cyclegraph"
+    },
+    {
       "command": "captureAudio",
-      "frames": 256,
+      "sampleRate": 48000,
+      "blockSize": 173,
+      "channels": 2,
+      "durationMs": 1200,
       "path": "/private/tmp/cycle-v2-agent-smokes/audio-capture.wav",
-      "peakGreaterThan": 0.01,
-      "rmsGreaterThan": 0.001
+      "events": [
+        {
+          "type": "noteOn",
+          "sample": 37,
+          "note": 60,
+          "velocity": 0.8,
+          "channel": 1
+        },
+        {
+          "type": "noteOff",
+          "sample": 48037,
+          "note": 60,
+          "channel": 1
+        }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
     }
   ],
   "quit": true

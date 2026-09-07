@@ -1,0 +1,59 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "african-horn",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterLen",
+      "value": 0.5
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "down",
+      "normalizedX": 0.5,
+      "normalizedY": 0.85,
+      "waitForIdle": true,
+      "idleDelayMs": 50
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 200,
+      "peakGreaterThan": 0.01,
+      "final50MsRmsGreaterThan": 0.001,
+      "peakLessThan": 1.5
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaSpectrum",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 200,
+      "path": "/private/tmp/cycle-agent-voice-mode-switch.wav",
+      "peakGreaterThan": 0.001,
+      "final50MsRmsGreaterThan": 0.0001,
+      "peakLessThan": 1.5
+    },
+    {
+      "command": "pointer",
+      "area": "AreaMain",
+      "target": "TargMidiKeyboard",
+      "event": "up",
+      "normalizedX": 0.5,
+      "normalizedY": 0.85,
+      "normalizedDownX": 0.5,
+      "normalizedDownY": 0.85
+    }
+  ],
+  "quit": true
+}

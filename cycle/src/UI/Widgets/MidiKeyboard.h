@@ -21,6 +21,8 @@ public:
     static String getText(int note);
 
     [[nodiscard]] int getAuditionKey() const { return auditionKey; }
+    [[nodiscard]] int noteAt(Point<float> position);
+    [[nodiscard]] bool isNoteOn(int noteNumber) const;
     void resized() override;
     void setAuditionKey(int key);
 
@@ -34,6 +36,7 @@ private:
 
     static void setMouseNote(int note);
 
+    MidiKeyboardState& keyboardState;
     GlowEffect glow;
     int auditionKey;
 

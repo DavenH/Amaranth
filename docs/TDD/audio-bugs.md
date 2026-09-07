@@ -1,5 +1,131 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 ignored volume-envelope amplitude and clicked at note boundaries
+
+Context:
+
+- OohAah advanced its active volume envelope and used its completion to stop
+  the voice, but `SynthFlag::haveVolume` was never enabled. The rendered audio
+  therefore stayed at full amplitude until a one-sample stop at the end of the
+  release.
+- The dormant multiplication path referenced an `EnvRenderContext` buffer that
+  was never populated instead of the existing `EnvRasterizer` playback output.
+- Cycle generation also advanced the volume envelope before the sample-rate
+  amplitude stage, skipping most of OohAah's authored attack before the first
+  audible block.
+
+Resolution:
+
+- The sample-rate voice boundary now renders and immediately applies the first
+  local volume envelope from `EnvRasterizer`; volume is excluded from the
+  pitch/scratch cycle-update loop so it has one playback owner.
+- Envelope timing uses the prepared voice sample rate, and layer property
+  lookups preserve each local context's actual library index.
+- The OohAah regression measures the first 50 ms and the maximum adjacent
+  sample delta. At 44.1 kHz the latter fell from 0.152 to about 0.018 at the
+  quiet test gain, with a gradual attack and release.
+
+Current status: resolved on 2026-09-06.
+
+## Resolved: Cycle 1 generalized envelope groups lost legacy playback contracts
+
+Context:
+
+- `CycleBasedVoice::initialiseNote()` gated the pitch envelope's initial sample
+  on `SynthFlag::havePitch`, but the generalized envelope initialization never
+  assigned that flag.
+- The generalized volume renderer also reset a note when no local volume
+  envelope was enabled. Legacy bypassed volume multiplication and allowed the
+  oscillator to continue in that case.
+- Pitch and volume property translation must retain the source layer index;
+  the local rasterizer-vector position is not a library layer index.
+
+Resolution:
+
+- Envelope initialization now records whether the first local pitch envelope
+  is sampleable, and pitch updates use that state plus the context's source
+  layer index.
+- An absent, inactive, or unsampleable volume envelope bypasses multiplication
+  without stopping the voice. Only completion of an enabled rendered volume
+  envelope ends the note.
+- Focused renders keep a Saw note with no active volume envelope audible through
+  the final 50 ms and keep the active pitch-envelope Drunkard preset audible.
+
+Current status: resolved on 2026-09-06.
+
+## Resolved: Cycle 1 voice-mode changes stopped held notes
+
+Context:
+
+- Legacy transferred oscillator state with `stealNoteFrom()` when an edit
+  changed a playing voice between the time-only and spectral implementations.
+- The reimplementation retained `stealNoteFrom()` but commented out its only
+  caller and stopped the note instead.
+- In the focused live-device reproduction, Horn produced RMS 0.413 before its
+  magnitude layer was enabled and exact silence afterward while the same UI
+  keyboard key remained held.
+
+Resolution:
+
+- `enablementChanged()` again uses the legacy `stealNoteFrom()` path for a held
+  note and retains the stop behavior for a releasing voice.
+- A focused African Horn live-device fixture holds one UI-keyboard note while
+  disabling its spectral layer. RMS remains nonzero before and after the
+  spectral-to-time voice switch.
+
+Current status: resolved on 2026-09-06.
+
+## Open: Legacy resampler can replay carried MIDI
+
+Context:
+
+- Both legacy and current `convertMidiTo44k()` retain MIDI when an output block
+  produces no internal 44.1 kHz samples.
+- The retained messages are copied into the next nonempty internal block but
+  are not cleared after consumption, so another consecutive nonempty block can
+  receive the same events again.
+- Normal device block sizes do not exercise the zero-internal-sample case; a
+  useful fix needs a tiny-block, high-output-rate scheduling fixture.
+
+Current status: open; inherited behavior, not a reimplementation discrepancy.
+
+## Open: Legacy global scratch mixes output and internal sample-rate domains
+
+Context:
+
+- Both trees calculate the global scratch delta at 44.1 kHz but render an
+  output-device block's sample count before internal-rate synthesis.
+- At device rates other than 44.1 kHz, global scratch therefore advances by
+  the wrong duration relative to local scratch and oscillator processing.
+- No current factory parity fixture uses a global scratch layer.
+
+Current status: open; author a global-scratch timing fixture before changing
+the shared legacy behavior.
+
+## Resolved: Cycle 1 standalone keyboard produced silent device buffers
+
+Context:
+
+- Cycle 1's UI keyboard registered the held MIDI note and its audio-device
+  callback advanced, but a callback capture remained exactly zero.
+- `AudioSourceProcessor::getNextAudioBlock()` passed JUCE's `startSample` as
+  the external buffer constructor's channel count. The normal zero offset
+  therefore presented zero channels to every Cycle 1 realtime processor.
+- Offline renders call `processBlock()` with an owned stereo buffer and bypassed
+  this bridge, so they could not reveal the standalone failure.
+
+Resolution:
+
+- The shared bridge now preserves the device buffer's channel count and passes
+  the offset through the four-argument external-buffer constructor.
+- Cycle 1 no longer requires an unused audio input device to initialize its
+  output-only synth path.
+- A focused bridge test checks channels and offset placement. The live Subbass
+  keyboard fixture captured 500 ms from 44 callbacks at 44.1 kHz with peak
+  0.588 and RMS 0.268.
+
+Current status: resolved on 2026-09-06.
+
 ## Open: Full Cycle V2 suite intermittently cannot create IR fixture waves
 
 Context:
@@ -87,3 +213,62 @@ Context:
 Current status: addressed on 2026-08-21 by supplying canonical typed
 Waveshaper/IR models in the shared fixture helper; the full Cycle V2 suite now
 passes.
+## Resolved: Cycle 1 offline 48 kHz capture used an uninitialized resampler
+
+Context:
+
+- The Cycle 1/Cycle 2 differential render first attempted a 48 kHz capture of
+  `filter-saw` on 2026-09-06.
+- Cycle 1 crashed in `CircleBuffer::write()` through
+  `HermiteState::resample()` because `SynthAudioSource::prepareToPlay()` did
+  not initialize its non-44.1-kHz resampling storage.
+- The reproduction artifacts are
+  `/private/tmp/cycle-filter-saw-parity/midi-36/cycle-v1.log` and
+  `/private/tmp/cycle-filter-saw-parity/midi-36/cycle-v1.log.ips`.
+
+Resolution:
+
+- `SynthAudioSource::prepareToPlay()` now initializes the existing Hermite
+  resampler whenever the requested rate is not 44.1 kHz. This uses the mature
+  `initResampler()` allocation/reset path before the first offline block.
+
+Current status: resolved on 2026-09-06; the paired 48 kHz render is the
+integration regression.
+
+## Open: Cycle V2 compiled Voice Context pitch fields are only partially consumed
+
+Context:
+
+- The Subbass differential render showed that the compiled Voice Context
+  octave never reached `PreparedOscillatorRegion`; Cycle V2 rendered the graph
+  one octave above Cycle 1.
+- The octave now becomes an integer MIDI-note offset at the prepared region
+  boundary and has a focused equivalence test.
+- The neighbouring fractional `pitchSemitones`, `portamento`, and oscillator
+  oversampling fields remain compiled without a corresponding realtime
+  oscillator consumption path. They are outside the strict Subbass fixture but
+  represent the same incomplete Voice Context adoption.
+
+Current status: open for the remaining pitch/glide/oversampling semantics; the
+octave path is addressed on 2026-09-06.
+
+## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
+
+Context:
+
+- The first Subbass differential render appeared to show a dominant Cycle 1
+  subharmonic and unstable expected-period cyclogram.
+- Cycle 1's legacy `NumberUtils::noteToFrequency()` defines A440 as MIDI 81;
+  Cycle V2's shared `UnisonCore` correctly uses standard MIDI 69.
+- The preset converter preserved the displayed octave control but initially
+  omitted this one-octave boundary translation.
+
+Resolution:
+
+- Strict preset conversion now subtracts one additional octave and records the
+  legacy reference offset in the equivalence manifest.
+- The corrected four-note comparison reaches at least 0.99990 correlation and
+  no more than 0.0143 gain-matched residual. This disproves half-cycle carry as
+  the cause of the observed result.
+
+Current status: resolved on 2026-09-06.

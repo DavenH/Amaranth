@@ -6,6 +6,8 @@
 #include <memory>
 #include <vector>
 
+#include <Audio/AudioCallbackCapture.h>
+
 #include "Runtime/RealtimeGraphRenderer.h"
 
 namespace CycleV2 {
@@ -26,16 +28,7 @@ public:
         RealtimeGraphRenderer::Diagnostics renderer;
     };
 
-    struct LiveCapture {
-        bool completed {};
-        double sampleRate {};
-        uint64_t firstCallback {};
-        uint64_t lastCallback {};
-        float peak {};
-        float rms {};
-        std::vector<float> left;
-        std::vector<float> right;
-    };
+    using LiveCapture = AudioCallbackCapture::Result;
 
     StandaloneAudioEngine();
     ~StandaloneAudioEngine() override;
@@ -70,10 +63,6 @@ private:
     void timerCallback() override;
     void adoptPendingGraph();
     void reclaimGraph(PreparedGraph* graph);
-    void captureOutput(
-            float* const* outputChannelData,
-            int outputChannelCount,
-            int frameCount);
     double currentTimeSeconds() const;
 
     std::unique_ptr<juce::PropertiesFile> deviceProperties;
@@ -89,13 +78,7 @@ private:
     std::atomic<double> currentSampleRate { 44100.0 };
     std::atomic<int> currentBlockSize { 512 };
     std::atomic<uint64_t> devicePreparationRevision { 1 };
-    static constexpr size_t liveCaptureCapacity = 65536;
-    std::array<float, liveCaptureCapacity> liveCaptureLeft;
-    std::array<float, liveCaptureCapacity> liveCaptureRight;
-    std::atomic<size_t> liveCaptureTarget {};
-    std::atomic<size_t> liveCapturePosition {};
-    std::atomic<uint64_t> liveCaptureFirstCallback {};
-    std::atomic<uint64_t> liveCaptureLastCallback {};
+    AudioCallbackCapture liveCapture;
     juce::String currentDeviceName;
     juce::String deviceError;
 };

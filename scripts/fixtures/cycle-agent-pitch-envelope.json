@@ -1,0 +1,59 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "drunkard",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaWaveshaper"
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaDelay"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMorphPanel",
+      "target": "TargSliderR",
+      "value": 0.0
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.1
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterLen",
+      "value": 0.0
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-pitch-envelope.wav",
+      "durationMs": 800,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.8,
+          "channel": 1
+        }
+      ],
+      "peakGreaterThan": 0.001,
+      "final50MsRmsGreaterThan": 0.0001,
+      "peakLessThan": 0.8
+    }
+  ],
+  "quit": true
+}

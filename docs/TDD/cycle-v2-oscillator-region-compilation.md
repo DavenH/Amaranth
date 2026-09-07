@@ -64,6 +64,13 @@ Implemented compiler foundation:
 - Wave Source no longer owns placeholder ramp DSP. It publishes the immutable
   default Trimesh model plus Wave gain and is lowered by the same chained and
   spectral region renderers as authored Trimesh sources.
+- Spectral audio quality is covered by a minimal authored reference preset and
+  multi-note render analysis at both the fixed-frame and final realtime-output
+  boundaries. This exposed and corrected a full-polar boundary error: the
+  first authored harmonic had been placed in the DC slot, and the remaining
+  harmonics had been sampled over a compressed log-frequency region. Direct
+  spectral sources now retain Cycle 1's non-DC harmonic indexing and full
+  log-region spacing before IFFT materialization.
 
 The spectral recipe is a domain executor, not a compatibility copy. Its
 authoritative operations remain `OscillatorLaneRasterizer` for fixed time
@@ -633,6 +640,15 @@ until transitional adapters and deletion targets are gone.
   reconstruction state count equals the active lane count.
 - One-lane configurations agree at the defined time-only/spectral boundaries
   where the mature products are expected to agree.
+- A checked-in minimal spectral reference preset produces its declared partial
+  structure at low, middle, and high MIDI notes after realtime cyclic
+  reconstruction. The analysis ignores only the bounded interpolation-history
+  startup and rejects unexpected broadband or inharmonic energy.
+- At 48 kHz, the same preset renders a test-controlled 46.875 Hz pitch as
+  identical 1024-sample cyclogram rows after reconstruction startup. MIDI 72
+  is separately folded from its fractional 91/92-sample cycle schedule into a
+  normalized 512-bin phase grid, bounding inter-cycle drift without treating
+  the quantized cycle lengths as an integer-period signal.
 
 ### Block overlap and AM
 

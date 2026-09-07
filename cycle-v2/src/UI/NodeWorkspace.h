@@ -58,6 +58,7 @@ public:
     void resetCanvasPerformanceForAutomation();
     void requestCanvasOpenGLFrameForAutomation();
     var captureAudioForAutomation(size_t frameCount) const;
+    bool copyAudioPlanForAutomation(GraphExecutionPlan& plan, uint64_t& revision) const;
     var performanceStateForAutomation() const;
     bool performancePointerDownForAutomation(int noteNumber, float velocity);
     bool performancePointerDragForAutomation(int noteNumber, float velocity);

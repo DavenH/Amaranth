@@ -1,5 +1,6 @@
 #include "App/CycleV2Automation.h"
 
+#include "App/OfflineAudioCaptureAutomation.h"
 #include "UI/NodeWorkspace.h"
 
 #include <cerrno>
@@ -1052,6 +1053,35 @@ var CycleV2Automation::invokePaletteItem(const var& commandValue) {
 }
 
 var CycleV2Automation::captureAudio(const var& commandValue) {
+    if (OfflineAudioCaptureAutomation::isScheduledCapture(commandValue)) {
+        GraphExecutionPlan plan;
+        uint64_t revision {};
+        if (!workspace.copyAudioPlanForAutomation(plan, revision)) {
+            return failedResult("captureAudio", "Cannot capture audio from an uncompiled graph");
+        }
+
+        const File path = resolveCommandPath(stringProperty(commandValue, "path"));
+        var data;
+        String error;
+        if (!OfflineAudioCaptureAutomation::capture(
+                commandValue,
+                path,
+                std::move(plan),
+                revision,
+                data,
+                error)) {
+            return failedResult("captureAudio", error);
+        }
+
+        String message;
+        if (!checkAudioThresholds(commandValue, data, message)) {
+            var result = failedResult("captureAudio", message);
+            objectFor(result)->setProperty("data", data);
+            return result;
+        }
+        return okResult("captureAudio", data);
+    }
+
     const int frameCount = jlimit(1, 262144, intProperty(commandValue, "frames", intProperty(commandValue, "samples", 4096)));
     const File path = resolveCommandPath(stringProperty(commandValue, "path"));
     var data = workspace.captureAudioForAutomation((size_t) frameCount);
