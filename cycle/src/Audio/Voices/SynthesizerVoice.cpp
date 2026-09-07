@@ -426,15 +426,44 @@ bool SynthesizerVoice::renderVolumeEnvelope(int numSamples) {
         return false;
     }
 
+    const int releaseSamplesRemaining = rasterizer.releaseSamplesRemaining(
+            deltaX,
+            EnvRasterizer::headUnisonIndex,
+            *props,
+            1.f);
     bool envelopeStillActive = rasterizer.renderToBuffer(
             numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
     jassert(rasterizer.getRenderBuffer().size() >= numSamples);
+
+    applyVolumeReleaseDeclick(rasterizer, releaseSamplesRemaining, numSamples);
 
     if (!envelopeStillActive) {
         resetNote();
     }
 
     return true;
+}
+
+void SynthesizerVoice::applyVolumeReleaseDeclick(
+        EnvRasterizer& rasterizer,
+        int releaseSamplesRemaining,
+        int numSamples) {
+    if (releaseSamplesRemaining <= 0) {
+        return;
+    }
+
+    Buffer<float> envelope = rasterizer.getRenderBuffer().withSize(numSamples);
+    const int fadeSize = audioSource->releaseDeclick.size();
+    const int fadeStart = jmax(0, releaseSamplesRemaining - fadeSize);
+    const int releaseSamples = jmin(numSamples, releaseSamplesRemaining);
+    const int fadeSamples = releaseSamples - fadeStart;
+    if (fadeSamples <= 0) {
+        return;
+    }
+
+    const int fadeEnvelopeStart = fadeSize - releaseSamplesRemaining + fadeStart;
+    Buffer<float> fade(audioSource->releaseDeclick + fadeEnvelopeStart, fadeSamples);
+    envelope.section(fadeStart, fadeSamples).mul(fade);
 }
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {

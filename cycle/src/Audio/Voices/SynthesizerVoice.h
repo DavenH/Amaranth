@@ -129,6 +129,10 @@ private:
 
 	void initialiseEnvMeshes();
 	bool renderVolumeEnvelope(int numSamples);
+	void applyVolumeReleaseDeclick(
+			EnvRasterizer& rasterizer,
+			int releaseSamplesRemaining,
+			int numSamples);
 	int getRenderOffset();
 	void declickAttack();
 	void declickRelease();

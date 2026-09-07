@@ -239,6 +239,34 @@ TEST_CASE(
     REQUIRE(playback.output()[0] == Catch::Approx(heldLevel));
 }
 
+TEST_CASE(
+        "Envelope release renders every sample before its terminal boundary",
+        "[rasterization][env][playback][release]") {
+    TestPreparedPlayback prepared;
+    prepared.scalingMode = Rasterization::PointScalingMode::Bipolar;
+
+    const float amplitudes[] { 1.f, 0.75f, 0.75f, 0.f, 0.f };
+    for (int i = 0; i < prepared.display.waveform.waveY.size(); ++i) {
+        prepared.display.waveform.waveY[i] = amplitudes[i];
+        prepared.display.waveform.slope[i] = i < 4
+                ? (amplitudes[i + 1] - amplitudes[i]) / 0.5f
+                : 0.f;
+    }
+
+    Rasterization::EnvelopePlaybackEngine playback;
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    playback.noteOn();
+    REQUIRE(playback.renderToBuffer(prepared.view(), 1, 0.3, 1, props, 1.f));
+
+    playback.noteOff(prepared.view());
+    REQUIRE(playback.releaseSamplesRemaining(prepared.view(), 0.3, 1, props, 1.f) == 2);
+    REQUIRE_FALSE(playback.renderToBuffer(prepared.view(), 3, 0.3, 1, props, 1.f));
+    REQUIRE(playback.output()[0] == Catch::Approx(0.75f));
+    REQUIRE(playback.output()[1] == Catch::Approx(0.3f));
+    REQUIRE(playback.output()[2] == 0.f);
+}
+
 TEST_CASE("Prepared Envelope replacement preserves and reconciles live playback state",
         "[rasterization][env][playback][replacement]") {
     TestPreparedPlayback prepared;

@@ -1,5 +1,56 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 volume-envelope completion hard-cut a nonzero tail
+
+Context:
+
+- The OohAah release was continuous at MIDI note-off, but the envelope's last
+  discrete sample remained nonzero before `SynthesizerVoice` retired the voice.
+  At the preset's quiet test gain, the final jump to exact silence measured
+  between `0.00055` and `0.00196` across 50, 150, 400, and 800 ms notes.
+- The previous integration check used one note length and only the maximum
+  adjacent delta over the complete render, so oscillator content could hide
+  this smaller event-specific discontinuity.
+- OohAah stores `Declick = 0`; its authored volume release must therefore end
+  continuously without relying on the optional immediate note-off declick.
+
+Resolution:
+
+- Cycle 1 now aligns the existing release-declick curve with the final samples
+  of an authored volume release. This terminal continuity rule is independent
+  of the optional note-boundary declick setting and does not allocate on the
+  audio thread.
+- Offline capture metrics now report the second difference at each scheduled
+  note-off and the final nonzero-to-zero delta separately.
+- `scripts/test_cycle1_ooh_aah_release.py` launches a fresh Cycle process for
+  each note length to avoid shared offline-render state. All four OohAah cases
+  retain a smooth note-off and reduce the terminal delta below `1e-8`.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle V2 keyboard note-off could retain voices indefinitely
+
+Context:
+
+- The realtime renderer treated every Envelope processor as the audible voice
+  tail owner, including scratch, pitch, and general control envelopes.
+- An envelope without a release curve ignored note-off and remained active.
+  A graph with no volume envelope could consequently retain the keyboard voice
+  after mouse-up when another envelope processor existed.
+
+Resolution:
+
+- The compiler now marks only volume envelopes as voice-tail owners, and the
+  realtime executor bases release retirement on that semantic marker.
+- Envelope processors without a release curve become inactive at note-off.
+  Graphs without a volume tail receive an immediate sample-offset reset;
+  volume-envelope graphs remain alive only until their release completes.
+- Focused processor and renderer tests cover no-release, no-volume, and normal
+  release completion. The performance-keyboard mouse-down/drag/mouse-up fixture
+  also returns `performance.activeVoiceCount` to zero.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Bipolar envelope release scaling introduced a note-off discontinuity
 
 Context:

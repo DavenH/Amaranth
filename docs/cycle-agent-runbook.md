@@ -225,9 +225,16 @@ Minimal fixture command:
 
 Supported event types are `noteOn`, `noteOff`, `controller`, `pitchWheel`, and
 `allNotesOff`. The report data includes `peak`, `rms`, per-channel metrics,
-sample rate, duration, event count, and output path. Use the numeric threshold
-fields for first-pass assertions; reserve perceptual or similarity checks for a
-separate external analysis step that consumes the WAV artifact.
+`maxNoteOffSecondDifference`, `terminalDelta`, sample rate, duration, event
+count, and output path. The corresponding event-specific thresholds are
+`noteOffSecondDifferenceLessThan` and `terminalDeltaLessThan`. Use the numeric
+threshold fields for first-pass assertions; reserve perceptual or similarity
+checks for a separate external analysis step that consumes the WAV artifact.
+
+For the Cycle 1 OohAah release regression, run
+`scripts/test_cycle1_ooh_aah_release.py`. It renders 50, 150, 400, and 800 ms
+notes in separate application processes and asserts both the MIDI note-off and
+release-completion boundaries.
 
 ## Crash And Assertion Triage
 

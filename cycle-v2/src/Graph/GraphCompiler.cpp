@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Control/ModulationTriple.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Unison/UnisonNode.h"
 
@@ -278,6 +279,8 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                 RuntimeOwnershipScope::SynthVoice,
                 -1,
                 node.kind == NodeKind::Output,
+                node.kind == NodeKind::Envelope
+                        && envelopePurposeFor(node) == EnvelopePurpose::Volume,
                 descriptor.audioRole,
                 descriptor.previewRole,
                 descriptor.previewContract,
