@@ -1,5 +1,27 @@
 # Audio Bug Notes
 
+## Resolved: Bipolar envelope release scaling introduced a note-off discontinuity
+
+Context:
+
+- Legacy normalized a release curve to the envelope level held at note-off, but
+  its `0.5` denominator floor assumed the synthetic release point created for
+  unipolar envelopes.
+- The extracted playback policy retained that floor while also serving bipolar
+  envelopes, whose real release-start value may legitimately be below `0.5`.
+  A release beginning at `0.25` therefore jumped to half the held level.
+
+Resolution:
+
+- Release scaling now divides by the actual sampled release-start value. A zero
+  release value retains unity scaling because no finite scale can make a zero
+  start continuous with a nonzero held value.
+- A focused bipolar playback regression holds an envelope at `0.75`, releases
+  into a curve beginning at `0.25`, and requires the first release sample to
+  remain exactly `0.75`.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 ignored volume-envelope amplitude and clicked at note boundaries
 
 Context:
