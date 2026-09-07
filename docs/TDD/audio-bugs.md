@@ -1,5 +1,34 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 spectral voice omitted time-rasterizer preparation
+
+Context:
+
+- Acidic and Anasound2 produced exact silence, while Baroque Flute became a
+  thin residual with its phase layer active. Disabling that phase layer raised
+  Baroque Flute's steady-state power by roughly `864x`.
+- The extracted `VoiceRasterizer` requires its mesh and retained storage
+  capacity to be prepared before realtime rendering. `SynthesizerVoice`
+  prepared only the direct/unison voice and omitted the spectral-filter voice.
+- Acidic and Anasound2 depend on time-domain meshes followed by subtractive
+  spectral layers. Their failed time rasterization therefore supplied a zero
+  spectrum which subtractive processing could not restore. Baroque Flute's
+  additive layers left only a phase-sensitive residual.
+- The polar FFT itself preserves signal norm under arbitrary phase changes;
+  the phase transform was not the source of the lost harmonic power.
+
+Resolution:
+
+- The existing voice-preparation lifecycle now prepares both oscillator
+  implementations, reusing the shared `CycleBasedVoice` preparation path.
+- `scripts/test_cycle1_spectral_phase.py` asserts audible dry output from
+  Acidic and Anasound2 and compares Baroque Flute's steady-state power with its
+  phase layer enabled and disabled at both 44.1 and 48 kHz.
+- Baroque Flute's phase-disabled/enabled power ratio is now `1.04` to `1.06`
+  across those rates, while both formerly silent presets render nonzero audio.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 spectral notes accumulated DC across voice reuse
 
 Context:
