@@ -1,5 +1,26 @@
 # Audio Bug Notes
 
+## Resolved: Visible spectral domain contaminated layer enablement checks
+
+Context:
+
+- Disabling the last phase layer while the Phase domain was visible silenced a
+  spectral-only preset, even though its independent magnitude layer remained
+  enabled and its powered icon still appeared active after switching domains.
+- `Spectrum3D::haveAnyValidLayers()` accepted a magnitude/phase selector but
+  ignored it and inspected the currently visible layer group for both queries.
+  Voice enablement therefore depended on editor presentation state.
+- Legacy selects the magnitude or phase collection directly from the query.
+
+Resolution:
+
+- Spectral validity now selects `GroupSpect` or `GroupPhase` from the requested
+  domain, independent of the visible editor mode.
+- The focused OohAah automation disables its phase layer while Phase remains
+  visible and requires audible magnitude-only output.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 spectral voice omitted time-rasterizer preparation
 
 Context:

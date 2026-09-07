@@ -552,7 +552,8 @@ int Spectrum3D::getNumActiveLayers() {
 }
 
 bool Spectrum3D::haveAnyValidLayers(bool isMags, bool haveAnyValidTimeLayers) {
-    MeshLibrary::LayerGroup& group = getCurrentGroup();
+    const int groupId = isMags ? LayerGroups::GroupSpect : LayerGroups::GroupPhase;
+    MeshLibrary::LayerGroup& group = meshLib->getLayerGroup(groupId);
 
     for (int i = 0; i < group.size(); ++i) {
         MeshLibrary::Layer layer = group.layers[i];
