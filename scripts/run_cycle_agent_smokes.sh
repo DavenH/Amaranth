@@ -50,6 +50,9 @@ fixtures=(
     midi-note=scripts/fixtures/cycle-agent-midi-note.json
     audio-capture=scripts/fixtures/cycle-agent-audio-capture.json
     volume-envelope=scripts/fixtures/cycle-agent-volume-envelope.json
+    inactive-volume=scripts/fixtures/cycle-agent-inactive-volume.json
+    pitch-envelope=scripts/fixtures/cycle-agent-pitch-envelope.json
+    voice-mode-switch=scripts/fixtures/cycle-agent-voice-mode-switch.json
     load-reference-sax-growl=scripts/fixtures/cycle-agent-load-reference-sax-growl.json
     assert-failure=scripts/fixtures/cycle-agent-assert-failure.json
 )

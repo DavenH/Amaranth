@@ -1775,8 +1775,10 @@ namespace {
         int channels = capture.getNumChannels();
         int totalSamples = capture.getNumSamples();
         int initialSamples = jmin(totalSamples, int(std::round(sampleRate * 0.05)));
+        int finalSamples = initialSamples;
         double sumSquares = 0.0;
         double initialSumSquares = 0.0;
+        double finalSumSquares = 0.0;
         float peak = 0.0f;
         float maxAdjacentDelta = 0.0f;
         Array<var> channelMetrics;
@@ -1794,6 +1796,12 @@ namespace {
             double initial50MsRms = initialSamples > 0
                     ? initialNorm / std::sqrt(double(initialSamples))
                     : 0.0;
+            double finalNorm = finalSamples > 0
+                    ? double(samples.offset(totalSamples - finalSamples).normL2())
+                    : 0.0;
+            double final50MsRms = finalSamples > 0
+                    ? finalNorm / std::sqrt(double(finalSamples))
+                    : 0.0;
             float channelMaxAdjacentDelta = 0.0f;
 
             if (totalSamples > 1) {
@@ -1807,12 +1815,14 @@ namespace {
             maxAdjacentDelta = jmax(maxAdjacentDelta, channelMaxAdjacentDelta);
             sumSquares += channelNorm * channelNorm;
             initialSumSquares += initialNorm * initialNorm;
+            finalSumSquares += finalNorm * finalNorm;
 
             auto channelJson = PresetJson::object();
             channelJson->setProperty("channel", ch);
             channelJson->setProperty("peak", channelPeak);
             channelJson->setProperty("rms", channelRms);
             channelJson->setProperty("initial50MsRms", initial50MsRms);
+            channelJson->setProperty("final50MsRms", final50MsRms);
             channelJson->setProperty("maxAdjacentDelta", channelMaxAdjacentDelta);
             channelMetrics.add(PresetJson::toVar(channelJson));
         }
@@ -1821,6 +1831,8 @@ namespace {
         double rms = std::sqrt(sumSquares / rmsDenominator);
         double initialRmsDenominator = double(jmax(1, channels * initialSamples));
         double initial50MsRms = std::sqrt(initialSumSquares / initialRmsDenominator);
+        double finalRmsDenominator = double(jmax(1, channels * finalSamples));
+        double final50MsRms = std::sqrt(finalSumSquares / finalRmsDenominator);
 
         auto json = PresetJson::object();
         json->setProperty("sampleRate", sampleRate);
@@ -1830,6 +1842,7 @@ namespace {
         json->setProperty("peak", peak);
         json->setProperty("rms", rms);
         json->setProperty("initial50MsRms", initial50MsRms);
+        json->setProperty("final50MsRms", final50MsRms);
         json->setProperty("maxAdjacentDelta", maxAdjacentDelta);
         json->setProperty("channelMetrics", var(channelMetrics));
         return PresetJson::toVar(json);
@@ -1864,6 +1877,7 @@ namespace {
             && checkAudioThreshold(command, metrics, "rmsGreaterThan", "rms", "greaterThan", message)
             && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message)
             && checkAudioThreshold(command, metrics, "initial50MsRmsLessThan", "initial50MsRms", "lessThan", message)
+            && checkAudioThreshold(command, metrics, "final50MsRmsGreaterThan", "final50MsRms", "greaterThan", message)
             && checkAudioThreshold(command, metrics, "maxAdjacentDeltaLessThan", "maxAdjacentDelta", "lessThan", message);
     }
 

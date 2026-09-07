@@ -293,6 +293,9 @@ void SynthesizerVoice::initialiseEnvMeshes() {
         }
     }
 
+    flags.havePitch = !pitchGroup.envGroup.empty()
+            && pitchGroup.envGroup.front().sampleable;
+
     for (auto& envRasterizer: envRasterizers) {
         envRasterizer->setNoiseSeed(random.nextInt());
         // TODO
@@ -406,35 +409,32 @@ void SynthesizerVoice::resetNote() {
 
 bool SynthesizerVoice::renderVolumeEnvelope(int numSamples) {
     speedScale.update(numSamples);
+
+    if (volumeGroup.envGroup.empty()) {
+        return false;
+    }
+
     double sampleRate = getSampleRate();
     jassert(sampleRate > 0.0);
     double deltaX = speedScale.getCurrentValue() / jmax(1.0, sampleRate);
 
-    bool anyActive = false;
-    bool renderedVolume = false;
+    EnvRenderContext& context = volumeGroup.envGroup.front();
+    EnvRasterizer& rasterizer = context.rast;
+    MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
 
-    for (int i = 0; i < volumeGroup.size(); ++i) {
-        EnvRenderContext& context = volumeGroup[i];
-        EnvRasterizer& envRast = context.rast;
-        MeshLibrary::EnvProps* props = meshLib->getEnvProps(LayerGroups::GroupVolume, context.layerIndex);
-
-        if (props->active && envRast.getCurrentMesh() != nullptr &&
-            envRast.canRasterizeWaveform()) {
-            bool stillActive = envRast.renderToBuffer(numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
-            // TODO
-            anyActive |= stillActive;
-            if (i == 0) {
-                renderedVolume = true;
-            }
-            jassert(envRast.getRenderBuffer().size() >= numSamples);
-        }
+    if (props == nullptr || !props->active || !context.sampleable) {
+        return false;
     }
 
-    if (!anyActive) {
+    bool envelopeStillActive = rasterizer.renderToBuffer(
+            numSamples, deltaX, EnvRasterizer::headUnisonIndex, *props, 1.f);
+    jassert(rasterizer.getRenderBuffer().size() >= numSamples);
+
+    if (!envelopeStillActive) {
         resetNote();
     }
 
-    return renderedVolume;
+    return true;
 }
 
 void SynthesizerVoice::fetchEnvelopeMeshes() {
@@ -509,15 +509,14 @@ void SynthesizerVoice::enablementChanged() {
     }
 
     if (currentVoice != oldVoice) {
-        // TODO
-        //		if(flags.playing && volumeRasterizer.getMode() != EnvRasterizer::Releasing)
-        //		{
-        //			currentVoice->stealNoteFrom(oldVoice);
-        //		}
-        //		else
-        //		{
-        stop(false);
-        //		}
+        bool volumeReleasing = !volumeGroup.envGroup.empty()
+                && volumeGroup.envGroup.front().rast.getMode() == EnvRasterizer::Releasing;
+
+        if (flags.playing && !volumeReleasing) {
+            currentVoice->stealNoteFrom(oldVoice);
+        } else {
+            stop(false);
+        }
     }
 }
 

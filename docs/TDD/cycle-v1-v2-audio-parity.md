@@ -156,9 +156,42 @@ sample parity. Preview products are not substitutes for audio products.
    multiplied from the existing `EnvRasterizer` playback output, and timed from
    the voice's actual sample rate. The focused fixture requires a low-energy
    first 50 ms and rejects large adjacent-sample jumps through release.
+9. Audit Cycle 1's generalized voice pipeline against the legacy implementation.
+   Restore inactive-volume bypass, pitch-envelope initialization, and any other
+   confirmed lifecycle or DSP contracts with focused observable regressions.
+   Complete: the port once stopped voices without an active volume envelope,
+   left the pitch-envelope availability flag unset, used a local vector index
+   as a durable layer index, and stopped held notes when edits switched between
+   time-only and spectral voices. The restored code reuses the existing
+   rasterizers and `stealNoteFrom()` state transfer rather than introducing a
+   second playback path.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
+
+## Legacy Audio-Pipeline Audit
+
+The generalized Cycle 1 pipeline was compared with
+`amaranth-legacy/Audio/SynthAudioSource.cpp` and the legacy voice hierarchy.
+This is a source-contract audit around the mature renderer, not a claim that
+every inherited legacy behavior is correct.
+
+| Boundary | Audit result |
+| --- | --- |
+| MIDI note lifecycle and sustain | Preserved; note start, note-off, release, sustain, and hard-stop ownership remain in `SynthesizerVoice`. |
+| Envelope ownership | Corrected; volume advances once at sample rate, while pitch and scratch remain on the internal cycle timeline. An inactive volume layer now bypasses gain instead of terminating the note. |
+| Pitch envelope | Corrected; initial availability, dynamic sampleability, and source layer identity now reach the existing pitch rasterizer. |
+| Voice implementation changes | Corrected; a held note transfers its existing oscillator state between unison and spectral voices, except during release. |
+| Oscillator and spectral reconstruction | Preserved through the existing voice hierarchy and shared `CycleDsp` frame primitives; the strict Subbass differential render remains the observable guard. |
+| Internal/output sample-rate boundary | Preserved; synthesis and effects run at 44.1 kHz, then the existing Hermite stage converts to the device rate. Volume is intentionally evaluated at the prepared output rate. |
+| Effects and master gain | Preserved; waveshaper, tube, EQ, delay, reverb, then master gain. |
+| Cycle cache | Intentionally inert in both trees because the legacy implementation returns before cache generation. |
+
+Two issues are demonstrably inherited by both trees and are therefore tracked
+as legacy defects rather than port-parity regressions: carried MIDI can replay
+after a zero-internal-sample block, and global scratch renders an output-block
+sample count with a 44.1 kHz delta at non-44.1 kHz device rates. Neither is
+changed without a representative timing fixture.
 
 ## Completion Criteria
 

@@ -27,18 +27,80 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
-## Open: Cycle 1 pitch-envelope initial-value gate is never enabled
+## Resolved: Cycle 1 generalized envelope groups lost legacy playback contracts
 
 Context:
 
-- `CycleBasedVoice::initialiseNote()` gates the pitch envelope's initial sample
-  on `SynthFlag::havePitch`.
-- Repository search finds no assignment to that flag, so initialization always
-  starts from the neutral pitch value even when an active pitch envelope is
-  authored. Later per-cycle pitch-envelope updates follow a separate path.
+- `CycleBasedVoice::initialiseNote()` gated the pitch envelope's initial sample
+  on `SynthFlag::havePitch`, but the generalized envelope initialization never
+  assigned that flag.
+- The generalized volume renderer also reset a note when no local volume
+  envelope was enabled. Legacy bypassed volume multiplication and allowed the
+  oscillator to continue in that case.
+- Pitch and volume property translation must retain the source layer index;
+  the local rasterizer-vector position is not a library layer index.
 
-Current status: open; validate an audible pitch-envelope preset before changing
-the initialization contract.
+Resolution:
+
+- Envelope initialization now records whether the first local pitch envelope
+  is sampleable, and pitch updates use that state plus the context's source
+  layer index.
+- An absent, inactive, or unsampleable volume envelope bypasses multiplication
+  without stopping the voice. Only completion of an enabled rendered volume
+  envelope ends the note.
+- Focused renders keep a Saw note with no active volume envelope audible through
+  the final 50 ms and keep the active pitch-envelope Drunkard preset audible.
+
+Current status: resolved on 2026-09-06.
+
+## Resolved: Cycle 1 voice-mode changes stopped held notes
+
+Context:
+
+- Legacy transferred oscillator state with `stealNoteFrom()` when an edit
+  changed a playing voice between the time-only and spectral implementations.
+- The reimplementation retained `stealNoteFrom()` but commented out its only
+  caller and stopped the note instead.
+- In the focused live-device reproduction, Horn produced RMS 0.413 before its
+  magnitude layer was enabled and exact silence afterward while the same UI
+  keyboard key remained held.
+
+Resolution:
+
+- `enablementChanged()` again uses the legacy `stealNoteFrom()` path for a held
+  note and retains the stop behavior for a releasing voice.
+- A focused African Horn live-device fixture holds one UI-keyboard note while
+  disabling its spectral layer. RMS remains nonzero before and after the
+  spectral-to-time voice switch.
+
+Current status: resolved on 2026-09-06.
+
+## Open: Legacy resampler can replay carried MIDI
+
+Context:
+
+- Both legacy and current `convertMidiTo44k()` retain MIDI when an output block
+  produces no internal 44.1 kHz samples.
+- The retained messages are copied into the next nonempty internal block but
+  are not cleared after consumption, so another consecutive nonempty block can
+  receive the same events again.
+- Normal device block sizes do not exercise the zero-internal-sample case; a
+  useful fix needs a tiny-block, high-output-rate scheduling fixture.
+
+Current status: open; inherited behavior, not a reimplementation discrepancy.
+
+## Open: Legacy global scratch mixes output and internal sample-rate domains
+
+Context:
+
+- Both trees calculate the global scratch delta at 44.1 kHz but render an
+  output-device block's sample count before internal-rate synthesis.
+- At device rates other than 44.1 kHz, global scratch therefore advances by
+  the wrong duration relative to local scratch and oscillator processing.
+- No current factory parity fixture uses a global scratch layer.
+
+Current status: open; author a global-scratch timing fixture before changing
+the shared legacy behavior.
 
 ## Resolved: Cycle 1 standalone keyboard produced silent device buffers
 

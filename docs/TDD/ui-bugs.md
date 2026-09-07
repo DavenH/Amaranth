@@ -535,6 +535,8 @@ Context:
   complete suite passed 585/586 cases, and focused CTest case 301 failed at the
   same assertion. Evidence is in
   `build/tests/cycle-v2/Testing/Temporary/LastTest.log`.
+- Reproduced during the Cycle 1 legacy audio audit: the complete suite passed
+  841/842 cases and focused CTest case 655 failed identically.
 - The Guide property-control change does not touch hit routing; its focused
   tests and automation remain green.
 - JUnit evidence: `/private/tmp/cycle-v2-tests-junit.xml`.
@@ -554,6 +556,34 @@ Context:
 
 Current status: open; reproduce the temporary-file failure independently and
 inspect full-suite temporary-path lifecycle before changing serializer code.
+
+## Open: Cycle 1 menu smoke still requests the removed Graphics menu
+
+Context:
+
+- An incidental smoke run on 2026-09-06 listed the current menus successfully,
+  then `cycle-agent-menu-commands.json` failed with `Menu not found: Graphics`.
+- The application now exposes the related display commands under `View`; the
+  audio-pipeline changes do not alter menus or the fixture.
+- Repro report:
+  `/private/tmp/cycle-agent-audio-parity/cycle-agent-smokes-report.json`.
+
+Current status: open; update the menu fixture against the intended current menu
+contract in a focused UI slice.
+
+## Open: Drunkard pitch render logs VisualDsp column-size assertions
+
+Context:
+
+- The focused pitch-envelope audio render passes its signal thresholds but logs
+  three assertions at `VisualDsp.cpp:367` because source and destination column
+  sizes differ.
+- The assertion is in visualization column copying, outside the audio voice and
+  envelope paths changed by the parity fix.
+- Repro log: `/private/tmp/cycle-agent-pitch-envelope-log.txt`.
+
+Current status: open; reproduce through the visual update path and decide which
+column resolution owns resampling before changing the assertion.
 
 ## Open: Cycle V2 agent wrapper falls back to a non-GUI launch and aborts
 

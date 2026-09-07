@@ -96,8 +96,10 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
             GuideCurvePanel::tableSize,
             Rasterization::GuideCurveSeed::voiceLifecycle((uint32_t) random.nextInt()));
 
-    EnvRasterizer& pitchRast = parent->pitchGroup[0].rast;
-    float pitchEnvVal = parent->flags.havePitch ? pitchRast.sampler().sampleAt(0) : 0.5;
+    float pitchEnvVal = 0.5f;
+    if (parent->flags.havePitch) {
+        pitchEnvVal = parent->pitchGroup.envGroup.front().rast.sampler().sampleAt(0);
+    }
 
     for (int i = 0; i < noteState.numUnisonVoices; ++i) {
         float unisonTune = unisonEnabled ? unison->getDetune(i) : 0;
@@ -820,10 +822,16 @@ inline void CycleBasedVoice::updateChainAngleDelta(VoiceParameterGroup& group,
 
         // TODO implement render graph
         EnvRastGroup& pitchGroup = parent->pitchGroup;
-        EnvRasterizer& pitchRast = pitchGroup.envGroup.front().rast;
-        MeshLibrary::EnvProps* props = parent->meshLib->getEnvProps(pitchGroup.layerGroup, 0);
+        if (pitchGroup.envGroup.empty()) {
+            group.angleDelta = getAngleDelta(noteState.lastNoteNumber, unisonTune, pitchEnvVal);
+            return;
+        }
 
-        if (props != nullptr && props->active && pitchRast.canRasterizeWaveform()) {
+        EnvRenderContext& pitchContext = pitchGroup.envGroup.front();
+        EnvRasterizer& pitchRast = pitchContext.rast;
+        MeshLibrary::EnvProps* props = parent->meshLib->getEnvProps(pitchGroup.layerGroup, pitchContext.layerIndex);
+
+        if (props != nullptr && props->active && pitchContext.sampleable) {
             int rastIndex = EnvRasterizer::headUnisonIndex + (useFirstEnvelopeIndex ? 0 : group.unisonIndex);
             float y = pitchRast.getSustainLevel(rastIndex);
 
