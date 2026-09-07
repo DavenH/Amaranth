@@ -47,6 +47,18 @@ approximations.
 - Keep tests at the audio output boundary. Add focused unit coverage only for a
   shared DSP invariant needed to localize a failure.
 
+## Progress
+
+- Spectral magnitude/phase validity is independent of the visible editor
+  domain, with a magnitude-only output regression.
+- Ordinary and filtered time-domain layers now receive the sampled scratch or
+  linear voice time as the rasterizer's current morph position.
+- The current note period now determines its interpolation cadence, and the
+  time-evolution integration compares first and second PWM notes in one
+  process.
+- Scratch-enabled/bypassed BrightLead3 and PWM, plus early/late Dunk2 and PWM,
+  have output-level regressions.
+
 ## Completion Criteria
 
 - Every reported contract has a failing-before/passing-after regression.

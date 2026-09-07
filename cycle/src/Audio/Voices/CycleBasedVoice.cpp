@@ -129,9 +129,9 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         oversamplers[i]->resetDelayLine();
     }
 
-    noteState.stride = jmax(1, (int) (controlFreq / futureFrame.period + 0.5));
-    futureFrame.cycleCount = -noteState.stride;
     futureFrame.period = middlePeriod;
+    noteState.stride = jmax(1, (int) (controlFreq / middlePeriod + 0.5));
+    futureFrame.cycleCount = -noteState.stride;
 
     if (parent != nullptr) {
         // remember envelopes are unaffected by speed mesh distortion

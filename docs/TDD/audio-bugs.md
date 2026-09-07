@@ -1,5 +1,36 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 voice-time slices remained on the first yellow plane
+
+Context:
+
+- PWM rendered nearly stationary harmonic ratios, Dunk2 did not audibly leave
+  its short initial cubes, and BrightLead3's scratch-enabled and linear-time
+  variants were much more alike than their authored surfaces imply.
+- The voice implementations copied each layer's `MorphPosition` and assigned
+  the new time to its `SmoothedParameter`. That assignment changes only the
+  smoothing target; the rasterizer reads the unchanged current value, so every
+  cycle continued slicing at time zero.
+- The same mistake affected ordinary time layers and the filter voice's
+  time-domain source. Legacy constructs each raster position with the sampled
+  voice time as its current value.
+- Note initialization also calculated the interpolation stride from the
+  previous note's retained period, or zero on the first note, before installing
+  the new note's period. This inherited legacy defect gave first and subsequent
+  notes different rasterization cadences.
+
+Resolution:
+
+- Time-domain voice rasterizers now use the existing `MorphPosition::withTime`
+  boundary, which creates a position whose current time is the sampled scratch
+  or linear voice time.
+- Interpolation stride now derives from the current note's middle period.
+- `scripts/test_cycle1_time_evolution.py` verifies early-to-late spectral
+  evolution in Dunk2 and PWM, material scratch-envelope differences in PWM and
+  BrightLead3, and correspondence between two PWM notes in one process.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Visible spectral domain contaminated layer enablement checks
 
 Context:

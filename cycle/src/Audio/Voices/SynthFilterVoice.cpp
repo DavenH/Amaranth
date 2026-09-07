@@ -179,8 +179,8 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
             continue;
         }
 
-        MorphPosition position = props.pos[parent->voiceIndex];
-        position.time = getScratchTime(props.scratchChan, frame.frontier);
+        MorphPosition position = props.pos[parent->voiceIndex].withTime(
+                getScratchTime(props.scratchChan, frame.frontier));
         const bool rendered = CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
                 timeRasterizer,
                 {
