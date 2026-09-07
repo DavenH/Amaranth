@@ -251,6 +251,21 @@ TEST_CASE("Legacy presets round trip through Document into stable current JSON",
     REQUIRE(exercisedPresetCount > 0);
 }
 
+TEST_CASE("Legacy presets can migrate to canonical JSON without live document application",
+          "[cycle][preset][migration]") {
+    File presetFile(String(CYCLE_SOURCE_DIR) + "/content/presets/calming-keys.cyc");
+
+    REQUIRE(presetFile.existsAsFile());
+
+    var migrated = Document::readPresetJSON(presetFile.getFullPathName(), 0xc0dedbad);
+    auto* root = migrated.getDynamicObject();
+
+    REQUIRE(root != nullptr);
+    REQUIRE(root->getProperty("format").toString() == "amaranth-preset");
+    REQUIRE(int(root->getProperty("schemaVersion")) == 2);
+    REQUIRE(PresetJson::getObject(root->getProperty("preset")) != nullptr);
+}
+
 TEST_CASE("Legacy pierce preset restores modulation matrix wiring", "[cycle][preset][mod-matrix]") {
     CycleTestHarness harness;
     auto& repo = harness.getRepo();

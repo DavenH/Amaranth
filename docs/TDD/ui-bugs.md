@@ -56,3 +56,24 @@ Context:
 
 Current status: open; reproduce through the visual update path and decide which
 column resolution owns resampling before changing the assertion.
+
+## P1: Cycle 1 Calming Keys preset crashes during visual refresh
+
+Context:
+
+- The Cycle 1 factory-library migration sweep opened and exported 28 presets,
+  then crashed while opening `cycle/content/presets/calming-keys.cyc`.
+- The crash is an invalid `dynamic_cast` read in
+  `EnvRasterizer::renderWaveformOnly()` reached from
+  `UnisonPhaseColumnRenderer`, `VisualDsp::processFrequency()`, and the pending
+  UI update graph. It occurs after the document load starts scheduling visual
+  work; the preset's canonical migration itself is not yet implicated.
+- Repro artifacts are `/private/tmp/cycle-v1-preset-migration-session.log` and
+  `/Users/daven/Library/Logs/DiagnosticReports/Cycle-2026-09-07-111853.ips`.
+
+Current status: open. Update suppression was insufficient because live document
+application still touched UI-owned state, and `cluck-2.cyc` exposed the same
+class of failure. The migration exporter now decodes and migrates the source
+without applying it to the live document, isolating canonical export from
+editor, updater, rasterizer, and audio lifecycles. Reproduce normal interactive
+loads separately before changing Envelope or Unison rasterization ownership.

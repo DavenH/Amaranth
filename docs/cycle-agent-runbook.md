@@ -144,6 +144,10 @@ Common command families:
   and return amplitude metrics for assertions.
 - `exportState`, `exportPreset`, `exportMeshState`: export scoped JSON, reusing
   existing `Savable::writeJSON()` boundaries where available.
+- `exportPresetFile`: decode and migrate a `.cyc` directly to canonical JSON
+  without applying it to the live document. Use this for library migration and
+  inspection when editor, updater, rasterizer, and audio side effects are not
+  part of the behavior under test.
 - `listMeshTargets`: discover mesh groups/layers and stable target ids.
 - `meshSelectionGesture`: exercise real interactor selection behavior with
   synthetic mouse gestures.

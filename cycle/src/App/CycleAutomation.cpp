@@ -2239,6 +2239,8 @@ var CycleAutomation::runCommandResult(const var& command) {
         ok = exportState(command, message);
     } else if (type == "exportPreset") {
         ok = exportPreset(command, message);
+    } else if (type == "exportPresetFile") {
+        ok = exportPresetFile(command, message);
     } else if (type == "savePreset") {
         ok = savePreset(command, message, data);
     } else if (type == "openPreset") {
@@ -2644,6 +2646,32 @@ bool CycleAutomation::exportPreset(const var& command, String& message) {
         message = json;
     }
 
+    return true;
+}
+
+bool CycleAutomation::exportPresetFile(const var& command, String& message) {
+    String sourcePath = getString(command, "sourcePath");
+    String destinationPath = getString(command, "path");
+
+    if (sourcePath.isEmpty() || destinationPath.isEmpty()) {
+        message = "exportPresetFile requires sourcePath and path";
+        return false;
+    }
+
+    var exported = Document::readPresetJSON(sourcePath, getConstant(DocMagicCode));
+
+    auto* root = exported.getDynamicObject();
+    if (root == nullptr || PresetJson::getObject(root->getProperty("preset")) == nullptr) {
+        message = "Preset could not be decoded: " + sourcePath;
+        return false;
+    }
+
+    if (!File(destinationPath).replaceWithText(JSON::toString(exported, true))) {
+        message = "Preset JSON could not be written: " + destinationPath;
+        return false;
+    }
+
+    message = "Preset JSON exported: " + destinationPath;
     return true;
 }
 

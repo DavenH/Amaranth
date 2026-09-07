@@ -41,6 +41,7 @@ private:
     bool captureLiveAudio(const var& command, String& message, var& data);
     bool exportState(const var& command, String& message);
     bool exportPreset(const var& command, String& message);
+    bool exportPresetFile(const var& command, String& message);
     bool savePreset(const var& command, String& message, var& data);
     bool openPreset(const var& command, String& message, var& data);
     bool openFactoryPreset(const var& command, String& message, var& data);
