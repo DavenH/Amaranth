@@ -92,6 +92,11 @@ def capture_command(path, note, arguments, overrides=None):
     return command
 
 
+def cycle_v1_note(manifest, requested_note):
+    legacy_offset = manifest["translation"].get("legacyMidiReferenceOffset", 0)
+    return requested_note - legacy_offset
+
+
 def write_automation(path, open_command, capture, setup_commands=None):
     document = {
         "commands": [open_command, *(setup_commands or []), capture],
@@ -183,7 +188,7 @@ def render_note(manifest, note, output_directory, arguments):
     note_directory.mkdir(parents=True, exist_ok=True)
     v1_wav = note_directory / "cycle-v1.wav"
     v2_wav = note_directory / "cycle-v2.wav"
-    capture_v1 = capture_command(v1_wav, note, arguments)
+    capture_v1 = capture_command(v1_wav, cycle_v1_note(manifest, note), arguments)
     capture_v2 = capture_command(
         v2_wav,
         note,
@@ -287,6 +292,10 @@ def render_note(manifest, note, output_directory, arguments):
         arguments.maximum_lag,
     )
     analysis["requestedMidiNote"] = note
+    analysis["renderedMidiNotes"] = {
+        "v1": cycle_v1_note(manifest, note),
+        "v2": note,
+    }
     analysis["rawExact"] = cycle_audio_diff.exact_sample_comparison(
         raw_capture(v1_wav), raw_capture(v2_wav))
     analysis["expectedGainFit"] = {

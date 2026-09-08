@@ -618,10 +618,25 @@ Context:
   jitter seed equivalence have not yet been proven across applications.
 - Cycle 1's per-voice rasterizer RNG was also wall-clock seeded. The offline
   parity command now injects a fixed test seed without changing realtime
-  behavior; Subbass and `guitar-3-g` are repeatable across fresh processes in
-  both engines with that override.
+  behavior. Japan Drum is repeatable across fresh processes in both engines
+  with that override. The corrected-note Guitar 3 G comparison still differs
+  at tiny pre-note effect-tail levels in Cycle 1 and is not yet deterministic.
 - End-to-end exact output is also masked by Cycle 1 master gain and internal
   44.1 kHz conversion versus Cycle V2's fixed `0.125` output headroom.
+- The paired runner recorded Cycle 1's `-12` legacy MIDI reference but omitted
+  it from scheduled note events. Comparisons produced before the 2026-09-08
+  runner fix were therefore an octave apart and are not DSP evidence.
+- The regenerated static `saw` pair is the first useful minimal baseline. With
+  corrected note scheduling it reaches `0.98850` to `0.99844` correlation at
+  MIDI 36–72 and closely matches the expected `1/n` harmonic ratios. It is not
+  exact: Cycle 1 starts roughly three samples later at the low notes, runs at
+  its declared master gain versus Cycle V2 headroom, and has small
+  pitch-dependent reconstruction differences. Its first 992 output samples
+  also differed across two fresh Cycle 1 processes even though the steady
+  render converged exactly; this startup smoothing/state boundary remains open.
+- The exact regenerated `power` port is excluded from audio parity because its
+  active Cycle 1 time layer has no authored waveform geometry and renders
+  silence.
 
 Artifacts:
 
@@ -631,12 +646,19 @@ Artifacts:
 - `/tmp/cycle-guitar-3-g-reconciled/comparison.json`
 - `/tmp/cycle-japan-drum-parity/comparison.json`
 - `/tmp/cycle-japan-drum-notes/comparison.json`
+- `/tmp/cycle-saw-midi-reference-fixed/comparison.json`
+- `/tmp/cycle-saw-reference-fixed-notes/comparison.json`
+- `/tmp/cycle-japan-drum-reference-fixed/comparison.json`
+- `/tmp/cycle-guitar-3-g-reference-fixed/comparison.json`
 
-The admitted pairs expose a valid DSP mismatch before nondeterministic effects:
-`guitar-3-g` reaches only `0.09498` correlation at MIDI 48, while effect-free
-`japan-drum` ranges from `0.09425` down to `0.01743` across MIDI 36–72. The next
-diagnostic must capture Cycle 1's time-cycle, FFT, post-layer spectral, and IFFT
-boundaries so the first divergent stage can be compared with Cycle V2 probes.
+After correcting MIDI scheduling, the admitted pairs still expose a valid DSP
+mismatch beyond the minimal time oscillator. Effect-free `japan-drum` is
+byte-repeatable in both engines but reaches only `0.51389` correlation at MIDI
+48; Cycle V2's cyclogram is stable while Cycle 1's evolves strongly. The
+effect-heavy `guitar-3-g` reaches `0.19678` and its Cycle 1 render is not
+repeatable. The next diagnostic must capture Cycle 1's time-cycle, FFT,
+post-layer spectral, and IFFT boundaries so the first divergent Japan Drum
+stage can be compared with Cycle V2 probes.
 
 Current status: open. Reconcile each candidate against a fresh canonical
 conversion, add explicit deterministic seed control, and remove output-policy
@@ -657,6 +679,9 @@ Resolution:
 
 - Strict preset conversion now subtracts one additional octave and records the
   legacy reference offset in the equivalence manifest.
+- The paired runner now applies that recorded offset to Cycle 1 note events and
+  reports the two engine-specific rendered MIDI notes. A later exact-parity
+  expansion had accidentally recorded without consuming this boundary value.
 - The corrected four-note comparison reaches at least 0.99990 correlation and
   no more than 0.0143 gain-matched residual. This disproves half-cycle carry as
   the cause of the observed result.

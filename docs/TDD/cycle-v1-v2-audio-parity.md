@@ -2,14 +2,14 @@
 
 ## Status
 
-In progress. Both applications render the same scheduled offline MIDI contract,
-but the exact-parity expansion on 2026-09-08 invalidated the checked-in Subbass
-fixture's old “verified” status: its current four-note render no longer passes
-the recorded similarity thresholds at three notes. The harness now captures
-the unquantized channel-major float output, checks repeat determinism, and
-reports exact sample equality separately from diagnostic gain/latency fitting.
-Cycle 1 also has an end-to-end UI-keyboard-to-device fixture that requires
-callback progress and finite nonzero output.
+In progress. Both applications render an equivalent scheduled offline MIDI
+contract, including Cycle 1's nonstandard MIDI reference translation. A
+2026-09-08 audit found that the paired runner recorded that translation but did
+not apply it, invalidating the low correlations reported earlier that day. The
+harness now captures the unquantized channel-major float output, checks repeat
+determinism, and reports exact sample equality separately from diagnostic
+gain/latency fitting. Cycle 1 also has an end-to-end UI-keyboard-to-device
+fixture that requires callback progress plus finite nonzero output.
 
 ## Goal
 
@@ -73,6 +73,11 @@ Both applications consume the same declarative request:
   events expressed in samples or milliseconds;
 - MIDI channel, note, velocity/value, and deterministic ordering.
 
+The requested note is expressed in Cycle V2's standard MIDI reference. The
+runner subtracts the manifest's `legacyMidiReferenceOffset` when constructing
+the Cycle 1 event and records both rendered notes in the result. This boundary
+translation is separate from a preset's authored octave control.
+
 Cycle V2 renders the request through a prepared `RealtimeGraphRenderer` in
 successive blocks. The graph is prepared once, events are queued once with
 sample-derived timestamps, and the last partial block is copied without
@@ -134,9 +139,11 @@ translation. The first broad candidates are:
 
 | Preset | Deterministic coverage | Current admission result |
 | --- | --- | --- |
+| saw | One static time mesh; no envelopes, effects, unison, or guide noise | Regenerated exactly. At MIDI 36–72 it reaches `0.98850–0.99844` correlation after the MIDI reference fix. It exposes remaining gain, onset, resampling, and Cycle 1 startup-repeatability gaps. |
+| power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a live canonical export while retaining node presentation. Both engines are byte-repeatable, but MIDI 48 correlation is only `0.09498`; target the oscillator/effect stage ladder. |
-| japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase and both engines are byte-repeatable. Correlation is `0.09425`, `0.01743`, `0.03134`, and `0.01921` at MIDI 36, 48, 60, and 72. |
+| guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a live canonical export while retaining node presentation. The corrected MIDI 48 comparison reaches only `0.19678` correlation, and Cycle 1's effect-bearing render is not byte-repeatable. |
+| japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase and both engines are byte-repeatable. The corrected MIDI 48 comparison still reaches only `0.51389` correlation, isolating a real multi-layer/spectral evolution discrepancy. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
@@ -193,8 +200,9 @@ sample parity. Preview products are not substitutes for audio products.
    strict converter, and check both artifacts in. Complete using the existing
    `subbass.cyc` factory source and a generated Cycle V2 graph.
 6. Add stage capture only where the first final-output discrepancy requires it.
-   No stage capture was needed: correcting the legacy MIDI reference produced
-   final-output parity and disproved the apparent reconstruction fault.
+   Reopened: correcting the legacy MIDI reference substantially aligns the
+   minimal Saw fixture, but deterministic Japan Drum still diverges. Stage
+   capture is now required at the multi-layer/spectral boundaries.
 7. Exercise Cycle 1's actual UI-keyboard-to-device path with callback capture.
    Share the capture mechanics with Cycle V2, and require callback progress plus
    finite nonzero stereo output from a held keyboard note. This exposed and
@@ -220,13 +228,16 @@ sample parity. Preview products are not substitutes for audio products.
     payload/first-mismatch reporting, and require fresh repeat renders before
     attribution. Complete.
 11. Revalidate all checked-in equivalence manifests on the current branch.
-    In progress: Subbass was demoted to diagnostic after its current output
-    contradicted the recorded result.
+    In progress: the runner's omitted legacy MIDI event translation invalidated
+    the 2026-09-08 pre-fix comparisons. Saw and Japan Drum have been rerun on
+    the corrected boundary; Subbass also remains input-invalid because its
+    omitted morph state is inherited from the startup document.
 12. Admit deterministic whole-graph ports incrementally. In progress:
-    `guitar-3-g` and `japan-drum` now match fresh canonical conversion exactly,
-    preserve their prior presentation, and repeat byte-for-byte in both apps.
-    Their severe output mismatches are now valid DSP discrepancies and make the
-    oscillator/spectral stage ladder the next required slice.
+    `saw`, `guitar-3-g`, and `japan-drum` now match fresh canonical conversion
+    exactly and preserve their prior presentation. Saw substantially matches
+    after reference translation, while deterministic Japan Drum still exposes
+    a valid multi-layer/spectral discrepancy. Guitar 3 G additionally exposes
+    nondeterministic Cycle 1 effect-tail state.
 13. Add deterministic seed injection/persistence at the shared render contract
     for Guide noise, Unison jitter, and reverb, then admit one fixture for each.
     In progress: Cycle 1 voice/rasterizer seed injection is complete and proves

@@ -141,6 +141,11 @@ class CycleAudioDiffTest(unittest.TestCase):
         self.assertFalse(verdict["checks"]["gainMatchedResidual"])
         self.assertTrue(verdict["checks"]["correlation"])
 
+    def test_cycle_v1_note_compensates_legacy_reference_offset(self):
+        manifest = {"translation": {"legacyMidiReferenceOffset": -12}}
+
+        self.assertEqual(compare_cycle_audio.cycle_v1_note(manifest, 48), 60)
+
     def test_threshold_verdict_can_require_raw_exact_samples(self):
         analysis = {
             "alignment": {"correlation": 1.0},
