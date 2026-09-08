@@ -18,6 +18,7 @@ namespace CycleV2 {
 
 enum class TrimeshExpandedHitRegionKind {
     MorphControl,
+    SpectralRange,
     PrimaryAxis,
     LinkToggle,
     VertexParameter,
@@ -104,6 +105,7 @@ public:
     const TrimeshRenderData& renderDataForAutomation() const;
     TrimeshPanelRenderStats panelRenderStatsForAutomation() const;
     const juce::String& guideContextKey() const { return guideConfigurationKey; }
+    bool showsSpectralRange() const { return displayProfile.getSliceStyle().isSpectral(); }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
@@ -117,6 +119,10 @@ public:
     bool morphValueForParameterAt(
             juce::Rectangle<float> content,
             const juce::String& parameterId,
+            juce::Point<float> position,
+            float& value) const;
+    bool spectralRangeValueAt(
+            juce::Rectangle<float> content,
             juce::Point<float> position,
             float& value) const;
     bool findPrimaryAxisAt(
@@ -146,7 +152,9 @@ public:
             juce::Rectangle<float> content,
             juce::Point<float> position,
             int& vertexIndex);
-    static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(juce::Rectangle<float> content);
+    static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(
+            juce::Rectangle<float> content,
+            bool showSpectralRange);
 
 private:
     struct CachedHeatmap {
@@ -163,11 +171,20 @@ private:
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
     static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
-    static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
-    static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);
-    static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::Rectangle<float> morphRailBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> primaryAxisBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> linkToggleBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
     static juce::String primaryAxisValue(int axis);
-    static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content);
+    juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content) const;
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String vertexParameterId(int parameterIndex);

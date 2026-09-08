@@ -18,7 +18,9 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         float red,
         float blue,
         float level,
-        bool logarithmic) {
+        bool logarithmic,
+        bool enabled,
+        float neutralValue) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -43,6 +45,8 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->redMorph = red;
     result->blueMorph = blue;
     result->logarithmic = logarithmic;
+    result->enabled = enabled;
+    result->neutralValue = neutralValue;
     return result;
 }
 
@@ -68,13 +72,16 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
         return {};
     }
     const NodeParameterMap parameterMap(parameters);
+    const String purpose = parameterMap.stringValue("purpose", "control");
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
             envelope->getMesh(),
             parameterMap.floatValue("red", 0.5f),
             parameterMap.floatValue("blue", 0.5f),
             parameterMap.floatValue("level", 1.f),
-            parameterMap.boolValue("logarithmic", false));
+            parameterMap.boolValue("logarithmic", false),
+            parameterMap.boolValue("enabled", true),
+            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f));
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -123,7 +130,9 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMor
             red,
             blue,
             base.level,
-            base.logarithmic);
+            base.logarithmic,
+            base.enabled,
+            base.neutralValue);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
@@ -238,7 +247,17 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
     Buffer<float> outputBuffer = payloadBuffer(output, context.frameCount);
     outputBuffer.zero();
 
-    const bool ready = preparedConfiguration() != nullptr;
+    const EnvelopeConfiguration* current = preparedConfiguration();
+    if (current != nullptr && !current->enabled) {
+        outputBuffer.set(current->neutralValue);
+        if (context.captureTraversalGrid) {
+            publishTraversalGrid(output, context.workArena);
+        }
+        publishSingleOutput(context, std::move(output));
+        return;
+    }
+
+    const bool ready = current != nullptr;
     if (ready) {
         size_t rendered = 0;
 
@@ -287,12 +306,16 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         return;
     }
 
-    const auto sampler = current->rasterizer->sampler();
-    sampler.sampleAtIntervals(positions, values);
-    if (current->logarithmic) {
-        Arithmetic::applyInvLogMapping(values, 30.f);
+    if (!current->enabled) {
+        values.set(current->neutralValue);
+    } else {
+        const auto sampler = current->rasterizer->sampler();
+        sampler.sampleAtIntervals(positions, values);
+        if (current->logarithmic) {
+            Arithmetic::applyInvLogMapping(values, 30.f);
+        }
+        values.mul(level);
     }
-    values.mul(level);
 
     configureTraversalGrid(
             output.traversalGrid,

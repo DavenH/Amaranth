@@ -5,6 +5,7 @@
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Curve.h>
+#include <Util/Arithmetic.h>
 
 #include <algorithm>
 
@@ -52,36 +53,26 @@ bool inputComesFromRegion(
             && regionSteps[(size_t) input->sourceStepIndex];
 }
 
-void applySpectralLayer(
+void applyPan(
         PortDomain domain,
         Buffer<float> source,
+        Buffer<float> secondarySource,
         Buffer<float> left,
         Buffer<float> right,
         float pan,
-        float range,
-        bool additive) {
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        CycleDsp::SpectralLayerCore::renderPhaseChannels(
-                source,
-                left,
-                right,
-                pan,
-                range);
-        return;
+        bool multiplicative) {
+    float leftPan {};
+    float rightPan {};
+    Arithmetic::getPans(pan, leftPan, rightPan);
+    source.copyTo(left);
+    secondarySource.copyTo(right);
+    if (domain == PortDomain::SpectralMagnitudeSignal && multiplicative) {
+        CycleDsp::SpectralLayerCore::applyMultiplicativePan(left, leftPan);
+        CycleDsp::SpectralLayerCore::applyMultiplicativePan(right, rightPan);
+    } else {
+        left.mul(leftPan);
+        right.mul(rightPan);
     }
-
-    if (domain != PortDomain::SpectralMagnitudeSignal) {
-        left.copyTo(right);
-        return;
-    }
-
-    CycleDsp::SpectralLayerCore::renderMagnitudeChannels(
-            source,
-            left,
-            right,
-            pan,
-            range,
-            additive);
 }
 
 }
@@ -229,11 +220,14 @@ bool SpectralOscillatorFrameRenderer::prepare(
             }
             case AudioModuleRole::Fft:      operation.type = OperationType::Fft; break;
             case AudioModuleRole::SpectralLayer: {
-                const NodeParameterMap parameters(step.parameters);
+                const auto configuration = std::dynamic_pointer_cast<
+                        const PanConfiguration>(step.configuration.value);
+                if (configuration == nullptr) {
+                    return false;
+                }
                 operation.type = OperationType::SpectralLayer;
-                operation.pan = parameters.floatValue("pan", 0.5f);
-                operation.range = parameters.floatValue("range", 0.5f);
-                operation.additive = parameters.stringValue("mode", "additive") == "additive";
+                operation.pan = configuration->pan;
+                operation.multiplicative = configuration->multiplicative;
                 break;
             }
             case AudioModuleRole::Ifft:     operation.type = OperationType::Ifft; break;
@@ -296,6 +290,11 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         auto rightOutput = slot(operation.outputs[0], 1, count);
         switch (operation.type) {
             case OperationType::TimeTrimesh:
+                if (!operation.configuration->enabled) {
+                    leftOutput.zero();
+                    rightOutput.zero();
+                    break;
+                }
                 CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
                         *operation.timeRasterizer,
                         {
@@ -310,23 +309,45 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                 break;
 
             case OperationType::SpectralTrimesh:
+                if (!operation.configuration->enabled) {
+                    const float identity = operation.outputDomain
+                                            == PortDomain::SpectralMagnitudeSignal
+                                    && operation.configuration->multiplicative
+                            ? 1.f
+                            : 0.f;
+                    leftOutput.set(identity);
+                    rightOutput.set(identity);
+                    break;
+                }
                 operation.spectralRasterizer->setFrequencyMidiNote(midiNote);
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
                 leftOutput.mul(operation.configuration->gain);
+                if (operation.configuration->appliesSpectralRange
+                        && operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
+                    CycleDsp::SpectralLayerCore::shapeMagnitude(
+                            leftOutput,
+                            operation.configuration->range,
+                            !operation.configuration->multiplicative,
+                            count);
+                } else if (operation.configuration->appliesSpectralRange
+                        && operation.outputDomain == PortDomain::SpectralPhaseSignal) {
+                    leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
+                            operation.configuration->range) * MathConstants<float>::twoPi);
+                }
                 leftOutput.copyTo(rightOutput);
                 break;
 
             case OperationType::SpectralLayer:
-                applySpectralLayer(
+                applyPan(
                         operation.outputDomain,
                         slot(operation.leftInput, 0, count),
+                        slot(operation.leftInput, 1, count),
                         leftOutput,
                         rightOutput,
                         operation.pan,
-                        operation.range,
-                        operation.additive);
+                        operation.multiplicative);
                 break;
 
             case OperationType::Fft: {

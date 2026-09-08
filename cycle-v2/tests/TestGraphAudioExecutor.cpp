@@ -413,6 +413,58 @@ TEST_CASE("Graph executor audibly renders and folds a chained Wave Unison region
             }));
 }
 
+TEST_CASE("Time Pan remains inside the chained oscillator region",
+        "[cycle-v2][runtime][oscillator-region][pan][time]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    Node pan = factory.createNode(NodeKind::SpectralLayer, "pan", {});
+    setNodeParameter(pan, "pan", "1");
+    graph.addNode(std::move(pan));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "voice", "context", false },
+            { "wave", "context", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "wave", "out", false },
+            { "pan", "in", true }).succeeded());
+    REQUIRE(GraphEditor().connect(
+            graph,
+            { "pan", "out", false },
+            { "output", "time", true }).succeeded());
+
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(compiled.plan.oscillatorRegions.size() == 1);
+    REQUIRE(compiled.plan.oscillatorRegions.front().strategy
+            == OscillatorExecutionStrategy::ChainedPerLane);
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 44100.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 60;
+    voice.controls.velocity = 1.f;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    const auto rendered = executor.processRealtime(
+            compiled.plan, 256, {}, voice);
+
+    REQUIRE(rendered.isValid());
+    REQUIRE(std::all_of(
+            rendered.payload->block.samples.begin(),
+            rendered.payload->block.samples.end(),
+            [](float sample) { return sample == 0.f; }));
+    REQUIRE(std::any_of(
+            rendered.payload->secondaryBlock.samples.begin(),
+            rendered.payload->secondaryBlock.samples.end(),
+            [](float sample) { return sample != 0.f; }));
+}
+
 TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison lanes",
         "[cycle-v2][runtime][oscillator-region][unison][trimesh][graph]") {
     const auto makeGraph = [](bool addSecondMesh, NodeKind binaryKind, int order) {

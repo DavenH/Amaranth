@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <functional>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -195,6 +196,44 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::insertPanIntoEdge(
             "Panning added to cable",
             added.nodeId,
             { true, true, false });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::removePanFromCable(const String& nodeId) {
+    const Node* pan = document.graph().findNode(nodeId);
+    if (pan == nullptr || pan->kind != NodeKind::SpectralLayer) {
+        return {};
+    }
+
+    std::optional<PortAddress> source;
+    std::optional<PortAddress> destination;
+    for (const auto& edge : document.graph().getEdges()) {
+        if (edge.destNodeId == nodeId && edge.destPortId == "in") {
+            source = PortAddress { edge.sourceNodeId, edge.sourcePortId, false };
+        } else if (edge.sourceNodeId == nodeId && edge.sourcePortId == "out") {
+            destination = PortAddress { edge.destNodeId, edge.destPortId, true };
+        }
+    }
+    if (!source.has_value() || !destination.has_value()) {
+        return handledResult(false, "Panning cable is incomplete", { true });
+    }
+
+    commands.beginCompoundEdit();
+    const auto removed = commands.removeNode(nodeId);
+    if (!removed.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(removed, "Could not stop panning", nodeId);
+    }
+    const auto connected = commands.connect(*source, *destination);
+    if (!connected.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(connected, "Could not reconnect cable", nodeId);
+    }
+    commands.commitCompoundEdit();
+    return graphEditResult(
+            connected,
+            "Panning removed from cable",
+            {},
+            { true, true, true });
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::moveNode(
@@ -514,7 +553,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleSinglePortLayout(const Strin
     return graphEditResult(edit, {}, nodeId, { true });
 }
 
-NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleMeshOutputSide(const String& nodeId) {
+NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOutputSide(const String& nodeId) {
     const Node* node = findNode(nodeId);
     if (node == nullptr || !outputSideControlSupported(node->kind) || node->outputs.empty()) {
         return {};

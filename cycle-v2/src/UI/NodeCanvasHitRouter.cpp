@@ -39,7 +39,7 @@ std::optional<CanvasNodeActionKind> actionKindForNode(const Node& node) {
     }
 
     if (hasOutputSideControl(node.kind)) {
-        return CanvasNodeActionKind::CycleMeshOutputSide;
+        return CanvasNodeActionKind::CycleOutputSide;
     }
 
     if (node.kind == NodeKind::VoiceContext) {
@@ -73,8 +73,8 @@ String hoverTextForAction(const CanvasNodeAction& action, const NodeCanvasQueryM
         case CanvasNodeActionKind::CycleSinglePortLayout:
             return "Click to rotate this node's input and output arrangement.";
 
-        case CanvasNodeActionKind::CycleMeshOutputSide:
-            return "Click to move this mesh output to another side.";
+        case CanvasNodeActionKind::CycleOutputSide:
+            return "Click to move this node's output to another side.";
 
         case CanvasNodeActionKind::CycleVoiceDomain:
             if (const Node* node = queries.findNode(action.nodeId)) {

@@ -23,7 +23,7 @@ def supported_source():
         "mesh": {"vertices": [1]},
     }
     inactive_envelope = {"properties": {"active": False}}
-    return {
+    source = {
         "preset": {
             "meshLibrary": {
                 "groups": [
@@ -51,9 +51,468 @@ def supported_source():
             "guideCurveProps": {"guides": [{"noiseLevel": 0.0}]},
         },
     }
+    return source
+
+
+def convertible_source():
+    def mesh_layer(active=True, mode=0):
+        return {
+            "properties": {
+                "active": active,
+                "gain": 0.0,
+                "fineTune": 0.0,
+                "pan": 0.5,
+                "range": 0.5,
+                "mode": mode,
+            },
+            "mesh": {"vertices": [], "cubes": []},
+        }
+
+    groups = [{"layers": []} for _ in range(11)]
+    groups[4]["layers"] = [mesh_layer(), mesh_layer(False)]
+    groups[5]["layers"] = [mesh_layer(), mesh_layer(False, 1)]
+    groups[6]["layers"] = [mesh_layer(False)]
+    groups[6]["layers"][0]["mesh"]["vertices"] = [1]
+    source = {
+        "preset": {
+            "meshLibrary": {"groups": groups},
+            "morphPanel": {
+                "position": {"time": 0.25, "red": 0.5, "blue": 0.75},
+                "linking": {"red": False, "blue": False},
+                "primaryAxis": 0,
+            },
+            "oscControls": {"knobs": [0.5, 0.5, 0.5]},
+            "effects": {
+                "ImpulseModeller": {"enabled": False},
+                "Unison": {
+                    "enabled": False,
+                    "groupMode": True,
+                    "knobs": [0.2, 0.3, 0.4, 0.5, 0.6],
+                },
+                "Delay": {
+                    "enabled": False,
+                    "knobs": [0.1, 0.2, 0.3, 0.4, 0.5],
+                },
+                "Reverb": {
+                    "enabled": False,
+                    "knobs": [0.1, 0.2, 0.3, 0.4, 0.5],
+                },
+                "EQ": {"enabled": False, "knobs": [0.1] * 10},
+                "Waveshaper": {
+                    "enabled": False,
+                    "knobs": [0.5, 0.5],
+                    "oversampleFactor": 1,
+                },
+            },
+            "settings": {"OversampleFactorRltm": 1},
+            "guideCurveProps": {"guides": []},
+            "modMatrix": {"mappings": []},
+            "multisample": {"samples": []},
+        },
+    }
+    source["preset"]["modMatrix"]["mappings"] = \
+        port_cycle_v1_preset.default_modulation_mappings_for_preset(
+            source["preset"])
+    return source
 
 
 class PortCycleV1PresetTest(unittest.TestCase):
+    def assert_compact_nodes_do_not_overlap(self, converted):
+        nodes = [
+            node for node in converted["nodes"]
+            if node["kind"] != "spectralLayer"
+        ]
+        for index, left in enumerate(nodes):
+            left_x = left["position"]["x"]
+            left_y = left["position"]["y"]
+            left_width, left_height = port_cycle_v1_preset.node_footprint(left)
+            for right in nodes[index + 1:]:
+                right_x = right["position"]["x"]
+                right_y = right["position"]["y"]
+                right_width, right_height = \
+                    port_cycle_v1_preset.node_footprint(right)
+                overlaps = (
+                    left_x < right_x + right_width
+                    and right_x < left_x + left_width
+                    and left_y < right_y + right_height
+                    and right_y < left_y + left_height
+                )
+                self.assertFalse(
+                    overlaps,
+                    f"{left['id']} overlaps {right['id']}",
+                )
+
+    def test_converter_preserves_layer_enablement_and_operation_order(self):
+        source = convertible_source()
+        for layer in source["preset"]["meshLibrary"]["groups"][5]["layers"]:
+            layer["mesh"]["vertices"] = [1]
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
+        self.assertFalse(nodes["timeLayer2"]["parameters"]["enabled"])
+        self.assertFalse(nodes["magnitudeLayer2"]["parameters"]["enabled"])
+        self.assertEqual(nodes["magnitudeOp1"]["kind"], "add")
+        self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
+        self.assertEqual(nodes["phaseOp1"]["kind"], "add")
+
+    def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
+        source = convertible_source()
+        magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]
+        magnitude["mesh"]["vertices"] = [1]
+        source["preset"]["meshLibrary"]["groups"][5]["layers"] = [
+            copy.deepcopy(magnitude) for _ in range(10)
+        ]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+        self.assert_compact_nodes_do_not_overlap(converted)
+
+        self.assertLess(nodes["voice"]["position"]["x"],
+                        nodes["timeLayer1"]["position"]["x"])
+        self.assertLess(nodes["timeLayer1"]["position"]["x"],
+                        nodes["fft"]["position"]["x"])
+        self.assertLess(nodes["fft"]["position"]["x"],
+                        nodes["ifft"]["position"]["x"])
+        self.assertLess(nodes["ifft"]["position"]["x"],
+                        nodes["output"]["position"]["x"])
+
+        mesh = nodes["magnitudeLayer1"]
+        operation = nodes["magnitudeOp1"]
+        mesh_width, _ = port_cycle_v1_preset.node_footprint(mesh)
+        operation_width, _ = port_cycle_v1_preset.node_footprint(operation)
+        self.assertAlmostEqual(
+            mesh["position"]["x"] + mesh_width / 2.0,
+            operation["position"]["x"] + operation_width / 2.0,
+        )
+        self.assertEqual(
+            nodes["magnitudeOp1"]["portSides"]["inputs"]["right"],
+            "top")
+        self.assertEqual(
+            nodes["phaseOp1"]["portSides"]["inputs"]["right"],
+            "bottom")
+        self.assertNotIn("outputs", nodes["magnitudeOp1"].get("portSides", {}))
+        self.assertNotIn("portSides", nodes["fft"])
+        self.assertNotIn("portSides", nodes["ifft"])
+        self.assertEqual(
+            nodes["magnitudeOp1"]["position"]["y"],
+            nodes["magnitudeOp10"]["position"]["y"])
+        self.assertEqual(
+            nodes["ifft"]["position"]["y"],
+            nodes["output"]["position"]["y"])
+
+    def test_converter_preserves_velocity_blue_modulation_source(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["blueSource"], "velocity")
+
+    def test_converter_preserves_mod_wheel_blue_modulation_source(self):
+        source = convertible_source()
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"], 101)
+
+        converted = port_cycle_v1_preset.convert(source)
+        morph = next(node for node in converted["nodes"] if node["id"] == "morph")
+
+        self.assertEqual(morph["parameters"]["blueSource"], "modWheel")
+
+    def test_time_layer_pan_uses_the_inline_pan_operation(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][4]["layers"][0] \
+            ["properties"]["pan"] = 1.0
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertEqual(nodes["timeLayer1Process"]["parameters"]["pan"], 1.0)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "timeLayer1"
+            and edge["destNodeId"] == "timeLayer1Process"
+            for edge in converted["edges"]
+        ))
+
+    def test_centered_time_layer_omits_the_no_op_pan(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("timeLayer1Process", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "timeLayer1"
+            and edge["destNodeId"] in ("timeOp1", "fft")
+            for edge in converted["edges"]
+        ))
+
+    def test_spectral_range_is_mapped_even_when_pan_is_centered(self):
+        source = convertible_source()
+        properties = source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["properties"]
+        properties["pan"] = 0.5
+        properties["range"] = 0.625
+        source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["mesh"]["vertices"] = [1]
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertEqual(
+            nodes["magnitudeLayer1"]["parameters"]["range"],
+            0.625)
+        self.assertNotIn("magnitudeLayer1Process", nodes)
+
+    def test_inactive_unconnected_pitch_envelopes_are_omitted(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertFalse(any(
+            node["id"].startswith("pitchEnvelope")
+            for node in converted["nodes"]
+        ))
+
+    def test_empty_phase_layer_is_bypassed(self):
+        source = convertible_source()
+        phase = source["preset"]["meshLibrary"]["groups"][6]["layers"][0]
+        phase["properties"]["active"] = True
+        phase["mesh"] = {"vertices": [], "cubes": []}
+        source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["mesh"]["vertices"] = [1]
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("phaseLayer1", nodes)
+        self.assertNotIn("phaseLayer1Process", nodes)
+        self.assertNotIn("phaseOp1", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["sourcePortId"] == "phase"
+            and edge["destNodeId"] == "ifft"
+            and edge["destPortId"] == "phase"
+            for edge in converted["edges"]
+        ))
+
+    def test_empty_magnitude_layer_is_bypassed(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("magnitudeLayer1", nodes)
+        self.assertNotIn("magnitudeLayer1Process", nodes)
+        self.assertNotIn("magnitudeOp1", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["sourcePortId"] == "mag"
+            and edge["destNodeId"] == "ifft"
+            and edge["destPortId"] == "mag"
+            for edge in converted["edges"]
+        ))
+
+    def test_transform_pair_is_omitted_without_nonempty_spectral_layers(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][6]["layers"][0]["mesh"] = {
+            "vertices": [],
+            "cubes": [],
+        }
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("fft", nodes)
+        self.assertNotIn("ifft", nodes)
+        self.assertFalse(any(
+            node["id"].startswith(("magnitudeLayer", "phaseLayer"))
+            for node in converted["nodes"]
+        ))
+        self.assertTrue(any(
+            edge["sourceNodeId"] != "ifft"
+            and edge["destNodeId"] == "output"
+            for edge in converted["edges"]
+        ))
+
+    def test_empty_phase_layer_does_not_break_later_phase_layer(self):
+        source = convertible_source()
+        phase_layers = source["preset"]["meshLibrary"]["groups"][6]["layers"]
+        nonempty = copy.deepcopy(phase_layers[0])
+        empty = copy.deepcopy(nonempty)
+        empty["mesh"] = {"vertices": [], "cubes": []}
+        phase_layers[:] = [empty, nonempty]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertIn("phaseLayer1", nodes)
+        self.assertNotIn("phaseLayer2", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["destNodeId"] == "phaseOp1"
+            for edge in converted["edges"]
+        ))
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "phaseOp1"
+            and edge["destNodeId"] == "ifft"
+            for edge in converted["edges"]
+        ))
+
+    def test_missing_realtime_oversampling_uses_cycle_default(self):
+        source = convertible_source()
+        del source["preset"]["settings"]["OversampleFactorRltm"]
+
+        converted = port_cycle_v1_preset.convert(source)
+        voice = next(node for node in converted["nodes"] if node["id"] == "voice")
+
+        self.assertEqual(voice["parameters"]["oversampling"], "1x")
+
+    def test_missing_oscillator_controls_use_cycle_defaults(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"] = []
+
+        converted = port_cycle_v1_preset.convert(source)
+        voice = next(node for node in converted["nodes"] if node["id"] == "voice")
+
+        self.assertEqual(voice["parameters"]["octave"], 0)
+
+    def test_missing_guide_properties_use_cycle_defaults(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][3]["layers"] = [{
+            "properties": {"active": True},
+            "mesh": {"vertices": [], "cubes": []},
+        }]
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertEqual(converted["guides"][0]["noise"], 0.0)
+        self.assertEqual(converted["guides"][0]["dcOffset"], 0.0)
+        self.assertEqual(converted["guides"][0]["phase"], 0.0)
+
+    def test_missing_legacy_equalizer_is_disabled(self):
+        source = convertible_source()
+        source["preset"]["effects"]["EQ"] = None
+
+        converted = port_cycle_v1_preset.convert(source)
+
+        self.assertFalse(any(
+            node["kind"] == "equalizer" for node in converted["nodes"]))
+
+    def test_active_wave_pitch_envelope_is_reported(self):
+        source = convertible_source()
+        source["preset"]["effects"]["ImpulseModeller"]["waveLoaded"] = True
+        source["preset"]["meshLibrary"]["groups"][8]["layers"] = [{
+            "properties": {"active": True},
+        }]
+
+        issues = port_cycle_v1_preset.validate_conversion(source)
+
+        self.assertIn(
+            "active wave-pitch Envelope has no Cycle V2 destination",
+            issues,
+        )
+
+    def test_delay_uses_the_shared_cycle_parameter_order(self):
+        source = convertible_source()
+        source["preset"]["effects"]["Delay"]["enabled"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        delay = next(node for node in converted["nodes"] if node["id"] == "delay")
+
+        self.assertEqual(delay["parameters"], {
+            "enabled": True,
+            "time": 0.1,
+            "feedback": 0.2,
+            "spinIters": 0.3,
+            "spin": 0.4,
+            "wet": 0.5,
+        })
+
+    def test_equalizer_and_reverb_keep_cycle_parameter_order(self):
+        source = convertible_source()
+        source["preset"]["effects"]["EQ"]["enabled"] = True
+        source["preset"]["effects"]["Reverb"]["enabled"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertEqual(nodes["equalizer"]["parameters"]["band1Gain"], 0.1)
+        self.assertEqual(nodes["equalizer"]["parameters"]["band1Frequency"], 0.1)
+        self.assertEqual(nodes["reverb"]["parameters"], {
+            "enabled": True,
+            "size": 0.1,
+            "damp": 0.2,
+            "width": 0.3,
+            "highPass": 0.4,
+            "wet": 0.5,
+        })
+
+    def test_group_unison_uses_the_shared_cycle_mapping(self):
+        source = convertible_source()
+        source["preset"]["effects"]["Unison"]["enabled"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertEqual(nodes["unison"]["parameters"], {
+            "enabled": True,
+            "mode": "group",
+            "order": 6,
+            "width": 14.0,
+            "panSpread": 0.3,
+            "phase": 0.4,
+            "jitter": 0.6,
+        })
+        self.assertEqual(nodes["unison"]["model"]["schema"], "unisonVoices")
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "unison"
+            and edge["destPortId"] == "unison"
+            for edge in converted["edges"]
+        ))
+
+    def test_drawn_impulse_response_uses_the_shared_cycle_mapping(self):
+        source = convertible_source()
+        source["preset"]["effects"]["ImpulseModeller"].update({
+            "enabled": True,
+            "waveLoaded": False,
+            "knobs": [0.2, 0.3, 0.4],
+        })
+        source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
+            "properties": {"active": True},
+            "mesh": {"vertices": [], "cubes": []},
+        }]
+
+        converted = port_cycle_v1_preset.convert(source)
+        impulse = next(
+            node for node in converted["nodes"]
+            if node["id"] == "impulseResponse")
+
+        self.assertEqual(impulse["parameters"], {
+            "enabled": True,
+            "size": 0.2,
+            "post": 0.3,
+            "highPass": 0.4,
+        })
+
+    def test_legacy_impulse_response_defaults_missing_high_pass(self):
+        source = convertible_source()
+        source["preset"]["effects"]["ImpulseModeller"].update({
+            "enabled": True,
+            "waveLoaded": False,
+            "knobs": [0.2, 0.3],
+        })
+        source["preset"]["meshLibrary"]["groups"][10]["layers"] = [{
+            "properties": {"active": True},
+            "mesh": {"vertices": [], "cubes": []},
+        }]
+
+        converted = port_cycle_v1_preset.convert(source)
+        impulse = next(
+            node for node in converted["nodes"]
+            if node["id"] == "impulseResponse")
+
+        self.assertEqual(impulse["parameters"]["highPass"], 0.0)
+
     def test_supported_subset_has_no_validation_issues(self):
         self.assertEqual(
             port_cycle_v1_preset.validate_audio_parity_subset(supported_source()),

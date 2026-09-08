@@ -21,6 +21,8 @@ public:
 
     explicit Document(SingletonRepo* repo);
 
+    static var readPresetJSON(const String& filename, int magicValue);
+
     bool open(const String& filename);
     bool open(InputStream* stream);
     bool saveHeaderValidated(DocumentDetails& updatedDetails);
@@ -121,6 +123,7 @@ public:
 protected:
     static Identifier getJsonSectionKey(Savable* savableItem);
     static var createJsonRoot(DocumentDetails& details, const Array<Savable*>& savableItems);
+    static var readPresetJSON(InputStream* stream, DocumentDetails& details, int magicValue);
     bool applyJsonRoot(const var& root);
     bool validate();
 

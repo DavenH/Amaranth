@@ -1,5 +1,6 @@
 #include <array>
 
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
@@ -10,6 +11,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EnvelopeToolbarMetrics.h"
+#include "UI/EffectEnableButton.h"
 #include "UiIconData.h"
 
 namespace CycleV2 {
@@ -78,7 +80,10 @@ private:
 
 struct EnvelopeEditorComponent::Impl {
     explicit Impl(Component& owner) :
-            redMorph    (owner, "Red")
+            enabled     ("Envelope enabled",
+                         "Toggles this Envelope layer",
+                         "Enable or disable this Envelope layer")
+        ,   redMorph    (owner, "Red")
         ,   blueMorph   (owner, "Blue")
         ,   tooltipHost (&owner, 500) {
         stylePropertyLabel(timeLabel, "Time");
@@ -93,6 +98,7 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(fullVertical);
     }
 
+    EffectEnableButton enabled;
     LabeledParameterSlider redMorph;
     LabeledParameterSlider blueMorph;
     TooltipWindow tooltipHost;
@@ -135,6 +141,9 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
+    impl->enabled.setComponentID("envelopeEditor.enabled");
+    setHeaderAction(impl->enabled);
+    bindDiscreteAction(impl->enabled, [] {});
     impl->mode.onChange = [this](EnvelopePurpose) {
         publishDiscreteControlChange();
     };
@@ -257,6 +266,9 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     EnvelopeNodeModel model;
     model.syncFromNode(node);
     const EnvelopePurpose purpose = envelopePurposeFor(node);
+    impl->enabled.setToggleState(
+            NodeParameterMap(node).boolValue("enabled", true),
+            dontSendNotification);
     impl->mode.setPurpose(purpose);
     impl->redMorph.slider.setValue(model.red, dontSendNotification);
     impl->blueMorph.slider.setValue(model.blue, dontSendNotification);
@@ -298,6 +310,12 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
     addEditorParameter(
             result,
             node,
+            "enabled",
+            "Enabled",
+            impl->enabled.getToggleState() ? "1" : "0");
+    addEditorParameter(
+            result,
+            node,
             "purpose",
             "Purpose",
             envelopePurposeToString(purpose));
@@ -317,6 +335,7 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
 void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const {
     const auto controls = editorControlBounds();
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
+    state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
     state.setProperty("viewAxis", impl->viewAxis);
     state.setProperty("modeLabel", "Purpose");

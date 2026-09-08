@@ -457,8 +457,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 }
                 break;
 
-            case CanvasNodeActionKind::CycleMeshOutputSide:
-                if (cycleMeshOutputSide(action->nodeId)) {
+            case CanvasNodeActionKind::CycleOutputSide:
+                if (cycleOutputSide(action->nodeId)) {
                     editStatusMessage = "Output side cycled";
                     requestCanvasRepaint();
                 }
@@ -1009,6 +1009,11 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
     const Node* edgeDestination = graph.findNode(edge.destNodeId);
     const bool hasPan = (edgeSource != nullptr && edgeSource->kind == NodeKind::SpectralLayer)
             || (edgeDestination != nullptr && edgeDestination->kind == NodeKind::SpectralLayer);
+    const String panNodeId = edgeSource != nullptr && edgeSource->kind == NodeKind::SpectralLayer
+            ? edgeSource->id
+            : (edgeDestination != nullptr && edgeDestination->kind == NodeKind::SpectralLayer
+                    ? edgeDestination->id
+                    : String {});
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
@@ -1025,14 +1030,14 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
 
     PopupMenu menu;
     menu.addItem(1, spying ? "Stop Spying" : "Spy on Signal");
-    menu.addItem(2, "Add Panning", !hasPan);
+    menu.addItem(2, hasPan ? "Stop Panning" : "Add Panning");
     menu.addSeparator();
     menu.addItem(3, "Delete Cable");
     menu.showMenuAsync(
             PopupMenu::Options()
                     .withTargetComponent(this)
                     .withMousePosition(),
-            [safeThis = SafePointer<NodeCanvas>(this), edge, panPosition, probeId](int result) {
+            [safeThis = SafePointer<NodeCanvas>(this), edge, panPosition, probeId, panNodeId](int result) {
                 if (safeThis == nullptr) {
                     return;
                 }
@@ -1062,8 +1067,13 @@ void NodeCanvas::showEdgeMenu(int edgeIndex, Point<float> screenPosition) {
                                 safeThis->authoring.toggleSignalProbe(currentExtraEdgeIndex, 0.5f));
                     }
                 } else if (result == 2) {
-                    safeThis->applyAuthoringResult(
-                            safeThis->authoring.insertPanIntoEdge(currentEdgeIndex, panPosition));
+                    if (panNodeId.isNotEmpty()) {
+                        safeThis->applyAuthoringResult(
+                                safeThis->authoring.removePanFromCable(panNodeId));
+                    } else {
+                        safeThis->applyAuthoringResult(
+                                safeThis->authoring.insertPanIntoEdge(currentEdgeIndex, panPosition));
+                    }
                 } else if (result == 3) {
                     safeThis->applyAuthoringResult(safeThis->authoring.deleteEdge(currentEdgeIndex));
                 }
@@ -1717,8 +1727,8 @@ bool NodeCanvas::cycleSinglePortLayout(const String& nodeId) {
     return applyAuthoringResult(authoring.cycleSinglePortLayout(nodeId));
 }
 
-bool NodeCanvas::cycleMeshOutputSide(const String& nodeId) {
-    return applyAuthoringResult(authoring.cycleMeshOutputSide(nodeId));
+bool NodeCanvas::cycleOutputSide(const String& nodeId) {
+    return applyAuthoringResult(authoring.cycleOutputSide(nodeId));
 }
 
 bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {

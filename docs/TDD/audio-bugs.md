@@ -447,7 +447,7 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
-## Open: Full Cycle V2 suite intermittently cannot create IR fixture waves
+## Open: Cycle V2 tests cannot create IR fixtures in the default temp directory
 
 Context:
 
@@ -456,9 +456,13 @@ Context:
   because `File::createOutputStream()` returned null.
 - The cable Pan presentation work does not alter IR resource preparation or
   temporary-file handling; all focused Pan tests pass.
+- The failure reproduced in a focused `[ir-resource]` run on 2026-09-07 under
+  the workspace sandbox, so it is not dependent on full-suite ordering.
+- Full-suite log: `/private/tmp/cycle-v2-full-tests.log`.
 
-Current status: open; reproduce under the full-suite temporary-file lifecycle
-and determine whether fixture filenames or cleanup race with another case.
+Current status: open as a sandbox/test-fixture path issue. Give the fixture an
+explicitly writable test root and retain the existing resource-preparation
+contract.
 
 ## Open: Full library order corrupts rasterizer comparison curve resolution
 
@@ -518,6 +522,24 @@ Context:
 
 Current status: open; reconcile the bundled Stengah phase-layer state and
 spectral materialization parity before restoring this full-suite gate.
+
+## Open: Stengah preview omits the authored phase-layer probe
+
+Context:
+
+- The full Cycle V2 suite and a focused rerun on 2026-09-07 fail
+  `Stengah scratch topology changes every authored source-layer traversal` at
+  `TestGraphAudioExecutor.cpp:1800` because preview results do not contain
+  authored probe `probe7`.
+- The preceding runtime comparisons pass: scratch changes each expected
+  traversal, and the two phase layers retain their opposite stereo channels.
+- The migration work does not modify the protected bundled Stengah graph or
+  probe-preview construction. Full-suite log:
+  `/private/tmp/cycle-v2-full-tests.log`.
+
+Current status: open; trace why `GraphPreviewExecutor` omits this connected
+phase probe after successful audio execution before changing the preset or
+preview expectations.
 
 ## Addressed: Curve FX processor tests omitted required model state
 

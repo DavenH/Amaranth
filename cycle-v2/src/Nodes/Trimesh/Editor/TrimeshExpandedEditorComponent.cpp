@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "Graph/NodeParameterMap.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 
@@ -21,6 +22,13 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
+    enabled.setComponentID("trimeshEditor.enabled");
+    enabled.onClick = [this] {
+        if (delegate != nullptr) {
+            delegate->setTrimeshEnabled(enabled.getToggleState());
+        }
+    };
+    addAndMakeVisible(enabled);
     widget.setExpandedPanelHostDelegate(this);
 }
 
@@ -35,6 +43,9 @@ void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* 
 
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
+    enabled.setToggleState(
+            NodeParameterMap(node).boolValue("enabled", true),
+            dontSendNotification);
     updatePanelHosts();
     updateControlsHost();
     repaint();
@@ -52,6 +63,7 @@ void TrimeshExpandedEditorComponent::setDisplayDomain(PortDomain domain) {
 void TrimeshExpandedEditorComponent::setRenderProfile(TrimeshRenderProfile profile) {
     renderProfile = profile;
     widget.setRenderProfile(profile);
+    controls.refreshHitRegions();
     repaint();
 }
 
@@ -65,6 +77,14 @@ void TrimeshExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             node,
             contentBounds().translated((float) getX(), (float) getY()),
             scaleFactor);
+}
+
+bool TrimeshExpandedEditorComponent::showsSpectralRange() const {
+    return controls.getSpectralRangeSliderCount() == 1;
+}
+
+float TrimeshExpandedEditorComponent::spectralRangeValue() const {
+    return NodeParameterMap(node).floatValue("range", 0.5f);
 }
 
 void TrimeshExpandedEditorComponent::paint(Graphics& g) {
@@ -84,7 +104,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     g.fillRoundedRectangle(panel, CanvasChromeMetrics::panelCornerRadius);
     g.restoreState();
 
-    const auto headerLayout = embeddedEditorHeaderLayout(panel);
+    const auto headerLayout = embeddedEditorHeaderLayout(panel, true);
     const Rectangle<float> header = headerLayout.header;
     g.setColour(Colour(0xff202833));
     g.fillRoundedRectangle(header, CanvasChromeMetrics::panelCornerRadius);
@@ -121,6 +141,8 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
 }
 
 void TrimeshExpandedEditorComponent::resized() {
+    enabled.setBounds(embeddedEditorHeaderLayout(
+            getLocalBounds().toFloat(), true).enabled.toNearestInt());
     updatePanelHosts();
     updateControlsHost();
 }
@@ -170,20 +192,66 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {
-    if (delegate != nullptr) {
-        delegate->beginTrimeshMorphEdit(id, value);
+    if (delegate != nullptr && delegate->beginTrimeshMorphEdit(id, value)) {
+        setLocalMorphValue(id, value);
     }
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
-    if (delegate != nullptr) {
-        delegate->updateTrimeshMorphEdit(value);
+    if (delegate != nullptr && delegate->updateTrimeshMorphEdit(value)) {
+        setLocalMorphValue({}, value);
     }
 }
 
 void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
+    }
+    activeMorphParameterId = {};
+}
+
+void TrimeshExpandedEditorComponent::beginTrimeshRangeControlEdit(float value) {
+    if (delegate != nullptr && delegate->beginTrimeshRangeEdit(value)) {
+        setLocalSpectralRange(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshRangeControlEdit(float value) {
+    if (delegate != nullptr && delegate->updateTrimeshRangeEdit(value)) {
+        setLocalSpectralRange(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::endTrimeshRangeControlEdit() {
+    if (delegate != nullptr) {
+        delegate->endTrimeshRangeEdit();
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalSpectralRange(float value) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "range") {
+            parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            repaint();
+            return;
+        }
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalMorphValue(const String& id, float value) {
+    const String parameterId = id.isNotEmpty() ? id : activeMorphParameterId;
+    if (parameterId.isEmpty()) {
+        return;
+    }
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == parameterId) {
+            parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            activeMorphParameterId = parameterId;
+            widget.syncFromNode(node);
+            repaint();
+            return;
+        }
     }
 }
 
@@ -230,7 +298,7 @@ void TrimeshExpandedEditorComponent::requestTrimeshPanelRepaint() {
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::closeButtonBounds() const {
-    return embeddedEditorHeaderLayout(getLocalBounds().toFloat()).close;
+    return embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true).close;
 }
 
 Rectangle<float> TrimeshExpandedEditorComponent::contentBounds() const {
@@ -303,6 +371,7 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
     panel2D->toFront(false);
 
     controls.toFront(false);
+    enabled.toFront(false);
 }
 
 void TrimeshExpandedEditorComponent::updateControlsHost() {
@@ -311,6 +380,7 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
     controls.setContentBounds(contentBounds());
     controls.setVisible(node.kind == NodeKind::TrilinearMesh);
     controls.toFront(false);
+    enabled.toFront(false);
 }
 
 }

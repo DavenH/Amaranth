@@ -7,6 +7,7 @@
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
 
@@ -286,6 +287,8 @@ public:
         switch (kind) {
         case TrimeshExpandedHitRegionKind::MorphControl:
             return "trimeshMorphRail";
+        case TrimeshExpandedHitRegionKind::SpectralRange:
+            return "trimeshSpectralRange";
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
             return "trimeshPrimaryAxis";
         case TrimeshExpandedHitRegionKind::LinkToggle:
@@ -452,7 +455,13 @@ public:
             targets.add(pointerTargetToVar("expanded:" + node.id + ".panel2D", "trimeshPanel2D",
                                            TrimeshWidget::expandedWavePanelContentBounds(content), node.id));
 
-            for (const auto& region : TrimeshWidget::expandedControlHitRegions(content)) {
+            const auto* trimeshEditor = dynamic_cast<const TrimeshExpandedEditorComponent*>(
+                    editorComponent);
+            const bool showSpectralRange = trimeshEditor != nullptr
+                    && trimeshEditor->showsSpectralRange();
+            for (const auto& region : TrimeshWidget::expandedControlHitRegions(
+                    content,
+                    showSpectralRange)) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
                 const Rectangle<float> targetBounds =

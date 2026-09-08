@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 
+#include "../src/App/Doc/Document.h"
 #include "../src/App/Doc/DocumentDetails.h"
 #include "../src/App/MeshLibrary.h"
 #include "../src/App/Doc/PresetJson.h"
@@ -402,4 +403,44 @@ TEST_CASE("PresetMigrator preserves legacy LineCube topology and standard effect
     const auto& voices = requireArray(property(property(effects, "Unison"), "voices"));
     REQUIRE(voices.size() == 1);
     REQUIRE(double(property(voices.getReference(0), "phase")) == Approx(0.5));
+}
+
+TEST_CASE("Document unwraps archived legacy presets before migration", "[preset][migration][archive]") {
+    const String detailsXml = R"xml(
+<PresetDetails name="Archived" author="Daven" pack="legacy" revision="3"/>
+)xml";
+    const String presetXml = R"xml(
+<Preset VersionValue="0.65">
+  <AllMeshes>
+    <TimeLayer TimeLayerSize="1"><TimeMesh0><Mesh name="TimeMesh0"/></TimeMesh0></TimeLayer>
+  </AllMeshes>
+</Preset>
+)xml";
+    TemporaryFile temporary(
+            File::getCurrentWorkingDirectory().getChildFile("test-legacy-archive.cyc"));
+    ZipFile::Builder builder;
+    builder.addEntry(
+            new MemoryInputStream(detailsXml.toRawUTF8(), detailsXml.getNumBytesAsUTF8(), true),
+            0,
+            "Archived.cyc.details",
+            Time());
+    builder.addEntry(
+            new MemoryInputStream(presetXml.toRawUTF8(), presetXml.getNumBytesAsUTF8(), true),
+            0,
+            "Archived.cyc.preset",
+            Time());
+    {
+        std::unique_ptr<FileOutputStream> output(temporary.getFile().createOutputStream());
+        REQUIRE(output != nullptr);
+        REQUIRE(builder.writeToStream(*output, nullptr));
+    }
+
+    const var root = Document::readPresetJSON(
+            temporary.getFile().getFullPathName(), 0x12345678);
+    const var preset = property(root, "preset");
+    const var details = property(preset, "details");
+
+    REQUIRE(property(root, "format").toString() == "amaranth-preset");
+    REQUIRE(property(details, "name").toString() == "Archived");
+    REQUIRE(PresetJson::getObject(property(preset, "meshLibrary")) != nullptr);
 }

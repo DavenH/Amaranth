@@ -1,5 +1,29 @@
 # Refactor Notes
 
+## Cycle V2 first-class layer stack ownership
+
+The Cycle 1 preset migration preserves Envelope and Trilinear Mesh enablement
+on each source node. Until Cycle V2 has first-class time and spectral layer
+stacks, a Trimesh configuration derives additive or multiplicative treatment
+from its downstream operation topology while DSP configurations are built.
+This keeps one durable owner and avoids audio-thread graph access, but the
+downstream inspection is a temporary boundary translation.
+
+Introduce domain-owned layer objects/stacks before adding broader layer
+controls. Move `enabled`, range, and operation topology with that owner, then
+delete the downstream operation inspection in `NodeDspConfiguration.cpp`.
+Pan remains an independent cable operation and reuses Cycle 1's
+`Arithmetic::getPans` behavior without another editable bypass flag.
+
+Pan still carries compatibility-era internal names: serialized kind
+`spectralLayer`, `NodeKind::SpectralLayer`, `AudioModuleRole::SpectralLayer`,
+and `SpectralLayerNodeAudioProcessor`. When the graph format next supports a
+kind alias, rename these together behind a read-only `spectralLayer` alias and
+keep `PanConfiguration` as the domain-neutral runtime contract. Do not add a
+parallel time-Pan node or duplicate its gain law while that naming migration
+is pending. Spectral range now belongs to Trimesh and operation mode comes from
+Add/Multiply topology, so centered Pan is uniformly removable in every domain.
+
 ## Panel line-strip coordinate ownership
 
 `CommonGL::drawLineStrip` scales its caller-owned `BufferXY` in place when its

@@ -19,6 +19,54 @@ namespace CycleV2 {
 
 namespace {
 
+const Node* connectedSignalDestination(const NodeGraph* graph, const String& nodeId) {
+    if (graph == nullptr) {
+        return nullptr;
+    }
+    for (const auto& edge : graph->getEdges()) {
+        if (edge.sourceNodeId == nodeId && edge.sourcePortId == "out" && !edge.isAttachment()) {
+            return graph->findNode(edge.destNodeId);
+        }
+    }
+    return nullptr;
+}
+
+const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = connectedSignalDestination(graph, nodeId);
+    if (destination != nullptr && destination->kind == NodeKind::SpectralLayer) {
+        destination = connectedSignalDestination(graph, destination->id);
+    }
+    return destination;
+}
+
+bool feedsSpectralOperation(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    return destination != nullptr
+            && (destination->kind == NodeKind::Add || destination->kind == NodeKind::Multiply);
+}
+
+bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    return destination != nullptr && destination->kind == NodeKind::Multiply;
+}
+
+bool scratchSourceEnabled(const NodeGraph* graph, const String& nodeId) {
+    if (graph == nullptr) {
+        return true;
+    }
+    for (const auto& edge : graph->getEdges()) {
+        if (edge.destNodeId != nodeId
+                || edge.destPortId != "scratch"
+                || edge.attachmentType != AttachmentType::ScratchEnvelope) {
+            continue;
+        }
+        const Node* source = graph->findNode(edge.sourceNodeId);
+        return source == nullptr
+                || NodeParameterMap(*source).boolValue("enabled", true);
+    }
+    return true;
+}
+
 std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
@@ -33,6 +81,11 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     const NodeParameterMap parameterMap(parameters);
+    configuration->enabled = parameterMap.boolValue("enabled", true);
+    configuration->range = parameterMap.floatValue("range", 0.5f);
+    configuration->appliesSpectralRange = feedsSpectralOperation(graph, nodeId);
+    configuration->multiplicative = feedsMultiply(graph, nodeId);
+    configuration->scratchSourceEnabled = scratchSourceEnabled(graph, nodeId);
     configuration->mesh = typedModel->sharedMesh();
     if (graph != nullptr) {
         const Node* node = graph->findNode(nodeId);
@@ -77,6 +130,14 @@ String NodeDspConfigurationFactory::keyFor(
     }
     if (graph != nullptr) {
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
+    }
+    if (role == AudioModuleRole::MeshSource) {
+        key << ":scratchSourceEnabled=" << (scratchSourceEnabled(graph, nodeId) ? 1 : 0);
+        key << ":spectralOperation=" << (feedsSpectralOperation(graph, nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
+    }
+    if (role == AudioModuleRole::SpectralLayer) {
+        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
@@ -147,14 +208,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     == "acyclicCarry";
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
-        { AudioModuleRole::SpectralLayer, [](AudioModuleRole, const auto& values, const auto&) {
-            auto configuration = std::make_shared<SpectralLayerConfiguration>();
-            const NodeParameterMap parameters(values);
-            configuration->pan = parameters.floatValue("pan", 0.5f);
-            configuration->range = parameters.floatValue("range", 0.5f);
-            configuration->additive = parameters.stringValue("mode", "additive") == "additive";
-            return std::shared_ptr<const INodeDspConfiguration>(configuration);
-        } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {
             return std::shared_ptr<const INodeDspConfiguration>(
                     WaveshaperSignalProcessor::buildConfiguration(values, modelState));
@@ -187,6 +240,14 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                     EnvelopeSignalProcessor::buildConfiguration(values, modelState));
         } }
     };
+
+    if (role == AudioModuleRole::SpectralLayer) {
+        auto configuration = std::make_shared<PanConfiguration>();
+        const NodeParameterMap parameterMap(parameters);
+        configuration->pan = parameterMap.floatValue("pan", 0.5f);
+        configuration->multiplicative = feedsMultiply(graph, nodeId);
+        return configuration;
+    }
 
     for (const auto& registration : registrations) {
         if (registration.role == role) {
