@@ -2,10 +2,16 @@
 
 ## Status
 
-In progress. The typed prepared-process context, shared morph resolution,
-center-timeline spectral-frame refresh, scratch/timed-control sampling, and
-shared-frame Unison behavior are implemented. The differential preset matrix
-and final stage-localization report remain incomplete.
+Implemented on 2026-09-08. Prepared spectral regions now resolve live controls
+and scratch state on the shared synthesis-cycle timeline, rerasterize evolving
+frames at cycle frontiers, and share each frame across Unison lanes. The
+runtime is byte-identical across host block partitions and repeatable across
+notes and fresh processes.
+
+Fresh differential renders still differ from Cycle 1 at the captured
+effect-free final voice-output boundary. That remaining end-to-end parity work
+is retained in `docs/TDD/audio-bugs.md`; the prior frozen-frame cause is
+resolved and is no longer hidden behind that final waveform metric.
 
 This document is intentionally independent of the completed harmonic-region
 correction. The implementation at the start of this work rendered one prepared
@@ -369,6 +375,44 @@ first unequal boundary determines the next fix.
 - Relevant entries in `docs/TDD/audio-bugs.md` are resolved or narrowed to a
   different documented subsystem.
 
+## Completion Evidence
+
+- `PreparedOscillatorProcessContext` carries the voice, segment, control, and
+  attachment timing needed by prepared renderers without graph/model access.
+- `TrimeshMorphResolver` is shared by ordinary and prepared Trimesh execution.
+  Unsupported external topology prevents a consumer from being absorbed into
+  the prepared oscillator region rather than freezing its input.
+- `SpectralOscillatorRegionRuntime` refreshes frames on its shared center-lane
+  cycle clock. Frame generation is independent of lane count; pitch, phase,
+  pan, carry, and cyclic resampling remain lane-local.
+- The deterministic preset runtime matrix covers Saw, Filter Saw, PWM, Dunk 2,
+  and Japan Drum at MIDI 36, 48, 60, and 72, note lengths of 1024 and 4096
+  samples, and host blocks of 64, 127, 256, and 512 samples. Output channels,
+  scratch signals, and frame-render counts are byte-identical to the 512-sample
+  reference partition (4720 assertions).
+- Focused control tests cover static fallback, voice time, key, velocity,
+  pressure, modulation wheel, MIDI CC, timed events, scratch enable/disable,
+  repeated-note reset, frame sharing, and allocation-free processing. The full
+  oscillator-region suite passes (5761 assertions).
+- `scripts/test_cycle_v2_time_evolution.py` validates visible Dunk 2 spectral
+  evolution, PWM duty-cycle motion, scratch influence, two fully released
+  notes in one process, and fresh-process WAV identity. Its final run reported
+  a 5.614 dB Dunk 2 evolution, 0.263 PWM duty excursion, 0.316 scratch/no-
+  scratch duty difference, 0.018 maximum repeat-note duty difference, and
+  byte-identical fresh-process WAV files.
+- Existing static spectral reference, fixed-frame FFT, and realtime allocation
+  regressions remain passing. The complete test suite passes all 879 cases.
+  Modified DSP hot paths contain no new scalar `std::<math>` operations in
+  their inner loops.
+- Fresh Filter Saw and Japan Drum differential runs are deterministic within
+  each engine, but their effect-free final voice outputs remain unequal. This
+  is boundary 6 of the differential capture plan. Filter Saw correlations are
+  `0.94219`, `0.91977`, `0.88743`, and `0.84886` at MIDI 36, 48, 60, and 72;
+  Japan Drum correlations are `0.22121`, `0.34862`, `0.24436`, and `0.23510`.
+  The shared fixed-frame rasterization/FFT reference tests remain exact, so the
+  next parity investigation must add cross-engine captures for boundaries 1–5
+  rather than attributing the residual to missing live frame refresh.
+
 ## Deletion Targets
 
 - Remove the one-shot `frameReady` assumption as the lifetime policy for an
@@ -383,7 +427,7 @@ first unequal boundary determines the next fix.
 - Remove any fallback that silently accepts unsupported live control topology
   by freezing it.
 
-## Open Design Questions Requiring Characterization
+## Resolved Design Questions
 
 - Does Cycle 1 sample smoothed mesh properties at the current or future frame
   frontier in every compositing mode?
@@ -397,9 +441,13 @@ first unequal boundary determines the next fix.
   topology without lookahead, or must some regions deliberately remain on the
   ordinary exact path?
 
-Resolve these from authoritative code and characterization tests before
-finalizing the process-context interface. Do not choose answers merely because
-they simplify the prepared runtime.
+The authoritative Cycle 1 code and the characterization tests resolve these as
+follows: smoothing and envelopes advance to the future frame frontier before
+rasterization; events dispatched at a segment boundary are visible at that
+frontier; scratch advances by the same elapsed frontier distance; the rendered
+frame transition is shared while lane clocks and output state remain local;
+and unsupported external control topology ends prepared-region admission at
+the oscillator boundary.
 
 ## Cycle 1 Timing Characterization
 
