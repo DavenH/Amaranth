@@ -13,8 +13,21 @@ public:
         return expf(5.f * range);
     }
 
+    static float rangeForPhaseOffsetScale(float scale) {
+        return logf(scale) / 5.f;
+    }
+
     static float magnitudeDynamicRange(float range) {
         return sqrtf(powf(2.f, 12.f * range - 4.f));
+    }
+
+    static float magnitudeRangeScale(float range) {
+        const float dynamicRange = magnitudeDynamicRange(range);
+        return dynamicRange * dynamicRange;
+    }
+
+    static float rangeForMagnitudeScale(float scale) {
+        return (log2f(scale) + 4.f) / 12.f;
     }
 
     static void shapeMagnitude(

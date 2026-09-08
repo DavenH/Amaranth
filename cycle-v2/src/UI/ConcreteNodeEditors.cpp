@@ -283,12 +283,12 @@ private:
         commands.toggleTrimeshLinkAxisValue(nodeId, axis);
     }
 
-    void beginTrimeshMorphEdit(const String& id, float value) override {
-        commands.beginTrimeshMorphEdit(nodeId, id, value);
+    bool beginTrimeshMorphEdit(const String& id, float value) override {
+        return commands.beginTrimeshMorphEdit(nodeId, id, value);
     }
 
-    void updateTrimeshMorphEdit(float value) override {
-        commands.updateTrimeshMorphEditValue(value);
+    bool updateTrimeshMorphEdit(float value) override {
+        return commands.updateTrimeshMorphEditValue(value);
     }
 
     void endTrimeshMorphEdit() override {

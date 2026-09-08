@@ -21,8 +21,8 @@ public:
     virtual void setTrimeshEnabled(bool enabled) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
-    virtual void beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
-    virtual void updateTrimeshMorphEdit(float value) = 0;
+    virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
+    virtual bool updateTrimeshMorphEdit(float value) = 0;
     virtual void endTrimeshMorphEdit() = 0;
     virtual bool beginTrimeshRangeEdit(float value) = 0;
     virtual bool updateTrimeshRangeEdit(float value) = 0;
@@ -69,6 +69,7 @@ private:
     void updatePanelHosts();
     void updateControlsHost();
     void setLocalSpectralRange(float value);
+    void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
@@ -95,6 +96,7 @@ private:
             "Enable or disable this Trimesh layer"
     };
     Node node;
+    juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)

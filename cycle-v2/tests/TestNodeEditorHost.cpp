@@ -2532,13 +2532,17 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             presentation,
             resources);
 
-    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
     commands.endTrimeshMorphEdit();
 
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
-    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.5");
 }
 
 TEST_CASE("Trimesh link toggles survive rebind and undo",

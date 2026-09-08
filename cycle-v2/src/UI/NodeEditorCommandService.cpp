@@ -471,7 +471,6 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
             activeMorphNodeId,
             activeMorphParameterId,
             activeMorphFingerprint);
-    presentation.rebindNodeEditorTransient();
     presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
     presentation.repaintNodeEditor(false);
     return true;

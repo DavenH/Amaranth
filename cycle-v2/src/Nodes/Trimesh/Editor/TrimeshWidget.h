@@ -171,9 +171,18 @@ private:
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
     static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);
     static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
-    static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> morphArea, int axisIndex);
-    static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> morphArea, int axisIndex);
-    static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> morphArea, int axisIndex);
+    static juce::Rectangle<float> morphRailBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> primaryAxisBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> linkToggleBounds(
+            juce::Rectangle<float> morphArea,
+            int axisIndex,
+            bool showSpectralRange = false);
     static juce::String primaryAxisValue(int axis);
     juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> content) const;
     static juce::Rectangle<float> vertexParameterRowBounds(juce::Rectangle<float> parameterArea, int parameterIndex);

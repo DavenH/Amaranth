@@ -24,6 +24,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Intercept.h>
 #include <Util/LogRegionMapping.h>
 
@@ -484,9 +485,9 @@ TEST_CASE("Envelope vertex rails reclaim unsupported Guide control space",
 TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
     const Rectangle<float> sideArea { 100.f, 50.f, 360.f, 420.f };
 
-    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea, true);
     const Rectangle<float> parameterArea =
-            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea, true);
     REQUIRE(sideArea.contains(cube));
     REQUIRE(sideArea.contains(parameterArea));
     REQUIRE_FALSE(cube.intersects(parameterArea));
@@ -494,9 +495,11 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
 
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> morphRail =
-                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i);
-        const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
-        const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
+                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i, true);
+        const Rectangle<float> primary =
+                TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i, true);
+        const Rectangle<float> link =
+                TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i, true);
 
         REQUIRE(sideArea.contains(morphRail));
         REQUIRE(morphRail.getWidth() >= 96.f);
@@ -516,14 +519,28 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
             TrimeshSidePanelRenderer::spectralRangeRowBounds(sideArea);
     const Rectangle<float> rangeRail =
             TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
-    const Rectangle<float> reservedParameterArea =
-            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea, true);
     REQUIRE(sideArea.contains(rangeRow));
     REQUIRE(rangeRow.contains(rangeRail));
     REQUIRE(rangeRail.getWidth() >= 96.f);
-    REQUIRE(rangeRow.getY() > TrimeshSidePanelRenderer::vertexParameterRowBounds(
-            reservedParameterArea,
-            5).getBottom());
+    REQUIRE(rangeRow.getY()
+            > TrimeshSidePanelRenderer::morphRailBounds(sideArea, 2, true).getBottom());
+}
+
+TEST_CASE("Spectral range display scales round-trip through DSP mappings",
+        "[cycle-v2][nodes][trimesh][range]") {
+    using CycleDsp::SpectralLayerCore;
+
+    for (const float scale : { 0.1f, 1.f, 10.f, 100.f }) {
+        const float range = SpectralLayerCore::rangeForMagnitudeScale(scale);
+        REQUIRE(SpectralLayerCore::magnitudeRangeScale(range)
+                == Catch::Approx(scale).epsilon(0.0001));
+    }
+
+    for (const float scale : { 1.f, 10.f, 100.f }) {
+        const float range = SpectralLayerCore::rangeForPhaseOffsetScale(scale);
+        REQUIRE(SpectralLayerCore::phaseOffsetScale(range)
+                == Catch::Approx(scale).epsilon(0.0001));
+    }
 }
 
 TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph travel",

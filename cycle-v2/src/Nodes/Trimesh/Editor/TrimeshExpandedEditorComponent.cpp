@@ -192,14 +192,14 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {
-    if (delegate != nullptr) {
-        delegate->beginTrimeshMorphEdit(id, value);
+    if (delegate != nullptr && delegate->beginTrimeshMorphEdit(id, value)) {
+        setLocalMorphValue(id, value);
     }
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
-    if (delegate != nullptr) {
-        delegate->updateTrimeshMorphEdit(value);
+    if (delegate != nullptr && delegate->updateTrimeshMorphEdit(value)) {
+        setLocalMorphValue({}, value);
     }
 }
 
@@ -207,6 +207,7 @@ void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
     }
+    activeMorphParameterId = {};
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshRangeControlEdit(float value) {
@@ -231,6 +232,23 @@ void TrimeshExpandedEditorComponent::setLocalSpectralRange(float value) {
     for (auto& parameter : node.parameters) {
         if (parameter.id == "range") {
             parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            repaint();
+            return;
+        }
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalMorphValue(const String& id, float value) {
+    const String parameterId = id.isNotEmpty() ? id : activeMorphParameterId;
+    if (parameterId.isEmpty()) {
+        return;
+    }
+
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == parameterId) {
+            parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            activeMorphParameterId = parameterId;
+            widget.syncFromNode(node);
             repaint();
             return;
         }

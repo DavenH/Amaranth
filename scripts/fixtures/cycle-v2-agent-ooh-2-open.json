@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/ooh-2.cyclegraph"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 1000
+    },
+    {
+      "command": "assertState",
+      "path": "compileSucceeded",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-ooh-2-open.png"
+    }
+  ],
+  "quit": true
+}

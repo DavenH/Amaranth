@@ -200,6 +200,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             selectedParameters,
             guideAttachmentLabels,
             profile.getSliceStyle().isSpectral(),
+            profile.getDomain(),
             parameters.floatValue("range", 0.5f));
 }
 
@@ -389,7 +390,8 @@ bool TrimeshWidget::findMorphControlAt(
     };
 
     for (int i = 0; i < (int) parameterIds.size(); ++i) {
-        const Rectangle<float> rail = morphRailBounds(morphArea, i);
+        const Rectangle<float> rail = morphRailBounds(
+                morphArea, i, showsSpectralRange());
 
         if (!rail.expanded(8.f, 12.f).contains(position)) {
             continue;
@@ -419,7 +421,8 @@ bool TrimeshWidget::morphValueForParameterAt(
             continue;
         }
 
-        const Rectangle<float> rail = morphRailBounds(morphPanelBounds(content), i);
+        const Rectangle<float> rail = morphRailBounds(
+                morphPanelBounds(content), i, showsSpectralRange());
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
     }
@@ -444,7 +447,8 @@ bool TrimeshWidget::findPrimaryAxisAt(
     const Rectangle<float> morphArea = morphPanelBounds(content);
 
     for (int i = 0; i < 3; ++i) {
-        const Rectangle<float> button = primaryAxisBounds(morphArea, i);
+        const Rectangle<float> button = primaryAxisBounds(
+                morphArea, i, showsSpectralRange());
 
         if (!button.expanded(4.f).contains(position)) {
             continue;
@@ -464,7 +468,8 @@ bool TrimeshWidget::findLinkToggleAt(
     const Rectangle<float> morphArea = morphPanelBounds(content);
 
     for (int i = 0; i < 3; ++i) {
-        const Rectangle<float> button = linkToggleBounds(morphArea, i);
+        const Rectangle<float> button = linkToggleBounds(
+                morphArea, i, showsSpectralRange());
 
         if (!button.expanded(4.f).contains(position)) {
             continue;
@@ -574,7 +579,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     for (int i = 0; i < (int) parameterIds.size(); ++i) {
         regions.push_back({
                 TrimeshExpandedHitRegionKind::MorphControl,
-                morphRailBounds(morphArea, i).expanded(8.f, 12.f),
+                morphRailBounds(morphArea, i, showSpectralRange).expanded(8.f, 12.f),
                 parameterIds[(size_t) i],
                 {}
         });
@@ -593,7 +598,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     for (int i = 0; i < 3; ++i) {
         regions.push_back({
                 TrimeshExpandedHitRegionKind::PrimaryAxis,
-                primaryAxisBounds(morphArea, i).expanded(4.f),
+                primaryAxisBounds(morphArea, i, showSpectralRange).expanded(4.f),
                 {},
                 primaryAxisValue(i)
         });
@@ -602,7 +607,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     for (int i = 0; i < 3; ++i) {
         regions.push_back({
                 TrimeshExpandedHitRegionKind::LinkToggle,
-                linkToggleBounds(morphArea, i).expanded(4.f),
+                linkToggleBounds(morphArea, i, showSpectralRange).expanded(4.f),
                 {},
                 primaryAxisValue(i)
         });
@@ -655,16 +660,28 @@ Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
     return expandedSidePanelContentBounds(content);
 }
 
-Rectangle<float> TrimeshWidget::morphRailBounds(Rectangle<float> morphArea, int axisIndex) {
-    return TrimeshSidePanelRenderer::morphRailBounds(morphArea, axisIndex);
+Rectangle<float> TrimeshWidget::morphRailBounds(
+        Rectangle<float> morphArea,
+        int axisIndex,
+        bool showSpectralRange) {
+    return TrimeshSidePanelRenderer::morphRailBounds(
+            morphArea, axisIndex, showSpectralRange);
 }
 
-Rectangle<float> TrimeshWidget::primaryAxisBounds(Rectangle<float> morphArea, int axisIndex) {
-    return TrimeshSidePanelRenderer::primaryAxisBounds(morphArea, axisIndex);
+Rectangle<float> TrimeshWidget::primaryAxisBounds(
+        Rectangle<float> morphArea,
+        int axisIndex,
+        bool showSpectralRange) {
+    return TrimeshSidePanelRenderer::primaryAxisBounds(
+            morphArea, axisIndex, showSpectralRange);
 }
 
-Rectangle<float> TrimeshWidget::linkToggleBounds(Rectangle<float> morphArea, int axisIndex) {
-    return TrimeshSidePanelRenderer::linkToggleBounds(morphArea, axisIndex);
+Rectangle<float> TrimeshWidget::linkToggleBounds(
+        Rectangle<float> morphArea,
+        int axisIndex,
+        bool showSpectralRange) {
+    return TrimeshSidePanelRenderer::linkToggleBounds(
+            morphArea, axisIndex, showSpectralRange);
 }
 
 String TrimeshWidget::primaryAxisValue(int axis) {

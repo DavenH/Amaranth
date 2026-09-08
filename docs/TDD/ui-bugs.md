@@ -111,10 +111,29 @@ Context:
 - Repro artifacts are
   `/private/tmp/cycle-v2-migration-final-session.log` and
   `/Users/daven/Library/Logs/DiagnosticReports/CycleV2-2026-09-07-201842.ips`.
+- A manual load of migrated `ooh-2.cyclegraph` reproduced the same stack on
+  2026-09-08. Its report is
+  `/Users/daven/Library/Logs/DiagnosticReports/CycleV2-2026-09-08-100335.ips`:
+  `EXC_BAD_ACCESS` on the OpenGL renderer thread at
+  `Interactor::getModPosition(bool)`, called while
+  `EnvelopeCurvePanel::setEnvelopeAxisLinks()` synchronized a preview.
 
-Current status: open. Reproduce with repeated graph replacement under active
-OpenGL previews, then make editor synchronization and preview rendering share
-a safe snapshot/lifetime boundary.
+Current status: open and intermittent. A focused open/compile/one-second-idle
+run completed without a crash at
+`/private/tmp/cycle-v2-ooh-2-open-report.json`; reproduce with repeated graph
+replacement under active OpenGL previews, then make editor synchronization and
+preview rendering share a safe snapshot/lifetime boundary.
+
+## P1: Expanded Trimesh morph controls lost pointer capture during drag
+
+Resolved 2026-09-08. A mouse-down changed the selected morph value, but further
+drag movement did not follow the pointer. Each transient morph update rebound
+the entire expanded editor, replacing interaction state during the native
+gesture. Successful updates now mirror the active parameter into the existing
+editor while `GraphCommandDispatcher` continues to own transient publication,
+commit, and undo. The `trimesh-morph-drag` native automation sequence covers a
+multi-step drag; `TestNodeEditorHost` covers two transient updates, commit, and
+undo.
 
 ## P2: Cycle V2 domain-context fanout cables lack obstacle-aware routing
 
