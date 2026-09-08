@@ -1,5 +1,28 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 retained FFT bins above the note's harmonic limit
+
+Context:
+
+- Calming produced note-dependent high-frequency buzzing on its displayed A1,
+  G1, F1, and E1 keys despite its low-harmonic magnitude surface. The strongest
+  unintended content clustered near Nyquist.
+- Cycle 1 copied only the note-valid magnitude and phase prefix into its
+  reusable transform before inverse FFT. Bins above that prefix retained the
+  unfiltered forward-transform content. Legacy explicitly zeroes those bins,
+  and the current visual DSP already preserved that behavior independently.
+
+Resolution:
+
+- The mature visual tail-clear operation now lives in `SpectralLayerCore` and
+  is shared by the realtime voice and visual inverse transforms.
+- `scripts/test_cycle1_calming_spectrum.py` renders A1, G1, F1, and E1 at 44.1
+  and 48 kHz, requires audible steady output, and limits power above 3 kHz.
+- At 44.1 kHz, the four high-band ratios fell from between `5.66e-6` and
+  `2.94e-4` to between `1.52e-9` and `4.31e-9`.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 voice-time slices remained on the first yellow plane
 
 Context:

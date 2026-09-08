@@ -4,6 +4,7 @@
 #include <App/AppConstants.h>
 #include <App/MeshLibrary.h>
 #include <Array/StereoBuffer.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
@@ -741,11 +742,10 @@ void VisualDsp::calcSpectrogram(int numColumns) {
             logColumnNaNOnce("calcSpectrogram before inverse fftPreFXCol", fftPreFXCols[colIdx], colIdx);
             phaseBuf.add(-MathConstants<float>::halfPi);
 
-            int numBinsToClear = halfPow2 - numHarmonics;
-            if (numBinsToClear > 0) {
-                ffts[sizeIndex].getMagnitudes().offset(numHarmonics).withSize(numBinsToClear).zero();
-                ffts[sizeIndex].getPhases().offset(numHarmonics).withSize(numBinsToClear).zero();
-            }
+            CycleDsp::SpectralLayerCore::clearBinsAbove(
+                    ffts[sizeIndex].getMagnitudes().withSize(halfPow2),
+                    ffts[sizeIndex].getPhases().withSize(halfPow2),
+                    numHarmonics);
 
             ffts[sizeIndex].inverse(timeColumns[timeColIdx]);
 

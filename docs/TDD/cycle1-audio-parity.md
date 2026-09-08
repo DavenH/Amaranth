@@ -58,6 +58,8 @@ approximations.
   process.
 - Scratch-enabled/bypassed BrightLead3 and PWM, plus early/late Dunk2 and PWM,
   have output-level regressions.
+- Realtime and visual inverse FFTs now share the legacy harmonic-tail clearing
+  rule. Calming's A1/G1/F1/E1 matrix guards the resulting high-band limit.
 
 ## Completion Criteria
 
