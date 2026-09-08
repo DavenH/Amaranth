@@ -200,6 +200,25 @@ def render_note(manifest, note, output_directory, arguments):
         "waitForIdle": True,
         "idleDelayMs": 300,
     }
+    effect_bindings = manifest.get("effectBindings", {})
+    missing_effects = [
+        effect for effect in arguments.disable_effect
+        if effect not in effect_bindings
+    ]
+    if missing_effects:
+        raise ValueError(
+            "Manifest has no disable binding for: " + ", ".join(missing_effects))
+    v1_setup = [
+        {
+            "command": "setControl",
+            "area": effect_bindings[effect]["v1Area"],
+            "target": "TargEffectEnable",
+            "click": True,
+            "waitForIdle": True,
+            "idleDelayMs": 100,
+        }
+        for effect in arguments.disable_effect
+    ]
     v2_setup = [
         {
             "command": "setNodeParameter",
@@ -209,7 +228,10 @@ def render_note(manifest, note, output_directory, arguments):
             "value": "0",
             "waitForIdle": True,
         }
-        for node_id in arguments.v2_disable_node
+        for node_id in (
+            arguments.v2_disable_node
+            + [effect_bindings[effect]["v2Node"] for effect in arguments.disable_effect]
+        )
     ]
     render_capture(
         SCRIPT_DIR / "run_cycle_agent.sh",
@@ -220,6 +242,7 @@ def render_note(manifest, note, output_directory, arguments):
         v1_open,
         capture_v1,
         arguments.reuse_wavs,
+        v1_setup,
     )
     render_capture(
         SCRIPT_DIR / "run_cycle_v2_agent.sh",
@@ -252,7 +275,7 @@ def render_note(manifest, note, output_directory, arguments):
                 open_command,
                 repeat_capture,
                 arguments.reuse_wavs,
-                v2_setup if engine == "v2" else None,
+                v2_setup if engine == "v2" else v1_setup,
             )
 
     analysis = cycle_audio_diff.analyze_pair(
@@ -304,6 +327,12 @@ def parse_arguments():
     parser.add_argument("--analysis-start-ms", type=float, default=50.0)
     parser.add_argument("--analysis-duration-ms", type=float, default=150.0)
     parser.add_argument("--maximum-lag", type=int, default=512)
+    parser.add_argument(
+        "--disable-effect",
+        action="append",
+        default=[],
+        help="disable a manifest-declared effect in both engines before capture",
+    )
     parser.add_argument(
         "--v2-disable-node",
         action="append",

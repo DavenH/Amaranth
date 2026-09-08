@@ -135,7 +135,8 @@ translation. The first broad candidates are:
 | Preset | Deterministic coverage | Current admission result |
 | --- | --- | --- |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Guide noise and unison are disabled; synchronized Cycle V2 renders are byte-repeatable. Current graph is not an exact port: envelope curve/sustain state and IR size differ from a fresh canonical conversion. |
+| guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a live canonical export while retaining node presentation. Both engines are byte-repeatable, but MIDI 48 correlation is only `0.09498`; target the oscillator/effect stage ladder. |
+| japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase and both engines are byte-repeatable. Correlation is `0.09425`, `0.01743`, `0.03134`, and `0.01921` at MIDI 36, 48, 60, and 72. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
@@ -222,9 +223,10 @@ sample parity. Preview products are not substitutes for audio products.
     In progress: Subbass was demoted to diagnostic after its current output
     contradicted the recorded result.
 12. Admit deterministic whole-graph ports incrementally. In progress:
-    `guitar-3-g` is the first coverage fixture, but fresh canonical conversion
-    exposed input-state drift that must be reconciled before its audio mismatch
-    can be assigned to DSP.
+    `guitar-3-g` and `japan-drum` now match fresh canonical conversion exactly,
+    preserve their prior presentation, and repeat byte-for-byte in both apps.
+    Their severe output mismatches are now valid DSP discrepancies and make the
+    oscillator/spectral stage ladder the next required slice.
 13. Add deterministic seed injection/persistence at the shared render contract
     for Guide noise, Unison jitter, and reverb, then admit one fixture for each.
     In progress: Cycle 1 voice/rasterizer seed injection is complete and proves

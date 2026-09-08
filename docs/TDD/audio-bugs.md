@@ -604,10 +604,11 @@ Context:
   correlations of `0.96886`, `0.95866`, and `0.95695`; the same trend remains
   at 44.1 kHz.
 - Fresh Cycle 1 canonical exports do not convert exactly to several newly
-  merged graphs. `guitar-3-g` differs in envelope weights/sustain and IR size;
-  `accoustic` differs in morph/link state, envelope state, reverb size, and IR
-  high-pass; `Icycle` and `organ-2` differ in reverb size. These are preset-input
-  failures, not yet DSP verdicts.
+  merged graphs. `accoustic` differs in morph/link state, envelope state,
+  reverb size, and IR high-pass; `Icycle` and `organ-2` differ in reverb size.
+  These are preset-input failures, not yet DSP verdicts. `guitar-3-g` and
+  `japan-drum` were regenerated from live exports and now match the converter
+  exactly while retaining their prior presentation.
 - Some legacy documents omit session-owned controls entirely. Subbass does not
   persist its morph-panel state, so Cycle 1 inherits the startup document's
   values while a context-free conversion currently uses defaults. Artifact
@@ -627,6 +628,15 @@ Artifacts:
 - `/tmp/cycle-subbass-current/comparison.json`
 - `/tmp/cycle-subbass-44100/comparison.json`
 - `/tmp/cycle-guitar-3-g-raw-parity/comparison.json`
+- `/tmp/cycle-guitar-3-g-reconciled/comparison.json`
+- `/tmp/cycle-japan-drum-parity/comparison.json`
+- `/tmp/cycle-japan-drum-notes/comparison.json`
+
+The admitted pairs expose a valid DSP mismatch before nondeterministic effects:
+`guitar-3-g` reaches only `0.09498` correlation at MIDI 48, while effect-free
+`japan-drum` ranges from `0.09425` down to `0.01743` across MIDI 36–72. The next
+diagnostic must capture Cycle 1's time-cycle, FFT, post-layer spectral, and IFFT
+boundaries so the first divergent stage can be compared with Cycle V2 probes.
 
 Current status: open. Reconcile each candidate against a fresh canonical
 conversion, add explicit deterministic seed control, and remove output-policy

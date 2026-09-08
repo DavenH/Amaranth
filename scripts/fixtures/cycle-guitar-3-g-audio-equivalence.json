@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
-        "sha256": "9daffc07f4303ebf81f985da3c76f098356e5698baaa91fb593e4581441defda",
+        "sha256": "b50a91a2aa679a2f541441baa57dbe373c2f577c9d05f6efd9e9cd3e52c89fd4",
         "renderOverrides": {
             "voiceDurationSeconds": 4.568038808277109
         }
@@ -31,11 +31,22 @@
             "delay"
         ],
         "determinism": "guide noise and unison are disabled",
-        "knownInputDifferences": [
-            "volume and scratch envelope weight/sustain state differs from a fresh Cycle 1 canonical export",
-            "impulse-response size is 0.448 in Cycle 1 and 0.42857 in this graph"
-        ],
+        "inputValidation": "regenerated from a live Cycle 1 canonical export on 2026-09-08",
         "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "effectBindings": {
+        "waveshaper": {
+            "v1Area": "AreaWaveshaper",
+            "v2Node": "waveshaper"
+        },
+        "equalizer": {
+            "v1Area": "AreaEQ",
+            "v2Node": "equalizer"
+        },
+        "delay": {
+            "v1Area": "AreaDelay",
+            "v2Node": "delay"
+        }
     },
     "thresholds": {
         "correlationMin": 0.98,
