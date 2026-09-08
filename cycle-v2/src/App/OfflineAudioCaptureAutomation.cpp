@@ -244,6 +244,33 @@ bool writeCapture(
     return true;
 }
 
+bool writeRawCapture(
+        const File& path,
+        const OfflineGraphAudioResult& capture,
+        const OfflineGraphAudioRequest& request,
+        String& error) {
+    if (path == File()) {
+        return true;
+    }
+
+    path.getParentDirectory().createDirectory();
+    std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
+    if (stream == nullptr || !stream->openedOk()
+            || !stream->setPosition(0) || stream->truncate().failed()) {
+        error = "Could not open raw audio capture path: " + path.getFullPathName();
+        return false;
+    }
+
+    const size_t byteCount = request.sampleCount * sizeof(float);
+    for (int channel = 0; channel < request.channelCount; ++channel) {
+        if (!stream->write(capture.channels[(size_t) channel].data(), byteCount)) {
+            error = "Could not write raw audio capture: " + path.getFullPathName();
+            return false;
+        }
+    }
+    return true;
+}
+
 }
 
 bool OfflineAudioCaptureAutomation::isScheduledCapture(const var& command) {
@@ -293,10 +320,17 @@ bool OfflineAudioCaptureAutomation::capture(
     if (!writeCapture(path, capture, request, error)) {
         return false;
     }
+    const File rawPath(stringProperty(command, "rawPath"));
+    if (!writeRawCapture(rawPath, capture, request, error)) {
+        return false;
+    }
 
     data = captureMetrics(capture, request);
     DynamicObject* object = data.getDynamicObject();
     object->setProperty("path", path == File() ? String {} : path.getFullPathName());
+    object->setProperty(
+            "rawPath",
+            rawPath == File() ? String {} : rawPath.getFullPathName());
     object->setProperty("events", (int) request.events.size());
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);

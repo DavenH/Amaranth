@@ -1,0 +1,47 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "guitar-3-g",
+        "sourceDocument": "cycle/content/presets/guitar-3-g.cyc",
+        "sha256": "28e5d4f2152a7fa43f616ce1b562d74326f0e442d091efb9bd0544562ec871e2"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/guitar-3-g.cyclegraph",
+        "sha256": "9daffc07f4303ebf81f985da3c76f098356e5698baaa91fb593e4581441defda",
+        "renderOverrides": {
+            "voiceDurationSeconds": 4.568038808277109
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "magnitudeLayer",
+            "phaseLayer",
+            "stereoPhasePan",
+            "volumeEnvelope",
+            "scratchEnvelope",
+            "waveshaper2x",
+            "impulseResponse",
+            "equalizer",
+            "delay"
+        ],
+        "determinism": "guide noise and unison are disabled",
+        "knownInputDifferences": [
+            "volume and scratch envelope weight/sustain state differs from a fresh Cycle 1 canonical export",
+            "impulse-response size is 0.448 in Cycle 1 and 0.42857 in this graph"
+        ],
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

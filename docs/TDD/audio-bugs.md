@@ -595,6 +595,43 @@ Context:
 Current status: open for the remaining pitch/glide/oversampling semantics; the
 octave path is addressed on 2026-09-06.
 
+## Open: Cycle V1/V2 exact-parity inputs and deterministic seeds are incomplete
+
+Context:
+
+- The 2026-09-08 current-branch Subbass comparison no longer reproduces its
+  historical verified thresholds. At 48 kHz, MIDI 48, 60, and 72 report
+  correlations of `0.96886`, `0.95866`, and `0.95695`; the same trend remains
+  at 44.1 kHz.
+- Fresh Cycle 1 canonical exports do not convert exactly to several newly
+  merged graphs. `guitar-3-g` differs in envelope weights/sustain and IR size;
+  `accoustic` differs in morph/link state, envelope state, reverb size, and IR
+  high-pass; `Icycle` and `organ-2` differ in reverb size. These are preset-input
+  failures, not yet DSP verdicts.
+- Some legacy documents omit session-owned controls entirely. Subbass does not
+  persist its morph-panel state, so Cycle 1 inherits the startup document's
+  values while a context-free conversion currently uses defaults. Artifact
+  hashes cannot prove equivalent input until the harness pins that state.
+- Cycle 1 reverb still seeds its noise from `Time::currentTimeMillis()`, while
+  Cycle V2's shared reverb kernel derives a stable seed. Guide-noise and Unison
+  jitter seed equivalence have not yet been proven across applications.
+- Cycle 1's per-voice rasterizer RNG was also wall-clock seeded. The offline
+  parity command now injects a fixed test seed without changing realtime
+  behavior; Subbass and `guitar-3-g` are repeatable across fresh processes in
+  both engines with that override.
+- End-to-end exact output is also masked by Cycle 1 master gain and internal
+  44.1 kHz conversion versus Cycle V2's fixed `0.125` output headroom.
+
+Artifacts:
+
+- `/tmp/cycle-subbass-current/comparison.json`
+- `/tmp/cycle-subbass-44100/comparison.json`
+- `/tmp/cycle-guitar-3-g-raw-parity/comparison.json`
+
+Current status: open. Reconcile each candidate against a fresh canonical
+conversion, add explicit deterministic seed control, and remove output-policy
+differences before enabling `exactSamplesRequired`.
+
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 
 Context:

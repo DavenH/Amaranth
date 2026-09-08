@@ -867,7 +867,7 @@ def validate_audio_parity_subset(source):
     if active_envelopes["pitch"]:
         issues.append("active pitch envelope is not supported by strict audio parity")
 
-    if preset["multisample"]["samples"]:
+    if preset.get("multisample", {}).get("samples", []):
         issues.append("external multisamples are not supported by strict audio parity")
     if modulation_sources_for_preset(preset) is None:
         issues.append("modulation matrix differs from the supported fixed mapping")

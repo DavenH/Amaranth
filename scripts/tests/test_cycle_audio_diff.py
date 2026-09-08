@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import math
+import struct
 import sys
+import tempfile
 import unittest
+import wave
 from pathlib import Path
 
 
@@ -13,6 +16,49 @@ import compare_cycle_audio
 
 
 class CycleAudioDiffTest(unittest.TestCase):
+    def write_wav(self, path, samples, sample_rate=48000):
+        with wave.open(str(path), "wb") as destination:
+            destination.setnchannels(1)
+            destination.setsampwidth(2)
+            destination.setframerate(sample_rate)
+            destination.writeframes(b"".join(
+                int(sample).to_bytes(2, "little", signed=True)
+                for sample in samples
+            ))
+
+    def test_exact_sample_comparison_reports_first_difference(self):
+        with tempfile.TemporaryDirectory() as directory:
+            reference_path = Path(directory) / "reference.wav"
+            equal_path = Path(directory) / "equal.wav"
+            different_path = Path(directory) / "different.wav"
+            self.write_wav(reference_path, [0, 100, -200, 300])
+            self.write_wav(equal_path, [0, 100, -200, 300])
+            self.write_wav(different_path, [0, 100, -201, 300])
+
+            reference = cycle_audio_diff.read_wav(reference_path)
+            equal = cycle_audio_diff.exact_sample_comparison(
+                reference, cycle_audio_diff.read_wav(equal_path))
+            different = cycle_audio_diff.exact_sample_comparison(
+                reference, cycle_audio_diff.read_wav(different_path))
+
+        self.assertTrue(equal["samplesEqual"])
+        self.assertEqual(equal["differingSamples"], 0)
+        self.assertFalse(different["samplesEqual"])
+        self.assertEqual(different["differingSamples"], 1)
+        self.assertEqual(different["firstMismatch"]["frame"], 2)
+
+    def test_raw_float_capture_is_channel_major_and_exact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "capture.f32le"
+            values = [0.25, -0.5, 0.75, -1.0]
+            path.write_bytes(struct.pack("<4f", *values))
+
+            capture = cycle_audio_diff.read_raw_f32(path, 48000, 2, 2)
+
+        self.assertEqual(capture["channels"], [[0.25, -0.5], [0.75, -1.0]])
+        self.assertTrue(cycle_audio_diff.exact_sample_comparison(
+            capture, capture)["samplesEqual"])
+
     def test_alignment_reports_candidate_latency_and_gain(self):
         reference = [math.sin(2.0 * math.pi * index / 32.0) for index in range(1024)]
         candidate = [0.0] * 7 + [0.5 * value for value in reference[:-7]]
@@ -94,6 +140,27 @@ class CycleAudioDiffTest(unittest.TestCase):
         self.assertFalse(verdict["passed"])
         self.assertFalse(verdict["checks"]["gainMatchedResidual"])
         self.assertTrue(verdict["checks"]["correlation"])
+
+    def test_threshold_verdict_can_require_raw_exact_samples(self):
+        analysis = {
+            "alignment": {"correlation": 1.0},
+            "gainFit": {"normalizedResidual": 0.0},
+            "spectrum": {"logMagnitudeRmseDb": 0.0},
+            "cyclogram": {"meanRowNormalizedDifference": 0.0},
+            "rawExact": {"samplesEqual": False},
+        }
+        thresholds = {
+            "correlationMin": 1.0,
+            "gainMatchedResidualMax": 0.0,
+            "spectrumRmseDbMax": 0.0,
+            "cyclogramMeanRowDifferenceMax": 0.0,
+            "exactSamplesRequired": True,
+        }
+
+        verdict = compare_cycle_audio.threshold_verdict(analysis, thresholds)
+
+        self.assertFalse(verdict["passed"])
+        self.assertFalse(verdict["checks"]["exactSamples"])
 
 
 if __name__ == "__main__":

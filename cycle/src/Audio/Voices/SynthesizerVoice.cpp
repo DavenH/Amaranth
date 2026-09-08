@@ -74,6 +74,12 @@ SynthesizerVoice::SynthesizerVoice(int voiceIndex, SingletonRepo* repo) :
     pitchWheelValue.setSmoothingActivity(false);
 }
 
+void SynthesizerVoice::setRandomSeedForTesting(int64 seed) {
+    random.setSeed(seed);
+    filterVoice.setRandomSeedForTesting(seed + 1);
+    unisonVoice.setRandomSeedForTesting(seed + 2);
+}
+
 void SynthesizerVoice::startNote(const int midiNoteNumber,
                                  const float velocityPrm,
                                  SynthesiserSound* sound,

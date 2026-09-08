@@ -69,6 +69,7 @@ public:
     void processBlock(AudioSampleBuffer& buffer, MidiBuffer& midiMessages) override;
     void setEnvelopeMeshes(bool lock);
     void setModValue(double value);
+    void setRandomSeedForTesting(int64 seed);
     void unisonOrderChanged();
 
     void documentAboutToLoad() override;
