@@ -371,9 +371,9 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
             }
         }
 
-        for(int c = 0; c < channelCount; ++c) {
+        for (int c = 0; c < channelCount; ++c) {
             phaseAccBufs[c].mul(phaseScaleRamp.withSize(noteState.numHarmonics));
-            phases[c].add(phaseAccBufs[c]);		// phases[1] has to be copied or zeroed at this point!
+            phaseBufs[c].add(phaseAccBufs[c]);
         }
     }
 }

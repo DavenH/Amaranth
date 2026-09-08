@@ -749,6 +749,14 @@ double CycleBasedVoice::getAngleDelta(int midiNumber, float detuneCents, double 
     return fineTune / 44100.0;
 }
 
+void CycleBasedVoice::prepareUnisonVoiceCount(int voiceCount) {
+    if (Util::assignAndWereDifferent(noteState.numUnisonVoices, voiceCount)) {
+        unisonVoiceCountChanged();
+    }
+
+    prepareVoiceRasterizer();
+}
+
 void CycleBasedVoice::testIfOversamplingChanged() {
     int oldFactor = oversamplers[0]->getOversampleFactor();
     int factor = -1;

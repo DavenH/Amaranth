@@ -34,6 +34,12 @@ approximations.
 5. Dunk2 evolves away from its short initial time cubes as voice time advances.
 6. PWM audibly changes pulse width over the note instead of rendering one
    stationary cycle.
+7. Hard-panned phase layers produce distinct left and right signals; Acidic's
+   two phase layers must not collapse to dual mono.
+8. With its waveshaper bypassed, Acidic's authored declick setting brings the
+   signal continuously to silence at note-off.
+9. Ping produces audible output with its authored unison configuration, not
+   only when unison is bypassed.
 
 ## Test Strategy
 
@@ -44,6 +50,11 @@ approximations.
 - Measure early-versus-late cycle/spectral differences for Dunk2 and PWM.
 - Measure high-band to harmonic-band power for the four Calming notes at 44.1
   and 48 kHz, preserving artifacts for cyclogram/spectrogram inspection.
+- Measure Acidic's steady-state side-to-mid energy and its worst note-off
+  discontinuity with waveshaping bypassed.
+- Render Ping both with authored effects and with unison bypassed. The authored
+  render must remain audible, while the bypass render localizes any failure to
+  unison voice composition rather than its time mesh or volume envelope.
 - Keep tests at the audio output boundary. Add focused unit coverage only for a
   shared DSP invariant needed to localize a failure.
 
@@ -63,10 +74,23 @@ approximations.
 - A live-device pointer regression holds C3 into release and starts A4 from the
   same on-screen keyboard. It verifies that the second pitch dominates while
   the first note still has a residual tail.
+- Follow-up reproduction shows Acidic is exactly dual mono despite phase pans
+  of 1.0 and 0.0. Ping is silent with its authored unison enabled and audible
+  with only unison bypassed; delay enablement does not affect the failure.
+- Phase accumulation now targets the active note-sized phase views, preserving
+  distinct hard-panned offsets on Accelerate instead of rejecting a mismatched
+  full-allocation add.
+- Unison count changes now resize cycle storage and prepare both oscillator
+  rasterizers under the audio lock. Ping's authored seven-voice configuration
+  therefore reaches already-prepared retained cycle states at note start.
+- Acidic's authored declick path is guarded at 50, 150, 400, and 800 ms note
+  lengths. Its existing note-off and terminal fades pass without additional
+  DSP logic.
 
 ## Completion Criteria
 
-- Every reported contract has a failing-before/passing-after regression.
+- Every reproduced defect has failing-before/passing-after evidence. Reported
+  paths that are already continuous retain representative regression coverage.
 - Current behavior matches the corresponding legacy control flow without a
   copied DSP or rasterization implementation.
 - Modified realtime paths allocate no memory, full tests pass, and each
@@ -74,14 +98,18 @@ approximations.
 
 ## Completion Evidence
 
-- All six reported contracts have focused audio-output or live-keyboard
+- All nine reported contracts have focused audio-output or live-keyboard
   regressions.
+- Acidic's side/mid RMS ratio is `2.45` at 44.1 kHz and `2.40` at 48 kHz.
+  Ping's authored render has `0.0689` steady RMS at both rates. The Acidic
+  declick matrix keeps note-off second differences below `0.000107` and
+  terminal steps below `0.000016`.
 - The parity changes reuse `MorphPosition::withTime`, `SpectralLayerCore`, the
   existing rasterizer preparation lifecycle, and the legacy layer-selection
   rule; no preset-specific production path was added.
-- `ctest --test-dir build/tests --output-on-failure` passes all 852 discovered
-  tests. The standalone Cycle build and each focused integration script pass at
-  their documented sample rates.
+- `ctest --test-dir build/standalone-debug --output-on-failure` passes all 852
+  discovered tests. The standalone Cycle build and each focused integration
+  script pass at their documented sample rates.
 
 ## Deletion Targets
 

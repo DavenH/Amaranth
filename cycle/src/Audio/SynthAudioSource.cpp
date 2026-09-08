@@ -242,7 +242,13 @@ void SynthAudioSource::controlFreqChanged() {
 }
 
 void SynthAudioSource::unisonOrderChanged() {
-    unisonVoicesAction.setValueAndTrigger(unison->getOrder(false));
+    const int voiceCount = unison->getOrder(false);
+    ScopedLock lock(audioLock);
+
+    unisonVoicesAction.setValueAndTrigger(voiceCount);
+    for (auto* voice : voices) {
+        voice->prepareUnisonVoiceCount(voiceCount);
+    }
 }
 
 void SynthAudioSource::setEnvelopeMeshes(bool lock) {

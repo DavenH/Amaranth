@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Validate Cycle 1 spectral preset output and phase-layer power invariance."""
+"""Validate Cycle 1 spectral audibility, phase behavior, and unison output."""
 
 import argparse
 import json
@@ -122,6 +122,27 @@ def steady_state_power(wav_path, start_ms=100, end_ms=550):
     return square_sum / max(1, sample_count)
 
 
+def stereo_side_to_mid_ratio(wav_path, start_ms=100, end_ms=550):
+    wave = read_wav(wav_path)
+    if len(wave["channels"]) < 2:
+        return 0.0
+    start = round(start_ms * wave["sampleRate"] / 1000)
+    end = round(end_ms * wave["sampleRate"] / 1000)
+    left = wave["channels"][0][start:end]
+    right = wave["channels"][1][start:end]
+    pairs = zip(left, right)
+    side_power = sum(
+        (left_value - right_value) ** 2
+        for left_value, right_value in pairs
+    )
+    pairs = zip(left, right)
+    mid_power = sum(
+        (left_value + right_value) ** 2
+        for left_value, right_value in pairs
+    )
+    return math.sqrt(side_power / max(mid_power, 1.0e-24))
+
+
 def render_audibility_case(output_directory, preset, sample_rate):
     case_directory = output_directory / f"{sample_rate}hz-{preset}"
     wav_path = case_directory / "render.wav"
@@ -135,6 +156,43 @@ def render_audibility_case(output_directory, preset, sample_rate):
         "sampleRate": sample_rate,
         "steadyStatePower": power,
         "steadyStateRms": math.sqrt(power),
+    }
+
+
+def render_authored_audibility_case(output_directory, preset, sample_rate):
+    case_directory = output_directory / f"{sample_rate}hz-{preset}-authored"
+    wav_path = case_directory / "render.wav"
+    commands = [
+        {
+            "command": "openFactoryPreset",
+            "preset": preset,
+            "waitForIdle": True,
+            "idleDelayMs": 300,
+        },
+        capture_command(wav_path, sample_rate),
+    ]
+    run_automation(case_directory, commands)
+    power = steady_state_power(wav_path)
+    return {
+        "type": "authoredAudibility",
+        "preset": preset,
+        "sampleRate": sample_rate,
+        "steadyStatePower": power,
+        "steadyStateRms": math.sqrt(power),
+    }
+
+
+def render_phase_stereo_case(output_directory, sample_rate):
+    case_directory = output_directory / f"{sample_rate}hz-acidic-phase-stereo"
+    wav_path = case_directory / "render.wav"
+    commands = preset_setup("acidic")
+    commands.append(capture_command(wav_path, sample_rate))
+    run_automation(case_directory, commands)
+    return {
+        "type": "phaseStereo",
+        "preset": "acidic",
+        "sampleRate": sample_rate,
+        "sideToMidRmsRatio": stereo_side_to_mid_ratio(wav_path),
     }
 
 
@@ -187,6 +245,7 @@ def parse_arguments():
     )
     parser.add_argument("--sample-rates", type=parse_integer_list, default=[44100, 48000])
     parser.add_argument("--minimum-rms", type=float, default=0.001)
+    parser.add_argument("--minimum-side-to-mid-ratio", type=float, default=0.1)
     parser.add_argument("--minimum-power-ratio", type=float, default=0.9)
     parser.add_argument("--maximum-power-ratio", type=float, default=1.1)
     parser.add_argument("--no-fail", action="store_true")
@@ -205,6 +264,18 @@ def main():
             cases.append(case)
             print(f"  steady RMS={case['steadyStateRms']:.8f}", flush=True)
 
+        print(f"Rendering Ping with authored unison at {sample_rate} Hz...", flush=True)
+        case = render_authored_audibility_case(arguments.output_dir, "ping", sample_rate)
+        case["passed"] = case["steadyStateRms"] >= arguments.minimum_rms
+        cases.append(case)
+        print(f"  steady RMS={case['steadyStateRms']:.8f}", flush=True)
+
+        print(f"Measuring Acidic phase stereo at {sample_rate} Hz...", flush=True)
+        case = render_phase_stereo_case(arguments.output_dir, sample_rate)
+        case["passed"] = case["sideToMidRmsRatio"] >= arguments.minimum_side_to_mid_ratio
+        cases.append(case)
+        print(f"  side/mid RMS={case['sideToMidRmsRatio']:.6f}", flush=True)
+
         print(f"Comparing Baroque Flute phase power at {sample_rate} Hz...", flush=True)
         case = render_phase_case(arguments.output_dir, sample_rate)
         case["passed"] = (
@@ -218,8 +289,9 @@ def main():
         )
 
     summary = {
-        "schema": "cycle-v1-spectral-phase.v1",
+        "schema": "cycle-v1-spectral-phase.v2",
         "minimumRms": arguments.minimum_rms,
+        "minimumSideToMidRatio": arguments.minimum_side_to_mid_ratio,
         "minimumPowerRatio": arguments.minimum_power_ratio,
         "maximumPowerRatio": arguments.maximum_power_ratio,
         "cases": cases,

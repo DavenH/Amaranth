@@ -38,6 +38,7 @@ public:
 	void enablementChanged();
 	void envGlobalityChanged();
 	void prepNewVoice();
+    void prepareUnisonVoiceCount(int voiceCount);
     void prepareVoiceRasterizer();
 
 	/* Midi */

@@ -1,5 +1,47 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 phase offsets were discarded on Accelerate
+
+Context:
+
+- Acidic loads two valid phase layers panned hard left and right, but its dry
+  output channels were bit-identical.
+- Both layers rasterized distinct offsets and accumulated distinct channel
+  spectra. The voice then added each active-bin buffer to the full maximum-size
+  phase allocation. Accelerate rejects that buffer-size mismatch, so the add
+  was a no-op; the legacy IPP path happened to process the shorter prefix.
+
+Resolution:
+
+- Phase offsets are added through the existing note-sized `phaseBufs` views.
+- `scripts/test_cycle1_spectral_phase.py` now requires Acidic to retain
+  side-channel energy. Its side/mid RMS ratio is `2.45` at 44.1 kHz and `2.40`
+  at 48 kHz, up from exactly zero.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 unison growth invalidated prepared voice states
+
+Context:
+
+- Ping was silent with its authored seven-voice unison and audible when unison
+  alone was bypassed. Delay and the preset's oscillator/envelope data were not
+  involved.
+- Voice rasterizers were prepared while the unison order was one. Note start
+  then grew the per-unison cycle-state collection on the audio thread, after
+  snapshot preparation, so every multi-voice rasterization failed safely to
+  silence.
+
+Resolution:
+
+- Unison order changes now resize cycle storage and reprepare both Cycle 1
+  oscillator rasterizers under the existing audio lock, before realtime note
+  rendering. Note start observes the prepared count and performs no allocation.
+- The spectral integration renders Ping with its authored effects and requires
+  audible output. Its steady RMS is `0.0689` at both 44.1 and 48 kHz.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 retained FFT bins above the note's harmonic limit
 
 Context:

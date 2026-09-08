@@ -597,6 +597,11 @@ void SynthesizerVoice::prepNewVoice() {
     unisonVoice.prepNewVoice();
 }
 
+void SynthesizerVoice::prepareUnisonVoiceCount(int voiceCount) {
+    filterVoice.prepareUnisonVoiceCount(voiceCount);
+    unisonVoice.prepareUnisonVoiceCount(voiceCount);
+}
+
 void SynthesizerVoice::prepareVoiceRasterizer() {
     filterVoice.prepareVoiceRasterizer();
     unisonVoice.prepareVoiceRasterizer();
