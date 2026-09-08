@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/saw.cyclegraph",
-        "sha256": "51d79f9f0465a9a883c30decf016bd08736852bc2606727bb49298ac7a8abb44",
+        "sha256": "0bd70f85dbe88c352c16ba717628a42f701ad69b9aabf2669857ae3d2c97df66",
         "renderOverrides": {
             "voiceDurationSeconds": 1.2669864718837067
         }
