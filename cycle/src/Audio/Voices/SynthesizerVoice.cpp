@@ -226,7 +226,7 @@ void SynthesizerVoice::renderNextBlock(AudioSampleBuffer& audioBuffer, int start
     }
 
     for (int i = 0; i < outputBuffer.numChannels; ++i) {
-        outputBuffer[i].add(renderBuffer[i]);
+        outputBuffer[i].withSize(numSamples).add(renderBuffer[i]);
     }
 }
 
@@ -234,7 +234,7 @@ void SynthesizerVoice::fillRemainingLatencySamples(StereoBuffer& outputBuffer, i
     currentVoice->render(renderBuffer);
 
     for (int c = 0; c < renderBuffer.numChannels; ++c) {
-        outputBuffer[c].addProduct(renderBuffer[c], mappedVelocity);
+        outputBuffer[c].withSize(numSamples).addProduct(renderBuffer[c], mappedVelocity);
     }
 
     latencyFillerSamplesLeft -= numSamples;

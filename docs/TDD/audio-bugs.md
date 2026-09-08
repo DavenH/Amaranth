@@ -1,5 +1,31 @@
 # Audio Bug Notes
 
+## Resolved: No-release volume envelopes truncated the declick tail
+
+Context:
+
+- Anasound has declick enabled and an active volume envelope whose sustain
+  marker is at the end, so it has no authored release segment.
+- Cycle 1 rendered the 10 ms fade into a buffer shortened to the remaining
+  ramp length, then added it to the unshortened MIDI render-segment view.
+  Accelerate rejects unequal `Buffer::add` lengths, so the entire final fade
+  block was discarded; the legacy IPP path happened to process the prefix.
+- The audible tail therefore varied with note-off position in the audio block.
+  At 48 kHz, the 800 ms case emitted only seven samples after note-off instead
+  of the intended roughly 480-sample declick.
+- The legacy project has the same note-off ordering defect.
+
+Resolution:
+
+- The final voice mix now narrows the destination to the rendered fade length,
+  preserving the existing envelope and declick lifecycle unchanged. The same
+  boundary correction protects shortened oscillator-latency flushes.
+- `scripts/test_cycle1_anasound_declick.py` covers 50, 150, 400, and 800 ms
+  notes at the preset's authored gain and requires signal through the middle of
+  the declick interval plus a continuous terminal transition.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 phase offsets were discarded on Accelerate
 
 Context:

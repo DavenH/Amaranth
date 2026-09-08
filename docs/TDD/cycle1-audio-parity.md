@@ -40,6 +40,9 @@ approximations.
    signal continuously to silence at note-off.
 9. Ping produces audible output with its authored unison configuration, not
    only when unison is bypassed.
+10. A volume envelope with no authored release remains at its held value while
+    the optional declick ramp owns voice retirement; MIDI block position must
+    not shorten that ramp.
 
 ## Test Strategy
 
@@ -86,6 +89,9 @@ approximations.
 - Acidic's authored declick path is guarded at 50, 150, 400, and 800 ms note
   lengths. Its existing note-off and terminal fades pass without additional
   DSP logic.
+- Anasound's no-release volume envelope is guarded at the same note lengths.
+  Its output must remain present through the middle of the 10 ms declick tail
+  even when note-off lands near the end of a processing block.
 
 ## Completion Criteria
 
@@ -104,6 +110,9 @@ approximations.
   Ping's authored render has `0.0689` steady RMS at both rates. The Acidic
   declick matrix keeps note-off second differences below `0.000107` and
   terminal steps below `0.000016`.
+- Anasound's no-release declick remains audible for `10.10` to `10.13` ms at
+  48 kHz across 50, 150, 400, and 800 ms notes. Terminal steps are below
+  `1e-8`; the same matrix passes at 44.1 kHz.
 - The parity changes reuse `MorphPosition::withTime`, `SpectralLayerCore`, the
   existing rasterizer preparation lifecycle, and the legacy layer-selection
   rule; no preset-specific production path was added.
