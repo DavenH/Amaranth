@@ -218,7 +218,7 @@ private:
     void clearDockEphemeralState();
     bool cycleOperationPortLayout(const String& nodeId);
     bool cycleSinglePortLayout(const String& nodeId);
-    bool cycleMeshOutputSide(const String& nodeId);
+    bool cycleOutputSide(const String& nodeId);
     bool cycleVoiceDomain(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;

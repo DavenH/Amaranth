@@ -457,8 +457,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                 }
                 break;
 
-            case CanvasNodeActionKind::CycleMeshOutputSide:
-                if (cycleMeshOutputSide(action->nodeId)) {
+            case CanvasNodeActionKind::CycleOutputSide:
+                if (cycleOutputSide(action->nodeId)) {
                     editStatusMessage = "Output side cycled";
                     requestCanvasRepaint();
                 }
@@ -1717,8 +1717,8 @@ bool NodeCanvas::cycleSinglePortLayout(const String& nodeId) {
     return applyAuthoringResult(authoring.cycleSinglePortLayout(nodeId));
 }
 
-bool NodeCanvas::cycleMeshOutputSide(const String& nodeId) {
-    return applyAuthoringResult(authoring.cycleMeshOutputSide(nodeId));
+bool NodeCanvas::cycleOutputSide(const String& nodeId) {
+    return applyAuthoringResult(authoring.cycleOutputSide(nodeId));
 }
 
 bool NodeCanvas::cycleVoiceDomain(const String& nodeId) {

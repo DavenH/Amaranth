@@ -514,7 +514,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleSinglePortLayout(const Strin
     return graphEditResult(edit, {}, nodeId, { true });
 }
 
-NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleMeshOutputSide(const String& nodeId) {
+NodeCanvasAuthoringResult NodeCanvasAuthoring::cycleOutputSide(const String& nodeId) {
     const Node* node = findNode(nodeId);
     if (node == nullptr || !outputSideControlSupported(node->kind) || node->outputs.empty()) {
         return {};

@@ -184,13 +184,20 @@ class PortCycleV1PresetTest(unittest.TestCase):
             operation["position"]["x"] + operation_width / 2.0,
         )
         self.assertEqual(
-            nodes["magnitudeOp5"]["portSides"]["outputs"]["out"],
-            "top",
-        )
+            nodes["magnitudeOp1"]["portSides"]["inputs"]["right"],
+            "top")
         self.assertEqual(
-            nodes["magnitudeOp6"]["portSides"]["inputs"]["left"],
-            "bottom",
-        )
+            nodes["phaseOp1"]["portSides"]["inputs"]["right"],
+            "bottom")
+        self.assertNotIn("outputs", nodes["magnitudeOp1"].get("portSides", {}))
+        self.assertNotIn("portSides", nodes["fft"])
+        self.assertNotIn("portSides", nodes["ifft"])
+        self.assertEqual(
+            nodes["magnitudeOp1"]["position"]["y"],
+            nodes["magnitudeOp10"]["position"]["y"])
+        self.assertEqual(
+            nodes["ifft"]["position"]["y"],
+            nodes["output"]["position"]["y"])
 
     def test_converter_preserves_velocity_blue_modulation_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
@@ -223,6 +230,31 @@ class PortCycleV1PresetTest(unittest.TestCase):
             and edge["destNodeId"] == "timeLayer1Process"
             for edge in converted["edges"]
         ))
+
+    def test_centered_time_layer_omits_the_no_op_pan(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("timeLayer1Process", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "timeLayer1"
+            and edge["destNodeId"] in ("timeOp1", "fft")
+            for edge in converted["edges"]
+        ))
+
+    def test_spectral_range_is_mapped_even_when_pan_is_centered(self):
+        source = convertible_source()
+        properties = source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["properties"]
+        properties["pan"] = 0.5
+        properties["range"] = 0.625
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertEqual(
+            nodes["magnitudeLayer1Process"]["parameters"]["range"],
+            0.625)
 
     def test_missing_realtime_oversampling_uses_cycle_default(self):
         source = convertible_source()

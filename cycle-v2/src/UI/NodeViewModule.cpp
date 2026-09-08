@@ -107,14 +107,18 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::Add, operation);
     add(NodeKind::Multiply, operation);
 
-    const auto addCurve = [&add](NodeKind kind, Point<float> editorSize) {
+    const auto addCurve = [&add](
+            NodeKind kind,
+            Point<float> editorSize,
+            bool outputSideControl = false) {
         NodeViewCapabilities curve;
         curve.previewable = true;
         curve.hostedEditor = true;
+        curve.outputSideControl = outputSideControl;
         curve.expandedEditorSize = editorSize;
         add(kind, curve);
     };
-    addCurve(NodeKind::Envelope, { 840.f, 684.f });
+    addCurve(NodeKind::Envelope, { 840.f, 684.f }, true);
     addCurve(NodeKind::ImpulseResponse, { 1080.f, 430.f });
     addCurve(NodeKind::Waveshaper, { 766.f, 464.f });
 

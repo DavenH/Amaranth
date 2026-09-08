@@ -2,10 +2,10 @@
 
 ## Status
 
-Complete. All 229 Cycle 1 factory sources now have a Cycle V2 destination.
-Generated graphs use a deterministic compact layout, and the existing inline
-Pan operation supports the time-domain layer placement needed by the final
-three presets.
+Complete. All 229 Cycle 1 factory sources have a Cycle V2 destination. Generated
+layouts use authorable port rotations, align connected ports, avoid unrelated
+nodes on ordinary audio/control cable paths, and omit neutral time Pan
+operations.
 
 ## Goal
 
@@ -91,16 +91,17 @@ than hand-authored coordinates for individual presets.
 The main audio path reads left to right: Voice Context and time sources, FFT,
 spectral fan-in, IFFT, effects, and Output. Magnitude meshes sit in aligned rows
 above their accumulator operations; phase meshes use corresponding rows below.
-Large layer stacks wrap into a bounded serpentine grid. At row turns, persisted
-port-side overrides point accumulator cables through the switchback instead of
-letting them cross node bodies. Modulation, Unison, pitch, scratch, and inactive
-Envelope nodes occupy aligned auxiliary lanes without competing with the audio
-spine.
+Layer stacks remain in monotonic lanes because the operation rotator always
+keeps its output on the right; a generated switchback would otherwise persist a
+layout the user could not reproduce. Modulation, Unison, pitch, scratch, and
+inactive Envelope nodes occupy aligned auxiliary lanes without competing with
+the audio spine. The active pitch Envelope is placed immediately left of Voice
+with their connected ports aligned.
 
 The layout contract is mechanical: no compact node rectangles overlap after
 Cycle V2 resolves their natural sizes, ordinary horizontal gaps are consistent,
-the signal spine is monotonic outside explicit serpentine branches, and the
-occupied aspect remains bounded for the largest factory graph. This is a
+the signal spine and accumulator lanes are monotonic, and generated port-side
+overrides are reachable through the corresponding compact control. This is a
 converter-specific presentation pass; it does not duplicate canvas routing or
 become a hidden runtime auto-layout system. If user-authored graphs later need
 automatic organization, extract a shared service around `naturalSizeForNode()`
@@ -115,6 +116,35 @@ Generalize that existing operation to accept time signals and apply the mature
 `Arithmetic::getPans` channel gains without changing its spectral magnitude and
 phase contracts. The three remaining presets then place Pan immediately after
 each time Trimesh and before layer summation.
+
+Cycle 1 spectral `range` is already copied one-for-one to the operation and is
+consumed by the shared `SpectralLayerCore`; magnitude operation mode is also
+owned there. A centered spectral Pan therefore remains necessary when it owns
+range shaping or additive/multiplicative semantics. A centered time Pan has no
+such second responsibility and must be omitted as a graph no-op.
+
+### Authorable cable geometry
+
+Persisted port sides must be states reachable through the production compact
+node controls. Add/Multiply inputs use only the four operation layouts;
+Trimesh outputs use only the output-side cycle; single-input/single-output
+effects use only `NodePortLayout`; and FFT/IFFT retain definition-owned sides
+until they expose a rotator. Envelope gains the same output-side control as
+Trimesh, with its purpose icon shifted left so both header symbols remain
+separate. Generated volume Envelopes retain the ordinary right output.
+
+The converter aligns the main signal path by actual port centres rather than
+node centres. FFT magnitude/phase outputs, their serial operation lanes, IFFT
+inputs, the post-IFFT chain, and Output share the corresponding y coordinates.
+Layer meshes centre over the operation input they feed. Auxiliary Envelopes
+sit near their consumers without occupying the main cable corridor.
+
+The production `NodeCanvasScene` cable path is the acceptance authority for
+signal-cable/node intersections. Generated layouts keep every ordinary audio
+or control cable out of unrelated compact node bounds. Domain-context fanout,
+configuration attachments, and processing attachments are excluded because
+their distribution/bundle geometry is distinct; missing obstacle-aware routing
+for domain-context fanout is recorded in `ui-bugs.md`.
 
 ## Lifecycle And Ownership
 
@@ -143,6 +173,9 @@ each time Trimesh and before layer summation.
    in `refactors.md`.
 7. Codified compact non-overlapping generated layout, generalized inline Pan
    to time signals, and migrated the final three presets.
+8. Restricted generated port overrides to authorable states, removed neutral
+   time Pan, aligned connected ports, and added whole-library rejection of
+   ordinary audio/control cable crossings through unrelated nodes.
 
 ## Verification
 
@@ -182,22 +215,29 @@ each time Trimesh and before layer summation.
 
 ## Final Verification
 
-- Converter unit tests: 21 passed.
+- Converter unit tests: 23 passed.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
-- Cycle V2 bundled-preset tests: 31,623 assertions across 14 cases passed,
-  including 31,376 pairwise layout assertions against production node bounds.
+- The focused generated-layout case passes 462,070 assertions, covering compact
+  node overlap and actual production cable paths across all 224 regenerated
+  graphs.
+- Focused graph/preset coverage passes 462,245 assertions across 6 cases;
+  Envelope/output-layout authoring and hit routing pass 54 assertions across 4
+  cases.
 - Cycle V2 Pan tests: 169 assertions across 11 cases passed, including direct
   time processing, chained oscillator rendering, and a two-update cable edit,
   commit, downstream effect, and undo sequence.
 - Native Cycle V2 batch verification: all 224 generated destinations loaded,
   compiled, saved, reopened, and compiled again; 1,120 automation operations
   completed with zero failures across the batch sessions.
-- Production-size macOS captures cover simple, four-effect, and 43-node layer
-  graphs at `/private/tmp/cycle-v2-layout-saw.png`,
-  `/private/tmp/cycle-v2-layout-thrash-guitar.png`, and
-  `/private/tmp/cycle-v2-layout-final.png`.
+- Production-size macOS captures include the final authorable Envelope and
+  operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
+- The complete Cycle V2 binary passes 602 of 604 cases. The two unrelated
+  worktree failures are the protected `african-horn.cyclegraph` lacking newly
+  explicit default `enabled` fields, and the pre-existing locally modified
+  `stengah.cyclegraph` no longer satisfying its scratch-probe fixture. Neither
+  protected graph was rewritten by this layout pass.
 
 ## Completion Criteria
 

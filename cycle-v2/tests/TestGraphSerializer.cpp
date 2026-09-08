@@ -10,6 +10,7 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/GraphAudioExecutor.h"
+#include "UI/NodeCanvasScene.h"
 
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -583,6 +584,55 @@ TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
                 }
                 INFO(nodes[leftIndex].id << " overlaps " << nodes[rightIndex].id);
                 REQUIRE_FALSE(nodes[leftIndex].bounds.intersects(nodes[rightIndex].bounds));
+            }
+        }
+
+        NodeCanvasViewport viewport;
+        viewport.setBounds({ 0.f, 0.f, 20000.f, 20000.f });
+        viewport.setTransform({}, 1.f);
+        NodeCanvasScene sceneBuilder;
+        const auto& scene = sceneBuilder.build(loaded.graph, viewport);
+        for (const NodeSceneEdge& sceneEdge : scene.edges) {
+            StringArray endpointNodeIds;
+            bool ordinarySignal = !sceneEdge.modulationBundle;
+            for (const int edgeIndex : sceneEdge.edgeIndices) {
+                REQUIRE(edgeIndex >= 0);
+                REQUIRE(edgeIndex < static_cast<int>(loaded.graph.getEdges().size()));
+                const Edge& edge = loaded.graph.getEdges()[static_cast<size_t>(edgeIndex)];
+                ordinarySignal = ordinarySignal
+                        && edge.connectionKind == ConnectionKind::Signal;
+                const Node* sourceNode = loaded.graph.findNode(edge.sourceNodeId);
+                if (sourceNode != nullptr) {
+                    const auto sourcePort = std::find_if(
+                            sourceNode->outputs.begin(),
+                            sourceNode->outputs.end(),
+                            [&](const Port& port) { return port.id == edge.sourcePortId; });
+                    ordinarySignal = ordinarySignal
+                            && sourcePort != sourceNode->outputs.end()
+                            && sourcePort->domain != PortDomain::DomainContext;
+                }
+                endpointNodeIds.addIfNotAlreadyThere(edge.sourceNodeId);
+                endpointNodeIds.addIfNotAlreadyThere(edge.destNodeId);
+            }
+            if (!ordinarySignal) {
+                continue;
+            }
+
+            PathFlatteningIterator iterator(sceneEdge.cablePath);
+            while (iterator.next()) {
+                const Line<float> segment(
+                        { iterator.x1, iterator.y1 },
+                        { iterator.x2, iterator.y2 });
+                for (const Node& node : nodes) {
+                    if (node.kind == NodeKind::SpectralLayer
+                            || endpointNodeIds.contains(node.id)) {
+                        continue;
+                    }
+                    INFO(file.getFileName() << ": cable "
+                            << endpointNodeIds.joinIntoString(" -> ")
+                            << " crosses " << node.id);
+                    REQUIRE_FALSE(node.bounds.reduced(3.f).intersects(segment));
+                }
             }
         }
     }

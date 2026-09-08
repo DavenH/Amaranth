@@ -22,7 +22,10 @@ and `SpectralLayerNodeAudioProcessor`. When the graph format next supports a
 kind alias, rename these together behind a read-only `spectralLayer` alias and
 keep `PanConfiguration` as the domain-neutral runtime contract. Do not add a
 parallel time-Pan node or duplicate its gain law while that naming migration
-is pending.
+is pending. The same inline node currently owns spectral range and operation
+mode, so it cannot be elided when spectral pan is centered; first-class layer
+ownership should separate these concerns before making neutral Pan removal
+uniform across domains.
 
 ## Panel line-strip coordinate ownership
 

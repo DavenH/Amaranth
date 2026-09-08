@@ -98,6 +98,7 @@ TEST_CASE("Node port layout cycling survives document serialization",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "envelope", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -105,20 +106,29 @@ TEST_CASE("Node port layout cycling survives document serialization",
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
 
     REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
-    REQUIRE(authoring.cycleMeshOutputSide("mesh").succeeded);
+    REQUIRE(authoring.cycleOutputSide("mesh").succeeded);
+    REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
     const Node* editedAdd = document.graph().findNode("add");
     const Node* editedMesh = document.graph().findNode("mesh");
+    const Node* editedEnvelope = document.graph().findNode("envelope");
     REQUIRE(editedAdd->inputs[0].side == PortSide::Left);
     REQUIRE(editedAdd->inputs[1].side == PortSide::Top);
     REQUIRE(editedMesh->outputs[0].side == PortSide::Bottom);
+    REQUIRE(editedEnvelope->outputs[0].side == PortSide::Bottom);
+    REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
+    REQUIRE(document.graph().findNode("envelope")->outputs[0].side == PortSide::Top);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("envelope")->outputs[0].side == PortSide::Bottom);
 
     GraphDocument restored;
     REQUIRE(restored.loadJson(document.toJson(), false));
     const Node* restoredAdd = restored.graph().findNode("add");
     const Node* restoredMesh = restored.graph().findNode("mesh");
+    const Node* restoredEnvelope = restored.graph().findNode("envelope");
     REQUIRE(restoredAdd->inputs[0].side == PortSide::Left);
     REQUIRE(restoredAdd->inputs[1].side == PortSide::Top);
     REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
+    REQUIRE(restoredEnvelope->outputs[0].side == PortSide::Bottom);
 }
 
 TEST_CASE("Single input and output port layouts cycle forward and undo",

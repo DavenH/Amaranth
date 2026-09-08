@@ -115,3 +115,17 @@ Context:
 Current status: open. Reproduce with repeated graph replacement under active
 OpenGL previews, then make editor synchronization and preview rendering share
 a safe snapshot/lifetime boundary.
+
+## P2: Cycle V2 domain-context fanout cables lack obstacle-aware routing
+
+Status: Open
+
+The migrated graphs connect `Voice Context.context` directly to every time,
+magnitude, and phase mesh. With several time layers, a later context cable can
+cross an earlier mesh node even when the ordinary audio/control graph has a
+clean left-to-right layout. The canvas currently has neither obstacle-aware
+cable routing nor a visual fanout/bundle for domain-context distribution.
+
+The migrated-preset cable-crossing assertion intentionally covers ordinary
+audio/control signals and excludes domain-context, configuration-attachment,
+and processing-attachment routes until this routing support exists.
