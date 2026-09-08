@@ -1,6 +1,6 @@
 # Cycle 1 Audio Pipeline Parity
 
-Status: in progress
+Status: implemented
 
 ## Objective
 
@@ -71,6 +71,17 @@ approximations.
   copied DSP or rasterization implementation.
 - Modified realtime paths allocate no memory, full tests pass, and each
   coherent fix is documented and committed before the next slice.
+
+## Completion Evidence
+
+- All six reported contracts have focused audio-output or live-keyboard
+  regressions.
+- The parity changes reuse `MorphPosition::withTime`, `SpectralLayerCore`, the
+  existing rasterizer preparation lifecycle, and the legacy layer-selection
+  rule; no preset-specific production path was added.
+- `ctest --test-dir build/tests --output-on-failure` passes all 852 discovered
+  tests. The standalone Cycle build and each focused integration script pass at
+  their documented sample rates.
 
 ## Deletion Targets
 
