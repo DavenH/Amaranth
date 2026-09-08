@@ -53,6 +53,7 @@ public:
     size_t serviceNonRealtimePreparation() const;
     bool hasActiveVoiceTail(int voiceIndex) const;
     bool hasVoiceTailProcessor(int voiceIndex) const;
+    size_t oscillatorFrameRenderCount(int voiceIndex) const;
 
     GraphAudioResult process(const NodeGraph& graph, const GraphExecutionPlan& plan, size_t frameCount) const;
     GraphAudioResult process(

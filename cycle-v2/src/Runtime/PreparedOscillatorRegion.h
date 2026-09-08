@@ -33,6 +33,7 @@ class PreparedOscillatorRegion {
 public:
     virtual ~PreparedOscillatorRegion() = default;
     virtual bool replacesDiagnosticProcessors() const = 0;
+    virtual size_t frameRenderCount() const { return 0; }
     virtual void reset() = 0;
     virtual bool process(const PreparedOscillatorProcessContext& context) = 0;
 };

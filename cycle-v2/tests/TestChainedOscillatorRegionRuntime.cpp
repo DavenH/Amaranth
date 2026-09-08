@@ -4,6 +4,7 @@
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 #include "Graph/GraphCompiler.h"
@@ -35,6 +36,71 @@ public:
     std::array<int, CycleDsp::maximumUnisonOrder> renderCounts {};
     std::array<float, CycleDsp::maximumUnisonOrder> renderedPhases {};
 };
+
+struct PartitionedRender {
+    std::vector<float> left;
+    std::vector<float> right;
+    size_t frameRenderCount {};
+};
+
+GraphExecutionPlan loadFilterSawPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("filter-saw.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
+PartitionedRender renderFilterSaw(
+        const GraphExecutionPlan& plan,
+        int blockSize,
+        int sampleCount) {
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 512;
+    spec.sampleRate = 48000.0;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(plan, spec);
+
+    PartitionedRender result;
+    result.left.reserve((size_t) sampleCount);
+    result.right.reserve((size_t) sampleCount);
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 72;
+    voice.controls.velocity = 1.f;
+    voice.controls.normalizedVoiceTimeIncrement = 1.f / 48000.f;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    for (int start = 0; start < sampleCount; start += blockSize) {
+        const int count = std::min(blockSize, sampleCount - start);
+        voice.controls.normalizedVoiceTime = (float) start / 48000.f;
+        const auto output = executor.processRealtime(
+                plan,
+                (size_t) count,
+                { 48000.0, 120.0, 4 },
+                voice);
+        REQUIRE(output.isValid());
+        REQUIRE(output.payload->isStereo());
+        result.left.insert(
+                result.left.end(),
+                output.payload->block.samples.begin(),
+                output.payload->block.samples.end());
+        result.right.insert(
+                result.right.end(),
+                output.payload->secondaryBlock.samples.begin(),
+                output.payload->secondaryBlock.samples.end());
+        voice.events.clear();
+    }
+    result.frameRenderCount = executor.oscillatorFrameRenderCount(0);
+    return result;
+}
 
 }
 
@@ -368,4 +434,27 @@ TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unis
         return sample != 0.f;
     }));
     REQUIRE(wholeLeft != wholeRight);
+}
+
+TEST_CASE("Evolving spectral frames are independent of host block partitions",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][live-modulation]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphExecutionPlan plan = loadFilterSawPlan();
+    const PartitionedRender reference = renderFilterSaw(plan, 512, 2048);
+    REQUIRE(reference.frameRenderCount > 1);
+
+    for (const int blockSize : { 64, 127, 256 }) {
+        DYNAMIC_SECTION("block size " << blockSize) {
+            const PartitionedRender partitioned = renderFilterSaw(
+                    plan,
+                    blockSize,
+                    2048);
+            REQUIRE(partitioned.frameRenderCount == reference.frameRenderCount);
+            REQUIRE(partitioned.left == reference.left);
+            REQUIRE(partitioned.right == reference.right);
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

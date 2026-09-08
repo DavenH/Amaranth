@@ -725,6 +725,20 @@ bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex) const {
     return hasVoiceTailProcessor(voiceIndex, false);
 }
 
+size_t GraphAudioExecutor::oscillatorFrameRenderCount(int voiceIndex) const {
+    const auto found = preparedVoices.find(voiceIndex);
+    if (found == preparedVoices.end()) {
+        return 0;
+    }
+    size_t count = 0;
+    for (const auto& region : found->second.oscillatorRegions) {
+        if (region != nullptr && region->processor != nullptr) {
+            count += region->processor->frameRenderCount();
+        }
+    }
+    return count;
+}
+
 bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const {
     const auto found = preparedVoices.find(voiceIndex);
     if (found == preparedVoices.end() || found->second.plan == nullptr) {

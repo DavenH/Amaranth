@@ -72,7 +72,11 @@ bool SpectralOscillatorRegionRuntime::prepare(
 
 void SpectralOscillatorRegionRuntime::reset() {
     fixedFrameSize = 0;
-    frameReady = false;
+    initialFramesReady = false;
+    sharedFramePeriod = 0.0;
+    lastSharedFramePosition = 0.0;
+    nextSharedFramePosition = 0.0;
+    lastSharedFrameFrontier = 0;
     for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
         auto& lane = lanes[(size_t) laneIndex];
         lane.clock = {};
@@ -97,7 +101,9 @@ bool SpectralOscillatorRegionRuntime::process(
             || left.empty()
             || (size_t) left.size() > maximumFrameCount
             || layout.order < 1
-            || (!frameReady && !renderSharedFrame(context, renderer))) {
+            || (!initialFramesReady
+                    && !initializeSharedFrames(context, renderer))
+            || !renderCyclesUntilReady(context, renderer)) {
         left.zero();
         right.zero();
         return false;
@@ -108,16 +114,6 @@ bool SpectralOscillatorRegionRuntime::process(
     const float level = context.velocity
             * CycleDsp::UnisonCore::voiceLevelScale(layout.order);
     for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
-        if (!renderUntilReady(
-                laneIndex,
-                context.midiNote,
-                context.pitchEnvelope,
-                (size_t) left.size())) {
-            left.zero();
-            right.zero();
-            return false;
-        }
-
         auto& lane = lanes[(size_t) laneIndex];
         float leftPan {};
         float rightPan {};
@@ -159,7 +155,7 @@ int SpectralOscillatorRegionRuntime::fixedFrameSizeFor(int midiNote) const {
     return Arithmetic::getNextPow2((float) (1.0 / angleDelta));
 }
 
-bool SpectralOscillatorRegionRuntime::renderSharedFrame(
+bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
         const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
     fixedFrameSize = fixedFrameSizeFor(context.midiNote);
@@ -168,6 +164,14 @@ bool SpectralOscillatorRegionRuntime::renderSharedFrame(
     }
 
     const int halfSize = fixedFrameSize / 2;
+    sharedFramePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+            context.midiNote,
+            0.f,
+            sampleRate);
+    if (sharedFramePeriod <= 0.0) {
+        fixedFrameSize = 0;
+        return false;
+    }
     if (!CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
                 fixedFrameSize,
                 fadeIn.withSize(halfSize),
@@ -177,7 +181,7 @@ bool SpectralOscillatorRegionRuntime::renderSharedFrame(
                     context.midiNote,
                     context,
                     context.blockSampleStart,
-                    0,
+                    1,
                     currentFrames[0].withSize(fixedFrameSize),
                     currentFrames[1].withSize(fixedFrameSize))) {
         fixedFrameSize = 0;
@@ -198,82 +202,156 @@ bool SpectralOscillatorRegionRuntime::renderSharedFrame(
                                     .withSize(halfSize));
         }
     }
-    frameReady = true;
+    initialFramesReady = true;
+    lastSharedFramePosition = 0.0;
+    nextSharedFramePosition = sharedFramePeriod;
+    lastSharedFrameFrontier = 0;
     return true;
 }
 
-bool SpectralOscillatorRegionRuntime::renderUntilReady(
+bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
+        double cycleStart,
+        const PreparedOscillatorProcessContext& context,
+        SpectralOscillatorFrameRenderer& renderer) {
+    while (nextSharedFramePosition <= cycleStart) {
+        const uint64_t frontier = (uint64_t) nextSharedFramePosition;
+        const size_t elapsedSamples = std::max<uint64_t>(
+                1,
+                frontier - lastSharedFrameFrontier);
+        for (int channel = 0; channel < 2; ++channel) {
+            currentFrames[(size_t) channel]
+                    .withSize(fixedFrameSize)
+                    .copyTo(previousFrames[(size_t) channel]
+                            .withSize(fixedFrameSize));
+        }
+        if (!renderer.renderFrame(
+                fixedFrameSize,
+                context.midiNote,
+                context,
+                blockSampleOffsetFor(frontier, context),
+                elapsedSamples,
+                currentFrames[0].withSize(fixedFrameSize),
+                currentFrames[1].withSize(fixedFrameSize))) {
+            return false;
+        }
+        lastSharedFramePosition = nextSharedFramePosition;
+        lastSharedFrameFrontier = frontier;
+        nextSharedFramePosition += sharedFramePeriod;
+    }
+    return true;
+}
+
+bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
+        const PreparedOscillatorProcessContext& context,
+        SpectralOscillatorFrameRenderer& renderer) {
+    const int requiredSamples = context.left.size();
+    while (true) {
+        int nextLane = -1;
+        double nextCycleStart = 0.0;
+        for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
+            const auto& lane = lanes[(size_t) laneIndex];
+            if (lane.buffers[0].hasDataFor(requiredSamples)) {
+                continue;
+            }
+            if (nextLane < 0 || lane.clock.cumulativePosition < nextCycleStart) {
+                nextLane = laneIndex;
+                nextCycleStart = lane.clock.cumulativePosition;
+            }
+        }
+        if (nextLane < 0) {
+            return true;
+        }
+        if (!refreshSharedFramesThrough(nextCycleStart, context, renderer)
+                || !renderLaneCycle(nextLane, context)) {
+            return false;
+        }
+    }
+}
+
+bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         int laneIndex,
-        int midiNote,
-        Buffer<float> pitchEnvelope,
-        size_t frameCount) {
+        const PreparedOscillatorProcessContext& context) {
     auto& lane = lanes[(size_t) laneIndex];
-    while (!lane.buffers[0].hasDataFor((int) frameCount)) {
-        const long relativeFrontier = lane.clock.sampledFrontier
-                - lane.buffers[0].totalSamplesRead;
-        const int pitchIndex = pitchEnvelope.empty()
-                ? 0
-                : jlimit(0, pitchEnvelope.size() - 1, (int) relativeFrontier);
-        const float pitch = pitchEnvelope.empty() ? 0.5f : pitchEnvelope[pitchIndex];
-        const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
-                midiNote,
-                layout[laneIndex].detuneCents,
-                pitch,
-                sampleRate);
-        const bool firstCycle = (int) lane.clock.cumulativePosition == 0;
-        CycleDsp::OscillatorLaneCore::advanceChainedCycle(lane.clock, angleDelta);
-        if (lane.clock.samplesThisCycle <= 0
-                || lane.clock.samplesThisCycle > maximumCycleSamples) {
+    const long relativeFrontier = lane.clock.sampledFrontier
+            - lane.buffers[0].totalSamplesRead;
+    const int pitchIndex = context.pitchEnvelope.empty()
+            ? 0
+            : jlimit(0, context.pitchEnvelope.size() - 1, (int) relativeFrontier);
+    const float pitch = context.pitchEnvelope.empty()
+            ? 0.5f
+            : context.pitchEnvelope[pitchIndex];
+    const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
+            context.midiNote,
+            layout[laneIndex].detuneCents,
+            pitch,
+            sampleRate);
+    const bool firstCycle = (int) lane.clock.cumulativePosition == 0;
+    CycleDsp::OscillatorLaneCore::advanceChainedCycle(lane.clock, angleDelta);
+    if (lane.clock.samplesThisCycle <= 0
+            || lane.clock.samplesThisCycle > maximumCycleSamples) {
+        return false;
+    }
+
+    const float framePortion = sharedFramePeriod > 0.0
+            ? (float) ((lane.clock.cumulativePosition - lastSharedFramePosition)
+                    / sharedFramePeriod)
+            : 0.f;
+    const double sourceToDestRatio = fixedFrameSize * angleDelta;
+    for (int channel = 0; channel < 2; ++channel) {
+        auto composed = CycleDsp::CyclicFrameLaneRenderer::compose(
+                {
+                        currentFrames[(size_t) channel].withSize(fixedFrameSize),
+                        previousFrames[(size_t) channel].withSize(fixedFrameSize),
+                        fadeIn.withSize(fixedFrameSize / 2),
+                        fadeOut.withSize(fixedFrameSize / 2),
+                        layout[laneIndex].phaseCycles,
+                        framePortion,
+                        firstCycle,
+                        layout.order > 1
+                },
+                {
+                        lane.lastLerpHalf[(size_t) channel]
+                                .withSize(fixedFrameSize / 2)
+                },
+                {
+                        biasedFrame.withSize(fixedFrameSize),
+                        shiftedCurrentFrame.withSize(fixedFrameSize),
+                        shiftedPreviousFrame.withSize(fixedFrameSize),
+                        previousHalfFrame.withSize(fixedFrameSize / 2)
+                });
+        if (composed.empty()) {
             return false;
         }
 
-        const double sourceToDestRatio = fixedFrameSize * angleDelta;
-        for (int channel = 0; channel < 2; ++channel) {
-            auto composed = CycleDsp::CyclicFrameLaneRenderer::compose(
-                    {
-                            currentFrames[(size_t) channel].withSize(fixedFrameSize),
-                            previousFrames[(size_t) channel].withSize(fixedFrameSize),
-                            fadeIn.withSize(fixedFrameSize / 2),
-                            fadeOut.withSize(fixedFrameSize / 2),
-                            layout[laneIndex].phaseCycles,
-                            0.f,
-                            firstCycle,
-                            layout.order > 1
-                    },
-                    {
-                            lane.lastLerpHalf[(size_t) channel]
-                                    .withSize(fixedFrameSize / 2)
-                    },
-                    {
-                            biasedFrame.withSize(fixedFrameSize),
-                            shiftedCurrentFrame.withSize(fixedFrameSize),
-                            shiftedPreviousFrame.withSize(fixedFrameSize),
-                            previousHalfFrame.withSize(fixedFrameSize / 2)
-                    });
-            if (composed.empty()) {
-                return false;
-            }
-
-            auto output = resampleScratch[(size_t) channel]
-                    .withSize(lane.clock.samplesThisCycle);
-            auto& padding = lane.padding[(size_t) channel];
-            Resampling::resample(
-                    composed,
-                    output,
-                    sourceToDestRatio,
-                    padding[0],
-                    padding[1],
-                    padding[2],
-                    padding[3],
-                    padding[4],
-                    padding[5],
-                    padding[6],
-                    lane.samplingSpillover[(size_t) channel],
-                    Resampling::Hermite);
-            lane.buffers[(size_t) channel].write(output);
-        }
+        auto output = resampleScratch[(size_t) channel]
+                .withSize(lane.clock.samplesThisCycle);
+        auto& padding = lane.padding[(size_t) channel];
+        Resampling::resample(
+                composed,
+                output,
+                sourceToDestRatio,
+                padding[0],
+                padding[1],
+                padding[2],
+                padding[3],
+                padding[4],
+                padding[5],
+                padding[6],
+                lane.samplingSpillover[(size_t) channel],
+                Resampling::Hermite);
+        lane.buffers[(size_t) channel].write(output);
     }
-    return lane.buffers[1].hasDataFor((int) frameCount);
+    return true;
+}
+
+size_t SpectralOscillatorRegionRuntime::blockSampleOffsetFor(
+        uint64_t voiceSample,
+        const PreparedOscillatorProcessContext& context) const {
+    if (voiceSample <= context.voiceSampleStart) {
+        return context.blockSampleStart;
+    }
+    return context.blockSampleStart
+            + (size_t) (voiceSample - context.voiceSampleStart);
 }
 
 }

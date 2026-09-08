@@ -2,8 +2,9 @@
 
 ## Status
 
-In progress. The typed prepared-process context is implemented. Live morph
-resolution and cycle-frontier frame refresh remain incomplete.
+In progress. The typed prepared-process context, shared morph resolution, and
+center-timeline spectral-frame refresh are implemented. Timed-control/scratch
+boundary coverage and the differential preset matrix remain incomplete.
 
 This document is intentionally independent of the completed harmonic-region
 correction. The implementation at the start of this work rendered one prepared

@@ -78,6 +78,7 @@ private:
 class PreparedSpectralOscillatorRegion final : public PreparedOscillatorRegion {
 public:
     bool replacesDiagnosticProcessors() const override { return false; }
+    size_t frameRenderCount() const override { return renderer.frameRenderCount(); }
 
     bool prepare(
             const GraphExecutionPlan& plan,
