@@ -1,0 +1,100 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/dunk-2.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-v2-agent-dunk-2-evolution.wav",
+      "durationMs": 1600,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "voiceDurationSeconds": 0.506926471771485,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1300, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/pwm.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "delay",
+      "parameterId": "enabled",
+      "label": "Enabled",
+      "value": "0"
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-v2-agent-pwm-evolution.wav",
+      "durationMs": 1600,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "voiceDurationSeconds": 1.2669864718837067,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1300, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "enabled",
+      "label": "Enabled",
+      "value": "0"
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-v2-agent-pwm-linear-time.wav",
+      "durationMs": 1600,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "voiceDurationSeconds": 1.2669864718837067,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1300, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "enabled",
+      "label": "Enabled",
+      "value": "1"
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-v2-agent-pwm-repeat.wav",
+      "durationMs": 2600,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "voiceDurationSeconds": 1.2669864718837067,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 900, "note": 60 },
+        { "type": "noteOn", "timeMs": 1200, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 2100, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001
+    }
+  ],
+  "quit": true
+}
