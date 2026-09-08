@@ -26,6 +26,7 @@
 #include <UI/Widgets/RetractableCallout.h>
 #include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
+#include <UI/Widgets/Knob.h>
 #include <UI/Widgets/MidiKeyboard.h>
 #include <UI/Widgets/TabbedSelector.h>
 
@@ -1771,7 +1772,10 @@ namespace {
         return true;
     }
 
-    var audioCaptureMetrics(AudioSampleBuffer& capture, double sampleRate) {
+    var audioCaptureMetrics(
+            AudioSampleBuffer& capture,
+            double sampleRate,
+            const Array<ScheduledMidiEvent>* midiEvents = nullptr) {
         int channels = capture.getNumChannels();
         int totalSamples = capture.getNumSamples();
         int initialSamples = jmin(totalSamples, int(std::round(sampleRate * 0.05)));
@@ -1781,6 +1785,8 @@ namespace {
         double finalSumSquares = 0.0;
         float peak = 0.0f;
         float maxAdjacentDelta = 0.0f;
+        float maxNoteOffSecondDifference = 0.0f;
+        float terminalDelta = 0.0f;
         Array<var> channelMetrics;
 
         for (int ch = 0; ch < channels; ++ch) {
@@ -1803,6 +1809,8 @@ namespace {
                     ? finalNorm / std::sqrt(double(finalSamples))
                     : 0.0;
             float channelMaxAdjacentDelta = 0.0f;
+            float channelMaxNoteOffSecondDifference = 0.0f;
+            float channelTerminalDelta = 0.0f;
 
             if (totalSamples > 1) {
                 ScopedAlloc<float> adjacentDeltas(totalSamples - 1);
@@ -1811,8 +1819,35 @@ namespace {
                 channelMaxAdjacentDelta = adjacentDeltas.max();
             }
 
+            if (midiEvents != nullptr) {
+                for (const auto& event : *midiEvents) {
+                    const int offset = event.sampleOffset;
+                    if (!event.message.isNoteOff() || offset < 2 || offset >= totalSamples) {
+                        continue;
+                    }
+                    const float previousDelta = samples[offset - 1] - samples[offset - 2];
+                    const float releaseDelta = samples[offset] - samples[offset - 1];
+                    channelMaxNoteOffSecondDifference = jmax(
+                            channelMaxNoteOffSecondDifference,
+                            std::abs(releaseDelta - previousDelta));
+                }
+            }
+
+            int lastNonzeroSample = totalSamples - 1;
+            while (lastNonzeroSample >= 0 && samples[lastNonzeroSample] == 0.f) {
+                --lastNonzeroSample;
+            }
+            if (lastNonzeroSample >= 0 && lastNonzeroSample + 1 < totalSamples) {
+                channelTerminalDelta = std::abs(
+                        samples[lastNonzeroSample + 1] - samples[lastNonzeroSample]);
+            }
+
             peak = jmax(peak, channelPeak);
             maxAdjacentDelta = jmax(maxAdjacentDelta, channelMaxAdjacentDelta);
+            maxNoteOffSecondDifference = jmax(
+                    maxNoteOffSecondDifference,
+                    channelMaxNoteOffSecondDifference);
+            terminalDelta = jmax(terminalDelta, channelTerminalDelta);
             sumSquares += channelNorm * channelNorm;
             initialSumSquares += initialNorm * initialNorm;
             finalSumSquares += finalNorm * finalNorm;
@@ -1824,6 +1859,10 @@ namespace {
             channelJson->setProperty("initial50MsRms", initial50MsRms);
             channelJson->setProperty("final50MsRms", final50MsRms);
             channelJson->setProperty("maxAdjacentDelta", channelMaxAdjacentDelta);
+            channelJson->setProperty(
+                    "maxNoteOffSecondDifference",
+                    channelMaxNoteOffSecondDifference);
+            channelJson->setProperty("terminalDelta", channelTerminalDelta);
             channelMetrics.add(PresetJson::toVar(channelJson));
         }
 
@@ -1844,6 +1883,8 @@ namespace {
         json->setProperty("initial50MsRms", initial50MsRms);
         json->setProperty("final50MsRms", final50MsRms);
         json->setProperty("maxAdjacentDelta", maxAdjacentDelta);
+        json->setProperty("maxNoteOffSecondDifference", maxNoteOffSecondDifference);
+        json->setProperty("terminalDelta", terminalDelta);
         json->setProperty("channelMetrics", var(channelMetrics));
         return PresetJson::toVar(json);
     }
@@ -1878,7 +1919,21 @@ namespace {
             && checkAudioThreshold(command, metrics, "rmsLessThan", "rms", "lessThan", message)
             && checkAudioThreshold(command, metrics, "initial50MsRmsLessThan", "initial50MsRms", "lessThan", message)
             && checkAudioThreshold(command, metrics, "final50MsRmsGreaterThan", "final50MsRms", "greaterThan", message)
-            && checkAudioThreshold(command, metrics, "maxAdjacentDeltaLessThan", "maxAdjacentDelta", "lessThan", message);
+            && checkAudioThreshold(command, metrics, "maxAdjacentDeltaLessThan", "maxAdjacentDelta", "lessThan", message)
+            && checkAudioThreshold(
+                    command,
+                    metrics,
+                    "noteOffSecondDifferenceLessThan",
+                    "maxNoteOffSecondDifference",
+                    "lessThan",
+                    message)
+            && checkAudioThreshold(
+                    command,
+                    metrics,
+                    "terminalDeltaLessThan",
+                    "terminalDelta",
+                    "lessThan",
+                    message);
     }
 
     bool writeAudioCapture(
@@ -2525,7 +2580,7 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
         }
     }
 
-    data = audioCaptureMetrics(capture, sampleRate);
+    data = audioCaptureMetrics(capture, sampleRate, &midiEvents);
     auto* dataObject = PresetJson::getObject(data);
 
     if (dataObject != nullptr) {
@@ -4255,6 +4310,9 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("maximum", slider->getMaximum());
         json->setProperty("interval", slider->getInterval());
         json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+        if (auto* knob = dynamic_cast<Knob*>(slider)) {
+            json->setProperty("displayText", knob->getDisplayText());
+        }
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("controlType", "button");
         json->setProperty("toggleState", button->getToggleState());
@@ -4413,6 +4471,9 @@ var CycleAutomation::componentTreeState(Component* component,
         json->setProperty("minimum", slider->getMinimum());
         json->setProperty("maximum", slider->getMaximum());
         json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+        if (auto* knob = dynamic_cast<Knob*>(slider)) {
+            json->setProperty("displayText", knob->getDisplayText());
+        }
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("toggleState", button->getToggleState());
         json->setProperty("buttonText", button->getButtonText());

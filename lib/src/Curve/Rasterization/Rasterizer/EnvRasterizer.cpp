@@ -307,6 +307,15 @@ bool EnvRasterizer::renderToBuffer(
             tempoScale);
 }
 
+int EnvRasterizer::releaseSamplesRemaining(
+        double deltaX,
+        int unisonIdx,
+        const MeshLibrary::EnvProps& props,
+        float tempoScale) const {
+    return playback.releaseSamplesRemaining(
+            preparedPlaybackView(), deltaX, unisonIdx, props, tempoScale);
+}
+
 void EnvRasterizer::simulateStart(double& lastPosition) {
     playback.simulateStart(lastPosition);
 }

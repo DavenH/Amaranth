@@ -129,9 +129,9 @@ void CycleBasedVoice::initialiseNote(const int midiNoteNumber, const float veloc
         oversamplers[i]->resetDelayLine();
     }
 
-    noteState.stride = jmax(1, (int) (controlFreq / futureFrame.period + 0.5));
-    futureFrame.cycleCount = -noteState.stride;
     futureFrame.period = middlePeriod;
+    noteState.stride = jmax(1, (int) (controlFreq / middlePeriod + 0.5));
+    futureFrame.cycleCount = -noteState.stride;
 
     if (parent != nullptr) {
         // remember envelopes are unaffected by speed mesh distortion
@@ -747,6 +747,14 @@ double CycleBasedVoice::getAngleDelta(int midiNumber, float detuneCents, double 
     double fineTune = NumberUtils::noteToFrequency(midiNumber, detuneCents + (pitchEnvSemis + pitchWheelSemis) * 100);
 
     return fineTune / 44100.0;
+}
+
+void CycleBasedVoice::prepareUnisonVoiceCount(int voiceCount) {
+    if (Util::assignAndWereDifferent(noteState.numUnisonVoices, voiceCount)) {
+        unisonVoiceCountChanged();
+    }
+
+    prepareVoiceRasterizer();
 }
 
 void CycleBasedVoice::testIfOversamplingChanged() {

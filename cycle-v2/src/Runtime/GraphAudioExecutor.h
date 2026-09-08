@@ -175,6 +175,7 @@ private:
             const AudioVoiceContext& voice,
             size_t frameCount,
             SignalPayload& output);
+    bool hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const;
     GraphAudioResult processInternal(
             const GraphExecutionPlan& plan,
             size_t frameCount,

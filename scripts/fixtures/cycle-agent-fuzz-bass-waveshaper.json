@@ -1,0 +1,47 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "fuzz-bass",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "exportPreset",
+      "path": "/private/tmp/cycle-agent-fuzz-bass-preset.json"
+    },
+    {
+      "command": "exportMeshState",
+      "group": "waveshaper",
+      "layerIndex": 0,
+      "path": "/private/tmp/cycle-agent-fuzz-bass-waveshaper.json"
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-fuzz-bass.wav",
+      "durationMs": 1200,
+      "sampleRate": 48000,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.8,
+          "channel": 1
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 800,
+          "note": 60,
+          "channel": 1
+        }
+      ],
+      "peakGreaterThan": 0.0001,
+      "rmsGreaterThan": 0.00001,
+      "peakLessThan": 1.5
+    }
+  ],
+  "quit": true
+}

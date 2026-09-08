@@ -43,6 +43,7 @@ public:
     void setName(const String& name) override   { this->name = name; }
 
     void setDefaults();
+    String getDisplayText();
     void setStringFunction(const StringFunction& toBoth);
     void setStringFunctions(const StringFunction& toString,
                             const StringFunction& toConsole);

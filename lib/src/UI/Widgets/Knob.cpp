@@ -128,7 +128,7 @@ void Knob::paint(Graphics& g) {
                x + bigRad * sinf(angle),    y + bigRad * cosf(angle));
 
     if (drawValueText) {
-        String text = valueString.toString(getValue());
+        String text = getDisplayText();
         if (font.isNull()) {
             font = getObj(MiscGraphics).getSilkscreen();
         }
@@ -143,6 +143,10 @@ void Knob::paint(Graphics& g) {
         g.setColour(Colour::greyLevel(0.6f));
         g.drawSingleLineText(text, (getWidth() - width) / 2, getHeight() / 2 + 3);
     }
+}
+
+String Knob::getDisplayText() {
+    return valueString.toString(getValue());
 }
 
 void Knob::mouseEnter(const MouseEvent& e) {

@@ -53,6 +53,12 @@ namespace Rasterization {
                 double& position,
                 const MeshLibrary::EnvProps& props,
                 float tempoScale);
+        int releaseSamplesRemaining(
+                const PreparedEnvelopePlaybackView& prepared,
+                double deltaX,
+                int voiceIndex,
+                const MeshLibrary::EnvProps& props,
+                float tempoScale) const;
 
         void deriveVoiceOffsets(int tableSize, GuideCurveSeed seed);
 
@@ -90,6 +96,7 @@ namespace Rasterization {
                 double deltaX,
                 int voiceIndex);
         void beginRelease(const PreparedEnvelopePlaybackView& prepared);
+        double releaseStart(const PreparedEnvelopePlaybackView& prepared) const;
 
         EnvelopePlaybackState state;
         ScopedAlloc<float> outputMemory;

@@ -1,0 +1,58 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "ooh-aah",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaDelay"
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaUnison"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.02
+    },
+    {
+      "command": "action",
+      "actionType": "SwitchMode",
+      "area": "AreaSpectrum",
+      "id": "IdModePhase",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "TriggerButton",
+      "area": "AreaSpectrum",
+      "id": "IdBttnEnable",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-spectral-phase-bypass.wav",
+      "durationMs": 900,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 500, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001,
+      "final50MsRmsLessThan": 0.000001
+    }
+  ],
+  "quit": true
+}

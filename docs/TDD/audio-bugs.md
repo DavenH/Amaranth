@@ -1,5 +1,305 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 reverb never prepared its convolution buffers
+
+Context:
+
+- Cycle 1 accepted reverb parameter edits, but every audio block returned
+  before convolution because the reverb output buffers remained empty.
+- Legacy's audio manager forwarded the device block size to both convolution
+  effects during preparation. The current impulse modeller retained equivalent
+  `AudioHub` wiring, but the reverb forwarding call was lost in the port.
+- The Cycle test source glob also omitted tests nested below
+  `Audio/Effects/tests`, leaving the existing equalizer test and the new
+  reverb boundary test undiscovered.
+
+Resolution:
+
+- `SynthAudioSource::prepareToPlay()` now publishes the current block size to
+  the reverb's existing pending-action boundary, matching legacy ownership and
+  keeping allocation out of the preparation caller.
+- The direct effect test feeds a stereo Dirac impulse through the production
+  kernel and convolver and requires a finite, nonzero, multi-block stereo tail.
+- `scripts/test_cycle1_reverb_tail.py` renders Anasound dry and wet through the
+  full application at 128-, 512-, and 1024-sample device blocks. The dry signal
+  is silent after its 10 ms declick; the wet signal consistently measures
+  `0.0264` RMS from 110–200 ms and `0.00136` RMS from 160–200 ms.
+- Cycle now derives nested test sources from the authoritative application
+  source list. The previously dormant equalizer test explicitly completes its
+  smoothed parameter transition before measuring its final response.
+
+Current status: resolved on 2026-09-08.
+
+## Resolved: No-release volume envelopes truncated the declick tail
+
+Context:
+
+- Anasound has declick enabled and an active volume envelope whose sustain
+  marker is at the end, so it has no authored release segment.
+- Cycle 1 rendered the 10 ms fade into a buffer shortened to the remaining
+  ramp length, then added it to the unshortened MIDI render-segment view.
+  Accelerate rejects unequal `Buffer::add` lengths, so the entire final fade
+  block was discarded; the legacy IPP path happened to process the prefix.
+- The audible tail therefore varied with note-off position in the audio block.
+  At 48 kHz, the 800 ms case emitted only seven samples after note-off instead
+  of the intended roughly 480-sample declick.
+- The legacy project has the same note-off ordering defect.
+
+Resolution:
+
+- The final voice mix now narrows the destination to the rendered fade length,
+  preserving the existing envelope and declick lifecycle unchanged. The same
+  boundary correction protects shortened oscillator-latency flushes.
+- `scripts/test_cycle1_anasound_declick.py` covers 50, 150, 400, and 800 ms
+  notes at the preset's authored gain and requires signal through the middle of
+  the declick interval plus a continuous terminal transition.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 phase offsets were discarded on Accelerate
+
+Context:
+
+- Acidic loads two valid phase layers panned hard left and right, but its dry
+  output channels were bit-identical.
+- Both layers rasterized distinct offsets and accumulated distinct channel
+  spectra. The voice then added each active-bin buffer to the full maximum-size
+  phase allocation. Accelerate rejects that buffer-size mismatch, so the add
+  was a no-op; the legacy IPP path happened to process the shorter prefix.
+
+Resolution:
+
+- Phase offsets are added through the existing note-sized `phaseBufs` views.
+- `scripts/test_cycle1_spectral_phase.py` now requires Acidic to retain
+  side-channel energy. Its side/mid RMS ratio is `2.45` at 44.1 kHz and `2.40`
+  at 48 kHz, up from exactly zero.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 unison growth invalidated prepared voice states
+
+Context:
+
+- Ping was silent with its authored seven-voice unison and audible when unison
+  alone was bypassed. Delay and the preset's oscillator/envelope data were not
+  involved.
+- Voice rasterizers were prepared while the unison order was one. Note start
+  then grew the per-unison cycle-state collection on the audio thread, after
+  snapshot preparation, so every multi-voice rasterization failed safely to
+  silence.
+
+Resolution:
+
+- Unison order changes now resize cycle storage and reprepare both Cycle 1
+  oscillator rasterizers under the existing audio lock, before realtime note
+  rendering. Note start observes the prepared count and performs no allocation.
+- The spectral integration renders Ping with its authored effects and requires
+  audible output. Its steady RMS is `0.0689` at both 44.1 and 48 kHz.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 retained FFT bins above the note's harmonic limit
+
+Context:
+
+- Calming produced note-dependent high-frequency buzzing on its displayed A1,
+  G1, F1, and E1 keys despite its low-harmonic magnitude surface. The strongest
+  unintended content clustered near Nyquist.
+- Cycle 1 copied only the note-valid magnitude and phase prefix into its
+  reusable transform before inverse FFT. Bins above that prefix retained the
+  unfiltered forward-transform content. Legacy explicitly zeroes those bins,
+  and the current visual DSP already preserved that behavior independently.
+
+Resolution:
+
+- The mature visual tail-clear operation now lives in `SpectralLayerCore` and
+  is shared by the realtime voice and visual inverse transforms.
+- `scripts/test_cycle1_calming_spectrum.py` renders A1, G1, F1, and E1 at 44.1
+  and 48 kHz, requires audible steady output, and limits power above 3 kHz.
+- At 44.1 kHz, the four high-band ratios fell from between `5.66e-6` and
+  `2.94e-4` to between `1.52e-9` and `4.31e-9`.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 voice-time slices remained on the first yellow plane
+
+Context:
+
+- PWM rendered nearly stationary harmonic ratios, Dunk2 did not audibly leave
+  its short initial cubes, and BrightLead3's scratch-enabled and linear-time
+  variants were much more alike than their authored surfaces imply.
+- The voice implementations copied each layer's `MorphPosition` and assigned
+  the new time to its `SmoothedParameter`. That assignment changes only the
+  smoothing target; the rasterizer reads the unchanged current value, so every
+  cycle continued slicing at time zero.
+- The same mistake affected ordinary time layers and the filter voice's
+  time-domain source. Legacy constructs each raster position with the sampled
+  voice time as its current value.
+- Note initialization also calculated the interpolation stride from the
+  previous note's retained period, or zero on the first note, before installing
+  the new note's period. This inherited legacy defect gave first and subsequent
+  notes different rasterization cadences.
+
+Resolution:
+
+- Time-domain voice rasterizers now use the existing `MorphPosition::withTime`
+  boundary, which creates a position whose current time is the sampled scratch
+  or linear voice time.
+- Interpolation stride now derives from the current note's middle period.
+- `scripts/test_cycle1_time_evolution.py` verifies early-to-late spectral
+  evolution in Dunk2 and PWM, material scratch-envelope differences in PWM and
+  BrightLead3, and correspondence between two PWM notes in one process.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Visible spectral domain contaminated layer enablement checks
+
+Context:
+
+- Disabling the last phase layer while the Phase domain was visible silenced a
+  spectral-only preset, even though its independent magnitude layer remained
+  enabled and its powered icon still appeared active after switching domains.
+- `Spectrum3D::haveAnyValidLayers()` accepted a magnitude/phase selector but
+  ignored it and inspected the currently visible layer group for both queries.
+  Voice enablement therefore depended on editor presentation state.
+- Legacy selects the magnitude or phase collection directly from the query.
+
+Resolution:
+
+- Spectral validity now selects `GroupSpect` or `GroupPhase` from the requested
+  domain, independent of the visible editor mode.
+- The focused OohAah automation disables its phase layer while Phase remains
+  visible and requires audible magnitude-only output.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 spectral voice omitted time-rasterizer preparation
+
+Context:
+
+- Acidic and Anasound2 produced exact silence, while Baroque Flute became a
+  thin residual with its phase layer active. Disabling that phase layer raised
+  Baroque Flute's steady-state power by roughly `864x`.
+- The extracted `VoiceRasterizer` requires its mesh and retained storage
+  capacity to be prepared before realtime rendering. `SynthesizerVoice`
+  prepared only the direct/unison voice and omitted the spectral-filter voice.
+- Acidic and Anasound2 depend on time-domain meshes followed by subtractive
+  spectral layers. Their failed time rasterization therefore supplied a zero
+  spectrum which subtractive processing could not restore. Baroque Flute's
+  additive layers left only a phase-sensitive residual.
+- The polar FFT itself preserves signal norm under arbitrary phase changes;
+  the phase transform was not the source of the lost harmonic power.
+
+Resolution:
+
+- The existing voice-preparation lifecycle now prepares both oscillator
+  implementations, reusing the shared `CycleBasedVoice` preparation path.
+- `scripts/test_cycle1_spectral_phase.py` asserts audible dry output from
+  Acidic and Anasound2 and compares Baroque Flute's steady-state power with its
+  phase layer enabled and disabled at both 44.1 and 48 kHz.
+- Baroque Flute's phase-disabled/enabled power ratio is now `1.04` to `1.06`
+  across those rates, while both formerly silent presets render nonzero audio.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 spectral notes accumulated DC across voice reuse
+
+Context:
+
+- The first OohAah note after launch sounded correct, but a second equal note
+  in the same process became severely distorted even after the first release
+  reached silence. With Delay and Unison disabled, the pre-capture peak rose
+  from about `0.16` to `4.30` at a master value of `0.1`.
+- The prior OohAah release integration launched a fresh process for every note
+  length, so it could not exercise reuse of the same synth and FFT instances.
+- Legacy cleared the packed DC slot before each inverse spectral transform.
+  The reimplementation's reusable `Transform` instead retained the preceding
+  inverse transform's first time-domain value and interpreted it as DC on the
+  next cycle.
+
+Resolution:
+
+- Cycle 1's synth-owned spectral transforms now use the existing DC-removal
+  mode, restoring the legacy zero-DC inverse-transform contract.
+- `scripts/test_cycle1_ooh_aah_repeat_note.py` renders two equal OohAah notes
+  per process and compares their 5 ms RMS amplitude contours. Its default
+  matrix covers three note lengths at both 44.1 and 48 kHz.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle 1 volume-envelope completion hard-cut a nonzero tail
+
+Context:
+
+- The OohAah release was continuous at MIDI note-off, but the envelope's last
+  discrete sample remained nonzero before `SynthesizerVoice` retired the voice.
+  At the preset's quiet test gain, the final jump to exact silence measured
+  between `0.00055` and `0.00196` across 50, 150, 400, and 800 ms notes.
+- The previous integration check used one note length and only the maximum
+  adjacent delta over the complete render, so oscillator content could hide
+  this smaller event-specific discontinuity.
+- OohAah stores `Declick = 0`; its authored volume release must therefore end
+  continuously without relying on the optional immediate note-off declick.
+
+Resolution:
+
+- Cycle 1 now aligns the existing release-declick curve with the final samples
+  of an authored volume release. This terminal continuity rule is independent
+  of the optional note-boundary declick setting and does not allocate on the
+  audio thread.
+- Offline capture metrics now report the second difference at each scheduled
+  note-off and the final nonzero-to-zero delta separately.
+- `scripts/test_cycle1_ooh_aah_release.py` launches a fresh Cycle process for
+  each note length to avoid shared offline-render state. All four OohAah cases
+  retain a smooth note-off and reduce the terminal delta below `1e-8`.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Cycle V2 keyboard note-off could retain voices indefinitely
+
+Context:
+
+- The realtime renderer treated every Envelope processor as the audible voice
+  tail owner, including scratch, pitch, and general control envelopes.
+- An envelope without a release curve ignored note-off and remained active.
+  A graph with no volume envelope could consequently retain the keyboard voice
+  after mouse-up when another envelope processor existed.
+
+Resolution:
+
+- The compiler now marks only volume envelopes as voice-tail owners, and the
+  realtime executor bases release retirement on that semantic marker.
+- Envelope processors without a release curve become inactive at note-off.
+  Graphs without a volume tail receive an immediate sample-offset reset;
+  volume-envelope graphs remain alive only until their release completes.
+- Focused processor and renderer tests cover no-release, no-volume, and normal
+  release completion. The performance-keyboard mouse-down/drag/mouse-up fixture
+  also returns `performance.activeVoiceCount` to zero.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Bipolar envelope release scaling introduced a note-off discontinuity
+
+Context:
+
+- Legacy normalized a release curve to the envelope level held at note-off, but
+  its `0.5` denominator floor assumed the synthetic release point created for
+  unipolar envelopes.
+- The extracted playback policy retained that floor while also serving bipolar
+  envelopes, whose real release-start value may legitimately be below `0.5`.
+  A release beginning at `0.25` therefore jumped to half the held level.
+
+Resolution:
+
+- Release scaling now divides by the actual sampled release-start value. A zero
+  release value retains unity scaling because no finite scale can make a zero
+  start continuous with a nonzero held value.
+- A focused bipolar playback regression holds an envelope at `0.75`, releases
+  into a curve beginning at `0.25`, and requires the first release sample to
+  remain exactly `0.75`.
+
+Current status: resolved on 2026-09-07.
+
 ## Resolved: Cycle 1 ignored volume-envelope amplitude and clicked at note boundaries
 
 Context:
@@ -75,7 +375,7 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
-## Open: Legacy resampler can replay carried MIDI
+## Resolved: Legacy resampler could replay carried MIDI
 
 Context:
 
@@ -87,9 +387,21 @@ Context:
 - Normal device block sizes do not exercise the zero-internal-sample case; a
   useful fix needs a tiny-block, high-output-rate scheduling fixture.
 
-Current status: open; inherited behavior, not a reimplementation discrepancy.
+Resolution:
 
-## Open: Legacy global scratch mixes output and internal sample-rate domains
+- The internal-rate block boundary now owns cumulative sample conversion and
+  deferred MIDI as one lifecycle object below `SynthAudioSource`.
+- Consecutive zero-internal-sample blocks append their MIDI in order. The next
+  nonempty block consumes those messages once and clears the carry.
+- Current-block event positions now use the legacy nearest-sample conversion
+  directly instead of adding an extra half sample before `roundToInt()`.
+- Focused tests exercise consecutive empty internal blocks at 192 kHz, ordered
+  note/controller carry, absence of replay, position conversion, and an exact
+  cumulative 44,100 internal samples for one second at 48 kHz.
+
+Current status: resolved on 2026-09-07.
+
+## Resolved: Legacy global scratch mixed output and internal sample-rate domains
 
 Context:
 
@@ -99,8 +411,17 @@ Context:
   the wrong duration relative to local scratch and oscillator processing.
 - No current factory parity fixture uses a global scratch layer.
 
-Current status: open; author a global-scratch timing fixture before changing
-the shared legacy behavior.
+Resolution:
+
+- `SynthAudioSource` now passes the internal-rate block length returned by the
+  shared block adapter into a dedicated global-envelope render boundary.
+- Global and local scratch therefore advance on the same 44.1 kHz timeline,
+  independent of device sample rate; neither performs a second rate conversion.
+- The internal-rate timing regression accumulates irregular 48 kHz output
+  blocks and proves they advance global scratch by exactly one second and
+  44,100 samples.
+
+Current status: resolved on 2026-09-07.
 
 ## Resolved: Cycle 1 standalone keyboard produced silent device buffers
 

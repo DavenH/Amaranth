@@ -131,6 +131,7 @@ struct GraphExecutionStep {
     RuntimeOwnershipScope ownershipScope { RuntimeOwnershipScope::SynthVoice };
     int oscillatorRegionIndex { -1 };
     bool outputSink {};
+    bool ownsVoiceTail {};
     AudioModuleRole audioRole { AudioModuleRole::None };
     PreviewModuleRole previewRole { PreviewModuleRole::None };
     PreviewContract previewContract { PreviewContract::None };

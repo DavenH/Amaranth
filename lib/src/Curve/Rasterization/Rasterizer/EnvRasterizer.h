@@ -63,6 +63,11 @@ public:
             int unisonIdx, const
             MeshLibrary::EnvProps& props,
             float tempoScale);
+    int releaseSamplesRemaining(
+            double deltaX,
+            int unisonIdx,
+            const MeshLibrary::EnvProps& props,
+            float tempoScale) const;
     bool simulateRender(
             double deltaX,
             double& lastPosition,

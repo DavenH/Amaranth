@@ -1,0 +1,85 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "anasound",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectEnable",
+      "toggleState": false
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle1-reverb-dry.wav",
+      "durationMs": 500,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 100, "note": 60 }
+      ],
+      "peakGreaterThan": 0.0001,
+      "rmsGreaterThan": 0.00001,
+      "peakLessThan": 1.5
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "value": 0.0
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam1",
+      "value": 0.2
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam2",
+      "value": 1.0
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam3",
+      "value": 0.05
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam4",
+      "value": 1.0
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectEnable",
+      "toggleState": true,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle1-reverb-wet.wav",
+      "durationMs": 500,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 100, "note": 60 }
+      ],
+      "peakGreaterThan": 0.0001,
+      "rmsGreaterThan": 0.00001,
+      "peakLessThan": 1.5
+    }
+  ],
+  "quit": true
+}

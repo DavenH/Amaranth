@@ -1,5 +1,7 @@
 #include "EnvelopePlaybackEngine.h"
 
+#include <cmath>
+
 #include <Curve/GuideCurveProvider.h>
 #include <Curve/Rasterization/Policies/Envelope/EnvelopePolicies.h>
 #include <Curve/Rasterization/Sampling/GuideCurveSampler.h>
@@ -177,6 +179,35 @@ namespace Rasterization {
         return stillAlive;
     }
 
+    int EnvelopePlaybackEngine::releaseSamplesRemaining(
+            const PreparedEnvelopePlaybackView& prepared,
+            double deltaX,
+            int voiceIndex,
+            const MeshLibrary::EnvProps& props,
+            float tempoScale) const {
+        if (state.mode != EnvelopePlaybackMode::Releasing
+                || !hasReleaseCurve(prepared)
+                || deltaX <= 0.) {
+            return -1;
+        }
+
+        EnvelopeRenderTimingContext context;
+        context.deltaX = deltaX;
+        context.tempoScale = tempoScale;
+        context.loopLength = loopLength(prepared);
+        context.props = &props;
+        const double effectiveDelta = EnvelopeRenderTimingPolicy().prepare(context).effectiveDelta;
+        if (effectiveDelta <= 0.) {
+            return -1;
+        }
+
+        const double position = state.hasPendingRelease()
+                ? releaseStart(prepared)
+                : state.voice(voiceIndex).samplePosition;
+        const double remaining = jmax(0., boundary(prepared) - position);
+        return int(std::ceil(remaining / effectiveDelta));
+    }
+
     int EnvelopePlaybackEngine::renderPartition(
             const PreparedEnvelopePlaybackView& prepared,
             Buffer<float> buffer,
@@ -266,7 +297,7 @@ namespace Rasterization {
                 } else {
                     const int available = jmin(
                             numSamples,
-                            int((end - voice.samplePosition) / deltaX));
+                            int(std::ceil((end - voice.samplePosition) / deltaX)));
                     Buffer<float> releaseBuffer(buffer, available);
                     WaveformSampler::sampleWithInterval(
                             activeResult(prepared).waveform,
@@ -291,10 +322,9 @@ namespace Rasterization {
         EnvelopeReleaseContext context;
         context.bipolar = prepared.scalingMode == PointScalingMode::Bipolar;
         context.sustainIndex = prepared.sustainIndex;
-        const int releaseIndex = EnvelopeReleasePolicy().releaseIndex(context);
         const float releaseLevel = sampleAt(
                 prepared,
-                prepared.display.intercepts[releaseIndex].x);
+                releaseStart(prepared));
         const auto release = EnvelopeReleasePolicy().start(
                 prepared.display.intercepts,
                 context,
@@ -304,6 +334,15 @@ namespace Rasterization {
         for (int i = firstAudioVoiceIndex; i < (int) state.allVoices().size(); ++i) {
             state.voice(i).samplePosition = release.position;
         }
+    }
+
+    double EnvelopePlaybackEngine::releaseStart(
+            const PreparedEnvelopePlaybackView& prepared) const {
+        EnvelopeReleaseContext context;
+        context.bipolar = prepared.scalingMode == PointScalingMode::Bipolar;
+        context.sustainIndex = prepared.sustainIndex;
+        const int releaseIndex = EnvelopeReleasePolicy().releaseIndex(context);
+        return prepared.display.intercepts[releaseIndex].x;
     }
 
     void EnvelopePlaybackEngine::validate(const PreparedEnvelopePlaybackView& prepared) {
