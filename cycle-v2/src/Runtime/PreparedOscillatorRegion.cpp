@@ -11,6 +11,13 @@
 
 namespace CycleV2 {
 
+const SignalPayload* PreparedOscillatorProcessContext::signalAt(
+        int bufferIndex) const {
+    return bufferIndex >= 0 && (size_t) bufferIndex < signalBufferCount
+            ? signalBuffers + bufferIndex
+            : nullptr;
+}
+
 namespace {
 
 class PreparedChainedOscillatorRegion final : public PreparedOscillatorRegion {
@@ -52,18 +59,13 @@ public:
         renderer->reset();
     }
 
-    bool process(
-            int midiNote,
-            float velocity,
-            Buffer<float> pitchEnvelope,
-            Buffer<float> left,
-            Buffer<float> right) override {
+    bool process(const PreparedOscillatorProcessContext& context) override {
         return runtime.process(
-                midiNote,
-                velocity,
-                pitchEnvelope,
-                left,
-                right,
+                context.midiNote,
+                context.velocity,
+                context.pitchEnvelope,
+                context.left,
+                context.right,
                 *renderer);
     }
 
@@ -99,18 +101,13 @@ public:
         renderer.reset();
     }
 
-    bool process(
-            int midiNote,
-            float velocity,
-            Buffer<float> pitchEnvelope,
-            Buffer<float> left,
-            Buffer<float> right) override {
+    bool process(const PreparedOscillatorProcessContext& context) override {
         return runtime.process(
-                midiNote,
-                velocity,
-                pitchEnvelope,
-                left,
-                right,
+                context.midiNote,
+                context.velocity,
+                context.pitchEnvelope,
+                context.left,
+                context.right,
                 renderer);
     }
 

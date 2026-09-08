@@ -149,6 +149,7 @@ private:
             std::vector<uint64_t> configurationRevisions;
             std::vector<float> pitchEnvelopeUnitValues;
             std::unique_ptr<PreparedOscillatorRegion> processor;
+            uint64_t voiceSamplePosition {};
             bool active {};
         };
 
@@ -173,6 +174,9 @@ private:
     static void renderOscillatorRegion(
             PreparedVoice::OscillatorRegion& region,
             const AudioVoiceContext& voice,
+            AudioProcessTiming timing,
+            const SignalPayload* signalBuffers,
+            size_t signalBufferCount,
             size_t frameCount,
             SignalPayload& output);
     bool hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const;
