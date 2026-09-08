@@ -1,5 +1,6 @@
 #include <Algo/ConvReverb.h>
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/ReverbKernel.h>
 #include <Util/Arithmetic.h>
 
@@ -85,7 +86,7 @@ bool ReverbEffect::doParamChange(int index, double value, bool doFutherUpdate)
         case Size: {
             roomSize = value;
 
-            int length = NumberUtils::nextPower2((int) powf(2, 12 + 6 * roomSize));
+            int length = (int) CycleDsp::reverbKernelLength(roomSize);
             if (length != kernel[0].size()) {
                 setPendingAction(kernelSize, length);
             }

@@ -1,0 +1,50 @@
+{
+  "commands": [
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "value": 0.0,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "path": "displayText",
+      "equals": "0.1"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "value": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "path": "displayText",
+      "equals": "0.7"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "value": 1.0,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertTarget",
+      "area": "AreaReverb",
+      "target": "TargEffectParam0",
+      "path": "displayText",
+      "equals": "5.9"
+    }
+  ],
+  "quit": true
+}

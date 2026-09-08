@@ -26,6 +26,7 @@
 #include <UI/Widgets/RetractableCallout.h>
 #include <UI/Widgets/Controls/HoverSelector.h>
 #include <UI/Widgets/Controls/SelectorPanel.h>
+#include <UI/Widgets/Knob.h>
 #include <UI/Widgets/MidiKeyboard.h>
 #include <UI/Widgets/TabbedSelector.h>
 
@@ -4309,6 +4310,9 @@ var CycleAutomation::componentState(Component* component, const String& area, co
         json->setProperty("maximum", slider->getMaximum());
         json->setProperty("interval", slider->getInterval());
         json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+        if (auto* knob = dynamic_cast<Knob*>(slider)) {
+            json->setProperty("displayText", knob->getDisplayText());
+        }
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("controlType", "button");
         json->setProperty("toggleState", button->getToggleState());
@@ -4467,6 +4471,9 @@ var CycleAutomation::componentTreeState(Component* component,
         json->setProperty("minimum", slider->getMinimum());
         json->setProperty("maximum", slider->getMaximum());
         json->setProperty("text", slider->getTextFromValue(slider->getValue()));
+        if (auto* knob = dynamic_cast<Knob*>(slider)) {
+            json->setProperty("displayText", knob->getDisplayText());
+        }
     } else if (auto* button = dynamic_cast<Button*>(component)) {
         json->setProperty("toggleState", button->getToggleState());
         json->setProperty("buttonText", button->getButtonText());
