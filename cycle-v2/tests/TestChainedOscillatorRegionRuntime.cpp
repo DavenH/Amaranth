@@ -43,7 +43,7 @@ struct PartitionedRender {
     size_t frameRenderCount {};
 };
 
-GraphExecutionPlan loadFilterSawPlan() {
+NodeGraph loadFilterSawGraph() {
 #if defined(CYCLE_V2_SOURCE_DIR)
     const File preset = File(String(CYCLE_V2_SOURCE_DIR))
             .getChildFile("content")
@@ -52,7 +52,15 @@ GraphExecutionPlan loadFilterSawPlan() {
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(
             preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
-    const auto compiled = GraphCompiler().compile(loaded.graph);
+    return loaded.graph;
+#else
+    return {};
+#endif
+}
+
+GraphExecutionPlan loadFilterSawPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(loadFilterSawGraph());
     REQUIRE(compiled.succeeded());
     return compiled.plan;
 #else
@@ -63,7 +71,8 @@ GraphExecutionPlan loadFilterSawPlan() {
 PartitionedRender renderFilterSaw(
         const GraphExecutionPlan& plan,
         int blockSize,
-        int sampleCount) {
+        int sampleCount,
+        int controllerEventOffset = -1) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 512;
     spec.sampleRate = 48000.0;
@@ -78,6 +87,14 @@ PartitionedRender renderFilterSaw(
     voice.controls.velocity = 1.f;
     voice.controls.normalizedVoiceTimeIncrement = 1.f / 48000.f;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    if (controllerEventOffset >= 0) {
+        voice.controlEvents.push_back({
+                ControlEventKind::Controller,
+                (size_t) controllerEventOffset,
+                74,
+                1.f
+        });
+    }
     for (int start = 0; start < sampleCount; start += blockSize) {
         const int count = std::min(blockSize, sampleCount - start);
         voice.controls.normalizedVoiceTime = (float) start / 48000.f;
@@ -97,6 +114,7 @@ PartitionedRender renderFilterSaw(
                 output.payload->secondaryBlock.samples.begin(),
                 output.payload->secondaryBlock.samples.end());
         voice.events.clear();
+        voice.controlEvents.clear();
     }
     result.frameRenderCount = executor.oscillatorFrameRenderCount(0);
     return result;
@@ -454,6 +472,101 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
             REQUIRE(partitioned.right == reference.right);
         }
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph graph = loadFilterSawGraph();
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowSource",
+            "Yellow Source",
+            "midiCC").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "morph",
+            "yellowController",
+            "Yellow Controller",
+            "74").succeeded());
+    REQUIRE(GraphEditor().setNodeParameter(
+            graph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    const PartitionedRender before = renderFilterSaw(compiled.plan, 512, 512, 90);
+    const PartitionedRender on = renderFilterSaw(compiled.plan, 512, 512, 91);
+    const PartitionedRender after = renderFilterSaw(compiled.plan, 512, 512, 92);
+    REQUIRE(before.left == on.left);
+    REQUIRE(before.right == on.right);
+    REQUIRE(after.left != on.left);
+    REQUIRE(after.right != on.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared spectral scratch follows the authored envelope attachment",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][scratch]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    NodeGraph enabledGraph = loadFilterSawGraph();
+    const auto enabled = GraphCompiler().compile(enabledGraph);
+    REQUIRE(enabled.succeeded());
+
+    NodeGraph disabledGraph = enabledGraph;
+    REQUIRE(GraphEditor().setNodeParameter(
+            disabledGraph,
+            "scratchEnvelope1",
+            "enabled",
+            "Enabled",
+            "0").succeeded());
+    const auto disabled = GraphCompiler().compile(disabledGraph);
+    REQUIRE(disabled.succeeded());
+
+    const PartitionedRender withScratch = renderFilterSaw(
+            enabled.plan, 256, 2048);
+    const PartitionedRender withoutScratch = renderFilterSaw(
+            disabled.plan, 256, 2048);
+    REQUIRE(withScratch.left != withoutScratch.left);
+    REQUIRE(withScratch.right != withoutScratch.right);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Spectral frame refresh count is independent of Unison order",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][unison][live-modulation]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    GraphExecutionPlan singlePlan = loadFilterSawPlan();
+    GraphExecutionPlan unisonPlan = singlePlan;
+    REQUIRE(singlePlan.voiceContexts.size() == 1);
+    REQUIRE(unisonPlan.voiceContexts.size() == 1);
+
+    CycleDsp::UnisonGroupConfiguration singleConfiguration;
+    singleConfiguration.order = 1;
+    singlePlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(singleConfiguration);
+
+    CycleDsp::UnisonGroupConfiguration unisonConfiguration;
+    unisonConfiguration.order = 4;
+    unisonConfiguration.detuneWidthCents = 18.f;
+    unisonConfiguration.panSpread = 1.f;
+    unisonPlan.voiceContexts.front().lanes
+            = CycleDsp::UnisonCore::makeGroupLayout(unisonConfiguration);
+
+    const PartitionedRender single = renderFilterSaw(singlePlan, 256, 2048);
+    const PartitionedRender unison = renderFilterSaw(unisonPlan, 256, 2048);
+    REQUIRE(single.frameRenderCount > 1);
+    REQUIRE(unison.frameRenderCount == single.frameRenderCount);
+    REQUIRE(unison.left != unison.right);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

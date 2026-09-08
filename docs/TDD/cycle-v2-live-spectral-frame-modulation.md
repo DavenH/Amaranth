@@ -2,9 +2,10 @@
 
 ## Status
 
-In progress. The typed prepared-process context, shared morph resolution, and
-center-timeline spectral-frame refresh are implemented. Timed-control/scratch
-boundary coverage and the differential preset matrix remain incomplete.
+In progress. The typed prepared-process context, shared morph resolution,
+center-timeline spectral-frame refresh, scratch/timed-control sampling, and
+shared-frame Unison behavior are implemented. The differential preset matrix
+and final stage-localization report remain incomplete.
 
 This document is intentionally independent of the completed harmonic-region
 correction. The implementation at the start of this work rendered one prepared
