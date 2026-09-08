@@ -292,7 +292,7 @@ def render_note(manifest, note, output_directory, arguments):
         arguments.maximum_lag,
     )
     analysis["requestedMidiNote"] = note
-    analysis["renderedMidiNotes"] = {
+    analysis["scheduledMidiNotes"] = {
         "v1": cycle_v1_note(manifest, note),
         "v2": note,
     }

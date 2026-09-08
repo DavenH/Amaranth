@@ -650,6 +650,8 @@ Artifacts:
 - `/tmp/cycle-saw-reference-fixed-notes/comparison.json`
 - `/tmp/cycle-japan-drum-reference-fixed/comparison.json`
 - `/tmp/cycle-guitar-3-g-reference-fixed/comparison.json`
+- `/tmp/cycle-filter-saw-reference-fixed/comparison.json`
+- `/tmp/cycle-filter-saw-reference-fixed-notes/comparison.json`
 
 After correcting MIDI scheduling, the admitted pairs still expose a valid DSP
 mismatch beyond the minimal time oscillator. Effect-free `japan-drum` is
@@ -659,6 +661,19 @@ effect-heavy `guitar-3-g` reaches `0.19678` and its Cycle 1 render is not
 repeatable. The next diagnostic must capture Cycle 1's time-cycle, FFT,
 post-layer spectral, and IFFT boundaries so the first divergent Japan Drum
 stage can be compared with Cycle V2 probes.
+
+The smaller `filter-saw` pair locates that boundary more precisely. It contains
+one time mesh followed by one subtractive magnitude mesh and no phase or effect
+processing. Both engines repeat byte-for-byte, yet correlation falls from
+`0.94389` at MIDI 36 to `0.83398` at MIDI 72, while normalized residual rises
+from `0.3303` to `0.5518`. Cycle 1 samples the magnitude mesh using
+`LogRegions::getRegion(noteState.lastNoteNumber)`; Cycle V2 passes its region
+MIDI note through `TrimeshBlockwiseDsp::setFrequencyMidiNote()`. The shared
+`LogRegionMapping` already applies a legacy `-12` reference internally. The
+external note translation and authored octave mapping therefore need a single
+explicit internal-note contract before changing either implementation. This is
+the leading source-level explanation, but remains an inference until the two
+magnitude arrays are captured at the mature DSP boundary.
 
 Current status: open. Reconcile each candidate against a fresh canonical
 conversion, add explicit deterministic seed control, and remove output-policy
@@ -680,7 +695,7 @@ Resolution:
 - Strict preset conversion now subtracts one additional octave and records the
   legacy reference offset in the equivalence manifest.
 - The paired runner now applies that recorded offset to Cycle 1 note events and
-  reports the two engine-specific rendered MIDI notes. A later exact-parity
+  reports the two engine-specific scheduled MIDI notes. A later exact-parity
   expansion had accidentally recorded without consuming this boundary value.
 - The corrected four-note comparison reaches at least 0.99990 correlation and
   no more than 0.0143 gain-matched residual. This disproves half-cycle carry as
