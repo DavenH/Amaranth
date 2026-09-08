@@ -1,5 +1,35 @@
 # Audio Bug Notes
 
+## Resolved: Cycle 1 reverb never prepared its convolution buffers
+
+Context:
+
+- Cycle 1 accepted reverb parameter edits, but every audio block returned
+  before convolution because the reverb output buffers remained empty.
+- Legacy's audio manager forwarded the device block size to both convolution
+  effects during preparation. The current impulse modeller retained equivalent
+  `AudioHub` wiring, but the reverb forwarding call was lost in the port.
+- The Cycle test source glob also omitted tests nested below
+  `Audio/Effects/tests`, leaving the existing equalizer test and the new
+  reverb boundary test undiscovered.
+
+Resolution:
+
+- `SynthAudioSource::prepareToPlay()` now publishes the current block size to
+  the reverb's existing pending-action boundary, matching legacy ownership and
+  keeping allocation out of the preparation caller.
+- The direct effect test feeds a stereo Dirac impulse through the production
+  kernel and convolver and requires a finite, nonzero, multi-block stereo tail.
+- `scripts/test_cycle1_reverb_tail.py` renders Anasound dry and wet through the
+  full application at 128-, 512-, and 1024-sample device blocks. The dry signal
+  is silent after its 10 ms declick; the wet signal consistently measures
+  `0.0264` RMS from 110–200 ms and `0.00136` RMS from 160–200 ms.
+- Cycle now derives nested test sources from the authoritative application
+  source list. The previously dormant equalizer test explicitly completes its
+  smoothed parameter transition before measuring its final response.
+
+Current status: resolved on 2026-09-08.
+
 ## Resolved: No-release volume envelopes truncated the declick tail
 
 Context:

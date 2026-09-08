@@ -111,6 +111,7 @@ void SynthAudioSource::init() {
 void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleRate) {
     calcDeclickEnvelope(sampleRate);
     synth.setCurrentPlaybackSampleRate(sampleRate);
+    reverb->setPendingAction(ReverbEffect::blockSize, samplesPerBlockExpected);
     if (sampleRate != 44100.0) {
         initResampler();
     }

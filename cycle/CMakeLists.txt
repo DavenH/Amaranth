@@ -39,16 +39,15 @@ file(GLOB_RECURSE APP_SOURCES
     "${JUCE_DIR}/*.c"
 )
 
+set(APP_TEST_SOURCES ${APP_SOURCES})
+list(FILTER APP_TEST_SOURCES INCLUDE REGEX ".*/tests/.*\\.cpp$")
+
 if(BUILD_TYPE STREQUAL "Standalone")
     # These compile to empty objects in standalone/test builds, which only adds ranlib noise.
     list(FILTER APP_SOURCES EXCLUDE REGEX ".*/include_juce_audio_processors_(ara|lv2_libs)\\.cpp$")
 endif()
 
 list(FILTER APP_SOURCES EXCLUDE REGEX ".*tests/.*\\.cpp$")
-
-file(GLOB_RECURSE APP_TEST_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/**/tests/*.cpp"
-)
 
 if(APPLE)
     file(GLOB JUCE_OBJCXX_SOURCES
