@@ -1,0 +1,43 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "calming",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaUnison"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.03
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-calming-spectrum.wav",
+      "durationMs": 3600,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 45, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 700, "note": 45 },
+        { "type": "noteOn", "timeMs": 900, "note": 43, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1600, "note": 43 },
+        { "type": "noteOn", "timeMs": 1800, "note": 41, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 2500, "note": 41 },
+        { "type": "noteOn", "timeMs": 2700, "note": 40, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 3400, "note": 40 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001,
+      "final50MsRmsLessThan": 0.000001
+    }
+  ],
+  "quit": true
+}

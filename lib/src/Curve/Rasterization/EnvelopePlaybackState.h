@@ -55,6 +55,8 @@ namespace Rasterization {
             return result;
         }
 
+        bool hasPendingRelease() const { return releasePending; }
+
         EnvelopeVoicePlaybackState& voice(int index) { return voices[(size_t) index]; }
         const EnvelopeVoicePlaybackState& voice(int index) const { return voices[(size_t) index]; }
 

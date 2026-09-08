@@ -528,6 +528,41 @@ TEST_CASE("Envelope processor applies sample-offset lifecycle events", "[cycle-v
     REQUIRE(output(retrigger).block.samples.back() > 0.f);
 }
 
+TEST_CASE("Envelope processor becomes inactive on note-off without a release curve",
+        "[cycle-v2][runtime][envelope][release]") {
+    EnvelopeNodeModel model;
+    model.getMesh().sustainCubes.clear();
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+            {},
+            CurveNodeModelState::copyOf(model, model.revision()));
+    REQUIRE(configuration != nullptr);
+
+    EnvelopeSignalProcessor processor;
+    processor.adoptConfiguration({ 1, "no-release-envelope", configuration });
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    spec.sampleRate = 16.0;
+    processor.prepareExecution(spec);
+
+    AudioProcessContext noteOn;
+    noteOn.frameCount = 8;
+    noteOn.timing.sampleRate = 16.0;
+    noteOn.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    noteOn.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    processor.process(noteOn);
+    REQUIRE(processor.isActive());
+
+    AudioProcessContext noteOff;
+    noteOff.frameCount = 8;
+    noteOff.timing.sampleRate = 16.0;
+    noteOff.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    noteOff.voice.events.push_back({ NoteLifecycleType::NoteOff, 0, 0 });
+    processor.process(noteOff);
+
+    REQUIRE_FALSE(processor.isActive());
+    REQUIRE(output(noteOff).block.samples == std::vector<float>(8, 0.f));
+}
+
 TEST_CASE("Envelope processor maps morph and logarithmic parameters", "[cycle-v2][runtime][envelope]") {
     NodeAudioProcessorFactory factory;
     const String snapshot = EnvelopeMeshState::defaultSnapshot();

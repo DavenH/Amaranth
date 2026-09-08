@@ -1,0 +1,39 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "pwm",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "action",
+      "actionType": "Disable",
+      "area": "AreaDelay"
+    },
+    {
+      "command": "setControl",
+      "area": "AreaMasterCtrls",
+      "target": "TargMasterVol",
+      "value": 0.03
+    },
+    {
+      "command": "captureAudio",
+      "path": "/private/tmp/cycle-agent-pwm-repeat.wav",
+      "durationMs": 2400,
+      "sampleRate": 44100,
+      "blockSize": 512,
+      "channels": 2,
+      "events": [
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 1000, "note": 60 },
+        { "type": "noteOn", "timeMs": 1200, "note": 60, "velocity": 0.8 },
+        { "type": "noteOff", "timeMs": 2200, "note": 60 }
+      ],
+      "peakGreaterThan": 0.001,
+      "rmsGreaterThan": 0.0001,
+      "final50MsRmsLessThan": 0.000001
+    }
+  ],
+  "quit": true
+}

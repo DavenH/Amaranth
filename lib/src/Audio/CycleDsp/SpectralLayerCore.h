@@ -9,6 +9,16 @@ namespace CycleDsp {
 
 class SpectralLayerCore {
 public:
+    static void clearBinsAbove(
+            Buffer<float> magnitudes,
+            Buffer<float> phases,
+            int activeBinCount) {
+        const int magnitudeStart = jlimit(0, magnitudes.size(), activeBinCount);
+        const int phaseStart = jlimit(0, phases.size(), activeBinCount);
+        magnitudes.offset(magnitudeStart).zero();
+        phases.offset(phaseStart).zero();
+    }
+
     static float phaseOffsetScale(float range) {
         return expf(5.f * range);
     }

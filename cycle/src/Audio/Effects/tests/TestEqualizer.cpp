@@ -69,6 +69,7 @@ TEST_CASE("Equalizer Shapes Sawtooth Spectrum", "[cycle][equalizer][fft]")
     SECTION("Boosting the mid band increases target harmonics more than far harmonics")
     {
         REQUIRE(equalizer.paramChanged(Equalizer::Band3Gain, 0.9, true));
+        equalizer.updateParametersToTarget();
         equalizer.processBuffer(processedBuffer);
 
         const float beforeTarget = getBinMagnitude(baseline, sampleRate, targetFrequency);
@@ -86,6 +87,7 @@ TEST_CASE("Equalizer Shapes Sawtooth Spectrum", "[cycle][equalizer][fft]")
     SECTION("Cutting the mid band reduces target harmonics")
     {
         REQUIRE(equalizer.paramChanged(Equalizer::Band3Gain, 0.1, true));
+        equalizer.updateParametersToTarget();
         equalizer.processBuffer(processedBuffer);
 
         const float beforeTarget = getBinMagnitude(baseline, sampleRate, targetFrequency);

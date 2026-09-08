@@ -697,26 +697,29 @@ size_t GraphAudioExecutor::serviceNonRealtimePreparation() const {
 }
 
 bool GraphAudioExecutor::hasActiveVoiceTail(int voiceIndex) const {
-    return std::any_of(
-            processors.begin(),
-            processors.end(),
-            [&](const auto& entry) {
-                return entry.first.voiceIndex == voiceIndex
-                        && entry.second.role == AudioModuleRole::Envelope
-                        && entry.second.processor != nullptr
-                        && entry.second.processor->isVoiceActive();
-            });
+    return hasVoiceTailProcessor(voiceIndex, true);
 }
 
 bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex) const {
-    return std::any_of(
-            processors.begin(),
-            processors.end(),
-            [&](const auto& entry) {
-                return entry.first.voiceIndex == voiceIndex
-                        && entry.second.role == AudioModuleRole::Envelope
-                        && entry.second.processor != nullptr;
-            });
+    return hasVoiceTailProcessor(voiceIndex, false);
+}
+
+bool GraphAudioExecutor::hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const {
+    const auto found = preparedVoices.find(voiceIndex);
+    if (found == preparedVoices.end() || found->second.plan == nullptr) {
+        return false;
+    }
+
+    const auto& voice = found->second;
+    for (size_t stepIndex = 0; stepIndex < voice.plan->steps.size(); ++stepIndex) {
+        if (voice.plan->steps[stepIndex].ownsVoiceTail
+                && stepIndex < voice.processors.size()
+                && voice.processors[stepIndex] != nullptr
+                && (!activeOnly || voice.processors[stepIndex]->isVoiceActive())) {
+            return true;
+        }
+    }
+    return false;
 }
 
 GraphAudioExecutor::CachedProcessor& GraphAudioExecutor::processorFor(

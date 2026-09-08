@@ -295,7 +295,8 @@ namespace Rasterization {
 
             VecOps::sub(waveX + 1, waveX, dif);
             VecOps::sub(waveY + 1, waveY, slp);
-            VecOps::sub(waveY + 1, waveY, are);
+            // The integrated sampler consumes complete segments as trapezoid areas.
+            VecOps::add(waveY + 1, waveY, are);
             dif.threshLT(1e-6f);
             slp.div(dif);
             are.mul(dif).mul(0.5f);
@@ -325,7 +326,8 @@ namespace Rasterization {
                 Buffer<float> are = area.section(derivativeStart, derivativeSize);
                 VecOps::sub(waveX + derivativeStart + 1, waveX + derivativeStart, dif);
                 VecOps::sub(waveY + derivativeStart + 1, waveY + derivativeStart, slp);
-                VecOps::sub(waveY + derivativeStart + 1, waveY + derivativeStart, are);
+                // Keep incrementally rebuilt segment integrals identical to a full bake.
+                VecOps::add(waveY + derivativeStart + 1, waveY + derivativeStart, are);
                 dif.threshLT(1e-6f);
                 slp.div(dif);
                 are.mul(dif).mul(0.5f);

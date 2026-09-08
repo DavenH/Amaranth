@@ -42,6 +42,51 @@ TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
             1.1));
     renderer.process(queue, channels, 2, 256, 44100.0, 1.1);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+
+    double callbackTime = 1.1 + 256.0 / 44100.0;
+    for (int block = 0;
+            block < 64 && renderer.diagnostics(queue).activeVoiceCount > 0;
+            ++block) {
+        renderer.process(queue, channels, 2, 256, 44100.0, callbackTime);
+        callbackTime += 256.0 / 44100.0;
+    }
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+}
+
+TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
+        "[cycle-v2][audio-device][realtime][midi][release]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.removeNode("env");
+    graph.removeNode("multiply");
+    graph.addEdge({
+            "ifft", "time", "out", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 18, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard,
+            1.0));
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOff(1, 60),
+            MidiEventSource::PerformanceKeyboard,
+            1.1));
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.1);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
 }
 
 TEST_CASE("Realtime graph renderer isolates voices and steals the oldest voice",

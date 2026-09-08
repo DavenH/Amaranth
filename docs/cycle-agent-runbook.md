@@ -229,9 +229,27 @@ Minimal fixture command:
 
 Supported event types are `noteOn`, `noteOff`, `controller`, `pitchWheel`, and
 `allNotesOff`. The report data includes `peak`, `rms`, per-channel metrics,
-sample rate, duration, event count, and output path. Use the numeric threshold
-fields for first-pass assertions; reserve perceptual or similarity checks for a
-separate external analysis step that consumes the WAV artifact.
+`maxNoteOffSecondDifference`, `terminalDelta`, sample rate, duration, event
+count, and output path. The corresponding event-specific thresholds are
+`noteOffSecondDifferenceLessThan` and `terminalDeltaLessThan`. Use the numeric
+threshold fields for first-pass assertions; reserve perceptual or similarity
+checks for a separate external analysis step that consumes the WAV artifact.
+
+For the Cycle 1 OohAah release regression, run
+`scripts/test_cycle1_ooh_aah_release.py`. It renders 50, 150, 400, and 800 ms
+notes in separate application processes and asserts both the MIDI note-off and
+release-completion boundaries.
+
+For same-instance voice reuse, run
+`scripts/test_cycle1_ooh_aah_repeat_note.py`. Each case renders two equal notes
+with enough silence for the first release to finish, then compares their 5 ms
+RMS amplitude envelopes. The default matrix covers 100, 400, and 800 ms notes
+at both 44.1 and 48 kHz.
+
+For Cycle 1 spectral voice preparation and phase-power regressions, run
+`scripts/test_cycle1_spectral_phase.py`. It checks dry Acidic and Anasound2
+output, then verifies that toggling Baroque Flute's phase layer preserves
+steady-state power. The default matrix covers both 44.1 and 48 kHz.
 
 ## Crash And Assertion Triage
 

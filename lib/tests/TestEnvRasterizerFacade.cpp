@@ -177,7 +177,10 @@ TEST_CASE("EnvelopeReleasePolicy resolves release intercept and scale", "[raster
 
     REQUIRE(release.index == 2);
     REQUIRE(release.position == Catch::Approx(0.70f));
-    REQUIRE(release.scale == Catch::Approx(1.5f));
+    REQUIRE(release.scale == Catch::Approx(3.f));
+
+    release = policy.start(intercepts, context, 0.75f, 0.f);
+    REQUIRE(release.scale == Catch::Approx(1.f));
 
     context.bipolar = true;
     REQUIRE(policy.releaseIndex(context) == 1);

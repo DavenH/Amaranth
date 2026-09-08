@@ -22,7 +22,7 @@ public:
         paramGroup->addSlider(size);
 
         using namespace Ops;
-        StringFunction sizeShort = StringFunction().mul(6.f).add(12.f).pow(2.f).mul(1.f / 44100.f);
+        StringFunction sizeShort = StringFunction().mul(6.f).add(12.f).powRev(2.f).mul(1.f / 44100.f);
         size->setStringFunctions(sizeShort, sizeShort.withPostString(" seconds").withPrecision(2));
 
         paramGroup->addSlider(new Knob(repo, ReverbEffect::Damp, 	 "Damp", 		 0.2));

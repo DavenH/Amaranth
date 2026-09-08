@@ -60,8 +60,8 @@ void SynthUnisonVoice::initialiseNoteExtra(const int midiNoteNumber, const float
 
             state.reset();
 
-            MorphPosition pos = layer.props->pos[parent->voiceIndex];
-            pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
+            MorphPosition pos = layer.props->pos[parent->voiceIndex].withTime(
+                    getScratchTime(layer.props->scratchChan, group.cumePos));
 
             if (cycleCompositeAlgo == Interpolate) {
                 timeRasterizer.setNoiseSeed(random.nextInt(GuideCurvePanel::tableSize));
@@ -121,8 +121,8 @@ void SynthUnisonVoice::calcCycle(VoiceParameterGroup& group) {
         double delta;
         Buffer<float> rastBuf(rastBuffer, samplingSize);
 
-        MorphPosition pos = layer.props->pos[parent->voiceIndex];
-        pos.time = getScratchTime(layer.props->scratchChan, group.cumePos);
+        MorphPosition pos = layer.props->pos[parent->voiceIndex].withTime(
+                getScratchTime(layer.props->scratchChan, group.cumePos));
 
         if (cycleCompositeAlgo == Interpolate) {
             delta = 1 / (double) samplingSize;

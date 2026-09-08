@@ -27,7 +27,6 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
     ,	lastAudioLevel		(0.f)
     ,	lastBlueLevel		(0.f)
     , 	tempoScale			(1.)
-    , 	samplesProcessed	(-1)
     , 	tempRendBuffer		(2)
     , 	resampBuff			(2)
     , 	numEnvelopeDims		(2)
@@ -58,6 +57,7 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
         sizeToIndex[size] 	= fftOrderIdx;
 
         ffts[fftOrderIdx].allocate(size, Transform::ScaleType::DivFwdByN, true);
+        ffts[fftOrderIdx].setRemovesOffset(true);
     }
 
     getObj(Document).addListener(this);
@@ -111,6 +111,7 @@ void SynthAudioSource::init() {
 void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleRate) {
     calcDeclickEnvelope(sampleRate);
     synth.setCurrentPlaybackSampleRate(sampleRate);
+    reverb->setPendingAction(ReverbEffect::blockSize, samplesPerBlockExpected);
     if (sampleRate != 44100.0) {
         initResampler();
     }
@@ -143,11 +144,10 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
     double sampleRate 	= getObj(AudioHub).getSampleRate();
     bool needToResample = sampleRate != 44100.0;
     int numSamples44k   = numSamples;
+    MidiBuffer midi44k;
 
     if (needToResample) {
-        double ratio = 44100.0 / sampleRate;
-        numSamples44k = (int) (ratio * (samplesProcessed + numSamples) + 0.999999999) -
-                        (int) (ratio * samplesProcessed + 0.999999999);
+        numSamples44k = internalRateBlockAdapter.convertBlock(numSamples, midiMessages, midi44k);
 
         for (int i = 0; i < buffer.getNumChannels(); ++i) {
             tempMemory[i].ensureSize(numSamples44k);
@@ -163,27 +163,12 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
 
     StereoBuffer outBuffer(buffer);
     StereoBuffer& rendBuffer = needToResample ? tempRendBuffer : outBuffer;
-    auto& meshLib = getObj(MeshLibrary);
-
-    float deltaPerSample = 1.0 / 44100.0 / getObj(OscControlPanel).getLengthInSeconds();
-    for(auto& scratchRast : globalScratch) {
-        MeshLibrary::EnvProps* props = meshLib.getEnvProps(LayerGroups::GroupScratch, scratchRast.layerIndex);
-
-        if(props->active && scratchRast.sampleable) {
-            scratchRast.rast.renderToBuffer(numSamples, deltaPerSample, 0, *props, 1.f);
-        }
-    }
+    renderGlobalEnvs(numSamples44k);
 
     float* channels[] = { rendBuffer.left.get(), rendBuffer.right.get() };
     AudioSampleBuffer buffer44k(channels, buffer.getNumChannels(), numSamples44k);
 
-    MidiBuffer* midiBuff = &midiMessages;
-    MidiBuffer midi44k;
-
-    if (needToResample) {
-        convertMidiTo44k(midiMessages, midi44k, numSamples44k);
-        midiBuff = &midi44k;
-    }
+    MidiBuffer* midiBuff = needToResample ? &midi44k : &midiMessages;
 
     // sound processing @ 44100
     if (numSamples44k > 0) {
@@ -228,7 +213,6 @@ void SynthAudioSource::processBlock(AudioSampleBuffer &buffer, MidiBuffer &midiM
             }
         }
 
-        samplesProcessed += numSamples;
     }
 
     for (int ch = 0; ch < rendBuffer.numChannels; ++ch) {
@@ -259,7 +243,13 @@ void SynthAudioSource::controlFreqChanged() {
 }
 
 void SynthAudioSource::unisonOrderChanged() {
-    unisonVoicesAction.setValueAndTrigger(unison->getOrder(false));
+    const int voiceCount = unison->getOrder(false);
+    ScopedLock lock(audioLock);
+
+    unisonVoicesAction.setValueAndTrigger(voiceCount);
+    for (auto* voice : voices) {
+        voice->prepareUnisonVoiceCount(voiceCount);
+    }
 }
 
 void SynthAudioSource::setEnvelopeMeshes(bool lock) {
@@ -387,33 +377,9 @@ void SynthAudioSource::calcFades() {
     }
 }
 
-void SynthAudioSource::convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k) {
-    if (numSamples44k == 0) {
-        carryMessages.clear();
-        for (const MidiMessageMetadata md : source) {
-            carryMessages.add(md.getMessage());
-        }
-        return;
-    }
-
-    const double srRatio = 44100.0 / getObj(AudioHub).getSampleRate();
-
-    dest.clear();
-
-    for (int i = 0; i < carryMessages.size(); ++i) {
-        dest.addEvent(carryMessages.getUnchecked(i), 0);
-    }
-
-    for (const MidiMessageMetadata md : source) {
-        const int position44k = roundToInt(md.samplePosition * srRatio + 0.5);
-        dest.addEvent(md.getMessage(), position44k);
-    }
-}
-
-
 void SynthAudioSource::initResampler() {
     double sampleRateReal = getObj(AudioHub).getSampleRate();
-    samplesProcessed = 0;
+    internalRateBlockAdapter.prepare(sampleRateReal);
 
     int totalSize = 0;
     int inRate, outRate;
@@ -598,6 +564,26 @@ void SynthAudioSource::rasterizeGlobalEnvs() {
 
         if(scratchRast.sampleable) {
             rast.setNoteOn();
+        }
+    }
+}
+
+void SynthAudioSource::renderGlobalEnvs(int internalSamples) {
+    if (internalSamples <= 0) {
+        return;
+    }
+
+    auto& meshLib = getObj(MeshLibrary);
+    float deltaPerSample = 1.0f / float(InternalRateBlockAdapter::internalSampleRate)
+            / getObj(OscControlPanel).getLengthInSeconds();
+
+    for (auto& scratchRast : globalScratch) {
+        MeshLibrary::EnvProps* props = meshLib.getEnvProps(
+                LayerGroups::GroupScratch,
+                scratchRast.layerIndex);
+
+        if (props->active && scratchRast.sampleable) {
+            scratchRast.rast.renderToBuffer(internalSamples, deltaPerSample, 0, *props, 1.f);
         }
     }
 }

@@ -284,6 +284,22 @@ TEST_CASE("Transform Cartesian Round Trip", "[transform][polar-to-cart][identity
     }
 }
 
+TEST_CASE("Transform polar phase changes preserve signal energy", "[transform][polar-to-cart][phase]") {
+    constexpr int size = 256;
+    Transform fft;
+    fft.allocate(size, Transform::DivFwdByN, true);
+    fft.setRemovesOffset(true);
+    ScopedAlloc<float> signal(size);
+    ScopedAlloc<float> output(size);
+
+    signal.sin(3.f / size);
+    fft.forward(signal);
+    fft.getPhases().ramp(-12.f, 24.f / float(fft.getPhases().size()));
+    fft.inverse(output);
+
+    REQUIRE(output.normL2() == Catch::Approx(signal.normL2()).margin(1.0e-5f));
+}
+
 TEST_CASE("RealFftSpectrum Endpoint Arithmetic", "[transform][real-spectrum]") {
     ScopedAlloc<Complex32> memory(9);
     RealFftSpectrum dest(memory.place(3));

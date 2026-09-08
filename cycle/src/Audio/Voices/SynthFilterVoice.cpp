@@ -150,6 +150,10 @@ void SynthFilterVoice::calcCycle(VoiceParameterGroup& group) {
     // inverse FFT
     for(int c = 0; c < channelCount; ++c) {
         Transform& fft = audioSource->getFFT(noteState.nextPow2);
+        CycleDsp::SpectralLayerCore::clearBinsAbove(
+                fft.getMagnitudes(),
+                fft.getPhases(),
+                noteState.numHarmonics);
 
         magBufs[c].copyTo(fft.getMagnitudes());
         phaseBufs[c].copyTo(fft.getPhases());
@@ -179,8 +183,8 @@ bool SynthFilterVoice::calcTimeDomain(VoiceParameterGroup& group, int samplingSi
             continue;
         }
 
-        MorphPosition position = props.pos[parent->voiceIndex];
-        position.time = getScratchTime(props.scratchChan, frame.frontier);
+        MorphPosition position = props.pos[parent->voiceIndex].withTime(
+                getScratchTime(props.scratchChan, frame.frontier));
         const bool rendered = CycleDsp::OscillatorLaneRasterizer::renderFixedFrame(
                 timeRasterizer,
                 {
@@ -367,9 +371,9 @@ void SynthFilterVoice::calcPhaseDomain(Buffer<float> fftRamp,
             }
         }
 
-        for(int c = 0; c < channelCount; ++c) {
+        for (int c = 0; c < channelCount; ++c) {
             phaseAccBufs[c].mul(phaseScaleRamp.withSize(noteState.numHarmonics));
-            phases[c].add(phaseAccBufs[c]);		// phases[1] has to be copied or zeroed at this point!
+            phaseBufs[c].add(phaseAccBufs[c]);
         }
     }
 }

@@ -354,8 +354,9 @@ namespace Rasterization {
 
             result.position = intercepts[result.index].x;
 
-            float initialReleaseLevel = sampledReleaseLevel < 0.5f ? 0.5f : sampledReleaseLevel;
-            result.scale = sustainLevel / initialReleaseLevel;
+            if (sampledReleaseLevel != 0.f) {
+                result.scale = sustainLevel / sampledReleaseLevel;
+            }
 
             return result;
         }

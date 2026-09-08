@@ -14,6 +14,7 @@
 #include <Array/RingBuffer.h>
 #include "JuceHeader.h"
 
+#include "InternalRateBlockAdapter.h"
 #include "Synthesizer.h"
 
 #include "../Audio/Effects/Reverb.h"
@@ -130,11 +131,10 @@ public:
     void updateTempoScale();
     void updateGlobality();
     void rasterizeGlobalEnvs();
+    void renderGlobalEnvs(int internalSamples);
     void doAudioThreadUpdates() override;
 
 private:
-    void convertMidiTo44k(const MidiBuffer& source, MidiBuffer& dest, int numSamples44k);
-
     enum { numOctaves = 9 };
 
     enum
@@ -154,13 +154,12 @@ private:
 
     int numEnvelopeDims;
 
-    int64 	samplesProcessed;
-
     float 	lastAudioLevel;
     float 	lastBlueLevel;
     double 	tempoScale;
 
     map<int, int> 		sizeToIndex;
+    InternalRateBlockAdapter internalRateBlockAdapter;
     SmoothedParameter 	volumeScale;
     ReadWriteBuffer	 	resampleAccum[2];
     Resampler 			sampleRateConverter[2];
@@ -202,7 +201,6 @@ private:
     Transform					ffts	[numOctaves];
 
     Array<Effect*> 				postProcessEffects;
-    Array<MidiMessage> 			carryMessages;
     Array<SynthesizerVoice*>	voices;
 
     friend class CycleBasedVoice;

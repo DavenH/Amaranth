@@ -38,6 +38,7 @@ public:
 	void enablementChanged();
 	void envGlobalityChanged();
 	void prepNewVoice();
+    void prepareUnisonVoiceCount(int voiceCount);
     void prepareVoiceRasterizer();
 
 	/* Midi */
@@ -129,6 +130,10 @@ private:
 
 	void initialiseEnvMeshes();
 	bool renderVolumeEnvelope(int numSamples);
+	void applyVolumeReleaseDeclick(
+			EnvRasterizer& rasterizer,
+			int releaseSamplesRemaining,
+			int numSamples);
 	int getRenderOffset();
 	void declickAttack();
 	void declickRelease();
