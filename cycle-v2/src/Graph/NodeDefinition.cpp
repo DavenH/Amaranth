@@ -401,6 +401,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
+                            number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -420,10 +421,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     "Pan", "stereo placement", "pan",
                     { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
                     { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
-                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            choice("mode", "Magnitude Mode", "additive",
-                                    { "additive", "multiplicative" }, dsp | preview | presentation)
+                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation)
                     }))
                     .help("Places a signal in the stereo field.")
                     .execution(NodeExecutionTrait::CoordinateTransform)

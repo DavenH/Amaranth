@@ -47,6 +47,7 @@
             "position": { "x": 855.20001, "y": 619.0 },
             "parameters": {
                 "enabled": true,
+                "range": 0.5,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -157,6 +158,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "range": 0.5,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -258,13 +260,6 @@
             }
         },
         {
-            "id": "magnitudeLayer1Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 1854.19995, "y": 194.0 },
-            "parameters": { "pan": 0.5, "range": 0.5, "mode": "additive" }
-        },
-        {
             "id": "magnitudeOp1",
             "kind": "add",
             "definitionVersion": 1,
@@ -284,6 +279,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "range": 0.675,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -385,13 +381,6 @@
             }
         },
         {
-            "id": "magnitudeLayer2Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 2220.19995, "y": 194.0 },
-            "parameters": { "pan": 0.5, "range": 0.675, "mode": "multiplicative" }
-        },
-        {
             "id": "magnitudeOp2",
             "kind": "multiply",
             "definitionVersion": 1,
@@ -411,6 +400,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "range": 0.325,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -473,13 +463,6 @@
             }
         },
         {
-            "id": "magnitudeLayer3Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 2586.19995, "y": 194.0 },
-            "parameters": { "pan": 0.5, "range": 0.325, "mode": "additive" }
-        },
-        {
             "id": "magnitudeOp3",
             "kind": "add",
             "definitionVersion": 1,
@@ -499,6 +482,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "range": 0.65,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -600,13 +584,6 @@
             }
         },
         {
-            "id": "magnitudeLayer4Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 2952.19995, "y": 194.0 },
-            "parameters": { "pan": 0.5, "range": 0.65, "mode": "multiplicative" }
-        },
-        {
             "id": "magnitudeOp4",
             "kind": "multiply",
             "definitionVersion": 1,
@@ -626,6 +603,7 @@
             },
             "parameters": {
                 "enabled": false,
+                "range": 0.275,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -673,13 +651,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "phaseLayer1Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 1854.19995, "y": 1081.0 },
-            "parameters": { "pan": 0.5, "range": 0.275, "mode": "additive" }
         },
         {
             "id": "phaseOp1",
@@ -1306,22 +1277,17 @@
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer1Process", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeLayer2Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer2Process", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer3", "sourcePortId": "out", "destNodeId": "magnitudeLayer3Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer3Process", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer4", "sourcePortId": "out", "destNodeId": "magnitudeLayer4Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer3", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp3", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer4Process", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer4", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp4", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "phaseOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseLayer1Process", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "waveshaper", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "waveshaper", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },

@@ -481,6 +481,10 @@ def convert(source):
     oversampling = preset["settings"].get("OversampleFactorRltm", 1)
     modulation_sources = modulation_sources_for_preset(preset)
     guide_layers = groups[MESH_GROUPS["guides"]]["layers"]
+    has_spectral_layers = any(
+        layer_mesh_has_vertices(layer)
+        for group_name in ("magnitude", "phase")
+        for layer in groups[MESH_GROUPS[group_name]]["layers"])
 
     nodes = [
         node("voice", "voiceContext", 100, 520, {
@@ -501,9 +505,12 @@ def convert(source):
             "blueController": 1,
             "blueConstant": position["blue"],
         }),
-        node("fft", "fft", 1050, 500, {"cycleFrames": 2048, "mode": "cycle"}),
-        node("ifft", "ifft", 2150, 500, {"cycleFrames": 2048, "mode": "cyclic"}),
     ]
+    if has_spectral_layers:
+        nodes.extend([
+            node("fft", "fft", 1050, 500, {"cycleFrames": 2048, "mode": "cycle"}),
+            node("ifft", "ifft", 2150, 500, {"cycleFrames": 2048, "mode": "cyclic"}),
+        ])
     edges = [
         edge("morph", "modulation", "voice", "modulation",
              "configurationAttachment", "modulationTriple"),
@@ -530,6 +537,7 @@ def convert(source):
             "configurationAttachment", "unison"))
     guide_assignments = []
     mesh_parameters = {
+        "range": 0.5,
         "yellow": position["time"],
         "red": position["red"],
         "blue": position["blue"],
@@ -557,8 +565,6 @@ def convert(source):
             nodes.append(node(
                 process_id, "spectralLayer", 700, 380 + 190 * index, {
                 "pan": pan,
-                "range": 0.5,
-                "mode": "additive",
             }))
             edges.append(edge(layer_id, "out", process_id, "in"))
             layer_source = (process_id, "out")
@@ -572,13 +578,14 @@ def convert(source):
         edges.append(edge(time_source[0], time_source[1], operation_id, "left"))
         edges.append(edge(layer_source[0], layer_source[1], operation_id, "right"))
         time_source = (operation_id, "out")
-    edges.append(edge(time_source[0], time_source[1], "fft", "time"))
+    if has_spectral_layers:
+        edges.append(edge(time_source[0], time_source[1], "fft", "time"))
 
-    def append_spectral_stack(group_name, fft_port, ifft_port, y, phase=False):
+    def append_spectral_stack(group_name, fft_port, ifft_port, y):
         signal = ("fft", fft_port)
         emitted_index = 0
         for layer in groups[MESH_GROUPS[group_name]]["layers"]:
-            if phase and not layer_mesh_has_vertices(layer):
+            if not layer_mesh_has_vertices(layer):
                 continue
             emitted_index += 1
             index = emitted_index
@@ -587,31 +594,38 @@ def convert(source):
             operation_id = f"{group_name}Op{index}"
             parameters = dict(mesh_parameters)
             parameters["enabled"] = bool(layer["properties"]["active"])
-            mode = "additive" if phase or layer["properties"]["mode"] == 0 \
+            parameters["range"] = layer["properties"].get("range", 0.5)
+            mode = "additive" if group_name == "phase" \
+                or layer["properties"]["mode"] == 0 \
                 else "multiplicative"
             operation = "add" if mode == "additive" else "multiply"
-            nodes.extend([
-                node(layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
-                     parameters, trimesh_model(layer["mesh"])),
-                node(process_id, "spectralLayer", 1490, y + 170 * (index - 1), {
-                    "pan": layer["properties"].get("pan", 0.5),
-                    "range": layer["properties"].get("range", 0.5),
-                    "mode": mode,
-                }),
-                node(operation_id, operation, 1810, y + 170 * (index - 1)),
-            ])
+            nodes.append(node(
+                layer_id, "trilinearMesh", 1150, y + 170 * (index - 1),
+                parameters, trimesh_model(layer["mesh"])))
+            nodes.append(node(operation_id, operation, 1810, y + 170 * (index - 1)))
+            pan = layer["properties"].get("pan", 0.5)
+            layer_source = (layer_id, "out")
+            if abs(pan - 0.5) > 0.000001:
+                nodes.append(node(
+                    process_id,
+                    "spectralLayer",
+                    1490,
+                    y + 170 * (index - 1),
+                    {"pan": pan}))
+                edges.append(edge(layer_id, "out", process_id, "in"))
+                layer_source = (process_id, "out")
             edges.extend([
-                edge(layer_id, "out", process_id, "in"),
                 edge(signal[0], signal[1], operation_id, "left"),
-                edge(process_id, "out", operation_id, "right"),
+                edge(layer_source[0], layer_source[1], operation_id, "right"),
             ])
             guide_assignments.extend(guide_assignments_for_layer(layer, layer_id))
             all_mesh_node_ids.append(layer_id)
             signal = (operation_id, "out")
         edges.append(edge(signal[0], signal[1], "ifft", ifft_port))
 
-    append_spectral_stack("magnitude", "mag", "mag", 70)
-    append_spectral_stack("phase", "phase", "phase", 820, True)
+    if has_spectral_layers:
+        append_spectral_stack("magnitude", "mag", "mag", 70)
+        append_spectral_stack("phase", "phase", "phase", 820)
 
     guide_props = preset["guideCurveProps"]["guides"]
     guides = []
@@ -635,8 +649,7 @@ def convert(source):
             "model": flat_curve_model(layer["mesh"]),
         })
 
-    signal_node = "ifft"
-    signal_port = "time"
+    signal_node, signal_port = ("ifft", "time") if has_spectral_layers else time_source
     waveshaper = preset["effects"]["Waveshaper"]
     waveshaper_layers = groups[MESH_GROUPS["waveshaper"]]["layers"]
     if waveshaper["enabled"]:
@@ -651,6 +664,8 @@ def convert(source):
     envelope_ids = {}
     for purpose in ("volume", "pitch", "scratch"):
         for index, layer in enumerate(envelope_layers(preset, purpose), 1):
+            if purpose == "pitch" and not layer["properties"]["active"]:
+                continue
             envelope_id = f"{purpose}Envelope{index}"
             nodes.append(envelope_node(
                 preset, layer, purpose, envelope_id,

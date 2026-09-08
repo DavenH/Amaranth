@@ -1,10 +1,12 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphDocument.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -300,6 +302,66 @@ TEST_CASE("Graph JSON discards legacy Voice Context polyphony",
     REQUIRE(parameterValueForNode(*voice, "voices").isEmpty());
 }
 
+TEST_CASE("Graph JSON migrates legacy Pan range to its spectral Trimesh",
+        "[cycle-v2][graph][migration][pan]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "base", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "operation", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({
+            "base", "out", "operation", "left", PortDomain::SpectralMagnitudeSignal
+    });
+    graph.addEdge({
+            "mesh", "out", "pan", "in", PortDomain::SpectralMagnitudeSignal
+    });
+    graph.addEdge({
+            "pan", "out", "operation", "right", PortDomain::SpectralMagnitudeSignal
+    });
+    graph.addEdge({
+            "operation", "out", "ifft", "mag", PortDomain::SpectralMagnitudeSignal
+    });
+
+    const GraphSerializer serializer;
+    var encoded = serializer.writeJSON(graph);
+    auto* nodes = encoded.getProperty("nodes", {}).getArray();
+    REQUIRE(nodes != nullptr);
+    const auto pan = std::find_if(nodes->begin(), nodes->end(), [](const var& node) {
+        return node.getProperty("id", {}).toString() == "pan";
+    });
+    REQUIRE(pan != nodes->end());
+    auto* parameters = pan->getProperty("parameters", {}).getDynamicObject();
+    REQUIRE(parameters != nullptr);
+    parameters->setProperty("range", 0.75);
+    parameters->setProperty("mode", "multiplicative");
+
+    const GraphLoadResult loaded = serializer.readJSON(encoded);
+
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    const Node* loadedPan = loaded.graph.findNode("pan");
+    const Node* loadedMesh = loaded.graph.findNode("mesh");
+    REQUIRE(loadedPan != nullptr);
+    REQUIRE(loadedMesh != nullptr);
+    REQUIRE(parameterValueForNode(*loadedPan, "range").isEmpty());
+    REQUIRE(parameterValueForNode(*loadedPan, "mode").isEmpty());
+    REQUIRE(NodeParameterMap(*loadedMesh).floatValue("range", 0.f)
+            == Catch::Approx(0.75f));
+
+    const auto configuration = NodeDspConfigurationFactory().create(
+            AudioModuleRole::MeshSource,
+            loadedMesh->parameters,
+            loadedMesh->model,
+            {},
+            &loaded.graph,
+            loadedMesh->id);
+    const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(configuration);
+    REQUIRE(spectral != nullptr);
+    REQUIRE_FALSE(spectral->multiplicative);
+}
+
 TEST_CASE("Graph JSON migrates pre-typed format two edge metadata",
         "[cycle-v2][graph][migration]") {
     const GraphSerializer serializer;
@@ -574,7 +636,24 @@ TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
         REQUIRE(loaded.succeeded());
 
         const auto& nodes = loaded.graph.getNodes();
+        bool hasSpectralMesh = false;
         for (size_t leftIndex = 0; leftIndex < nodes.size(); ++leftIndex) {
+            const Node& node = nodes[leftIndex];
+            if (node.kind == NodeKind::SpectralLayer) {
+                REQUIRE(NodeParameterMap(node).floatValue("pan", 0.5f) != 0.5f);
+            }
+            if (node.kind == NodeKind::Envelope && node.id.startsWith("pitchEnvelope")) {
+                REQUIRE(NodeParameterMap(node).boolValue("enabled", false));
+            }
+            if (node.kind == NodeKind::TrilinearMesh
+                    && (node.id.startsWith("magnitudeLayer")
+                            || node.id.startsWith("phaseLayer"))) {
+                const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
+                        node.model);
+                REQUIRE(model != nullptr);
+                REQUIRE(model->mesh().getNumVerts() > 0);
+                hasSpectralMesh = true;
+            }
             if (nodes[leftIndex].kind == NodeKind::SpectralLayer) {
                 continue;
             }
@@ -634,6 +713,10 @@ TEST_CASE("Migrated factory graphs open with non-overlapping compact nodes",
                     REQUIRE_FALSE(node.bounds.reduced(3.f).intersects(segment));
                 }
             }
+        }
+        if (!hasSpectralMesh) {
+            REQUIRE(loaded.graph.findNode("fft") == nullptr);
+            REQUIRE(loaded.graph.findNode("ifft") == nullptr);
         }
     }
   #else
@@ -879,16 +962,18 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(phaseLayerProcess1 != nullptr);
     REQUIRE(phaseLayerProcess2 != nullptr);
     REQUIRE(parameterValueForNode(*phaseLayerProcess1, "pan") == "1");
-    REQUIRE(parameterValueForNode(*phaseLayerProcess1, "range") == "0.6");
+    REQUIRE(NodeParameterMap(*phaseLayer1).floatValue("range", 0.f)
+            == Catch::Approx(0.6f));
     REQUIRE(parameterValueForNode(*phaseLayerProcess2, "pan") == "0");
-    REQUIRE(parameterValueForNode(*phaseLayerProcess2, "range") == "0.575");
+    REQUIRE(NodeParameterMap(*phaseLayer2).floatValue("range", 0.f)
+            == Catch::Approx(0.575f));
     const Node* magnitudeLayer1 = loaded.graph.findNode("magnitudeLayer1");
     const Node* magnitudeLayerProcess = loaded.graph.findNode("magnitudeLayer1Process");
     REQUIRE(magnitudeLayer1 != nullptr);
     REQUIRE(magnitudeLayerProcess != nullptr);
     REQUIRE(parameterValueForNode(*magnitudeLayerProcess, "pan") == "0.5");
-    REQUIRE(parameterValueForNode(*magnitudeLayerProcess, "range") == "0.625");
-    REQUIRE(parameterValueForNode(*magnitudeLayerProcess, "mode") == "additive");
+    REQUIRE(NodeParameterMap(*magnitudeLayer1).floatValue("range", 0.f)
+            == Catch::Approx(0.625f));
     const auto phaseModel1 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer1->model);
     const auto phaseModel2 = std::dynamic_pointer_cast<const TrimeshNodeModelState>(phaseLayer2->model);
     REQUIRE(phaseModel1 != nullptr);

@@ -143,7 +143,10 @@ class PortCycleV1PresetTest(unittest.TestCase):
                 )
 
     def test_converter_preserves_layer_enablement_and_operation_order(self):
-        converted = port_cycle_v1_preset.convert(convertible_source())
+        source = convertible_source()
+        for layer in source["preset"]["meshLibrary"]["groups"][5]["layers"]:
+            layer["mesh"]["vertices"] = [1]
+        converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
         self.assertTrue(nodes["timeLayer1"]["parameters"]["enabled"])
@@ -156,6 +159,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
     def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
         source = convertible_source()
         magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]
+        magnitude["mesh"]["vertices"] = [1]
         source["preset"]["meshLibrary"]["groups"][5]["layers"] = [
             copy.deepcopy(magnitude) for _ in range(10)
         ]
@@ -249,19 +253,32 @@ class PortCycleV1PresetTest(unittest.TestCase):
             ["layers"][0]["properties"]
         properties["pan"] = 0.5
         properties["range"] = 0.625
+        source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["mesh"]["vertices"] = [1]
 
         converted = port_cycle_v1_preset.convert(source)
         nodes = {node["id"]: node for node in converted["nodes"]}
 
         self.assertEqual(
-            nodes["magnitudeLayer1Process"]["parameters"]["range"],
+            nodes["magnitudeLayer1"]["parameters"]["range"],
             0.625)
+        self.assertNotIn("magnitudeLayer1Process", nodes)
+
+    def test_inactive_unconnected_pitch_envelopes_are_omitted(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+
+        self.assertFalse(any(
+            node["id"].startswith("pitchEnvelope")
+            for node in converted["nodes"]
+        ))
 
     def test_empty_phase_layer_is_bypassed(self):
         source = convertible_source()
         phase = source["preset"]["meshLibrary"]["groups"][6]["layers"][0]
         phase["properties"]["active"] = True
         phase["mesh"] = {"vertices": [], "cubes": []}
+        source["preset"]["meshLibrary"]["groups"][5] \
+            ["layers"][0]["mesh"]["vertices"] = [1]
 
         converted = port_cycle_v1_preset.convert(source)
         nodes = {node["id"]: node for node in converted["nodes"]}
@@ -274,6 +291,43 @@ class PortCycleV1PresetTest(unittest.TestCase):
             and edge["sourcePortId"] == "phase"
             and edge["destNodeId"] == "ifft"
             and edge["destPortId"] == "phase"
+            for edge in converted["edges"]
+        ))
+
+    def test_empty_magnitude_layer_is_bypassed(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("magnitudeLayer1", nodes)
+        self.assertNotIn("magnitudeLayer1Process", nodes)
+        self.assertNotIn("magnitudeOp1", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["sourcePortId"] == "mag"
+            and edge["destNodeId"] == "ifft"
+            and edge["destPortId"] == "mag"
+            for edge in converted["edges"]
+        ))
+
+    def test_transform_pair_is_omitted_without_nonempty_spectral_layers(self):
+        source = convertible_source()
+        source["preset"]["meshLibrary"]["groups"][6]["layers"][0]["mesh"] = {
+            "vertices": [],
+            "cubes": [],
+        }
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("fft", nodes)
+        self.assertNotIn("ifft", nodes)
+        self.assertFalse(any(
+            node["id"].startswith(("magnitudeLayer", "phaseLayer"))
+            for node in converted["nodes"]
+        ))
+        self.assertTrue(any(
+            edge["sourceNodeId"] != "ifft"
+            and edge["destNodeId"] == "output"
             for edge in converted["edges"]
         ))
 

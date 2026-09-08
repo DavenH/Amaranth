@@ -16,49 +16,18 @@ void renderLayer(
         Buffer<float> left,
         Buffer<float> right,
         const PanConfiguration& configuration) {
-    if (!configuration.sourceEnabled) {
-        const float identity = domain == PortDomain::SpectralMagnitudeSignal
-                        && !configuration.additive
-                ? 1.f
-                : 0.f;
-        left.set(identity);
-        right.set(identity);
-        return;
-    }
-    if (domain == PortDomain::SpectralPhaseSignal) {
-        CycleDsp::SpectralLayerCore::renderPhaseChannels(
-                source,
-                left,
-                right,
-                configuration.pan,
-                configuration.range);
-        return;
-    }
-
-    if (domain == PortDomain::SpectralMagnitudeSignal) {
-        CycleDsp::SpectralLayerCore::renderMagnitudeChannels(
-                source,
-                left,
-                right,
-                configuration.pan,
-                configuration.range,
-                configuration.additive);
-        return;
-    }
-
-    if (domain == PortDomain::TimeSignal) {
-        float leftPan {};
-        float rightPan {};
-        Arithmetic::getPans(configuration.pan, leftPan, rightPan);
-        source.copyTo(left);
-        secondarySource.copyTo(right);
+    float leftPan {};
+    float rightPan {};
+    Arithmetic::getPans(configuration.pan, leftPan, rightPan);
+    source.copyTo(left);
+    secondarySource.copyTo(right);
+    if (domain == PortDomain::SpectralMagnitudeSignal && configuration.multiplicative) {
+        CycleDsp::SpectralLayerCore::applyMultiplicativePan(left, leftPan);
+        CycleDsp::SpectralLayerCore::applyMultiplicativePan(right, rightPan);
+    } else {
         left.mul(leftPan);
         right.mul(rightPan);
-        return;
     }
-
-    left.zero();
-    right.zero();
 }
 
 void renderTraversalGrid(

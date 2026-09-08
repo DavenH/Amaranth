@@ -394,6 +394,41 @@ TEST_CASE("Pan can be added to a cable as one undoable authoring command",
     REQUIRE(document.graph().getEdges().size() == 2);
 }
 
+TEST_CASE("Pan can be removed from a cable as one undoable authoring command",
+        "[cycle-v2][canvas][authoring][pan][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 440.f, 0.f }));
+    graph.addEdge({
+            "wave", "out", "pan", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "pan", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto removed = authoring.removePanFromCable("pan");
+    REQUIRE(removed.succeeded);
+    REQUIRE(removed.graphChanged);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().sourceNodeId == "wave");
+    REQUIRE(document.graph().getEdges().front().destNodeId == "output");
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("pan") != nullptr);
+    REQUIRE(document.graph().getEdges().size() == 2);
+}
+
 TEST_CASE("Time cable Pan supports a complete edit and undo sequence",
         "[cycle-v2][canvas][authoring][pan][time]") {
     GraphNodeFactory factory;

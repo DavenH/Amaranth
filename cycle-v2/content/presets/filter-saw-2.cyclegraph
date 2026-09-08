@@ -62,6 +62,7 @@
             "position": { "x": 855.20001, "y": 619.0 },
             "parameters": {
                 "enabled": true,
+                "range": 0.5,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -172,6 +173,7 @@
             },
             "parameters": {
                 "enabled": true,
+                "range": 0.65,
                 "yellow": 0.5,
                 "red": 0.5,
                 "blue": 0.5,
@@ -232,13 +234,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "magnitudeLayer1Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 1854.19995, "y": 194.0 },
-            "parameters": { "pan": 0.5, "range": 0.65, "mode": "multiplicative" }
         },
         {
             "id": "magnitudeOp1",
@@ -670,9 +665,8 @@
         { "sourceNodeId": "unison", "sourcePortId": "unison", "destNodeId": "voice", "destPortId": "unison", "connectionKind": "configurationAttachment", "attachmentType": "unison" },
         { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer1Process", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },

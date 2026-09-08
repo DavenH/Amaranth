@@ -4,17 +4,16 @@
 
 The Cycle 1 preset migration preserves Envelope and Trilinear Mesh enablement
 on each source node. Until Cycle V2 has first-class time and spectral layer
-stacks, a spectral Pan configuration derives the enablement of its immediately
-upstream Trimesh while DSP configurations are built. This keeps one durable
-owner and avoids audio-thread graph access, but the upstream inspection is a
-temporary boundary translation.
+stacks, a Trimesh configuration derives additive or multiplicative treatment
+from its downstream operation topology while DSP configurations are built.
+This keeps one durable owner and avoids audio-thread graph access, but the
+downstream inspection is a temporary boundary translation.
 
 Introduce domain-owned layer objects/stacks before adding broader layer
-controls. Move `enabled`, pan, range, and operation mode with that owner, then
-delete the upstream source inspection in `NodeDspConfiguration.cpp`. The
-existing inline Pan operation now reuses Cycle 1's `Arithmetic::getPans`
-behavior for time-domain stereo placement without another editable bypass
-flag.
+controls. Move `enabled`, range, and operation topology with that owner, then
+delete the downstream operation inspection in `NodeDspConfiguration.cpp`.
+Pan remains an independent cable operation and reuses Cycle 1's
+`Arithmetic::getPans` behavior without another editable bypass flag.
 
 Pan still carries compatibility-era internal names: serialized kind
 `spectralLayer`, `NodeKind::SpectralLayer`, `AudioModuleRole::SpectralLayer`,
@@ -22,10 +21,8 @@ and `SpectralLayerNodeAudioProcessor`. When the graph format next supports a
 kind alias, rename these together behind a read-only `spectralLayer` alias and
 keep `PanConfiguration` as the domain-neutral runtime contract. Do not add a
 parallel time-Pan node or duplicate its gain law while that naming migration
-is pending. The same inline node currently owns spectral range and operation
-mode, so it cannot be elided when spectral pan is centered; first-class layer
-ownership should separate these concerns before making neutral Pan removal
-uniform across domains.
+is pending. Spectral range now belongs to Trimesh and operation mode comes from
+Add/Multiply topology, so centered Pan is uniformly removable in every domain.
 
 ## Panel line-strip coordinate ownership
 

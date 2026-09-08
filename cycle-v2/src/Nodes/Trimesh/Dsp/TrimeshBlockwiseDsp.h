@@ -20,7 +20,10 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
     float gain { 1.f };
+    float range { 0.5f };
     bool enabled { true };
+    bool appliesSpectralRange {};
+    bool multiplicative {};
     bool scratchSourceEnabled { true };
     std::shared_ptr<GuideCurveSnapshotProvider> guideCurveProvider;
     size_t guideAssignmentCount {};

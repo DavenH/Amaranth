@@ -19,23 +19,35 @@ namespace CycleV2 {
 
 namespace {
 
-const Node* panSource(const NodeGraph* graph, const String& nodeId) {
+const Node* connectedSignalDestination(const NodeGraph* graph, const String& nodeId) {
     if (graph == nullptr) {
         return nullptr;
     }
     for (const auto& edge : graph->getEdges()) {
-        if (edge.destNodeId == nodeId && edge.destPortId == "in") {
-            return graph->findNode(edge.sourceNodeId);
+        if (edge.sourceNodeId == nodeId && edge.sourcePortId == "out" && !edge.isAttachment()) {
+            return graph->findNode(edge.destNodeId);
         }
     }
     return nullptr;
 }
 
-bool panSourceEnabled(const NodeGraph* graph, const String& nodeId) {
-    const Node* source = panSource(graph, nodeId);
-    return source == nullptr
-            || source->kind != NodeKind::TrilinearMesh
-            || NodeParameterMap(*source).boolValue("enabled", true);
+const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = connectedSignalDestination(graph, nodeId);
+    if (destination != nullptr && destination->kind == NodeKind::SpectralLayer) {
+        destination = connectedSignalDestination(graph, destination->id);
+    }
+    return destination;
+}
+
+bool feedsSpectralOperation(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    return destination != nullptr
+            && (destination->kind == NodeKind::Add || destination->kind == NodeKind::Multiply);
+}
+
+bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
+    const Node* destination = operationAfterOptionalPan(graph, nodeId);
+    return destination != nullptr && destination->kind == NodeKind::Multiply;
 }
 
 bool scratchSourceEnabled(const NodeGraph* graph, const String& nodeId) {
@@ -70,6 +82,9 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     }
     const NodeParameterMap parameterMap(parameters);
     configuration->enabled = parameterMap.boolValue("enabled", true);
+    configuration->range = parameterMap.floatValue("range", 0.5f);
+    configuration->appliesSpectralRange = feedsSpectralOperation(graph, nodeId);
+    configuration->multiplicative = feedsMultiply(graph, nodeId);
     configuration->scratchSourceEnabled = scratchSourceEnabled(graph, nodeId);
     configuration->mesh = typedModel->sharedMesh();
     if (graph != nullptr) {
@@ -116,11 +131,13 @@ String NodeDspConfigurationFactory::keyFor(
     if (graph != nullptr) {
         key << TrimeshGuidePreparation::configurationKey(*graph, nodeId);
     }
-    if (role == AudioModuleRole::SpectralLayer) {
-        key << ":sourceEnabled=" << (panSourceEnabled(graph, nodeId) ? 1 : 0);
-    }
     if (role == AudioModuleRole::MeshSource) {
         key << ":scratchSourceEnabled=" << (scratchSourceEnabled(graph, nodeId) ? 1 : 0);
+        key << ":spectralOperation=" << (feedsSpectralOperation(graph, nodeId) ? 1 : 0);
+        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
+    }
+    if (role == AudioModuleRole::SpectralLayer) {
+        key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::ImpulseResponse) {
         key << IrSignalProcessor::resourceConfigurationKey(graph, nodeId);
@@ -228,9 +245,7 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         auto configuration = std::make_shared<PanConfiguration>();
         const NodeParameterMap parameterMap(parameters);
         configuration->pan = parameterMap.floatValue("pan", 0.5f);
-        configuration->range = parameterMap.floatValue("range", 0.5f);
-        configuration->additive = parameterMap.stringValue("mode", "additive") == "additive";
-        configuration->sourceEnabled = panSourceEnabled(graph, nodeId);
+        configuration->multiplicative = feedsMultiply(graph, nodeId);
         return configuration;
     }
 

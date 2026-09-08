@@ -42,9 +42,7 @@ struct FftNodeConfiguration final : public INodeDspConfiguration {
 
 struct PanConfiguration final : public INodeDspConfiguration {
     float pan { 0.5f };
-    float range { 0.5f };
-    bool additive { true };
-    bool sourceEnabled { true };
+    bool multiplicative {};
 
     AudioModuleRole role() const override { return AudioModuleRole::SpectralLayer; }
 };

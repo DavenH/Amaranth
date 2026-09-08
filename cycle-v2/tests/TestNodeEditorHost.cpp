@@ -16,6 +16,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -280,7 +281,7 @@ public:
     }
     TrimeshWidget* findTrimeshWidget(const String&) override { return activeTrimesh; }
     TrimeshRenderProfile trimeshRenderProfile(const Node&) const override {
-        return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
+        return TrimeshRenderProfile::fromDomain(trimeshDomain);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
@@ -295,6 +296,7 @@ public:
     }
 
     TrimeshWidget* activeTrimesh {};
+    PortDomain trimeshDomain { PortDomain::TimeSignal };
     int synchronizingTrimeshLookups {};
     double previewVoiceLengthSeconds { 1.0 };
     int previewVoiceLengthChanges {};
@@ -2605,6 +2607,52 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
     rebind();
     REQUIRE(redLinkSelected());
+}
+
+TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
+        "[cycle-v2][editor][trimesh][range]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    resources.trimeshDomain = PortDomain::SpectralPhaseSignal;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            { 0, 0, 900, 620 },
+            document.revision()));
+    auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->showsSpectralRange());
+
+    DynamicObject state;
+    host.appendAutomationState(state);
+    REQUIRE((double) state.getProperty("range") == Catch::Approx(0.5));
+
+    REQUIRE(commands.beginNodeParameterEdit("mesh", "range", "Range", 0.6f));
+    REQUIRE(commands.updateNodeParameterEditValue(0.7f));
+    commands.endNodeParameterEdit();
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.700000");
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
 }
 
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",

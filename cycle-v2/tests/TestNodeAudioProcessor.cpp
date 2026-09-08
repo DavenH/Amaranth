@@ -9,6 +9,7 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopePreparationExchange.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
@@ -279,7 +280,7 @@ TEST_CASE("Disabled layer sources publish operation identities",
     REQUIRE(output(meshContext).block.samples == std::vector<float>(4, 0.f));
 }
 
-TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
+TEST_CASE("Spectral Trimesh derives disabled identity from operation topology",
         "[cycle-v2][runtime][layers][enabled][spectral]") {
     GraphNodeFactory nodeFactory;
     NodeGraph graph;
@@ -290,32 +291,30 @@ TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
         }
     }
     graph.addNode(std::move(mesh));
-    Node panNode = nodeFactory.createNode(NodeKind::SpectralLayer, "pan", {});
-    for (auto& parameter : panNode.parameters) {
-        if (parameter.id == "mode") {
-            parameter.value = "multiplicative";
-        }
-    }
-    graph.addNode(std::move(panNode));
+    graph.addNode(nodeFactory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    graph.addNode(nodeFactory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addEdge({
             "mesh", "out", "pan", "in", PortDomain::ControlSignal
     });
+    graph.addEdge({
+            "pan", "out", "multiply", "right", PortDomain::ControlSignal
+    });
 
-    const Node* pan = graph.findNode("pan");
-    REQUIRE(pan != nullptr);
+    const Node* meshNode = graph.findNode("mesh");
+    REQUIRE(meshNode != nullptr);
     const auto configuration = NodeDspConfigurationFactory().create(
-            AudioModuleRole::SpectralLayer,
-            pan->parameters,
-            {},
+            AudioModuleRole::MeshSource,
+            meshNode->parameters,
+            meshNode->model,
             {},
             &graph,
-            pan->id);
-    const auto spectral = std::dynamic_pointer_cast<
-            const PanConfiguration>(configuration);
+            meshNode->id);
+    const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(configuration);
     REQUIRE(spectral != nullptr);
-    REQUIRE_FALSE(spectral->sourceEnabled);
+    REQUIRE_FALSE(spectral->enabled);
+    REQUIRE(spectral->multiplicative);
 
-    auto processor = NodeAudioProcessorFactory().create(AudioModuleRole::SpectralLayer);
+    auto processor = NodeAudioProcessorFactory().create(AudioModuleRole::MeshSource);
     REQUIRE(processor != nullptr);
     processor->adoptConfiguration({ 1, "disabled-source", configuration });
     AudioExecutionSpec spec;
@@ -324,11 +323,51 @@ TEST_CASE("Spectral layer derives disabled state from its Trimesh source",
     processor->prepareExecution(spec);
     AudioProcessContext context;
     context.frameCount = 4;
+    context.outputPorts = {
+            { "out", PortDomain::SpectralMagnitudeSignal, ChannelLayout::LinkedStereo }
+    };
     context.inputs.push_back(payload({ 0.2f, 0.3f, 0.4f, 0.5f }));
     context.inputs.front().domain = PortDomain::SpectralMagnitudeSignal;
     processor->process(context);
     REQUIRE(output(context).block.samples == std::vector<float>(4, 1.f));
-    REQUIRE(output(context).secondaryBlock.samples == std::vector<float>(4, 1.f));
+}
+
+TEST_CASE("Pan configuration key follows spectral operation topology",
+        "[cycle-v2][runtime][layers][pan]") {
+    GraphNodeFactory nodeFactory;
+    NodeGraph additive;
+    additive.addNode(nodeFactory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    additive.addNode(nodeFactory.createNode(NodeKind::Add, "operation", {}));
+    additive.addEdge({
+            "pan", "out", "operation", "right", PortDomain::ControlSignal
+    });
+
+    NodeGraph multiplicative;
+    multiplicative.addNode(nodeFactory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    multiplicative.addNode(nodeFactory.createNode(NodeKind::Multiply, "operation", {}));
+    multiplicative.addEdge({
+            "pan", "out", "operation", "right", PortDomain::ControlSignal
+    });
+
+    const Node* pan = additive.findNode("pan");
+    REQUIRE(pan != nullptr);
+    NodeDspConfigurationFactory factory;
+    const String additiveKey = factory.keyFor(
+            AudioModuleRole::SpectralLayer,
+            pan->parameters,
+            {},
+            {},
+            &additive,
+            pan->id);
+    const String multiplicativeKey = factory.keyFor(
+            AudioModuleRole::SpectralLayer,
+            pan->parameters,
+            {},
+            {},
+            &multiplicative,
+            pan->id);
+
+    REQUIRE(additiveKey != multiplicativeKey);
 }
 
 TEST_CASE("Pan places time signals with the mature layer gain law",

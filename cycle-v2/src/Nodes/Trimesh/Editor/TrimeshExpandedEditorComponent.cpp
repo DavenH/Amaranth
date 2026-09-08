@@ -63,6 +63,7 @@ void TrimeshExpandedEditorComponent::setDisplayDomain(PortDomain domain) {
 void TrimeshExpandedEditorComponent::setRenderProfile(TrimeshRenderProfile profile) {
     renderProfile = profile;
     widget.setRenderProfile(profile);
+    controls.refreshHitRegions();
     repaint();
 }
 
@@ -76,6 +77,14 @@ void TrimeshExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             node,
             contentBounds().translated((float) getX(), (float) getY()),
             scaleFactor);
+}
+
+bool TrimeshExpandedEditorComponent::showsSpectralRange() const {
+    return controls.getSpectralRangeSliderCount() == 1;
+}
+
+float TrimeshExpandedEditorComponent::spectralRangeValue() const {
+    return NodeParameterMap(node).floatValue("range", 0.5f);
 }
 
 void TrimeshExpandedEditorComponent::paint(Graphics& g) {
@@ -197,6 +206,34 @@ void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) 
 void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
+    }
+}
+
+void TrimeshExpandedEditorComponent::beginTrimeshRangeControlEdit(float value) {
+    if (delegate != nullptr && delegate->beginTrimeshRangeEdit(value)) {
+        setLocalSpectralRange(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshRangeControlEdit(float value) {
+    if (delegate != nullptr && delegate->updateTrimeshRangeEdit(value)) {
+        setLocalSpectralRange(value);
+    }
+}
+
+void TrimeshExpandedEditorComponent::endTrimeshRangeControlEdit() {
+    if (delegate != nullptr) {
+        delegate->endTrimeshRangeEdit();
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalSpectralRange(float value) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "range") {
+            parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            repaint();
+            return;
+        }
     }
 }
 

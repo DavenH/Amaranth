@@ -50,9 +50,7 @@ private:
         std::array<int, 2> outputs { -1, -1 };
         std::shared_ptr<const TrimeshConfiguration> configuration;
         float pan { 0.5f };
-        float range { 0.5f };
-        bool additive { true };
-        bool enabled { true };
+        bool multiplicative {};
         std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
         std::unique_ptr<Rasterization::VoiceCycleState> timeState;
         std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;

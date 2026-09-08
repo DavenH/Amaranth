@@ -198,7 +198,9 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             axes,
             model.getSelectedCubePreviewVertices(),
             selectedParameters,
-            guideAttachmentLabels);
+            guideAttachmentLabels,
+            profile.getSliceStyle().isSpectral(),
+            parameters.floatValue("range", 0.5f));
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(
@@ -425,6 +427,16 @@ bool TrimeshWidget::morphValueForParameterAt(
     return false;
 }
 
+bool TrimeshWidget::spectralRangeValueAt(
+        Rectangle<float> content,
+        Point<float> position,
+        float& value) const {
+    const Rectangle<float> rail = TrimeshSidePanelRenderer::spectralRangeRailBounds(
+            morphPanelBounds(content));
+    value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
+    return true;
+}
+
 bool TrimeshWidget::findPrimaryAxisAt(
         Rectangle<float> content,
         Point<float> position,
@@ -548,7 +560,9 @@ bool TrimeshWidget::findVertexSelectionAt(
     return vertexIndex >= 0;
 }
 
-std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(Rectangle<float> content) {
+std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
+        Rectangle<float> content,
+        bool showSpectralRange) {
     std::vector<TrimeshExpandedHitRegion> regions;
     const Rectangle<float> morphArea = morphPanelBounds(content);
     const std::array<String, 3> parameterIds {
@@ -562,6 +576,16 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
                 TrimeshExpandedHitRegionKind::MorphControl,
                 morphRailBounds(morphArea, i).expanded(8.f, 12.f),
                 parameterIds[(size_t) i],
+                {}
+        });
+    }
+
+    if (showSpectralRange) {
+        regions.push_back({
+                TrimeshExpandedHitRegionKind::SpectralRange,
+                TrimeshSidePanelRenderer::spectralRangeRailBounds(morphArea)
+                        .expanded(8.f, 12.f),
+                "range",
                 {}
         });
     }
@@ -584,7 +608,9 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(R
         });
     }
 
-    const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
+    const Rectangle<float> parameterArea = TrimeshSidePanelRenderer::vertexParameterPanelBounds(
+            morphArea,
+            showSpectralRange);
 
     for (int i = 0; i < kVertexParameterCount; ++i) {
         const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
@@ -650,8 +676,10 @@ String TrimeshWidget::primaryAxisValue(int axis) {
     }
 }
 
-Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) {
-    return TrimeshSidePanelRenderer::vertexParameterPanelBounds(morphPanelBounds(content));
+Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) const {
+    return TrimeshSidePanelRenderer::vertexParameterPanelBounds(
+            morphPanelBounds(content),
+            showsSpectralRange());
 }
 
 Rectangle<float> TrimeshWidget::vertexParameterRowBounds(Rectangle<float> parameterArea, int parameterIndex) {

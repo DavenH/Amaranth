@@ -118,7 +118,7 @@ a safe snapshot/lifetime boundary.
 
 ## P2: Cycle V2 domain-context fanout cables lack obstacle-aware routing
 
-Status: Open
+Status: Resolved on 2026-09-07
 
 The migrated graphs connect `Voice Context.context` directly to every time,
 magnitude, and phase mesh. With several time layers, a later context cable can
@@ -139,3 +139,7 @@ discoverable way to return it to an unpanned direct connection. Right-clicking
 the headset should offer a `Stop Panning` action that removes the inline Pan
 node, reconnects its incoming and outgoing signal edges, and publishes the
 semantic edit through `GraphCommandDispatcher` with undo/redo support.
+
+The edge context menu now switches from `Add Panning` to `Stop Panning` for
+either segment adjacent to the inline Pan. Removal and reconnection are one
+compound dispatcher command, and undo restores the Pan and both cable segments.

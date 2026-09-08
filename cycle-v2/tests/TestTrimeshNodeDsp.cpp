@@ -56,6 +56,14 @@ public:
     void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
+    void beginTrimeshRangeControlEdit(float value) override {
+        beginValue = value;
+        ++rangeBeginCount;
+    }
+
+    void updateTrimeshRangeControlEdit(float value) override { updateValue = value; }
+    void endTrimeshRangeControlEdit() override { ++rangeEndCount; }
+
     void beginTrimeshVertexControlEdit(const String& id, float value) override {
         activeParameter = id;
         beginValue = value;
@@ -73,6 +81,8 @@ public:
 
     int morphBeginCount {};
     int morphEndCount {};
+    int rangeBeginCount {};
+    int rangeEndCount {};
     int vertexBeginCount {};
     int vertexEndCount {};
     int selectedVertex { -1 };
@@ -501,6 +511,19 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(parameterArea.contains(row));
         REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
     }
+
+    const Rectangle<float> rangeRow =
+            TrimeshSidePanelRenderer::spectralRangeRowBounds(sideArea);
+    const Rectangle<float> rangeRail =
+            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+    const Rectangle<float> reservedParameterArea =
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea, true);
+    REQUIRE(sideArea.contains(rangeRow));
+    REQUIRE(rangeRow.contains(rangeRail));
+    REQUIRE(rangeRail.getWidth() >= 96.f);
+    REQUIRE(rangeRow.getY() > TrimeshSidePanelRenderer::vertexParameterRowBounds(
+            reservedParameterArea,
+            5).getBottom());
 }
 
 TEST_CASE("Wide Trimesh controls use a full right vertex column and honest morph travel",
@@ -1377,6 +1400,7 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
 
     REQUIRE(controls.getControlRegionCount() == 21);
     REQUIRE(controls.getMorphSliderCount() == 3);
+    REQUIRE(controls.getSpectralRangeSliderCount() == 0);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
@@ -1388,6 +1412,8 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshWidget widget;
+    widget.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
     TrimeshControlsComponent controls(widget);
     RecordingTrimeshControlsDelegate delegate;
     const Rectangle<float> content { 10.f, 42.f, 880.f, 570.f };
@@ -1397,7 +1423,7 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     controls.setNode(node);
     controls.setContentBounds(content);
 
-    const auto regions = widget.expandedControlHitRegions(content);
+    const auto regions = widget.expandedControlHitRegions(content, true);
     const auto findRegion = [&regions](TrimeshExpandedHitRegionKind kind) -> const TrimeshExpandedHitRegion& {
         const auto found = std::find_if(
                 regions.begin(),
@@ -1435,6 +1461,15 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.activeParameter == morph.parameterId);
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
+
+    const auto& range = findRegion(TrimeshExpandedHitRegionKind::SpectralRange);
+    controls.beginPointerInteraction(range.bounds.getCentre(), {});
+    controls.continuePointerInteraction({ range.bounds.getRight(), range.bounds.getCentreY() });
+    controls.endPointerInteraction();
+    REQUIRE(delegate.rangeBeginCount == 1);
+    REQUIRE(delegate.rangeEndCount == 1);
+    REQUIRE(delegate.updateValue > delegate.beginValue);
+    REQUIRE(controls.cursorFor(range.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
     Component* morphTarget {};
     for (auto* child : controls.getChildren()) {
         if (child->getBounds().contains(morph.bounds.getCentre().roundToInt())) {

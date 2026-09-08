@@ -144,6 +144,7 @@ public:
         Array<var> linkToggles;
         const NodeParameterMap parameters(boundNode);
         state.setProperty("enabled", parameters.boolValue("enabled", true));
+        state.setProperty("range", editor->spectralRangeValue());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -292,6 +293,18 @@ private:
 
     void endTrimeshMorphEdit() override {
         commands.endTrimeshMorphEdit();
+    }
+
+    bool beginTrimeshRangeEdit(float value) override {
+        return commands.beginNodeParameterEdit(nodeId, "range", "Range", value);
+    }
+
+    bool updateTrimeshRangeEdit(float value) override {
+        return commands.updateNodeParameterEditValue(value);
+    }
+
+    void endTrimeshRangeEdit() override {
+        commands.endNodeParameterEdit();
     }
 
     void beginTrimeshVertexParameterEdit(const String& id, float value) override {
