@@ -6,6 +6,7 @@
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
 #include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/SpectralOscillatorFrameRenderer.h"
 #include "Runtime/SpectralOscillatorRegionRuntime.h"
 #include "Graph/GraphCompiler.h"
@@ -42,7 +43,26 @@ public:
 struct PartitionedRender {
     std::vector<float> left;
     std::vector<float> right;
+    std::vector<float> scratch;
     size_t frameRenderCount {};
+};
+
+class ScratchCaptureObserver final : public GraphProcessObserver {
+public:
+    explicit ScratchCaptureObserver(PartitionedRender& render) : render(render) {}
+
+    void nodeProcessed(
+            const String& nodeId,
+            const AudioProcessContext& context) override {
+        if (nodeId != "scratchEnvelope1" || context.outputs.empty()) {
+            return;
+        }
+        const auto& block = context.outputs.front().block.samples;
+        render.scratch.insert(render.scratch.end(), block.begin(), block.end());
+    }
+
+private:
+    PartitionedRender& render;
 };
 
 float maximumDifference(
@@ -71,6 +91,28 @@ NodeGraph loadPresetGraph(const String& name) {
 #endif
 }
 
+NodeGraph loadOscillatorPresetGraph(const String& name) {
+    NodeGraph graph = loadPresetGraph(name);
+    for (const auto& node : graph.getNodes()) {
+        const bool downstreamEffect = node.kind == NodeKind::ImpulseResponse
+                || node.kind == NodeKind::Waveshaper
+                || node.kind == NodeKind::Reverb
+                || node.kind == NodeKind::Delay
+                || node.kind == NodeKind::Equalizer;
+        if (!downstreamEffect) {
+            continue;
+        }
+        auto parameters = node.parameters;
+        for (auto& parameter : parameters) {
+            if (parameter.id == "enabled") {
+                parameter.value = "0";
+            }
+        }
+        REQUIRE(graph.replaceNodeParameters(node.id, std::move(parameters)));
+    }
+    return graph;
+}
+
 NodeGraph loadFilterSawGraph() {
     return loadPresetGraph("filter-saw");
 }
@@ -85,11 +127,13 @@ GraphExecutionPlan loadFilterSawPlan() {
 #endif
 }
 
-PartitionedRender renderFilterSaw(
+PartitionedRender renderPreparedGraph(
         const GraphExecutionPlan& plan,
         int blockSize,
         int sampleCount,
-        int controllerEventOffset = -1) {
+        int controllerEventOffset = -1,
+        int midiNote = 72,
+        float voiceDurationSeconds = 1.f) {
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 512;
     spec.sampleRate = 48000.0;
@@ -102,10 +146,12 @@ PartitionedRender renderFilterSaw(
     AudioVoiceContext voice;
     voice.hasLifecycleSeed = true;
     voice.lifecycleSeed = 0x43594332u;
-    voice.controls.noteNumber = 72;
+    voice.controls.noteNumber = midiNote;
     voice.controls.velocity = 1.f;
-    voice.controls.normalizedVoiceTimeIncrement = 1.f / 48000.f;
+    voice.controls.normalizedVoiceTimeIncrement
+            = 1.f / (48000.f * voiceDurationSeconds);
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    ScratchCaptureObserver observer(result);
     if (controllerEventOffset >= 0) {
         voice.controlEvents.push_back({
                 ControlEventKind::Controller,
@@ -116,22 +162,26 @@ PartitionedRender renderFilterSaw(
     }
     for (int start = 0; start < sampleCount; start += blockSize) {
         const int count = std::min(blockSize, sampleCount - start);
-        voice.controls.normalizedVoiceTime = (float) start / 48000.f;
+        voice.controls.normalizedVoiceTime
+                = (float) start / (48000.f * voiceDurationSeconds);
         const auto output = executor.processRealtime(
                 plan,
                 (size_t) count,
                 { 48000.0, 120.0, 4 },
-                voice);
+                voice,
+                &observer);
         REQUIRE(output.isValid());
-        REQUIRE(output.payload->isStereo());
         result.left.insert(
                 result.left.end(),
                 output.payload->block.samples.begin(),
                 output.payload->block.samples.end());
+        const SignalBlock& right = output.payload->isStereo()
+                ? output.payload->secondaryBlock
+                : output.payload->block;
         result.right.insert(
                 result.right.end(),
-                output.payload->secondaryBlock.samples.begin(),
-                output.payload->secondaryBlock.samples.end());
+                right.samples.begin(),
+                right.samples.end());
         voice.events.clear();
         voice.controlEvents.clear();
     }
@@ -577,18 +627,83 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][live-modulation]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     const GraphExecutionPlan plan = loadFilterSawPlan();
-    const PartitionedRender reference = renderFilterSaw(plan, 512, 2048);
+    const PartitionedRender reference = renderPreparedGraph(plan, 512, 2048);
     REQUIRE(reference.frameRenderCount > 1);
 
     for (const int blockSize : { 64, 127, 256 }) {
         DYNAMIC_SECTION("block size " << blockSize) {
-            const PartitionedRender partitioned = renderFilterSaw(
+            const PartitionedRender partitioned = renderPreparedGraph(
                     plan,
                     blockSize,
                     2048);
             REQUIRE(partitioned.frameRenderCount == reference.frameRenderCount);
             REQUIRE(partitioned.left == reference.left);
             REQUIRE(partitioned.right == reference.right);
+        }
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Prepared oscillator preset matrix is independent of host block partitions",
+        "[cycle-v2][runtime][oscillator-region][live-modulation][partition-matrix]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    struct PresetCase {
+        String name;
+        float voiceDurationSeconds;
+    };
+    const std::array presets {
+            PresetCase { "saw", 1.2669865f },
+            PresetCase { "filter-saw", 0.47689545f },
+            PresetCase { "pwm", 1.2669865f },
+            PresetCase { "dunk-2", 0.5069265f },
+            PresetCase { "japan-drum", 1.0113605f }
+    };
+    for (const auto& preset : presets) {
+        const auto compiled = GraphCompiler().compile(
+                loadOscillatorPresetGraph(preset.name));
+        REQUIRE(compiled.succeeded());
+        REQUIRE_FALSE(compiled.plan.oscillatorRegions.empty());
+        REQUIRE(std::all_of(
+                compiled.plan.oscillatorRegions.begin(),
+                compiled.plan.oscillatorRegions.end(),
+                [&](const OscillatorRegionPlan& region) {
+                    return supportsPreparedOscillatorRegion(compiled.plan, region);
+                }));
+        for (const int midiNote : { 36, 48, 60, 72 }) {
+            for (const int sampleCount : { 1024, 4096 }) {
+                DYNAMIC_SECTION(preset.name << " note " << midiNote
+                        << " samples " << sampleCount) {
+                    const PartitionedRender reference = renderPreparedGraph(
+                            compiled.plan,
+                            512,
+                            sampleCount,
+                            -1,
+                            midiNote,
+                            preset.voiceDurationSeconds);
+                    for (const int blockSize : { 64, 127, 256 }) {
+                        const PartitionedRender partitioned = renderPreparedGraph(
+                                compiled.plan,
+                                blockSize,
+                                sampleCount,
+                                -1,
+                                midiNote,
+                                preset.voiceDurationSeconds);
+                        REQUIRE(partitioned.frameRenderCount
+                                == reference.frameRenderCount);
+                        REQUIRE(maximumDifference(
+                                partitioned.scratch,
+                                reference.scratch) == 0.f);
+                        REQUIRE(maximumDifference(
+                                partitioned.left,
+                                reference.left) == 0.f);
+                        REQUIRE(maximumDifference(
+                                partitioned.right,
+                                reference.right) == 0.f);
+                    }
+                }
+            }
         }
     }
   #else
@@ -632,9 +747,9 @@ TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier"
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
 
-    const PartitionedRender before = renderFilterSaw(compiled.plan, 512, 512, 90);
-    const PartitionedRender on = renderFilterSaw(compiled.plan, 512, 512, 91);
-    const PartitionedRender after = renderFilterSaw(compiled.plan, 512, 512, 92);
+    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 90);
+    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 91);
+    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 92);
     REQUIRE(before.left == on.left);
     REQUIRE(before.right == on.right);
     REQUIRE(after.left != on.left);
@@ -661,9 +776,9 @@ TEST_CASE("Prepared spectral scratch follows the authored envelope attachment",
     const auto disabled = GraphCompiler().compile(disabledGraph);
     REQUIRE(disabled.succeeded());
 
-    const PartitionedRender withScratch = renderFilterSaw(
+    const PartitionedRender withScratch = renderPreparedGraph(
             enabled.plan, 256, 2048);
-    const PartitionedRender withoutScratch = renderFilterSaw(
+    const PartitionedRender withoutScratch = renderPreparedGraph(
             disabled.plan, 256, 2048);
     REQUIRE(withScratch.left != withoutScratch.left);
     REQUIRE(withScratch.right != withoutScratch.right);
@@ -701,14 +816,14 @@ TEST_CASE("Spectral frame refresh count is independent of Unison order",
     unisonPlan.voiceContexts.front().lanes
             = CycleDsp::UnisonCore::makeGroupLayout(unisonConfiguration);
 
-    const PartitionedRender single = renderFilterSaw(singlePlan, 256, 2048);
-    const PartitionedRender unison = renderFilterSaw(unisonPlan, 256, 2048);
+    const PartitionedRender single = renderPreparedGraph(singlePlan, 256, 2048);
+    const PartitionedRender unison = renderPreparedGraph(unisonPlan, 256, 2048);
     REQUIRE(single.frameRenderCount > 1);
     REQUIRE(unison.frameRenderCount == single.frameRenderCount);
     REQUIRE(unison.left != unison.right);
     for (const int blockSize : { 64, 127, 512 }) {
         DYNAMIC_SECTION("Unison block size " << blockSize) {
-            const PartitionedRender partitioned = renderFilterSaw(
+            const PartitionedRender partitioned = renderPreparedGraph(
                     unisonPlan,
                     blockSize,
                     2048);
