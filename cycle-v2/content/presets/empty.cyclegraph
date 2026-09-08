@@ -115,57 +115,10 @@
             "parameters": {}
         },
         {
-            "id": "phaseLayer1",
-            "kind": "trilinearMesh",
-            "definitionVersion": 1,
-            "position": { "x": 1591.19995, "y": 987.0 },
-            "portSides": {
-                "outputs": { "out": "top" }
-            },
-            "parameters": {
-                "enabled": true,
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
-                "primaryAxis": "yellow",
-                "link.yellow": true,
-                "link.red": false,
-                "link.blue": false
-            },
-            "model": {
-                "schema": "trimesh",
-                "version": 2,
-                "revision": 1,
-                "mesh": {
-                    "name": "PhaseMesh0",
-                    "version": 1,
-                    "vertices": [],
-                    "cubes": []
-                }
-            }
-        },
-        {
-            "id": "phaseLayer1Process",
-            "kind": "spectralLayer",
-            "definitionVersion": 1,
-            "position": { "x": 1854.19995, "y": 1081.0 },
-            "parameters": { "pan": 0.5, "range": 0.5, "mode": "additive" }
-        },
-        {
-            "id": "phaseOp1",
-            "kind": "add",
-            "definitionVersion": 1,
-            "position": { "x": 1659.19995, "y": 789.0 },
-            "portSides": {
-                "inputs": { "right": "bottom" }
-            },
-            "parameters": {}
-        },
-        {
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2204.6001, "y": 1336.0 },
+            "position": { "x": 2277.19995, "y": 1336.0 },
             "parameters": { "enabled": false, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -434,10 +387,7 @@
         { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer1Process", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseLayer1Process", "destPortId": "in", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "phaseOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseLayer1Process", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []

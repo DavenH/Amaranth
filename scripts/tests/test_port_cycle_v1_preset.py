@@ -72,6 +72,7 @@ def convertible_source():
     groups[4]["layers"] = [mesh_layer(), mesh_layer(False)]
     groups[5]["layers"] = [mesh_layer(), mesh_layer(False, 1)]
     groups[6]["layers"] = [mesh_layer(False)]
+    groups[6]["layers"][0]["mesh"]["vertices"] = [1]
     source = {
         "preset": {
             "meshLibrary": {"groups": groups},
@@ -255,6 +256,53 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(
             nodes["magnitudeLayer1Process"]["parameters"]["range"],
             0.625)
+
+    def test_empty_phase_layer_is_bypassed(self):
+        source = convertible_source()
+        phase = source["preset"]["meshLibrary"]["groups"][6]["layers"][0]
+        phase["properties"]["active"] = True
+        phase["mesh"] = {"vertices": [], "cubes": []}
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertNotIn("phaseLayer1", nodes)
+        self.assertNotIn("phaseLayer1Process", nodes)
+        self.assertNotIn("phaseOp1", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["sourcePortId"] == "phase"
+            and edge["destNodeId"] == "ifft"
+            and edge["destPortId"] == "phase"
+            for edge in converted["edges"]
+        ))
+
+    def test_empty_phase_layer_does_not_break_later_phase_layer(self):
+        source = convertible_source()
+        phase_layers = source["preset"]["meshLibrary"]["groups"][6]["layers"]
+        nonempty = copy.deepcopy(phase_layers[0])
+        empty = copy.deepcopy(nonempty)
+        empty["mesh"] = {"vertices": [], "cubes": []}
+        phase_layers[:] = [empty, nonempty]
+        source["preset"]["modMatrix"]["mappings"] = \
+            port_cycle_v1_preset.default_modulation_mappings_for_preset(
+                source["preset"])
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {node["id"]: node for node in converted["nodes"]}
+
+        self.assertIn("phaseLayer1", nodes)
+        self.assertNotIn("phaseLayer2", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "fft"
+            and edge["destNodeId"] == "phaseOp1"
+            for edge in converted["edges"]
+        ))
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "phaseOp1"
+            and edge["destNodeId"] == "ifft"
+            for edge in converted["edges"]
+        ))
 
     def test_missing_realtime_oversampling_uses_cycle_default(self):
         source = convertible_source()

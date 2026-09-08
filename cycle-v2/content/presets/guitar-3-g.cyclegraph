@@ -260,7 +260,7 @@
             "id": "waveshaper",
             "kind": "waveshaper",
             "definitionVersion": 1,
-            "position": { "x": 2652.3999, "y": 619.0 },
+            "position": { "x": 2507.19995, "y": 619.0 },
             "parameters": { "enabled": true, "pre": 1.0, "post": 0.344, "aaFactor": "2" },
             "model": {
                 "schema": "flatCurve",
@@ -285,7 +285,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2277.19995, "y": 817.0 },
+            "position": { "x": 1902.0, "y": 817.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -549,14 +549,14 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2349.80005, "y": 619.0 },
+            "position": { "x": 2277.19995, "y": 619.0 },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 2973.3999, "y": 619.0 },
+            "position": { "x": 2828.19995, "y": 619.0 },
             "parameters": { "enabled": true, "size": 0.42857, "post": 0.276, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -639,7 +639,7 @@
             "id": "equalizer",
             "kind": "equalizer",
             "definitionVersion": 1,
-            "position": { "x": 3309.3999, "y": 619.0 },
+            "position": { "x": 3164.19995, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "band1Gain": 0.56,
@@ -658,14 +658,14 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 3645.3999, "y": 619.0 },
+            "position": { "x": 3500.19995, "y": 619.0 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.652, "spin": 0.976, "spinIters": 0.644 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3941.3999, "y": 619.0 },
+            "position": { "x": 3796.19995, "y": 619.0 },
             "parameters": {}
         }
     ],

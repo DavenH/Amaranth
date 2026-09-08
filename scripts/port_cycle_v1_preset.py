@@ -123,6 +123,14 @@ def numbered_node_ids(nodes_by_id, prefix, suffix=""):
     return result
 
 
+def layer_mesh_has_vertices(layer):
+    mesh = layer["mesh"]
+    vertices = mesh.get("vertices")
+    if vertices is None:
+        vertices = mesh.get("mainMesh", {}).get("vertices", [])
+    return bool(vertices)
+
+
 def layout_accumulator_branch(
         nodes_by_id, prefix, start_x, operation_y, mesh_direction):
     layer_ids = numbered_node_ids(nodes_by_id, f"{prefix}Layer")
@@ -220,14 +228,8 @@ def apply_compact_layout(nodes):
     ifft_x = spectral_end_x + 110.0
     set_node_position(nodes_by_id, "ifft", ifft_x, transform_y)
 
-    volume_overhang = max(
-        0.0,
-        (NODE_FOOTPRINTS["envelope"][0]
-         - NODE_FOOTPRINTS["multiply"][0]) / 2.0)
-    initial_overhang = volume_overhang \
-        if "volumeMultiply" in nodes_by_id else 0.0
     post_x = ifft_x + NODE_FOOTPRINTS["ifft"][0] \
-        + LAYOUT_GAP + initial_overhang
+        + LAYOUT_GAP
     volume_multiply_x = None
     for node_id in (
             "volumeMultiply", "waveshaper", "impulseResponse", "equalizer",
@@ -239,23 +241,27 @@ def apply_compact_layout(nodes):
             volume_multiply_x = post_x
         width, _ = node_footprint(nodes_by_id[node_id])
         post_x += width + LAYOUT_GAP
-        if node_id == "volumeMultiply":
-            post_x += volume_overhang
 
     auxiliary_y = transform_y + 170.0 + NODE_FOOTPRINTS["add"][1] \
         + LAYOUT_GAP + NODE_FOOTPRINTS["trilinearMesh"][1] + LAYOUT_GAP
     volume_envelopes = numbered_node_ids(nodes_by_id, "volumeEnvelope")
-    volume_anchor_x = volume_multiply_x if volume_multiply_x is not None \
-        else ifft_x + NODE_FOOTPRINTS["ifft"][0] + LAYOUT_GAP
-    volume_anchor_x -= (
-        NODE_FOOTPRINTS["envelope"][0] - NODE_FOOTPRINTS["multiply"][0]) / 2.0
-    volume_y = transform_y + NODE_FOOTPRINTS["multiply"][1] + LAYOUT_GAP \
-        if volume_multiply_x is not None else auxiliary_y
+    volume_envelopes.sort(key=lambda node_id: bool(
+        nodes_by_id[node_id]["parameters"].get("enabled", False)))
+    volume_cell_width = NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP
+    if volume_multiply_x is not None:
+        volume_anchor_x = volume_multiply_x \
+            - len(volume_envelopes) * volume_cell_width
+        volume_y = transform_y \
+            + NODE_FOOTPRINTS["multiply"][1] + LAYOUT_GAP
+    else:
+        volume_anchor_x = ifft_x \
+            + NODE_FOOTPRINTS["ifft"][0] + LAYOUT_GAP
+        volume_y = auxiliary_y
     for index, node_id in enumerate(volume_envelopes):
         set_node_position(
             nodes_by_id,
             node_id,
-            volume_anchor_x + index * (NODE_FOOTPRINTS["envelope"][0] + LAYOUT_GAP),
+            volume_anchor_x + index * volume_cell_width,
             volume_y)
 
     auxiliary_x = time_start_x
@@ -570,7 +576,12 @@ def convert(source):
 
     def append_spectral_stack(group_name, fft_port, ifft_port, y, phase=False):
         signal = ("fft", fft_port)
-        for index, layer in enumerate(groups[MESH_GROUPS[group_name]]["layers"], 1):
+        emitted_index = 0
+        for layer in groups[MESH_GROUPS[group_name]]["layers"]:
+            if phase and not layer_mesh_has_vertices(layer):
+                continue
+            emitted_index += 1
+            index = emitted_index
             layer_id = f"{group_name}Layer{index}"
             process_id = f"{layer_id}Process"
             operation_id = f"{group_name}Op{index}"

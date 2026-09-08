@@ -545,7 +545,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2643.19995, "y": 817.0 },
+            "position": { "x": 2268.0, "y": 817.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -822,14 +822,14 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2715.80005, "y": 619.0 },
+            "position": { "x": 2643.19995, "y": 619.0 },
             "parameters": {}
         },
         {
             "id": "impulseResponse",
             "kind": "impulseResponse",
             "definitionVersion": 1,
-            "position": { "x": 3018.3999, "y": 619.0 },
+            "position": { "x": 2873.19995, "y": 619.0 },
             "parameters": { "enabled": true, "size": 0.14286, "post": 0.364, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -864,21 +864,21 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 3354.3999, "y": 619.0 },
+            "position": { "x": 3209.19995, "y": 619.0 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.5, "spin": 0.5, "spinIters": 0.5 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 3650.3999, "y": 619.0 },
+            "position": { "x": 3505.19995, "y": 619.0 },
             "parameters": { "enabled": true, "size": 0.2, "damp": 0.2, "width": 0.0, "wet": 0.22, "highPass": 0.616 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3946.3999, "y": 619.0 },
+            "position": { "x": 3801.19995, "y": 619.0 },
             "parameters": {}
         }
     ],

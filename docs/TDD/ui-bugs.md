@@ -129,3 +129,13 @@ cable routing nor a visual fanout/bundle for domain-context distribution.
 The migrated-preset cable-crossing assertion intentionally covers ordinary
 audio/control signals and excludes domain-context, configuration-attachment,
 and processing-attachment routes until this routing support exists.
+
+## P2: Inline cable Pan cannot be removed from the canvas
+
+Status: Open
+
+Once a cable has the inline Pan/headset operation, the canvas provides no
+discoverable way to return it to an unpanned direct connection. Right-clicking
+the headset should offer a `Stop Panning` action that removes the inline Pan
+node, reconnects its incoming and outgoing signal edges, and publishes the
+semantic edit through `GraphCommandDispatcher` with undo/redo support.

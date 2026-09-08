@@ -662,7 +662,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 3009.19995, "y": 817.0 },
+            "position": { "x": 2634.0, "y": 817.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1264,21 +1264,21 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 3081.80005, "y": 619.0 },
+            "position": { "x": 3009.19995, "y": 619.0 },
             "parameters": {}
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 3384.3999, "y": 619.0 },
+            "position": { "x": 3239.19995, "y": 619.0 },
             "parameters": { "enabled": true, "size": 0.332, "damp": 0.14, "width": 0.628, "wet": 0.128, "highPass": 0.58 }
         },
         {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3680.3999, "y": 619.0 },
+            "position": { "x": 3535.19995, "y": 619.0 },
             "parameters": {}
         }
     ],

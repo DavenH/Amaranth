@@ -2,10 +2,9 @@
 
 ## Status
 
-Complete. All 229 Cycle 1 factory sources have a Cycle V2 destination. Generated
-layouts use authorable port rotations, align connected ports, avoid unrelated
-nodes on ordinary audio/control cable paths, and omit neutral time Pan
-operations.
+Complete. All 229 Cycle 1 factory sources have a Cycle V2 destination. Empty
+additive phase branches are omitted, and volume Envelope cables approach
+Multiply without avoidable overlap.
 
 ## Goal
 
@@ -146,6 +145,27 @@ configuration attachments, and processing attachments are excluded because
 their distribution/bundle geometry is distinct; missing obstacle-aware routing
 for domain-context fanout is recorded in `ui-bugs.md`.
 
+### Empty phase-layer identity
+
+An authored phase layer with no mesh vertices has no phase offset to
+add. Emitting Trimesh, Pan/range, and Add nodes for that empty branch obscures
+the effective graph without preserving additional behavior. The converter
+omits the entire empty additive phase branch and carries the FFT phase output
+directly to the next non-empty phase operation or IFFT.
+
+This rule is intentionally phase-specific. Empty magnitude layers can be
+additive or multiplicative and require a separate parity decision before they
+can be treated as identities. Non-empty spectral layers retain their Pan,
+range, operation mode, enablement, model, and guide/scratch ownership unchanged.
+
+### Volume Envelope cable approach
+
+When volume processing is active, generated volume Envelopes occupy a row below
+and to the left of Multiply. The active Envelope is the rightmost sibling, one
+standard gap from Multiply, so its normal right-side output approaches the
+lower-left operation input without reversing direction or overlapping the node.
+Inactive volume Envelopes remain visible earlier in the same row.
+
 ## Lifecycle And Ownership
 
 - Cycle 1 owns `.cyc` loading and canonical export on its GUI/message thread.
@@ -176,6 +196,8 @@ for domain-context fanout is recorded in `ui-bugs.md`.
 8. Restricted generated port overrides to authorable states, removed neutral
    time Pan, aligned connected ports, and added whole-library rejection of
    ordinary audio/control cable crossings through unrelated nodes.
+9. Elided 79 empty additive phase layers from the regenerated graphs and routed
+   volume Envelope cables monotonically into Multiply.
 
 ## Verification
 
@@ -205,23 +227,25 @@ for domain-context fanout is recorded in `ui-bugs.md`.
   migrations, all 229 Cycle 1 sources have a Cycle V2 destination. The bundled
   library contains 230 graphs because `spectral-reference.cyclegraph` is a
   native Cycle V2 reference rather than a Cycle 1 migration.
-- Every new graph preserves all time, magnitude, phase, volume, pitch, and
-  scratch layers, including inactive layer state. Modulation blue-axis routing
-  preserves the legacy distinction between velocity (input 2) and mod wheel
-  (input 101).
+- Every new graph preserves all time, magnitude, non-empty phase, volume,
+  pitch, and scratch layers, including inactive layer state. Empty additive
+  phase layers are represented by a direct FFT-to-IFFT phase cable. Modulation
+  blue-axis routing preserves the legacy distinction between velocity (input 2)
+  and mod wheel (input 101).
 - Remaining blockers: none. `crash`, `cymbal`, and `downfall` retain their two
   active time layers and opposite stereo placement through the generalized
   inline Pan operation and the authoritative `Arithmetic::getPans` gain law.
 
 ## Final Verification
 
-- Converter unit tests: 23 passed.
+- Converter unit tests: 25 passed, including all-empty and empty-before-nonempty
+  phase stacks.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
-- The focused generated-layout case passes 462,070 assertions, covering compact
+- The focused generated-layout case passes 369,910 assertions, covering compact
   node overlap and actual production cable paths across all 224 regenerated
   graphs.
-- Focused graph/preset coverage passes 462,245 assertions across 6 cases;
+- Focused graph/preset coverage passes 370,085 assertions across 6 cases;
   Envelope/output-layout authoring and hit routing pass 54 assertions across 4
   cases.
 - Cycle V2 Pan tests: 169 assertions across 11 cases passed, including direct
@@ -231,7 +255,9 @@ for domain-context fanout is recorded in `ui-bugs.md`.
   compiled, saved, reopened, and compiled again; 1,120 automation operations
   completed with zero failures across the batch sessions.
 - Production-size macOS captures include the final authorable Envelope and
-  operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`.
+  operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`, and the
+  empty-phase bypass plus down-left volume Envelope placement in
+  `/private/tmp/cycle-v2-phase-bypass-alto-sax-1.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
 - The complete Cycle V2 binary passes 602 of 604 cases. The two unrelated
   worktree failures are the protected `african-horn.cyclegraph` lacking newly
