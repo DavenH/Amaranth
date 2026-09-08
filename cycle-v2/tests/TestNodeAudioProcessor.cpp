@@ -4,6 +4,7 @@
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/NodeAudioProcessor.h"
 #include "Runtime/SmoothedMorphPosition.h"
+#include "Runtime/TrimeshMorphResolver.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
@@ -45,6 +46,63 @@ TEST_CASE("Morph controls smooth monotonically and independently of block partit
             == Catch::Approx(whole.current().red.getCurrentValue()));
     REQUIRE(partitioned.current().blue.getCurrentValue()
             == Catch::Approx(whole.current().blue.getCurrentValue()));
+}
+
+TEST_CASE("Trimesh morph resolution shares control and scratch semantics",
+        "[cycle-v2][runtime][morph][scratch]") {
+    SignalPayload yellow;
+    SignalPayload red;
+    SignalPayload blue;
+    SignalPayload scratch;
+    yellow.block.samples = SignalBuffer { 0.2f, 0.3f, 0.4f, 0.5f };
+    red.block.samples = SignalBuffer { 0.3f, 0.4f, 0.5f, 0.6f };
+    blue.block.samples = SignalBuffer { 0.4f, 0.5f, 0.6f, 0.7f };
+    scratch.block.samples = SignalBuffer { 0.8f, 0.7f, 0.6f, 0.5f };
+    const TrimeshMorphInputs inputs {
+            { &yellow, &red, &blue },
+            &scratch
+    };
+    const MorphPosition fallback(0.1f, 0.1f, 0.1f);
+    TrimeshMorphResolver ordinary;
+    TrimeshMorphResolver prepared;
+    ordinary.reset(fallback);
+    prepared.reset(fallback);
+
+    const MorphPosition ordinaryMorph = ordinary.resolve(
+            inputs,
+            fallback,
+            PortDomain::TimeSignal,
+            Vertex::Time,
+            2,
+            32,
+            48000.0,
+            true);
+    const MorphPosition preparedMorph = prepared.resolve(
+            inputs,
+            fallback,
+            PortDomain::TimeSignal,
+            Vertex::Time,
+            2,
+            32,
+            48000.0,
+            true);
+
+    REQUIRE(preparedMorph.time.getCurrentValue() == Catch::Approx(0.6f));
+    REQUIRE(preparedMorph.red.getCurrentValue()
+            == Catch::Approx(ordinaryMorph.red.getCurrentValue()));
+    REQUIRE(preparedMorph.blue.getCurrentValue()
+            == Catch::Approx(ordinaryMorph.blue.getCurrentValue()));
+
+    const MorphPosition withoutScratch = prepared.resolve(
+            inputs,
+            fallback,
+            PortDomain::TimeSignal,
+            Vertex::Time,
+            2,
+            0,
+            48000.0,
+            false);
+    REQUIRE(withoutScratch.time.getCurrentValue() != Catch::Approx(0.6f));
 }
 
 TEST_CASE("Envelope preparation request exchange publishes coherent newest values",

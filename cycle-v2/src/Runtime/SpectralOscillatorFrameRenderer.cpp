@@ -189,6 +189,22 @@ bool SpectralOscillatorFrameRenderer::prepare(
                         || operation.configuration->mesh == nullptr) {
                     return false;
                 }
+                for (const auto& input : step.inputs) {
+                    const int morphIndex = input.destPortId == "yellow" ? 0
+                            : input.destPortId == "red" ? 1
+                            : input.destPortId == "blue" ? 2
+                            : -1;
+                    if (morphIndex >= 0) {
+                        operation.morphInputBuffers[(size_t) morphIndex]
+                                = input.sourceBufferIndex;
+                    }
+                }
+                for (const auto& attachment : step.attachments) {
+                    if (attachment.destPortId == "scratch") {
+                        operation.scratchBuffer = attachment.sourceBufferIndex;
+                    }
+                }
+                operation.morphResolver.reset(operation.configuration->morph);
                 if (operation.outputDomain == PortDomain::TimeSignal) {
                     operation.type = OperationType::TimeTrimesh;
                     operation.timeState = std::make_unique<
@@ -277,12 +293,51 @@ void SpectralOscillatorFrameRenderer::reset() {
         if (operation.timeRasterizer != nullptr) {
             operation.timeRasterizer->orphanOldVerts();
         }
+        if (operation.configuration != nullptr) {
+            operation.morphResolver.reset(operation.configuration->morph);
+        }
     }
 }
 
 bool SpectralOscillatorFrameRenderer::renderFrame(
         int frameSize,
         int midiNote,
+        Buffer<float> left,
+        Buffer<float> right) {
+    return renderFrameInternal(
+            frameSize,
+            midiNote,
+            nullptr,
+            0,
+            0,
+            left,
+            right);
+}
+
+bool SpectralOscillatorFrameRenderer::renderFrame(
+        int frameSize,
+        int midiNote,
+        const PreparedOscillatorProcessContext& context,
+        size_t blockSampleOffset,
+        size_t elapsedSamples,
+        Buffer<float> left,
+        Buffer<float> right) {
+    return renderFrameInternal(
+            frameSize,
+            midiNote,
+            &context,
+            blockSampleOffset,
+            elapsedSamples,
+            left,
+            right);
+}
+
+bool SpectralOscillatorFrameRenderer::renderFrameInternal(
+        int frameSize,
+        int midiNote,
+        const PreparedOscillatorProcessContext* context,
+        size_t blockSampleOffset,
+        size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
     Transform* transform = transformFor(frameSize);
@@ -299,6 +354,26 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
         auto rightOutput = slot(operation.outputs[0], 1, count);
+        MorphPosition morph;
+        if (operation.configuration != nullptr) {
+            TrimeshMorphInputs inputs;
+            if (context != nullptr) {
+                for (size_t axis = 0; axis < inputs.absoluteMorph.size(); ++axis) {
+                    inputs.absoluteMorph[axis] = context->signalAt(
+                            operation.morphInputBuffers[axis]);
+                }
+                inputs.scratch = context->signalAt(operation.scratchBuffer);
+            }
+            morph = operation.morphResolver.resolve(
+                    inputs,
+                    operation.configuration->morph,
+                    operation.outputDomain,
+                    operation.configuration->primaryViewAxis,
+                    blockSampleOffset,
+                    elapsedSamples,
+                    context != nullptr ? context->timing.sampleRate : 44100.0,
+                    operation.configuration->scratchSourceEnabled);
+        }
         switch (operation.type) {
             case OperationType::TimeTrimesh:
                 if (!operation.configuration->enabled) {
@@ -310,7 +385,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                         *operation.timeRasterizer,
                         {
                                 const_cast<Mesh*>(operation.configuration->mesh.get()),
-                                operation.configuration->morph,
+                                morph,
                                 0.f,
                                 0
                         },
@@ -332,6 +407,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                 }
                 operation.spectralRasterizer->setFrequencyMidiNote(
                         midiNote + LogRegionMapping::legacyMidiNoteBias);
+                operation.spectralRasterizer->setMorphPosition(morph);
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));

@@ -22,6 +22,9 @@ public:
             const CycleDsp::UnisonVoiceLayout& layoutToUse);
     void reset();
     bool process(
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
+    bool process(
             int midiNote,
             float velocity,
             Buffer<float> pitchEnvelope,
@@ -40,7 +43,7 @@ private:
 
     int fixedFrameSizeFor(int midiNote) const;
     bool renderSharedFrame(
-            int midiNote,
+            const PreparedOscillatorProcessContext& context,
             SpectralOscillatorFrameRenderer& renderer);
     bool renderUntilReady(
             int laneIndex,

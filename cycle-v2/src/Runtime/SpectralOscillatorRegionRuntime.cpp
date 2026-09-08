@@ -89,17 +89,15 @@ void SpectralOscillatorRegionRuntime::reset() {
 }
 
 bool SpectralOscillatorRegionRuntime::process(
-        int midiNote,
-        float velocity,
-        Buffer<float> pitchEnvelope,
-        Buffer<float> left,
-        Buffer<float> right,
+        const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
+    Buffer<float> left = context.left;
+    Buffer<float> right = context.right;
     if (left.size() != right.size()
             || left.empty()
             || (size_t) left.size() > maximumFrameCount
             || layout.order < 1
-            || (!frameReady && !renderSharedFrame(midiNote, renderer))) {
+            || (!frameReady && !renderSharedFrame(context, renderer))) {
         left.zero();
         right.zero();
         return false;
@@ -107,12 +105,13 @@ bool SpectralOscillatorRegionRuntime::process(
 
     left.zero();
     right.zero();
-    const float level = velocity * CycleDsp::UnisonCore::voiceLevelScale(layout.order);
+    const float level = context.velocity
+            * CycleDsp::UnisonCore::voiceLevelScale(layout.order);
     for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
         if (!renderUntilReady(
                 laneIndex,
-                midiNote,
-                pitchEnvelope,
+                context.midiNote,
+                context.pitchEnvelope,
                 (size_t) left.size())) {
             left.zero();
             right.zero();
@@ -131,6 +130,24 @@ bool SpectralOscillatorRegionRuntime::process(
     return true;
 }
 
+bool SpectralOscillatorRegionRuntime::process(
+        int midiNote,
+        float velocity,
+        Buffer<float> pitchEnvelope,
+        Buffer<float> left,
+        Buffer<float> right,
+        SpectralOscillatorFrameRenderer& renderer) {
+    PreparedOscillatorProcessContext context;
+    context.blockFrameCount = (size_t) left.size();
+    context.timing.sampleRate = sampleRate;
+    context.midiNote = midiNote;
+    context.velocity = velocity;
+    context.pitchEnvelope = pitchEnvelope;
+    context.left = left;
+    context.right = right;
+    return process(context, renderer);
+}
+
 int SpectralOscillatorRegionRuntime::fixedFrameSizeFor(int midiNote) const {
     const double angleDelta = CycleDsp::OscillatorLaneCore::angleDelta(
             midiNote,
@@ -143,9 +160,9 @@ int SpectralOscillatorRegionRuntime::fixedFrameSizeFor(int midiNote) const {
 }
 
 bool SpectralOscillatorRegionRuntime::renderSharedFrame(
-        int midiNote,
+        const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
-    fixedFrameSize = fixedFrameSizeFor(midiNote);
+    fixedFrameSize = fixedFrameSizeFor(context.midiNote);
     if (fixedFrameSize <= 2 || fixedFrameSize > maximumFixedFrameSize) {
         return false;
     }
@@ -157,7 +174,10 @@ bool SpectralOscillatorRegionRuntime::renderSharedFrame(
                 fadeOut.withSize(halfSize))
             || !renderer.renderFrame(
                     fixedFrameSize,
-                    midiNote,
+                    context.midiNote,
+                    context,
+                    context.blockSampleStart,
+                    0,
                     currentFrames[0].withSize(fixedFrameSize),
                     currentFrames[1].withSize(fixedFrameSize))) {
         fixedFrameSize = 0;
