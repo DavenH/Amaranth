@@ -60,6 +60,9 @@ approximations.
   have output-level regressions.
 - Realtime and visual inverse FFTs now share the legacy harmonic-tail clearing
   rule. Calming's A1/G1/F1/E1 matrix guards the resulting high-band limit.
+- A live-device pointer regression holds C3 into release and starts A4 from the
+  same on-screen keyboard. It verifies that the second pitch dominates while
+  the first note still has a residual tail.
 
 ## Completion Criteria
 
