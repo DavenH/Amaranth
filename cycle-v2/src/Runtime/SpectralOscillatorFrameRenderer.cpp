@@ -104,6 +104,9 @@ bool SpectralOscillatorFrameRenderer::supports(
     for (const int stepIndex : region.stepIndices) {
         const auto& step = plan.steps[(size_t) stepIndex];
         if (sourceRole(step.audioRole)) {
+            if (!PreparedTrimeshMorphBinding::supports(plan, step)) {
+                return false;
+            }
             continue;
         }
         if (!inputComesFromRegion(inputForPort(step, 0), regionSteps)) {
@@ -189,21 +192,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
                         || operation.configuration->mesh == nullptr) {
                     return false;
                 }
-                for (const auto& input : step.inputs) {
-                    const int morphIndex = input.destPortId == "yellow" ? 0
-                            : input.destPortId == "red" ? 1
-                            : input.destPortId == "blue" ? 2
-                            : -1;
-                    if (morphIndex >= 0) {
-                        operation.morphInputBuffers[(size_t) morphIndex]
-                                = input.sourceBufferIndex;
-                    }
-                }
-                for (const auto& attachment : step.attachments) {
-                    if (attachment.destPortId == "scratch") {
-                        operation.scratchBuffer = attachment.sourceBufferIndex;
-                    }
-                }
+                operation.morphBinding.bind(step);
                 operation.morphResolver.reset(operation.configuration->morph);
                 if (operation.outputDomain == PortDomain::TimeSignal) {
                     operation.type = OperationType::TimeTrimesh;
@@ -286,6 +275,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
 
 void SpectralOscillatorFrameRenderer::reset() {
     renderCount = 0;
+    lifecycleSeedReady = false;
     for (auto& operation : operations) {
         if (operation.timeState != nullptr) {
             operation.timeState->reset();
@@ -350,20 +340,16 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         return false;
     }
 
+    prepareFrameRandom(context);
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
         auto rightOutput = slot(operation.outputs[0], 1, count);
         MorphPosition morph;
         if (operation.configuration != nullptr) {
-            TrimeshMorphInputs inputs;
-            if (context != nullptr) {
-                for (size_t axis = 0; axis < inputs.absoluteMorph.size(); ++axis) {
-                    inputs.absoluteMorph[axis] = context->signalAt(
-                            operation.morphInputBuffers[axis]);
-                }
-                inputs.scratch = context->signalAt(operation.scratchBuffer);
-            }
+            const TrimeshMorphInputs inputs = context != nullptr
+                    ? operation.morphBinding.inputsFor(*context)
+                    : TrimeshMorphInputs {};
             morph = operation.morphResolver.resolve(
                     inputs,
                     operation.configuration->morph,
@@ -387,7 +373,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 const_cast<Mesh*>(operation.configuration->mesh.get()),
                                 morph,
                                 0.f,
-                                0
+                                frameRandom.nextInt(
+                                        GuideCurveProvider::tableSize)
                         },
                         leftOutput);
                 leftOutput.mul(operation.configuration->gain);
@@ -408,6 +395,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 operation.spectralRasterizer->setFrequencyMidiNote(
                         midiNote + LogRegionMapping::legacyMidiNoteBias);
                 operation.spectralRasterizer->setMorphPosition(morph);
+                operation.spectralRasterizer->rasterizePrepared(
+                        frameRandom.nextInt(GuideCurveProvider::tableSize));
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
@@ -532,6 +521,36 @@ Transform* SpectralOscillatorFrameRenderer::transformFor(int frameSize) {
         ++index;
     }
     return index < (int) transforms.size() ? transforms[(size_t) index].get() : nullptr;
+}
+
+void SpectralOscillatorFrameRenderer::prepareFrameRandom(
+        const PreparedOscillatorProcessContext* context) {
+    const bool hasLifecycleSeed = context != nullptr
+            && context->voice != nullptr
+            && context->voice->hasLifecycleSeed;
+    const uint32_t seed = hasLifecycleSeed
+            ? context->voice->lifecycleSeed
+            : GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
+    if (lifecycleSeedReady && lifecycleSeed == seed) {
+        return;
+    }
+
+    lifecycleSeed = seed;
+    lifecycleSeedReady = true;
+    frameRandom.setSeed((int64) seed);
+    for (auto& operation : operations) {
+        if (operation.timeRasterizer != nullptr) {
+            operation.timeRasterizer->updateOffsetSeeds(
+                    operation.configuration != nullptr
+                            ? (int) operation.configuration->guideAssignmentCount
+                            : 0,
+                    GuideCurveProvider::tableSize,
+                    Rasterization::GuideCurveSeed::voiceLifecycle(seed));
+        }
+        if (operation.spectralRasterizer != nullptr) {
+            operation.spectralRasterizer->setVoiceLifecycleSeed(seed);
+        }
+    }
 }
 
 }

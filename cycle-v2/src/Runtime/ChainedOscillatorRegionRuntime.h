@@ -10,12 +10,16 @@
 
 namespace CycleV2 {
 
+struct PreparedOscillatorProcessContext;
+
 struct ChainedCycleRenderRequest {
     int laneIndex {};
     int sampleCount {};
     double angleDelta {};
     double cycleStartSample {};
     CycleDsp::UnisonVoice voice;
+    const PreparedOscillatorProcessContext* processContext {};
+    size_t blockSampleOffset {};
 };
 
 class OscillatorCycleRenderer {
@@ -37,6 +41,9 @@ public:
             const CycleDsp::UnisonVoiceLayout& layout);
     void reset();
     bool process(
+            const PreparedOscillatorProcessContext& context,
+            OscillatorCycleRenderer& renderer);
+    bool process(
             int midiNote,
             float velocity,
             Buffer<float> pitchEnvelope,
@@ -52,9 +59,7 @@ private:
 
     bool renderUntilReady(
             int laneIndex,
-            int midiNote,
-            Buffer<float> pitchEnvelope,
-            size_t frameCount,
+            const PreparedOscillatorProcessContext& context,
             OscillatorCycleRenderer& renderer);
 
     size_t maximumFrameCount {};

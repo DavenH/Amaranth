@@ -245,12 +245,14 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
         const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
     const int requiredSamples = context.left.size();
+    const double renderHorizon = (double) context.voiceSampleStart
+            + requiredSamples;
     while (true) {
         int nextLane = -1;
         double nextCycleStart = 0.0;
         for (int laneIndex = 0; laneIndex < layout.order; ++laneIndex) {
             const auto& lane = lanes[(size_t) laneIndex];
-            if (lane.buffers[0].hasDataFor(requiredSamples)) {
+            if (lane.clock.cumulativePosition >= renderHorizon) {
                 continue;
             }
             if (nextLane < 0 || lane.clock.cumulativePosition < nextCycleStart) {

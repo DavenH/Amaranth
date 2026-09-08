@@ -34,6 +34,7 @@ bool TrimeshOscillatorCycleRenderer::prepare(
 }
 
 void TrimeshOscillatorCycleRenderer::reset() {
+    lifecycleSeedReady = false;
     for (int laneIndex = 0; laneIndex < preparedLaneCount; ++laneIndex) {
         auto& lane = lanes[(size_t) laneIndex];
         lane.state.reset();
@@ -42,8 +43,38 @@ void TrimeshOscillatorCycleRenderer::reset() {
     }
 }
 
+void TrimeshOscillatorCycleRenderer::setVoiceLifecycleSeed(uint32_t seed) {
+    if (lifecycleSeedReady && lifecycleSeed == seed) {
+        return;
+    }
+    lifecycleSeed = seed;
+    lifecycleSeedReady = true;
+    for (int laneIndex = 0; laneIndex < preparedLaneCount; ++laneIndex) {
+        lanes[(size_t) laneIndex].rasterizer.updateOffsetSeeds(
+                configuration != nullptr
+                        ? (int) configuration->guideAssignmentCount
+                        : 0,
+                GuideCurveProvider::tableSize,
+                Rasterization::GuideCurveSeed::voiceLifecycle(seed));
+    }
+}
+
 void TrimeshOscillatorCycleRenderer::renderCycle(
         const ChainedCycleRenderRequest& request,
+        Buffer<float> left,
+        Buffer<float> right) {
+    renderCycleAtMorph(
+            request,
+            configuration != nullptr ? configuration->morph : MorphPosition(),
+            0,
+            left,
+            right);
+}
+
+void TrimeshOscillatorCycleRenderer::renderCycleAtMorph(
+        const ChainedCycleRenderRequest& request,
+        const MorphPosition& morph,
+        int noiseSeed,
         Buffer<float> left,
         Buffer<float> right) {
     if (configuration == nullptr
@@ -60,10 +91,10 @@ void TrimeshOscillatorCycleRenderer::renderCycle(
     CycleDsp::ChainedRasterizationRequest rasterRequest {
             const_cast<Mesh*>(configuration->mesh.get()),
             &lane.state,
-            configuration->morph,
+            morph,
             request.voice.phaseCycles,
             request.angleDelta,
-            request.laneIndex
+            noiseSeed
     };
     if (!lane.primed) {
         CycleDsp::OscillatorLaneRasterizer::prime(lane.rasterizer, rasterRequest);

@@ -60,13 +60,7 @@ public:
     }
 
     bool process(const PreparedOscillatorProcessContext& context) override {
-        return runtime.process(
-                context.midiNote,
-                context.velocity,
-                context.pitchEnvelope,
-                context.left,
-                context.right,
-                *renderer);
+        return runtime.process(context, *renderer);
     }
 
 private:

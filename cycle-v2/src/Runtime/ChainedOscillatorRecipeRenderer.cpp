@@ -104,13 +104,19 @@ bool ChainedOscillatorRecipeRenderer::prepare(
         Operation operation;
         if (step.audioRole == AudioModuleRole::MeshSource
                 || step.audioRole == AudioModuleRole::WaveSource) {
+            if (!PreparedTrimeshMorphBinding::supports(plan, step)) {
+                return false;
+            }
             const auto configuration = std::dynamic_pointer_cast<const TrimeshConfiguration>(
                     step.configuration.value);
+            operation.configuration = configuration;
             operation.trimesh = std::make_unique<TrimeshOscillatorCycleRenderer>();
             if (!operation.trimesh->prepare(configuration, region.laneCount)) {
                 return false;
             }
             operation.gain = configuration->enabled ? configuration->gain : 0.f;
+            operation.morphBinding.bind(step);
+            operation.morphResolver.reset(configuration->morph);
         } else if (step.audioRole == AudioModuleRole::SpectralLayer) {
             const auto configuration = std::dynamic_pointer_cast<
                     const PanConfiguration>(step.configuration.value);
@@ -154,10 +160,15 @@ bool ChainedOscillatorRecipeRenderer::prepare(
 }
 
 void ChainedOscillatorRecipeRenderer::reset() {
+    lifecycleSeedReady = false;
     for (auto& operation : operations) {
         if (operation.trimesh != nullptr) {
             operation.trimesh->reset();
         }
+        if (operation.configuration != nullptr) {
+            operation.morphResolver.reset(operation.configuration->morph);
+        }
+        operation.lastMorphFrontier = 0;
     }
 }
 
@@ -175,12 +186,37 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
         return;
     }
 
+    prepareFrameRandom(request.processContext);
     for (int operationIndex = 0; operationIndex < (int) operations.size(); ++operationIndex) {
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
         auto outputRight = operationBuffer(operationIndex, 1, request.sampleCount);
         if (operation.trimesh != nullptr) {
-            operation.trimesh->renderCycle(request, outputLeft, outputRight);
+            MorphPosition morph = operation.configuration->morph;
+            if (request.processContext != nullptr) {
+                const uint64_t frontier = (uint64_t) request.cycleStartSample;
+                const size_t elapsedSamples = frontier > operation.lastMorphFrontier
+                        ? (size_t) (frontier - operation.lastMorphFrontier)
+                        : 0;
+                morph = operation.morphResolver.resolve(
+                        operation.morphBinding.inputsFor(*request.processContext),
+                        operation.configuration->morph,
+                        PortDomain::TimeSignal,
+                        operation.configuration->primaryViewAxis,
+                        request.blockSampleOffset,
+                        elapsedSamples,
+                        request.processContext->timing.sampleRate,
+                        operation.configuration->scratchSourceEnabled);
+                operation.lastMorphFrontier = std::max(
+                        operation.lastMorphFrontier,
+                        frontier);
+            }
+            operation.trimesh->renderCycleAtMorph(
+                    request,
+                    morph,
+                    frameRandom.nextInt(GuideCurveProvider::tableSize),
+                    outputLeft,
+                    outputRight);
             if (operation.gain != 1.f) {
                 outputLeft.mul(operation.gain);
                 outputRight.mul(operation.gain);
@@ -214,6 +250,27 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
 
     operationBuffer(outputOperation, 0, request.sampleCount).copyTo(left);
     operationBuffer(outputOperation, 1, request.sampleCount).copyTo(right);
+}
+
+void ChainedOscillatorRecipeRenderer::prepareFrameRandom(
+        const PreparedOscillatorProcessContext* context) {
+    const bool hasLifecycleSeed = context != nullptr
+            && context->voice != nullptr
+            && context->voice->hasLifecycleSeed;
+    const uint32_t seed = hasLifecycleSeed
+            ? context->voice->lifecycleSeed
+            : GuideCurveSnapshotProvider::visualizationSeed(PortDomain::TimeSignal);
+    if (lifecycleSeedReady && lifecycleSeed == seed) {
+        return;
+    }
+    lifecycleSeed = seed;
+    lifecycleSeedReady = true;
+    frameRandom.setSeed((int64) seed);
+    for (auto& operation : operations) {
+        if (operation.trimesh != nullptr) {
+            operation.trimesh->setVoiceLifecycleSeed(seed);
+        }
+    }
 }
 
 Buffer<float> ChainedOscillatorRecipeRenderer::operationBuffer(

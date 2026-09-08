@@ -3,6 +3,7 @@
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/PreparedOscillatorRegion.h"
+#include "Runtime/PreparedTrimeshMorphBinding.h"
 #include "Runtime/TrimeshMorphResolver.h"
 
 #include <Algo/FFT.h>
@@ -58,8 +59,7 @@ private:
         int leftInput { -1 };
         int rightInput { -1 };
         std::array<int, 2> outputs { -1, -1 };
-        std::array<int, 3> morphInputBuffers { -1, -1, -1 };
-        int scratchBuffer { -1 };
+        PreparedTrimeshMorphBinding morphBinding;
         std::shared_ptr<const TrimeshConfiguration> configuration;
         float pan { 0.5f };
         bool multiplicative {};
@@ -80,6 +80,7 @@ private:
     static int valueCount(PortDomain domain, int frameSize);
     Buffer<float> slot(int slotIndex, int channel, int valueCount);
     Transform* transformFor(int frameSize);
+    void prepareFrameRandom(const PreparedOscillatorProcessContext* context);
 
     int maximumFrameSize {};
     int slotStride {};
@@ -91,6 +92,9 @@ private:
     ScopedAlloc<float> slotMemory;
     ScopedAlloc<float> magnitudeScratch;
     ScopedAlloc<float> phaseScratch;
+    Random frameRandom;
+    uint32_t lifecycleSeed {};
+    bool lifecycleSeedReady {};
 };
 
 }
