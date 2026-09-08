@@ -346,6 +346,7 @@ void paintEnvelopePurposeIcon(
         float zoom) {
     const EnvelopePurpose purpose = envelopePurposeFor(node);
     const Rectangle<float> icon = header.reduced(10.f * zoom, 6.f * zoom)
+            .withTrimmedRight(41.f * zoom)
             .removeFromRight(31.f * zoom);
     EnvelopePurposeIconRenderer::paint(graphics, purpose, icon);
 }

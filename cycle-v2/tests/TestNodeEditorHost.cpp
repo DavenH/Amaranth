@@ -16,6 +16,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
 #include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
+#include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Nodes/Unison/UnisonNode.h"
@@ -280,7 +281,7 @@ public:
     }
     TrimeshWidget* findTrimeshWidget(const String&) override { return activeTrimesh; }
     TrimeshRenderProfile trimeshRenderProfile(const Node&) const override {
-        return TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
+        return TrimeshRenderProfile::fromDomain(trimeshDomain);
     }
     std::array<String, 6> trimeshGuideLabels(const Node&) override { return {}; }
     void paintNodePreview(Graphics&, const Node&, Rectangle<float>) override {}
@@ -295,6 +296,7 @@ public:
     }
 
     TrimeshWidget* activeTrimesh {};
+    PortDomain trimeshDomain { PortDomain::TimeSignal };
     int synchronizingTrimeshLookups {};
     double previewVoiceLengthSeconds { 1.0 };
     int previewVoiceLengthChanges {};
@@ -2107,6 +2109,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     Button* sustainMarker = nullptr;
     Button* fitVertical = nullptr;
     Button* fullVertical = nullptr;
+    EffectEnableButton* enabled = nullptr;
     for (int index = 0; index < editor->getNumChildComponents(); ++index) {
         if (auto* selector = dynamic_cast<EnvelopePurposeSelector*>(editor->getChildComponent(index))) {
             modeSelector = selector;
@@ -2122,7 +2125,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
                            editor->getChildComponent(index))) {
             axisScaleSelector = selector;
         } else if (auto* button = dynamic_cast<Button*>(editor->getChildComponent(index))) {
-            if (button->getName() == "Set selected vertex as loop start") {
+            if (auto* enableButton = dynamic_cast<EffectEnableButton*>(button)) {
+                enabled = enableButton;
+            } else if (button->getName() == "Set selected vertex as loop start") {
                 loopMarker = button;
             } else if (button->getName() == "Set selected vertex as sustain point") {
                 sustainMarker = button;
@@ -2142,6 +2147,11 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(sustainMarker != nullptr);
     REQUIRE(fitVertical != nullptr);
     REQUIRE(fullVertical != nullptr);
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getToggleState());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Envelope layer");
+    REQUIRE(enabled->getBounds().toFloat() == embeddedEditorHeaderLayout(
+            editor->getLocalBounds().toFloat(), true).enabled);
     REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
     REQUIRE_FALSE(axisScaleSelector->isEnabled());
     REQUIRE((bool) state.getProperty("actionIconsVector", {}));
@@ -2522,13 +2532,17 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
             presentation,
             resources);
 
-    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
+    REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.6f));
+    REQUIRE(commands.updateTrimeshMorphEditValue(0.8f));
     commands.endTrimeshMorphEdit();
 
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
-    REQUIRE(presentation.recordedMovements == 1);
+    REQUIRE(presentation.recordedMovements == 2);
     REQUIRE(presentation.immediateRefreshes == 0);
     REQUIRE(presentation.localCommits == 1);
+    REQUIRE(document.canUndo());
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.5");
 }
 
 TEST_CASE("Trimesh link toggles survive rebind and undo",
@@ -2573,6 +2587,15 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
 
     rebind();
     REQUIRE_FALSE(redLinkSelected());
+    auto* enabled = dynamic_cast<ToggleButton*>(
+            host.component()->findChildWithID("trimeshEditor.enabled"));
+    REQUIRE(enabled != nullptr);
+    REQUIRE(enabled->getToggleState());
+    REQUIRE(enabled->getTooltip() == "Enable or disable this Trimesh layer");
+    enabled->setToggleState(false, sendNotificationSync);
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "enabled") == "0");
+    rebind();
+    REQUIRE_FALSE(enabled->getToggleState());
 
     REQUIRE(commands.toggleTrimeshLinkAxisValue("mesh", "red"));
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
@@ -2588,6 +2611,52 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "link.red") == "1");
     rebind();
     REQUIRE(redLinkSelected());
+}
+
+TEST_CASE("Spectral Trimesh range is visible and edits as one undo transaction",
+        "[cycle-v2][editor][trimesh][range]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    resources.trimeshDomain = PortDomain::SpectralPhaseSignal;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            { 0, 0, 900, 620 },
+            document.revision()));
+    auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->showsSpectralRange());
+
+    DynamicObject state;
+    host.appendAutomationState(state);
+    REQUIRE((double) state.getProperty("range") == Catch::Approx(0.5));
+
+    REQUIRE(commands.beginNodeParameterEdit("mesh", "range", "Range", 0.6f));
+    REQUIRE(commands.updateNodeParameterEditValue(0.7f));
+    commands.endNodeParameterEdit();
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.700000");
+    REQUIRE(presentation.immediateRefreshes == 1);
+    REQUIRE(document.undo());
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "range") == "0.5");
 }
 
 TEST_CASE("Live Trimesh morph commits reuse movement refresh",

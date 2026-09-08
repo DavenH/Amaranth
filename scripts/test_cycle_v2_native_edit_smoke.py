@@ -1627,6 +1627,27 @@ class NativeEditSmoke:
         )
         self.release_drag(destination)
 
+    def trimesh_morph_drag_sequence(self):
+        state = self.open_editor("waveMesh", trimesh=True)
+        parameters = self.parameters(state)
+        axis = "red"
+        initial = float(parameters[axis])
+        destination_value = 0.2 if initial > 0.5 else 0.8
+        slider = self.target(f"expanded:waveMesh.trimeshMorphRail.{axis}")
+        source = self.point(slider, initial, 0.5)
+        destination = self.point(slider, destination_value, 0.5)
+
+        self.drag(source, destination, steps=12, step_wait_ms=8)
+
+        edited = float(self.parameters(self.inspect("waveMesh"))[axis])
+        assert abs(edited - destination_value) < 0.08, (
+            "Trimesh morph slider did not follow a native drag",
+            initial,
+            destination_value,
+            edited,
+            slider,
+        )
+
     def run(self, sequences):
         self.start()
         try:
@@ -1643,6 +1664,7 @@ class NativeEditSmoke:
                 "trimesh-versioning": lambda: self.trimesh_sequence(True),
                 "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
+                "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
             for sequence in sequences:
@@ -1669,6 +1691,7 @@ if __name__ == "__main__":
         "trimesh-versioning",
         "spectral-trimesh",
         "causal-trimesh",
+        "trimesh-morph-drag",
         "hover-cursor",
     }
     if unknown:

@@ -400,6 +400,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
+                            boolean("enabled", "Enabled", true, dsp | presentation),
+                            number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("yellow", "Yellow", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -416,16 +418,13 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({ 260.f, 130.f }, { 286.f, 269.f })
                     .finish(),
             buildDefinition(definition("spectralLayer", NodeKind::SpectralLayer,
-                    "Pan", "spectral stereo", "pan",
+                    "Pan", "stereo placement", "pan",
                     { input("in", "Layer", PortDomain::ControlSignal, ChannelLayout::Mono) },
                     { output("out", "Stereo", PortDomain::ControlSignal, ChannelLayout::StereoPair) }, {
-                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            choice("mode", "Magnitude Mode", "additive",
-                                    { "additive", "multiplicative" }, dsp | preview | presentation)
+                            number("pan", "Pan", 0.5f, 0.f, 1.f, dsp | preview | presentation)
                     }))
-                    .help("Places a spectral layer in the stereo field.")
-                    .execution(NodeExecutionTrait::SpectralTransform)
+                    .help("Places a signal in the stereo field.")
+                    .execution(NodeExecutionTrait::CoordinateTransform)
                     .runtime(AudioModuleRole::SpectralLayer, PreviewModuleRole::None,
                             "cycle/src/Audio/Voices/SynthFilterVoice.cpp")
                     .presentation({}, { 80.f, 80.f })
@@ -462,6 +461,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
+                            boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             choice("purpose", "Purpose", "control",
                                     { "control", "volume", "pitch", "scratch" },
                                     graph | dsp | preview | presentation),

@@ -325,10 +325,11 @@ void GraphValidator::validateOperationInputs(
                         graph.getEdges().begin(),
                         found);
                 const PortDomain domain = resolution.domains[edgeIndex];
-                if (domain != PortDomain::SpectralMagnitudeSignal
+                if (domain != PortDomain::TimeSignal
+                        && domain != PortDomain::SpectralMagnitudeSignal
                         && domain != PortDomain::SpectralPhaseSignal) {
                     addIssue(issues, GraphValidationCode::DomainMismatch,
-                            "Pan requires magnitude or phase input: " + node.id);
+                            "Pan requires time, magnitude, or phase input: " + node.id);
                 }
             }
             continue;

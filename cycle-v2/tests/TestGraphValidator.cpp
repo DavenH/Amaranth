@@ -124,14 +124,27 @@ TEST_CASE("Universal ports accept typed graph operands", "[cycle-v2][graph]") {
     REQUIRE(labelForDomain(PortDomain::ControlSignal) == "Universal");
 }
 
-TEST_CASE("Spectral Layer rejects non-spectral signal domains", "[cycle-v2][graph]") {
+TEST_CASE("Pan accepts time signals and rejects non-audio control signals",
+        "[cycle-v2][graph][pan]") {
     GraphNodeFactory factory;
-    NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "layer", {}));
-    graph.addEdge({ "wave", "out", "layer", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
+    NodeGraph timeGraph;
+    timeGraph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    timeGraph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    timeGraph.addEdge({
+            "wave", "out", "pan", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    REQUIRE(GraphValidator().isValid(timeGraph));
 
-    const auto issues = GraphValidator().validate(graph);
+    NodeGraph controlGraph;
+    controlGraph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
+    controlGraph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
+    controlGraph.addEdge({
+            "mod", "value", "pan", "in",
+            PortDomain::ControlSignal, ConnectionKind::Signal
+    });
+
+    const auto issues = GraphValidator().validate(controlGraph);
 
     REQUIRE(std::any_of(
             issues.begin(),

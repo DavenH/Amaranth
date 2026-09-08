@@ -24,6 +24,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include <App/SingletonRepo.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Mesh/Intercept.h>
 #include <Util/LogRegionMapping.h>
 
@@ -56,6 +57,14 @@ public:
     void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
+    void beginTrimeshRangeControlEdit(float value) override {
+        beginValue = value;
+        ++rangeBeginCount;
+    }
+
+    void updateTrimeshRangeControlEdit(float value) override { updateValue = value; }
+    void endTrimeshRangeControlEdit() override { ++rangeEndCount; }
+
     void beginTrimeshVertexControlEdit(const String& id, float value) override {
         activeParameter = id;
         beginValue = value;
@@ -73,6 +82,8 @@ public:
 
     int morphBeginCount {};
     int morphEndCount {};
+    int rangeBeginCount {};
+    int rangeEndCount {};
     int vertexBeginCount {};
     int vertexEndCount {};
     int selectedVertex { -1 };
@@ -474,9 +485,9 @@ TEST_CASE("Envelope vertex rails reclaim unsupported Guide control space",
 TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bounds", "[cycle-v2][nodes][trimesh]") {
     const Rectangle<float> sideArea { 100.f, 50.f, 360.f, 420.f };
 
-    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea);
+    const Rectangle<float> cube = TrimeshSidePanelRenderer::morphCubeBounds(sideArea, true);
     const Rectangle<float> parameterArea =
-            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea);
+            TrimeshSidePanelRenderer::vertexParameterPanelBounds(sideArea, true);
     REQUIRE(sideArea.contains(cube));
     REQUIRE(sideArea.contains(parameterArea));
     REQUIRE_FALSE(cube.intersects(parameterArea));
@@ -484,9 +495,11 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
 
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> morphRail =
-                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i);
-        const Rectangle<float> primary = TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i);
-        const Rectangle<float> link = TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i);
+                TrimeshSidePanelRenderer::morphRailBounds(sideArea, i, true);
+        const Rectangle<float> primary =
+                TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i, true);
+        const Rectangle<float> link =
+                TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i, true);
 
         REQUIRE(sideArea.contains(morphRail));
         REQUIRE(morphRail.getWidth() >= 96.f);
@@ -500,6 +513,33 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         REQUIRE(parameterArea.contains(row));
         REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
+    }
+
+    const Rectangle<float> rangeRow =
+            TrimeshSidePanelRenderer::spectralRangeRowBounds(sideArea);
+    const Rectangle<float> rangeRail =
+            TrimeshSidePanelRenderer::spectralRangeRailBounds(sideArea);
+    REQUIRE(sideArea.contains(rangeRow));
+    REQUIRE(rangeRow.contains(rangeRail));
+    REQUIRE(rangeRail.getWidth() >= 96.f);
+    REQUIRE(rangeRow.getY()
+            > TrimeshSidePanelRenderer::morphRailBounds(sideArea, 2, true).getBottom());
+}
+
+TEST_CASE("Spectral range display scales round-trip through DSP mappings",
+        "[cycle-v2][nodes][trimesh][range]") {
+    using CycleDsp::SpectralLayerCore;
+
+    for (const float scale : { 0.1f, 1.f, 10.f, 100.f }) {
+        const float range = SpectralLayerCore::rangeForMagnitudeScale(scale);
+        REQUIRE(SpectralLayerCore::magnitudeRangeScale(range)
+                == Catch::Approx(scale).epsilon(0.0001));
+    }
+
+    for (const float scale : { 1.f, 10.f, 100.f }) {
+        const float range = SpectralLayerCore::rangeForPhaseOffsetScale(scale);
+        REQUIRE(SpectralLayerCore::phaseOffsetScale(range)
+                == Catch::Approx(scale).epsilon(0.0001));
     }
 }
 
@@ -1377,6 +1417,7 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
 
     REQUIRE(controls.getControlRegionCount() == 21);
     REQUIRE(controls.getMorphSliderCount() == 3);
+    REQUIRE(controls.getSpectralRangeSliderCount() == 0);
     REQUIRE(controls.getPrimaryAxisButtonCount() == 3);
     REQUIRE(controls.getLinkToggleButtonCount() == 3);
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
@@ -1388,6 +1429,8 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     ScopedJuceInitialiser_GUI juce;
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     TrimeshWidget widget;
+    widget.setRenderProfile(TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralPhaseSignal));
     TrimeshControlsComponent controls(widget);
     RecordingTrimeshControlsDelegate delegate;
     const Rectangle<float> content { 10.f, 42.f, 880.f, 570.f };
@@ -1397,7 +1440,7 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     controls.setNode(node);
     controls.setContentBounds(content);
 
-    const auto regions = widget.expandedControlHitRegions(content);
+    const auto regions = widget.expandedControlHitRegions(content, true);
     const auto findRegion = [&regions](TrimeshExpandedHitRegionKind kind) -> const TrimeshExpandedHitRegion& {
         const auto found = std::find_if(
                 regions.begin(),
@@ -1435,6 +1478,15 @@ TEST_CASE("Trimesh controls own expanded pointer interaction", "[cycle-v2][nodes
     REQUIRE(delegate.activeParameter == morph.parameterId);
     REQUIRE(delegate.updateValue > delegate.beginValue);
     REQUIRE(controls.cursorFor(morph.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
+
+    const auto& range = findRegion(TrimeshExpandedHitRegionKind::SpectralRange);
+    controls.beginPointerInteraction(range.bounds.getCentre(), {});
+    controls.continuePointerInteraction({ range.bounds.getRight(), range.bounds.getCentreY() });
+    controls.endPointerInteraction();
+    REQUIRE(delegate.rangeBeginCount == 1);
+    REQUIRE(delegate.rangeEndCount == 1);
+    REQUIRE(delegate.updateValue > delegate.beginValue);
+    REQUIRE(controls.cursorFor(range.bounds.getCentre()) == MouseCursor::LeftRightResizeCursor);
     Component* morphTarget {};
     for (auto* child : controls.getChildren()) {
         if (child->getBounds().contains(morph.bounds.getCentre().roundToInt())) {

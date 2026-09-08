@@ -143,6 +143,8 @@ public:
         Array<var> primaryAxisButtons;
         Array<var> linkToggles;
         const NodeParameterMap parameters(boundNode);
+        state.setProperty("enabled", parameters.boolValue("enabled", true));
+        state.setProperty("range", editor->spectralRangeValue());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
@@ -265,6 +267,14 @@ private:
         presentation.repaintNodeEditor(true);
     }
 
+    void setTrimeshEnabled(bool enabled) override {
+        commands.setNodeParameterValue(
+                nodeId,
+                "enabled",
+                "Enabled",
+                enabled ? 1.f : 0.f);
+    }
+
     void setTrimeshPrimaryAxisValue(const String& axis) override {
         commands.setTrimeshPrimaryAxisValue(nodeId, axis);
     }
@@ -273,16 +283,28 @@ private:
         commands.toggleTrimeshLinkAxisValue(nodeId, axis);
     }
 
-    void beginTrimeshMorphEdit(const String& id, float value) override {
-        commands.beginTrimeshMorphEdit(nodeId, id, value);
+    bool beginTrimeshMorphEdit(const String& id, float value) override {
+        return commands.beginTrimeshMorphEdit(nodeId, id, value);
     }
 
-    void updateTrimeshMorphEdit(float value) override {
-        commands.updateTrimeshMorphEditValue(value);
+    bool updateTrimeshMorphEdit(float value) override {
+        return commands.updateTrimeshMorphEditValue(value);
     }
 
     void endTrimeshMorphEdit() override {
         commands.endTrimeshMorphEdit();
+    }
+
+    bool beginTrimeshRangeEdit(float value) override {
+        return commands.beginNodeParameterEdit(nodeId, "range", "Range", value);
+    }
+
+    bool updateTrimeshRangeEdit(float value) override {
+        return commands.updateNodeParameterEditValue(value);
+    }
+
+    void endTrimeshRangeEdit() override {
+        commands.endNodeParameterEdit();
     }
 
     void beginTrimeshVertexParameterEdit(const String& id, float value) override {

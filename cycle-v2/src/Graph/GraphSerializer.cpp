@@ -9,6 +9,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <cmath>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace CycleV2 {
@@ -393,7 +394,9 @@ bool isScalarJSON(const var& value) {
 }
 
 bool isRemovedLegacyParameter(NodeKind kind, const String& parameterId) {
-    return kind == NodeKind::Envelope && parameterId == "dynamic";
+    return (kind == NodeKind::Envelope && parameterId == "dynamic")
+            || (kind == NodeKind::SpectralLayer
+                    && (parameterId == "range" || parameterId == "mode"));
 }
 
 String scalarToJSON(const var& value) {
@@ -632,6 +635,7 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const auto& registry = NodeDefinitionRegistry::instance();
     std::unordered_set<String, StringHash> nodeIds;
     std::unordered_set<String, StringHash> legacyEnvelopeIds;
+    std::unordered_map<String, float, StringHash> legacyPanRanges;
     for (const auto& encodedValue : *encodedNodes) {
         const auto* encoded = encodedValue.getDynamicObject();
         String nodeId;
@@ -687,6 +691,29 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             continue;
         }
         bool parametersValid = true;
+        if (node.kind == NodeKind::SpectralLayer && parameters->hasProperty("range")) {
+            const var rangeValue = parameters->getProperty("range");
+            const double range = rangeValue;
+            if ((!rangeValue.isDouble() && !rangeValue.isInt() && !rangeValue.isInt64())
+                    || !std::isfinite(range)
+                    || range < 0.0
+                    || range > 1.0) {
+                result.issues.push_back({ GraphLoadCode::InvalidParameter,
+                        "Invalid legacy range on Pan node '" + nodeId + "'" });
+                continue;
+            }
+            legacyPanRanges.emplace(nodeId, (float) range);
+        }
+        if (node.kind == NodeKind::SpectralLayer && parameters->hasProperty("mode")) {
+            const var mode = parameters->getProperty("mode");
+            if (!mode.isString()
+                    || (mode.toString() != "additive"
+                            && mode.toString() != "multiplicative")) {
+                result.issues.push_back({ GraphLoadCode::InvalidParameter,
+                        "Invalid legacy mode on Pan node '" + nodeId + "'" });
+                continue;
+            }
+        }
         if (node.kind == NodeKind::Envelope && !parameters->hasProperty("purpose")) {
             legacyEnvelopeIds.emplace(nodeId);
         }
@@ -945,6 +972,32 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         edge.connectionKind = *connectionKind;
         edge.attachmentType = *attachmentType;
         result.graph.addEdge(std::move(edge));
+    }
+
+    for (const auto& entry : legacyPanRanges) {
+        const String& panNodeId = entry.first;
+        for (const auto& edge : result.graph.getEdges()) {
+            if (edge.destNodeId != panNodeId || edge.destPortId != "in") {
+                continue;
+            }
+            Node* source = result.graph.findNodeForEditing(edge.sourceNodeId);
+            if (source == nullptr || source->kind != NodeKind::TrilinearMesh) {
+                break;
+            }
+            for (auto& parameter : source->parameters) {
+                if (parameter.id == "range") {
+                    const auto* definition = registry.findParameter(
+                            NodeKind::TrilinearMesh,
+                            "range");
+                    jassert(definition != nullptr);
+                    parameter.value = definition != nullptr
+                            ? definition->normalized(String(entry.second, 6))
+                            : String(entry.second, 6);
+                    break;
+                }
+            }
+            break;
+        }
     }
 
     for (const auto& nodeId : legacyEnvelopeIds) {

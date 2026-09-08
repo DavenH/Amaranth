@@ -1,5 +1,7 @@
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 
+#include <Util/Arithmetic.h>
+
 #include <algorithm>
 
 namespace CycleV2 {
@@ -9,6 +11,7 @@ namespace {
 bool supportedRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource
+            || role == AudioModuleRole::SpectralLayer
             || role == AudioModuleRole::Add
             || role == AudioModuleRole::Multiply;
 }
@@ -56,6 +59,16 @@ bool ChainedOscillatorRecipeRenderer::supports(
                 || step.audioRole == AudioModuleRole::WaveSource) {
             continue;
         }
+        if (step.audioRole == AudioModuleRole::SpectralLayer) {
+            const auto* input = inputForPort(step, 0);
+            if (input == nullptr
+                    || input->sourceStepIndex < 0
+                    || input->sourceStepIndex >= (int) regionSteps.size()
+                    || !regionSteps[(size_t) input->sourceStepIndex]) {
+                return false;
+            }
+            continue;
+        }
         const auto* left = inputForPort(step, 0);
         const auto* right = inputForPort(step, 1);
         if (left == nullptr
@@ -97,7 +110,23 @@ bool ChainedOscillatorRecipeRenderer::prepare(
             if (!operation.trimesh->prepare(configuration, region.laneCount)) {
                 return false;
             }
-            operation.gain = configuration->gain;
+            operation.gain = configuration->enabled ? configuration->gain : 0.f;
+        } else if (step.audioRole == AudioModuleRole::SpectralLayer) {
+            const auto configuration = std::dynamic_pointer_cast<
+                    const PanConfiguration>(step.configuration.value);
+            const auto* input = inputForPort(step, 0);
+            if (configuration == nullptr || input == nullptr) {
+                return false;
+            }
+            operation.type = OperationType::Pan;
+            operation.leftInput = operationForStep[(size_t) input->sourceStepIndex];
+            Arithmetic::getPans(
+                    configuration->pan,
+                    operation.leftPan,
+                    operation.rightPan);
+            if (operation.leftInput < 0) {
+                return false;
+            }
         } else {
             operation.type = step.audioRole == AudioModuleRole::Add
                     ? OperationType::Add
@@ -161,6 +190,11 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
 
         operationBuffer(operation.leftInput, 0, request.sampleCount).copyTo(outputLeft);
         operationBuffer(operation.leftInput, 1, request.sampleCount).copyTo(outputRight);
+        if (operation.type == OperationType::Pan) {
+            outputLeft.mul(operation.leftPan);
+            outputRight.mul(operation.rightPan);
+            continue;
+        }
         const auto rightLeft = operationBuffer(
                 operation.rightInput,
                 0,

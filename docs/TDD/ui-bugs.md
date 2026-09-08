@@ -56,3 +56,109 @@ Context:
 
 Current status: open; reproduce through the visual update path and decide which
 column resolution owns resampling before changing the assertion.
+
+## P2: Graph document save test cannot use JUCE's default temporary directory
+
+Context:
+
+- The full Cycle V2 suite and a focused rerun on 2026-09-07 fail
+  `Graph documents save canonical JSON with stable line endings` at
+  `TestGraphSerializer.cpp:111`.
+- JUCE first asserts at `juce_TemporaryFile.cpp:126`; the destination is chosen
+  from `File::tempDirectory`, and `GraphDocument::save()` then returns false.
+- Preset serialization itself passes in the workspace-backed native migration
+  runs, including 221 load/save/reopen cycles.
+- Full-suite log: `/private/tmp/cycle-v2-full-tests.log`.
+
+Current status: open as a sandbox/test-fixture path issue. Give temporary-file
+fixtures an explicitly writable test root rather than weakening document-save
+behavior.
+
+## P1: Cycle 1 Calming Keys preset crashes during visual refresh
+
+Context:
+
+- The Cycle 1 factory-library migration sweep opened and exported 28 presets,
+  then crashed while opening `cycle/content/presets/calming-keys.cyc`.
+- The crash is an invalid `dynamic_cast` read in
+  `EnvRasterizer::renderWaveformOnly()` reached from
+  `UnisonPhaseColumnRenderer`, `VisualDsp::processFrequency()`, and the pending
+  UI update graph. It occurs after the document load starts scheduling visual
+  work; the preset's canonical migration itself is not yet implicated.
+- Repro artifacts are `/private/tmp/cycle-v1-preset-migration-session.log` and
+  `/Users/daven/Library/Logs/DiagnosticReports/Cycle-2026-09-07-111853.ips`.
+
+Current status: open. Update suppression was insufficient because live document
+application still touched UI-owned state, and `cluck-2.cyc` exposed the same
+class of failure. The migration exporter now decodes and migrates the source
+without applying it to the live document, isolating canonical export from
+editor, updater, rasterizer, and audio lifecycles. Reproduce normal interactive
+loads separately before changing Envelope or Unison rasterization ownership.
+
+## P1: Cycle V2 graph replacement races Envelope preview interaction state
+
+Context:
+
+- The Cycle 1 preset migration verification opened the converted `crash`
+  graph successfully, then Cycle V2 crashed on its OpenGL renderer thread.
+- The invalid read starts in `Interactor::getModPosition(bool)`, reached from
+  `Interactor::updateSelectionFrames()`,
+  `EnvelopeCurvePanel::setEnvelopeAxisLinks()`, and the node-preview render
+  path while the newly loaded graph is being presented.
+- The graph had already parsed without validation errors; the failure is in
+  editor/preview lifetime synchronization after document replacement, not in
+  converter serialization or Pan compilation.
+- Repro artifacts are
+  `/private/tmp/cycle-v2-migration-final-session.log` and
+  `/Users/daven/Library/Logs/DiagnosticReports/CycleV2-2026-09-07-201842.ips`.
+- A manual load of migrated `ooh-2.cyclegraph` reproduced the same stack on
+  2026-09-08. Its report is
+  `/Users/daven/Library/Logs/DiagnosticReports/CycleV2-2026-09-08-100335.ips`:
+  `EXC_BAD_ACCESS` on the OpenGL renderer thread at
+  `Interactor::getModPosition(bool)`, called while
+  `EnvelopeCurvePanel::setEnvelopeAxisLinks()` synchronized a preview.
+
+Current status: open and intermittent. A focused open/compile/one-second-idle
+run completed without a crash at
+`/private/tmp/cycle-v2-ooh-2-open-report.json`; reproduce with repeated graph
+replacement under active OpenGL previews, then make editor synchronization and
+preview rendering share a safe snapshot/lifetime boundary.
+
+## P1: Expanded Trimesh morph controls lost pointer capture during drag
+
+Resolved 2026-09-08. A mouse-down changed the selected morph value, but further
+drag movement did not follow the pointer. Each transient morph update rebound
+the entire expanded editor, replacing interaction state during the native
+gesture. Successful updates now mirror the active parameter into the existing
+editor while `GraphCommandDispatcher` continues to own transient publication,
+commit, and undo. The `trimesh-morph-drag` native automation sequence covers a
+multi-step drag; `TestNodeEditorHost` covers two transient updates, commit, and
+undo.
+
+## P2: Cycle V2 domain-context fanout cables lack obstacle-aware routing
+
+Status: Resolved on 2026-09-07
+
+The migrated graphs connect `Voice Context.context` directly to every time,
+magnitude, and phase mesh. With several time layers, a later context cable can
+cross an earlier mesh node even when the ordinary audio/control graph has a
+clean left-to-right layout. The canvas currently has neither obstacle-aware
+cable routing nor a visual fanout/bundle for domain-context distribution.
+
+The migrated-preset cable-crossing assertion intentionally covers ordinary
+audio/control signals and excludes domain-context, configuration-attachment,
+and processing-attachment routes until this routing support exists.
+
+## P2: Inline cable Pan cannot be removed from the canvas
+
+Status: Open
+
+Once a cable has the inline Pan/headset operation, the canvas provides no
+discoverable way to return it to an unpanned direct connection. Right-clicking
+the headset should offer a `Stop Panning` action that removes the inline Pan
+node, reconnects its incoming and outgoing signal edges, and publishes the
+semantic edit through `GraphCommandDispatcher` with undo/redo support.
+
+The edge context menu now switches from `Add Panning` to `Stop Panning` for
+either segment adjacent to the inline Pan. Removal and reconnection are one
+compound dispatcher command, and undo restores the Pan and both cable segments.

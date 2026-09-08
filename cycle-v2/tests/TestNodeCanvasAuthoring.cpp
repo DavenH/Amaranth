@@ -98,6 +98,7 @@ TEST_CASE("Node port layout cycling survives document serialization",
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Add, "add", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "envelope", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -105,20 +106,29 @@ TEST_CASE("Node port layout cycling survives document serialization",
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
 
     REQUIRE(authoring.cycleOperationPortLayout("add").succeeded);
-    REQUIRE(authoring.cycleMeshOutputSide("mesh").succeeded);
+    REQUIRE(authoring.cycleOutputSide("mesh").succeeded);
+    REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
     const Node* editedAdd = document.graph().findNode("add");
     const Node* editedMesh = document.graph().findNode("mesh");
+    const Node* editedEnvelope = document.graph().findNode("envelope");
     REQUIRE(editedAdd->inputs[0].side == PortSide::Left);
     REQUIRE(editedAdd->inputs[1].side == PortSide::Top);
     REQUIRE(editedMesh->outputs[0].side == PortSide::Bottom);
+    REQUIRE(editedEnvelope->outputs[0].side == PortSide::Bottom);
+    REQUIRE(authoring.cycleOutputSide("envelope").succeeded);
+    REQUIRE(document.graph().findNode("envelope")->outputs[0].side == PortSide::Top);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("envelope")->outputs[0].side == PortSide::Bottom);
 
     GraphDocument restored;
     REQUIRE(restored.loadJson(document.toJson(), false));
     const Node* restoredAdd = restored.graph().findNode("add");
     const Node* restoredMesh = restored.graph().findNode("mesh");
+    const Node* restoredEnvelope = restored.graph().findNode("envelope");
     REQUIRE(restoredAdd->inputs[0].side == PortSide::Left);
     REQUIRE(restoredAdd->inputs[1].side == PortSide::Top);
     REQUIRE(restoredMesh->outputs[0].side == PortSide::Bottom);
+    REQUIRE(restoredEnvelope->outputs[0].side == PortSide::Bottom);
 }
 
 TEST_CASE("Single input and output port layouts cycle forward and undo",
@@ -382,4 +392,80 @@ TEST_CASE("Pan can be added to a cable as one undoable authoring command",
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
     REQUIRE(document.graph().getEdges().size() == 2);
+}
+
+TEST_CASE("Pan can be removed from a cable as one undoable authoring command",
+        "[cycle-v2][canvas][authoring][pan][cable]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", { 220.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 440.f, 0.f }));
+    graph.addEdge({
+            "wave", "out", "pan", "in",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "pan", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto removed = authoring.removePanFromCable("pan");
+    REQUIRE(removed.succeeded);
+    REQUIRE(removed.graphChanged);
+    REQUIRE(document.graph().findNode("pan") == nullptr);
+    REQUIRE(document.graph().getEdges().size() == 1);
+    REQUIRE(document.graph().getEdges().front().sourceNodeId == "wave");
+    REQUIRE(document.graph().getEdges().front().destNodeId == "output");
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode("pan") != nullptr);
+    REQUIRE(document.graph().getEdges().size() == 2);
+}
+
+TEST_CASE("Time cable Pan supports a complete edit and undo sequence",
+        "[cycle-v2][canvas][authoring][pan][time]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", { 600.f, 0.f }));
+    graph.addEdge({
+            "voice", "context", "wave", "context",
+            PortDomain::DomainContext, ConnectionKind::Signal
+    });
+    graph.addEdge({
+            "wave", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal
+    });
+
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+
+    const auto inserted = authoring.insertPanIntoEdge(1, { 450.f, 0.f });
+    REQUIRE(inserted.succeeded);
+    REQUIRE(inserted.effects.repaintRequested);
+    REQUIRE(authoring.beginSpectralPanGesture(inserted.nodeId));
+    REQUIRE(authoring.updateSpectralPanGesture(0.2f));
+    REQUIRE(authoring.updateSpectralPanGesture(0.8f));
+    const auto committed = authoring.endSpectralPanGesture();
+    REQUIRE(committed.succeeded);
+    REQUIRE(committed.effects.repaintRequested);
+    REQUIRE(NodeParameterMap(*document.graph().findNode(inserted.nodeId))
+            .floatValue("pan", 0.f) == 0.8f);
+
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(NodeParameterMap(*document.graph().findNode(inserted.nodeId))
+            .floatValue("pan", 0.f) == 0.5f);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
 }

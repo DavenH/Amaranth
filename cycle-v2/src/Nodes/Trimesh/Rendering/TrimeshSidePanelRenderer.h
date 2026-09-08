@@ -31,7 +31,10 @@ public:
             const std::array<AxisState, 3>& axes,
             const std::vector<TrimeshCubePreviewVertex>& cubeVertices,
             const std::vector<TrimeshVertexParameter>& parameters,
-            const std::array<juce::String, 6>& guideAttachmentLabels);
+            const std::array<juce::String, 6>& guideAttachmentLabels,
+            bool showSpectralRange,
+            PortDomain spectralDomain,
+            float spectralRange);
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -50,17 +53,32 @@ public:
             juce::Rectangle<float> axisButton,
             juce::Rectangle<float> linkButton);
 
-    static juce::Rectangle<float> morphCubeBounds(juce::Rectangle<float> sideArea);
-    static juce::Rectangle<float> morphRailBounds(juce::Rectangle<float> sideArea, int axisIndex);
+    static juce::Rectangle<float> morphCubeBounds(
+            juce::Rectangle<float> sideArea,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> morphRailBounds(
+            juce::Rectangle<float> sideArea,
+            int axisIndex,
+            bool showSpectralRange = false);
     static juce::Rectangle<float> morphMarkerBounds(
             juce::Rectangle<float> rail,
             float value);
     static juce::Rectangle<float> morphColumnHeaderBounds(
             juce::Rectangle<float> button,
             juce::Rectangle<float> firstRow);
-    static juce::Rectangle<float> primaryAxisBounds(juce::Rectangle<float> sideArea, int axisIndex);
-    static juce::Rectangle<float> linkToggleBounds(juce::Rectangle<float> sideArea, int axisIndex);
-    static juce::Rectangle<float> vertexParameterPanelBounds(juce::Rectangle<float> sideArea);
+    static juce::Rectangle<float> primaryAxisBounds(
+            juce::Rectangle<float> sideArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> linkToggleBounds(
+            juce::Rectangle<float> sideArea,
+            int axisIndex,
+            bool showSpectralRange = false);
+    static juce::Rectangle<float> spectralRangeRowBounds(juce::Rectangle<float> sideArea);
+    static juce::Rectangle<float> spectralRangeRailBounds(juce::Rectangle<float> sideArea);
+    static juce::Rectangle<float> vertexParameterPanelBounds(
+            juce::Rectangle<float> sideArea,
+            bool showSpectralRange = false);
     static juce::Rectangle<float> vertexParameterRowBounds(
             juce::Rectangle<float> parameterArea,
             int parameterIndex,

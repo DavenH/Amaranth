@@ -4,6 +4,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/EffectEnableButton.h"
 
 #include <JuceHeader.h>
 
@@ -17,11 +18,15 @@ public:
     virtual ~TrimeshExpandedEditorDelegate() = default;
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
+    virtual void setTrimeshEnabled(bool enabled) = 0;
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
-    virtual void beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
-    virtual void updateTrimeshMorphEdit(float value) = 0;
+    virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
+    virtual bool updateTrimeshMorphEdit(float value) = 0;
     virtual void endTrimeshMorphEdit() = 0;
+    virtual bool beginTrimeshRangeEdit(float value) = 0;
+    virtual bool updateTrimeshRangeEdit(float value) = 0;
+    virtual void endTrimeshRangeEdit() = 0;
     virtual void beginTrimeshVertexParameterEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshVertexParameterEdit(float value) = 0;
     virtual void endTrimeshVertexParameterEdit() = 0;
@@ -44,6 +49,8 @@ public:
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void renderOpenGL(float scaleFactor);
+    bool showsSpectralRange() const;
+    float spectralRangeValue() const;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
@@ -61,11 +68,16 @@ private:
     void updateCursor(juce::Point<float> position);
     void updatePanelHosts();
     void updateControlsHost();
+    void setLocalSpectralRange(float value);
+    void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
     void updateTrimeshMorphControlEdit(float value) override;
     void endTrimeshMorphControlEdit() override;
+    void beginTrimeshRangeControlEdit(float value) override;
+    void updateTrimeshRangeControlEdit(float value) override;
+    void endTrimeshRangeControlEdit() override;
     void beginTrimeshVertexControlEdit(const juce::String& id, float value) override;
     void updateTrimeshVertexControlEdit(float value) override;
     void endTrimeshVertexControlEdit() override;
@@ -78,7 +90,13 @@ private:
     TrimeshWidget& widget;
     TrimeshExpandedEditorDelegate* delegate {};
     TrimeshControlsComponent controls;
+    EffectEnableButton enabled {
+            "Trimesh enabled",
+            "Toggles this Trimesh layer",
+            "Enable or disable this Trimesh layer"
+    };
     Node node;
+    juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrimeshExpandedEditorComponent)

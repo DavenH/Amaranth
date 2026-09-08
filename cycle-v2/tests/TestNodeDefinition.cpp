@@ -1,10 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <set>
+
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodeCanvasScene.h"
-
-#include <set>
 
 using namespace CycleV2;
 
@@ -59,10 +60,23 @@ TEST_CASE("Pan presents as an inline cable control", "[cycle-v2][graph][definiti
     const Node node = GraphNodeFactory().createNode(NodeKind::SpectralLayer, "layer", {});
 
     REQUIRE(labelForNodeKind(node.kind) == "Pan");
+    REQUIRE(node.parameters.size() == 1);
+    REQUIRE(node.parameters.front().id == "pan");
     REQUIRE(node.bounds.getWidth() == 80.f);
     REQUIRE(node.bounds.getHeight() == 80.f);
     REQUIRE(NodeCanvasScene::portWorldCentre(node, node.inputs.front()).getY()
             == node.bounds.getCentreY());
     REQUIRE(NodeCanvasScene::portWorldCentre(node, node.outputs.front()).getY()
             == node.bounds.getCentreY());
+}
+
+TEST_CASE("Trimesh owns the spectral range parameter", "[cycle-v2][graph][definitions]") {
+    const Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    const auto range = std::find_if(
+            node.parameters.begin(),
+            node.parameters.end(),
+            [](const NodeParameter& parameter) { return parameter.id == "range"; });
+
+    REQUIRE(range != node.parameters.end());
+    REQUIRE(range->value == "0.5");
 }

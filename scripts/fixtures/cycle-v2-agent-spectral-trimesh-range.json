@@ -1,0 +1,81 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/accoustic.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "phaseLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.range",
+      "equals": 0.325
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "phaseLayer1",
+      "parameterId": "range",
+      "equals": "0.325"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-spectral-trimesh-range.png"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetX": 0.3,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "downTargetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetX": 0.8,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "downTargetId": "expanded:phaseLayer1.trimeshSpectralRange.range",
+      "targetX": 0.8,
+      "targetY": 0.5,
+      "downTargetX": 0.3,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.range",
+      "op": "greaterThan",
+      "value": 0.7
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "phaseLayer1",
+      "parameterId": "range",
+      "equals": "0.325"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    }
+  ],
+  "quit": true
+}

@@ -47,6 +47,15 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
 
     const Node* envelope = graph.findNode("envelope");
     REQUIRE(envelope != nullptr);
+    const Point<float> envelopeActionPoint {
+            envelope->bounds.getRight() - 21.f,
+            envelope->bounds.getY() + 21.f
+    };
+    const auto envelopeAction = router.nodeActionAt(viewport, envelopeActionPoint);
+    REQUIRE(envelopeAction.has_value());
+    REQUIRE(envelopeAction->kind == CanvasNodeActionKind::CycleOutputSide);
+    REQUIRE(envelopeAction->nodeId == "envelope");
+    REQUIRE(router.hoverTextFor(viewport, {}, envelopeActionPoint).contains("output"));
     Rectangle<float> envelopePreview = envelope->bounds.withTrimmedTop(42.f).reduced(8.f);
     const Point<float> formerPurposeSelector = envelopePreview
             .removeFromBottom(20.f)

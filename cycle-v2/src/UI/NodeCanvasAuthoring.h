@@ -65,6 +65,7 @@ public:
     NodeCanvasAuthoringResult openEditor(const String& nodeId);
     NodeCanvasAuthoringResult addNode(NodeKind kind, Point<float> position);
     NodeCanvasAuthoringResult insertPanIntoEdge(int edgeIndex, Point<float> position);
+    NodeCanvasAuthoringResult removePanFromCable(const String& nodeId);
     NodeCanvasAuthoringResult moveNode(const String& nodeId, Point<float> position);
     void beginNodeMoveGesture();
     bool resizeNodeDuringGesture(const String& nodeId, Rectangle<float> bounds);
@@ -111,7 +112,7 @@ public:
     NodeCanvasAuthoringResult spliceSelectedNodeIntoEdge(int edgeIndex);
     NodeCanvasAuthoringResult cycleOperationPortLayout(const String& nodeId);
     NodeCanvasAuthoringResult cycleSinglePortLayout(const String& nodeId);
-    NodeCanvasAuthoringResult cycleMeshOutputSide(const String& nodeId);
+    NodeCanvasAuthoringResult cycleOutputSide(const String& nodeId);
     NodeCanvasAuthoringResult cycleVoiceDomain(const String& nodeId);
     bool beginSpectralPanGesture(const String& nodeId);
     bool updateSpectralPanGesture(float value);

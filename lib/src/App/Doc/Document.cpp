@@ -11,6 +11,41 @@
 #include "../../UI/IConsole.h"
 #include "../../Definitions.h"
 
+namespace {
+    var readArchivedPresetJSON(const File& file, DocumentDetails& details) {
+        ZipFile archive(file);
+        std::unique_ptr<XmlElement> presetElement;
+
+        for (int index = 0; index < archive.getNumEntries(); ++index) {
+            const auto* entry = archive.getEntry(index);
+            if (entry == nullptr) {
+                continue;
+            }
+
+            std::unique_ptr<InputStream> stream(archive.createStreamForEntry(index));
+            if (stream == nullptr) {
+                continue;
+            }
+
+            XmlDocument document(stream->readEntireStreamAsString());
+            std::unique_ptr<XmlElement> element(document.getDocumentElement());
+            if (element == nullptr) {
+                continue;
+            }
+
+            if (entry->filename.endsWithIgnoreCase(".details")) {
+                (void) details.readXML(element.get());
+            } else if (entry->filename.endsWithIgnoreCase(".preset")) {
+                presetElement = std::move(element);
+            }
+        }
+
+        return presetElement == nullptr
+                ? var()
+                : PresetMigrator::migrateXmlToCurrentJson(presetElement.get(), details);
+    }
+}
+
 Document::Document(SingletonRepo* repo) : SingletonAccessor(repo, "Document"), validator(nullptr) {
 }
 
@@ -163,6 +198,24 @@ bool Document::open(const String& filename) {
     return open(stream.get());
 }
 
+var Document::readPresetJSON(const String& filename, int magicValue) {
+    File file(filename);
+
+    if (!file.existsAsFile()) {
+        return {};
+    }
+
+    DocumentDetails details;
+
+    ZipFile archive(file);
+    if (archive.getNumEntries() > 0) {
+        return readArchivedPresetJSON(file, details);
+    }
+
+    std::unique_ptr<InputStream> stream(file.createInputStream());
+    return readPresetJSON(stream.get(), details, magicValue);
+}
+
 bool Document::validate() {
     if (validator == nullptr) {
         return true;
@@ -223,21 +276,35 @@ String Document::getPresetString() {
 #endif
 
 bool Document::open(InputStream* stream) {
-    // stream can have additional header info
-    // from plugin's config settings
-    int64 startPosition = stream->getPosition();
-    bool hasHeader = readHeader(stream, details, getConstant(DocMagicCode));
+    var jsonRoot = readPresetJSON(stream, details, getConstant(DocMagicCode));
 
-    if (hasHeader) {
-        stream->setPosition(startPosition + (int64) headerSizeBytes);
-    } else {
-        stream->setPosition(startPosition);
+    if (jsonRoot.isVoid()) {
+        return false;
     }
 
     ScopedLambda loadToggle(
         [this] { listeners.call(&Listener::documentAboutToLoad); },
         [this] { listeners.call(&Listener::documentHasLoaded); }
     );
+
+    return applyJsonRoot(jsonRoot);
+}
+
+var Document::readPresetJSON(InputStream* stream, DocumentDetails& details, int magicValue) {
+    if (stream == nullptr) {
+        return {};
+    }
+
+    // stream can have additional header info
+    // from plugin's config settings
+    int64 startPosition = stream->getPosition();
+    bool hasHeader = readHeader(stream, details, magicValue);
+
+    if (hasHeader) {
+        stream->setPosition(startPosition + (int64) headerSizeBytes);
+    } else {
+        stream->setPosition(startPosition);
+    }
 
     GZIPDecompressorInputStream decompStream(stream, false);
     String presetDocString(decompStream.readEntireStreamAsString());
@@ -257,7 +324,7 @@ bool Document::open(InputStream* stream) {
         jsonRoot = PresetMigrator::migrateXmlToCurrentJson(topelem.get(), details);
     }
 
-    return applyJsonRoot(jsonRoot);
+    return jsonRoot;
 }
 
 bool Document::saveHeaderValidated(DocumentDetails& updatedDetails) {
