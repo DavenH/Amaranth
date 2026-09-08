@@ -1,0 +1,36 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "filter-saw",
+        "sourceDocument": "cycle/content/presets/filter-saw.cyc",
+        "sha256": "68bf7ad855eb5d76c44762368358e95bb336b8e72593cf0ab16c9bf19b2a6963"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/filter-saw.cyclegraph",
+        "sha256": "eab766d3747f5fcdc6f4c535c3cb3fc8745e96d3eb7442fdf8a560cb0c9d70c4",
+        "renderOverrides": {
+            "voiceDurationSeconds": 0.47689543975042176
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.071117281493406,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "magnitudeLayer"
+        ],
+        "determinism": "phase, effects, unison, and guide noise are disabled",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-08",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

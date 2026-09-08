@@ -204,6 +204,22 @@ class PortCycleV1PresetTest(unittest.TestCase):
             nodes["ifft"]["position"]["y"],
             nodes["output"]["position"]["y"])
 
+    def test_presentation_reconciliation_does_not_preserve_semantics(self):
+        converted = port_cycle_v1_preset.convert(convertible_source())
+        existing = copy.deepcopy(converted)
+        existing_node = existing["nodes"][0]
+        existing_node["position"] = {"x": 123.0, "y": 456.0}
+        existing_node["portSides"] = {"outputs": {"context": "bottom"}}
+        existing_node["parameters"]["octave"] = 7
+
+        reconciled = port_cycle_v1_preset.preserve_presentation(
+            converted, existing)
+        node = reconciled["nodes"][0]
+
+        self.assertEqual(node["position"], {"x": 123.0, "y": 456.0})
+        self.assertEqual(node["portSides"], {"outputs": {"context": "bottom"}})
+        self.assertNotEqual(node["parameters"]["octave"], 7)
+
     def test_converter_preserves_velocity_blue_modulation_source(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
         morph = next(node for node in converted["nodes"] if node["id"] == "morph")

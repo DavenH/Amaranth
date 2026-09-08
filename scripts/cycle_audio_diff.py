@@ -3,6 +3,7 @@
 """Deterministic waveform, spectrum, and cyclogram comparison for Cycle WAVs."""
 
 import cmath
+import hashlib
 import math
 import struct
 import wave
@@ -37,8 +38,62 @@ def read_wav(path):
     return {
         "sampleRate": sample_rate,
         "sampleWidth": sample_width,
+        "samplePayloadSha256": hashlib.sha256(encoded).hexdigest(),
         "channels": channels,
         "frames": frame_count,
+    }
+
+
+def read_raw_f32(path, sample_rate, channel_count, frame_count):
+    encoded = Path(path).read_bytes()
+    expected_size = channel_count * frame_count * 4
+    if len(encoded) != expected_size:
+        raise ValueError(
+            f"Raw float capture has {len(encoded)} bytes; expected {expected_size}")
+    values = struct.unpack(f"<{channel_count * frame_count}f", encoded)
+    channels = [
+        list(values[channel * frame_count:(channel + 1) * frame_count])
+        for channel in range(channel_count)
+    ]
+    return {
+        "sampleRate": sample_rate,
+        "sampleWidth": 4,
+        "samplePayloadSha256": hashlib.sha256(encoded).hexdigest(),
+        "channels": channels,
+        "frames": frame_count,
+    }
+
+
+def exact_sample_comparison(reference, candidate):
+    metadata_equal = (
+        reference["sampleRate"] == candidate["sampleRate"]
+        and reference["sampleWidth"] == candidate["sampleWidth"]
+        and len(reference["channels"]) == len(candidate["channels"])
+        and reference["frames"] == candidate["frames"]
+    )
+    differing_samples = 0
+    first_mismatch = None
+    if metadata_equal:
+        for channel, (left, right) in enumerate(zip(
+                reference["channels"], candidate["channels"])):
+            for frame, (reference_sample, candidate_sample) in enumerate(zip(left, right)):
+                if reference_sample == candidate_sample:
+                    continue
+                differing_samples += 1
+                if first_mismatch is None:
+                    first_mismatch = {
+                        "channel": channel,
+                        "frame": frame,
+                        "reference": reference_sample,
+                        "candidate": candidate_sample,
+                    }
+    return {
+        "metadataEqual": metadata_equal,
+        "samplesEqual": metadata_equal and differing_samples == 0,
+        "referencePayloadSha256": reference["samplePayloadSha256"],
+        "candidatePayloadSha256": candidate["samplePayloadSha256"],
+        "differingSamples": differing_samples if metadata_equal else None,
+        "firstMismatch": first_mismatch,
     }
 
 
@@ -293,6 +348,7 @@ def analyze_pair(
         "fundamentalHz": midi_frequency(midi_note),
         "analysisStartMs": analysis_start_ms,
         "analysisDurationMs": analysis_duration_ms,
+        "exact": exact_sample_comparison(reference_data, candidate_data),
         "unaligned": {
             "referenceRms": rms(reference),
             "candidateRms": rms(candidate),

@@ -12,6 +12,7 @@
 #include <App/Settings.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/AudioHub.h>
+#include <Audio/SynthAudioSource.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
@@ -1977,6 +1978,33 @@ namespace {
         }
         return true;
     }
+
+    bool writeRawAudioCapture(
+            const String& path,
+            const AudioSampleBuffer& capture,
+            String& message) {
+        if (path.isEmpty()) {
+            return true;
+        }
+
+        File file(path);
+        file.getParentDirectory().createDirectory();
+        std::unique_ptr<FileOutputStream> stream(file.createOutputStream());
+        if (stream == nullptr || !stream->openedOk()
+                || !stream->setPosition(0) || stream->truncate().failed()) {
+            message = "Could not open raw audio capture path: " + path;
+            return false;
+        }
+
+        const int byteCount = capture.getNumSamples() * (int) sizeof(float);
+        for (int channel = 0; channel < capture.getNumChannels(); ++channel) {
+            if (!stream->write(capture.getReadPointer(channel), (size_t) byteCount)) {
+                message = "Could not write raw audio capture: " + path;
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 CycleAutomation::CycleAutomation(SingletonRepo* repo) :
@@ -2522,6 +2550,7 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     const double durationMs = jlimit(1.0, 60000.0, getDouble(command, "durationMs", 1000.0));
     const int totalSamples = jmax(1, int(std::round(durationMs * sampleRate / 1000.0)));
     const String path = getString(command, "path");
+    const String rawPath = getString(command, "rawPath");
     Array<ScheduledMidiEvent> midiEvents;
 
     if (!buildMidiSchedule(command, midiEvents, sampleRate, totalSamples, message)) {
@@ -2550,6 +2579,10 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
 
     audioHub.resetKeyboardState();
     audioHub.prepareToPlay(blockSize, sampleRate);
+    const var randomSeed = PresetJson::property(command, "randomSeed");
+    if (!randomSeed.isVoid()) {
+        getObj(SynthAudioSource).setRandomSeedForTesting((int64) randomSeed);
+    }
 
     AudioSampleBuffer capture(channels, totalSamples);
     AudioSampleBuffer block(channels, blockSize);
@@ -2587,11 +2620,15 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
 
     if (dataObject != nullptr) {
         dataObject->setProperty("path", path);
+        dataObject->setProperty("rawPath", rawPath);
         dataObject->setProperty("events", midiEvents.size());
         dataObject->setProperty("blockSize", blockSize);
     }
 
     if (!writeAudioCapture(path, capture, sampleRate, message)) {
+        return false;
+    }
+    if (!writeRawAudioCapture(rawPath, capture, message)) {
         return false;
     }
 

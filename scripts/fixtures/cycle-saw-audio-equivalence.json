@@ -1,0 +1,35 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "saw",
+        "sourceDocument": "cycle/content/presets/saw.cyc",
+        "sha256": "d86c1821eeec751c1d014646b2175153dbeb8db153adbc661b81be6247ad45fb"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/saw.cyclegraph",
+        "sha256": "0bd70f85dbe88c352c16ba717628a42f701ad69b9aabf2669857ae3d2c97df66",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.2669864718837067
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.2288845278673892,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer"
+        ],
+        "determinism": "the static saw mesh has no envelope, effects, unison, or guide noise",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-08",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

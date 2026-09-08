@@ -867,7 +867,7 @@ def validate_audio_parity_subset(source):
     if active_envelopes["pitch"]:
         issues.append("active pitch envelope is not supported by strict audio parity")
 
-    if preset["multisample"]["samples"]:
+    if preset.get("multisample", {}).get("samples", []):
         issues.append("external multisamples are not supported by strict audio parity")
     if modulation_sources_for_preset(preset) is None:
         issues.append("modulation matrix differs from the supported fixed mapping")
@@ -947,6 +947,20 @@ def equivalence_manifest(source, source_document, destination, factory_preset):
     }
 
 
+def preserve_presentation(converted, existing):
+    existing_nodes = {node["id"]: node for node in existing.get("nodes", [])}
+    for node in converted.get("nodes", []):
+        previous = existing_nodes.get(node["id"])
+        if previous is None:
+            continue
+        for property_name in ("position", "portSides", "editorWidth", "editorHeight"):
+            if property_name in previous:
+                node[property_name] = copy.deepcopy(previous[property_name])
+            else:
+                node.pop(property_name, None)
+    return converted
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path, help="Cycle 1 canonical preset JSON")
@@ -955,6 +969,11 @@ def main():
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--source-document", type=Path)
     parser.add_argument("--factory-preset")
+    parser.add_argument(
+        "--preserve-presentation",
+        action="store_true",
+        help="reuse node positions and editor presentation from the destination",
+    )
     args = parser.parse_args()
 
     with args.source.open(encoding="utf-8") as source_file:
@@ -965,6 +984,9 @@ def main():
             formatted = "\n".join(f"- {issue}" for issue in issues)
             raise ValueError(f"Preset is outside the strict audio parity subset:\n{formatted}")
     converted = convert(source)
+    if args.preserve_presentation and args.destination.is_file():
+        with args.destination.open(encoding="utf-8") as existing_file:
+            converted = preserve_presentation(converted, json.load(existing_file))
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     with args.destination.open("w", encoding="utf-8") as destination_file:
         json.dump(converted, destination_file, indent=4)

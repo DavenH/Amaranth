@@ -6,6 +6,7 @@
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Curve/Curve.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 #include <algorithm>
 
@@ -132,6 +133,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
     }
     slotStride = maximumFrameSize + 2;
     outputSlot = -1;
+    hasSpectralMesh = false;
     operations.clear();
     operations.reserve(region.stepIndices.size());
     std::vector<std::array<int, 2>> slotsForStep(
@@ -204,11 +206,16 @@ bool SpectralOscillatorFrameRenderer::prepare(
                             { operation.timeState.get() });
                 } else {
                     operation.type = OperationType::SpectralTrimesh;
+                    auto* spectralMesh = const_cast<Mesh*>(
+                            operation.configuration->mesh.get());
+                    const bool activeSpectralMesh = operation.configuration->enabled
+                            && spectralMesh->hasEnoughCubesForCrossSection();
+                    hasSpectralMesh |= activeSpectralMesh;
                     operation.spectralRasterizer = std::make_unique<TrimeshBlockwiseDsp>();
                     operation.spectralRasterizer->setGuideCurveProvider(
                             operation.configuration->guideCurveProvider.get());
                     operation.spectralRasterizer->prepare(
-                            const_cast<Mesh*>(operation.configuration->mesh.get()),
+                            spectralMesh,
                             operation.configuration->morph,
                             operation.configuration->primaryViewAxis,
                             false,
@@ -245,6 +252,10 @@ bool SpectralOscillatorFrameRenderer::prepare(
         return false;
     }
     slotMemory.resize(2 * slotCount * slotStride);
+    const int maximumBinCount = RealFftFullPolarSpectrum::binCountForBufferSize(
+            maximumFrameSize);
+    magnitudeScratch.resize(maximumBinCount);
+    phaseScratch.resize(maximumBinCount);
 
     transforms.clear();
     for (int frameSize = 2; frameSize <= maximumFrameSize; frameSize *= 2) {
@@ -319,7 +330,8 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
                     rightOutput.set(identity);
                     break;
                 }
-                operation.spectralRasterizer->setFrequencyMidiNote(midiNote);
+                operation.spectralRasterizer->setFrequencyMidiNote(
+                        midiNote + LogRegionMapping::legacyMidiNoteBias);
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
@@ -364,10 +376,23 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             case OperationType::Ifft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
+                const LogRegionMapping harmonicRegion(
+                        midiNote + LogRegionMapping::legacyMidiNoteBias);
+                const int activeBinCount = harmonicRegion.regionSize();
                 for (int channel = 0; channel < 2; ++channel) {
+                    auto magnitude = magnitudeScratch.withSize(binCount);
+                    auto phase = phaseScratch.withSize(binCount);
+                    slot(operation.leftInput, channel, binCount).copyTo(magnitude);
+                    slot(operation.rightInput, channel, binCount).copyTo(phase);
+                    if (hasSpectralMesh) {
+                        CycleDsp::SpectralLayerCore::clearBinsAbove(
+                                magnitude,
+                                phase,
+                                activeBinCount);
+                    }
                     transform->setFullPolarSpectrum(
-                            slot(operation.leftInput, channel, binCount),
-                            slot(operation.rightInput, channel, binCount));
+                            magnitude,
+                            phase);
                     transform->inverse(slot(operation.outputs[0], channel, frameSize));
                 }
                 break;

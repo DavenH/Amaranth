@@ -80,6 +80,7 @@ public:
 	void updateSmoothedParameters(int deltaSamples);
 	void calcDeclickEnvelope(double samplerate);
 	void modulationChanged(float value, int outputId, int dim);
+    void setRandomSeedForTesting(int64 seed);
 
 private:
 	Ref<SynthAudioSource> 	audioSource;

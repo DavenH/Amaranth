@@ -1,0 +1,39 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "japan-drum",
+        "sourceDocument": "cycle/content/presets/japan-drum.cyc",
+        "sha256": "4dc3444582421d18ef48336df9b7934ca8499213af12ac4913df579f45444cc8"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/japan-drum.cyclegraph",
+        "sha256": "73878bc3a57e2ec2370fb0f125a4eb4e0fb8b1f60667fe250f94ed4f91af61c5",
+        "renderOverrides": {
+            "voiceDurationSeconds": 1.0113605585319552
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 1.693364807744112,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "twoTimeLayers",
+            "twoMagnitudeLayers",
+            "phaseLayer",
+            "volumeEnvelope",
+            "guideAssignments"
+        ],
+        "determinism": "four assigned guides have zero noise, offset, and phase",
+        "inputValidation": "regenerated from a live Cycle 1 canonical export on 2026-09-08",
+        "constantGainPolicy": "reported separately because Cycle2 realtime output has fixed headroom"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
+    }
+}

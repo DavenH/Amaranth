@@ -128,6 +128,12 @@ void SynthAudioSource::prepareToPlay(int samplesPerBlockExpected, double sampleR
     }
 }
 
+void SynthAudioSource::setRandomSeedForTesting(int64 seed) {
+    for (int voiceIndex = 0; voiceIndex < voices.size(); ++voiceIndex) {
+        voices[voiceIndex]->setRandomSeedForTesting(seed + voiceIndex * 3);
+    }
+}
+
 
 void SynthAudioSource::releaseResources() {
 }

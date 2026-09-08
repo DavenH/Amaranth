@@ -1,6 +1,6 @@
 {
     "schema": "cycle-v1-v2-audio-equivalence.v1",
-    "status": "verified",
+    "status": "diagnostic",
     "v1": {
         "factoryPreset": "subbass",
         "sourceDocument": "cycle/content/presets/subbass.cyc",
@@ -30,6 +30,7 @@
         "correlationMin": 0.98,
         "gainMatchedResidualMax": 0.2,
         "spectrumRmseDbMax": 6.0,
-        "cyclogramMeanRowDifferenceMax": 0.2
+        "cyclogramMeanRowDifferenceMax": 0.2,
+        "exactSamplesRequired": false
     }
 }

@@ -57,6 +57,7 @@ public:
     void stealNoteFrom(CycleBasedVoice* oldVoice);
     void ensureOversampleBufferSize(int numSamples);
     void unisonVoiceCountChanged();
+    void setRandomSeedForTesting(int64 seed) { random.setSeed(seed); }
 
 //	void setInterpolateCycles(bool doInterpolate) 	{ interpolatingCycles = doInterpolate; 	}
 //	bool doesInterpolateCycles() 					{ return interpolatingCycles; 			}
