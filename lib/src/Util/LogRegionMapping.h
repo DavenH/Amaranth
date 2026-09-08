@@ -8,6 +8,7 @@
 class LogRegionMapping {
 public:
     static constexpr int defaultMidiNote = 48;
+    static constexpr int legacyMidiNoteBias = 12;
     static constexpr double defaultSampleRate = 44100.0;
     static constexpr float defaultTensionScale = 0.5f;
 
@@ -68,7 +69,8 @@ public:
 
 private:
     static int calculateSize(int midiNote, double sampleRate) {
-        const double baseFrequency = MidiMessage::getMidiNoteInHertz(midiNote - 12);
+        const double baseFrequency = MidiMessage::getMidiNoteInHertz(
+                midiNote - legacyMidiNoteBias);
         return jmax(2, (int) std::ceil(0.5 * sampleRate / baseFrequency));
     }
 

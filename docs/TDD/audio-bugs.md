@@ -618,9 +618,10 @@ Context:
   jitter seed equivalence have not yet been proven across applications.
 - Cycle 1's per-voice rasterizer RNG was also wall-clock seeded. The offline
   parity command now injects a fixed test seed without changing realtime
-  behavior. Japan Drum is repeatable across fresh processes in both engines
-  with that override. The corrected-note Guitar 3 G comparison still differs
-  at tiny pre-note effect-tail levels in Cycle 1 and is not yet deterministic.
+  behavior. Japan Drum repeated across fresh processes in one corrected-note
+  run but not in a later run, so Cycle 1 still has intermittent startup state.
+  The corrected-note Guitar 3 G comparison also differs at tiny pre-note
+  effect-tail levels in Cycle 1 and is not yet deterministic.
 - End-to-end exact output is also masked by Cycle 1 master gain and internal
   44.1 kHz conversion versus Cycle V2's fixed `0.125` output headroom.
 - The paired runner recorded Cycle 1's `-12` legacy MIDI reference but omitted
@@ -652,28 +653,39 @@ Artifacts:
 - `/tmp/cycle-guitar-3-g-reference-fixed/comparison.json`
 - `/tmp/cycle-filter-saw-reference-fixed/comparison.json`
 - `/tmp/cycle-filter-saw-reference-fixed-notes/comparison.json`
+- `/tmp/cycle-filter-saw-log-region-fix/comparison.json`
+- `/tmp/cycle-filter-saw-log-region-fix-notes/comparison.json`
 
 After correcting MIDI scheduling, the admitted pairs still expose a valid DSP
-mismatch beyond the minimal time oscillator. Effect-free `japan-drum` is
-byte-repeatable in both engines but reaches only `0.51389` correlation at MIDI
-48; Cycle V2's cyclogram is stable while Cycle 1's evolves strongly. The
-effect-heavy `guitar-3-g` reaches `0.19678` and its Cycle 1 render is not
-repeatable. The next diagnostic must capture Cycle 1's time-cycle, FFT,
+mismatch beyond the minimal time oscillator. Effect-free `japan-drum` reached
+only `0.51389` correlation at MIDI 48 in a repeatable run; Cycle V2's cyclogram
+was stable while Cycle 1's evolved strongly. A later Cycle 1 run was not
+repeatable, so this fixture also exposes intermittent startup state. The
+effect-heavy `guitar-3-g` reaches `0.19678` and its Cycle 1 render is likewise
+not repeatable. The next diagnostic must capture Cycle 1's time-cycle, FFT,
 post-layer spectral, and IFFT boundaries so the first divergent Japan Drum
 stage can be compared with Cycle V2 probes.
 
 The smaller `filter-saw` pair locates that boundary more precisely. It contains
 one time mesh followed by one subtractive magnitude mesh and no phase or effect
-processing. Both engines repeat byte-for-byte, yet correlation falls from
-`0.94389` at MIDI 36 to `0.83398` at MIDI 72, while normalized residual rises
-from `0.3303` to `0.5518`. Cycle 1 samples the magnitude mesh using
+processing. Both engines repeat byte-for-byte. Before correction, correlation
+fell from `0.94389` at MIDI 36 to `0.83398` at MIDI 72, while normalized residual
+rose from `0.3303` to `0.5518`. Cycle 1 samples the magnitude mesh using
 `LogRegions::getRegion(noteState.lastNoteNumber)`; Cycle V2 passes its region
 MIDI note through `TrimeshBlockwiseDsp::setFrequencyMidiNote()`. The shared
-`LogRegionMapping` already applies a legacy `-12` reference internally. The
-external note translation and authored octave mapping therefore need a single
-explicit internal-note contract before changing either implementation. This is
-the leading source-level explanation, but remains an inference until the two
-magnitude arrays are captured at the mature DSP boundary.
+`LogRegionMapping` already applies a legacy note bias internally. Translating
+the standard Cycle V2 oscillator note at that boundary, bounding mesh sampling,
+and clearing IFFT bins through `SpectralLayerCore` improves correlation to
+`0.95298`, `0.93823`, `0.91239`, and `0.89154` at MIDI 36, 48, 60, and 72. The
+normalized residuals improve to `0.3030`, `0.3460`, `0.4093`, and `0.4529`.
+
+The remaining Filter Saw discrepancy is time-dependent: 20 ms windows at MIDI
+48 range from `0.85560` to `0.99423` correlation. Source inspection shows that
+Cycle 1 recalculates its magnitude raster per cycle, whereas
+`SpectralOscillatorRegionRuntime` renders the shared frame only once after note
+reset and retains the configuration's static morph. Live voice-time, key, and
+velocity modulation are therefore not applied to prepared spectral frames.
+This is an open Cycle V2 implementation gap, not a preset-port discrepancy.
 
 Current status: open. Reconcile each candidate against a fresh canonical
 conversion, add explicit deterministic seed control, and remove output-policy

@@ -162,8 +162,11 @@ void TrimeshBlockwiseDsp::renderPreparedHarmonicsInto(Buffer<float> output) {
     }
 
     const int regionSize = LogRegionMapping(frequencyMidiNote).regionSize();
+    const int harmonicCount = jmin(regionSize, output.size());
     auto positions = frequencyPositionsFor(regionSize);
-    sampleOutputAtPositions(output, positions.withSize(output.size()));
+    sampleOutputAtPositions(
+            output.withSize(harmonicCount),
+            positions.withSize(harmonicCount));
 }
 
 Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(

@@ -63,10 +63,13 @@ private:
     int maximumFrameSize {};
     int slotStride {};
     int outputSlot { -1 };
+    bool hasSpectralMesh {};
     size_t renderCount {};
     std::vector<Operation> operations;
     std::vector<std::unique_ptr<Transform>> transforms;
     ScopedAlloc<float> slotMemory;
+    ScopedAlloc<float> magnitudeScratch;
+    ScopedAlloc<float> phaseScratch;
 };
 
 }

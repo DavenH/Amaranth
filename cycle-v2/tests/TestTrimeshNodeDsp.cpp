@@ -693,6 +693,37 @@ TEST_CASE(
     mesh->destroy();
 }
 
+TEST_CASE("Prepared spectral sampling clears bins beyond the legacy harmonic region",
+        "[cycle-v2][nodes][trimesh][dsp][spectral]") {
+    constexpr int midiNote = 72;
+    constexpr int outputSize = 256;
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    TrimeshBlockwiseDsp dsp;
+    std::vector<float> output(outputSize);
+
+    dsp.prepare(
+            mesh.get(),
+            MorphPosition(0.5f, 0.5f, 0.5f),
+            Vertex::Time,
+            false,
+            PortDomain::SpectralMagnitudeSignal);
+    dsp.setFrequencyMidiNote(midiNote);
+    dsp.renderPreparedHarmonicsInto({ output.data(), (int) output.size() });
+
+    const int activeHarmonicCount = LogRegionMapping(midiNote).regionSize();
+    REQUIRE(activeHarmonicCount < outputSize);
+    REQUIRE(std::any_of(
+            output.begin(),
+            output.begin() + activeHarmonicCount,
+            [](float value) { return value != 0.f; }));
+    REQUIRE(std::all_of(
+            output.begin() + activeHarmonicCount,
+            output.end(),
+            [](float value) { return value == 0.f; }));
+
+    mesh->destroy();
+}
+
 TEST_CASE("Trimesh node model renders compact grid data from node parameters", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

@@ -140,11 +140,11 @@ translation. The first broad candidates are:
 | Preset | Deterministic coverage | Current admission result |
 | --- | --- | --- |
 | saw | One static time mesh; no envelopes, effects, unison, or guide noise | Regenerated exactly. At MIDI 36–72 it reaches `0.98850–0.99844` correlation after the MIDI reference fix. It exposes remaining gain, onset, resampling, and Cycle 1 startup-repeatability gaps. |
-| filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. Correlation falls from `0.94389` at MIDI 36 to `0.83398` at MIDI 72, locating the first large semantic gap at magnitude-layer frequency sampling/compositing. |
+| filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. Correcting the harmonic-region note contract improves correlation to `0.95298–0.89154` at MIDI 36–72. The remaining time-varying mismatch exposes the prepared spectral runtime's static-frame limitation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a live canonical export while retaining node presentation. The corrected MIDI 48 comparison reaches only `0.19678` correlation, and Cycle 1's effect-bearing render is not byte-repeatable. |
-| japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase and both engines are byte-repeatable. The corrected MIDI 48 comparison still reaches only `0.51389` correlation, isolating a real multi-layer/spectral evolution discrepancy. |
+| japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
 | organ-2 | Spectral layers, envelopes, Unison, IR, delay, reverb | Current graph differs from fresh conversion in reverb size; reverb seed parity is unresolved. |
@@ -173,6 +173,28 @@ Final-output mismatch is followed down these existing product boundaries:
 Cycle V2 graph probes expose authored graph boundaries. Cycle 1 needs a narrow
 diagnostic export at equivalent mature boundaries before a stage can claim
 sample parity. Preview products are not substitutes for audio products.
+
+### Magnitude sampling boundary
+
+Cycle 1's authoritative path samples spectral meshes with
+`LogRegions::getRegion(noteState.lastNoteNumber)` and clears magnitude and phase
+bins above that note-dependent region before inverse FFT. Both operations reuse
+the mature shared `LogRegionMapping` and `SpectralLayerCore` implementations.
+
+Cycle V2 now performs only the boundary translation required by its standard
+oscillator note: it adds `LogRegionMapping::legacyMidiNoteBias` before spectral
+mesh sampling, limits sampling to the resulting harmonic count, and clears a
+scratch copy of the IFFT inputs above that count. It does not mutate shared
+graph slots or duplicate mapping/filter algorithms. This adapter remains stable
+until MIDI-note domains become explicit types; at that point the integer bias
+and this documentation should be replaced by the typed boundary.
+
+This correction improves Filter Saw at every tested note but does not complete
+parity. `SpectralOscillatorRegionRuntime` renders its shared spectral frame once
+after reset, while Cycle 1 recalculates evolving time and spectral meshes per
+cycle. Carrying live modulation into frame rerasterization is the next required
+architectural slice; treating preview traversal as realtime audio would violate
+the product boundary.
 
 ## Negative Boundaries
 
@@ -248,6 +270,13 @@ sample parity. Preview products are not substitutes for audio products.
 14. Remove each gain, latency, scheduling, and sample-rate policy discrepancy
     from the comparison boundary until admitted fixtures require raw exact
     sample equality.
+15. Restore Cycle 1's note-dependent spectral sampling boundary in the Cycle V2
+    prepared frame. Complete: the standard oscillator note is translated once
+    for `LogRegionMapping`, sampling is bounded by its harmonic region, and IFFT
+    scratch spectra are cleared with shared `SpectralLayerCore` behavior.
+16. Make prepared spectral frames consume live voice-time/key/velocity
+    modulation and rerasterize at the Cycle 1 cycle cadence. Open; Filter Saw is
+    the deterministic integration guard.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
