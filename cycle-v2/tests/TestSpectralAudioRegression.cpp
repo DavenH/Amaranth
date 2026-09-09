@@ -24,7 +24,7 @@ constexpr double sampleRate = 48000.0;
 constexpr int blockSize = 256;
 constexpr int renderedSamples = 33792;
 constexpr int startupSamples = 1024;
-constexpr int reconstructionLatencySamples = 1;
+constexpr int reconstructionLatencySamples = 0;
 constexpr int hermitePhaseDelaySamples = 3;
 
 struct FoldConsistency {

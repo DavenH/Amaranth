@@ -2,6 +2,7 @@
 
 #include <Algo/Resampling.h>
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/Arithmetic.h>
 
 namespace CycleV2 {
@@ -84,7 +85,6 @@ void SpectralOscillatorRegionRuntime::reset() {
         lane.samplingSpillover = {};
         for (auto& buffer : lane.buffers) {
             buffer.reset();
-            buffer.write(0.f);
         }
         for (auto lastHalf : lane.lastLerpHalf) {
             lastHalf.zero();
@@ -164,14 +164,18 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     }
 
     const int halfSize = fixedFrameSize / 2;
-    sharedFramePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+    const double cyclePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
             context.midiNote,
             0.f,
             sampleRate);
-    if (sharedFramePeriod <= 0.0) {
+    if (cyclePeriod <= 0.0) {
         fixedFrameSize = 0;
         return false;
     }
+    const int controlStride = std::max(
+            1,
+            (int) (legacyControlIntervalSamples / cyclePeriod + 0.5));
+    sharedFramePeriod = cyclePeriod * controlStride;
     if (!CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
                 fixedFrameSize,
                 fadeIn.withSize(halfSize),
@@ -181,6 +185,7 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
                     context.midiNote,
                     context,
                     context.blockSampleStart,
+                    0,
                     1,
                     currentFrames[0].withSize(fixedFrameSize),
                     currentFrames[1].withSize(fixedFrameSize))) {
@@ -206,7 +211,10 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     lastSharedFramePosition = 0.0;
     nextSharedFramePosition = sharedFramePeriod;
     lastSharedFrameFrontier = 0;
-    return true;
+    return refreshSharedFramesThrough(
+            sharedFramePeriod,
+            context,
+            renderer);
 }
 
 bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
@@ -229,6 +237,7 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
                 context.midiNote,
                 context,
                 blockSampleOffsetFor(frontier, context),
+                nextSharedFramePosition,
                 elapsedSamples,
                 currentFrames[0].withSize(fixedFrameSize),
                 currentFrames[1].withSize(fixedFrameSize))) {
@@ -263,8 +272,11 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
         if (nextLane < 0) {
             return true;
         }
-        if (!refreshSharedFramesThrough(nextCycleStart, context, renderer)
-                || !renderLaneCycle(nextLane, context)) {
+        if (!refreshSharedFramesThrough(
+                    nextCycleStart + sharedFramePeriod,
+                    context,
+                    renderer)
+                || !renderLaneCycle(nextLane, context, renderer)) {
             return false;
         }
     }
@@ -272,8 +284,10 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
 
 bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         int laneIndex,
-        const PreparedOscillatorProcessContext& context) {
+        const PreparedOscillatorProcessContext& context,
+        const SpectralOscillatorFrameRenderer& renderer) {
     auto& lane = lanes[(size_t) laneIndex];
+    const uint64_t cycleStart = (uint64_t) lane.clock.cumulativePosition;
     const long relativeFrontier = lane.clock.sampledFrontier
             - lane.buffers[0].totalSamplesRead;
     const int pitchIndex = context.pitchEnvelope.empty()
@@ -295,7 +309,8 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
     }
 
     const float framePortion = sharedFramePeriod > 0.0
-            ? (float) ((lane.clock.cumulativePosition - lastSharedFramePosition)
+            ? (float) (((double) cycleStart
+                    - (lastSharedFramePosition - sharedFramePeriod))
                     / sharedFramePeriod)
             : 0.f;
     const double sourceToDestRatio = fixedFrameSize * angleDelta;
@@ -341,6 +356,20 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
                 padding[6],
                 lane.samplingSpillover[(size_t) channel],
                 Resampling::Hermite);
+        if (laneIndex == 0
+                && context.voice != nullptr
+                && context.voice->spectralStageCapture != nullptr
+                && renderer.frameRenderCount() > 0) {
+            context.voice->spectralStageCapture->capture({
+                    CycleDsp::SpectralStage::PitchClockedCycle,
+                    renderer.frameRenderCount() - 1,
+                    cycleStart,
+                    context.midiNote,
+                    channel,
+                    output,
+                    {}
+            });
+        }
         lane.buffers[(size_t) channel].write(output);
     }
     return true;

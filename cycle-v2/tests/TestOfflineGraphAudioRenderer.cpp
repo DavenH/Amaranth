@@ -1,8 +1,11 @@
 #include <algorithm>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
+#include <Util/LogRegionMapping.h>
 
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "Graph/GraphCompiler.h"
@@ -44,6 +47,23 @@ GraphExecutionPlan subbassParityPlan() {
         issueMessages += issue.message + "\n";
     }
     INFO(issueMessages);
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    return compiled.plan;
+#else
+    return {};
+#endif
+}
+
+GraphExecutionPlan filterSawPlan() {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("filter-saw.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
     REQUIRE(loaded.succeeded());
     const auto compiled = GraphCompiler().compile(loaded.graph);
     REQUIRE(compiled.succeeded());
@@ -111,6 +131,189 @@ TEST_CASE("Offline graph renderer follows the realtime MIDI path across blocks",
 #endif
 }
 
+TEST_CASE("Offline graph renderer applies the requested output gain",
+        "[cycle-v2][runtime][offline-audio][output-gain]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto fullGainRequest = renderRequest(256);
+    fullGainRequest.outputGain = 0.125f;
+    auto halfGainRequest = fullGainRequest;
+    halfGainRequest.outputGain = 0.0625f;
+
+    const auto plan = spectralReferencePlan();
+    const auto fullGain = OfflineGraphAudioRenderer::render(
+            plan,
+            7,
+            fullGainRequest);
+    const auto halfGain = OfflineGraphAudioRenderer::render(
+            plan,
+            7,
+            halfGainRequest);
+
+    REQUIRE(fullGain.succeeded);
+    REQUIRE(halfGain.succeeded);
+    std::vector<float> expected = fullGain.channels[0];
+    Buffer<float>(expected.data(), (int) expected.size()).mul(0.5f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(halfGain.channels[0].data()),
+            (int) halfGain.channels[0].size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-7f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Legacy-rate offline rendering is deterministic and distinct from native rate",
+        "[cycle-v2][runtime][offline-audio][internal-rate][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto legacyRequest = renderRequest(256, 48);
+    legacyRequest.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    auto nativeRequest = legacyRequest;
+    nativeRequest.ratePolicy = OfflineGraphAudioRatePolicy::Native;
+
+    const auto plan = filterSawPlan();
+    const auto legacy = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            legacyRequest);
+    const auto repeated = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            legacyRequest);
+    const auto native = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            nativeRequest);
+
+    REQUIRE(legacy.succeeded);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(native.succeeded);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(legacy.channels[0].data()),
+            (int) legacy.channels[0].size()).normDiffL2({
+                    const_cast<float*>(repeated.channels[0].data()),
+                    (int) repeated.channels[0].size()
+            }) < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(legacy.channels[0].data()),
+            (int) legacy.channels[0].size()).normDiffL2({
+                    const_cast<float*>(native.channels[0].data()),
+                    (int) native.channels[0].size()
+            }) > 0.01f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
+TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
+        "[cycle-v2][runtime][offline-audio][spectral][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    CycleDsp::SpectralStageCaptureRecorder recorder;
+    REQUIRE(recorder.prepare(4096, 32));
+    auto request = renderRequest(256, 48);
+    request.sampleCount = 12000;
+    request.events = {
+            { 0, MidiMessage::noteOn(1, 48, (uint8) 96) },
+            { 11999, MidiMessage::noteOff(1, 48) }
+    };
+    request.voiceDurationSeconds = 0.47689543975042176f;
+    request.controlNoteOffset = 12;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    request.spectralStageCapture = &recorder;
+    const auto plan = filterSawPlan();
+    const auto magnitudeStep = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "magnitudeLayer1";
+            });
+    REQUIRE(magnitudeStep != plan.steps.end());
+    REQUIRE(std::count_if(
+            magnitudeStep->inputs.begin(),
+            magnitudeStep->inputs.end(),
+            [](const GraphStepInput& input) {
+                return input.destPortId == "yellow"
+                        || input.destPortId == "red"
+                        || input.destPortId == "blue";
+            }) == 3);
+    REQUIRE(std::all_of(
+            magnitudeStep->inputs.begin(),
+            magnitudeStep->inputs.end(),
+            [](const GraphStepInput& input) {
+                return input.destPortId == "context"
+                        || input.sourceBufferIndex >= 0;
+            }));
+
+    const auto result = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            request);
+
+    REQUIRE(result.succeeded);
+    const auto* timeRaster = recorder.record(
+            CycleDsp::SpectralStage::TimeRaster,
+            0);
+    const auto* time = recorder.record(
+            CycleDsp::SpectralStage::TimeFrame,
+            0);
+    const auto* forward = recorder.record(
+            CycleDsp::SpectralStage::ForwardFft,
+            0);
+    const auto* magnitudeRaster = recorder.record(
+            CycleDsp::SpectralStage::MagnitudeRaster,
+            0);
+    const auto* magnitudeOperand = recorder.record(
+            CycleDsp::SpectralStage::MagnitudeOperand,
+            0);
+    const auto* postLayer = recorder.record(
+            CycleDsp::SpectralStage::PostLayerSpectrum,
+            0);
+    const auto* reconstructed = recorder.record(
+            CycleDsp::SpectralStage::ReconstructedFrame,
+            0);
+    const auto* pitchClocked = recorder.record(
+            CycleDsp::SpectralStage::PitchClockedCycle,
+            0);
+    REQUIRE(time != nullptr);
+    REQUIRE(timeRaster != nullptr);
+    REQUIRE(timeRaster->secondary.size() == 3);
+    REQUIRE(timeRaster->secondary[0] == Catch::Approx(0.7148094f));
+    REQUIRE(timeRaster->secondary[1] == Catch::Approx(40.f / 107.f));
+    REQUIRE(forward != nullptr);
+    REQUIRE(magnitudeRaster != nullptr);
+    REQUIRE(magnitudeOperand != nullptr);
+    REQUIRE(postLayer != nullptr);
+    REQUIRE(reconstructed != nullptr);
+    REQUIRE(pitchClocked != nullptr);
+    REQUIRE(time->primary.size() == reconstructed->primary.size());
+    REQUIRE(forward->primary.size()
+            == LogRegionMapping(
+                    48 + LogRegionMapping::legacyMidiNoteBias).regionSize());
+    REQUIRE(forward->secondary.size() == forward->primary.size());
+    REQUIRE(magnitudeRaster->primary.size() == forward->primary.size());
+    REQUIRE(magnitudeRaster->secondary.size() == 3);
+    REQUIRE(magnitudeRaster->secondary[1]
+            == Catch::Approx(40.f / 107.f));
+    REQUIRE(magnitudeRaster->secondary[2]
+            == Catch::Approx(1.f - 96.f / 127.f));
+    REQUIRE(magnitudeOperand->primary.size() == forward->primary.size());
+    REQUIRE(postLayer->primary.size() == forward->primary.size());
+    REQUIRE(postLayer->secondary.size() == forward->secondary.size());
+    REQUIRE(time->frontier == forward->frontier);
+    REQUIRE(forward->frontier == magnitudeRaster->frontier);
+    REQUIRE(magnitudeRaster->frontier == magnitudeOperand->frontier);
+    REQUIRE(magnitudeOperand->frontier == postLayer->frontier);
+    REQUIRE(postLayer->frontier == reconstructed->frontier);
+    REQUIRE_FALSE(pitchClocked->primary.empty());
+    REQUIRE(pitchClocked->frontier < reconstructed->frontier);
+    REQUIRE(reconstructed->frontier - pitchClocked->frontier
+            == pitchClocked->primary.size());
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 TEST_CASE("Offline graph renderer rejects invalid render contracts",
         "[cycle-v2][runtime][offline-audio]") {
     OfflineGraphAudioRequest request;
@@ -161,6 +364,8 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     object->setProperty("channels", 2);
     object->setProperty("durationMs", 100.0);
     object->setProperty("voiceDurationSeconds", 1.25);
+    object->setProperty("controlNoteOffset", 12);
+    object->setProperty("ratePolicy", "legacyInternal44100");
 
     Array<var> events;
     var noteOn = new DynamicObject();
@@ -185,6 +390,8 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     REQUIRE((int64) data.getProperty("samples", 0) == 4800);
     REQUIRE((int) data.getProperty("events", 0) == 1);
     REQUIRE((double) data.getProperty("voiceDurationSeconds", 0.0) == 1.25);
+    REQUIRE((int) data.getProperty("controlNoteOffset", 0) == 12);
+    REQUIRE(data.getProperty("ratePolicy", {}).toString() == "legacyInternal44100");
     REQUIRE((double) data.getProperty("rms", 0.0) > 0.0);
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

@@ -604,12 +604,22 @@ void CycleBasedVoice::renderInterpolatedCycles(int numSamples) {
                         }
                     }
 
+                    capturePitchClockedCycle(
+                            i,
+                            c,
+                            (uint64_t) jmax(0, truncCume),
+                            destBuffer);
                     if (noteState.isStereo) {
                         destBuffer.mul(pans[c]);
                     }
                 }
 
                 if (!noteState.isStereo) {
+                    capturePitchClockedCycle(
+                            i,
+                            Right,
+                            (uint64_t) jmax(0, truncCume),
+                            destBuffer);
                     Buffer<float> written = group.cycleBuffer[Right].write(destBuffer);
 
                     destBuffer.mul(pans[Left]);

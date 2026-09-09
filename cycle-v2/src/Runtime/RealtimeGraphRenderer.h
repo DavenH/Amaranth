@@ -45,7 +45,14 @@ public:
             uint64_t revision,
             const AudioExecutionSpec& spec);
     void setPreparedGraph(PreparedGraph* graph);
+    void setSpectralStageCapture(CycleDsp::SpectralStageCaptureSink* capture) {
+        spectralStageCapture = capture;
+    }
     void setVoiceDurationSeconds(float durationSeconds);
+    void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
+    void setControlNoteOffset(int offset) {
+        controlNoteOffset = jlimit(-127, 127, offset);
+    }
     void process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
@@ -99,11 +106,12 @@ private:
             int outputChannelCount,
             int frameCount);
 
-    static constexpr float outputHeadroom = 0.125f;
+    static constexpr float defaultOutputGain = 0.125f;
     static constexpr size_t maximumEventsPerChannel = 128;
     static constexpr size_t maximumScheduledEvents = RealtimeMidiEventQueue::capacity * 2;
 
     PreparedGraph* preparedGraph {};
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
@@ -111,8 +119,10 @@ private:
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
     float voiceDurationSeconds { 7.f };
-    SmoothedParameter outputGain { 1.f };
+    float outputGain { defaultOutputGain };
+    SmoothedParameter graphOutputGain { 1.f };
     bool outputGainInitialized {};
+    int controlNoteOffset {};
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};

@@ -127,6 +127,35 @@ GraphExecutionPlan loadFilterSawPlan() {
 #endif
 }
 
+TEST_CASE("Prepared trimesh morph binding preserves fractional voice position",
+        "[cycle-v2][runtime][oscillator-region][voice-time][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto plan = loadFilterSawPlan();
+    const auto timeLayer = std::find_if(
+            plan.steps.begin(),
+            plan.steps.end(),
+            [](const GraphExecutionStep& step) {
+                return step.nodeId == "timeLayer1";
+            });
+    REQUIRE(timeLayer != plan.steps.end());
+
+    PreparedTrimeshMorphBinding binding;
+    binding.bind(plan, *timeLayer);
+    AudioVoiceContext voice;
+    voice.controls.normalizedVoiceTimeIncrement = 0.001f;
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+
+    const auto inputs = binding.inputsFor(context, 0, 337.75);
+
+    REQUIRE(inputs.hasAbsoluteOverride[0]);
+    REQUIRE(inputs.absoluteOverrides[0] == Catch::Approx(0.33775f));
+    REQUIRE(inputs.absoluteOverrides[0] != Catch::Approx(0.337f));
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 PartitionedRender renderPreparedGraph(
         const GraphExecutionPlan& plan,
         int blockSize,
@@ -228,6 +257,7 @@ std::array<std::vector<float>, 2> renderPreparedPresetFrames(
             60,
             context,
             0,
+            0,
             1,
             Buffer<float>(left.data(), (int) left.size()),
             Buffer<float>(right.data(), (int) right.size())));
@@ -240,6 +270,7 @@ std::array<std::vector<float>, 2> renderPreparedPresetFrames(
             512,
             60,
             context,
+            511,
             511,
             4096,
             Buffer<float>(left.data(), (int) left.size()),
@@ -320,10 +351,10 @@ TEST_CASE("Chained oscillator runtime folds prepared lanes with Cycle 1 pan and 
             renderer));
 
     const float scale = CycleDsp::UnisonCore::voiceLevelScale(3);
-    REQUIRE(left[0] == 0.f);
-    REQUIRE(right[0] == 0.f);
-    REQUIRE(left[1] == Catch::Approx((1.f + 2.f) * scale));
-    REQUIRE(right[1] == Catch::Approx((2.f + 3.f) * scale));
+    REQUIRE(left[0] == Catch::Approx((1.f + 2.f) * scale));
+    REQUIRE(right[0] == Catch::Approx((2.f + 3.f) * scale));
+    REQUIRE(left[1] == Catch::Approx(left[0]));
+    REQUIRE(right[1] == Catch::Approx(right[0]));
     REQUIRE(renderer.renderCounts[0] > 0);
     REQUIRE(renderer.renderCounts[1] > 0);
     REQUIRE(renderer.renderCounts[2] > 0);
@@ -610,8 +641,8 @@ TEST_CASE("Spectral oscillator runtime reconstructs one shared frame across Unis
             Buffer<float>(splitRight.data() + 37, 91),
             splitRenderer));
 
-    REQUIRE(wholeRenderer.frameRenderCount() == 1);
-    REQUIRE(splitRenderer.frameRenderCount() == 1);
+    REQUIRE(wholeRenderer.frameRenderCount() == 2);
+    REQUIRE(splitRenderer.frameRenderCount() == 2);
     REQUIRE(splitLeft == wholeLeft);
     REQUIRE(splitRight == wholeRight);
     REQUIRE(std::any_of(wholeLeft.begin(), wholeLeft.end(), [](float sample) {
@@ -641,6 +672,22 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
             REQUIRE(partitioned.right == reference.right);
         }
     }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("High spectral notes use the legacy 16-sample control cadence",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][control-rate]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const PartitionedRender render = renderPreparedGraph(
+            loadFilterSawPlan(),
+            512,
+            128,
+            -1,
+            120);
+
+    REQUIRE(render.frameRenderCount == 9);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
@@ -722,7 +769,7 @@ TEST_CASE("Prepared spectral preset frames rerasterize at live morph positions",
   #endif
 }
 
-TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier",
+TEST_CASE("Timed controls enter prepared frames at the synthesis-cycle frontier",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();

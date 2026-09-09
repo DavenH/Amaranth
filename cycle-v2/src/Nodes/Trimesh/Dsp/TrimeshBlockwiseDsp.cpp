@@ -2,7 +2,7 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
-#include <Util/LogRegionMapping.h>
+#include <Util/LogRegions.h>
 
 namespace CycleV2 {
 
@@ -80,6 +80,7 @@ void TrimeshBlockwiseDsp::setFrequencyMidiNote(int midiNote) {
 }
 
 void TrimeshBlockwiseDsp::prepareSampling(size_t maximumFrameCount) {
+    LogRegions::prepareDefaultRegions();
     frequencyPositions.resize(maximumFrameCount);
     cachedFrequencyPositionCount = 0;
 }
@@ -178,9 +179,11 @@ void TrimeshBlockwiseDsp::renderPreparedHarmonicsInto(Buffer<float> output) {
 Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
         PortDomain domain) const {
     Rasterization::RasterizationRequest request;
+    const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
+            || domain == PortDomain::SpectralPhaseSignal;
     request.cyclic = cyclic;
-    request.xMinimum = cyclic ? -0.05f : 0.f;
-    request.xMaximum = cyclic ? 1.05f : 1.f;
+    request.xMinimum = cyclic || spectral ? -0.05f : 0.f;
+    request.xMaximum = cyclic || spectral ? 1.05f : 1.f;
     request.morph = morph;
     request.primaryViewDimension = primaryViewAxis;
     request.scalingMode = scalingModeForDomain(domain);
@@ -207,6 +210,10 @@ void TrimeshBlockwiseDsp::sampleOutputAtPositions(
             || (!positions.empty() && positions.size() < dest.size())) {
         return;
     }
+    if (!positions.empty()) {
+        sampler.sampleAtIntervals(positions, dest);
+        return;
+    }
 
     const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
     int currentIndex = sampler.initialIndex();
@@ -221,6 +228,12 @@ void TrimeshBlockwiseDsp::sampleOutputAtPositions(
 }
 
 Buffer<float> TrimeshBlockwiseDsp::frequencyPositionsFor(int size) {
+    Buffer<float> legacyPositions = LogRegions::getDefaultRegion(
+            frequencyMidiNote);
+    if (legacyPositions.size() == size) {
+        return legacyPositions;
+    }
+
     if ((int) frequencyPositions.size() < size) {
         frequencyPositions.resize((size_t) size);
         cachedFrequencyPositionCount = 0;

@@ -9,7 +9,12 @@
 #include <limits>
 #include <vector>
 
+#include <App/AppConstants.h>
 #include <Array/ScopedAlloc.h>
+
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
 
 namespace CycleV2 {
 
@@ -138,8 +143,8 @@ struct TimedControlEvent {
 
 struct AudioVoiceControls {
     int noteNumber { 60 };
-    int lowestNote { 0 };
-    int highestNote { 127 };
+    int lowestNote { Constants::LowestMidiNote };
+    int highestNote { Constants::HighestMidiNote };
     float velocity { 1.f };
     float normalizedVoiceTime {};
     float normalizedVoiceTimeIncrement {};
@@ -149,11 +154,13 @@ struct AudioVoiceControls {
 
 struct AudioVoiceContext {
     int voiceIndex {};
+    int oscillatorNoteNumber { -1 };
     std::vector<NoteLifecycleEvent> events;
     AudioVoiceControls controls;
     std::vector<TimedControlEvent> controlEvents;
     uint32_t lifecycleSeed {};
     bool hasLifecycleSeed {};
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 
 struct AudioProcessWorkArena {

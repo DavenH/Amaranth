@@ -835,11 +835,11 @@ void compileDefaultModulationInputs(
         if (node == nullptr) {
             continue;
         }
-        const CompiledVoiceContext* context = voiceContextForNode(
+        const CompiledVoiceContext* context = voiceContextForStep(
                 graph,
                 plan,
                 assignments,
-                *node);
+                step);
         if (context == nullptr) {
             continue;
         }
@@ -1160,7 +1160,6 @@ void rebuildExecutionRegions(
             domainResolver,
             domainResolution,
             moduleRegistry);
-    compileDefaultModulationInputs(graph, plan);
     plan.oscillatorRegions.clear();
     compileOscillatorRegions(plan, issues);
 }
@@ -1251,6 +1250,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             result.plan = {};
             return result;
         }
+        compileDefaultModulationInputs(graph, result.plan);
         compileRouting(result.plan);
         compileDependencyIndex(result.plan);
         refreshSignalProbes(graph, result.plan);

@@ -294,6 +294,15 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
+        auto* oscillatorRegion = oscillatorRegionForStep(
+                preparedVoice->second,
+                stepIndex);
+        if (oscillatorRegion != nullptr
+                && (!captureDiagnostics
+                        || oscillatorRegion->processor->replacesDiagnosticProcessors())
+                && stepIndex != (size_t) oscillatorRegion->materializationStepIndex) {
+            continue;
+        }
         const bool hasCachedResult = captureDiagnostics
                 && diagnosticCache[stepIndex].has_value();
         const bool explicitlyDirty = dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
@@ -389,9 +398,6 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
 
-        auto* oscillatorRegion = oscillatorRegionForStep(
-                preparedVoice->second,
-                stepIndex);
         if (oscillatorRegion != nullptr
                 && (!captureDiagnostics
                         || oscillatorRegion->processor->replacesDiagnosticProcessors())) {
@@ -611,12 +617,14 @@ void GraphAudioExecutor::prepareExecution(
                     region,
                     *compiledContext,
                     spec,
-                    maximumCycleSamples);
+                    maximumCycleSamples,
+                    preparedVoice.processors);
             if (processor == nullptr) {
                 continue;
             }
             auto preparedRegion = std::make_unique<PreparedVoice::OscillatorRegion>();
             preparedRegion->planRegionIndex = regionIndex;
+            preparedRegion->materializationStepIndex = region.materializationStepIndex;
             preparedRegion->midiNoteOffset = compiledContext->octave * 12;
             preparedRegion->configurationRevisions.reserve(region.stepIndices.size());
             for (const int operationIndex : region.stepIndices) {
@@ -625,8 +633,10 @@ void GraphAudioExecutor::prepareExecution(
             }
             preparedRegion->pitchEnvelopeUnitValues = compiledContext->pitchEnvelopeUnitValues;
             preparedRegion->processor = std::move(processor);
-            preparedVoice.oscillatorRegionByStep[
-                    (size_t) region.materializationStepIndex] = preparedRegion.get();
+            for (const int stepIndex : region.stepIndices) {
+                preparedVoice.oscillatorRegionByStep[(size_t) stepIndex]
+                        = preparedRegion.get();
+            }
             preparedVoice.oscillatorRegions.push_back(std::move(preparedRegion));
         }
     }
@@ -661,6 +671,9 @@ void GraphAudioExecutor::renderOscillatorRegion(
         };
     }
 
+    const int oscillatorNoteNumber = voice.oscillatorNoteNumber >= 0
+            ? voice.oscillatorNoteNumber
+            : voice.controls.noteNumber;
     const auto renderSegment = [&](size_t start, size_t count) {
         if (!region.active || count == 0) {
             return;
@@ -673,7 +686,7 @@ void GraphAudioExecutor::renderOscillatorRegion(
                 start,
                 region.voiceSamplePosition,
                 timing,
-                voice.controls.noteNumber + region.midiNoteOffset,
+                oscillatorNoteNumber + region.midiNoteOffset,
                 voice.controls.velocity,
                 pitchEnvelope,
                 left.section((int) start, (int) count),
@@ -684,12 +697,12 @@ void GraphAudioExecutor::renderOscillatorRegion(
         region.voiceSamplePosition += count;
     };
     const auto applyEvent = [&](const NoteLifecycleEvent& event) {
-        if (event.type == NoteLifecycleType::NoteOff) {
-            return;
+        if (event.type != NoteLifecycleType::NoteOff) {
+            region.processor->reset();
+            region.voiceSamplePosition = 0;
+            region.active = event.type == NoteLifecycleType::NoteOn;
         }
-        region.processor->reset();
-        region.voiceSamplePosition = 0;
-        region.active = event.type == NoteLifecycleType::NoteOn;
+        region.processor->applyLifecycleEvent(event);
     };
 
     size_t rendered = 0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
+#include "Runtime/PreparedCycleEnvelopeBank.h"
 #include "Runtime/PreparedTrimeshMorphBinding.h"
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshOscillatorCycleRenderer.h"
@@ -21,8 +22,11 @@ public:
     bool prepare(
             const GraphExecutionPlan& plan,
             const OscillatorRegionPlan& region,
-            int maximumCycleSamples);
+            int maximumCycleSamples,
+            const std::vector<NodeAudioProcessor*>& processors = {},
+            int laneCount = 1);
     void reset() override;
+    void applyLifecycleEvent(const NoteLifecycleEvent& event) override;
     void renderCycle(
             const ChainedCycleRenderRequest& request,
             Buffer<float> left,
@@ -59,6 +63,7 @@ private:
     int maximumCycleSamples {};
     int outputOperation { -1 };
     std::vector<Operation> operations;
+    PreparedCycleEnvelopeBank cycleEnvelopes;
     ScopedAlloc<float> operationMemory;
     Random frameRandom;
     uint32_t lifecycleSeed {};

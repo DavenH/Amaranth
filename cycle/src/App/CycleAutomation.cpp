@@ -12,6 +12,7 @@
 #include <App/Settings.h>
 #include <Array/ScopedAlloc.h>
 #include <Audio/AudioHub.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Audio/SynthAudioSource.h>
 #include <Curve/Mesh/Mesh.h>
 #include <Curve/Mesh/Vertex.h>
@@ -2551,6 +2552,7 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     const int totalSamples = jmax(1, int(std::round(durationMs * sampleRate / 1000.0)));
     const String path = getString(command, "path");
     const String rawPath = getString(command, "rawPath");
+    const String stageCapturePath = getString(command, "stageCapturePath");
     Array<ScheduledMidiEvent> midiEvents;
 
     if (!buildMidiSchedule(command, midiEvents, sampleRate, totalSamples, message)) {
@@ -2580,9 +2582,47 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     audioHub.resetKeyboardState();
     audioHub.prepareToPlay(blockSize, sampleRate);
     const var randomSeed = PresetJson::property(command, "randomSeed");
+    SynthAudioSource& synthAudioSource = getObj(SynthAudioSource);
     if (!randomSeed.isVoid()) {
-        getObj(SynthAudioSource).setRandomSeedForTesting((int64) randomSeed);
+        synthAudioSource.setRandomSeedForTesting((int64) randomSeed);
     }
+    const float previousOutputGain = synthAudioSource.getOutputGainForTesting();
+    const var outputGain = PresetJson::property(command, "outputGain");
+    if (!outputGain.isVoid()) {
+        synthAudioSource.setOutputGainForTesting(
+                jlimit(0.f, 16.f, (float) outputGain));
+    }
+    struct RestoreOutputGain {
+        SynthAudioSource& audioSource;
+        float outputGain;
+
+        ~RestoreOutputGain() {
+            audioSource.setOutputGainForTesting(outputGain);
+        }
+    } restoreOutputGain { synthAudioSource, previousOutputGain };
+
+    constexpr int maximumSpectralStageValues = 131072;
+    CycleDsp::SpectralStageCaptureRecorder stageCapture;
+    CycleDsp::SpectralStageCaptureSink* previousStageCapture =
+            synthAudioSource.getSpectralStageCaptureForTesting();
+    if (stageCapturePath.isNotEmpty()) {
+        const size_t targetFrame = (size_t) jmax(
+                0,
+                (int) getDouble(command, "stageCaptureFrameIndex", 0.0));
+        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+            message = "Could not prepare spectral stage capture";
+            return false;
+        }
+        synthAudioSource.setSpectralStageCaptureForTesting(&stageCapture);
+    }
+    struct RestoreStageCapture {
+        SynthAudioSource& audioSource;
+        CycleDsp::SpectralStageCaptureSink* capture;
+
+        ~RestoreStageCapture() {
+            audioSource.setSpectralStageCaptureForTesting(capture);
+        }
+    } restoreStageCapture { synthAudioSource, previousStageCapture };
 
     AudioSampleBuffer capture(channels, totalSamples);
     AudioSampleBuffer block(channels, blockSize);
@@ -2621,6 +2661,7 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     if (dataObject != nullptr) {
         dataObject->setProperty("path", path);
         dataObject->setProperty("rawPath", rawPath);
+        dataObject->setProperty("stageCapturePath", stageCapturePath);
         dataObject->setProperty("events", midiEvents.size());
         dataObject->setProperty("blockSize", blockSize);
     }
@@ -2629,6 +2670,10 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
         return false;
     }
     if (!writeRawAudioCapture(rawPath, capture, message)) {
+        return false;
+    }
+    if (stageCapturePath.isNotEmpty()
+            && !stageCapture.write(File(stageCapturePath), message)) {
         return false;
     }
 

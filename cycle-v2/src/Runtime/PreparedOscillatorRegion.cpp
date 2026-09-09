@@ -64,7 +64,8 @@ public:
             const OscillatorRegionPlan& region,
             const CompiledVoiceContext& context,
             const AudioExecutionSpec& spec,
-            int maximumCycleSamples) {
+            int maximumCycleSamples,
+            const std::vector<NodeAudioProcessor*>& processors) {
         const bool hasScratchAttachment = std::any_of(
                 plan.steps.begin(),
                 plan.steps.end(),
@@ -79,7 +80,12 @@ public:
         replaceDiagnostics = !hasScratchAttachment
                 && !hasExternalProcessorConsumer(plan, region);
         auto preparedRenderer = std::make_unique<ChainedOscillatorRecipeRenderer>();
-        if (!preparedRenderer->prepare(plan, region, maximumCycleSamples)
+        if (!preparedRenderer->prepare(
+                    plan,
+                    region,
+                    maximumCycleSamples,
+                    processors,
+                    context.lanes.order)
                 || !runtime.prepare(
                         spec.maximumFrameCount,
                         maximumCycleSamples,
@@ -94,6 +100,10 @@ public:
     void reset() override {
         runtime.reset();
         renderer->reset();
+    }
+
+    void applyLifecycleEvent(const NoteLifecycleEvent& event) override {
+        renderer->applyLifecycleEvent(event);
     }
 
     bool process(const PreparedOscillatorProcessContext& context) override {
@@ -116,10 +126,16 @@ public:
             const OscillatorRegionPlan& region,
             const CompiledVoiceContext& context,
             const AudioExecutionSpec& spec,
-            int maximumCycleSamples) {
+            int maximumCycleSamples,
+            const std::vector<NodeAudioProcessor*>& processors) {
         const int maximumFixedFrameSize = Arithmetic::getNextPow2(
                 (float) maximumCycleSamples);
-        return renderer.prepare(plan, region, maximumFixedFrameSize)
+        return renderer.prepare(
+                    plan,
+                    region,
+                    maximumFixedFrameSize,
+                    processors,
+                    context.lanes.order)
                 && runtime.prepare(
                         spec.maximumFrameCount,
                         maximumCycleSamples,
@@ -131,6 +147,10 @@ public:
     void reset() override {
         runtime.reset();
         renderer.reset();
+    }
+
+    void applyLifecycleEvent(const NoteLifecycleEvent& event) override {
+        renderer.applyLifecycleEvent(event);
     }
 
     bool process(const PreparedOscillatorProcessContext& context) override {
@@ -149,16 +169,19 @@ std::unique_ptr<PreparedOscillatorRegion> prepareOscillatorRegion(
         const OscillatorRegionPlan& region,
         const CompiledVoiceContext& context,
         const AudioExecutionSpec& spec,
-        int maximumCycleSamples) {
+        int maximumCycleSamples,
+        const std::vector<NodeAudioProcessor*>& processors) {
     if (ChainedOscillatorRecipeRenderer::supports(plan, region)) {
         auto prepared = std::make_unique<PreparedChainedOscillatorRegion>();
-        return prepared->prepare(plan, region, context, spec, maximumCycleSamples)
+        return prepared->prepare(
+                    plan, region, context, spec, maximumCycleSamples, processors)
                 ? std::unique_ptr<PreparedOscillatorRegion>(std::move(prepared))
                 : nullptr;
     }
     if (SpectralOscillatorFrameRenderer::supports(plan, region)) {
         auto prepared = std::make_unique<PreparedSpectralOscillatorRegion>();
-        return prepared->prepare(plan, region, context, spec, maximumCycleSamples)
+        return prepared->prepare(
+                    plan, region, context, spec, maximumCycleSamples, processors)
                 ? std::unique_ptr<PreparedOscillatorRegion>(std::move(prepared))
                 : nullptr;
     }

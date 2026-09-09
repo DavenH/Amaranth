@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import hashlib
+import json
 import math
 import struct
 import sys
@@ -25,6 +27,34 @@ class CycleAudioDiffTest(unittest.TestCase):
                 int(sample).to_bytes(2, "little", signed=True)
                 for sample in samples
             ))
+
+    def write_stage_capture(self, path, stages):
+        records = []
+        for index, (stage, primary, secondary) in enumerate(stages):
+            raw_path = path.parent / f"{path.stem}-{index}.f32le"
+            payload = struct.pack(
+                f"<{len(primary) + len(secondary)}f",
+                *(primary + secondary),
+            )
+            raw_path.write_bytes(payload)
+            records.append({
+                "stage": stage,
+                "frameIndex": 0,
+                "frontier": 37,
+                "midiNote": 48,
+                "channel": 0,
+                "primary": "magnitude" if secondary else "samples",
+                "primaryValueCount": len(primary),
+                "secondary": "phase" if secondary else "",
+                "secondaryValueCount": len(secondary),
+                "rawPath": str(raw_path),
+                "sha256": hashlib.sha256(payload).hexdigest(),
+            })
+        path.write_text(json.dumps({
+            "schema": "cycle-spectral-stage-capture.v1",
+            "targetFrameIndex": 0,
+            "records": records,
+        }), encoding="utf-8")
 
     def test_exact_sample_comparison_reports_first_difference(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -166,6 +196,33 @@ class CycleAudioDiffTest(unittest.TestCase):
 
         self.assertFalse(verdict["passed"])
         self.assertFalse(verdict["checks"]["exactSamples"])
+
+    def test_stage_capture_comparison_reports_first_divergent_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reference = root / "v1.json"
+            candidate = root / "v2.json"
+            self.write_stage_capture(reference, [
+                ("time-frame", [0.0, 1.0, 0.0, -1.0], []),
+                ("forward-fft", [0.5, 0.25], [0.0, 1.0]),
+                ("magnitude-raster", [0.2, 0.4], [0.1, 0.5, 0.9]),
+            ])
+            self.write_stage_capture(candidate, [
+                ("time-frame", [0.0, 1.0, 0.0, -1.0], []),
+                ("forward-fft", [0.5, 0.25], [0.0, 1.0]),
+                ("magnitude-raster", [0.2, 0.125], [0.1, 0.5, 0.9]),
+            ])
+
+            comparison = compare_cycle_audio.compare_stage_captures(
+                reference, candidate)
+
+        self.assertFalse(comparison["samplesEqual"])
+        self.assertEqual(comparison["firstUnequalStage"], "magnitude-raster")
+        self.assertTrue(comparison["records"][0]["samplesEqual"])
+        self.assertEqual(
+            comparison["records"][2]["primary"]["firstMismatch"]["index"],
+            1,
+        )
 
 
 if __name__ == "__main__":

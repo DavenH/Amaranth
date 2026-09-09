@@ -44,10 +44,10 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     preparedGraph = graph;
     const float nextGain = graph == nullptr ? 1.f : graph->plan.outputGain;
     if (!outputGainInitialized) {
-        outputGain.setValueDirect(nextGain);
+        graphOutputGain.setValueDirect(nextGain);
         outputGainInitialized = true;
     } else {
-        outputGain = nextGain;
+        graphOutputGain = nextGain;
     }
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
 }
@@ -268,10 +268,15 @@ void RealtimeGraphRenderer::renderVoices(
         if (!voice.active) {
             continue;
         }
-        voice.context.controls.noteNumber = voice.noteNumber;
+        voice.context.controls.noteNumber = jlimit(
+                0,
+                127,
+                voice.noteNumber + controlNoteOffset);
+        voice.context.oscillatorNoteNumber = voice.noteNumber;
         voice.context.controls.velocity = voice.velocity;
         voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
         voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
+        voice.context.spectralStageCapture = spectralStageCapture;
         midiControls.populateVoice(voice.context, voice.midiChannel);
 
         const auto output = preparedGraph->executor.processRealtime(
@@ -308,13 +313,13 @@ void RealtimeGraphRenderer::renderVoices(
         }
     }
 
-    outputGain.update(frameCount);
+    graphOutputGain.update(frameCount);
     for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
         if (outputChannels[channel] != nullptr) {
-            outputGain.maybeApplyRamp(
+            graphOutputGain.maybeApplyRamp(
                     preparedGraph->outputGainRamp.withSize(frameCount),
                     Buffer<float>(outputChannels[channel], frameCount),
-                    outputHeadroom);
+                    outputGain);
             Buffer<float>(outputChannels[channel], frameCount).clip(-1.f, 1.f);
         }
     }

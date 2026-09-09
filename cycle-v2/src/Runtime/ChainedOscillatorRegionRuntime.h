@@ -10,6 +10,7 @@
 
 namespace CycleV2 {
 
+struct NoteLifecycleEvent;
 struct PreparedOscillatorProcessContext;
 
 struct ChainedCycleRenderRequest {
@@ -26,6 +27,7 @@ class OscillatorCycleRenderer {
 public:
     virtual ~OscillatorCycleRenderer() = default;
     virtual void reset() {}
+    virtual void applyLifecycleEvent(const NoteLifecycleEvent&) {}
     virtual void renderCycle(
             const ChainedCycleRenderRequest& request,
             Buffer<float> left,

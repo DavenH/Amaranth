@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include <Array/Buffer.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 
 #include "App/OfflineAudioCaptureAutomation.h"
 #include "Runtime/OfflineGraphAudioRenderer.h"
@@ -146,6 +147,23 @@ bool parseRequest(
     request.blockSize = jlimit(16, 8192, (int) doubleProperty(command, "blockSize", 512.0));
     request.channelCount = jlimit(1, 2, (int) doubleProperty(command, "channels", 2.0));
     request.voiceDurationSeconds = (float) doubleProperty(command, "voiceDurationSeconds", 7.0);
+    request.outputGain = jlimit(
+            0.f,
+            16.f,
+            (float) doubleProperty(command, "outputGain", 0.125));
+    request.controlNoteOffset = jlimit(
+            -127,
+            127,
+            (int) doubleProperty(command, "controlNoteOffset", 0.0));
+    const String ratePolicy = stringProperty(command, "ratePolicy", "native");
+    if (ratePolicy == "native") {
+        request.ratePolicy = OfflineGraphAudioRatePolicy::Native;
+    } else if (ratePolicy == "legacyInternal44100") {
+        request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    } else {
+        error = "Unsupported offline audio rate policy: " + ratePolicy;
+        return false;
+    }
     const double durationMs = jlimit(1.0, 60000.0, doubleProperty(command, "durationMs", 1000.0));
 
     if (request.sampleRate <= 0.0) {
@@ -285,6 +303,9 @@ bool OfflineAudioCaptureAutomation::isScheduledCapture(const var& command) {
             "channels",
             "durationMs",
             "voiceDurationSeconds",
+            "outputGain",
+            "controlNoteOffset",
+            "ratePolicy",
             "events",
             "note",
             "noteDurationMs"
@@ -309,6 +330,20 @@ bool OfflineAudioCaptureAutomation::capture(
         return false;
     }
 
+    constexpr int maximumSpectralStageValues = 131072;
+    const File stageCapturePath(stringProperty(command, "stageCapturePath"));
+    CycleDsp::SpectralStageCaptureRecorder stageCapture;
+    if (stageCapturePath != File()) {
+        const size_t targetFrame = (size_t) jmax(
+                0,
+                (int) doubleProperty(command, "stageCaptureFrameIndex", 0.0));
+        if (!stageCapture.prepare(maximumSpectralStageValues, targetFrame)) {
+            error = "Could not prepare spectral stage capture";
+            return false;
+        }
+        request.spectralStageCapture = &stageCapture;
+    }
+
     const OfflineGraphAudioResult capture = OfflineGraphAudioRenderer::render(
             std::move(plan),
             revision,
@@ -324,6 +359,9 @@ bool OfflineAudioCaptureAutomation::capture(
     if (!writeRawCapture(rawPath, capture, request, error)) {
         return false;
     }
+    if (stageCapturePath != File() && !stageCapture.write(stageCapturePath, error)) {
+        return false;
+    }
 
     data = captureMetrics(capture, request);
     DynamicObject* object = data.getDynamicObject();
@@ -331,9 +369,18 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty(
             "rawPath",
             rawPath == File() ? String {} : rawPath.getFullPathName());
+    object->setProperty(
+            "stageCapturePath",
+            stageCapturePath == File() ? String {} : stageCapturePath.getFullPathName());
     object->setProperty("events", (int) request.events.size());
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);
+    object->setProperty("controlNoteOffset", request.controlNoteOffset);
+    object->setProperty(
+            "ratePolicy",
+            request.ratePolicy == OfflineGraphAudioRatePolicy::LegacyInternal44100
+                    ? "legacyInternal44100"
+                    : "native");
     object->setProperty("renderer", "realtimeGraphRenderer");
     return true;
 }

@@ -14,13 +14,20 @@ namespace CycleV2 {
 
 struct TrimeshMorphInputs {
     std::array<const SignalPayload*, 3> absoluteMorph {};
+    std::array<float, 3> absoluteOverrides {};
+    std::array<bool, 3> hasAbsoluteOverride {};
     const SignalPayload* scratch {};
+    float scratchOverride {};
+    bool hasScratchOverride {};
 };
 
 class TrimeshMorphResolver {
 public:
-    void reset(const MorphPosition& fallback) {
+    void reset(
+            const MorphPosition& fallback,
+            bool snapDepthToFirstInputs = false) {
         smoothedMorph.reset(fallback);
+        snapDepthOnNextResolve = snapDepthToFirstInputs;
         initialized = true;
     }
 
@@ -37,20 +44,33 @@ public:
             reset(fallback);
         }
 
-        smoothedMorph.setTargets({
-                absoluteValue(inputs.absoluteMorph[0], sampleOffset,
-                        fallback.time.getCurrentValue()),
-                absoluteValue(inputs.absoluteMorph[1], sampleOffset,
+        const float time = absoluteValue(
+                inputs,
+                0,
+                sampleOffset,
+                fallback.time.getCurrentValue());
+        const MorphPosition targets {
+                time,
+                absoluteValue(inputs, 1, sampleOffset,
                         fallback.red.getCurrentValue()),
-                absoluteValue(inputs.absoluteMorph[2], sampleOffset,
+                absoluteValue(inputs, 2, sampleOffset,
                         fallback.blue.getCurrentValue())
-        });
+        };
+        if (snapDepthOnNextResolve) {
+            smoothedMorph.reset({
+                    smoothedMorph.current().time.getCurrentValue(),
+                    targets.red.getCurrentValue(),
+                    targets.blue.getCurrentValue()
+            });
+            snapDepthOnNextResolve = false;
+        }
+        smoothedMorph.setTargets(targets);
         smoothedMorph.advance(elapsedSamples, sampleRate);
 
-        const MorphPosition morph = smoothedMorph.current();
+        const MorphPosition morph = smoothedMorph.current().withTime(time);
         const auto scratchDomain = domainFor(outputDomain);
         if (!scratchEnabled
-                || inputs.scratch == nullptr
+                || (!inputs.hasScratchOverride && inputs.scratch == nullptr)
                 || !Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis)) {
             return morph;
@@ -59,10 +79,12 @@ public:
                 morph,
                 scratchDomain,
                 primaryAxis,
-                absoluteValue(
-                        inputs.scratch,
-                        sampleOffset,
-                        morph.time.getCurrentValue()));
+                inputs.hasScratchOverride
+                        ? jlimit(0.f, 1.f, inputs.scratchOverride)
+                        : absoluteValue(
+                                inputs.scratch,
+                                sampleOffset,
+                                morph.time.getCurrentValue()));
     }
 
     const MorphPosition& current() const { return smoothedMorph.current(); }
@@ -91,8 +113,20 @@ public:
         return jlimit(0.f, 1.f, input->block.samples[index]);
     }
 
+    static float absoluteValue(
+            const TrimeshMorphInputs& inputs,
+            size_t axis,
+            size_t sampleOffset,
+            float fallback) {
+        if (inputs.hasAbsoluteOverride[axis]) {
+            return jlimit(0.f, 1.f, inputs.absoluteOverrides[axis]);
+        }
+        return absoluteValue(inputs.absoluteMorph[axis], sampleOffset, fallback);
+    }
+
 private:
     bool initialized {};
+    bool snapDepthOnNextResolve {};
     SmoothedMorphPosition smoothedMorph;
 };
 

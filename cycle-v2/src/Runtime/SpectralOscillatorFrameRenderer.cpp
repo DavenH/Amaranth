@@ -4,6 +4,7 @@
 
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
 #include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Curve/Curve.h>
 #include <Util/Arithmetic.h>
 #include <Util/LogRegionMapping.h>
@@ -31,6 +32,32 @@ bool supportedRole(AudioModuleRole role) {
 bool sourceRole(AudioModuleRole role) {
     return role == AudioModuleRole::MeshSource
             || role == AudioModuleRole::WaveSource;
+}
+
+void captureStage(
+        const PreparedOscillatorProcessContext* context,
+        CycleDsp::SpectralStage stage,
+        size_t frameIndex,
+        uint64_t voiceSampleFrontier,
+        int midiNote,
+        int channel,
+        Buffer<float> primary,
+        Buffer<float> secondary = {}) {
+    if (context == nullptr
+            || context->voice == nullptr
+            || context->voice->spectralStageCapture == nullptr) {
+        return;
+    }
+
+    context->voice->spectralStageCapture->capture({
+            stage,
+            frameIndex,
+            voiceSampleFrontier,
+            midiNote,
+            channel,
+            primary,
+            secondary
+    });
 }
 
 const GraphStepInput* inputForPort(
@@ -125,12 +152,17 @@ bool SpectralOscillatorFrameRenderer::supports(
 bool SpectralOscillatorFrameRenderer::prepare(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region,
-        int maximumFrameSizeToUse) {
+        int maximumFrameSizeToUse,
+        const std::vector<NodeAudioProcessor*>& processors,
+        int laneCount) {
     if (!supports(plan, region) || !isPowerOfTwo(maximumFrameSizeToUse)) {
         return false;
     }
 
     maximumFrameSize = maximumFrameSizeToUse;
+    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+        return false;
+    }
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
@@ -192,8 +224,8 @@ bool SpectralOscillatorFrameRenderer::prepare(
                         || operation.configuration->mesh == nullptr) {
                     return false;
                 }
-                operation.morphBinding.bind(step);
-                operation.morphResolver.reset(operation.configuration->morph);
+                operation.morphBinding.bind(plan, step);
+                operation.morphResolver.reset(operation.configuration->morph, true);
                 if (operation.outputDomain == PortDomain::TimeSignal) {
                     operation.type = OperationType::TimeTrimesh;
                     operation.timeState = std::make_unique<
@@ -276,6 +308,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
 void SpectralOscillatorFrameRenderer::reset() {
     renderCount = 0;
     lifecycleSeedReady = false;
+    cycleEnvelopes.reset();
     for (auto& operation : operations) {
         if (operation.timeState != nullptr) {
             operation.timeState->reset();
@@ -284,9 +317,14 @@ void SpectralOscillatorFrameRenderer::reset() {
             operation.timeRasterizer->orphanOldVerts();
         }
         if (operation.configuration != nullptr) {
-            operation.morphResolver.reset(operation.configuration->morph);
+            operation.morphResolver.reset(operation.configuration->morph, true);
         }
     }
+}
+
+void SpectralOscillatorFrameRenderer::applyLifecycleEvent(
+        const NoteLifecycleEvent& event) {
+    cycleEnvelopes.applyLifecycleEvent(event);
 }
 
 bool SpectralOscillatorFrameRenderer::renderFrame(
@@ -300,6 +338,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             nullptr,
             0,
             0,
+            0,
             left,
             right);
 }
@@ -309,6 +348,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
         int midiNote,
         const PreparedOscillatorProcessContext& context,
         size_t blockSampleOffset,
+        double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -317,6 +357,7 @@ bool SpectralOscillatorFrameRenderer::renderFrame(
             midiNote,
             &context,
             blockSampleOffset,
+            voiceSamplePosition,
             elapsedSamples,
             left,
             right);
@@ -327,6 +368,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         int midiNote,
         const PreparedOscillatorProcessContext* context,
         size_t blockSampleOffset,
+        double voiceSamplePosition,
         size_t elapsedSamples,
         Buffer<float> left,
         Buffer<float> right) {
@@ -341,6 +383,12 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     }
 
     prepareFrameRandom(context);
+    if (context != nullptr && context->voice != nullptr) {
+        cycleEnvelopes.advanceAll(
+                (int) elapsedSamples,
+                context->voice->controls.normalizedVoiceTimeIncrement);
+    }
+    const uint64_t voiceSampleFrontier = (uint64_t) voiceSamplePosition;
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
         auto leftOutput = slot(operation.outputs[0], 0, count);
@@ -348,7 +396,11 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
         MorphPosition morph;
         if (operation.configuration != nullptr) {
             const TrimeshMorphInputs inputs = context != nullptr
-                    ? operation.morphBinding.inputsFor(*context)
+                    ? operation.morphBinding.inputsFor(
+                            *context,
+                            blockSampleOffset,
+                            voiceSamplePosition,
+                            &cycleEnvelopes)
                     : TrimeshMorphInputs {};
             morph = operation.morphResolver.resolve(
                     inputs,
@@ -377,6 +429,24 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                         GuideCurveProvider::tableSize)
                         },
                         leftOutput);
+                {
+                    std::array<float, 3> morphValues {
+                            morph.time.getCurrentValue(),
+                            morph.red.getCurrentValue(),
+                            morph.blue.getCurrentValue()
+                    };
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::TimeRaster,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput,
+                                { morphValues.data(), (int) morphValues.size() });
+                    }
+                }
                 leftOutput.mul(operation.configuration->gain);
                 leftOutput.copyTo(rightOutput);
                 break;
@@ -400,6 +470,30 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
+                if (operation.outputDomain
+                        == PortDomain::SpectralMagnitudeSignal) {
+                    const int activeBinCount = jmin(
+                            count - 1,
+                            LogRegionMapping(
+                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                    .regionSize());
+                    std::array<float, 3> morphValues {
+                            morph.time.getCurrentValue(),
+                            morph.red.getCurrentValue(),
+                            morph.blue.getCurrentValue()
+                    };
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::MagnitudeRaster,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput.section(1, activeBinCount),
+                                { morphValues.data(), (int) morphValues.size() });
+                    }
+                }
                 leftOutput.mul(operation.configuration->gain);
                 if (operation.configuration->appliesSpectralRange
                         && operation.outputDomain == PortDomain::SpectralMagnitudeSignal) {
@@ -412,6 +506,24 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         && operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
+                }
+                if (operation.outputDomain
+                        == PortDomain::SpectralMagnitudeSignal) {
+                    const int activeBinCount = jmin(
+                            count - 1,
+                            LogRegionMapping(
+                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                    .regionSize());
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::MagnitudeOperand,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput.section(1, activeBinCount));
+                    }
                 }
                 leftOutput.copyTo(rightOutput);
                 break;
@@ -430,11 +542,34 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
             case OperationType::Fft: {
                 const int binCount = RealFftFullPolarSpectrum::binCountForBufferSize(
                         frameSize);
+                const int activeBinCount = jmin(
+                        binCount - 1,
+                        LogRegionMapping(
+                                midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                .regionSize());
                 for (int channel = 0; channel < 2; ++channel) {
+                    auto timeFrame = slot(operation.leftInput, channel, frameSize);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::TimeFrame,
+                            renderCount,
+                            voiceSampleFrontier,
+                            midiNote,
+                            channel,
+                            timeFrame);
                     auto magnitude = slot(operation.outputs[0], channel, binCount);
                     auto phase = slot(operation.outputs[1], channel, binCount);
-                    transform->forward(slot(operation.leftInput, channel, frameSize));
+                    transform->forward(timeFrame);
                     transform->copyFullPolarSpectrumTo(magnitude, phase);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::ForwardFft,
+                            renderCount,
+                            voiceSampleFrontier,
+                            midiNote,
+                            channel,
+                            magnitude.section(1, activeBinCount),
+                            phase.section(1, activeBinCount));
                 }
                 break;
             }
@@ -449,6 +584,15 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     auto phase = phaseScratch.withSize(binCount);
                     slot(operation.leftInput, channel, binCount).copyTo(magnitude);
                     slot(operation.rightInput, channel, binCount).copyTo(phase);
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::PostLayerSpectrum,
+                            renderCount,
+                            voiceSampleFrontier,
+                            midiNote,
+                            channel,
+                            magnitude.section(1, activeBinCount),
+                            phase.section(1, activeBinCount));
                     if (hasSpectralMesh) {
                         CycleDsp::SpectralLayerCore::clearBinsAbove(
                                 magnitude,
@@ -459,6 +603,14 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                             magnitude,
                             phase);
                     transform->inverse(slot(operation.outputs[0], channel, frameSize));
+                    captureStage(
+                            context,
+                            CycleDsp::SpectralStage::ReconstructedFrame,
+                            renderCount,
+                            voiceSampleFrontier,
+                            midiNote,
+                            channel,
+                            slot(operation.outputs[0], channel, frameSize));
                 }
                 break;
             }

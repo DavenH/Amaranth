@@ -9,12 +9,13 @@
 #include "Runtime/NodeDspConfiguration.h"
 #include "Runtime/SmoothedMorphPosition.h"
 #include "Nodes/Envelope/EnvelopeConfiguration.h"
+#include "Nodes/Envelope/CycleEnvelopePlaybackSource.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopePreparationExchange.h"
 
 namespace CycleV2 {
 
-class EnvelopeSignalProcessor {
+class EnvelopeSignalProcessor : public CycleEnvelopePlaybackSource {
 public:
     struct MorphPreparationDiagnostics {
         uint64_t requests {};
@@ -36,6 +37,9 @@ public:
     void process(AudioProcessContext& context);
     MorphPreparationDiagnostics preparationDiagnostics() const;
     bool isActive() const { return active; }
+    const EnvelopeConfiguration* cycleEnvelopeConfiguration() const override {
+        return preparedConfiguration();
+    }
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
     }
@@ -50,7 +54,7 @@ private:
             float red,
             float blue);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
-    void renderSegment(Buffer<float> output, size_t start, size_t count, const AudioProcessTiming& timing);
+    void renderSegment(Buffer<float> output, size_t start, size_t count, double normalizedTimeIncrement);
     void applyAdoptionTransition(Buffer<float> rendered);
     void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 

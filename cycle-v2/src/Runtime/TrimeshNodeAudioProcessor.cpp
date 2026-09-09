@@ -167,6 +167,8 @@ public:
                         inputAt(context, 3),
                         inputAt(context, 4)
                 },
+                {},
+                {},
                 scratch
         };
         const MorphPosition renderMorph = morphResolver.resolve(

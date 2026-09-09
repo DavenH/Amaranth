@@ -8,7 +8,16 @@
 #include "Graph/GraphCompiler.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
 
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
+
 namespace CycleV2 {
+
+enum class OfflineGraphAudioRatePolicy {
+    Native,
+    LegacyInternal44100
+};
 
 struct OfflineGraphAudioEvent {
     size_t sampleOffset {};
@@ -21,8 +30,12 @@ struct OfflineGraphAudioRequest {
     int blockSize { 512 };
     int channelCount { 2 };
     float voiceDurationSeconds { 7.f };
+    float outputGain { 0.125f };
+    int controlNoteOffset {};
+    OfflineGraphAudioRatePolicy ratePolicy { OfflineGraphAudioRatePolicy::Native };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 };
 
 struct OfflineGraphAudioResult {

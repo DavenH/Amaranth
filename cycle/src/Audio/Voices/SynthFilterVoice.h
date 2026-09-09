@@ -11,6 +11,10 @@
 class Mesh;
 class SynthesizerVoice;
 
+namespace CycleDsp {
+enum class SpectralStage;
+}
+
 class SynthFilterVoice :
 	public CycleBasedVoice
 {
@@ -30,6 +34,17 @@ public:
 	void updateValue(int outputId, int dim, float value) override;
 
 private:
+	void capturePitchClockedCycle(
+			int laneIndex,
+			int channel,
+			uint64_t frontier,
+			Buffer<float> samples) override;
+	void captureSpectralStage(
+			CycleDsp::SpectralStage stage,
+			int channel,
+			Buffer<float> primary,
+			Buffer<float> secondary = {});
+
 	::Rasterization::TrilinearMeshRasterizer freqRasterizer;
 	::Rasterization::TrilinearMeshRasterizer phaseRasterizer;
 
@@ -45,6 +60,7 @@ private:
 
 	Ref<MeshLibrary::LayerGroup> freqLayers;
 	Ref<MeshLibrary::LayerGroup> phaseLayers;
+	size_t spectralCaptureFrameIndex {};
 
 	friend class SynthesizerVoice;
 };

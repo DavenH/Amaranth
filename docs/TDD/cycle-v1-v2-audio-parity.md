@@ -10,6 +10,11 @@ harness now captures the unquantized channel-major float output, checks repeat
 determinism, and reports exact sample equality separately from diagnostic
 gain/latency fitting. Cycle 1 also has an end-to-end UI-keyboard-to-device
 fixture that requires callback progress plus finite nonzero output.
+Prepared Cycle V2 spectral frames now consume live controls and rerasterize at
+synthesis-cycle frontiers. Raw, allocation-free capture now observes equivalent
+mature spectral-frame boundaries in both engines, and the paired runner reports
+the first unequal stage without using preview products. Filter Saw localizes
+the first material evolving mismatch to magnitude-layer processing.
 
 ## Goal
 
@@ -83,6 +88,25 @@ successive blocks. The graph is prepared once, events are queued once with
 sample-derived timestamps, and the last partial block is copied without
 changing the requested duration. The result is stereo WAV data plus metrics and
 the render parameters used.
+
+### Output-rate parity boundary
+
+Cycle 1's `SynthAudioSource::processBlock()` is authoritative for compatibility
+renders above 44.1 kHz: it maps each device block and its MIDI offsets onto a
+44.1 kHz synthesis clock, renders the existing voice/effect pipeline there,
+then applies the existing stateful `HermiteState` converter per channel. The
+block clock is now a shared `CycleDsp::InternalRateBlockAdapter`; Cycle 1 reuses
+its MIDI facade unchanged, while Cycle V2's offline adapter translates its
+timestamped event type at that boundary. The Hermite DSP remains the shared
+library implementation.
+
+This compatibility policy is explicit and limited to differential offline
+captures. Cycle V2's production renderer continues to synthesize natively at
+the device rate. The adapter may translate block sizes, event offsets, buffer
+ownership, and converter lifecycle; it must not contain oscillator, envelope,
+effect, or graph behavior. Its stable end state is a shared block clock and
+resampler with the two renderers retaining only their event-type and ownership
+translation.
 
 ## Differential Analysis
 
@@ -174,6 +198,14 @@ Cycle V2 graph probes expose authored graph boundaries. Cycle 1 needs a narrow
 diagnostic export at equivalent mature boundaries before a stage can claim
 sample parity. Preview products are not substitutes for audio products.
 
+`CycleDsp::SpectralStageCaptureRecorder` is the shared observational boundary.
+It preallocates storage before rendering, captures one explicitly selected
+synthesis frame, and writes raw float payloads plus SHA-256 metadata only after
+the render completes. Both engines feed the same recorder at the time frame,
+forward FFT, post-layer spectrum, and reconstructed fixed-frame boundaries.
+The recorder does not transform, normalize, resample, or otherwise participate
+in synthesis.
+
 ### Magnitude sampling boundary
 
 Cycle 1's authoritative path samples spectral meshes with
@@ -190,11 +222,10 @@ until MIDI-note domains become explicit types; at that point the integer bias
 and this documentation should be replaced by the typed boundary.
 
 This correction improves Filter Saw at every tested note but does not complete
-parity. `SpectralOscillatorRegionRuntime` renders its shared spectral frame once
-after reset, while Cycle 1 recalculates evolving time and spectral meshes per
-cycle. Carrying live modulation into frame rerasterization is the next required
-architectural slice; treating preview traversal as realtime audio would violate
-the product boundary.
+parity. Prepared Cycle V2 frames now consume live modulation and rerasterize at
+the shared synthesis-cycle cadence. Raw stage capture shows its time frame and
+forward FFT remain closely matched while the magnitude-layer output separates
+as the scratch envelope evolves.
 
 ## Negative Boundaries
 
@@ -275,8 +306,107 @@ the product boundary.
     for `LogRegionMapping`, sampling is bounded by its harmonic region, and IFFT
     scratch spectra are cleared with shared `SpectralLayerCore` behavior.
 16. Make prepared spectral frames consume live voice-time/key/velocity
-    modulation and rerasterize at the Cycle 1 cycle cadence. Open; Filter Saw is
-    the deterministic integration guard.
+    modulation and rerasterize at the Cycle 1 cycle cadence. Complete; Filter
+    Saw, PWM, Dunk 2, and Japan Drum evolve deterministically and are invariant
+    to 64, 127, 256, and 512-sample host partitions.
+17. Capture one selected spectral synthesis frame at equivalent mature Cycle 1
+    and Cycle V2 boundaries, write raw payloads with hashes after rendering,
+    and report the first unequal stage in the paired runner. Complete. The
+    shared recorder captures semantic stereo frames and the note-active,
+    non-DC harmonic region without allocating on the realtime path. The runner
+    validates payload hashes and reports exact mismatches, correlation, raw
+    residual, and gain-matched residual for each stage.
+18. Localize the Filter Saw post-layer mismatch below the aggregate magnitude
+    operation. Complete. The shared recorder now captures the raw magnitude
+    operand and effective morph. Cycle V2 preserves Cycle 1's nonwrapping
+    spectral margin, compiles oscillator-owned default morph inputs, snaps
+    note-start depth controls, derives Voice Time from the absolute sample
+    frontier, and advances scratch envelopes with the authored normalized voice
+    duration. Filter Saw MIDI 48 now reaches `0.99937` output correlation, and
+    its frame-32 raw magnitude operand reaches `0.99901` correlation.
+19. Separate the remaining raw magnitude-raster difference from magnitude
+    shaping, then capture the pitch-clocked cyclic reconstruction boundary.
+    Complete. The shaped-operand capture proves the transfer function agrees,
+    and the pitch-cycle capture locates the full-cycle offset in Cycle V2's use
+    of the post-advance interpolation position. Using the authoritative Cycle 1
+    cycle-start position produces effectively perfect same-rate output
+    correlation without weakening host-block partition invariance.
+20. Localize the `+18.66 dB` post-oscillator gain difference, then reconcile the
+    44.1-to-48 kHz output-rate policy at an explicit conversion boundary.
+    Complete: both automation renderers now accept the same explicit output
+    gain, leaving their production defaults unchanged. A unity-gain Filter Saw
+    render uses the extracted Cycle 1 block clock and shared Hermite converter.
+    Removing Cycle V2's non-authoritative extra oscillator FIFO pad aligns both
+    44.1 and 48 kHz at zero lag, effectively `1.00000` correlation, and
+    `0.00049` residual. Neither discrepancy is normalized in the analyzer.
+21. Localize the remaining same-clock numerical residual, beginning with the
+    already-observed raw time-frame difference. Preserve zero-lag unity-gain
+    comparison and do not replace the mature mesh rasterizer with a test
+    approximation. Complete: shortest-round-trip mesh serialization and a
+    regenerated Filter Saw graph remove port precision loss without expanding
+    the JSON structure. The time-raster capture proves the remaining frame-32
+    difference is the scratch clock, not rasterization: Cycle 1 uses
+    `0.7148094`, while Cycle V2's blockwise signal supplies `0.7242211`.
+22. Introduce a shared cycle-clocked envelope playback boundary for prepared
+    oscillator regions. Complete: the authoritative implementation is
+    `CycleBasedVoice::updateEnvelopes()` using the shared
+    `EnvelopePlaybackEngine` in one-sample-per-cycle mode. Reuse its sampling,
+    advancement, loop/release, and guide-seed behavior unchanged. The boundary
+    must translate a compiled envelope attachment plus voice lifecycle and
+    elapsed cycle samples into one scalar shared by every consuming mesh
+    operation. Once present, prepared envelope attachments must stop deriving
+    scratch time from a blockwise `SignalPayload`; arbitrary non-envelope
+    scratch signals may retain that graph-level path. Do not add per-operation
+    history or a delayed-buffer approximation. `PreparedCycleEnvelopeBank`
+    owns one cursor per compiled envelope attachment, shares it across every
+    consuming mesh operation, and follows live prepared-envelope adoption. Both
+    chained lanes and shared spectral frames advance the mature engine before
+    rasterization. Spectral frames also restore Cycle 1's high-quality
+    `round(16 / period)` stride. Filter Saw frame 32 now has byte-identical
+    time-raster samples and morph coordinates in both engines.
+23. Localize the newly exposed one-cycle output scheduling offset. Complete:
+    once scratch is correctly aligned, Filter Saw's captured synthesis stages
+    agree through the time frame and differ first by five magnitude bins at
+    `8.8e-8` normalized residual, but the analyzed Cycle V2 output is delayed by
+    one 337-sample internal cycle (367 samples at 48 kHz). The prior early
+    scratch signal accidentally masked this delay. Cycle V2 now prepares the
+    next shared spectral frame before emitting cycles from the preceding control
+    interval, matching Cycle 1's current/future frame ownership. At MIDI 48 the
+    output now aligns at zero lag with `0.9999999984` correlation and a `5.6e-5`
+    normalized residual. The captured pitch-clocked cycle also has the same
+    10,450-sample frontier and 337-sample length in both engines. MIDI 48, 60,
+    and 72 all align at zero lag with correlations of at least `0.9999999919`;
+    their normalized residuals range from `5.6e-5` to `1.27e-4`.
+24. Localize the remaining deterministic numeric differences. Complete: Filter
+    Saw first differs in five magnitude-raster bins (`8.8e-8` normalized
+    residual), which expands through reconstruction and Hermite resampling to a
+    `5.6e-5` output residual. The spectral waveform coordinates and slopes are
+    byte-identical; the first mismatch is five one-ULP differences in the
+    logarithmic harmonic positions. Cycle 1 precomputes every MIDI region into
+    one contiguous bank, while Cycle V2 regenerated one independently aligned
+    vector. Accelerate's vector logarithm produced slightly different results
+    at those buffer offsets. `LogRegions` now exposes its default precomputed
+    bank to Cycle V2, while Cycle V2 delegates interpolation to the same bulk
+    `sampleAtIntervals` path. The spectral raster, shaped operand, and
+    post-layer spectrum are byte-identical at Filter Saw MIDI 48/frame 32.
+    Artifact:
+    `/tmp/cycle-filter-saw-shared-log-regions/comparison.json`.
+25. Localize the reconstructed-frame residual. Pending: with all inputs through
+    the post-layer spectrum byte-identical, inverse FFT is now the first unequal
+    captured stage (`3.4e-6` normalized residual), followed by Hermite cycle
+    resampling and a `5.6e-5` output residual.
+
+Future work: replace the inherited quality-selected control interval with an explicit
+control-rate contract that may request sub-cycle synthesis updates. That is a
+quality/architecture change, not part of Cycle 1 parity, and must retain the
+cycle-clocked envelope boundary rather than returning to blockwise sampling.
+
+Separate output-control gap: Cycle V2 currently applies fixed `0.125` headroom
+after voice summation, and its Output node has meters but no authored master-gain
+parameter. This cannot affect oscillator-stage parity and is not the source of
+the magnitude-raster difference. Adding a Cycle 1-mapped vertical master fader
+belongs in an Output-node control slice, with the fixed safety headroom kept as
+a distinct implementation concern.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

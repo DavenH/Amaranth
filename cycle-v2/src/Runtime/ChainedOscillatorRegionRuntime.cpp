@@ -46,7 +46,6 @@ void ChainedOscillatorRegionRuntime::reset() {
         lane.clock = {};
         for (auto& buffer : lane.buffers) {
             buffer.reset();
-            buffer.write(0.f);
         }
     }
 }

@@ -723,15 +723,190 @@ reports correlations of `0.94219`, `0.91977`, `0.88743`, and `0.84886` at MIDI
 - `/private/tmp/cycle-japan-drum-live-modulation-final/comparison.json`
 - `/private/tmp/cycle-v2-time-evolution-final-rerun/summary.json`
 
-Current status: open, narrowed. Missing live spectral-frame modulation is
-resolved. The first captured unequal mature boundary is the effect-free final
-voice output (boundary 6); shared fixed-frame rasterization and FFT reference
-tests remain exact. The next diagnostic must add equivalent Cycle 1 captures
-for the rasterized frame, FFT, post-layer spectrum, reconstructed frame, and
-pitch-clocked cyclic output (boundaries 1–5), then address the first unequal
-stage. Canonical input reconciliation, deterministic seed control, startup
-state, gain/resampling policy, and remaining Voice Context fields must still be
-separated before enabling `exactSamplesRequired`.
+The shared spectral-stage recorder now resolves boundaries 1–4 directly. For
+Filter Saw at MIDI 48, frame 0 is already non-exact but very close: the time
+frame has `0.00022` normalized residual, post-layer magnitude has `0.00223`,
+and the reconstructed frame has `0.00803`. The material evolving mismatch
+appeared at the magnitude-layer boundary. At selected frame 32, the forward
+FFT still had only `0.00077` gain-matched residual and `0.9999997` correlation,
+while the post-layer spectrum had `0.51` gain-matched residual and `0.86`
+correlation; the IFFT added no meaningful additional error.
+
+The investigation also found two narrower legacy-contract discrepancies:
+
+- Cycle 1 rasterizes nonwrapping magnitude and phase meshes over
+  `[-0.05, 1.05]`; Cycle V2 used `[0, 1]`.
+- Cycle 1 derives unscripted voice time from the absolute synthesis-cycle
+  frontier and applies yellow directly. Cycle V2 restarted a float voice-time
+  ramp per host block and smoothed yellow with red and blue.
+- Cycle V2's envelope processor advanced every authored envelope with
+  `1 / sampleRate`, ignoring the voice-duration-derived normalized time
+  increment already carried by `AudioVoiceContext`. Filter Saw therefore played
+  its scratch envelope over one second instead of its authored `0.47689545`
+  seconds.
+
+The spectral margin has an exact adapter guard. Prepared spectral renderers now
+derive Voice Time from the absolute voice sample frontier, apply yellow
+directly, and retain byte-identical output across host block partitions. The
+graph compiler also supplies default yellow/red/blue modulation to oscillator
+region members; it previously inferred only downstream nodes. Depth controls
+snap to their routed note-start values as in Cycle 1. The envelope processor
+now passes the same normalized voice-time increment to the shared playback
+engine, with a focused duration regression. Prepared frame calls carry their
+absolute synthesis frontier explicitly, including when Unison renders ahead of
+the current host block. Realtime execution skips region-internal fallback
+processors and materializes each prepared region once, preserving the existing
+zero-allocation contract when live morph inputs are present.
+
+These corrections move Filter Saw at MIDI 48 from `0.91977` to `0.99937`
+correlation and reduce gain-matched residual from approximately `0.39` to
+`0.0356`. At frame 32 the raw magnitude raster now has `0.99901` correlation
+and `0.04448` gain-matched residual; its effective time coordinate is `0.71481`
+in Cycle 1 and `0.72422` in Cycle V2. The post-layer spectrum has `0.99755`
+correlation and `0.06989` gain-matched residual. The remaining difference is
+small and begins before reconstruction, not in IFFT.
+
+The shaped-operand boundary confirms that both engines use the same mature
+nonlinear magnitude transfer. At frame 0 its gain-matched residual is only
+`0.00068`. At equal frame index 32, the raw coordinate difference is amplified
+by shaping to `0.14866` residual before compositing. However, Cycle 1 frame 32
+matches Cycle V2 frame 31 almost exactly: scratch is `0.7148094` versus
+`0.7148041`, the raw raster residual is `0.0000101`, the shaped operand residual
+is `0.0000111`, and the reconstructed-frame residual is `0.0001167`. The final
+audio analyzer independently chooses a `-370`-sample lag, approximately one
+synthesis cycle. The remaining material discrepancy is therefore a
+pitch-clocked frame-latency convention, not a different magnitude-shaping
+algorithm.
+
+The pitch-clocked capture then identified the exact convention. Cycle 1 uses
+the cycle-start interpolation position when compositing its previous and
+current fixed frames; Cycle V2 used the post-advance cycle end. At 44.1 kHz,
+Cycle 1 pitch-cycle frame 32 therefore matched pre-fix Cycle V2 frame 30 with
+`0.999878` correlation, and their frontiers differed by one 337-sample cycle.
+Cycle V2 now evaluates the shared `CyclicFrameLaneRenderer` at cycle start, as
+the authoritative Cycle 1 caller does. The same-rate final render now aligns
+within one sample at effectively `1.00000` correlation and `0.00049`
+gain-matched residual. This resolves the evolving synthesis discrepancy.
+
+At the normal 48 kHz device rate, correlation is `0.99888` with `0.0474`
+gain-matched residual because Cycle 1 still synthesizes internally at 44.1 kHz
+and crosses its Hermite output-rate converter, while Cycle V2 synthesizes
+directly at the device rate. The former `+18.66 dB` difference was the ratio of
+Cycle 1's persisted `1.0711173` master gain to Cycle V2's production `0.125`
+output headroom. Both offline automation renderers now accept an explicit
+output-gain policy, and the parity runner requests unity from both rather than
+normalizing after capture. This removes the gain difference while preserving
+production defaults. Cycle V2's explicit compatibility policy now reuses the
+extracted Cycle 1 block clock and the existing shared Hermite converter while
+leaving production rendering at the native device rate.
+
+The first converted render reduced the 48 kHz residual from `0.0474` to
+`0.0158`, revealing a fractional delay rather than a converter mismatch. Cycle
+V2 reset each oscillator FIFO with an extra zero, while Cycle 1's active
+Hermite oscillator path resets the FIFO and immediately writes its first
+cycle. Removing that non-authoritative pad makes both 44.1 and 48 kHz Filter
+Saw renders align at zero lag with effectively `1.00000` correlation and
+`0.00049` residual. The remaining non-exact samples already exist at the raw
+time-frame boundary and are now the next localization target.
+
+A separate converter audit also found that legacy modulation input 2 means
+`1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
+remaining Voice Context key coordinate is `0.3738318` in Cycle 1 because its
+legacy range is MIDI 20–127, versus `0.3779528` in Cycle V2's current 0–127
+default. Filter Saw is invariant in red and blue, so those coordinate
+differences do not explain this fixture's residual audio.
+
+New artifacts:
+
+- `/tmp/cycle-filter-saw-stages/comparison.json`
+- `/tmp/cycle-filter-saw-frame-1/comparison.json`
+- `/tmp/cycle-filter-saw-frame-8/comparison.json`
+- `/tmp/cycle-filter-saw-frame-32/comparison.json`
+- `/tmp/cycle-filter-saw-envelope-duration/comparison.json`
+- `/tmp/cycle-filter-saw-absolute-frontier/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-operand/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-frame0/comparison.json`
+- `/tmp/cycle-filter-saw-shaped-frame31/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle-44100/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle31-44100/comparison.json`
+- `/tmp/cycle-filter-saw-pitch-cycle30-44100/comparison.json`
+- `/tmp/cycle-filter-saw-cycle-start-44100/comparison.json`
+- `/tmp/cycle-filter-saw-unity-gain-44100/comparison.json`
+- `/tmp/cycle-filter-saw-unity-gain-48000/comparison.json`
+- `/tmp/cycle-filter-saw-cycle-start-48000/comparison.json`
+- `/tmp/cycle-filter-saw-legacy-rate-48000/comparison.json`
+- `/tmp/cycle-filter-saw-no-extra-pad-44100/comparison.json`
+- `/tmp/cycle-filter-saw-no-extra-pad-48000/comparison.json`
+
+Current status: open for the remaining same-clock numerical residual; evolving
+synthesis, gain, integer latency, and output-rate policy are resolved. Stage
+capture is implemented for the rasterized time frame, FFT, raw magnitude
+operand plus effective morph, post-layer spectrum, reconstructed frame, and
+pitch-clocked cycle. The first byte difference is in the time frame at very low
+residual, so that boundary is the next investigation. Canonical input
+reconciliation, deterministic seed control, startup state, and remaining Voice
+Context fields must still be separated before enabling `exactSamplesRequired`.
+
+The same-clock residual is now localized below the time frame. A new
+`time-raster` capture records both the raw mesh output and its effective morph.
+At Filter Saw MIDI 48/frame 32, Cycle 1 and Cycle V2 use identical blue and the
+same legacy-range red after separating the audible oscillator note from the
+translated control note. Yellow remains `0.7148094` versus `0.7242211`.
+Regenerating the time, magnitude, and scratch meshes with shortest-round-trip
+vertex values reduces serialization drift without multiline JSON churn, but
+does not remove this timing difference. The exact-model 48 kHz render reaches
+`0.99999991` correlation with `0.000424` gain-matched residual.
+
+Source comparison identifies the missing contract. Cycle 1 configures scratch
+and pitch rasterizers for low-resolution curves and advances the shared
+`EnvelopePlaybackEngine` once per synthesis frame in one-sample-per-cycle mode;
+it samples the current decoupled value before advancing. Cycle V2 now restores
+the purpose-specific low-resolution preparation, but prepared meshes still
+sample the ordinary per-sample envelope block at the frame frontier. A trial
+one-frame history made the selected raw frame nearly exact but broke the live
+frame and host-partition contracts, so it was removed. The open fix is the
+cycle-clocked envelope playback boundary specified in parity TDD slice 22, not
+a buffer-history approximation.
+
+New artifacts:
+
+- `/tmp/cycle-filter-saw-split-note-48000/comparison.json`
+- `/tmp/cycle-filter-saw-exact-models-frame32/comparison.json`
+
+Current status: open at the cycle-clocked scratch-envelope boundary.
+
+Update: the cycle-clocked boundary is implemented. Prepared oscillator regions
+now share a dedicated one-sample-per-cycle `EnvelopePlaybackEngine` cursor for
+each compiled envelope attachment, including lifecycle and live prepared-morph
+adoption. Spectral frame refresh follows Cycle 1's high-quality
+`round(16 / cyclePeriod)` stride. At Filter Saw MIDI 48/frame 32, both the raw
+time raster and all three morph coordinates are byte-identical between engines.
+The first stage difference is now five magnitude bins with an `8.8e-8`
+normalized residual.
+
+Correct scratch timing exposed a distinct downstream scheduling issue: Cycle
+V2 emitted each cycle from the frame at the same frontier, while Cycle 1 first
+prepares the future frame and uses it to synthesize the preceding control
+interval. The old one-cycle-early scratch sampling had masked this mismatch.
+Cycle V2 now follows that current/future ownership. MIDI 48, 60, and 72 all
+align at zero lag with correlations of at least `0.9999999919` and normalized
+residuals from `5.6e-5` to `1.27e-4`; the captured MIDI 48 pitch-clocked cycle
+has the same frontier and length in both engines. Artifact:
+`/tmp/cycle-filter-saw-future-frame-control16/comparison.json`.
+
+Current status: scratch and spectral output scheduling boundaries resolved;
+remaining deterministic numeric residual tracked under parity TDD slice 24.
+
+Update: the magnitude-raster residual came from logarithmic harmonic sampling
+positions, not output gain. Cycle 1 reads a contiguous, precomputed all-note
+`LogRegions` bank. Cycle V2 regenerated a separately aligned position vector;
+Accelerate's vector logarithm differed by one ULP at five positions. Cycle V2
+now reuses the authoritative default bank. Filter Saw MIDI 48/frame 32 is
+byte-identical through magnitude rasterization, range shaping, and post-layer
+spectrum. The inverse FFT is now the first unequal stage.
+
+Current status: magnitude-raster boundary resolved; inverse-FFT residual tracked
+under parity TDD slice 25.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 

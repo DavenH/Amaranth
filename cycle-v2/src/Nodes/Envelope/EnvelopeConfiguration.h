@@ -15,9 +15,10 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     float level { 1.f };
     float redMorph { 0.5f };
     float blueMorph { 0.5f };
+    float neutralValue {};
     bool logarithmic {};
     bool enabled { true };
-    float neutralValue {};
+    bool lowResolution {};
 };
 
 }

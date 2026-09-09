@@ -1,7 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include <Audio/InternalRateBlockAdapter.h>
+#include <Audio/CycleDsp/InternalRateBlockAdapter.h>
+
+using CycleDsp::InternalRateBlockAdapter;
 
 TEST_CASE("Internal-rate MIDI carry is consumed exactly once", "[cycle][audio][midi]") {
     InternalRateBlockAdapter adapter;
@@ -77,4 +79,16 @@ TEST_CASE("Internal-rate blocks preserve envelope time and MIDI positions", "[cy
     REQUIRE(adapter.convertBlock(outputBlockSize, positionedMidi, converted) == 117);
     REQUIRE(converted.getNumEvents() == 1);
     REQUIRE((*converted.begin()).samplePosition == 9);
+}
+
+TEST_CASE("Internal-rate block timing is available without MIDI translation",
+        "[cycle][audio][internal-rate]") {
+    InternalRateBlockAdapter adapter;
+    adapter.prepare(48000.0);
+
+    REQUIRE(adapter.convertSampleOffset(10) == 9);
+    REQUIRE(adapter.convertBlockSize(127) == 117);
+    REQUIRE(adapter.convertBlockSize(127) == 117);
+    REQUIRE(adapter.convertBlockSize(127) == 117);
+    REQUIRE(adapter.convertBlockSize(127) == 116);
 }

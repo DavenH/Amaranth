@@ -10,11 +10,11 @@
 #include <App/Doc/Document.h>
 #include <Audio/AudioHub.h>
 #include <Audio/AudioSourceProcessor.h>
+#include <Audio/CycleDsp/InternalRateBlockAdapter.h>
 #include <Audio/SmoothedParameter.h>
 #include <Array/RingBuffer.h>
 #include "JuceHeader.h"
 
-#include "InternalRateBlockAdapter.h"
 #include "Synthesizer.h"
 
 #include "../Audio/Effects/Reverb.h"
@@ -33,6 +33,10 @@ using std::map;
 
 class WavAudioSource;
 class SynthFilterVoice;
+
+namespace CycleDsp {
+class SpectralStageCaptureSink;
+}
 
 class SynthSound:
         public SynthesiserSound
@@ -70,6 +74,15 @@ public:
     void setEnvelopeMeshes(bool lock);
     void setModValue(double value);
     void setRandomSeedForTesting(int64 seed);
+    void setOutputGainForTesting(float gain) { volumeScale.setValueDirect(gain); }
+    float getOutputGainForTesting() const { return volumeScale.getTargetValue(); }
+    void setSpectralStageCaptureForTesting(
+            CycleDsp::SpectralStageCaptureSink* capture) {
+        spectralStageCapture = capture;
+    }
+    CycleDsp::SpectralStageCaptureSink* getSpectralStageCaptureForTesting() const {
+        return spectralStageCapture;
+    }
     void unisonOrderChanged();
 
     void documentAboutToLoad() override;
@@ -160,7 +173,7 @@ private:
     double 	tempoScale;
 
     map<int, int> 		sizeToIndex;
-    InternalRateBlockAdapter internalRateBlockAdapter;
+    CycleDsp::InternalRateBlockAdapter internalRateBlockAdapter;
     SmoothedParameter 	volumeScale;
     ReadWriteBuffer	 	resampleAccum[2];
     Resampler 			sampleRateConverter[2];
@@ -203,6 +216,7 @@ private:
 
     Array<Effect*> 				postProcessEffects;
     Array<SynthesizerVoice*>	voices;
+    CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
 
     friend class CycleBasedVoice;
     friend class SynthesizerVoice;

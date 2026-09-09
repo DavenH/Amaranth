@@ -88,12 +88,17 @@ bool ChainedOscillatorRecipeRenderer::supports(
 bool ChainedOscillatorRecipeRenderer::prepare(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region,
-        int maximumCycleSamplesToUse) {
+        int maximumCycleSamplesToUse,
+        const std::vector<NodeAudioProcessor*>& processors,
+        int laneCount) {
     if (!supports(plan, region) || maximumCycleSamplesToUse <= 0) {
         return false;
     }
 
     maximumCycleSamples = maximumCycleSamplesToUse;
+    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+        return false;
+    }
     outputOperation = -1;
     operations.clear();
     operations.reserve(region.stepIndices.size());
@@ -115,8 +120,8 @@ bool ChainedOscillatorRecipeRenderer::prepare(
                 return false;
             }
             operation.gain = configuration->enabled ? configuration->gain : 0.f;
-            operation.morphBinding.bind(step);
-            operation.morphResolver.reset(configuration->morph);
+            operation.morphBinding.bind(plan, step);
+            operation.morphResolver.reset(configuration->morph, true);
         } else if (step.audioRole == AudioModuleRole::SpectralLayer) {
             const auto configuration = std::dynamic_pointer_cast<
                     const PanConfiguration>(step.configuration.value);
@@ -161,15 +166,21 @@ bool ChainedOscillatorRecipeRenderer::prepare(
 
 void ChainedOscillatorRecipeRenderer::reset() {
     lifecycleSeedReady = false;
+    cycleEnvelopes.reset();
     for (auto& operation : operations) {
         if (operation.trimesh != nullptr) {
             operation.trimesh->reset();
         }
         if (operation.configuration != nullptr) {
-            operation.morphResolver.reset(operation.configuration->morph);
+            operation.morphResolver.reset(operation.configuration->morph, true);
         }
         operation.lastMorphFrontier = 0;
     }
+}
+
+void ChainedOscillatorRecipeRenderer::applyLifecycleEvent(
+        const NoteLifecycleEvent& event) {
+    cycleEnvelopes.applyLifecycleEvent(event);
 }
 
 void ChainedOscillatorRecipeRenderer::renderCycle(
@@ -187,6 +198,13 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
     }
 
     prepareFrameRandom(request.processContext);
+    if (request.processContext != nullptr
+            && request.processContext->voice != nullptr) {
+        cycleEnvelopes.advanceLane(
+                request.laneIndex,
+                request.sampleCount,
+                request.processContext->voice->controls.normalizedVoiceTimeIncrement);
+    }
     for (int operationIndex = 0; operationIndex < (int) operations.size(); ++operationIndex) {
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
@@ -199,7 +217,12 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         ? (size_t) (frontier - operation.lastMorphFrontier)
                         : 0;
                 morph = operation.morphResolver.resolve(
-                        operation.morphBinding.inputsFor(*request.processContext),
+                        operation.morphBinding.inputsFor(
+                                *request.processContext,
+                                request.blockSampleOffset,
+                                request.cycleStartSample,
+                                &cycleEnvelopes,
+                                request.laneIndex),
                         operation.configuration->morph,
                         PortDomain::TimeSignal,
                         operation.configuration->primaryViewAxis,

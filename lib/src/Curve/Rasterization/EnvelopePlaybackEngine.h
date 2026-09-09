@@ -32,7 +32,7 @@ namespace Rasterization {
 
         void ensureVoiceCount(int audioVoiceCount);
         void noteOn();
-        void noteOff(const PreparedEnvelopePlaybackView& prepared);
+        bool noteOff(const PreparedEnvelopePlaybackView& prepared);
         void resetGraphicVoice();
         void setOneSamplePerCycle(bool enabled);
         void setMode(EnvelopePlaybackMode mode);

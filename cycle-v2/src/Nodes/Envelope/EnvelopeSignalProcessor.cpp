@@ -20,7 +20,8 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         float level,
         bool logarithmic,
         bool enabled,
-        float neutralValue) {
+        float neutralValue,
+        bool lowResolution) {
     auto result = std::make_shared<EnvelopeConfiguration>();
     result->mesh = std::shared_ptr<EnvelopeMesh>(
             new EnvelopeMesh(name + "Mesh"),
@@ -34,6 +35,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->rasterizer = std::make_shared<EnvRasterizer>(nullptr, name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
     result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    result->rasterizer->setLowresCurves(lowResolution);
     result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
     result->rasterizer->validateState();
 
@@ -46,6 +48,7 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->blueMorph = blue;
     result->logarithmic = logarithmic;
     result->enabled = enabled;
+    result->lowResolution = lowResolution;
     result->neutralValue = neutralValue;
     return result;
 }
@@ -81,7 +84,8 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
             parameterMap.floatValue("level", 1.f),
             parameterMap.boolValue("logarithmic", false),
             parameterMap.boolValue("enabled", true),
-            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f));
+            purpose == "volume" ? 1.f : (purpose == "pitch" ? 0.5f : 0.f),
+            purpose == "pitch" || purpose == "scratch");
 }
 
 void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -132,7 +136,8 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::prepareMor
             base.level,
             base.logarithmic,
             base.enabled,
-            base.neutralValue);
+            base.neutralValue,
+            base.lowResolution);
 }
 
 bool EnvelopeSignalProcessor::serviceNonRealtimePreparation() {
@@ -262,6 +267,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         size_t rendered = 0;
 
         const auto& voice = processVoice(context);
+        const double sampleRateIncrement = context.timing.sampleRate > 0.
+                ? 1. / context.timing.sampleRate
+                : 0.;
+        const double normalizedTimeIncrement = voice.controls.normalizedVoiceTimeIncrement > 0.f
+                ? (double) voice.controls.normalizedVoiceTimeIncrement
+                : sampleRateIncrement;
         for (const auto& event : voice.events) {
             if (event.voiceIndex != voice.voiceIndex) {
                 continue;
@@ -272,12 +283,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
                 continue;
             }
 
-            renderSegment(outputBuffer, rendered, eventOffset - rendered, context.timing);
+            renderSegment(outputBuffer, rendered, eventOffset - rendered, normalizedTimeIncrement);
             applyLifecycleEvent(event);
             rendered = eventOffset;
         }
 
-        renderSegment(outputBuffer, rendered, context.frameCount - rendered, context.timing);
+        renderSegment(outputBuffer, rendered, context.frameCount - rendered, normalizedTimeIncrement);
     }
 
     outputBuffer.mul(level);
@@ -352,8 +363,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
             break;
 
         case NoteLifecycleType::NoteOff:
-            playback.noteOff(prepared);
-            if (playback.mode() != Rasterization::EnvelopePlaybackMode::Releasing) {
+            if (!playback.noteOff(prepared)) {
                 active = false;
             }
             break;
@@ -369,8 +379,8 @@ void EnvelopeSignalProcessor::renderSegment(
         Buffer<float> output,
         size_t start,
         size_t count,
-        const AudioProcessTiming& timing) {
-    if (!active || count == 0 || timing.sampleRate <= 0.) {
+        double normalizedTimeIncrement) {
+    if (!active || count == 0 || normalizedTimeIncrement <= 0.) {
         return;
     }
 
@@ -382,7 +392,7 @@ void EnvelopeSignalProcessor::renderSegment(
     const bool stillActive = playback.renderToBuffer(
             current->rasterizer->preparedPlaybackView(),
             (int) count,
-            1. / timing.sampleRate,
+            normalizedTimeIncrement,
             Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
             props,
             1.f);
