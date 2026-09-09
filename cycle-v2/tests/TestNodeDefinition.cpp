@@ -13,7 +13,7 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
     const auto& registry = NodeDefinitionRegistry::instance();
     std::set<String> typeIds;
 
-    REQUIRE(registry.definitions().size() == 22);
+    REQUIRE(registry.definitions().size() == 23);
     for (const auto& definition : registry.definitions()) {
         REQUIRE(definition.typeId.isNotEmpty());
         REQUIRE(definition.defaultInstanceIdPrefix.isNotEmpty());

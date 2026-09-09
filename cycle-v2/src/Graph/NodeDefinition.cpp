@@ -308,7 +308,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     input("pitch", "Pitch", PortDomain::PitchSignal),
                     input("unison", "Unison", PortDomain::VoiceControlSignal,
                             ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison)
+                            ConnectionKind::ConfigurationAttachment, AttachmentType::Unison),
+                    input("scratch", "Scratch", PortDomain::EnvelopeSignal,
+                            ChannelLayout::Mono, PortPurpose::ScratchAttachment)
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             choice("domain", "Start Domain", "waveform", { "waveform", "spectral", "spectralMagnitude", "spectralPhase" }, graph | presentation | preview),
@@ -321,7 +323,27 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ConfigurationOnly)
                     .runtime(AudioModuleRole::VoiceContext, PreviewModuleRole::VoiceContext)
                     .disablePreview()
-                    .presentation({}, { 280.f, 148.f })
+                    .presentation({}, { 280.f, 182.f })
+                    .finish(),
+            buildDefinition(definition(
+                    "scratchDefaultOverride",
+                    NodeKind::ScratchDefaultOverride,
+                    "Use Voice Time",
+                    "scratch override",
+                    "voiceTime",
+                    {},
+                    { output(
+                            "scratch",
+                            "Voice Time",
+                            PortDomain::EnvelopeSignal,
+                            ChannelLayout::Mono,
+                            PortSide::Right,
+                            ConnectionKind::ProcessingAttachment,
+                            AttachmentType::ScratchEnvelope) }))
+                    .help("Stops a Trimesh from inheriting its Voice Context scratch Envelope.")
+                    .execution(NodeExecutionTrait::ConfigurationOnly)
+                    .disablePreview()
+                    .presentation({}, { 174.f, 76.f })
                     .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {

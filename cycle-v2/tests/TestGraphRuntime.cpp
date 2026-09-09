@@ -178,6 +178,62 @@ TEST_CASE("Runtime keeps scratch attachments separate from signal inputs", "[cyc
             }));
 }
 
+TEST_CASE("Equivalent scratch topology recompiles produce identical previews",
+        "[cycle-v2][runtime][preview][voice-context][scratch]") {
+    NodeGraph inheritedGraph = NodeGraph::createDemoGraph();
+    inheritedGraph.removeEdgesFromOutput("scratchEnv", "env");
+    Node* voice = inheritedGraph.findNodeForEditing("voice");
+    REQUIRE(voice != nullptr);
+    NodeDefinitionRegistry::instance().normalize(*voice);
+    inheritedGraph.addEdge({
+            "scratchEnv",
+            "env",
+            "voice",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    inheritedGraph.addSignalProbe({
+            "magnitudeProbe", "addMag", "out", "ifft", "mag", "Magnitude", 0.5f, 0
+    });
+    inheritedGraph.addSignalProbe({
+            "phaseProbe", "addPhase", "out", "ifft", "phase", "Phase", 0.5f, 1
+    });
+
+    GraphPresentationModel presentation;
+    GraphChangeSet topology;
+    topology.topologyChanged = true;
+    REQUIRE(presentation.refresh(inheritedGraph, 1, topology));
+    const auto inheritedWave = findNodePreview(
+            presentation.previewResult(), "waveMesh").primary;
+    const auto inheritedMagnitude = findProbePreview(
+            presentation.previewResult(), "magnitudeProbe").values;
+    const auto inheritedPhase = findProbePreview(
+            presentation.previewResult(), "phaseProbe").values;
+
+    NodeGraph directGraph = inheritedGraph;
+    for (const String& target : { "waveMesh", "magMesh", "phaseMesh" }) {
+        directGraph.addEdge({
+                "scratchEnv",
+                "env",
+                target,
+                "scratch",
+                PortDomain::EnvelopeSignal,
+                ConnectionKind::ProcessingAttachment,
+                AttachmentType::ScratchEnvelope
+        });
+    }
+    REQUIRE(presentation.refresh(directGraph, 2, topology));
+
+    REQUIRE(findNodePreview(presentation.previewResult(), "waveMesh").primary
+            == inheritedWave);
+    REQUIRE(findProbePreview(presentation.previewResult(), "magnitudeProbe").values
+            == inheritedMagnitude);
+    REQUIRE(findProbePreview(presentation.previewResult(), "phaseProbe").values
+            == inheritedPhase);
+}
+
 TEST_CASE("Runtime prepares targeted Guide assignments without graph attachments", "[cycle-v2][runtime]") {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphEditor().createGuideCurveAndAssignToTrimeshVertexParameter(
@@ -349,6 +405,8 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
 
     REQUIRE(commands.toggleSignalProbe(1, 0.4f).succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    REQUIRE(presentation.previewResult().probes.front().connected);
     REQUIRE(commands.toggleSignalProbe(2, 0.6f).succeeded());
     REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
 
@@ -356,6 +414,30 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     REQUIRE(presentation.previewResult().probes.size() == 2);
     REQUIRE(presentation.previewResult().probes[0].connected);
     REQUIRE(presentation.previewResult().probes[1].connected);
+}
+
+TEST_CASE("A first spectral Trimesh probe is connected immediately",
+        "[cycle-v2][runtime][probe][spectral][trimesh]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+
+    const auto meshEdge = std::find_if(
+            document.graph().getEdges().begin(),
+            document.graph().getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "magMesh" && edge.sourcePortId == "out";
+            });
+    REQUIRE(meshEdge != document.graph().getEdges().end());
+    const size_t edgeIndex = static_cast<size_t>(
+            std::distance(document.graph().getEdges().begin(), meshEdge));
+    REQUIRE(commands.toggleSignalProbe(edgeIndex, 0.5f).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    REQUIRE(presentation.previewResult().probes.front().connected);
+    REQUIRE_FALSE(presentation.previewResult().probes.front().values.empty());
 }
 
 TEST_CASE("Stengah probes reflect an asynchronous Waveshaper curve edit at the correct taps",

@@ -87,6 +87,7 @@ public:
             AudioVoiceContext voice,
             CancellationCheck cancellationCheck = {}) const;
     void clearIncrementalCache() const;
+    void resetExecutionState() const;
     size_t diagnosticProcessCount(const String& nodeId) const;
     GraphAudioOutputView processRealtime(
             const GraphExecutionPlan& plan,

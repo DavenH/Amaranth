@@ -57,12 +57,9 @@ void SignalProbeDetailState::open(
     ordinal = ordinalToUse;
     midiNote = midiNoteToUse;
     resolution = resolutionToUse;
-    const PreviewModuleRole displayRole = previewToUse.sourceRole == PreviewModuleRole::MeshSurface
-            ? PreviewModuleRole::MeshSurface
-            : PreviewModuleRole::SignalSpy;
     renderResult = {
             "probe-detail-" + probeId,
-            displayRole,
+            PreviewModuleRole::SignalSpy,
             std::move(previewToUse.values),
             {},
             previewToUse.gridColumns,

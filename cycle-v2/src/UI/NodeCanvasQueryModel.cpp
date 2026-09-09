@@ -1,7 +1,8 @@
-#include "UI/NodeCanvasQueryModel.h"
+#include <algorithm>
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeDefinition.h"
+#include "UI/NodeCanvasQueryModel.h"
 
 namespace CycleV2 {
 
@@ -202,7 +203,41 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
     }
 
     if (port->purpose == PortPurpose::ScratchAttachment) {
-        return "Attach a scratch envelope here.";
+        if (node->kind == NodeKind::VoiceContext) {
+            return "Attach the default scratch envelope for this Voice Context.";
+        }
+
+        const auto local = std::find_if(
+                graph.getEdges().begin(),
+                graph.getEdges().end(),
+                [&](const Edge& edge) {
+                    return edge.destNodeId == node->id
+                            && edge.destPortId == port->id;
+                });
+        if (local != graph.getEdges().end()) {
+            const Node* source = findNode(local->sourceNodeId);
+            return source != nullptr && source->kind == NodeKind::ScratchDefaultOverride
+                    ? "Uses voice time instead of the inherited scratch envelope."
+                    : "Overrides the Voice Context scratch envelope for this Trimesh.";
+        }
+
+        if (compileResult.succeeded()) {
+            const auto step = std::find_if(
+                    compileResult.plan.steps.begin(),
+                    compileResult.plan.steps.end(),
+                    [&](const GraphExecutionStep& candidate) {
+                        return candidate.nodeId == node->id;
+                    });
+            if (step != compileResult.plan.steps.end()
+                    && effectiveScratchSourceNodeId(*step).isNotEmpty()) {
+                return "Inherits the Voice Context scratch envelope. Attach here to override it.";
+            }
+        }
+        return "Uses voice time. Attach a scratch envelope here to override it.";
+    }
+
+    if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
+        return "Connect to a Trimesh scratch port to use voice time instead of the context default.";
     }
 
     return signalDescription(port->domain)
@@ -238,6 +273,19 @@ String NodeCanvasQueryModel::hoverTextForEdge(const Edge& edge) const {
     }
 
     if (edge.isAttachment()) {
+        if (sourceNode != nullptr && sourceNode->kind == NodeKind::ScratchDefaultOverride) {
+            return "Stops " + destination + " from inheriting the Voice Context scratch envelope.";
+        }
+        if (destinationNode != nullptr
+                && destinationNode->kind == NodeKind::VoiceContext
+                && edge.destPortId == "scratch") {
+            return "Sets the default scratch envelope for " + destination + ".";
+        }
+        if (destinationNode != nullptr
+                && destinationNode->kind == NodeKind::TrilinearMesh
+                && edge.destPortId == "scratch") {
+            return "Overrides the Voice Context scratch envelope for " + destination + ".";
+        }
         return "Controls " + destination + " from " + source + ".";
     }
 

@@ -120,6 +120,7 @@ struct CompiledVoiceContext {
     std::shared_ptr<const INodeDspConfiguration> pitchEnvelope;
     std::vector<float> pitchEnvelopeUnitValues;
     std::shared_ptr<const INodeDspConfiguration> unison;
+    String defaultScratchNodeId;
     CycleDsp::UnisonVoiceLayout lanes;
 };
 
@@ -148,6 +149,8 @@ struct GraphExecutionStep {
     std::vector<GraphStepOutput> outputs;
     std::vector<GraphStepAttachment> attachments;
 };
+
+String effectiveScratchSourceNodeId(const GraphExecutionStep& step);
 
 struct OscillatorRegionPlan {
     String id;
