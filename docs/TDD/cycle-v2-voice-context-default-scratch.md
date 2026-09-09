@@ -2,16 +2,21 @@
 
 ## Status
 
-Feature implementation is complete on `cycle2/scratch-default`. Default
-resolution now uses compiled oscillator-region ownership, so Trimesh side
-branches that feed a region inherit the same scratch source as its waveform
-spine. Effective inherited attachments participate in execution ordering, and
-topology recompilation resets retained preview processor state. The
-`scratch-test` inherited, explicit, and undo-restored forms consequently
-produce identical settled node and Spy outputs.
+Feature and factory-library implementation is complete. Default resolution
+uses compiled oscillator-region ownership, so Trimesh side branches that feed
+a region inherit the same scratch source as its waveform spine. Effective
+inherited attachments participate in execution ordering, and topology
+recompilation resets retained preview processor state. The `scratch-test`
+inherited, explicit, and undo-restored forms consequently produce identical
+settled node and Spy outputs.
 
-The offline simplifier and preset rewrites remain explicitly deferred until
-this work is merged to master and then into the preset-cleanup branch.
+The offline simplifier now collapses the provably complete fanout case found in
+the factory library. Its narrower structural gate requires one Voice Context
+and one scratch-purpose Envelope attached to every Trimesh; the compiled-preset
+test then proves every rewritten Trimesh resolves that same effective source.
+The general partial-coverage migration policy remains deferred until the
+simplifier can consume compiler-owned context assignments without duplicating
+the compiler's traversal logic.
 
 ## Goal
 
@@ -44,11 +49,15 @@ Context for each consumer, and exclusions must remain explicit and authorable.
 
 ## Current Factory Inventory
 
-A structural audit of the 230 checked-in presets found 152 graphs where one
-scratch Envelope attaches to every Trimesh in the graph. Those graphs contain
-513 repeated Envelope-to-Trimesh scratch edges. Replacing each complete fanout
-with one Envelope-to-Voice Context edge would retain 152 edges and remove 361,
-with no `Use Voice Time` exclusions required.
+A fresh structural audit of the 230 checked-in presets found 134 graphs where
+one scratch Envelope had at least two direct Trimesh assignments. Of those,
+133 attached that Envelope to every Trimesh in the graph, comprising 494 direct
+edges. The rewrite retains 133 Envelope-to-Voice Context edges and removes 361
+redundant edges, with no `Use Voice Time` exclusions required.
+
+`baroque-flute.cyclegraph` is the sole partial fanout: its scratch Envelope
+targets three of five Trimeshes (60 percent), so it remains explicit under the
+75-percent policy.
 
 This inventory is evidence for the feature, not sufficient proof for an
 automatic rewrite. The implementation-time audit must use the compiler's real
@@ -298,6 +307,14 @@ All graph edits must use `GraphCommandDispatcher`. The UI must not mutate
 - Compiler resolution now indexes local scratch bindings once before lowering
   inherited bindings. Envelope playback, Trimesh traversal, and realtime
   processing remain unchanged.
+- The preset simplifier has focused complete-fanout, partial-fanout, and
+  idempotence coverage. The 133 rewritten factory presets compile, and the
+  cleanup test verifies every inheriting Trimesh resolves the authored Voice
+  Context source through the real compiler.
+- A production-size review of the seven-target `drunkard.cyclegraph` rewrite is
+  captured at `/private/tmp/cycle-v2-scratch-default-layout.png`. The new
+  scratch cable is short and horizontally aligned from Envelope to Voice
+  Context, while the removed fanout clears the processing area.
 - Side-branch defaults resolve through the oscillator region's Voice Context,
   and a second dependency ordering includes effective processing attachments.
   This schedules a scratch Envelope before every inheriting Trimesh without

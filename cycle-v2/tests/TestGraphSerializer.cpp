@@ -768,10 +768,18 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
         INFO(file.getFileName());
         REQUIRE(loaded.succeeded());
         REQUIRE(GraphValidator().isValid(loaded.graph));
-        REQUIRE(GraphCompiler().compile(loaded.graph).succeeded());
+        const GraphCompileResult compiled = GraphCompiler().compile(loaded.graph);
+        REQUIRE(compiled.succeeded());
 
         const auto& nodes = loaded.graph.getNodes();
         const auto& edges = loaded.graph.getEdges();
+        const auto defaultScratch = std::find_if(
+                edges.begin(), edges.end(), [&](const Edge& edge) {
+                    const Node* destination = loaded.graph.findNode(edge.destNodeId);
+                    return destination != nullptr
+                            && destination->kind == NodeKind::VoiceContext
+                            && edge.destPortId == "scratch";
+                });
         bool hasPopulatedSpectralMesh = false;
         bool hasEmptyTimeMesh = false;
         for (const Node& node : nodes) {
@@ -790,6 +798,22 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
                     hasPopulatedSpectralMesh = true;
                 } else if (empty) {
                     hasEmptyTimeMesh = true;
+                }
+
+                const bool hasLocalScratch = std::any_of(
+                        edges.begin(), edges.end(), [&](const Edge& edge) {
+                            return edge.destNodeId == node.id
+                                    && edge.destPortId == "scratch";
+                        });
+                if (defaultScratch != edges.end() && !hasLocalScratch) {
+                    const auto step = std::find_if(
+                            compiled.plan.steps.begin(), compiled.plan.steps.end(),
+                            [&](const GraphExecutionStep& candidate) {
+                                return candidate.nodeId == node.id;
+                            });
+                    REQUIRE(step != compiled.plan.steps.end());
+                    REQUIRE(effectiveScratchSourceNodeId(*step)
+                            == defaultScratch->sourceNodeId);
                 }
             }
 
@@ -1056,9 +1080,7 @@ TEST_CASE("Stengah starts from its populated spectral layers", "[cycle-v2][graph
     REQUIRE(hasEdge("voice", "context", "magnitudeLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer1", "context"));
     REQUIRE(hasEdge("voice", "context", "phaseLayer2", "context"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "magnitudeLayer1", "scratch"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer1", "scratch"));
-    REQUIRE(hasEdge("scratchEnvelope", "env", "phaseLayer2", "scratch"));
+    REQUIRE(hasEdge("scratchEnvelope", "env", "voice", "scratch"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer1", "guide.cube.0.amp"));
     REQUIRE(hasGuideAssignment(loaded.graph, "guide1", "phaseLayer2", "guide.cube.4.phase"));
     REQUIRE(hasEdge("magnitudeLayer1", "out", "ifft", "mag"));
