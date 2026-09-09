@@ -8,6 +8,7 @@
 #include "Nodes/Unison/UnisonNode.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 namespace CycleV2 {
 
@@ -462,8 +463,14 @@ std::vector<GraphBufferPlan> buildBufferPlan(
     std::vector<GraphBufferPlan> buffers;
 
     for (const auto& node : graph.getNodes()) {
+        const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
         for (const auto& port : node.outputs) {
             if (port.connectionKind == ConnectionKind::ConfigurationAttachment) {
+                continue;
+            }
+            if (definition != nullptr
+                    && definition->executionTrait == NodeExecutionTrait::ConfigurationOnly
+                    && port.connectionKind != ConnectionKind::Signal) {
                 continue;
             }
             if (node.kind == NodeKind::ModulationTriple
@@ -709,18 +716,6 @@ const CompiledVoiceContext* voiceContextForNode(
     return nullptr;
 }
 
-bool hasTargetLocalScratchAttachment(
-        const GraphExecutionPlan& plan,
-        const String& nodeId) {
-    return std::any_of(
-            plan.attachments.begin(),
-            plan.attachments.end(),
-            [&](const Edge& attachment) {
-                return attachment.destNodeId == nodeId
-                        && attachment.destPortId == "scratch";
-            });
-}
-
 const Node* defaultScratchSourceFor(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
@@ -741,11 +736,34 @@ void compileDefaultScratchAttachments(
         const NodeGraph& graph,
         GraphExecutionPlan& plan) {
     const VoiceContextAssignments assignments = assignVoiceContexts(graph, plan);
+    std::unordered_set<String, GraphDependencyIndex::StringHash> voiceTimeSources;
+    for (const auto& node : graph.getNodes()) {
+        if (node.kind == NodeKind::ScratchDefaultOverride) {
+            voiceTimeSources.insert(node.id);
+        }
+    }
+
+    std::unordered_set<String, GraphDependencyIndex::StringHash> targetsWithLocalScratch;
+    for (const auto& attachment : plan.attachments) {
+        if (attachment.destPortId == "scratch") {
+            targetsWithLocalScratch.insert(attachment.destNodeId);
+        }
+    }
+    plan.attachments.erase(
+            std::remove_if(
+                    plan.attachments.begin(),
+                    plan.attachments.end(),
+                    [&](const Edge& attachment) {
+                        return voiceTimeSources.find(attachment.sourceNodeId)
+                                != voiceTimeSources.end();
+                    }),
+            plan.attachments.end());
+
     for (const auto& step : plan.steps) {
         if (step.kind != NodeKind::TrilinearMesh) {
             continue;
         }
-        if (hasTargetLocalScratchAttachment(plan, step.nodeId)) {
+        if (targetsWithLocalScratch.find(step.nodeId) != targetsWithLocalScratch.end()) {
             continue;
         }
 

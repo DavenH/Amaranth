@@ -1,0 +1,12 @@
+{
+  "commands": [
+    { "command": "connectPorts", "sourceNodeId": "scratchEnv", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "scratch" },
+    { "command": "addNode", "kind": "scratchDefaultOverride", "x": 430, "y": 690 },
+    { "command": "connectPorts", "sourceNodeId": "voiceTime", "sourcePortId": "scratch", "destNodeId": "waveMesh", "destPortId": "scratch" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "assertState", "path": "nodeCount", "equals": 15 },
+    { "command": "assertState", "path": "edgeCount", "equals": 16 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

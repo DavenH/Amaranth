@@ -325,6 +325,26 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .disablePreview()
                     .presentation({}, { 280.f, 148.f })
                     .finish(),
+            buildDefinition(definition(
+                    "scratchDefaultOverride",
+                    NodeKind::ScratchDefaultOverride,
+                    "Use Voice Time",
+                    "scratch override",
+                    "voiceTime",
+                    {},
+                    { output(
+                            "scratch",
+                            "Voice Time",
+                            PortDomain::EnvelopeSignal,
+                            ChannelLayout::Mono,
+                            PortSide::Right,
+                            ConnectionKind::ProcessingAttachment,
+                            AttachmentType::ScratchEnvelope) }))
+                    .help("Stops a Trimesh from inheriting its Voice Context scratch Envelope.")
+                    .execution(NodeExecutionTrait::ConfigurationOnly)
+                    .disablePreview()
+                    .presentation({}, { 174.f, 76.f })
+                    .finish(),
             buildDefinition(definition("modulationSource", NodeKind::ModulationSource, "Modulation", "performance control", "mod", {},
                     { output("value", "Value", PortDomain::ControlSignal) }, {
                             choice("source", "Source", "modWheel", {

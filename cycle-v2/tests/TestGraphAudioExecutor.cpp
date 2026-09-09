@@ -1784,6 +1784,33 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     REQUIRE(defaultPeer.block.samples == first.block.samples);
     REQUIRE(defaultPeer.traversalGrid.values == first.traversalGrid.values);
 
+    NodeGraph excludedGraph = defaultGraph;
+    excludedGraph.addNode(factory.createNode(
+            NodeKind::ScratchDefaultOverride,
+            "voiceTime",
+            {}));
+    excludedGraph.addEdge({
+            "voiceTime",
+            "scratch",
+            "unattached",
+            "scratch",
+            PortDomain::EnvelopeSignal,
+            ConnectionKind::ProcessingAttachment,
+            AttachmentType::ScratchEnvelope
+    });
+    const auto excludedCompiled = GraphCompiler().compile(excludedGraph);
+    REQUIRE(excludedCompiled.succeeded());
+    GraphAudioExecutor excludedExecutor;
+    const auto excludedResult = excludedExecutor.process(
+            excludedGraph,
+            excludedCompiled.plan,
+            frameCount,
+            timing,
+            voice);
+    const auto& excludedPeer = findNodeAudio(excludedResult, "unattached").output;
+    REQUIRE(excludedPeer.block.samples == peer.block.samples);
+    REQUIRE(excludedPeer.traversalGrid.values == peer.traversalGrid.values);
+
     const auto advanced = executor.process(
             graph,
             compiled.plan,

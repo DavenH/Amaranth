@@ -38,6 +38,28 @@ bool isFixedWaveContextMismatch(const Node& sourceNode, const Node& destNode, co
         && resolver.domainFromVoiceContext(sourceNode) != PortDomain::TimeSignal;
 }
 
+bool isValidScratchBindingSource(const Node& sourceNode, const Port& source) {
+    if (source.connectionKind != ConnectionKind::ProcessingAttachment
+            || source.attachmentType != AttachmentType::ScratchEnvelope) {
+        return false;
+    }
+    return sourceNode.kind != NodeKind::Envelope
+            || envelopePurposeFor(sourceNode) == EnvelopePurpose::Scratch;
+}
+
+bool isValidScratchBindingDestination(
+        const Node& sourceNode,
+        const Node& destNode,
+        const Port& dest) {
+    if (dest.connectionKind != ConnectionKind::ProcessingAttachment
+            || dest.attachmentType != AttachmentType::ScratchEnvelope
+            || dest.purpose != PortPurpose::ScratchAttachment) {
+        return false;
+    }
+    return sourceNode.kind != NodeKind::ScratchDefaultOverride
+            || destNode.kind == NodeKind::TrilinearMesh;
+}
+
 void addIssue(
         std::vector<GraphValidationIssue>& issues,
         GraphValidationCode code,
@@ -201,20 +223,22 @@ void GraphValidator::validateEdge(
     }
 
     if (edge.isProcessingAttachment()) {
-        if (sourceNode->kind != NodeKind::Envelope
-                || envelopePurposeFor(*sourceNode) != EnvelopePurpose::Scratch
-                || edge.attachmentType != AttachmentType::ScratchEnvelope) {
+        if (!isValidScratchBindingSource(*sourceNode, *source)
+                || edge.attachmentType != source->attachmentType) {
             if (!report(
                         GraphValidationCode::InvalidAttachmentSource,
-                        "Scratch attachments require a scratch-purpose Envelope source: " + edge.sourceNodeId)) {
+                        "Scratch attachments require a registered scratch-binding source: "
+                                + edge.sourceNodeId)) {
                 return;
             }
         }
 
-        if (dest->purpose != PortPurpose::ScratchAttachment) {
+        if (!isValidScratchBindingDestination(*sourceNode, *destNode, *dest)
+                || edge.attachmentType != dest->attachmentType) {
             report(
                     GraphValidationCode::InvalidAttachmentDestination,
-                    "Attachment destination is not a scratch port: " + edge.destNodeId + "." + dest->id);
+                    "Attachment destination is not compatible with the scratch binding: "
+                            + edge.destNodeId + "." + dest->id);
         }
 
         return;

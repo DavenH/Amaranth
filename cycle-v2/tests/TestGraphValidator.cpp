@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphDomainResolver.h"
 #include "Graph/GraphValidator.h"
@@ -519,6 +520,34 @@ TEST_CASE("Scratch ports require attachment routing", "[cycle-v2][graph]") {
             issues.end(),
             [](const GraphValidationIssue& issue) {
                 return issue.code == GraphValidationCode::ScratchPortRequiresAttachment;
+            }));
+}
+
+TEST_CASE("Voice-time scratch overrides attach only to Trimesh scratch ports",
+        "[cycle-v2][graph][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+
+    GraphEditor editor;
+    REQUIRE(editor.connect(
+            graph,
+            { "voiceTime", "scratch", false },
+            { "mesh", "scratch", true }).succeeded());
+    REQUIRE(GraphValidator().isValid(graph));
+
+    const GraphEditResult invalid = editor.connect(
+            graph,
+            { "voiceTime", "scratch", false },
+            { "voice", "scratch", true });
+    REQUIRE_FALSE(invalid.succeeded());
+    REQUIRE(std::any_of(
+            invalid.validationIssues.begin(),
+            invalid.validationIssues.end(),
+            [](const GraphValidationIssue& issue) {
+                return issue.code == GraphValidationCode::InvalidAttachmentDestination;
             }));
 }
 

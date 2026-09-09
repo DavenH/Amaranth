@@ -75,3 +75,42 @@ TEST_CASE("Node hover help describes musical intent in plain ASCII",
         }
     }
 }
+
+TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclusion",
+        "[cycle-v2][canvas][queries][voice-context][scratch]") {
+    GraphNodeFactory factory;
+    GraphEditor editor;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Envelope, "scratch", {}));
+    graph.addNode(factory.createNode(NodeKind::ScratchDefaultOverride, "voiceTime", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "inherited", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "excluded", {}));
+    REQUIRE(editor.setNodeParameter(
+            graph, "scratch", "purpose", "Purpose", "scratch").succeeded());
+    REQUIRE(editor.connect(
+            graph,
+            { "scratch", "env", false },
+            { "voice", "scratch", true }).succeeded());
+    for (const String& target : { "inherited", "excluded" }) {
+        REQUIRE(editor.connect(
+                graph,
+                { "voice", "context", false },
+                { target, "context", true }).succeeded());
+    }
+    REQUIRE(editor.connect(
+            graph,
+            { "voiceTime", "scratch", false },
+            { "excluded", "scratch", true }).succeeded());
+
+    const GraphCompileResult compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    NodeCanvasQueryModel queries(graph, compiled, {}, {});
+
+    REQUIRE(queries.hoverTextForPort({ "voice", "scratch", true }).contains("default"));
+    REQUIRE(queries.hoverTextForPort({ "inherited", "scratch", true }).contains("Inherits"));
+    REQUIRE(queries.hoverTextForPort({ "excluded", "scratch", true }).contains("voice time"));
+    REQUIRE(queries.hoverTextForPort({ "voiceTime", "scratch", false }).contains("instead"));
+    REQUIRE(queries.hoverTextForEdge(graph.getEdges().front()).contains("default"));
+    REQUIRE(queries.hoverTextForEdge(graph.getEdges().back()).startsWith("Stops"));
+}

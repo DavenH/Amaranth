@@ -2,8 +2,9 @@
 
 ## Status
 
-In progress on `cycle2/scratch-default`. Preset rewrites remain deferred until
-this work is merged to master and then into the preset-cleanup branch.
+Feature implementation complete on `cycle2/scratch-default`. The offline
+simplifier and preset rewrites remain explicitly deferred until this work is
+merged to master and then into the preset-cleanup branch.
 
 ## Goal
 
@@ -263,8 +264,31 @@ All graph edits must use `GraphCommandDispatcher`. The UI must not mutate
 - Focused compiler coverage passes 28 assertions across two cases. The existing
   scratch runtime case now additionally proves that one context attachment
   produces the same blocks and traversal grids as repeated direct attachments.
-- `Use Voice Time`, authoring interaction, and preset simplification remain
-  incomplete.
+- `Use Voice Time` is a registered configuration-only scratch-binding source.
+  Validation permits it only on Trimesh scratch inputs; compilation consumes it
+  as an exclusion marker and emits no attachment, execution step, or buffer.
+- One exclusion node may fan out to several targets. Runtime coverage proves an
+  excluded target matches the pre-existing voice-time path while its peers keep
+  the inherited Envelope trajectory.
+- Canonical serialization retains only authored default and exclusion edges.
+  Focused `GraphCommandDispatcher` coverage connects and removes an exclusion,
+  observes effective compiled binding changes, and undoes back through both
+  states.
+- The compact 174 by 76 pixel utility uses one aligned right-side attachment
+  socket and a low-emphasis voice-time glyph. Hover help distinguishes context
+  defaults, inherited targets, direct overrides, and suppression. The focused
+  automation fixture is
+  `scripts/fixtures/cycle-v2-agent-voice-time-override.json`; its semantic run
+  passed and a production canvas review was captured at
+  `/private/tmp/cycle-v2-voice-time-override-os.png`.
+- Compiler resolution now indexes local scratch bindings once before lowering
+  inherited bindings. Envelope playback, Trimesh traversal, and realtime
+  processing remain unchanged.
+- The complete Cycle V2 test binary passes all 631 cases and 334,436
+  assertions after updating registry and Voice Context schema expectations.
+- Preset simplifier implementation, the 75-percent audit, and preset rewrites
+  remain deferred by explicit branch sequencing; no `.cyclegraph` contents are
+  changed on this branch.
 
 ## Expected Production Scope
 
