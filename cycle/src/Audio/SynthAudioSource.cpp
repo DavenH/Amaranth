@@ -580,7 +580,7 @@ void SynthAudioSource::renderGlobalEnvs(int internalSamples) {
     }
 
     auto& meshLib = getObj(MeshLibrary);
-    float deltaPerSample = 1.0f / float(InternalRateBlockAdapter::internalSampleRate)
+    float deltaPerSample = 1.0f / float(CycleDsp::InternalRateBlockAdapter::internalSampleRate)
             / getObj(OscControlPanel).getLengthInSeconds();
 
     for (auto& scratchRast : globalScratch) {

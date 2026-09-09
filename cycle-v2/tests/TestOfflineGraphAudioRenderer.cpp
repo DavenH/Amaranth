@@ -164,6 +164,48 @@ TEST_CASE("Offline graph renderer applies the requested output gain",
 #endif
 }
 
+TEST_CASE("Legacy-rate offline rendering is deterministic and distinct from native rate",
+        "[cycle-v2][runtime][offline-audio][internal-rate][parity]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto legacyRequest = renderRequest(256, 48);
+    legacyRequest.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    auto nativeRequest = legacyRequest;
+    nativeRequest.ratePolicy = OfflineGraphAudioRatePolicy::Native;
+
+    const auto plan = filterSawPlan();
+    const auto legacy = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            legacyRequest);
+    const auto repeated = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            legacyRequest);
+    const auto native = OfflineGraphAudioRenderer::render(
+            plan,
+            12,
+            nativeRequest);
+
+    REQUIRE(legacy.succeeded);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(native.succeeded);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(legacy.channels[0].data()),
+            (int) legacy.channels[0].size()).normDiffL2({
+                    const_cast<float*>(repeated.channels[0].data()),
+                    (int) repeated.channels[0].size()
+            }) < 1.0e-6f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(legacy.channels[0].data()),
+            (int) legacy.channels[0].size()).normDiffL2({
+                    const_cast<float*>(native.channels[0].data()),
+                    (int) native.channels[0].size()
+            }) > 0.01f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
         "[cycle-v2][runtime][offline-audio][spectral][parity]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
@@ -304,6 +346,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     object->setProperty("channels", 2);
     object->setProperty("durationMs", 100.0);
     object->setProperty("voiceDurationSeconds", 1.25);
+    object->setProperty("ratePolicy", "legacyInternal44100");
 
     Array<var> events;
     var noteOn = new DynamicObject();
@@ -328,6 +371,7 @@ TEST_CASE("Scheduled audio automation shares the Cycle capture contract",
     REQUIRE((int64) data.getProperty("samples", 0) == 4800);
     REQUIRE((int) data.getProperty("events", 0) == 1);
     REQUIRE((double) data.getProperty("voiceDurationSeconds", 0.0) == 1.25);
+    REQUIRE(data.getProperty("ratePolicy", {}).toString() == "legacyInternal44100");
     REQUIRE((double) data.getProperty("rms", 0.0) > 0.0);
 #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");

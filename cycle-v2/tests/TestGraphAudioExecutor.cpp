@@ -342,8 +342,6 @@ TEST_CASE("Graph executor audibly renders and folds a chained Wave Unison region
             secondView.payload->secondaryBlock.samples.begin(),
             secondView.payload->secondaryBlock.samples.end());
 
-    REQUIRE(wholeLeft.front() == 0.f);
-    REQUIRE(wholeRight.front() == 0.f);
     REQUIRE(std::any_of(wholeLeft.begin(), wholeLeft.end(), [](float sample) {
         return sample != 0.f;
     }));

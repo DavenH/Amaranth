@@ -85,7 +85,6 @@ void SpectralOscillatorRegionRuntime::reset() {
         lane.samplingSpillover = {};
         for (auto& buffer : lane.buffers) {
             buffer.reset();
-            buffer.write(0.f);
         }
         for (auto lastHalf : lane.lastLerpHalf) {
             lastHalf.zero();

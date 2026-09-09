@@ -1,4 +1,6 @@
-#include "InternalRateBlockAdapter.h"
+#include "Audio/CycleDsp/InternalRateBlockAdapter.h"
+
+namespace CycleDsp {
 
 void InternalRateBlockAdapter::prepare(double outputSampleRate) {
     jassert(outputSampleRate > 0.0);
@@ -8,18 +10,27 @@ void InternalRateBlockAdapter::prepare(double outputSampleRate) {
     carriedMidi.clearQuick();
 }
 
-int InternalRateBlockAdapter::convertBlock(
-        int outputSamples,
-        const juce::MidiBuffer& sourceMidi,
-        juce::MidiBuffer& internalMidi) {
+int InternalRateBlockAdapter::convertBlockSize(int outputSamples) {
     const auto internalSampleCeiling = [this](juce::int64 outputSample) {
         return juce::int64(outputToInternalRatio * double(outputSample) + 0.999999999);
     };
 
-    juce::int64 nextOutputSample = outputSamplesProcessed + outputSamples;
-    int internalSamples = int(internalSampleCeiling(nextOutputSample)
+    const juce::int64 nextOutputSample = outputSamplesProcessed + outputSamples;
+    const int internalSamples = int(internalSampleCeiling(nextOutputSample)
             - internalSampleCeiling(outputSamplesProcessed));
     outputSamplesProcessed = nextOutputSample;
+    return internalSamples;
+}
+
+int InternalRateBlockAdapter::convertSampleOffset(int outputSampleOffset) const {
+    return juce::roundToInt(outputSampleOffset * outputToInternalRatio);
+}
+
+int InternalRateBlockAdapter::convertBlock(
+        int outputSamples,
+        const juce::MidiBuffer& sourceMidi,
+        juce::MidiBuffer& internalMidi) {
+    const int internalSamples = convertBlockSize(outputSamples);
     internalMidi.clear();
 
     if (internalSamples == 0) {
@@ -36,9 +47,12 @@ int InternalRateBlockAdapter::convertBlock(
     carriedMidi.clearQuick();
 
     for (const juce::MidiMessageMetadata metadata : sourceMidi) {
-        int samplePosition = juce::roundToInt(metadata.samplePosition * outputToInternalRatio);
-        internalMidi.addEvent(metadata.getMessage(), samplePosition);
+        internalMidi.addEvent(
+                metadata.getMessage(),
+                convertSampleOffset(metadata.samplePosition));
     }
 
     return internalSamples;
+}
+
 }

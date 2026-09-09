@@ -151,6 +151,15 @@ bool parseRequest(
             0.f,
             16.f,
             (float) doubleProperty(command, "outputGain", 0.125));
+    const String ratePolicy = stringProperty(command, "ratePolicy", "native");
+    if (ratePolicy == "native") {
+        request.ratePolicy = OfflineGraphAudioRatePolicy::Native;
+    } else if (ratePolicy == "legacyInternal44100") {
+        request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    } else {
+        error = "Unsupported offline audio rate policy: " + ratePolicy;
+        return false;
+    }
     const double durationMs = jlimit(1.0, 60000.0, doubleProperty(command, "durationMs", 1000.0));
 
     if (request.sampleRate <= 0.0) {
@@ -291,6 +300,7 @@ bool OfflineAudioCaptureAutomation::isScheduledCapture(const var& command) {
             "durationMs",
             "voiceDurationSeconds",
             "outputGain",
+            "ratePolicy",
             "events",
             "note",
             "noteDurationMs"
@@ -360,6 +370,11 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty("events", (int) request.events.size());
     object->setProperty("blockSize", request.blockSize);
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);
+    object->setProperty(
+            "ratePolicy",
+            request.ratePolicy == OfflineGraphAudioRatePolicy::LegacyInternal44100
+                    ? "legacyInternal44100"
+                    : "native");
     object->setProperty("renderer", "realtimeGraphRenderer");
     return true;
 }

@@ -10,11 +10,11 @@
 #include <App/Doc/Document.h>
 #include <Audio/AudioHub.h>
 #include <Audio/AudioSourceProcessor.h>
+#include <Audio/CycleDsp/InternalRateBlockAdapter.h>
 #include <Audio/SmoothedParameter.h>
 #include <Array/RingBuffer.h>
 #include "JuceHeader.h"
 
-#include "InternalRateBlockAdapter.h"
 #include "Synthesizer.h"
 
 #include "../Audio/Effects/Reverb.h"
@@ -173,7 +173,7 @@ private:
     double 	tempoScale;
 
     map<int, int> 		sizeToIndex;
-    InternalRateBlockAdapter internalRateBlockAdapter;
+    CycleDsp::InternalRateBlockAdapter internalRateBlockAdapter;
     SmoothedParameter 	volumeScale;
     ReadWriteBuffer	 	resampleAccum[2];
     Resampler 			sampleRateConverter[2];

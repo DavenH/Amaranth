@@ -14,6 +14,11 @@ class SpectralStageCaptureSink;
 
 namespace CycleV2 {
 
+enum class OfflineGraphAudioRatePolicy {
+    Native,
+    LegacyInternal44100
+};
+
 struct OfflineGraphAudioEvent {
     size_t sampleOffset {};
     juce::MidiMessage message;
@@ -26,6 +31,7 @@ struct OfflineGraphAudioRequest {
     int channelCount { 2 };
     float voiceDurationSeconds { 7.f };
     float outputGain { 0.125f };
+    OfflineGraphAudioRatePolicy ratePolicy { OfflineGraphAudioRatePolicy::Native };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};

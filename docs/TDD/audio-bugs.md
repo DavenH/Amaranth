@@ -777,10 +777,18 @@ Cycle 1's persisted `1.0711173` master gain to Cycle V2's production `0.125`
 output headroom. Both offline automation renderers now accept an explicit
 output-gain policy, and the parity runner requests unity from both rather than
 normalizing after capture. This removes the gain difference while preserving
-production defaults. At 44.1 kHz the unity-gain render has effectively
-`1.00000` correlation and `0.00049` residual; at 48 kHz it retains `0.99888`
-correlation and `0.0474` residual. Output-rate conversion is therefore the
-remaining explicit boundary.
+production defaults. Cycle V2's explicit compatibility policy now reuses the
+extracted Cycle 1 block clock and the existing shared Hermite converter while
+leaving production rendering at the native device rate.
+
+The first converted render reduced the 48 kHz residual from `0.0474` to
+`0.0158`, revealing a fractional delay rather than a converter mismatch. Cycle
+V2 reset each oscillator FIFO with an extra zero, while Cycle 1's active
+Hermite oscillator path resets the FIFO and immediately writes its first
+cycle. Removing that non-authoritative pad makes both 44.1 and 48 kHz Filter
+Saw renders align at zero lag with effectively `1.00000` correlation and
+`0.00049` residual. The remaining non-exact samples already exist at the raw
+time-frame boundary and are now the next localization target.
 
 A separate converter audit also found that legacy modulation input 2 means
 `1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
@@ -807,16 +815,18 @@ New artifacts:
 - `/tmp/cycle-filter-saw-unity-gain-44100/comparison.json`
 - `/tmp/cycle-filter-saw-unity-gain-48000/comparison.json`
 - `/tmp/cycle-filter-saw-cycle-start-48000/comparison.json`
+- `/tmp/cycle-filter-saw-legacy-rate-48000/comparison.json`
+- `/tmp/cycle-filter-saw-no-extra-pad-44100/comparison.json`
+- `/tmp/cycle-filter-saw-no-extra-pad-48000/comparison.json`
 
-Current status: open, with the synthesis and evolving-frame mismatch resolved.
+Current status: open for the remaining same-clock numerical residual; evolving
+synthesis, gain, integer latency, and output-rate policy are resolved. Stage
 capture is implemented for the rasterized time frame, FFT, raw magnitude
 operand plus effective morph, post-layer spectrum, reconstructed frame, and
 pitch-clocked cycle. The first byte difference is in the time frame at very low
-residual. The next investigation must localize the fixed gain difference after
-the oscillator, then make the internal/output sample-rate policies explicit.
-Canonical input reconciliation, deterministic seed control, startup state,
-gain/resampling policy, and remaining Voice Context fields must still be
-separated before enabling `exactSamplesRequired`.
+residual, so that boundary is the next investigation. Canonical input
+reconciliation, deterministic seed control, startup state, and remaining Voice
+Context fields must still be separated before enabling `exactSamplesRequired`.
 
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 

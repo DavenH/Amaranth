@@ -71,6 +71,7 @@ def capture_command(path, note, arguments, overrides=None):
         "blockSize": arguments.block_size,
         "channels": 2,
         "outputGain": 1.0,
+        "ratePolicy": "legacyInternal44100",
         "randomSeed": 1129927500,
         "durationMs": arguments.duration_ms,
         "events": [

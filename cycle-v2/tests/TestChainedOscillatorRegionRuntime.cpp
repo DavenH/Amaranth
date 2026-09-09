@@ -322,10 +322,10 @@ TEST_CASE("Chained oscillator runtime folds prepared lanes with Cycle 1 pan and 
             renderer));
 
     const float scale = CycleDsp::UnisonCore::voiceLevelScale(3);
-    REQUIRE(left[0] == 0.f);
-    REQUIRE(right[0] == 0.f);
-    REQUIRE(left[1] == Catch::Approx((1.f + 2.f) * scale));
-    REQUIRE(right[1] == Catch::Approx((2.f + 3.f) * scale));
+    REQUIRE(left[0] == Catch::Approx((1.f + 2.f) * scale));
+    REQUIRE(right[0] == Catch::Approx((2.f + 3.f) * scale));
+    REQUIRE(left[1] == Catch::Approx(left[0]));
+    REQUIRE(right[1] == Catch::Approx(right[0]));
     REQUIRE(renderer.renderCounts[0] > 0);
     REQUIRE(renderer.renderCounts[1] > 0);
     REQUIRE(renderer.renderCounts[2] > 0);

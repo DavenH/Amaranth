@@ -89,6 +89,25 @@ sample-derived timestamps, and the last partial block is copied without
 changing the requested duration. The result is stereo WAV data plus metrics and
 the render parameters used.
 
+### Output-rate parity boundary
+
+Cycle 1's `SynthAudioSource::processBlock()` is authoritative for compatibility
+renders above 44.1 kHz: it maps each device block and its MIDI offsets onto a
+44.1 kHz synthesis clock, renders the existing voice/effect pipeline there,
+then applies the existing stateful `HermiteState` converter per channel. The
+block clock is now a shared `CycleDsp::InternalRateBlockAdapter`; Cycle 1 reuses
+its MIDI facade unchanged, while Cycle V2's offline adapter translates its
+timestamped event type at that boundary. The Hermite DSP remains the shared
+library implementation.
+
+This compatibility policy is explicit and limited to differential offline
+captures. Cycle V2's production renderer continues to synthesize natively at
+the device rate. The adapter may translate block sizes, event offsets, buffer
+ownership, and converter lifecycle; it must not contain oscillator, envelope,
+effect, or graph behavior. Its stable end state is a shared block clock and
+resampler with the two renderers retaining only their event-type and ownership
+translation.
+
 ## Differential Analysis
 
 The external comparison aligns only integer latency. For periodic ambiguity it
@@ -313,12 +332,17 @@ as the scratch envelope evolves.
     cycle-start position produces effectively perfect same-rate output
     correlation without weakening host-block partition invariance.
 20. Localize the `+18.66 dB` post-oscillator gain difference, then reconcile the
-    44.1-to-48 kHz output-rate policy at an explicit conversion boundary. In
-    progress: both automation renderers now accept the same explicit output
+    44.1-to-48 kHz output-rate policy at an explicit conversion boundary.
+    Complete: both automation renderers now accept the same explicit output
     gain, leaving their production defaults unchanged. A unity-gain Filter Saw
-    render at 44.1 kHz reaches effectively `1.00000` correlation and `0.00049`
-    residual. The 48 kHz internal-rate conversion boundary remains open. Do not
-    normalize either discrepancy away in the analyzer.
+    render uses the extracted Cycle 1 block clock and shared Hermite converter.
+    Removing Cycle V2's non-authoritative extra oscillator FIFO pad aligns both
+    44.1 and 48 kHz at zero lag, effectively `1.00000` correlation, and
+    `0.00049` residual. Neither discrepancy is normalized in the analyzer.
+21. Localize the remaining same-clock numerical residual, beginning with the
+    already-observed raw time-frame difference. Preserve zero-lag unity-gain
+    comparison and do not replace the mature mesh rasterizer with a test
+    approximation.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
