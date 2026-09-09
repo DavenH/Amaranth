@@ -167,7 +167,7 @@ translation. The first broad candidates are:
 | filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. After restoring cycle-clocked scratch, frame ownership, shared log regions, and the final active harmonic, MIDI 36–72 is zero-lag with correlation of at least `0.9999999919`. |
 | fallout | One time layer, one subtractive magnitude layer, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a live canonical export. Its captured time, magnitude, and phase raster/operand boundaries are byte-identical at MIDI 48/frame 32. MIDI 36–72 remains zero-lag with `0.99974–1.00000` correlation after restoring the mature phase harmonic ramp and phase-only curve interpolation. |
 | shiny | One time layer, two multiplicative magnitude layers, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a direct canonical export. At MIDI 48/frame 32 it is byte-identical from the time frame through reconstructed spectral output. MIDI 36–72 is deterministic, zero-lag, and reaches `0.999999776–0.999999876` correlation. |
-| simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Regenerated exactly and retained as diagnostic. Held-note sustain reaches `0.999999999955` correlation, but 75 ms and 200 ms notes expose Cycle V2's missing document-level attack/release declick boundary. |
+| simple-bass | Time layer, one multiplicative magnitude layer, and a volume envelope; no active phase, scratch, effects, unison, or guide noise | Retained as diagnostic. The shared document declick is now applied at the volume-envelope boundary; 75 ms and 200 ms correlations improve to `0.99989` and `0.99963`. The remaining release-window difference is in authored-envelope cursor parity. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
 | guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Direct spectral range shaping is restored. Its routed scratch-envelope cross-section is not ready for Cycle V2's first note sample, so phase and effect attribution remain blocked. |
@@ -466,15 +466,20 @@ as the scratch envelope evolves.
     FFT-phase bypass. A held MIDI 48 note reaches `0.999999999955` correlation
     and a `9.4e-6` gain-matched residual; a fresh three-render run is
     byte-repeatable in both engines. At 75 ms and 200 ms note lengths,
-    correlation falls to `0.99878` and `0.99928` specifically across note-off.
-    Cycle 1 applies its document-level 10 ms release declick over the authored
-    envelope tail; Cycle V2 has no corresponding voice-output policy. The
-    fixture remains diagnostic until attack and release declick are represented
-    and implemented at a shared lifecycle boundary. Artifacts:
+    correlation originally fell to `0.99878` and `0.99928` specifically across
+    note-off. `CycleDsp::VoiceDeclick` now shares the mature ramp construction
+    and release-tail alignment between engines. Cycle V2 maps the document
+    setting onto the volume-envelope lifecycle boundary, with a neutral volume
+    envelope carrying the policy when no authored one is active. The 75 ms and
+    200 ms comparisons improve to `0.99989` and `0.99963`; the remaining
+    release-window difference is now isolated to authored-envelope release
+    cursor parity, so the fixture remains diagnostic. Artifacts:
     `/tmp/cycle-simple-bass-baseline/comparison.json`,
     `/tmp/cycle-simple-bass-repeat/comparison.json`,
     `/tmp/cycle-simple-bass-note-75/comparison.json`, and
-    `/tmp/cycle-simple-bass-note-200/comparison.json`.
+    `/tmp/cycle-simple-bass-note-200/comparison.json`,
+    `/tmp/cycle-simple-bass-declick-rate-75/comparison.json`, and
+    `/tmp/cycle-simple-bass-declick-200/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

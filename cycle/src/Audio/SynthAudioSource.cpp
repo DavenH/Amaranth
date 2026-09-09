@@ -2,6 +2,7 @@
 #include <App/MeshLibrary.h>
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/CyclicFrameLaneRenderer.h>
+#include <Audio/CycleDsp/VoiceDeclick.h>
 #include <Audio/PluginProcessor.h>
 #include <Util/Arithmetic.h>
 
@@ -326,30 +327,19 @@ Effect* SynthAudioSource::getDspEffect(int fxEnum) {
 }
 
 void SynthAudioSource::calcDeclickEnvelope(double /*samplerate*/) {
-    const double samplerate = 44100.0;
-
-    int attackLength 	= (int) ceil(0.00145 * samplerate);
-    int releaseLength 	= (int) ceil(0.01 * samplerate);
+    const int attackLength = CycleDsp::VoiceDeclick::attackSampleCount(
+            CycleDsp::VoiceDeclick::legacySampleRate);
+    const int releaseLength = CycleDsp::VoiceDeclick::releaseSampleCount(
+            CycleDsp::VoiceDeclick::legacySampleRate);
 
     if(attackDeclick.size() == attackLength) {
         return;
     }
 
-    ScopedAlloc<Float32> buff(attackLength);
-    Buffer ramp = buff;
-
     attackDeclick.resize(attackLength);
-
-    ramp.ramp(2, -15 / float(attackLength - 1)).exp().mul(-1.f).exp();
-    ramp.copyTo(attackDeclick);
-
-    buff.resize(releaseLength);
-    ramp = buff;
-
-    ramp.ramp(2, -15 / float(releaseLength - 1)).exp().mul(-1.f).exp().subCRev(1.f);
-
     releaseDeclick.resize(releaseLength);
-    ramp.copyTo(releaseDeclick);
+    CycleDsp::VoiceDeclick::prepareAttack(attackDeclick);
+    CycleDsp::VoiceDeclick::prepareRelease(releaseDeclick);
 }
 
 void SynthAudioSource::calcFades() {

@@ -156,6 +156,27 @@ class PortCycleV1PresetTest(unittest.TestCase):
         self.assertEqual(nodes["magnitudeOp2"]["kind"], "multiply")
         self.assertEqual(nodes["phaseOp1"]["kind"], "add")
 
+    def test_document_declick_uses_the_volume_envelope_boundary(self):
+        source = convertible_source()
+        source["preset"]["settings"]["Declick"] = True
+
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+
+        self.assertTrue(nodes["volumeEnvelope1"]["parameters"]["declick"])
+        self.assertIn("volumeMultiply", nodes)
+        self.assertTrue(any(
+            edge["sourceNodeId"] == "volumeEnvelope1"
+            and edge["destNodeId"] == "volumeMultiply"
+            for edge in converted["edges"]
+        ))
+
+        source["preset"]["settings"]["Declick"] = False
+        converted = port_cycle_v1_preset.convert(source)
+        nodes = {entry["id"]: entry for entry in converted["nodes"]}
+        self.assertNotIn("volumeEnvelope1", nodes)
+        self.assertNotIn("volumeMultiply", nodes)
+
     def test_generated_layout_is_aligned_compact_and_non_overlapping(self):
         source = convertible_source()
         magnitude = source["preset"]["meshLibrary"]["groups"][5]["layers"][0]
@@ -288,13 +309,16 @@ class PortCycleV1PresetTest(unittest.TestCase):
             for node in converted["nodes"]
         ))
 
-    def test_all_inactive_unconnected_envelopes_are_omitted(self):
+    def test_document_declick_retains_only_a_neutral_volume_envelope(self):
         converted = port_cycle_v1_preset.convert(convertible_source())
 
-        self.assertFalse(any(
-            node["kind"] == "envelope"
-            for node in converted["nodes"]
-        ))
+        envelopes = [
+            node for node in converted["nodes"]
+            if node["kind"] == "envelope"
+        ]
+        self.assertEqual(len(envelopes), 1)
+        self.assertEqual(envelopes[0]["id"], "volumeEnvelope1")
+        self.assertTrue(envelopes[0]["parameters"]["declick"])
 
     def test_unassigned_guides_are_omitted(self):
         converted = port_cycle_v1_preset.convert(convertible_source())

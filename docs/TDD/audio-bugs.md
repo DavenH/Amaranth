@@ -327,6 +327,21 @@ Resolution:
 
 Current status: resolved on 2026-09-06.
 
+## Open: spectral reference amplitude assertions no longer match output scaling
+
+The full test suite on `cycle2/fix-audio-parity-2` fails the existing
+`Spectral reference content remains harmonic after realtime reconstruction`
+and `Exact-period spectral reconstruction repeats one stable cyclogram row`
+checks. Their structural and cyclogram comparisons remain accurate, but the
+fixed-frame fundamental is `0.00359–0.00542` and the exact-period fundamental
+is `0.00717`, below the older absolute `0.1`/`0.22` thresholds. This is
+unrelated to document declick: neither test graph contains the new declick
+parameter or volume-envelope path. Reconcile the assertions with the current
+Output gain/headroom contract without weakening their harmonic-ratio checks.
+
+Current status: open; reproduced independently after the declick-focused tests
+passed.
+
 ## P1: Spectral Voice Context Japan Drum is not bit-exact across host blocks
 
 Status: open, discovered 2026-09-09 during factory preset no-op cleanup.
@@ -953,15 +968,15 @@ correlation is `0.999999986` with a `0.00017` gain-matched residual. Artifact:
 Current status: resolved; the Trimesh DSP domain test requires phase-specific
 interpolation behavior.
 
-## Open: Cycle V2 omits the document-level voice declick envelope
+## Resolved: Cycle V2 omitted the document-level voice declick envelope
 
 The directly exported Simple Bass parity fixture is effectively identical
 during sustain, but diverges at note start and note-off. Cycle 1's
 `SynthesizerVoice` applies the document's enabled Declick policy after volume
 envelope multiplication: a roughly 1.45 ms attack ramp and a 10 ms release
 ramp. When an authored volume release exists, Cycle 1 additionally applies the
-release ramp over the final release samples. Cycle V2 currently has no
-equivalent voice-output lifecycle boundary.
+release ramp over the final release samples. Cycle V2 had no equivalent
+voice-output lifecycle boundary.
 
 At MIDI 48, the held-note comparison reaches `0.999999999955` correlation and
 a `9.4e-6` gain-matched residual outside the onset. Whole-note comparisons at
@@ -969,15 +984,32 @@ a `9.4e-6` gain-matched residual outside the onset. Whole-note comparisons at
 shows Cycle 1 nearly silent while Cycle V2 continues the unmodified authored
 tail. This is not an envelope-raster or oscillator discrepancy.
 
-Do not copy the ramp formula into a graph processor. The authoritative ramp
-construction and application currently live in `SynthAudioSource` and
-`SynthesizerVoice`; parity needs a shared preallocated declick product plus an
-explicit Cycle V2 voice-lifecycle policy, including how the Cycle 1 document
-setting maps into the graph/render contract.
+Resolution:
 
-Current status: open. Artifacts:
-`/tmp/cycle-simple-bass-note-75/comparison.json` and
-`/tmp/cycle-simple-bass-note-200/comparison.json`.
+- `CycleDsp::VoiceDeclick` now owns the authoritative attack/release ramp
+  construction and terminal-release alignment. Cycle 1 delegates its existing
+  voice behavior to that shared implementation without changing its 44.1 kHz
+  synthesis-rate contract.
+- The Cycle 1 document setting is translated to a hidden `declick` parameter
+  on the graph's volume envelope. The envelope produces the ramp before effects
+  and owns the release lifetime. If no authored volume envelope is active, the
+  converter connects a neutral volume envelope rather than creating a separate
+  voice-output approximation. Fresh conversion persists an explicit true or
+  false value from the Cycle 1 document.
+- The runtime preallocates ramps during graph preparation. Their lengths retain
+  the 1.45 ms/10 ms legacy durations at the graph render rate, and the authored
+  release-tail fade remains active independently of the optional attack and
+  immediate-release setting, matching Cycle 1.
+
+At MIDI 48, the Simple Bass whole-note correlation improves from `0.99878` to
+`0.99989` for 75 ms and from `0.99928` to `0.99963` for 200 ms. The remaining
+release-window difference follows the two engines' authored-envelope release
+cursor rather than an omitted declick policy and remains part of the broader
+envelope parity work.
+
+Current status: resolved on 2026-09-09. Artifacts:
+`/tmp/cycle-simple-bass-declick-rate-75/comparison.json` and
+`/tmp/cycle-simple-bass-declick-200/comparison.json`.
 
 ## Open: routed scratch-envelope morph is not ready at note start
 

@@ -461,6 +461,8 @@ def envelope_node(preset, layer, purpose, node_id, x, y, level=1.0):
             "red": morph["position"]["red"],
             "blue": morph["position"]["blue"],
             "level": level,
+            "declick": bool(preset["settings"].get("Declick", True))
+                if purpose == "volume" else False,
         },
         envelope_model(layer, morph),
     )
@@ -676,6 +678,19 @@ def convert(source):
                 envelope_ids[purpose] = envelope_id
 
     volume_id = envelope_ids.get("volume")
+    if volume_id is None and preset["settings"].get("Declick", True):
+        volume_id = "volumeEnvelope1"
+        volume_layers = envelope_layers(preset, "volume")
+        if not volume_layers:
+            nodes.append(node(volume_id, "envelope", 2450, envelope_y["volume"], {
+                "enabled": False,
+                "purpose": "volume",
+                "logarithmic": False,
+                "red": morph["position"]["red"],
+                "blue": morph["position"]["blue"],
+                "level": 1.0,
+                "declick": True,
+            }))
     if volume_id is not None:
         nodes.append(node("volumeMultiply", "multiply", 2780, 500))
         edges.append(edge(signal_node, signal_port, "volumeMultiply", "left"))

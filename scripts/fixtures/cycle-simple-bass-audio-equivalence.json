@@ -8,7 +8,7 @@
     },
     "v2": {
         "graph": "cycle-v2/content/presets/simple-bass.cyclegraph",
-        "sha256": "e70fbf311e5fad36a3a2362f430257d4b8e3342a181ebfe9def3c1b90e776caf",
+        "sha256": "3b08c4a575362f53560fb7382ee8b0301956312e3fb19dc2bb2a47265a4a5810",
         "renderOverrides": {
             "voiceDurationSeconds": 0.24360341021593185
         }
@@ -29,7 +29,7 @@
         "determinism": "pitch and scratch envelopes, spectral phase, effects, unison, and guide noise are disabled",
         "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
         "knownRuntimeGaps": [
-            "Cycle V2 does not apply Cycle 1's document-level attack and release declick ramps"
+            "Cycle V2 authored-envelope release cursor still differs from Cycle 1 at note-off"
         ],
         "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
     },

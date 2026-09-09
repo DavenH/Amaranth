@@ -232,3 +232,13 @@ canvas sprites. The replacement lifecycle now invalidates each Curve host's
 render key, clears both framebuffer snapshots, advances its presentation
 identity, and schedules retained Guide widgets for a fresh render. A focused
 node-editor-host regression covers snapshot clearing and identity advancement.
+
+## P2: African Horn factory graph is not canonical JSON
+
+Status: Open
+
+The full Cycle V2 suite currently fails `Every shipped graph is canonical JSON
+and compiles` on `african-horn.cyclegraph`. The graph compiles, but a
+deserialize/serialize pass changes its JSON representation. This predates and
+is independent of the document-declick changes; regenerate that preset through
+the canonical serializer without expanding unrelated preset diffs.

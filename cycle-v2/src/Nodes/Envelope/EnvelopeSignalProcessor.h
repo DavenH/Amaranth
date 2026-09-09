@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Array/ScopedAlloc.h>
+#include <Audio/CycleDsp/VoiceDeclick.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/EnvelopePlaybackEngine.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
@@ -55,6 +56,9 @@ private:
             float blue);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
     void renderSegment(Buffer<float> output, size_t start, size_t count, double normalizedTimeIncrement);
+    void renderNeutralSegment(Buffer<float> output, size_t start, size_t count);
+    void applyAttackDeclick(Buffer<float> rendered);
+    void renderReleaseDeclick(Buffer<float> rendered);
     void applyAdoptionTransition(Buffer<float> rendered);
     void publishTraversalGrid(SignalPayload& output, const AudioProcessWorkArena* arena);
 
@@ -65,6 +69,10 @@ private:
     Rasterization::EnvelopePlaybackEngine playback;
     MeshLibrary::EnvProps props;
     bool active {};
+    bool fadingIn {};
+    bool fadingOut {};
+    int attackSamplePosition {};
+    int releaseSamplePosition {};
     float level { 1.f };
     uint64_t adoptedRevision {};
     uint64_t pendingRevision {};
@@ -85,6 +93,8 @@ private:
     SmoothedMorphPosition smoothedMorph;
     ScopedAlloc<float> transitionMemory { 8192 };
     ScopedAlloc<float> traversalMemory { 2 * defaultTraversalColumns };
+    ScopedAlloc<float> attackDeclick;
+    ScopedAlloc<float> releaseDeclick;
 };
 
 }
