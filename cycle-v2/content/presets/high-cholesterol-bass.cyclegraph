@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 633.0 },
+            "position": { "x": 186.20691, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": -2, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": -167.24139, "y": 551.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 861.0 },
+            "position": { "x": -129.31035, "y": 764.79309 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 17.36, "panSpread": 0.0, "phase": 0.016, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -59,11 +59,11 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 619.0 },
+            "position": { "x": 528.27588, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
-                "yellow": 0.5,
+                "yellow": 0.0,
                 "red": 0.5,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
@@ -654,7 +654,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1526.80005, "y": 817.0 },
+            "position": { "x": 1526.80005, "y": 849.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -750,7 +750,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 2453.0, "y": 619.0 },
-            "parameters": { "enabled": true, "size": 0.28571, "post": 0.168, "highPass": 0.0 },
+            "parameters": { "enabled": true, "size": 0.14286, "post": 0.168, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
                 "version": 1,

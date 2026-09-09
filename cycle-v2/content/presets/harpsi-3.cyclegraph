@@ -6,14 +6,14 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 633.0 },
+            "position": { "x": 184.48276, "y": 619.0 },
             "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 333.0 },
+            "position": { "x": 132.75862, "y": 389.44827 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -30,7 +30,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 886.0, "y": 619.0 },
+            "position": { "x": 911.86206, "y": 619.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -44,7 +44,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 619.0 },
+            "position": { "x": 550.68964, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
@@ -126,7 +126,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1216.0, "y": 100.0 },
+            "position": { "x": 1216.0, "y": 253.44827 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -1745,7 +1745,7 @@
             "id": "magnitudeOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1284.0, "y": 449.0 },
+            "position": { "x": 1284.0, "y": 619.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -1755,7 +1755,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1582.0, "y": 100.0 },
+            "position": { "x": 1582.0, "y": 253.44827 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -1827,7 +1827,7 @@
             "id": "magnitudeOp2",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1650.0, "y": 449.0 },
+            "position": { "x": 1650.0, "y": 619.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -1837,7 +1837,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1216.0, "y": 987.0 },
+            "position": { "x": 1216.0, "y": 1011.13794 },
             "portSides": {
                 "outputs": { "out": "top" }
             },
@@ -2403,7 +2403,7 @@
             "id": "phaseOp1",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1284.0, "y": 789.0 },
+            "position": { "x": 1284.0, "y": 832.10345 },
             "portSides": {
                 "inputs": { "right": "bottom" }
             },
@@ -2413,21 +2413,21 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1892.80005, "y": 817.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "position": { "x": 1892.80005, "y": 848.03448 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "red": 0.749, "blue": 0.726, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 26,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 26,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.00029, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 0.63827, "id": 0 },
                                 { "time": 0.0, "phase": 0.00029, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.63827, "id": 1 },
@@ -2502,13 +2502,14 @@
                         "sustainIndices": [ 3 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.749,
+                    "blue": 0.726,
                     "redLinked": false,
                     "blueLinked": false,
                     "cubeIds": [ 1, 2, 3, 4, 5 ]
                 }
-            }
+            },
+            "editor": {}
         },
         {
             "id": "volumeMultiply",
