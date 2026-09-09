@@ -878,6 +878,17 @@ has the same frontier and length in both engines. Artifact:
 Current status: scratch and spectral output scheduling boundaries resolved;
 remaining deterministic numeric residual tracked under parity TDD slice 24.
 
+Update: the magnitude-raster residual came from logarithmic harmonic sampling
+positions, not output gain. Cycle 1 reads a contiguous, precomputed all-note
+`LogRegions` bank. Cycle V2 regenerated a separately aligned position vector;
+Accelerate's vector logarithm differed by one ULP at five positions. Cycle V2
+now reuses the authoritative default bank. Filter Saw MIDI 48/frame 32 is
+byte-identical through magnitude rasterization, range shaping, and post-layer
+spectrum. The inverse FFT is now the first unequal stage.
+
+Current status: magnitude-raster boundary resolved; inverse-FFT residual tracked
+under parity TDD slice 25.
+
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 
 Context:

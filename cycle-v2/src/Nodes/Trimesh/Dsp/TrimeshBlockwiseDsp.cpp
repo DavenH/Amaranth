@@ -2,7 +2,7 @@
 
 #include <Curve/Curve.h>
 #include <Curve/Mesh/Vertex.h>
-#include <Util/LogRegionMapping.h>
+#include <Util/LogRegions.h>
 
 namespace CycleV2 {
 
@@ -80,6 +80,7 @@ void TrimeshBlockwiseDsp::setFrequencyMidiNote(int midiNote) {
 }
 
 void TrimeshBlockwiseDsp::prepareSampling(size_t maximumFrameCount) {
+    LogRegions::prepareDefaultRegions();
     frequencyPositions.resize(maximumFrameCount);
     cachedFrequencyPositionCount = 0;
 }
@@ -209,6 +210,10 @@ void TrimeshBlockwiseDsp::sampleOutputAtPositions(
             || (!positions.empty() && positions.size() < dest.size())) {
         return;
     }
+    if (!positions.empty()) {
+        sampler.sampleAtIntervals(positions, dest);
+        return;
+    }
 
     const float delta = dest.size() > 0 ? 1.f / (float) dest.size() : 0.f;
     int currentIndex = sampler.initialIndex();
@@ -223,6 +228,12 @@ void TrimeshBlockwiseDsp::sampleOutputAtPositions(
 }
 
 Buffer<float> TrimeshBlockwiseDsp::frequencyPositionsFor(int size) {
+    Buffer<float> legacyPositions = LogRegions::getDefaultRegion(
+            frequencyMidiNote);
+    if (legacyPositions.size() == size) {
+        return legacyPositions;
+    }
+
     if ((int) frequencyPositions.size() < size) {
         frequencyPositions.resize((size_t) size);
         cachedFrequencyPositionCount = 0;

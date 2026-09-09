@@ -28,6 +28,7 @@
 #include <Curve/Mesh/Intercept.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Util/LogRegionMapping.h>
+#include <Util/LogRegions.h>
 
 #include <algorithm>
 #include <array>
@@ -725,7 +726,7 @@ TEST_CASE("Prepared spectral sampling clears bins beyond the legacy harmonic reg
     mesh->destroy();
 }
 
-TEST_CASE("Prepared spectral raster preserves Cycle 1 nonwrapping margins",
+TEST_CASE("Prepared spectral raster reuses Cycle 1 logarithmic regions",
         "[cycle-v2][nodes][trimesh][dsp][spectral][parity]") {
     constexpr int midiNote = 60;
     constexpr int outputSize = 256;
@@ -752,14 +753,11 @@ TEST_CASE("Prepared spectral raster preserves Cycle 1 nonwrapping margins",
     legacy.setMorphPosition(morph);
     legacy.renderWaveformOnly(mesh.get());
     const int harmonicCount = LogRegionMapping(midiNote).regionSize();
-    std::vector<float> positions((size_t) harmonicCount);
-    LogRegionMapping(midiNote).fillDisplayUnits({
-            positions.data(),
-            harmonicCount
-    });
+    const Buffer<float> positions = LogRegions::getDefaultRegion(midiNote);
+    REQUIRE(positions.size() == harmonicCount);
     std::array<float, outputSize> expected {};
     legacy.sampler().sampleAtIntervals(
-            { positions.data(), harmonicCount },
+            positions,
             { expected.data(), harmonicCount });
 
     REQUIRE(actual == expected);

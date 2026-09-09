@@ -377,18 +377,36 @@ as the scratch envelope evolves.
     10,450-sample frontier and 337-sample length in both engines. MIDI 48, 60,
     and 72 all align at zero lag with correlations of at least `0.9999999919`;
     their normalized residuals range from `5.6e-5` to `1.27e-4`.
-24. Localize the remaining deterministic numeric differences. Pending: Filter
+24. Localize the remaining deterministic numeric differences. Complete: Filter
     Saw first differs in five magnitude-raster bins (`8.8e-8` normalized
     residual), which expands through reconstruction and Hermite resampling to a
-    `5.6e-5` output residual. Preserve zero-lag scheduling and exact scratch
-    values while identifying the first differing arithmetic operation.
-    Multi-note artifact:
-    `/tmp/cycle-filter-saw-future-frame-control16/comparison.json`.
+    `5.6e-5` output residual. The spectral waveform coordinates and slopes are
+    byte-identical; the first mismatch is five one-ULP differences in the
+    logarithmic harmonic positions. Cycle 1 precomputes every MIDI region into
+    one contiguous bank, while Cycle V2 regenerated one independently aligned
+    vector. Accelerate's vector logarithm produced slightly different results
+    at those buffer offsets. `LogRegions` now exposes its default precomputed
+    bank to Cycle V2, while Cycle V2 delegates interpolation to the same bulk
+    `sampleAtIntervals` path. The spectral raster, shaped operand, and
+    post-layer spectrum are byte-identical at Filter Saw MIDI 48/frame 32.
+    Artifact:
+    `/tmp/cycle-filter-saw-shared-log-regions/comparison.json`.
+25. Localize the reconstructed-frame residual. Pending: with all inputs through
+    the post-layer spectrum byte-identical, inverse FFT is now the first unequal
+    captured stage (`3.4e-6` normalized residual), followed by Hermite cycle
+    resampling and a `5.6e-5` output residual.
 
-Future work: replace the inherited 256-sample control interval with an explicit
+Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a
 quality/architecture change, not part of Cycle 1 parity, and must retain the
 cycle-clocked envelope boundary rather than returning to blockwise sampling.
+
+Separate output-control gap: Cycle V2 currently applies fixed `0.125` headroom
+after voice summation, and its Output node has meters but no authored master-gain
+parameter. This cannot affect oscillator-stage parity and is not the source of
+the magnitude-raster difference. Adding a Cycle 1-mapped vertical master fader
+belongs in an Output-node control slice, with the fixed safety headroom kept as
+a distinct implementation concern.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.
