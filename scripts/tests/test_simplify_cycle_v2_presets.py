@@ -170,7 +170,6 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
             edge("fft", "phase", "ifft", "phase"),
             edge("ifft", "time", "out", "time"),
         ])
-
         report = simplify.simplify_graph(document)
 
         self.assertEqual(report["transformPair"], 1)
@@ -224,21 +223,149 @@ class SimplifyCycleV2PresetsTest(unittest.TestCase):
         self.assertEqual(document["edges"], [])
         self.assertEqual(document["nodes"][0]["position"], {"x": 100.0, "y": 100.0})
 
-    def test_empty_time_seed_is_retained_when_spectral_content_exists(self):
+    def test_empty_time_seed_promotes_populated_spectral_branches(self):
         document = graph([
+            {
+                **node("voice", "voiceContext"),
+                "parameters": {"domain": "waveform"},
+            },
             node("timeLayer1", "trilinearMesh", []),
             node("fft", "fft"),
             node("magnitudeLayer1", "trilinearMesh", [1]),
             node("magnitudeOp1", "add"),
+            node("phaseLayer1", "trilinearMesh", [1]),
+            {
+                **node("phasePan", "spectralLayer"),
+                "parameters": {"pan": 0.75},
+            },
+            node("phaseOp1", "add"),
             node("ifft", "ifft"),
             node("out", "output"),
         ], [
+            edge("voice", "context", "timeLayer1", "context"),
+            edge("timeLayer1", "out", "fft", "time"),
+            edge("fft", "mag", "magnitudeOp1", "left"),
+            edge("magnitudeLayer1", "out", "magnitudeOp1", "right"),
+            edge("magnitudeOp1", "out", "ifft", "mag"),
+            edge("fft", "phase", "phaseOp1", "left"),
+            edge("phaseLayer1", "out", "phasePan", "in"),
+            edge("phasePan", "out", "phaseOp1", "right"),
+            edge("phaseOp1", "out", "ifft", "phase"),
+            edge("ifft", "time", "out", "time"),
+        ])
+        positions = {item["id"]: item["position"] for item in document["nodes"]}
+        positions["voice"]["x"] = 100.0
+        positions["magnitudeLayer1"]["x"] = 1200.0
+        positions["phaseLayer1"]["x"] = 1200.0
+        positions["phasePan"]["x"] = 1480.0
+        positions["ifft"]["x"] = 2280.0
+        positions["out"]["x"] = 3160.0
+
+        report = simplify.simplify_graph(document)
+
+        self.assertEqual(report["emptyTimeSeed"], 1)
+        self.assertEqual(report["emptyTimeSeedNodes"], 4)
+        self.assertEqual(report["spectralLayoutCompaction"], 1)
+        self.assertEqual(
+            {item["id"] for item in document["nodes"]},
+            {"voice", "magnitudeLayer1", "phaseLayer1", "phasePan", "ifft", "out"},
+        )
+        self.assertEqual(document["nodes"][0]["parameters"]["domain"], "spectral")
+        rewritten_positions = {
+            item["id"]: item["position"]["x"] for item in document["nodes"]
+        }
+        self.assertEqual(rewritten_positions["magnitudeLayer1"], 380.0)
+        self.assertEqual(rewritten_positions["phaseLayer1"], 380.0)
+        self.assertEqual(rewritten_positions["phasePan"], 660.0)
+        self.assertEqual(rewritten_positions["ifft"], 1460.0)
+        self.assertEqual(rewritten_positions["out"], 2340.0)
+        self.assertEqual(document["edges"], [
+            edge("magnitudeLayer1", "out", "ifft", "mag"),
+            edge("phaseLayer1", "out", "phasePan", "in"),
+            edge("phasePan", "out", "ifft", "phase"),
+            edge("ifft", "time", "out", "time"),
+            edge("voice", "context", "magnitudeLayer1", "context"),
+            edge("voice", "context", "phaseLayer1", "context"),
+        ])
+
+        second_report = simplify.simplify_graph(document)
+        self.assertFalse(second_report)
+
+    def test_empty_time_seed_with_multiply_branch_is_retained(self):
+        document = graph([
+            {
+                **node("voice", "voiceContext"),
+                "parameters": {"domain": "waveform"},
+            },
+            node("timeLayer1", "trilinearMesh", []),
+            node("fft", "fft"),
+            node("magnitudeLayer1", "trilinearMesh", [1]),
+            node("magnitudeOp1", "multiply"),
+            node("ifft", "ifft"),
+        ], [
+            edge("voice", "context", "timeLayer1", "context"),
             edge("timeLayer1", "out", "fft", "time"),
             edge("fft", "mag", "magnitudeOp1", "left"),
             edge("magnitudeLayer1", "out", "magnitudeOp1", "right"),
             edge("magnitudeOp1", "out", "ifft", "mag"),
             edge("fft", "phase", "ifft", "phase"),
-            edge("ifft", "time", "out", "time"),
+        ])
+        original = copy.deepcopy(document)
+
+        report = simplify.simplify_graph(document)
+
+        self.assertFalse(report)
+        self.assertEqual(document, original)
+
+    def test_empty_time_seed_with_probe_reference_is_retained(self):
+        document = graph([
+            {
+                **node("voice", "voiceContext"),
+                "parameters": {"domain": "waveform"},
+            },
+            node("timeLayer1", "trilinearMesh", []),
+            node("fft", "fft"),
+            node("magnitudeLayer1", "trilinearMesh", [1]),
+            node("magnitudeOp1", "add"),
+            node("ifft", "ifft"),
+        ], [
+            edge("voice", "context", "timeLayer1", "context"),
+            edge("timeLayer1", "out", "fft", "time"),
+            edge("fft", "mag", "magnitudeOp1", "left"),
+            edge("magnitudeLayer1", "out", "magnitudeOp1", "right"),
+            edge("magnitudeOp1", "out", "ifft", "mag"),
+            edge("fft", "phase", "ifft", "phase"),
+        ])
+        document["probes"] = [{
+            "sourceNodeId": "magnitudeOp1",
+            "sourcePortId": "out",
+            "anchorDestNodeId": "ifft",
+        }]
+        original = copy.deepcopy(document)
+
+        report = simplify.simplify_graph(document)
+
+        self.assertEqual(report["ambiguousEmptyTimeSeed"], 1)
+        self.assertEqual(document, original)
+
+    def test_nonempty_time_layer_is_not_promoted_to_spectral_context(self):
+        document = graph([
+            {
+                **node("voice", "voiceContext"),
+                "parameters": {"domain": "waveform"},
+            },
+            node("timeLayer1", "trilinearMesh", [1]),
+            node("fft", "fft"),
+            node("magnitudeLayer1", "trilinearMesh", [1]),
+            node("magnitudeOp1", "add"),
+            node("ifft", "ifft"),
+        ], [
+            edge("voice", "context", "timeLayer1", "context"),
+            edge("timeLayer1", "out", "fft", "time"),
+            edge("fft", "mag", "magnitudeOp1", "left"),
+            edge("magnitudeLayer1", "out", "magnitudeOp1", "right"),
+            edge("magnitudeOp1", "out", "ifft", "mag"),
+            edge("fft", "phase", "ifft", "phase"),
         ])
         original = copy.deepcopy(document)
 

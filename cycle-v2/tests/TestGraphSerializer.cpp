@@ -780,8 +780,6 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
                             && destination->kind == NodeKind::VoiceContext
                             && edge.destPortId == "scratch";
                 });
-        bool hasPopulatedSpectralMesh = false;
-        bool hasEmptyTimeMesh = false;
         for (const Node& node : nodes) {
             if (node.kind == NodeKind::SpectralLayer) {
                 REQUIRE(NodeParameterMap(node).floatValue("pan", 0.5f) != 0.5f);
@@ -792,13 +790,7 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
                         node.model);
                 REQUIRE(model != nullptr);
                 const bool empty = model->mesh().getNumVerts() == 0;
-                if (node.id.startsWith("magnitudeLayer")
-                        || node.id.startsWith("phaseLayer")) {
-                    REQUIRE_FALSE(empty);
-                    hasPopulatedSpectralMesh = true;
-                } else if (empty) {
-                    hasEmptyTimeMesh = true;
-                }
+                REQUIRE_FALSE(empty);
 
                 const bool hasLocalScratch = std::any_of(
                         edges.begin(), edges.end(), [&](const Edge& edge) {
@@ -827,10 +819,6 @@ TEST_CASE("Factory presets contain no structurally redundant graph elements",
                 REQUIRE(connected);
             }
         }
-        if (hasEmptyTimeMesh) {
-            REQUIRE(hasPopulatedSpectralMesh);
-        }
-
         for (const GuideCurveResource& guide : loaded.graph.getGuideCurves()) {
             REQUIRE(loaded.graph.guideUsageCount(guide.id) > 0);
         }

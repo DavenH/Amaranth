@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 MAXIMUM_LINE_LENGTH = 140
+SPECTRAL_START_OFFSET = 280.0
 SPECTRAL_LAYER_PREFIXES = ("magnitudeLayer", "phaseLayer")
 SILENT_GRAPH_NODE_KINDS = {
     "voiceContext",
@@ -312,6 +313,167 @@ def collapse_complete_scratch_fanout(document, report):
     report["scratchEdgesRemoved"] += len(removed_indices)
 
 
+def remove_port_override(node, group, port_id):
+    port_sides = node.get("portSides")
+    if port_sides is None or group not in port_sides:
+        return
+    port_sides[group].pop(port_id, None)
+    if not port_sides[group]:
+        port_sides.pop(group)
+    if not port_sides:
+        node.pop("portSides")
+
+
+def spectral_context_target(nodes, edges, source_edge):
+    source = nodes.get(source_edge["sourceNodeId"])
+    if source is None:
+        return None
+    if source.get("kind") == "trilinearMesh" and not mesh_is_empty(source):
+        return source
+    if source.get("kind") != "spectralLayer":
+        return None
+    incoming = [
+        edge for edge in edges
+        if edge["destNodeId"] == source["id"] and edge["destPortId"] == "in"
+    ]
+    if len(incoming) != 1:
+        return None
+    mesh = nodes.get(incoming[0]["sourceNodeId"])
+    if (mesh is None or mesh.get("kind") != "trilinearMesh"
+            or mesh_is_empty(mesh)):
+        return None
+    return mesh
+
+
+def compact_promoted_spectral_graph(nodes, voice, context_targets):
+    positioned_targets = [
+        target for target in context_targets if "position" in target
+    ]
+    if not positioned_targets or "position" not in voice:
+        return 0.0
+    first_spectral_x = min(
+        float(target["position"]["x"]) for target in positioned_targets
+    )
+    desired_x = float(voice["position"]["x"]) + SPECTRAL_START_OFFSET
+    shift = first_spectral_x - desired_x
+    if shift <= 0.0:
+        return 0.0
+    for node in nodes.values():
+        position = node.get("position")
+        if position is not None and float(position["x"]) >= first_spectral_x:
+            position["x"] = float(position["x"]) - shift
+    return shift
+
+
+def promote_empty_time_seed_to_spectral_context(document, report):
+    nodes = {node["id"]: node for node in document.get("nodes", [])}
+    voice_contexts = [
+        node for node in nodes.values() if node.get("kind") == "voiceContext"
+    ]
+    if len(voice_contexts) != 1:
+        return
+    voice = voice_contexts[0]
+    if voice.get("parameters", {}).get("domain") != "waveform":
+        return
+
+    edges = document.get("edges", [])
+    candidates = []
+    for time_mesh in nodes.values():
+        if (time_mesh.get("kind") != "trilinearMesh"
+                or not time_mesh["id"].startswith("timeLayer")
+                or not mesh_is_empty(time_mesh)):
+            continue
+        outgoing = [
+            edge for edge in edges
+            if edge["sourceNodeId"] == time_mesh["id"]
+            and edge["sourcePortId"] == "out"
+        ]
+        if len(outgoing) != 1:
+            continue
+        fft = nodes.get(outgoing[0]["destNodeId"])
+        if fft is not None and fft.get("kind") == "fft":
+            candidates.append((time_mesh, fft))
+    if len(candidates) != 1:
+        return
+
+    time_mesh, fft = candidates[0]
+    fft_inputs = [edge for edge in edges if edge["destNodeId"] == fft["id"]]
+    fft_outputs = [edge for edge in edges if edge["sourceNodeId"] == fft["id"]]
+    if (len(fft_inputs) != 1 or fft_inputs[0]["sourceNodeId"] != time_mesh["id"]
+            or any(edge["sourcePortId"] not in ("mag", "phase") for edge in fft_outputs)):
+        return
+
+    removed_ids = {time_mesh["id"], fft["id"]}
+    bypasses = []
+    context_targets = []
+    for port_id, destination_port in (("mag", "mag"), ("phase", "phase")):
+        branch = [edge for edge in fft_outputs if edge["sourcePortId"] == port_id]
+        if len(branch) > 1:
+            return
+        if not branch:
+            continue
+        destination = nodes.get(branch[0]["destNodeId"])
+        if (destination is not None and destination.get("kind") == "ifft"
+                and branch[0]["destPortId"] == destination_port):
+            continue
+        if destination is None or destination.get("kind") != "add":
+            return
+        operation_inputs = [
+            edge for edge in edges if edge["destNodeId"] == destination["id"]
+        ]
+        content_inputs = [
+            edge for edge in operation_inputs if edge["sourceNodeId"] != fft["id"]
+        ]
+        operation_outputs = [
+            edge for edge in edges if edge["sourceNodeId"] == destination["id"]
+        ]
+        if (len(operation_inputs) != 2 or len(content_inputs) != 1
+                or not operation_outputs):
+            return
+        context_target = spectral_context_target(nodes, edges, content_inputs[0])
+        if context_target is None:
+            return
+        removed_ids.add(destination["id"])
+        bypasses.append((content_inputs[0], operation_outputs))
+        context_targets.append(context_target)
+
+    if not context_targets:
+        return
+    probes, assignments, bindings = node_references(document, removed_ids)
+    if probes or assignments or bindings:
+        report["ambiguousEmptyTimeSeed"] += 1
+        return
+
+    for source, outgoing in bypasses:
+        for edge in outgoing:
+            edge["sourceNodeId"] = source["sourceNodeId"]
+            edge["sourcePortId"] = source["sourcePortId"]
+    horizontal_shift = compact_promoted_spectral_graph(nodes, voice, context_targets)
+    remove_nodes(document, removed_ids)
+    voice.setdefault("parameters", {})["domain"] = "spectral"
+    for target in context_targets:
+        remove_port_override(target, "outputs", "out")
+        if any(
+                edge["sourceNodeId"] == voice["id"]
+                and edge["sourcePortId"] == "context"
+                and edge["destNodeId"] == target["id"]
+                and edge["destPortId"] == "context"
+                for edge in document["edges"]):
+            continue
+        document["edges"].append({
+            "sourceNodeId": voice["id"],
+            "sourcePortId": "context",
+            "destNodeId": target["id"],
+            "destPortId": "context",
+            "connectionKind": "signal",
+            "attachmentType": "none",
+        })
+    report["emptyTimeSeed"] += 1
+    report["emptyTimeSeedNodes"] += len(removed_ids)
+    if horizontal_shift > 0.0:
+        report["spectralLayoutCompaction"] += 1
+
+
 def collapse_silent_empty_time_graph(document, report):
     nodes = document.get("nodes", [])
     meshes = [node for node in nodes if node.get("kind") == "trilinearMesh"]
@@ -386,6 +548,7 @@ def simplify_graph(document):
     bypass_empty_spectral_layers(document, report)
     bypass_neutral_pan(document, report)
     bypass_redundant_transform_pair(document, report)
+    promote_empty_time_seed_to_spectral_context(document, report)
     collapse_complete_scratch_fanout(document, report)
     prune_isolated_nodes(document, report)
     prune_unused_guides(document, report)

@@ -7,7 +7,7 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 633.0 },
-            "parameters": { "domain": "waveform", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
+            "parameters": { "domain": "spectral", "octave": 0, "pitch": 0.0, "portamento": false, "oversampling": "1x" }
         },
         {
             "id": "morph",
@@ -27,55 +27,17 @@
             }
         },
         {
-            "id": "fft",
-            "kind": "fft",
-            "definitionVersion": 1,
-            "position": { "x": 886.0, "y": 619.0 },
-            "parameters": { "cycleFrames": 2048, "mode": "cycle" }
-        },
-        {
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2642.0, "y": 619.0 },
+            "position": { "x": 1806.0, "y": 619.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
-        },
-        {
-            "id": "timeLayer1",
-            "kind": "trilinearMesh",
-            "definitionVersion": 1,
-            "position": { "x": 480.0, "y": 619.0 },
-            "parameters": {
-                "enabled": true,
-                "range": 0.5,
-                "yellow": 0.5,
-                "red": 0.5,
-                "blue": 0.5,
-                "primaryAxis": "yellow",
-                "link.yellow": true,
-                "link.red": false,
-                "link.blue": false
-            },
-            "model": {
-                "schema": "trimesh",
-                "version": 2,
-                "revision": 1,
-                "mesh": {
-                    "name": "TimeMesh0",
-                    "version": 1,
-                    "vertices": [],
-                    "cubes": []
-                }
-            }
         },
         {
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1216.0, "y": 100.0 },
-            "portSides": {
-                "outputs": { "out": "bottom" }
-            },
+            "position": { "x": 380.0, "y": 100.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.5,
@@ -141,20 +103,10 @@
             }
         },
         {
-            "id": "magnitudeOp1",
-            "kind": "add",
-            "definitionVersion": 1,
-            "position": { "x": 1284.0, "y": 449.0 },
-            "portSides": {
-                "inputs": { "right": "top" }
-            },
-            "parameters": {}
-        },
-        {
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1582.0, "y": 100.0 },
+            "position": { "x": 746.0, "y": 100.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -278,7 +230,7 @@
             "id": "magnitudeOp2",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 1650.0, "y": 449.0 },
+            "position": { "x": 814.0, "y": 449.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -288,7 +240,7 @@
             "id": "magnitudeLayer3",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1948.0, "y": 100.0 },
+            "position": { "x": 1112.0, "y": 100.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -347,7 +299,7 @@
             "id": "magnitudeOp3",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2016.0, "y": 449.0 },
+            "position": { "x": 1180.0, "y": 449.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -357,7 +309,7 @@
             "id": "magnitudeLayer4",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 2314.0, "y": 100.0 },
+            "position": { "x": 1478.0, "y": 100.0 },
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -416,7 +368,7 @@
             "id": "magnitudeOp4",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2382.0, "y": 449.0 },
+            "position": { "x": 1546.0, "y": 449.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -426,10 +378,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1216.0, "y": 987.0 },
-            "portSides": {
-                "outputs": { "out": "top" }
-            },
+            "position": { "x": 380.0, "y": 987.0 },
             "parameters": {
                 "enabled": true,
                 "range": 0.45,
@@ -482,20 +431,10 @@
             }
         },
         {
-            "id": "phaseOp1",
-            "kind": "add",
-            "definitionVersion": 1,
-            "position": { "x": 1284.0, "y": 789.0 },
-            "portSides": {
-                "inputs": { "right": "bottom" }
-            },
-            "parameters": {}
-        },
-        {
             "id": "output",
             "kind": "output",
             "definitionVersion": 1,
-            "position": { "x": 3000.0, "y": 619.0 },
+            "position": { "x": 2164.0, "y": 619.0 },
             "parameters": {}
         }
     ],
@@ -785,21 +724,17 @@
     ],
     "edges": [
         { "sourceNodeId": "morph", "sourcePortId": "modulation", "destNodeId": "voice", "destPortId": "modulation", "connectionKind": "configurationAttachment", "attachmentType": "modulationTriple" },
-        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "timeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "fft", "sourcePortId": "mag", "destNodeId": "magnitudeOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "magnitudeOp1", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "magnitudeLayer1", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer2", "sourcePortId": "out", "destNodeId": "magnitudeOp2", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp2", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer3", "sourcePortId": "out", "destNodeId": "magnitudeOp3", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp3", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeLayer4", "sourcePortId": "out", "destNodeId": "magnitudeOp4", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "magnitudeOp4", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "mag", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "fft", "sourcePortId": "phase", "destNodeId": "phaseOp1", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "phaseOp1", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "phaseOp1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "magnitudeLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "voice", "sourcePortId": "context", "destNodeId": "phaseLayer1", "destPortId": "context", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": []
 }

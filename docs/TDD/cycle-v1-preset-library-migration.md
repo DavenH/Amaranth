@@ -199,11 +199,15 @@ remaining Guide uses them.
 
 A graph whose only Trimesh nodes are empty time layers and whose remaining node
 kinds cannot generate or process nonzero content collapses to a single Output.
-An empty time mesh is otherwise retained when populated spectral layers depend
-on it as their zero-spectrum seed. A direct FFT-to-IFFT magnitude/phase pair is
-bypassed only when neither transform has another branch or external reference.
-Legacy range stored on a centred Pan is transferred to its upstream Trimesh
-before the Pan is removed.
+When an empty time mesh and FFT only provide zero inputs to additive spectral
+accumulators, the graph instead starts in spectral Voice Context: the seed,
+FFT, and first zero-input Add nodes are removed, each first populated spectral
+Trimesh receives context directly, and its signal continues downstream. This
+rewrite refuses non-empty time meshes, Multiply branches, ambiguous fan-out,
+and removed nodes with probes, Guide assignments, or audio bindings. A direct
+FFT-to-IFFT magnitude/phase pair is bypassed only when neither transform has
+another branch or external reference. Legacy range stored on a centred Pan is
+transferred to its upstream Trimesh before the Pan is removed.
 
 ## Lifecycle And Ownership
 
@@ -245,6 +249,9 @@ before the Pan is removed.
     cleanup to generated and protected content. Added a whole-library invariant
     covering isolated nodes, unused Guides, empty spectral meshes, centred Pan,
     empty time seeds, direct transform round trips, loading, and compilation.
+12. Promoted the remaining additive empty-time spectral seeds to spectral Voice
+    Context, removed their zero FFT/Add scaffolding, and horizontally compacted
+    the downstream graph while preserving authorable port positions.
 
 ## Verification
 
@@ -285,12 +292,16 @@ before the Pan is removed.
   142 unassigned Guides. It also removed one empty spectral branch, two remaining
   centred Pan nodes, and one direct FFT/IFFT round trip. Nine wholly silent
   presets (`by-myself`, `empty`, `env-test`, `envelope-test`, `layers`, `now`,
-  `power`, `sitar-model-1`, and `speed-test`) now contain only Output. Sixty-eight
-  empty time meshes remain intentionally because they seed populated spectral
-  layer stacks.
-- Remaining blockers: none. `crash`, `cymbal`, and `downfall` retain their two
-  active time layers and opposite stereo placement through the generalized
-  inline Pan operation and the authoritative `Arithmetic::getPans` gain law.
+  `power`, `sitar-model-1`, and `speed-test`) now contain only Output. The final
+  68 empty time seeds were removed: three through user-authored reference edits
+  and 65 through the conservative shared cleanup pass.
+- Remaining migration blockers: none. `crash`, `cymbal`, and `downfall` retain
+  their two active time layers and opposite stereo placement through the
+  generalized inline Pan operation and the authoritative
+  `Arithmetic::getPans` gain law. The direct-spectral Japan Drum graph exposes
+  an open prepared-oscillator bit-exactness regression recorded in
+  `audio-bugs.md`; its magnitude is below `3.1e-8`, but the exact host-partition
+  contract remains intentionally failing until the runtime boundary is fixed.
 
 ## Final Verification
 
@@ -311,6 +322,11 @@ before the Pan is removed.
 - Native Cycle V2 batch verification: all 224 generated destinations loaded,
   compiled, saved, reopened, and compiled again; 1,120 automation operations
   completed with zero failures across the batch sessions.
+- Empty-time spectral promotion: 12 simplifier unit cases passed; the 230-file
+  structural load/validate/compile invariant passed 6,375 assertions, and the
+  compact-node/cable-layout invariant passed 261,878 assertions. The full suite
+  passed 896 of 897 cases; the sole exact-float Japan Drum partition failure is
+  tracked in `audio-bugs.md` with a focused reproduction.
 - The spectral Trimesh range automation fixture passed 12 commands, including
   a real drag, visible-state update, commit, and undo, and captured the expanded
   editor at `/private/tmp/cycle-v2-spectral-trimesh-range.png`.
