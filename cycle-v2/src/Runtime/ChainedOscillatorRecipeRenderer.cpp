@@ -88,12 +88,17 @@ bool ChainedOscillatorRecipeRenderer::supports(
 bool ChainedOscillatorRecipeRenderer::prepare(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region,
-        int maximumCycleSamplesToUse) {
+        int maximumCycleSamplesToUse,
+        const std::vector<NodeAudioProcessor*>& processors,
+        int laneCount) {
     if (!supports(plan, region) || maximumCycleSamplesToUse <= 0) {
         return false;
     }
 
     maximumCycleSamples = maximumCycleSamplesToUse;
+    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+        return false;
+    }
     outputOperation = -1;
     operations.clear();
     operations.reserve(region.stepIndices.size());
@@ -161,6 +166,7 @@ bool ChainedOscillatorRecipeRenderer::prepare(
 
 void ChainedOscillatorRecipeRenderer::reset() {
     lifecycleSeedReady = false;
+    cycleEnvelopes.reset();
     for (auto& operation : operations) {
         if (operation.trimesh != nullptr) {
             operation.trimesh->reset();
@@ -170,6 +176,11 @@ void ChainedOscillatorRecipeRenderer::reset() {
         }
         operation.lastMorphFrontier = 0;
     }
+}
+
+void ChainedOscillatorRecipeRenderer::applyLifecycleEvent(
+        const NoteLifecycleEvent& event) {
+    cycleEnvelopes.applyLifecycleEvent(event);
 }
 
 void ChainedOscillatorRecipeRenderer::renderCycle(
@@ -187,6 +198,13 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
     }
 
     prepareFrameRandom(request.processContext);
+    if (request.processContext != nullptr
+            && request.processContext->voice != nullptr) {
+        cycleEnvelopes.advanceLane(
+                request.laneIndex,
+                request.sampleCount,
+                request.processContext->voice->controls.normalizedVoiceTimeIncrement);
+    }
     for (int operationIndex = 0; operationIndex < (int) operations.size(); ++operationIndex) {
         auto& operation = operations[(size_t) operationIndex];
         auto outputLeft = operationBuffer(operationIndex, 0, request.sampleCount);
@@ -202,7 +220,9 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         operation.morphBinding.inputsFor(
                                 *request.processContext,
                                 request.blockSampleOffset,
-                                request.cycleStartSample),
+                                request.cycleStartSample,
+                                &cycleEnvelopes,
+                                request.laneIndex),
                         operation.configuration->morph,
                         PortDomain::TimeSignal,
                         operation.configuration->primaryViewAxis,

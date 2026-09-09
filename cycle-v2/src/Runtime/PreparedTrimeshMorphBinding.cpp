@@ -2,6 +2,7 @@
 
 #include "Nodes/Control/ModulationSource.h"
 #include "Nodes/Control/ModulationTriple.h"
+#include "Runtime/PreparedCycleEnvelopeBank.h"
 
 namespace CycleV2 {
 
@@ -86,7 +87,9 @@ void PreparedTrimeshMorphBinding::bind(
 TrimeshMorphInputs PreparedTrimeshMorphBinding::inputsFor(
         const PreparedOscillatorProcessContext& context,
         size_t blockSampleOffset,
-        double voiceSamplePosition) const {
+        double voiceSamplePosition,
+        const PreparedCycleEnvelopeBank* cycleEnvelopes,
+        int laneIndex) const {
     TrimeshMorphInputs inputs;
     for (size_t axis = 0; axis < inputs.absoluteMorph.size(); ++axis) {
         inputs.absoluteMorph[axis] = context.signalAt(morphInputBuffers[axis]);
@@ -100,7 +103,12 @@ TrimeshMorphInputs PreparedTrimeshMorphBinding::inputsFor(
                 * context.voice->controls.normalizedVoiceTimeIncrement);
         inputs.hasAbsoluteOverride[axis] = true;
     }
-    inputs.scratch = context.signalAt(scratchBuffer);
+    if (cycleEnvelopes != nullptr && cycleEnvelopes->contains(scratchBuffer)) {
+        inputs.scratchOverride = cycleEnvelopes->value(scratchBuffer, laneIndex);
+        inputs.hasScratchOverride = true;
+    } else {
+        inputs.scratch = context.signalAt(scratchBuffer);
+    }
     return inputs;
 }
 

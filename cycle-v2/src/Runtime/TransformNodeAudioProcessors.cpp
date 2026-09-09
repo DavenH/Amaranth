@@ -27,6 +27,10 @@ public:
         return processor.isActive();
     }
 
+    const CycleEnvelopePlaybackSource* cycleEnvelopePlaybackSource() const override {
+        return &processor;
+    }
+
     void process(AudioProcessContext& context) override {
         processor.process(context);
     }

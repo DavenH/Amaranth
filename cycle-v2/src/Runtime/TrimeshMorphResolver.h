@@ -17,6 +17,8 @@ struct TrimeshMorphInputs {
     std::array<float, 3> absoluteOverrides {};
     std::array<bool, 3> hasAbsoluteOverride {};
     const SignalPayload* scratch {};
+    float scratchOverride {};
+    bool hasScratchOverride {};
 };
 
 class TrimeshMorphResolver {
@@ -68,7 +70,7 @@ public:
         const MorphPosition morph = smoothedMorph.current().withTime(time);
         const auto scratchDomain = domainFor(outputDomain);
         if (!scratchEnabled
-                || inputs.scratch == nullptr
+                || (!inputs.hasScratchOverride && inputs.scratch == nullptr)
                 || !Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis)) {
             return morph;
@@ -77,10 +79,12 @@ public:
                 morph,
                 scratchDomain,
                 primaryAxis,
-                absoluteValue(
-                        inputs.scratch,
-                        sampleOffset,
-                        morph.time.getCurrentValue()));
+                inputs.hasScratchOverride
+                        ? jlimit(0.f, 1.f, inputs.scratchOverride)
+                        : absoluteValue(
+                                inputs.scratch,
+                                sampleOffset,
+                                morph.time.getCurrentValue()));
     }
 
     const MorphPosition& current() const { return smoothedMorph.current(); }

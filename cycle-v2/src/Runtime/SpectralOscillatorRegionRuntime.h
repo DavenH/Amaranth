@@ -33,6 +33,8 @@ public:
             SpectralOscillatorFrameRenderer& renderer);
 
 private:
+    static constexpr int legacyControlIntervalSamples = 256;
+
     struct LaneState {
         CycleDsp::ChainedCycleState clock;
         std::array<ReadWriteBuffer, 2> buffers;

@@ -11,6 +11,7 @@ namespace CycleV2 {
 struct GraphExecutionPlan;
 struct OscillatorRegionPlan;
 struct CompiledVoiceContext;
+class NodeAudioProcessor;
 
 struct PreparedOscillatorProcessContext {
     const AudioVoiceContext* voice {};
@@ -35,6 +36,7 @@ public:
     virtual bool replacesDiagnosticProcessors() const = 0;
     virtual size_t frameRenderCount() const { return 0; }
     virtual void reset() = 0;
+    virtual void applyLifecycleEvent(const NoteLifecycleEvent& event) = 0;
     virtual bool process(const PreparedOscillatorProcessContext& context) = 0;
 };
 
@@ -43,7 +45,8 @@ std::unique_ptr<PreparedOscillatorRegion> prepareOscillatorRegion(
         const OscillatorRegionPlan& region,
         const CompiledVoiceContext& context,
         const AudioExecutionSpec& spec,
-        int maximumCycleSamples);
+        int maximumCycleSamples,
+        const std::vector<NodeAudioProcessor*>& processors);
 
 bool supportsPreparedOscillatorRegion(
         const GraphExecutionPlan& plan,

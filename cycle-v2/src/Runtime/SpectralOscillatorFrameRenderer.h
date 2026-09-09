@@ -3,6 +3,7 @@
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/PreparedOscillatorRegion.h"
+#include "Runtime/PreparedCycleEnvelopeBank.h"
 #include "Runtime/PreparedTrimeshMorphBinding.h"
 #include "Runtime/TrimeshMorphResolver.h"
 
@@ -25,8 +26,11 @@ public:
     bool prepare(
             const GraphExecutionPlan& plan,
             const OscillatorRegionPlan& region,
-            int maximumFrameSize);
+            int maximumFrameSize,
+            const std::vector<NodeAudioProcessor*>& processors = {},
+            int laneCount = 1);
     void reset();
+    void applyLifecycleEvent(const NoteLifecycleEvent& event);
     bool renderFrame(
             int frameSize,
             int midiNote,
@@ -90,6 +94,7 @@ private:
     bool hasSpectralMesh {};
     size_t renderCount {};
     std::vector<Operation> operations;
+    PreparedCycleEnvelopeBank cycleEnvelopes;
     std::vector<std::unique_ptr<Transform>> transforms;
     ScopedAlloc<float> slotMemory;
     ScopedAlloc<float> magnitudeScratch;

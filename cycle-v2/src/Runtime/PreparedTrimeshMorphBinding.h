@@ -6,6 +6,8 @@
 
 namespace CycleV2 {
 
+class PreparedCycleEnvelopeBank;
+
 class PreparedTrimeshMorphBinding {
 public:
     static bool supports(
@@ -18,7 +20,9 @@ public:
     TrimeshMorphInputs inputsFor(
             const PreparedOscillatorProcessContext& context,
             size_t blockSampleOffset,
-            double voiceSamplePosition) const;
+            double voiceSamplePosition,
+            const PreparedCycleEnvelopeBank* cycleEnvelopes = nullptr,
+            int laneIndex = -1) const;
 
 private:
     std::array<int, 3> morphInputBuffers { -1, -1, -1 };

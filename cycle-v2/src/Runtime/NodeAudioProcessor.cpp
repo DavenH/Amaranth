@@ -18,6 +18,10 @@ bool NodeAudioProcessor::isVoiceActive() const {
     return false;
 }
 
+const CycleEnvelopePlaybackSource* NodeAudioProcessor::cycleEnvelopePlaybackSource() const {
+    return nullptr;
+}
+
 const SignalTraversalGrid* NodeAudioProcessor::probeTraversalGrid(
         const AudioProcessContext&,
         size_t) const {

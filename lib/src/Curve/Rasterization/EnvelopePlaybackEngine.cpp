@@ -32,8 +32,10 @@ namespace Rasterization {
         state.noteOn(firstAudioVoiceIndex);
     }
 
-    void EnvelopePlaybackEngine::noteOff(const PreparedEnvelopePlaybackView& prepared) {
-        state.requestRelease(hasReleaseCurve(prepared));
+    bool EnvelopePlaybackEngine::noteOff(const PreparedEnvelopePlaybackView& prepared) {
+        const bool releases = hasReleaseCurve(prepared);
+        state.requestRelease(releases);
+        return releases;
     }
 
     void EnvelopePlaybackEngine::resetGraphicVoice() {

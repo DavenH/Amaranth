@@ -152,12 +152,17 @@ bool SpectralOscillatorFrameRenderer::supports(
 bool SpectralOscillatorFrameRenderer::prepare(
         const GraphExecutionPlan& plan,
         const OscillatorRegionPlan& region,
-        int maximumFrameSizeToUse) {
+        int maximumFrameSizeToUse,
+        const std::vector<NodeAudioProcessor*>& processors,
+        int laneCount) {
     if (!supports(plan, region) || !isPowerOfTwo(maximumFrameSizeToUse)) {
         return false;
     }
 
     maximumFrameSize = maximumFrameSizeToUse;
+    if (!cycleEnvelopes.prepare(plan, region, processors, laneCount)) {
+        return false;
+    }
     if (Curve::table == nullptr) {
         Curve::calcTable();
     }
@@ -303,6 +308,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
 void SpectralOscillatorFrameRenderer::reset() {
     renderCount = 0;
     lifecycleSeedReady = false;
+    cycleEnvelopes.reset();
     for (auto& operation : operations) {
         if (operation.timeState != nullptr) {
             operation.timeState->reset();
@@ -314,6 +320,11 @@ void SpectralOscillatorFrameRenderer::reset() {
             operation.morphResolver.reset(operation.configuration->morph, true);
         }
     }
+}
+
+void SpectralOscillatorFrameRenderer::applyLifecycleEvent(
+        const NoteLifecycleEvent& event) {
+    cycleEnvelopes.applyLifecycleEvent(event);
 }
 
 bool SpectralOscillatorFrameRenderer::renderFrame(
@@ -372,6 +383,11 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     }
 
     prepareFrameRandom(context);
+    if (context != nullptr && context->voice != nullptr) {
+        cycleEnvelopes.advanceAll(
+                (int) elapsedSamples,
+                context->voice->controls.normalizedVoiceTimeIncrement);
+    }
     const uint64_t voiceSampleFrontier = (uint64_t) voiceSamplePosition;
     for (auto& operation : operations) {
         const int count = valueCount(operation.outputDomain, frameSize);
@@ -383,7 +399,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     ? operation.morphBinding.inputsFor(
                             *context,
                             blockSampleOffset,
-                            voiceSamplePosition)
+                            voiceSamplePosition,
+                            &cycleEnvelopes)
                     : TrimeshMorphInputs {};
             morph = operation.morphResolver.resolve(
                     inputs,

@@ -677,6 +677,22 @@ TEST_CASE("Evolving spectral frames are independent of host block partitions",
   #endif
 }
 
+TEST_CASE("High spectral notes use the legacy 256-sample control cadence",
+        "[cycle-v2][runtime][oscillator-region][spectral-frame][control-rate]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const PartitionedRender render = renderPreparedGraph(
+            loadFilterSawPlan(),
+            512,
+            1024,
+            -1,
+            72);
+
+    REQUIRE(render.frameRenderCount == 4);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
 TEST_CASE("Prepared oscillator preset matrix is independent of host block partitions",
         "[cycle-v2][runtime][oscillator-region][live-modulation][partition-matrix]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -753,7 +769,7 @@ TEST_CASE("Prepared spectral preset frames rerasterize at live morph positions",
   #endif
 }
 
-TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier",
+TEST_CASE("Timed controls enter prepared frames at the legacy control frontier",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][timed-control]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
     NodeGraph graph = loadFilterSawGraph();
@@ -778,9 +794,9 @@ TEST_CASE("Timed controls enter prepared frames at the truncated cycle frontier"
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
 
-    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 90);
-    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 91);
-    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 92);
+    const PartitionedRender before = renderPreparedGraph(compiled.plan, 512, 512, 274);
+    const PartitionedRender on = renderPreparedGraph(compiled.plan, 512, 512, 275);
+    const PartitionedRender after = renderPreparedGraph(compiled.plan, 512, 512, 276);
     REQUIRE(before.left == on.left);
     REQUIRE(before.right == on.right);
     REQUIRE(after.left != on.left);

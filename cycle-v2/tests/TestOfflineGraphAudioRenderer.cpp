@@ -210,9 +210,16 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
         "[cycle-v2][runtime][offline-audio][spectral][parity]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
     CycleDsp::SpectralStageCaptureRecorder recorder;
-    REQUIRE(recorder.prepare(4096, 0));
+    REQUIRE(recorder.prepare(4096, 32));
     auto request = renderRequest(256, 48);
+    request.sampleCount = 12000;
+    request.events = {
+            { 0, MidiMessage::noteOn(1, 48, (uint8) 96) },
+            { 11999, MidiMessage::noteOff(1, 48) }
+    };
+    request.voiceDurationSeconds = 0.47689543975042176f;
     request.controlNoteOffset = 12;
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
     request.spectralStageCapture = &recorder;
     const auto plan = filterSawPlan();
     const auto magnitudeStep = std::find_if(
@@ -271,6 +278,7 @@ TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
     REQUIRE(time != nullptr);
     REQUIRE(timeRaster != nullptr);
     REQUIRE(timeRaster->secondary.size() == 3);
+    REQUIRE(timeRaster->secondary[0] == Catch::Approx(0.7148094f));
     REQUIRE(timeRaster->secondary[1] == Catch::Approx(40.f / 107.f));
     REQUIRE(forward != nullptr);
     REQUIRE(magnitudeRaster != nullptr);

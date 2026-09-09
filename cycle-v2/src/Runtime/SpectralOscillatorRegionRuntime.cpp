@@ -164,14 +164,18 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     }
 
     const int halfSize = fixedFrameSize / 2;
-    sharedFramePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
+    const double cyclePeriod = 1.0 / CycleDsp::OscillatorLaneCore::angleDelta(
             context.midiNote,
             0.f,
             sampleRate);
-    if (sharedFramePeriod <= 0.0) {
+    if (cyclePeriod <= 0.0) {
         fixedFrameSize = 0;
         return false;
     }
+    const int controlStride = std::max(
+            1,
+            (int) (legacyControlIntervalSamples / cyclePeriod + 0.5));
+    sharedFramePeriod = cyclePeriod * controlStride;
     if (!CycleDsp::CyclicFrameLaneRenderer::makeHalfFrameFades(
                 fixedFrameSize,
                 fadeIn.withSize(halfSize),

@@ -609,7 +609,8 @@ void GraphAudioExecutor::prepareExecution(
                     region,
                     *compiledContext,
                     spec,
-                    maximumCycleSamples);
+                    maximumCycleSamples,
+                    preparedVoice.processors);
             if (processor == nullptr) {
                 continue;
             }
@@ -688,12 +689,12 @@ void GraphAudioExecutor::renderOscillatorRegion(
         region.voiceSamplePosition += count;
     };
     const auto applyEvent = [&](const NoteLifecycleEvent& event) {
-        if (event.type == NoteLifecycleType::NoteOff) {
-            return;
+        if (event.type != NoteLifecycleType::NoteOff) {
+            region.processor->reset();
+            region.voiceSamplePosition = 0;
+            region.active = event.type == NoteLifecycleType::NoteOn;
         }
-        region.processor->reset();
-        region.voiceSamplePosition = 0;
-        region.active = event.type == NoteLifecycleType::NoteOn;
+        region.processor->applyLifecycleEvent(event);
     };
 
     size_t rendered = 0;

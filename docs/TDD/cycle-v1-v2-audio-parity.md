@@ -348,7 +348,7 @@ as the scratch envelope evolves.
     difference is the scratch clock, not rasterization: Cycle 1 uses
     `0.7148094`, while Cycle V2's blockwise signal supplies `0.7242211`.
 22. Introduce a shared cycle-clocked envelope playback boundary for prepared
-    oscillator regions. In progress: the authoritative implementation is
+    oscillator regions. Complete: the authoritative implementation is
     `CycleBasedVoice::updateEnvelopes()` using the shared
     `EnvelopePlaybackEngine` in one-sample-per-cycle mode. Reuse its sampling,
     advancement, loop/release, and guide-seed behavior unchanged. The boundary
@@ -357,7 +357,25 @@ as the scratch envelope evolves.
     operation. Once present, prepared envelope attachments must stop deriving
     scratch time from a blockwise `SignalPayload`; arbitrary non-envelope
     scratch signals may retain that graph-level path. Do not add per-operation
-    history or a delayed-buffer approximation.
+    history or a delayed-buffer approximation. `PreparedCycleEnvelopeBank`
+    owns one cursor per compiled envelope attachment, shares it across every
+    consuming mesh operation, and follows live prepared-envelope adoption. Both
+    chained lanes and shared spectral frames advance the mature engine before
+    rasterization. Spectral frames also restore Cycle 1's
+    `round(256 / period)` stride. Filter Saw frame 32 now has byte-identical
+    time-raster samples and morph coordinates in both engines.
+23. Localize the newly exposed one-cycle output scheduling offset. In progress:
+    once scratch is correctly aligned, Filter Saw's captured synthesis stages
+    agree through the time frame and differ first by five magnitude bins at
+    `8.8e-8` normalized residual, but the analyzed Cycle V2 output is delayed by
+    one 337-sample internal cycle (367 samples at 48 kHz). The prior early
+    scratch signal accidentally masked this delay. Preserve the now-exact
+    scratch clock while reconciling initial/current/future frame ownership.
+
+Future work: replace the inherited 256-sample control interval with an explicit
+control-rate contract that may request sub-cycle synthesis updates. That is a
+quality/architecture change, not part of Cycle 1 parity, and must retain the
+cycle-clocked envelope boundary rather than returning to blockwise sampling.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a
 coherent commit before the next slice.

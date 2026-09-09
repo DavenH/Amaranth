@@ -856,6 +856,24 @@ New artifacts:
 
 Current status: open at the cycle-clocked scratch-envelope boundary.
 
+Update: the cycle-clocked boundary is implemented. Prepared oscillator regions
+now share a dedicated one-sample-per-cycle `EnvelopePlaybackEngine` cursor for
+each compiled envelope attachment, including lifecycle and live prepared-morph
+adoption. Spectral frame refresh follows Cycle 1's
+`round(256 / cyclePeriod)` stride. At Filter Saw MIDI 48/frame 32, both the raw
+time raster and all three morph coordinates are byte-identical between engines.
+The first stage difference is now five magnitude bins with an `8.8e-8`
+normalized residual.
+
+Correct scratch timing exposes a distinct downstream scheduling issue: Cycle
+V2 output is delayed by one internal synthesis cycle even though same-frontier
+captured frames agree. The old one-cycle-early scratch sampling had masked this
+delay. Artifact:
+`/tmp/cycle-filter-saw-cycle-envelope/comparison.json`.
+
+Current status: scratch boundary resolved; one-cycle output scheduling offset
+remains open under parity TDD slice 23.
+
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 
 Context:

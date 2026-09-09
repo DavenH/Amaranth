@@ -363,8 +363,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(const NoteLifecycleEvent& even
             break;
 
         case NoteLifecycleType::NoteOff:
-            playback.noteOff(prepared);
-            if (playback.mode() != Rasterization::EnvelopePlaybackMode::Releasing) {
+            if (!playback.noteOff(prepared)) {
                 active = false;
             }
             break;
