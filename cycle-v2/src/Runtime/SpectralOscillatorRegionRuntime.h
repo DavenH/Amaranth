@@ -22,6 +22,9 @@ public:
             const CycleDsp::UnisonVoiceLayout& layoutToUse);
     void reset();
     bool process(
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
+    bool process(
             int midiNote,
             float velocity,
             Buffer<float> pitchEnvelope,
@@ -39,21 +42,33 @@ private:
     };
 
     int fixedFrameSizeFor(int midiNote) const;
-    bool renderSharedFrame(
-            int midiNote,
+    bool initializeSharedFrames(
+            const PreparedOscillatorProcessContext& context,
             SpectralOscillatorFrameRenderer& renderer);
-    bool renderUntilReady(
+    bool refreshSharedFramesThrough(
+            double cycleStart,
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
+    bool renderCyclesUntilReady(
+            const PreparedOscillatorProcessContext& context,
+            SpectralOscillatorFrameRenderer& renderer);
+    bool renderLaneCycle(
             int laneIndex,
-            int midiNote,
-            Buffer<float> pitchEnvelope,
-            size_t frameCount);
+            const PreparedOscillatorProcessContext& context);
+    size_t blockSampleOffsetFor(
+            uint64_t voiceSample,
+            const PreparedOscillatorProcessContext& context) const;
 
     size_t maximumFrameCount {};
     int maximumCycleSamples {};
     int maximumFixedFrameSize {};
     int fixedFrameSize {};
     double sampleRate { 44100.0 };
-    bool frameReady {};
+    bool initialFramesReady {};
+    double sharedFramePeriod {};
+    double lastSharedFramePosition {};
+    double nextSharedFramePosition {};
+    uint64_t lastSharedFrameFrontier {};
     CycleDsp::UnisonVoiceLayout layout;
     std::array<LaneState, CycleDsp::maximumUnisonOrder> lanes;
     std::array<Buffer<float>, 2> currentFrames;

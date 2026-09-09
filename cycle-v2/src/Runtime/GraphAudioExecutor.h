@@ -53,6 +53,7 @@ public:
     size_t serviceNonRealtimePreparation() const;
     bool hasActiveVoiceTail(int voiceIndex) const;
     bool hasVoiceTailProcessor(int voiceIndex) const;
+    size_t oscillatorFrameRenderCount(int voiceIndex) const;
 
     GraphAudioResult process(const NodeGraph& graph, const GraphExecutionPlan& plan, size_t frameCount) const;
     GraphAudioResult process(
@@ -149,6 +150,7 @@ private:
             std::vector<uint64_t> configurationRevisions;
             std::vector<float> pitchEnvelopeUnitValues;
             std::unique_ptr<PreparedOscillatorRegion> processor;
+            uint64_t voiceSamplePosition {};
             bool active {};
         };
 
@@ -173,6 +175,9 @@ private:
     static void renderOscillatorRegion(
             PreparedVoice::OscillatorRegion& region,
             const AudioVoiceContext& voice,
+            AudioProcessTiming timing,
+            const SignalPayload* signalBuffers,
+            size_t signalBufferCount,
             size_t frameCount,
             SignalPayload& output);
     bool hasVoiceTailProcessor(int voiceIndex, bool activeOnly) const;

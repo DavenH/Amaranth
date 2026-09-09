@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Graph/GraphCompiler.h"
+#include "Graph/GraphSerializer.h"
 #include "Graph/NodeGraph.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 
@@ -138,4 +139,82 @@ TEST_CASE("Realtime graph renderer defers events beyond the current callback",
     renderer.process(queue, channels, 2, 64, 44100.0, 2.0);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
     REQUIRE(renderer.diagnostics(queue).peak > 0.f);
+}
+
+TEST_CASE("Fully released spectral notes repeat on the same voice instance",
+        "[cycle-v2][audio-device][realtime][midi][spectral-frame][repeat-note]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content")
+            .getChildFile("presets")
+            .getChildFile("filter-saw.cyclegraph");
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            preset.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+
+    constexpr int frameCount = 256;
+    constexpr double sampleRate = 48000.0;
+    constexpr double blockDuration = frameCount / sampleRate;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = frameCount;
+    spec.sampleRate = sampleRate;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 23, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.setVoiceDurationSeconds(1.f);
+    AudioBuffer<float> output(2, frameCount);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    double callbackTime = 1.0;
+
+    const auto renderNote = [&] {
+        REQUIRE(queue.enqueue(
+                MidiMessage::noteOn(1, 72, (uint8) 100),
+                MidiEventSource::PerformanceKeyboard,
+                callbackTime));
+        std::vector<float> samples;
+        samples.reserve(8 * frameCount);
+        for (int block = 0; block < 8; ++block) {
+            renderer.process(
+                    queue,
+                    channels,
+                    2,
+                    frameCount,
+                    sampleRate,
+                    callbackTime);
+            samples.insert(
+                    samples.end(),
+                    output.getReadPointer(0),
+                    output.getReadPointer(0) + frameCount);
+            callbackTime += blockDuration;
+        }
+        return samples;
+    };
+
+    const std::vector<float> first = renderNote();
+    REQUIRE(queue.enqueue(
+            MidiMessage::noteOff(1, 72),
+            MidiEventSource::PerformanceKeyboard,
+            callbackTime));
+    for (int block = 0;
+            block < 256 && renderer.diagnostics(queue).activeVoiceCount > 0;
+            ++block) {
+        renderer.process(
+                queue,
+                channels,
+                2,
+                frameCount,
+                sampleRate,
+                callbackTime);
+        callbackTime += blockDuration;
+    }
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+
+    const std::vector<float> second = renderNote();
+    REQUIRE(second == first);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

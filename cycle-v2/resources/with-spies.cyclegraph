@@ -15,6 +15,8 @@
             "definitionVersion": 1,
             "position": { "x": 380.61609, "y": 457.91464 },
             "parameters": {
+                "enabled": true,
+                "range": 0.5,
                 "yellow": 0.317,
                 "red": 0.108,
                 "blue": 0.0,
@@ -157,6 +159,8 @@
                 "outputs": { "out": "bottom" }
             },
             "parameters": {
+                "enabled": true,
+                "range": 0.5,
                 "yellow": 0.5,
                 "red": 0.411,
                 "blue": 0.184,
@@ -302,6 +306,8 @@
                 "outputs": { "out": "top" }
             },
             "parameters": {
+                "enabled": true,
+                "range": 0.5,
                 "yellow": 0.495,
                 "red": 0.0,
                 "blue": 0.205,
@@ -510,7 +516,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2370.6897, "y": 134.13789 },
-            "parameters": { "purpose": "volume", "logarithmic": true, "red": 0.143, "blue": 0.012, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": true, "red": 0.143, "blue": 0.012, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,
@@ -638,7 +644,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2.50753, "y": 52.62711 },
-            "parameters": { "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
                 "version": 2,

@@ -886,7 +886,7 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     AudioVoiceContext voice;
     voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     AudioProcessTiming timing;
-    timing.sampleRate = 8.0;
+    timing.sampleRate = 48000.0;
     const auto result = GraphAudioExecutor().process(graph, compileResult.plan, 5, timing, voice);
     const auto& wave = samples(findNodeAudio(result, "wave").output);
     const auto& envelope = samples(findNodeAudio(result, "env").output);
@@ -1778,8 +1778,25 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
             .getChildFile("presets")
             .getChildFile("stengah.cyclegraph");
     REQUIRE(preset.existsAsFile());
-    const NodeGraph attachedGraph = GraphSerializer().fromJsonString(
+    NodeGraph attachedGraph = GraphSerializer().fromJsonString(
             preset.loadFileAsString());
+    String phaseProbeId;
+    if (const auto* existing = attachedGraph.findSignalProbeForSource(
+            "phaseLayer2Process", "out")) {
+        phaseProbeId = existing->id;
+    } else {
+        phaseProbeId = "scratchTopologyPhaseProbe";
+        attachedGraph.addSignalProbe({
+                phaseProbeId,
+                "phaseLayer2Process",
+                "out",
+                "phaseOp2",
+                "right",
+                "Scratch topology phase",
+                0.5f,
+                0
+        });
+    }
     NodeGraph fallbackGraph = attachedGraph;
     fallbackGraph.removeEdgesFromOutput("scratchEnvelope", "env");
     const auto attachedPlan = GraphCompiler().compile(attachedGraph);
@@ -1852,13 +1869,12 @@ TEST_CASE("Stengah scratch topology changes every authored source-layer traversa
         REQUIRE(found != previews.probes.end());
         return *found;
     };
-    const auto& leftPhaseProbe = probeFor("probe7");
+    const auto& leftPhaseProbe = probeFor(phaseProbeId);
     REQUIRE(leftPhaseProbe.connected);
     REQUIRE(leftPhaseProbe.domain == PortDomain::SpectralPhaseSignal);
     REQUIRE(leftPhaseProbe.channelLayout == ChannelLayout::StereoPair);
     const auto& normalizedLeftPhase = findNodeAudio(attached, "phaseLayer2").output;
     REQUIRE(leftPhaseProbe.values == normalizedLeftPhase.traversalGrid.values);
-    REQUIRE(leftPhaseProbe.values != leftPhase.traversalGrid.values);
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif

@@ -823,21 +823,22 @@ bool appendDownstreamRegionOperations(
                 continue;
             }
             const auto& destination = plan.steps[(size_t) destinationIndex];
-            const bool hasMaterializedInput = std::any_of(
+            const bool requiresMaterializedInput = std::any_of(
                     destination.inputs.begin(),
                     destination.inputs.end(),
                     [&](const GraphStepInput& input) {
                         const int inputStepIndex = stepIndexFor(
                                 plan,
                                 input.sourceNodeId);
-                        return inputStepIndex >= 0
-                                && !containsStep(
-                                        region.stepIndices,
-                                        inputStepIndex)
-                                && plan.steps[(size_t) inputStepIndex].executionTrait
-                                        == NodeExecutionTrait::OscillatorMaterializer;
+                        if (inputStepIndex < 0
+                                || containsStep(region.stepIndices, inputStepIndex)) {
+                            return false;
+                        }
+                        const auto trait = plan.steps[(size_t) inputStepIndex].executionTrait;
+                        return trait == NodeExecutionTrait::OscillatorMaterializer
+                                || !regionOperation(trait);
                     });
-            if (hasMaterializedInput) {
+            if (requiresMaterializedInput) {
                 continue;
             }
             if (assigned[(size_t) destinationIndex]) {

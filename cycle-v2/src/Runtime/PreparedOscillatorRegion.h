@@ -12,17 +12,30 @@ struct GraphExecutionPlan;
 struct OscillatorRegionPlan;
 struct CompiledVoiceContext;
 
+struct PreparedOscillatorProcessContext {
+    const AudioVoiceContext* voice {};
+    const SignalPayload* signalBuffers {};
+    size_t signalBufferCount {};
+    size_t blockFrameCount {};
+    size_t blockSampleStart {};
+    uint64_t voiceSampleStart {};
+    AudioProcessTiming timing;
+    int midiNote {};
+    float velocity {};
+    Buffer<float> pitchEnvelope;
+    Buffer<float> left;
+    Buffer<float> right;
+
+    const SignalPayload* signalAt(int bufferIndex) const;
+};
+
 class PreparedOscillatorRegion {
 public:
     virtual ~PreparedOscillatorRegion() = default;
     virtual bool replacesDiagnosticProcessors() const = 0;
+    virtual size_t frameRenderCount() const { return 0; }
     virtual void reset() = 0;
-    virtual bool process(
-            int midiNote,
-            float velocity,
-            Buffer<float> pitchEnvelope,
-            Buffer<float> left,
-            Buffer<float> right) = 0;
+    virtual bool process(const PreparedOscillatorProcessContext& context) = 0;
 };
 
 std::unique_ptr<PreparedOscillatorRegion> prepareOscillatorRegion(

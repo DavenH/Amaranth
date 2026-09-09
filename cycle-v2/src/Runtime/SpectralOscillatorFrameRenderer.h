@@ -2,6 +2,9 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Runtime/PreparedOscillatorRegion.h"
+#include "Runtime/PreparedTrimeshMorphBinding.h"
+#include "Runtime/TrimeshMorphResolver.h"
 
 #include <Algo/FFT.h>
 #include <Array/ScopedAlloc.h>
@@ -29,6 +32,14 @@ public:
             int midiNote,
             Buffer<float> left,
             Buffer<float> right);
+    bool renderFrame(
+            int frameSize,
+            int midiNote,
+            const PreparedOscillatorProcessContext& context,
+            size_t blockSampleOffset,
+            size_t elapsedSamples,
+            Buffer<float> left,
+            Buffer<float> right);
     size_t frameRenderCount() const { return renderCount; }
 
 private:
@@ -48,17 +59,28 @@ private:
         int leftInput { -1 };
         int rightInput { -1 };
         std::array<int, 2> outputs { -1, -1 };
+        PreparedTrimeshMorphBinding morphBinding;
         std::shared_ptr<const TrimeshConfiguration> configuration;
         float pan { 0.5f };
         bool multiplicative {};
         std::unique_ptr<Rasterization::VoiceRasterizer> timeRasterizer;
         std::unique_ptr<Rasterization::VoiceCycleState> timeState;
         std::unique_ptr<TrimeshBlockwiseDsp> spectralRasterizer;
+        TrimeshMorphResolver morphResolver;
     };
 
+    bool renderFrameInternal(
+            int frameSize,
+            int midiNote,
+            const PreparedOscillatorProcessContext* context,
+            size_t blockSampleOffset,
+            size_t elapsedSamples,
+            Buffer<float> left,
+            Buffer<float> right);
     static int valueCount(PortDomain domain, int frameSize);
     Buffer<float> slot(int slotIndex, int channel, int valueCount);
     Transform* transformFor(int frameSize);
+    void prepareFrameRandom(const PreparedOscillatorProcessContext* context);
 
     int maximumFrameSize {};
     int slotStride {};
@@ -70,6 +92,9 @@ private:
     ScopedAlloc<float> slotMemory;
     ScopedAlloc<float> magnitudeScratch;
     ScopedAlloc<float> phaseScratch;
+    Random frameRandom;
+    uint32_t lifecycleSeed {};
+    bool lifecycleSeedReady {};
 };
 
 }
