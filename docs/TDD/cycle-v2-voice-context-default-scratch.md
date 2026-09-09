@@ -316,7 +316,7 @@ All graph edits must use `GraphCommandDispatcher`. The UI must not mutate
   replacement, default removal, and restoration. A separate local run against
   the saved `scratch-test` graph proves its settled inherited, explicit, and
   undo-restored node and Spy sums match exactly.
-- The complete Cycle V2 test binary passes all 636 cases and 336,133
+- The complete Cycle V2 test binary passes all 637 cases and 336,143
   assertions. All 230 shipped graphs remain canonical and compile.
 - Preset simplifier implementation, the 75-percent audit, and preset rewrites
   remain deferred by explicit branch sequencing; no `.cyclegraph` contents are

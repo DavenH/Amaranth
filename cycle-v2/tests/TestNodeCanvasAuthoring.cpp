@@ -48,6 +48,24 @@ NodeCanvasAuthoring makeAuthoring(
     return { document, commands, presentation, editorCommands };
 }
 
+int edgeIndexFor(
+        const NodeGraph& graph,
+        const String& sourceNodeId,
+        const String& sourcePortId,
+        const String& destNodeId = {},
+        const String& destPortId = {}) {
+    const auto found = std::find_if(
+            graph.getEdges().begin(), graph.getEdges().end(), [&](const Edge& edge) {
+                return edge.sourceNodeId == sourceNodeId
+                        && edge.sourcePortId == sourcePortId
+                        && (destNodeId.isEmpty() || edge.destNodeId == destNodeId)
+                        && (destPortId.isEmpty() || edge.destPortId == destPortId);
+            });
+    return found == graph.getEdges().end()
+            ? -1
+            : (int) std::distance(graph.getEdges().begin(), found);
+}
+
 }
 
 TEST_CASE("Node canvas authoring preserves graph and layout semantics",
@@ -100,15 +118,8 @@ TEST_CASE("Node canvas authors a first spectral Trimesh Spy with a live preview"
     GraphPresentationModel presentation;
     NullEditorCommands editorCommands;
     auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
-    const auto meshEdge = std::find_if(
-            document.graph().getEdges().begin(),
-            document.graph().getEdges().end(),
-            [](const Edge& edge) {
-                return edge.sourceNodeId == "magMesh" && edge.sourcePortId == "out";
-            });
-    REQUIRE(meshEdge != document.graph().getEdges().end());
-    const int edgeIndex = (int) std::distance(
-            document.graph().getEdges().begin(), meshEdge);
+    const int edgeIndex = edgeIndexFor(document.graph(), "magMesh", "out");
+    REQUIRE(edgeIndex >= 0);
 
     const auto added = authoring.toggleSignalProbe(edgeIndex, 0.5f);
 
@@ -119,6 +130,31 @@ TEST_CASE("Node canvas authors a first spectral Trimesh Spy with a live preview"
     REQUIRE_FALSE(presentation.previewResult().probes.front().values.empty());
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().getSignalProbes().empty());
+}
+
+TEST_CASE("Deleting a scratch cable refreshes an observed spectral Trimesh",
+        "[cycle-v2][canvas][authoring][probe][spectral][trimesh][scratch]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const int meshOutputIndex = edgeIndexFor(document.graph(), "magMesh", "out");
+    REQUIRE(meshOutputIndex >= 0);
+    REQUIRE(authoring.toggleSignalProbe(meshOutputIndex, 0.5f).succeeded);
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    const auto attachedValues = presentation.previewResult().probes.front().values;
+
+    const int scratchEdgeIndex = edgeIndexFor(
+            document.graph(), "scratchEnv", "env", "magMesh", "scratch");
+    REQUIRE(scratchEdgeIndex >= 0);
+    REQUIRE(authoring.deleteEdge(scratchEdgeIndex).succeeded);
+
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    REQUIRE(presentation.previewResult().probes.front().connected);
+    REQUIRE(presentation.previewResult().probes.front().values != attachedValues);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(presentation.previewResult().probes.front().values == attachedValues);
 }
 
 TEST_CASE("Node port layout cycling survives document serialization",
