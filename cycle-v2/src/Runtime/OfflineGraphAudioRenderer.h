@@ -25,6 +25,7 @@ struct OfflineGraphAudioRequest {
     int blockSize { 512 };
     int channelCount { 2 };
     float voiceDurationSeconds { 7.f };
+    float outputGain { 0.125f };
     size_t sampleCount {};
     std::vector<OfflineGraphAudioEvent> events;
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};

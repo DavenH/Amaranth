@@ -147,6 +147,10 @@ bool parseRequest(
     request.blockSize = jlimit(16, 8192, (int) doubleProperty(command, "blockSize", 512.0));
     request.channelCount = jlimit(1, 2, (int) doubleProperty(command, "channels", 2.0));
     request.voiceDurationSeconds = (float) doubleProperty(command, "voiceDurationSeconds", 7.0);
+    request.outputGain = jlimit(
+            0.f,
+            16.f,
+            (float) doubleProperty(command, "outputGain", 0.125));
     const double durationMs = jlimit(1.0, 60000.0, doubleProperty(command, "durationMs", 1000.0));
 
     if (request.sampleRate <= 0.0) {
@@ -286,6 +290,7 @@ bool OfflineAudioCaptureAutomation::isScheduledCapture(const var& command) {
             "channels",
             "durationMs",
             "voiceDurationSeconds",
+            "outputGain",
             "events",
             "note",
             "noteDurationMs"

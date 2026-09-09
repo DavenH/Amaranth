@@ -131,6 +131,39 @@ TEST_CASE("Offline graph renderer follows the realtime MIDI path across blocks",
 #endif
 }
 
+TEST_CASE("Offline graph renderer applies the requested output gain",
+        "[cycle-v2][runtime][offline-audio][output-gain]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    auto fullGainRequest = renderRequest(256);
+    fullGainRequest.outputGain = 0.125f;
+    auto halfGainRequest = fullGainRequest;
+    halfGainRequest.outputGain = 0.0625f;
+
+    const auto plan = spectralReferencePlan();
+    const auto fullGain = OfflineGraphAudioRenderer::render(
+            plan,
+            7,
+            fullGainRequest);
+    const auto halfGain = OfflineGraphAudioRenderer::render(
+            plan,
+            7,
+            halfGainRequest);
+
+    REQUIRE(fullGain.succeeded);
+    REQUIRE(halfGain.succeeded);
+    std::vector<float> expected = fullGain.channels[0];
+    Buffer<float>(expected.data(), (int) expected.size()).mul(0.5f);
+    REQUIRE(Buffer<float>(
+            const_cast<float*>(halfGain.channels[0].data()),
+            (int) halfGain.channels[0].size()).normDiffL2({
+                    expected.data(),
+                    (int) expected.size()
+            }) < 1.0e-7f);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
+}
+
 TEST_CASE("Offline spectral capture records equivalent harmonic boundaries",
         "[cycle-v2][runtime][offline-audio][spectral][parity]") {
 #if defined(CYCLE_V2_SOURCE_DIR)

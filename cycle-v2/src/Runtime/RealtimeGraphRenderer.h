@@ -45,6 +45,7 @@ public:
         spectralStageCapture = capture;
     }
     void setVoiceDurationSeconds(float durationSeconds);
+    void setOutputGain(float gain) { outputGain = jmax(0.f, gain); }
     void process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
@@ -98,7 +99,7 @@ private:
             int outputChannelCount,
             int frameCount);
 
-    static constexpr float outputHeadroom = 0.125f;
+    static constexpr float defaultOutputGain = 0.125f;
     static constexpr size_t maximumEventsPerChannel = 128;
     static constexpr size_t maximumScheduledEvents = RealtimeMidiEventQueue::capacity * 2;
 
@@ -111,6 +112,7 @@ private:
     std::array<float, 8192> metricsScratch;
     uint64_t nextVoiceOrder {};
     float voiceDurationSeconds { 7.f };
+    float outputGain { defaultOutputGain };
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};

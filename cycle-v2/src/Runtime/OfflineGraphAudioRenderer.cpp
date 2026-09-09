@@ -82,6 +82,7 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
     renderer.setPreparedGraph(prepared.get());
     renderer.setSpectralStageCapture(request.spectralStageCapture);
     renderer.setVoiceDurationSeconds(request.voiceDurationSeconds);
+    renderer.setOutputGain(request.outputGain);
     for (int channel = 0; channel < request.channelCount; ++channel) {
         result.channels[(size_t) channel].resize(request.sampleCount);
     }

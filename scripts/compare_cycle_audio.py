@@ -70,6 +70,7 @@ def capture_command(path, note, arguments, overrides=None):
         "sampleRate": arguments.sample_rate,
         "blockSize": arguments.block_size,
         "channels": 2,
+        "outputGain": 1.0,
         "randomSeed": 1129927500,
         "durationMs": arguments.duration_ms,
         "events": [
@@ -449,9 +450,7 @@ def render_note(manifest, note, output_directory, arguments):
     analysis["rawExact"] = cycle_audio_diff.exact_sample_comparison(
         raw_capture(v1_wav), raw_capture(v2_wav))
     analysis["expectedGainFit"] = {
-        "candidateScale": (
-            manifest["translation"].get("v1MasterGain", 1.0)
-            / manifest["translation"].get("v2OutputHeadroom", 1.0)),
+        "candidateScale": capture_v1["outputGain"] / capture_v2["outputGain"],
     }
     analysis["repeatability"] = {
         "v1": repeatability(v1_wav, repeat_wavs["v1"]),

@@ -304,7 +304,7 @@ void RealtimeGraphRenderer::renderVoices(
     for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
         if (outputChannels[channel] != nullptr) {
             Buffer<float>(outputChannels[channel], frameCount)
-                    .mul(outputHeadroom)
+                    .mul(outputGain)
                     .clip(-1.f, 1.f);
         }
     }

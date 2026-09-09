@@ -2586,6 +2586,20 @@ bool CycleAutomation::captureAudio(const var& command, String& message, var& dat
     if (!randomSeed.isVoid()) {
         synthAudioSource.setRandomSeedForTesting((int64) randomSeed);
     }
+    const float previousOutputGain = synthAudioSource.getOutputGainForTesting();
+    const var outputGain = PresetJson::property(command, "outputGain");
+    if (!outputGain.isVoid()) {
+        synthAudioSource.setOutputGainForTesting(
+                jlimit(0.f, 16.f, (float) outputGain));
+    }
+    struct RestoreOutputGain {
+        SynthAudioSource& audioSource;
+        float outputGain;
+
+        ~RestoreOutputGain() {
+            audioSource.setOutputGainForTesting(outputGain);
+        }
+    } restoreOutputGain { synthAudioSource, previousOutputGain };
 
     constexpr int maximumSpectralStageValues = 131072;
     CycleDsp::SpectralStageCaptureRecorder stageCapture;

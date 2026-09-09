@@ -313,7 +313,11 @@ as the scratch envelope evolves.
     cycle-start position produces effectively perfect same-rate output
     correlation without weakening host-block partition invariance.
 20. Localize the `+18.66 dB` post-oscillator gain difference, then reconcile the
-    44.1-to-48 kHz output-rate policy at an explicit conversion boundary. Do not
+    44.1-to-48 kHz output-rate policy at an explicit conversion boundary. In
+    progress: both automation renderers now accept the same explicit output
+    gain, leaving their production defaults unchanged. A unity-gain Filter Saw
+    render at 44.1 kHz reaches effectively `1.00000` correlation and `0.00049`
+    residual. The 48 kHz internal-rate conversion boundary remains open. Do not
     normalize either discrepancy away in the analyzer.
 
 Each slice receives focused semantic tests, a refactor/style pass, and a

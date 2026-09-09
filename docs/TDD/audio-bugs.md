@@ -772,9 +772,15 @@ gain-matched residual. This resolves the evolving synthesis discrepancy.
 At the normal 48 kHz device rate, correlation is `0.99888` with `0.0474`
 gain-matched residual because Cycle 1 still synthesizes internally at 44.1 kHz
 and crosses its Hermite output-rate converter, while Cycle V2 synthesizes
-directly at the device rate. Both rates retain an expected `+18.66 dB` gain fit,
-introduced after the pitch-clocked cycle boundary. Output-rate conversion and
-post-oscillator gain are now the next explicit parity boundaries.
+directly at the device rate. The former `+18.66 dB` difference was the ratio of
+Cycle 1's persisted `1.0711173` master gain to Cycle V2's production `0.125`
+output headroom. Both offline automation renderers now accept an explicit
+output-gain policy, and the parity runner requests unity from both rather than
+normalizing after capture. This removes the gain difference while preserving
+production defaults. At 44.1 kHz the unity-gain render has effectively
+`1.00000` correlation and `0.00049` residual; at 48 kHz it retains `0.99888`
+correlation and `0.0474` residual. Output-rate conversion is therefore the
+remaining explicit boundary.
 
 A separate converter audit also found that legacy modulation input 2 means
 `1-Velocity`; future ports now map it to Cycle V2 `inverseVelocity`. The
@@ -798,6 +804,8 @@ New artifacts:
 - `/tmp/cycle-filter-saw-pitch-cycle31-44100/comparison.json`
 - `/tmp/cycle-filter-saw-pitch-cycle30-44100/comparison.json`
 - `/tmp/cycle-filter-saw-cycle-start-44100/comparison.json`
+- `/tmp/cycle-filter-saw-unity-gain-44100/comparison.json`
+- `/tmp/cycle-filter-saw-unity-gain-48000/comparison.json`
 - `/tmp/cycle-filter-saw-cycle-start-48000/comparison.json`
 
 Current status: open, with the synthesis and evolving-frame mismatch resolved.
