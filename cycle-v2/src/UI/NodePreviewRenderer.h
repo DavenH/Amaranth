@@ -36,10 +36,10 @@ public:
             const TrimeshRenderProfile& profile,
             bool desaturated = false);
 
-    Rectangle<float> boundsFor(
+    static Rectangle<float> boundsFor(
             const Node& node,
             Rectangle<float> nodeBounds,
-            float zoom) const;
+            float zoom);
     void paint(Graphics& graphics, const NodePreviewRenderRequest& request);
     bool renderOpenGL(
             const Node& node,

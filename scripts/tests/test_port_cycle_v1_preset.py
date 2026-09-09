@@ -402,8 +402,39 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         converted = port_cycle_v1_preset.convert(source)
         voice = next(node for node in converted["nodes"] if node["id"] == "voice")
+        output = next(node for node in converted["nodes"] if node["id"] == "output")
 
         self.assertEqual(voice["parameters"]["octave"], 0)
+        self.assertEqual(output["parameters"]["gain"], 0.5)
+
+    def test_master_volume_is_preserved_on_output(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][0] = 0.23
+
+        converted = port_cycle_v1_preset.convert(source)
+        output = next(node for node in converted["nodes"] if node["id"] == "output")
+
+        self.assertEqual(output["parameters"]["gain"], 0.23)
+
+    def test_equivalence_manifest_separates_output_gain_from_fixed_headroom(self):
+        source = convertible_source()
+        source["preset"]["oscControls"]["knobs"][0] = 0.23
+        repository = Path(__file__).resolve().parents[2]
+
+        manifest = port_cycle_v1_preset.equivalence_manifest(
+            source,
+            repository / "cycle/content/presets/saw.cyc",
+            repository / "cycle-v2/content/presets/saw.cyclegraph",
+            "Saw",
+        )
+        translation = manifest["translation"]
+
+        self.assertEqual(translation["v2OutputGainUnitValue"], 0.23)
+        self.assertEqual(translation["v2OutputHeadroom"], 0.125)
+        self.assertEqual(
+            translation["constantGainPolicy"],
+            "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate",
+        )
 
     def test_missing_guide_properties_use_cycle_defaults(self):
         source = convertible_source()

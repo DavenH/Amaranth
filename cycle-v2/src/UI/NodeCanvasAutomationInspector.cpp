@@ -10,6 +10,8 @@
 #include "Nodes/Trimesh/Editor/TrimeshExpandedEditorComponent.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/NodeViewModule.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/OutputMeterPresentation.h"
 
 namespace CycleV2 {
 
@@ -893,6 +895,21 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                         : (sceneTarget.kind == NodeSceneTargetKind::InputPort ? "inputPort" : "outputPort"),
                 sceneTarget.bounds, sceneTarget.nodeId, sceneTarget.portId,
                 sceneTarget.kind == NodeSceneTargetKind::InputPort));
+
+        const Node* node = context.document.graph().findNode(sceneTarget.nodeId);
+        if (sceneTarget.kind == NodeSceneTargetKind::Node
+                && node != nullptr
+                && node->kind == NodeKind::Output) {
+            const auto preview = NodePreviewRenderer::boundsFor(
+                    *node,
+                    sceneTarget.bounds,
+                    context.viewport.getZoom());
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "outputGain:" + node->id,
+                    "outputGain",
+                    OutputMeterPresentation::layout(preview).faderHitTarget,
+                    node->id));
+        }
     }
 
     const auto& graphEdges = context.document.graph().getEdges();

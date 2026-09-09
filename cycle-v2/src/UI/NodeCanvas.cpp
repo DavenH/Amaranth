@@ -72,6 +72,32 @@ const Node* findInlinePanAt(
     return nullptr;
 }
 
+Rectangle<float> outputFaderBounds(
+        const NodeCanvasViewport& viewport,
+        const NodeGraph& graph,
+        const Node& node) {
+    const float zoom = viewport.getZoom();
+    const Rectangle<float> nodeBounds = viewport.toScreen(
+            NodeCanvasScene::presentationWorldBounds(graph, node));
+    const Rectangle<float> preview = NodePreviewRenderer::boundsFor(node, nodeBounds, zoom);
+    return OutputMeterPresentation::layout(preview).faderHitTarget;
+}
+
+const Node* findOutputFaderAt(
+        const NodeGraph& graph,
+        const NodeCanvasViewport& viewport,
+        Point<float> position) {
+    const auto& nodes = graph.getNodes();
+    for (auto node = nodes.rbegin(); node != nodes.rend(); ++node) {
+        if (node->kind == NodeKind::Output
+                && outputFaderBounds(viewport, graph, *node).contains(position)) {
+            return &*node;
+        }
+    }
+
+    return nullptr;
+}
+
 const SignalProbe* cableExtraProbe(const NodeGraph& graph, int edgeIndex) {
     const int extraEdgeIndex = NodeCanvasScene::cableExtraEdgeIndex(graph, edgeIndex);
     if (!isPositiveAndBelow(extraEdgeIndex, (int) graph.getEdges().size())) {
@@ -247,6 +273,10 @@ void NodeCanvas::focusLost(FocusChangeType) {
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
     dockInteraction->clearFocus();
+    if (draggingOutputGainNodeId.isNotEmpty()) {
+        draggingOutputGainNodeId = {};
+        applyAuthoringResult(authoring.endOutputGainGesture());
+    }
     requestCanvasRepaint();
 }
 
@@ -266,6 +296,7 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     resolvedHoverText = {};
     guideShelfState.hoveredGuideId = {};
     probeRailState.hoveredProbeId = {};
+    setMouseCursor(MouseCursor::NormalCursor);
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
     requestHoverRepaint(repaint);
@@ -325,9 +356,14 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(Point<float> position) {
     probeRailState.hoveredProbeId = std::move(hovered);
 
     const Node* inlinePan = findInlinePanAt(graph, viewport, position);
+    const Node* outputFader = findOutputFaderAt(graph, viewport, position);
     MouseCursor cursor = MouseCursor::NormalCursor;
     if (inlinePan != nullptr && inlinePan->kind == NodeKind::SpectralLayer) {
         cursor = MouseCursor::UpDownResizeCursor;
+    } else if (outputFader != nullptr) {
+        cursor = MouseCursor::UpDownResizeCursor;
+        const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
+        resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
     }
     setMouseCursor(cursor);
     performanceMetrics.recordOperation(
@@ -368,6 +404,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     trimeshMorphUndoPushed = false;
     draggingTrimeshVertexParameter = false;
     draggingSpectralPanNodeId = {};
+    draggingOutputGainNodeId = {};
     trimeshVertexParameterUndoPushed = false;
     activeTrimeshVertexIndex = -1;
 
@@ -508,6 +545,27 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             return;
         }
     }
+    const Node* outputFader = findOutputFaderAt(graph, viewport, event.position);
+    if (outputFader != nullptr) {
+        if (event.getNumberOfClicks() >= 2) {
+            applyAuthoringResult(authoring.setNodeParameter(
+                    outputFader->id,
+                    "gain",
+                    "Gain",
+                    "0.5"));
+            requestCanvasRepaint();
+            return;
+        }
+        if (authoring.beginOutputGainGesture(outputFader->id)) {
+            draggingOutputGainNodeId = outputFader->id;
+            outputGainDragStartValue = NodeParameterMap(*outputFader)
+                    .floatValue("gain", 0.5f);
+            selectedNodeId = outputFader->id;
+            selectedEdgeIndex = -1;
+            requestCanvasRepaint();
+            return;
+        }
+    }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
         interaction.beginConnection(*hitPort, event.position);
         selectedNodeId = hitPort->nodeId;
@@ -585,6 +643,21 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
         return;
     }
 
+    if (draggingOutputGainNodeId.isNotEmpty()) {
+        constexpr float ordinaryDragDistance = 120.f;
+        constexpr float fineAdjustmentMultiplier = 4.f;
+        const float adjustmentDistance = ordinaryDragDistance
+                * (event.mods.isShiftDown() ? fineAdjustmentMultiplier : 1.f);
+        const float value = jlimit(
+                0.f,
+                1.f,
+                outputGainDragStartValue
+                        - event.getOffsetFromDragStart().y / adjustmentDistance);
+        authoring.updateOutputGainGesture(value);
+        requestCanvasRepaint();
+        return;
+    }
+
     if (dockInteraction->mouseDrag(event, getLocalBounds().toFloat())) {
         return;
     }
@@ -628,6 +701,12 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     if (draggingSpectralPanNodeId.isNotEmpty()) {
         draggingSpectralPanNodeId = {};
         applyAuthoringResult(authoring.endSpectralPanGesture());
+        requestCanvasRepaint();
+        return;
+    }
+    if (draggingOutputGainNodeId.isNotEmpty()) {
+        draggingOutputGainNodeId = {};
+        applyAuthoringResult(authoring.endOutputGainGesture());
         requestCanvasRepaint();
         return;
     }
@@ -684,6 +763,17 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    if (const Node* output = findOutputFaderAt(graph, viewport, event.position)) {
+        const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
+        const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
+        applyAuthoringResult(authoring.setNodeParameter(
+                output->id,
+                "gain",
+                "Gain",
+                String(jlimit(0.f, 1.f, current + delta), 6)));
+        requestCanvasRepaint();
+        return;
+    }
     const Rectangle<float> workspace = getLocalBounds().toFloat();
     const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
             workspace,
@@ -751,6 +841,20 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
     const int keyCode = key.getKeyCode();
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
+
+    if (keyCode == KeyPress::upKey || keyCode == KeyPress::downKey) {
+        const Node* selected = queries.findNode(selectedNodeId);
+        if (selected != nullptr && selected->kind == NodeKind::Output) {
+            const float current = NodeParameterMap(*selected).floatValue("gain", 0.5f);
+            const float step = key.getModifiers().isShiftDown() ? 0.005f : 0.02f;
+            const float direction = keyCode == KeyPress::upKey ? 1.f : -1.f;
+            return applyAuthoringResult(authoring.setNodeParameter(
+                    selected->id,
+                    "gain",
+                    "Gain",
+                    String(jlimit(0.f, 1.f, current + direction * step), 6)));
+        }
+    }
 
     if (commandDown && (keyChar == 'z' || keyCode == 'z' || keyCode == 'Z')) {
         return key.getModifiers().isShiftDown() ? redo() : undo();
@@ -916,14 +1020,10 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
                 nodeDrag->guides.y.value_or(0.f)
         };
     }
-    const auto& scene = sceneBuilder.build(
-            graph,
-            viewport,
-            presentation.revision(),
-            document.revision());
+    const NodeGraph& displayedGraph = commands.editingGraph();
 
     return {
-            graph,
+            displayedGraph,
             compileResult,
             previewResult,
             viewport,
@@ -933,9 +1033,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            pointerInsideCanvas && !pointerOccluded
-                    ? hitRouter.hoverTextFor(viewport, scene, lastMousePosition)
-                    : String {},
+            pointerInsideCanvas && !pointerOccluded ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),

@@ -1,5 +1,7 @@
 #include "UI/OutputMeterPresentation.h"
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 namespace CycleV2 {
 
 namespace {
@@ -84,23 +86,46 @@ float OutputMeterBallistics::nextLevel(float current, float measured) {
 }
 
 OutputMeterLayout OutputMeterPresentation::layout(juce::Rectangle<float> area) {
-    constexpr float horizontalInsetFraction = 0.14f;
+    constexpr float horizontalInsetFraction = 0.08f;
     constexpr float verticalInsetFraction = 0.08f;
-    constexpr float channelGapFraction = 0.04f;
+    constexpr float faderWidthFraction = 0.22f;
+    constexpr float groupGapFraction = 0.04f;
 
     const float horizontalInset = area.getWidth() * horizontalInsetFraction;
     const float verticalInset = area.getHeight() * verticalInsetFraction;
     const juce::Rectangle<float> content = area.reduced(horizontalInset, verticalInset);
-    const float preferredGap = juce::jlimit(
+    const float faderWidth = juce::jlimit(
+            24.f,
+            36.f,
+            content.getWidth() * faderWidthFraction);
+    const float groupGap = juce::jlimit(
             4.f,
             8.f,
-            area.getWidth() * channelGapFraction);
-    const float channelGap = juce::jmin(preferredGap, content.getWidth());
-    const float channelWidth = juce::jmax(0.f, (content.getWidth() - channelGap) * 0.5f);
+            area.getWidth() * groupGapFraction);
+    const float availableMeterWidth = juce::jmax(
+            0.f,
+            content.getWidth() - faderWidth - 2.f * groupGap);
+    const float meterWidth = availableMeterWidth * 0.5f;
+    const juce::Rectangle<float> fader(
+            content.getCentreX() - faderWidth * 0.5f,
+            content.getY(),
+            faderWidth,
+            content.getHeight());
+    const float labelHeight = juce::jmin(14.f, fader.getHeight() * 0.16f);
+    const auto label = fader.withTop(fader.getBottom() - labelHeight);
+    const auto faderTravel = fader.withTrimmedBottom(labelHeight).reduced(0.f, 5.f);
+    const juce::Rectangle<float> track(
+            faderTravel.getCentreX() - 1.f,
+            faderTravel.getY(),
+            2.f,
+            faderTravel.getHeight());
 
     return {
-            { content.getX(), content.getY(), channelWidth, content.getHeight() },
-            { content.getRight() - channelWidth, content.getY(), channelWidth, content.getHeight() }
+            { content.getX(), content.getY(), meterWidth, content.getHeight() },
+            { content.getRight() - meterWidth, content.getY(), meterWidth, content.getHeight() },
+            fader,
+            track,
+            label
     };
 }
 
@@ -122,12 +147,48 @@ juce::Rectangle<float> OutputMeterPresentation::fillBounds(
     return channelBounds.withTop(channelBounds.getBottom() - height);
 }
 
+float OutputMeterPresentation::gainUnitValueAt(
+        juce::Rectangle<float> area,
+        float y) {
+    const auto track = layout(area).faderTrack;
+    if (track.getHeight() <= 0.f) {
+        return 0.5f;
+    }
+
+    return juce::jlimit(0.f, 1.f, (track.getBottom() - y) / track.getHeight());
+}
+
+juce::Rectangle<float> OutputMeterPresentation::gainThumbBounds(
+        juce::Rectangle<float> area,
+        float gainUnitValue) {
+    const auto result = layout(area);
+    constexpr float thumbHeight = 7.f;
+    const float thumbWidth = juce::jmin(20.f, result.faderHitTarget.getWidth());
+    const float y = juce::jmap(
+            juce::jlimit(0.f, 1.f, gainUnitValue),
+            result.faderTrack.getBottom(),
+            result.faderTrack.getY());
+    return juce::Rectangle<float>(thumbWidth, thumbHeight)
+            .withCentre({ result.faderTrack.getCentreX(), y });
+}
+
+juce::String OutputMeterPresentation::gainLabel(float gainUnitValue) {
+    const float decibels = CycleDsp::outputGainDecibels(gainUnitValue);
+    const int rounded = juce::roundToInt(decibels);
+    if (rounded == 0) {
+        return "0 dB";
+    }
+
+    return juce::String(rounded > 0 ? "+" : "") + juce::String(rounded) + " dB";
+}
+
 void OutputMeterPresentation::paint(
         juce::Graphics& graphics,
         juce::Rectangle<float> area,
         float leftLevel,
         float rightLevel,
-        juce::Colour colour) {
+        juce::Colour colour,
+        float gainUnitValue) {
     const auto channels = layout(area);
     paintChannel(
             graphics,
@@ -139,6 +200,33 @@ void OutputMeterPresentation::paint(
             channels.right,
             displayLevelForAmplitude(rightLevel),
             colour);
+
+    graphics.setColour(juce::Colours::white.withAlpha(0.18f));
+    graphics.fillRoundedRectangle(channels.faderTrack, 1.f);
+
+    const float unityY = gainThumbBounds(area, 0.5f).getCentreY();
+    graphics.setColour(juce::Colours::white.withAlpha(0.28f));
+    graphics.drawHorizontalLine(
+            juce::roundToInt(unityY),
+            channels.faderTrack.getX() - 4.f,
+            channels.faderTrack.getRight() + 4.f);
+
+    const auto thumb = gainThumbBounds(area, gainUnitValue);
+    graphics.setColour(colour.withAlpha(0.95f));
+    graphics.fillRoundedRectangle(thumb, 2.f);
+    graphics.setColour(juce::Colours::black.withAlpha(0.78f));
+    graphics.drawHorizontalLine(
+            juce::roundToInt(thumb.getCentreY()),
+            thumb.getX() + 2.f,
+            thumb.getRight() - 2.f);
+
+    graphics.setColour(juce::Colours::white.withAlpha(0.74f));
+    graphics.setFont(juce::jmin(10.f, channels.gainLabel.getHeight() * 0.78f));
+    graphics.drawFittedText(
+            gainLabel(gainUnitValue),
+            channels.gainLabel.toNearestInt(),
+            juce::Justification::centred,
+            1);
 }
 
 }

@@ -1,4 +1,5 @@
 #include <Array/Buffer.h>
+#include <Audio/SmoothedParameter.h>
 
 #include <algorithm>
 
@@ -142,6 +143,65 @@ private:
     AudioModuleRole processorRole {};
 };
 
+class OutputAudioProcessor final : public NodeAudioProcessor {
+public:
+    AudioModuleRole role() const override { return AudioModuleRole::Output; }
+
+    void prepareExecution(const AudioExecutionSpec& spec) override {
+        rampMemory.resize((int) spec.maximumFrameCount);
+    }
+
+    void adoptConfiguration(const PublishedNodeConfiguration& published) override {
+        const auto configuration = std::dynamic_pointer_cast<const OutputNodeConfiguration>(
+                published.value);
+        const float nextGain = configuration != nullptr ? configuration->gain : 1.f;
+        if (!initialized) {
+            gain.setValueDirect(nextGain);
+            initialized = true;
+            return;
+        }
+
+        gain = nextGain;
+    }
+
+    void process(AudioProcessContext& context) override {
+        SignalPayload* input = inputAt(context, 0);
+        if (input == nullptr) {
+            clearOutput(context);
+            return;
+        }
+
+        auto output = makeOutputPayload(context, 0);
+        if (context.outputPorts.empty()) {
+            output.domain = input->domain;
+            output.channelLayout = input->channelLayout;
+        }
+
+        copyPayloadBlockExpandingScalars(output, *input, context.frameCount);
+        copyPayloadTraversalGrids(output, *input);
+        gain.update((int) context.frameCount);
+
+        const size_t channelCount = payloadChannelCount(output);
+        for (size_t channel = 0; channel < channelCount; ++channel) {
+            gain.maybeApplyRamp(
+                    rampMemory.withSize((int) context.frameCount),
+                    payloadBuffer(output, channel, context.frameCount));
+            auto& grid = payloadTraversalGrid(output, channel);
+            if (grid.isValid()) {
+                Buffer<float>(grid.values.data(), (int) grid.values.size())
+                        .mul(gain.getCurrentValue());
+            }
+        }
+
+        publishSingleOutput(context, std::move(output));
+    }
+
+private:
+    bool initialized {};
+    SmoothedParameter gain { 1.f };
+    ScopedAlloc<float> rampMemory;
+};
+
 class SilentAudioProcessor final : public NodeAudioProcessor {
 public:
     explicit SilentAudioProcessor(AudioModuleRole role) : processorRole(role) {}
@@ -227,7 +287,7 @@ std::unique_ptr<NodeAudioProcessor> createStereoSplitAudioProcessor() {
 }
 
 std::unique_ptr<NodeAudioProcessor> createOutputAudioProcessor() {
-    return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::Output);
+    return std::make_unique<OutputAudioProcessor>();
 }
 
 std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor() {

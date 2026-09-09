@@ -146,7 +146,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 920.0, "y": 180.0 },
-            "parameters": {}
+            "parameters": { "gain": 0.5 }
         }
     ],
     "guides": [],
