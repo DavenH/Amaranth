@@ -253,6 +253,65 @@ def bypass_redundant_transform_pair(document, report):
         report["transformPair"] += 1
 
 
+def direct_scratch_fanouts(document, nodes, trimesh_ids):
+    fanouts = {}
+    for edge_index, edge in enumerate(document.get("edges", [])):
+        source = nodes.get(edge["sourceNodeId"])
+        if (source is None
+                or source.get("kind") != "envelope"
+                or source.get("parameters", {}).get("purpose") != "scratch"
+                or edge["destNodeId"] not in trimesh_ids
+                or edge["destPortId"] != "scratch"):
+            continue
+        fanout = fanouts.setdefault(source["id"], {"targets": set(), "indices": []})
+        fanout["targets"].add(edge["destNodeId"])
+        fanout["indices"].append(edge_index)
+    return fanouts
+
+
+def collapse_complete_scratch_fanout(document, report):
+    nodes = {node["id"]: node for node in document.get("nodes", [])}
+    voice_contexts = [
+        node for node in nodes.values() if node.get("kind") == "voiceContext"
+    ]
+    trimesh_ids = {
+        node["id"] for node in nodes.values()
+        if node.get("kind") == "trilinearMesh"
+    }
+    if len(voice_contexts) != 1 or len(trimesh_ids) < 2:
+        return
+
+    voice_context = voice_contexts[0]
+    if any(
+            edge["destNodeId"] == voice_context["id"]
+            and edge["destPortId"] == "scratch"
+            for edge in document.get("edges", [])):
+        return
+
+    candidates = [
+        fanout for fanout in direct_scratch_fanouts(
+            document, nodes, trimesh_ids).values()
+        if fanout["targets"] == trimesh_ids and len(fanout["indices"]) >= 2
+    ]
+    if len(candidates) != 1:
+        if candidates:
+            report["ambiguousScratchDefault"] += 1
+        return
+
+    candidate = candidates[0]
+    retained_index = candidate["indices"][0]
+    removed_indices = set(candidate["indices"][1:])
+    retained = document["edges"][retained_index]
+    retained["destNodeId"] = voice_context["id"]
+    retained["destPortId"] = "scratch"
+    document["edges"] = [
+        edge for index, edge in enumerate(document["edges"])
+        if index not in removed_indices
+    ]
+    report["scratchDefault"] += 1
+    report["scratchEdgesRemoved"] += len(removed_indices)
+
+
 def collapse_silent_empty_time_graph(document, report):
     nodes = document.get("nodes", [])
     meshes = [node for node in nodes if node.get("kind") == "trilinearMesh"]
@@ -327,6 +386,7 @@ def simplify_graph(document):
     bypass_empty_spectral_layers(document, report)
     bypass_neutral_pan(document, report)
     bypass_redundant_transform_pair(document, report)
+    collapse_complete_scratch_fanout(document, report)
     prune_isolated_nodes(document, report)
     prune_unused_guides(document, report)
     return report

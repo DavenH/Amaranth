@@ -2,6 +2,7 @@ import copy
 import json
 import sys
 import unittest
+from collections import Counter
 from pathlib import Path
 
 
@@ -34,6 +35,13 @@ def edge(source, source_port, destination, destination_port):
     }
 
 
+def scratch_edge(source, destination):
+    result = edge(source, "env", destination, "scratch")
+    result["connectionKind"] = "processingAttachment"
+    result["attachmentType"] = "scratchEnvelope"
+    return result
+
+
 def graph(nodes, edges):
     return {
         "nodes": nodes,
@@ -46,6 +54,55 @@ def graph(nodes, edges):
 
 
 class SimplifyCycleV2PresetsTest(unittest.TestCase):
+    def test_complete_scratch_fanout_becomes_voice_context_default(self):
+        scratch = {
+            **node("scratch", "envelope"),
+            "parameters": {"purpose": "scratch"},
+        }
+        document = graph([
+            node("voice", "voiceContext"),
+            scratch,
+            node("time", "trilinearMesh", [1]),
+            node("magnitude", "trilinearMesh", [1]),
+        ], [
+            scratch_edge("scratch", "time"),
+            scratch_edge("scratch", "magnitude"),
+        ])
+
+        report = Counter()
+        simplify.collapse_complete_scratch_fanout(document, report)
+
+        self.assertEqual(report["scratchDefault"], 1)
+        self.assertEqual(report["scratchEdgesRemoved"], 1)
+        self.assertEqual(document["edges"], [scratch_edge("scratch", "voice")])
+
+        second_report = Counter()
+        simplify.collapse_complete_scratch_fanout(document, second_report)
+        self.assertFalse(second_report)
+
+    def test_partial_scratch_fanout_remains_explicit(self):
+        scratch = {
+            **node("scratch", "envelope"),
+            "parameters": {"purpose": "scratch"},
+        }
+        document = graph([
+            node("voice", "voiceContext"),
+            scratch,
+            node("time", "trilinearMesh", [1]),
+            node("magnitude", "trilinearMesh", [1]),
+            node("phase", "trilinearMesh", [1]),
+        ], [
+            scratch_edge("scratch", "time"),
+            scratch_edge("scratch", "magnitude"),
+        ])
+        original = copy.deepcopy(document)
+
+        report = Counter()
+        simplify.collapse_complete_scratch_fanout(document, report)
+
+        self.assertFalse(report)
+        self.assertEqual(document, original)
+
     def test_neutral_pan_is_bypassed_and_probe_source_follows(self):
         document = graph([
             {
