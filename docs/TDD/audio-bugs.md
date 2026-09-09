@@ -953,6 +953,32 @@ correlation is `0.999999986` with a `0.00017` gain-matched residual. Artifact:
 Current status: resolved; the Trimesh DSP domain test requires phase-specific
 interpolation behavior.
 
+## Open: Cycle V2 omits the document-level voice declick envelope
+
+The directly exported Simple Bass parity fixture is effectively identical
+during sustain, but diverges at note start and note-off. Cycle 1's
+`SynthesizerVoice` applies the document's enabled Declick policy after volume
+envelope multiplication: a roughly 1.45 ms attack ramp and a 10 ms release
+ramp. When an authored volume release exists, Cycle 1 additionally applies the
+release ramp over the final release samples. Cycle V2 currently has no
+equivalent voice-output lifecycle boundary.
+
+At MIDI 48, the held-note comparison reaches `0.999999999955` correlation and
+a `9.4e-6` gain-matched residual outside the onset. Whole-note comparisons at
+75 ms and 200 ms reach only `0.99878` and `0.99928`; the first release window
+shows Cycle 1 nearly silent while Cycle V2 continues the unmodified authored
+tail. This is not an envelope-raster or oscillator discrepancy.
+
+Do not copy the ramp formula into a graph processor. The authoritative ramp
+construction and application currently live in `SynthAudioSource` and
+`SynthesizerVoice`; parity needs a shared preallocated declick product plus an
+explicit Cycle V2 voice-lifecycle policy, including how the Cycle 1 document
+setting maps into the graph/render contract.
+
+Current status: open. Artifacts:
+`/tmp/cycle-simple-bass-note-75/comparison.json` and
+`/tmp/cycle-simple-bass-note-200/comparison.json`.
+
 ## Open: routed scratch-envelope morph is not ready at note start
 
 The freshly exported and regenerated Guitar 3 G parity pair exposes a more

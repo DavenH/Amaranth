@@ -848,7 +848,7 @@ def validate_audio_parity_subset(source):
         if group_name == "magnitude" and active_count == 0:
             issues.append("magnitude requires at least one active layer; found 0")
             continue
-        if group_name != "magnitude" and active_count != 1:
+        if group_name == "time" and active_count != 1:
             issues.append(
                 f"{group_name} requires exactly one active layer; found {active_count}")
             continue

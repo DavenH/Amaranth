@@ -619,6 +619,15 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
         self.assertIn("magnitude requires at least one active layer; found 0", issues)
 
+    def test_strict_parity_allows_no_active_phase_layer(self):
+        source = supported_source()
+        source["preset"]["meshLibrary"]["groups"][6]["layers"][0] \
+            ["properties"]["active"] = False
+
+        issues = port_cycle_v1_preset.validate_audio_parity_subset(source)
+
+        self.assertEqual(issues, [])
+
     def test_every_active_magnitude_layer_must_have_neutral_legacy_gain(self):
         source = supported_source()
         second = copy.deepcopy(source["preset"]["meshLibrary"]["groups"][5]["layers"][0])

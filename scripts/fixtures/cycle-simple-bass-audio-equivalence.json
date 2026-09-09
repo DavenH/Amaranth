@@ -1,0 +1,42 @@
+{
+    "schema": "cycle-v1-v2-audio-equivalence.v1",
+    "status": "diagnostic",
+    "v1": {
+        "factoryPreset": "simple-bass",
+        "sourceDocument": "cycle/content/presets/simple-bass.cyc",
+        "sha256": "16d50cc0ff91b6bd0a69c74d42b48313d02021a5b6dedd023a33367dd3cd5f3a"
+    },
+    "v2": {
+        "graph": "cycle-v2/content/presets/simple-bass.cyclegraph",
+        "sha256": "e70fbf311e5fad36a3a2362f430257d4b8e3342a181ebfe9def3c1b90e776caf",
+        "renderOverrides": {
+            "voiceDurationSeconds": 0.24360341021593185
+        }
+    },
+    "translation": {
+        "midiNoteOffset": 0,
+        "legacyMidiReferenceOffset": -12,
+        "v1MasterGain": 0.9773594682052107,
+        "v2OutputGainUnitValue": 0.496183206,
+        "v2OutputHeadroom": 0.125,
+        "coverage": [
+            "timeLayer",
+            "multiplicativeMagnitudeLayer",
+            "volumeEnvelope",
+            "voiceTimeMorph",
+            "outputGain"
+        ],
+        "determinism": "pitch and scratch envelopes, spectral phase, effects, unison, and guide noise are disabled",
+        "inputValidation": "regenerated from a direct Cycle 1 canonical file export on 2026-09-09",
+        "knownRuntimeGaps": [
+            "Cycle V2 does not apply Cycle 1's document-level attack and release declick ramps"
+        ],
+        "constantGainPolicy": "Cycle1 master gain maps to Output; Cycle2 fixed headroom remains separate"
+    },
+    "thresholds": {
+        "correlationMin": 0.98,
+        "gainMatchedResidualMax": 0.2,
+        "spectrumRmseDbMax": 6.0,
+        "cyclogramMeanRowDifferenceMax": 0.2
+    }
+}
