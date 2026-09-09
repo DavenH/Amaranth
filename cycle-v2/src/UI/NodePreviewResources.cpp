@@ -120,6 +120,13 @@ void NodePreviewResources::clearCachedSprites() {
     cachedSprites.clear();
 }
 
+void NodePreviewResources::resetDocumentPreviews() {
+    clearCachedSprites();
+    for (auto& entry : curveEditorWidgets) {
+        entry.second->resetDocumentPresentation();
+    }
+}
+
 void NodePreviewResources::releaseOpenGLResources() {
     for (auto& entry : trimeshWidgets) {
         entry.second->releaseSharedGlResources();

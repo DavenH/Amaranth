@@ -179,6 +179,11 @@ bool CurveEditorWidget::paintExpandedSnapshot(Graphics& g, Rectangle<float> boun
     return controller->paintExpandedSnapshot(g, bounds);
 }
 
+void CurveEditorWidget::resetDocumentPresentation() {
+    controller->resetDocumentPresentation();
+    ++previewPresentationRevision;
+}
+
 void CurveEditorWidget::releaseSharedGlResources() {
     controller->releaseSharedGlResources();
 }

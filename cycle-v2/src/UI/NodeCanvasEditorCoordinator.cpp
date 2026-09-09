@@ -121,6 +121,10 @@ void NodeCanvasEditorCoordinator::clearPreviewCache() {
     resources.clearCachedSprites();
 }
 
+void NodeCanvasEditorCoordinator::resetDocumentPreviews() {
+    resources.resetDocumentPreviews();
+}
+
 void NodeCanvasEditorCoordinator::close() {
     state.expandedNodeId = {};
     editorHost.close();

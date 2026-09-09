@@ -44,6 +44,7 @@ public:
     void renderPreviewSnapshotOpenGL(const Node& node, Rectangle<float> bounds, float scaleFactor);
     bool paintExpandedSnapshot(Graphics& g, Rectangle<float> bounds) const;
     bool paintPreviewSnapshot(Graphics& g, Rectangle<float> bounds) const;
+    void resetDocumentPresentation();
     void releaseSharedGlResources();
     int vertexCountForAutomation() const;
     var automationState() const;

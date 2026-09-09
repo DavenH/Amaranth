@@ -39,6 +39,7 @@ public:
 
     const TrimeshWidget* findTrimeshWidget(const String& nodeId) const;
     void clearCachedSprites();
+    void resetDocumentPreviews();
     void releaseOpenGLResources();
     void hideExpandedHostsExcept(const String& nodeId);
     void detachTrimeshHosts(Component& parent);

@@ -54,6 +54,7 @@ public:
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     void clearPreviewCache();
+    void resetDocumentPreviews();
     void close();
     void detach();
     std::array<String, 6> trimeshGuideLabelsFor(const Node& node);

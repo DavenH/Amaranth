@@ -115,6 +115,31 @@ TEST_CASE("Curve preview snapshots are reused until a rendering dependency chang
     REQUIRE(diagnostics.misses == 9);
 }
 
+TEST_CASE("Curve document replacement clears snapshots and changes preview identity",
+        "[cycle-v2][node-editor-host][regression]") {
+    CurvePanelSnapshotCache snapshot;
+    Image rendered(Image::ARGB, 8, 8, true);
+    Graphics renderedGraphics(rendered);
+    renderedGraphics.fillAll(Colours::white);
+    snapshot.publish(rendered, true);
+
+    Image destination(Image::ARGB, 8, 8, true);
+    Graphics destinationGraphics(destination);
+    REQUIRE(snapshot.paint(destinationGraphics, destination.getBounds().toFloat(), false));
+    snapshot.clear();
+    REQUIRE_FALSE(snapshot.paint(
+            destinationGraphics,
+            destination.getBounds().toFloat(),
+            false));
+
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTable;
+    CurveEditorWidget widget(NodeKind::Waveshaper);
+    const uint64_t originalPreviewRevision = widget.previewRevision();
+    widget.resetDocumentPresentation();
+    REQUIRE(widget.previewRevision() > originalPreviewRevision);
+}
+
 struct EditorStats {
     int creations {};
     int destructions {};

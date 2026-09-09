@@ -220,3 +220,15 @@ semantic edit through `GraphCommandDispatcher` with undo/redo support.
 The edge context menu now switches from `Add Panning` to `Stop Panning` for
 either segment adjacent to the inline Pan. Removal and reconnection are one
 compound dispatcher command, and undo restores the Pan and both cable segments.
+
+## P1: Curve previews survive preset replacement with stale pixels
+
+Resolved 2026-09-09. After switching presets, Guide shelf tiles could remain
+black and a compact Waveshaper could show the previous preset's curve while its
+expanded editor showed the current model. The persistent Curve widgets keyed
+their OpenGL preview reuse by node/resource id and numeric revisions, which can
+repeat in another document, while document replacement cleared only the outer
+canvas sprites. The replacement lifecycle now invalidates each Curve host's
+render key, clears both framebuffer snapshots, advances its presentation
+identity, and schedules retained Guide widgets for a fresh render. A focused
+node-editor-host regression covers snapshot clearing and identity advancement.
