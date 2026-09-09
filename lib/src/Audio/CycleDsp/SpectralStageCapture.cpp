@@ -19,6 +19,12 @@ String primaryPayloadName(SpectralStage stage) {
     if (stage == SpectralStage::MagnitudeOperand) {
         return "magnitude-operand";
     }
+    if (stage == SpectralStage::PhaseRaster) {
+        return "phase-raster";
+    }
+    if (stage == SpectralStage::PhaseOperand) {
+        return "phase-operand";
+    }
     return stage == SpectralStage::ForwardFft
                     || stage == SpectralStage::PostLayerSpectrum
             ? "magnitude"
@@ -27,7 +33,8 @@ String primaryPayloadName(SpectralStage stage) {
 
 String secondaryPayloadName(SpectralStage stage) {
     if (stage == SpectralStage::TimeRaster
-            || stage == SpectralStage::MagnitudeRaster) {
+            || stage == SpectralStage::MagnitudeRaster
+            || stage == SpectralStage::PhaseRaster) {
         return "morph-position";
     }
     return stage == SpectralStage::ForwardFft
@@ -199,6 +206,10 @@ String spectralStageName(SpectralStage stage) {
             return "magnitude-raster";
         case SpectralStage::MagnitudeOperand:
             return "magnitude-operand";
+        case SpectralStage::PhaseRaster:
+            return "phase-raster";
+        case SpectralStage::PhaseOperand:
+            return "phase-operand";
         case SpectralStage::PostLayerSpectrum:
             return "post-layer-spectrum";
         case SpectralStage::ReconstructedFrame:

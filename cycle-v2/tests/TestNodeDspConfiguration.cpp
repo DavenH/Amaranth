@@ -1,5 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "Graph/GraphNodeFactory.h"
+#include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Runtime/NodeDspConfiguration.h"
 
 using namespace CycleV2;
@@ -65,4 +67,35 @@ TEST_CASE("Published DSP configurations outlive publisher replacement", "[cycle-
 
     REQUIRE_FALSE(oldLifetime.expired());
     REQUIRE(std::static_pointer_cast<const TestConfiguration>(first.value)->value == 11);
+}
+
+TEST_CASE("Direct spectral Trimesh applies its range before IFFT",
+        "[cycle-v2][runtime][configuration][spectral]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "magnitude", {}));
+    graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({
+            "magnitude",
+            "out",
+            "ifft",
+            "mag",
+            PortDomain::SpectralMagnitudeSignal
+    });
+    const Node* magnitude = graph.findNode("magnitude");
+    REQUIRE(magnitude != nullptr);
+
+    const auto configuration = NodeDspConfigurationFactory().create(
+            AudioModuleRole::MeshSource,
+            magnitude->parameters,
+            magnitude->model,
+            {},
+            &graph,
+            magnitude->id);
+    const auto spectral = std::dynamic_pointer_cast<const TrimeshConfiguration>(
+            configuration);
+
+    REQUIRE(spectral != nullptr);
+    REQUIRE(spectral->appliesSpectralRange);
+    REQUIRE_FALSE(spectral->multiplicative);
 }

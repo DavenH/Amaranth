@@ -99,6 +99,7 @@ private:
     ScopedAlloc<float> slotMemory;
     ScopedAlloc<float> magnitudeScratch;
     ScopedAlloc<float> phaseScratch;
+    ScopedAlloc<float> phaseHarmonicScale;
     Random frameRandom;
     uint32_t lifecycleSeed {};
     bool lifecycleSeedReady {};

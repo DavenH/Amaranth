@@ -920,6 +920,62 @@ pitch-clocked Hermite resampling. Artifacts:
 Current status: spectral reconstruction boundary resolved; remaining
 deterministic output residual is tracked at pitch-clocked cycle resampling.
 
+## Resolved: Cycle V2 omitted the legacy phase harmonic ramp
+
+The deterministic Fallout parity fixture was byte-identical through its time
+and magnitude operands but fell to `0.403` output correlation when its additive
+phase layer was applied. Cycle 1 scales phase offsets by the square root of the
+one-based harmonic number before adding them to the FFT phases. Cycle V2
+applied the authored phase values directly.
+
+The mature square-root ramp is now prepared by shared `SpectralLayerCore` code
+and consumed by both engines. Storage remains preallocated outside the audio
+render path. This removed the large spectral-phase discrepancy without adding
+a second transfer implementation.
+
+Current status: resolved; guarded by the shared spectral-layer test and the
+Fallout cross-engine capture.
+
+## Resolved: Cycle V2 disabled phase-mesh curve interpolation
+
+After restoring the harmonic ramp, Fallout's raw phase raster still differed
+from Cycle 1. The legacy phase rasterizer explicitly enables curve
+interpolation, while magnitude rasterization does not. Cycle V2 selected the
+correct bipolar phase scaling but left the rasterization request's
+`interpolateCurves` flag at its false default.
+
+Cycle V2 now enables interpolation only for `SpectralPhaseSignal`, matching the
+authoritative request policy. At MIDI 48/frame 32, Fallout's phase raster and
+range-scaled phase operand are byte-identical between engines. Final output
+correlation is `0.999999986` with a `0.00017` gain-matched residual. Artifact:
+`/tmp/cycle-fallout-phase-interpolation/comparison.json`.
+
+Current status: resolved; the Trimesh DSP domain test requires phase-specific
+interpolation behavior.
+
+## Open: routed scratch-envelope morph is not ready at note start
+
+The freshly exported and regenerated Guitar 3 G parity pair exposes a more
+complex envelope case than Filter Saw: its looping scratch envelope changes
+substantially across red/key and blue/velocity. Cycle 1 prepares the routed
+cross-section before starting playback. At MIDI 48/frame zero its captured
+scratch coordinate is `0.00553`; Cycle V2 starts from the authored 0.5/0.5
+preparation at `0.22683` and requests the routed immutable preparation after
+the note-on reaches the audio processor. Frame 32 still differs (`0.28051`
+versus `0.42900`).
+
+The existing bounded preparation exchange is allocation-free and correctly
+latches once its result is adopted, but it does not satisfy the intended
+first-sample contract when the effective cross-section depends on per-note key
+or velocity. Do not approximate this by rasterizing on the realtime thread.
+The ownership and completion criteria remain in
+`cycle-v2-dynamic-envelope-modulation.md`. This mismatch must be resolved
+before Guitar 3 G can attribute later phase/effect differences. Artifacts:
+`/tmp/cycle-guitar-3-g-frame0/comparison.json` and
+`/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
+
+Current status: open at note-on preparation/adoption ownership.
+
 ## Resolved: Cycle 1 and Cycle V2 use different MIDI reference notes
 
 Context:

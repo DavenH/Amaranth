@@ -293,6 +293,9 @@ bool SpectralOscillatorFrameRenderer::prepare(
             maximumFrameSize);
     magnitudeScratch.resize(maximumBinCount);
     phaseScratch.resize(maximumBinCount);
+    phaseHarmonicScale.resize(maximumBinCount - 1);
+    CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(
+            phaseHarmonicScale.withSize(maximumBinCount - 1));
 
     transforms.clear();
     for (int frameSize = 2; frameSize <= maximumFrameSize; frameSize *= 2) {
@@ -470,13 +473,17 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                 leftOutput.zero();
                 operation.spectralRasterizer->renderPreparedHarmonicsInto(
                         leftOutput.section(1, count - 1));
-                if (operation.outputDomain
-                        == PortDomain::SpectralMagnitudeSignal) {
+                if (operation.outputDomain == PortDomain::SpectralMagnitudeSignal
+                        || operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     const int activeBinCount = jmin(
                             count - 1,
                             LogRegionMapping(
                                     midiNote + LogRegionMapping::legacyMidiNoteBias)
                                     .regionSize());
+                    const auto stage = operation.outputDomain
+                                    == PortDomain::SpectralMagnitudeSignal
+                            ? CycleDsp::SpectralStage::MagnitudeRaster
+                            : CycleDsp::SpectralStage::PhaseRaster;
                     std::array<float, 3> morphValues {
                             morph.time.getCurrentValue(),
                             morph.red.getCurrentValue(),
@@ -485,7 +492,7 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                     for (int channel = 0; channel < 2; ++channel) {
                         captureStage(
                                 context,
-                                CycleDsp::SpectralStage::MagnitudeRaster,
+                                stage,
                                 renderCount,
                                 voiceSampleFrontier,
                                 midiNote,
@@ -506,6 +513,23 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                         && operation.outputDomain == PortDomain::SpectralPhaseSignal) {
                     leftOutput.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(
                             operation.configuration->range) * MathConstants<float>::twoPi);
+                    const int activeBinCount = jmin(
+                            count - 1,
+                            LogRegionMapping(
+                                    midiNote + LogRegionMapping::legacyMidiNoteBias)
+                                    .regionSize());
+                    for (int channel = 0; channel < 2; ++channel) {
+                        captureStage(
+                                context,
+                                CycleDsp::SpectralStage::PhaseOperand,
+                                renderCount,
+                                voiceSampleFrontier,
+                                midiNote,
+                                channel,
+                                leftOutput.section(1, activeBinCount));
+                    }
+                    leftOutput.section(1, count - 1).mul(
+                            phaseHarmonicScale.withSize(count - 1));
                 }
                 if (operation.outputDomain
                         == PortDomain::SpectralMagnitudeSignal) {

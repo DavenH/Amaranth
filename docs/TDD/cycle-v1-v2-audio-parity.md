@@ -164,10 +164,11 @@ translation. The first broad candidates are:
 | Preset | Deterministic coverage | Current admission result |
 | --- | --- | --- |
 | saw | One static time mesh; no envelopes, effects, unison, or guide noise | Regenerated exactly. At MIDI 36–72 it reaches `0.98850–0.99844` correlation after the MIDI reference fix. It exposes remaining gain, onset, resampling, and Cycle 1 startup-repeatability gaps. |
-| filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. Correcting the harmonic-region note contract improves correlation to `0.95298–0.89154` at MIDI 36–72. The remaining time-varying mismatch exposes the prepared spectral runtime's static-frame limitation. |
+| filter-saw | One time layer and one subtractive magnitude layer; no phase, effects, unison, or guide noise | Regenerated exactly and byte-repeatable in both engines. After restoring cycle-clocked scratch, frame ownership, shared log regions, and the final active harmonic, MIDI 36–72 is zero-lag with correlation of at least `0.9999999919`. |
+| fallout | One time layer, one subtractive magnitude layer, one additive phase layer, and output gain; no envelopes, effects, unison, or guide noise | Regenerated exactly from a live canonical export. Its captured time, magnitude, and phase raster/operand boundaries are byte-identical at MIDI 48/frame 32. MIDI 36–72 remains zero-lag with `0.99974–1.00000` correlation after restoring the mature phase harmonic ramp and phase-only curve interpolation. |
 | power | Time layer plus volume envelope | Regenerated exactly but rejected as an audio oracle: Cycle 1 renders silence because the active time layer has no authored waveform geometry. |
 | Subbass | Time, magnitude, phase, volume/scratch envelopes | Port manifest was strict, but current notes 48–72 fail its old output thresholds; diagnostic only. |
-| guitar-3-g | Time + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a live canonical export while retaining node presentation. The corrected MIDI 48 comparison reaches only `0.19678` correlation, and Cycle 1's effect-bearing render is not byte-repeatable. |
+| guitar-3-g | Empty time bypass + spectral, phase pan, volume/scratch, 2x oversampling, waveshaper, IR, EQ, delay | Regenerated exactly from a direct canonical export while retaining node presentation. Direct spectral range shaping is restored. Its routed scratch-envelope cross-section is not ready for Cycle V2's first note sample, so phase and effect attribution remain blocked. |
 | japan-drum | Two time layers, two magnitude layers, phase, volume envelope, five guide assignments | Regenerated exactly; all four guides have zero noise/offset/phase. One corrected render repeated exactly, but a later run did not repeat in Cycle 1. Its large evolving mismatch remains diagnostic until that intermittent startup state is isolated. |
 | Icycle | Broad synthesis/effects plus six-voice Unison | Guide noise is disabled. Current graph differs from fresh conversion in reverb size; Unison repeatability still needs an admitted pair. |
 | accoustic | Broad graph including reverb | Current graph differs in morph/link state, envelope state, reverb size, and IR high-pass; do not use for DSP attribution yet. |
@@ -287,12 +288,12 @@ as the scratch envelope evolves.
     the corrected boundary; Subbass also remains input-invalid because its
     omitted morph state is inherited from the startup document.
 12. Admit deterministic whole-graph ports incrementally. In progress:
-    `saw`, `filter-saw`, `guitar-3-g`, and `japan-drum` now match fresh canonical
+    `saw`, `filter-saw`, `fallout`, `guitar-3-g`, and `japan-drum` now match fresh canonical
     conversion exactly and preserve their prior presentation. Saw substantially
-    matches after reference translation. Filter Saw isolates the first large
-    discrepancy to magnitude-layer frequency sampling/compositing, before
-    phase, multi-layer operations, or effects. Guitar 3 G additionally exposes
-    nondeterministic Cycle 1 effect-tail state.
+    matches after reference translation. Filter Saw now establishes the
+    evolving magnitude-layer baseline, and Fallout establishes static phase
+    rasterization/compositing. Guitar 3 G exposes the next boundary at
+    key/velocity-routed envelope preparation before effects can be attributed.
 13. Add deterministic seed injection/persistence at the shared render contract
     for Guide noise, Unison jitter, and reverb, then admit one fixture for each.
     In progress: Cycle 1 voice/rasterizer seed injection is complete and proves
@@ -407,6 +408,41 @@ as the scratch envelope evolves.
     Hermite cycle resampling, not spectral reconstruction. Artifacts:
     `/tmp/cycle-filter-saw-final-harmonic/comparison.json` and
     `/tmp/cycle-filter-saw-final-harmonic-notes/comparison.json`.
+26. Admit a deterministic magnitude/phase preset. Complete using Fallout:
+    it contains one time source, a subtractive magnitude layer, and an additive
+    phase layer without envelope, effect, unison, or guide-noise confounds. The
+    first comparison diverged at the phase layer and reached only `0.403`
+    output correlation. Cycle 1's mature path multiplies authored phase by a
+    square-root harmonic-number ramp and enables curve interpolation only for
+    phase rasterization; Cycle V2 omitted both contracts. The ramp now lives in
+    shared `SpectralLayerCore`, and both engines call it. Cycle V2 also sets the
+    authoritative phase interpolation request at its rasterization boundary.
+    At MIDI 48/frame 32 the phase raster and range-scaled phase operand are
+    byte-identical, the reconstructed-frame residual is `2.5e-6`, and final
+    output correlation is `0.999999986` with a `0.00017` gain-matched residual.
+    MIDI 36, 48, 60, and 72 all align at zero lag with correlations from
+    `0.99974` to `1.00000`; three-note matrix repeatability and an independent
+    two-render MIDI 48 check are exact in both engines. Artifacts:
+    `/tmp/cycle-fallout-phase-interpolation/comparison.json` and
+    `/tmp/cycle-fallout-phase-matrix/comparison.json`.
+27. Advance to the routed-envelope/effect graph in Guitar 3 G. In progress:
+    Guitar 3 G was re-exported directly from its current Cycle 1 `.cyc` and
+    regenerated with the authoritative converter. This corrected the stale
+    velocity polarity and restored full-precision mesh values. The comparison
+    also found that empty-time promotion exposed a runtime omission: direct
+    spectral Trimeshes feeding IFFT skipped their authored range because range
+    shaping was inferred only from an intervening Add or Multiply. Direct IFFT
+    is now a range-shaped spectral consumer, guarded by a focused configuration
+    test. At MIDI 48/frame 32 the magnitude operand is now on the expected scale
+    (`0.02328` versus `0.02658` for harmonic one) instead of bypassing shaping
+    (`0.55409`). The first remaining mismatch is the scratch-envelope morph:
+    Cycle 1 begins frame zero at the routed key/velocity cross-section
+    (`yellow=0.00553`), while Cycle V2 begins from the authored 0.5/0.5 envelope
+    preparation (`yellow=0.22683`) and requests the routed preparation only
+    after note-on. This violates the intended first-sample latched-envelope
+    contract and blocks phase attribution. Artifacts:
+    `/tmp/cycle-guitar-3-g-frame0/comparison.json` and
+    `/tmp/cycle-guitar-3-g-direct-range/comparison.json`.
 
 Future work: replace the inherited quality-selected control interval with an explicit
 control-rate contract that may request sub-cycle synthesis updates. That is a

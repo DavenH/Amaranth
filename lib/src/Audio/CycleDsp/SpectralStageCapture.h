@@ -17,6 +17,8 @@ enum class SpectralStage {
     ForwardFft,
     MagnitudeRaster,
     MagnitudeOperand,
+    PhaseRaster,
+    PhaseOperand,
     PostLayerSpectrum,
     ReconstructedFrame,
     PitchClockedCycle
@@ -51,7 +53,7 @@ struct CapturedSpectralStage {
 
 class SpectralStageCaptureRecorder final : public SpectralStageCaptureSink {
 public:
-    static constexpr int stageCount = 8;
+    static constexpr int stageCount = 10;
     static constexpr int channelCount = 2;
 
     bool prepare(int maximumValueCount, size_t targetFrameIndex);

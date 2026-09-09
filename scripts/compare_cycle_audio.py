@@ -272,6 +272,8 @@ def compare_stage_captures(reference_path, candidate_path):
         "forward-fft",
         "magnitude-raster",
         "magnitude-operand",
+        "phase-raster",
+        "phase-operand",
         "post-layer-spectrum",
         "reconstructed-frame",
         "pitch-clocked-cycle",

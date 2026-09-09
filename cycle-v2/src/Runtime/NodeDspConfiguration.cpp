@@ -40,10 +40,12 @@ const Node* operationAfterOptionalPan(const NodeGraph* graph, const String& node
     return destination;
 }
 
-bool feedsSpectralOperation(const NodeGraph* graph, const String& nodeId) {
+bool feedsSpectralRangeConsumer(const NodeGraph* graph, const String& nodeId) {
     const Node* destination = operationAfterOptionalPan(graph, nodeId);
     return destination != nullptr
-            && (destination->kind == NodeKind::Add || destination->kind == NodeKind::Multiply);
+            && (destination->kind == NodeKind::Add
+                    || destination->kind == NodeKind::Multiply
+                    || destination->kind == NodeKind::Ifft);
 }
 
 bool feedsMultiply(const NodeGraph* graph, const String& nodeId) {
@@ -93,7 +95,7 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     const NodeParameterMap parameterMap(parameters);
     configuration->enabled = parameterMap.boolValue("enabled", true);
     configuration->range = parameterMap.floatValue("range", 0.5f);
-    configuration->appliesSpectralRange = feedsSpectralOperation(graph, nodeId);
+    configuration->appliesSpectralRange = feedsSpectralRangeConsumer(graph, nodeId);
     configuration->multiplicative = feedsMultiply(graph, nodeId);
     configuration->scratchSourceEnabled = scratchSourceEnabled(
             graph,
@@ -148,7 +150,7 @@ String NodeDspConfigurationFactory::keyFor(
     if (role == AudioModuleRole::MeshSource) {
         key << ":scratchSourceEnabled="
             << (scratchSourceEnabled(graph, nodeId, scratchSourceNodeId) ? 1 : 0);
-        key << ":spectralOperation=" << (feedsSpectralOperation(graph, nodeId) ? 1 : 0);
+        key << ":spectralRange=" << (feedsSpectralRangeConsumer(graph, nodeId) ? 1 : 0);
         key << ":multiplicative=" << (feedsMultiply(graph, nodeId) ? 1 : 0);
     }
     if (role == AudioModuleRole::SpectralLayer) {

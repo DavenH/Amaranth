@@ -4,8 +4,11 @@
 
 In Progress.
 
-The bounded preparation exchange, per-note morph latching, and absolute red/blue
-inputs are implemented. The original Envelope-owned `Dynamic while live`
+The bounded preparation exchange and absolute red/blue inputs are implemented.
+Per-note morph latching is incomplete at the note-on boundary: when key or
+velocity selects a cross-section that is not already prepared, the first audio
+uses the persistent base morph until the non-realtime result is adopted. The
+original Envelope-owned `Dynamic while live`
 policy was removed on 2026-07-31 after ownership review: live adoption is a
 voice traversal policy and may only be exposed through Voice Context (or a
 shared voice-policy object owned by it). Until that contract exists, Envelope
@@ -97,7 +100,18 @@ the same absolute-position contract. Canonical normalization adds these ports
 to previously saved Cycle v2 nodes without a separate migration layer.
 
 With the current latched policy, `effectiveMorph` is captured at note-on and
-remains fixed for that note. Changes remain available to the next note.
+remains fixed for that note after its prepared result is adopted. The current
+implementation does not yet guarantee that result is available for the first
+sample; until it does, the latched policy is incomplete. Changes remain
+available to the next note.
+
+The Guitar 3 G parity fixture demonstrates the missing boundary. Its looping
+scratch envelope depends strongly on key and velocity. At MIDI 48/frame zero,
+Cycle 1 starts from the routed cross-section at `0.00553`, while Cycle V2 starts
+from the persistent 0.5/0.5 preparation at `0.22683`. The bounded request is
+published at note-on, which is too late to define the already-started voice.
+This must be solved through non-realtime preparation ownership; synchronous
+audio-thread rasterization is outside the contract.
 
 If Voice Context later enables live adoption, a meaningful change to
 `effectiveMorph` requests a new immutable prepared envelope. Once ready, the

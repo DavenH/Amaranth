@@ -643,7 +643,7 @@ TEST_CASE("Trimesh blockwise DSP initializes resolved linked-stereo channels",
 }
 
 TEST_CASE(
-        "Trimesh DSP preserves unipolar magnitude and bipolar phase domains",
+        "Trimesh DSP preserves spectral domain scaling and phase curve interpolation",
         "[cycle-v2][nodes][trimesh][dsp][domains]") {
     auto mesh = TrimeshMeshFactory::createDefaultMesh();
     TrimeshBlockwiseDsp dsp;
@@ -679,18 +679,25 @@ TEST_CASE(
     REQUIRE(magnitude.block.samples.size() == c5Magnitude.block.samples.size());
     float pitchDifference {};
     float uniformSamplingDifference {};
+    float phaseInterpolationDifference {};
     for (size_t index = 0; index < magnitude.block.samples.size(); ++index) {
-        REQUIRE(magnitude.block.samples[index]
-                == Catch::Approx(phase.block.samples[index] * 0.5f + 0.5f));
         pitchDifference += std::abs(
                 magnitude.block.samples[index]
                 - c5Magnitude.block.samples[index]);
         uniformSamplingDifference += std::abs(
                 magnitude.block.samples[index]
                 - (time.block.samples[index] * 0.5f + 0.5f));
+        phaseInterpolationDifference += std::abs(
+                magnitude.block.samples[index]
+                - (phase.block.samples[index] * 0.5f + 0.5f));
     }
+    REQUIRE(*std::min_element(magnitude.block.samples.begin(), magnitude.block.samples.end()) >= 0.f);
+    REQUIRE(*std::max_element(magnitude.block.samples.begin(), magnitude.block.samples.end()) <= 1.f);
+    REQUIRE(*std::min_element(phase.block.samples.begin(), phase.block.samples.end()) >= -1.f);
+    REQUIRE(*std::max_element(phase.block.samples.begin(), phase.block.samples.end()) <= 1.f);
     REQUIRE(pitchDifference > 0.01f);
     REQUIRE(uniformSamplingDifference > 0.01f);
+    REQUIRE(phaseInterpolationDifference > 0.0001f);
 
     mesh->destroy();
 }
