@@ -681,6 +681,13 @@ CausalUpdateRequest GraphPresentationModel::updateRequest(
     }
 
     std::vector<String> roots = change.nodeIds;
+    if (change.probesChanged) {
+        for (const auto& probe : graph.getSignalProbes()) {
+            if (std::find(roots.begin(), roots.end(), probe.sourceNodeId) == roots.end()) {
+                roots.push_back(probe.sourceNodeId);
+            }
+        }
+    }
     if (roots.empty() && !plan.nodeOrder.empty()) {
         roots.push_back(plan.nodeOrder.front());
     }

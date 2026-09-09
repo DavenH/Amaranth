@@ -9,6 +9,27 @@ Resolved and no-longer-reproducing entries have been removed from this ledger.
    Keep this behind reproducible product and automation failures because it has
    not affected fixture results and does not currently reproduce.
 
+## P1: First Spy on a spectral Trimesh side branch appeared disconnected
+
+Resolved 2026-09-09. Adding the first Spy to a spectral Trimesh output could
+leave the tile labeled `Disconnected` until a second downstream Spy was added.
+Probe-only invalidation started at the graph's first execution node; an
+oscillator-region side branch was not necessarily downstream of that node, so
+the first probe preview was never rebuilt. Probe changes now invalidate every
+authored probe source, with the existing first-node fallback retained for
+removal of the last probe.
+
+The same report exposed inconsistent magnitude presentation. A Spy attached
+directly to a Trimesh used the linear mesh-authoring colour scale, while a Spy
+after Add used the logarithmic spectral-output scale. Both carry the exact DSP
+grid—the Spy itself applies no gain—but the direct tile looked roughly 100
+times weaker. All Spy tiles and details now use the output-observation scale;
+compact Trimesh nodes continue to show the authored mesh surface.
+
+Focused coverage exercises the first spectral side-branch Spy through canvas
+authoring, verifies its immediate connected preview, removes it through undo,
+and checks the Trimesh-output heatmap against the spectral Spy scale.
+
 ## P2: Intermittent CoreMIDI endpoint assertion during automation startup
 
 Context:

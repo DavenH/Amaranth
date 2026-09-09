@@ -93,6 +93,34 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     REQUIRE(document.graph().findNode(added.nodeId) == nullptr);
 }
 
+TEST_CASE("Node canvas authors a first spectral Trimesh Spy with a live preview",
+        "[cycle-v2][canvas][authoring][probe][spectral][trimesh]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const auto meshEdge = std::find_if(
+            document.graph().getEdges().begin(),
+            document.graph().getEdges().end(),
+            [](const Edge& edge) {
+                return edge.sourceNodeId == "magMesh" && edge.sourcePortId == "out";
+            });
+    REQUIRE(meshEdge != document.graph().getEdges().end());
+    const int edgeIndex = (int) std::distance(
+            document.graph().getEdges().begin(), meshEdge);
+
+    const auto added = authoring.toggleSignalProbe(edgeIndex, 0.5f);
+
+    REQUIRE(added.succeeded);
+    REQUIRE(added.graphChanged);
+    REQUIRE(presentation.previewResult().probes.size() == 1);
+    REQUIRE(presentation.previewResult().probes.front().connected);
+    REQUIRE_FALSE(presentation.previewResult().probes.front().values.empty());
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(document.graph().getSignalProbes().empty());
+}
+
 TEST_CASE("Node port layout cycling survives document serialization",
         "[cycle-v2][canvas][authoring][layout]") {
     NodeGraph graph;
