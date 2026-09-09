@@ -1242,36 +1242,6 @@
                     ]
                 }
             }
-        },
-        {
-            "id": "guide4",
-            "shortLabel": "G4",
-            "name": "",
-            "colourIndex": 3,
-            "shelfOrder": 3,
-            "enabled": true,
-            "noise": 0.0,
-            "dcOffset": 0.0,
-            "phase": 0.0,
-            "revision": 1,
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 },
-                        { "id": 5, "x": 0.06362, "y": 0.25887, "curve": 0.0 },
-                        { "id": 6, "x": 0.08117, "y": 0.50709, "curve": 0.0 }
-                    ]
-                }
-            }
         }
     ],
     "guideHeatmaps": [],

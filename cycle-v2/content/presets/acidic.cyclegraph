@@ -732,36 +732,7 @@
             "parameters": {}
         }
     ],
-    "guides": [
-        {
-            "id": "guide1",
-            "shortLabel": "G1",
-            "name": "",
-            "colourIndex": 0,
-            "shelfOrder": 0,
-            "enabled": true,
-            "noise": 0.0,
-            "dcOffset": 0.0,
-            "phase": 0.0,
-            "revision": 1,
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.0625, "y": 0.5, "curve": 1.0 },
-                        { "id": 3, "x": 0.9375, "y": 0.5, "curve": 1.0 },
-                        { "id": 4, "x": 0.9475, "y": 0.5, "curve": 0.0 }
-                    ]
-                }
-            }
-        }
-    ],
+    "guides": [],
     "guideHeatmaps": [],
     "guideAssignments": [],
     "edges": [

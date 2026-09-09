@@ -2321,13 +2321,13 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
   #if defined(CYCLE_V2_SOURCE_DIR)
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTable;
-    const NodeGraph downfall = GraphSerializer().fromJsonString(
+    const NodeGraph warmth = GraphSerializer().fromJsonString(
             File(CYCLE_V2_SOURCE_DIR)
                     .getChildFile("content")
                     .getChildFile("presets")
-                    .getChildFile("downfall.cyclegraph")
+                    .getChildFile("Warmth.cyclegraph")
                     .loadFileAsString());
-    const Node* envelope = downfall.findNode("volumeEnvelope1");
+    const Node* envelope = warmth.findNode("volumeEnvelope1");
     REQUIRE(envelope != nullptr);
 
     CurveEditorWidget widget(NodeKind::Envelope);

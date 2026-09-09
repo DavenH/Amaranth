@@ -324,68 +324,6 @@
             }
         },
         {
-            "id": "scratchEnvelope1",
-            "kind": "envelope",
-            "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 1103.0 },
-            "parameters": { "enabled": false, "purpose": "scratch", "logarithmic": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
-            "model": {
-                "schema": "envelope",
-                "version": 2,
-                "revision": 1,
-                "state": {
-                    "version": 2,
-                    "type": "envelope",
-                    "revision": 1,
-                    "mesh": {
-                        "name": "Mesh",
-                        "mainMesh": {
-                            "name": "Mesh",
-                            "version": 1,
-                            "vertices": [
-                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
-                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 8 },
-                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 9 },
-                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 10 },
-                                { "time": 0.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 11 },
-                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
-                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
-                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
-                                { "time": 1.0, "phase": 0.999, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 }
-                            ],
-                            "cubes": [
-                                {
-                                    "vertexIds": [ 0, 1, 2, 3, 4, 5, 6, 7 ],
-                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
-                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
-                                },
-                                {
-                                    "vertexIds": [ 8, 9, 10, 11, 12, 13, 14, 15 ],
-                                    "guides": { "time": -1, "key": -1, "mod": -1, "phase": -1, "amp": -1, "curve": -1 },
-                                    "gains": { "time": 0.5, "key": 0.5, "mod": 0.5, "phase": 0.5, "amp": 0.5, "curve": 0.5 }
-                                }
-                            ]
-                        },
-                        "loopIndices": [],
-                        "sustainIndices": [ 1 ]
-                    },
-                    "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
-                    "redLinked": false,
-                    "blueLinked": false,
-                    "cubeIds": [ 1, 2 ]
-                }
-            }
-        },
-        {
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
@@ -457,45 +395,6 @@
                         { "id": 20, "x": 0.76983, "y": 0.13609, "curve": 0.0 },
                         { "id": 21, "x": 0.82185, "y": 0.51183, "curve": 0.0 },
                         { "id": 22, "x": 0.80494, "y": 0.30178, "curve": 0.0 }
-                    ]
-                }
-            }
-        },
-        {
-            "id": "guide2",
-            "shortLabel": "G2",
-            "name": "",
-            "colourIndex": 1,
-            "shelfOrder": 1,
-            "enabled": true,
-            "noise": 0.0,
-            "dcOffset": 0.0,
-            "phase": 0.0,
-            "revision": 1,
-            "model": {
-                "schema": "flatCurve",
-                "version": 1,
-                "revision": 1,
-                "state": {
-                    "version": 1,
-                    "type": "flatCurve",
-                    "revision": 1,
-                    "vertices": [
-                        { "id": 1, "x": 0.0525, "y": 0.5, "curve": 0.0 },
-                        { "id": 2, "x": 0.85593, "y": 0.49831, "curve": 0.53031 },
-                        { "id": 3, "x": 0.34279, "y": 0.20828, "curve": 0.0 },
-                        { "id": 4, "x": 0.31604, "y": 0.51043, "curve": 0.50876 },
-                        { "id": 5, "x": 0.79107, "y": 0.5694, "curve": 0.0 },
-                        { "id": 6, "x": 0.74176, "y": 0.3651, "curve": 0.0 },
-                        { "id": 7, "x": 0.69752, "y": 0.70573, "curve": 0.0 },
-                        { "id": 8, "x": 0.64969, "y": 0.26145, "curve": 0.0 },
-                        { "id": 9, "x": 0.59482, "y": 0.82877, "curve": 0.0 },
-                        { "id": 10, "x": 0.55332, "y": 0.15774, "curve": 0.0 },
-                        { "id": 11, "x": 0.50479, "y": 0.82877, "curve": 0.14407 },
-                        { "id": 12, "x": 0.46325, "y": 0.15774, "curve": 0.17007 },
-                        { "id": 13, "x": 0.42361, "y": 0.69335, "curve": 0.0 },
-                        { "id": 14, "x": 0.36247, "y": 0.15955, "curve": 0.0 },
-                        { "id": 15, "x": 0.39322, "y": 0.82877, "curve": 0.0 }
                     ]
                 }
             }

@@ -20,6 +20,10 @@ them.
   schema migration, default synthesis, and canonical Cycle 1 preset JSON.
 - `scripts/port_cycle_v1_preset.py` owns the narrow translation from canonical
   Cycle 1 state into Cycle V2 graph ownership and routing.
+- `scripts/simplify_cycle_v2_presets.py` owns conservative post-migration
+  cleanup for both generated and previously protected factory graphs. The
+  converter invokes the same cleanup before serialization so regeneration does
+  not restore structural no-ops.
 - Cycle V2 node definitions, graph validation, serialization, and runtime
   compilation own the target representation and acceptance contract.
 - Mature Cycle 1 DSP, mesh, envelope, effect, and modulation implementations
@@ -57,7 +61,7 @@ Cycle 1's `properties.active` is authored layer state for connected or populated
 layers. Cycle V2 stores it as an `enabled` parameter on each retained Envelope
 and Trilinear Mesh node and exposes that parameter through the enable action in
 the expanded editor header. Empty spectral meshes and inactive unconnected
-pitch Envelopes are omitted under the no-op rules below.
+Envelopes are omitted under the no-op rules below.
 
 The source node remains the sole durable owner. Runtime translation happens at
 the existing DSP-configuration boundary:
@@ -177,13 +181,29 @@ When volume processing is active, generated volume Envelopes occupy a row below
 and to the left of Multiply. The active Envelope is the rightmost sibling, one
 standard gap from Multiply, so its normal right-side output approaches the
 lower-left operation input without reversing direction or overlapping the node.
-Inactive volume Envelopes remain visible earlier in the same row.
+Inactive, unconnected volume Envelopes are omitted as structural no-ops.
 
-### Empty pitch Envelopes
+### Inactive unconnected Envelopes
 
-An inactive pitch Envelope has no connection and contributes no state to the
-rendered graph. The converter omits these nodes. An active pitch Envelope
-remains connected to Voice Context and preserves its model and parameters.
+An inactive Envelope with no connection contributes no state to the rendered
+graph. The converter omits these nodes regardless of purpose. Active and
+connected Envelopes preserve their model and parameters.
+
+### Post-migration structural cleanup
+
+The checked-in library receives the same conservative structural pass as newly
+converted graphs. It removes an isolated non-Output node only when no edge,
+Guide assignment, signal probe, or audio binding references it. A Guide resource
+is removed only when it has no assignment; heatmaps are retained while any
+remaining Guide uses them.
+
+A graph whose only Trimesh nodes are empty time layers and whose remaining node
+kinds cannot generate or process nonzero content collapses to a single Output.
+An empty time mesh is otherwise retained when populated spectral layers depend
+on it as their zero-spectrum seed. A direct FFT-to-IFFT magnitude/phase pair is
+bypassed only when neither transform has another branch or external reference.
+Legacy range stored on a centred Pan is transferred to its upstream Trimesh
+before the Pan is removed.
 
 ## Lifecycle And Ownership
 
@@ -221,6 +241,10 @@ remains connected to Voice Context and preserves its model and parameters.
     topology, omit every centred Pan, empty spectral Trimesh, redundant
     FFT/IFFT pair, and inactive pitch Envelope, expose range in the expanded
     Trimesh editor, and add undoable Stop Panning authoring.
+11. Audited all 230 checked-in factory graphs and applied the shared conservative
+    cleanup to generated and protected content. Added a whole-library invariant
+    covering isolated nodes, unused Guides, empty spectral meshes, centred Pan,
+    empty time seeds, direct transform round trips, loading, and compilation.
 
 ## Verification
 
@@ -257,6 +281,13 @@ remains connected to Voice Context and preserves its model and parameters.
   Fifty-one presets with no populated spectral layer omit the FFT/IFFT pair.
   Modulation blue-axis routing preserves the legacy distinction between
   velocity (input 2) and mod wheel (input 101).
+- The post-migration audit removed 133 inactive, unconnected Envelope nodes and
+  142 unassigned Guides. It also removed one empty spectral branch, two remaining
+  centred Pan nodes, and one direct FFT/IFFT round trip. Nine wholly silent
+  presets (`by-myself`, `empty`, `env-test`, `envelope-test`, `layers`, `now`,
+  `power`, `sitar-model-1`, and `speed-test`) now contain only Output. Sixty-eight
+  empty time meshes remain intentionally because they seed populated spectral
+  layer stacks.
 - Remaining blockers: none. `crash`, `cymbal`, and `downfall` retain their two
   active time layers and opposite stereo placement through the generalized
   inline Pan operation and the authoritative `Arithmetic::getPans` gain law.
@@ -268,9 +299,9 @@ remains connected to Voice Context and preserves its model and parameters.
   Envelope omission.
 - Cycle 1 archive migration tests: 111 assertions across 5 cases passed.
 - Cycle V2 layer enablement tests: 14 assertions across 2 cases passed.
-- The focused generated-layout case passes 318,666 assertions, covering compact
-  node overlap, structural no-op rejection, and actual production cable paths
-  across all 224 regenerated graphs.
+- The focused layout coverage passes 308,437 assertions across 9 cases,
+  covering compact node overlap and actual production cable paths across all
+  224 regenerated graphs.
 - Focused graph/preset coverage passes 370,085 assertions across 6 cases;
   Envelope/output-layout authoring and hit routing pass 54 assertions across 4
   cases.
@@ -283,16 +314,18 @@ remains connected to Voice Context and preserves its model and parameters.
 - The spectral Trimesh range automation fixture passed 12 commands, including
   a real drag, visible-state update, commit, and undo, and captured the expanded
   editor at `/private/tmp/cycle-v2-spectral-trimesh-range.png`.
+- Post-migration simplifier and converter tests pass all 38 cases. The
+  whole-library structural invariant loads and compiles all 230 presets and
+  passes 5,813 assertions.
 - Production-size macOS captures include the final authorable Envelope and
   operation layout in `/private/tmp/cycle-v2-layout-thrash-final.png`, and the
   empty-phase bypass plus down-left volume Envelope placement in
   `/private/tmp/cycle-v2-phase-bypass-alto-sax-1.png`.
 - Standalone Cycle and Cycle V2 builds passed on macOS.
-- The complete Cycle V2 binary passes 607 of 609 cases. The two unrelated
-  worktree failures are the protected `african-horn.cyclegraph` lacking newly
-  explicit default `enabled` fields, and the pre-existing locally modified
-  `stengah.cyclegraph` no longer satisfying its scratch-probe fixture. Neither
-  protected graph was rewritten by this layout pass.
+- The complete Cycle V2 binary passes 612 of 615 cases. The three unrelated
+  failures are `african-horn.cyclegraph` lacking newly explicit default
+  `enabled` fields and two pre-existing Stengah probe expectations for a probe
+  that is no longer present in the graph.
 
 ## Completion Criteria
 
